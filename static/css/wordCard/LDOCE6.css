@@ -1,0 +1,190 @@
+*{word-wrap:break-word!important}
+.ldoce6 .entry{line-height:150%;color:black;display:block;font-family:Arial,sans-serif;color:#000}
+.ldoce6 .entry a{cursor:pointer;}
+.ldoce6 .abbr{font-weight:bold}
+.ldoce6 .ac, .ldoce6 .ac{padding-left:2px;padding-right:2px;border-radius:2px 2px 2px 2px;border-style:solid;border-width:1px;font-variant:small-caps;font-size:80%;font-weight:bold;color:blue}
+.ldoce6 .amequiv{font-weight:bold}
+.ldoce6 .brequiv{font-weight:bold}
+.ldoce6 .collo{font-weight:bold}
+.ldoce6 .colloexa{display:block}
+.ldoce6 .colloinexa{font-style:italic;font-weight:bold}
+.ldoce6 .comp{font-weight:bold}
+.ldoce6 .deriv{font-weight:bold;color:blue}
+.ldoce6 .errorbox{display:block}
+.ldoce6 .etymsense{display:block}
+.ldoce6 .etymrefhwd{font-style:italic}
+.ldoce6 .etymrefhom{font-size:80%;vertical-align:super;font-style:normal}
+.ldoce6 .etymorigin{font-style:italic}
+.ldoce6 .etymtran{font-weight:bold}
+.ldoce6 .etymbox{margin-top:1em;display:block}
+.ldoce6 .example{font-style:italic;display:block;color:blue}
+.ldoce6 .freq, .ldoce6 .freq{padding-left:2px;padding-right:2px;border-radius:2px 2px 2px 2px;border-style:solid;border-width:1px;font-variant:small-caps;font-size:80%;font-weight:bold;color:red}
+.ldoce6 .fullform{font-weight:bold}
+.ldoce6 .geo, .ldoce6 span.geo{font-weight:normal;font-style:italic;color:purple}
+.ldoce6 .gloss, .ldoce6 .collgloss{font-weight:normal;font-style:normal;color:black}
+.ldoce6 .gram{color:green}
+.ldoce6 .hintbold{font-weight:bold}
+.ldoce6 .hintitalic{font-style:italic}
+.ldoce6 .homnum{vertical-align:super;font-size:8pt;color:blue;font-weight:bold}
+.ldoce6 .hwd{display:none}
+.ldoce6 .hyphenation{font-weight:bold;font-size:120%;color:blue}
+.ldoce6 .frequent{color:red}
+.ldoce6 .lexunit{font-weight:bold}
+.ldoce6 .lexvar{font-weight:bold}
+.ldoce6 .linkword{font-style:italic}
+.ldoce6 object{font-weight:normal}
+.ldoce6 .opp{font-weight:bold}
+.ldoce6 .orthvar{font-weight:bold}
+.ldoce6 .pastpart{font-weight:bold}
+.ldoce6 .pasttense{font-weight:bold}
+.ldoce6 .phrvbentry{display:block;margin-top:10px;margin-left:10px}
+.ldoce6 .phrvbhwd{font-weight:bold;color:blue}
+.ldoce6 .pluralform{font-weight:bold}
+.ldoce6 .pos{font-style:italic;color:green;font-weight:normal}
+.ldoce6 .prespart{font-weight:bold}
+.ldoce6 .propform{font-weight:bold;display:block}
+.ldoce6 .propformprep{font-weight:bold;display:block}
+.ldoce6 .ptandpp{font-weight:bold}
+.ldoce6 .refhomnum{vertical-align:super;font-size:60%}
+.ldoce6 .refhwd, .ldoce6 .refsensenum{font-style:normal;font-variant:small-caps;text-transform:lowercase}
+.ldoce6 .refsensenum{font-size:80%}
+.ldoce6 .reflex{font-weight:bold}
+.ldoce6 .registerlab{font-style:italic;color:purple}
+.ldoce6 .relatedwd{font-weight:bold}
+.ldoce6 .runon{display:block;margin-top:8px}
+.ldoce6 .sense{display:block}
+.ldoce6 .signpost{color:white;background-color:#35a3ff;margin-left:.5em;font-weight:bold;font-variant:small-caps;text-transform:uppercase;font-size:80%;padding:1px 2px 1px 1px}
+.ldoce6 .spokensect{border-top:solid;border-bottom:solid;border-width:2px;display:block;margin-bottom:1ex;clear:both;margin-top:1ex;border-color:#00a2e8;padding:3px}
+.ldoce6 .spokensecthead{display:block;color:#00a2e8;font-weight:bold}
+.ldoce6 .pronstrong{font-style:italic}
+.ldoce6 .subsense{display:block}
+.ldoce6 .superl{font-weight:bold}
+.ldoce6 .syn{font-weight:bold}
+.ldoce6 .t3perssing{font-weight:bold}
+.ldoce6 span.neutral{font-style:normal;font-weight:normal;font-variant:normal;color:black;text-decoration:none}
+.ldoce6 .cross{color:red;font-weight:bold}
+.ldoce6 span.italic{color:black;font-style:italic;font-weight:normal}
+.ldoce6 .badexa{text-decoration:line-through;font-style:italic}
+.ldoce6 .hint .expl{display:inline}
+.ldoce6 span.infllab{font-style:italic;font-weight:normal}
+.ldoce6 span.warning{font-style:normal;font-weight:bold;color:red}
+.ldoce6 span.sensenum{font-style:normal;font-weight:bold;margin-right:3px;color:blue}
+.ldoce6 span.synopp{padding-left:3px;padding-right:3px;border-radius:2px 2px 2px 2px;border-style:solid;border-width:1px;font-variant:small-caps;font-size:80%;font-weight:bold;color:blue}
+.ldoce6 .subheading, .ldoce6 .secheading{display:block;font-weight:bold;font-weight:bold;color:white;background-color:#8187bf;margin-left:-3px;margin-right:-3px;font-variant:small-caps;padding-left:3px}
+.ldoce6 .collocate, .ldoce6 .exponent{display:block;margin-top:5px}
+.ldoce6 .collocate.inline{display:inline}
+.ldoce6 .expl{display:block;padding:0 3px}
+.ldoce6 .colloc{font-weight:bold}
+.ldoce6 .exp{font-weight:bold}
+.ldoce6 .expr{font-weight:bold}
+.ldoce6 .colloc.key{color:blue}
+.ldoce6 span.keycollo{font-weight:bold;color:blue}
+.ldoce6 .thespropform{font-weight:bold}
+.ldoce6 .goodcollo{font-weight:bold}
+.ldoce6 .badcollo{text-decoration:line-through}
+.ldoce6 .defbold{font-weight:bold}
+.ldoce6 .thesref.newline{display:block}
+.ldoce6 .heading.newline{display:block}
+.ldoce6 .thesref span.thesaurus{color:blue;font-variant:small-caps}
+.ldoce6 .thesref .refhwd,.thesref .refhomnum{color:blue;font-weight:bold}
+.ldoce6 i{font-style:italic}
+.ldoce6 .imgholder{cursor:pointer;display:block;margin-bottom:1ex;padding:2px;clear:both}
+.ldoce6 .imgholder img{max-height:4em}
+.ldoce6 .buttons{display:block}
+.ldoce6 .popup-button{background-color:#f0f2fc;border-radius:2px;border:1px solid #7e92c7;color:#7e92c7;text-transform:uppercase;font-size:66%;padding:2px 3px;text-decoration:none}
+.ldoce6 .popup-button-hover{background-color:#dfe3f8;cursor:pointer}
+.ldoce6 .popverbs{display:block;color:white;font-weight:bold;background-color:#ec008d;padding-left:3px;margin-bottom:5px}
+.ldoce6 .verbtable .lemma{color:blue;font-size:120%;font-weight:bold}
+.ldoce6 .verbtable table{border-collapse:separate;border-spacing:1px;margin-top:10px}
+.ldoce6 .verbtable td{padding:0 5px 0 2px;border-style:solid;border-width:1px;border-color:#d2d2d2}
+.ldoce6 .header{font-weight:bold;font-variant:small-caps}
+.ldoce6 .verbtable td.col1{font-weight:bold}
+.ldoce6 .verbtable td.col2{font-style:italic}
+.ldoce6 .verbtable .geo{font-style:italic;color:#000;font-size:100%;font-weight:normal}
+.ldoce6 .verbtable .aux{font-weight:bold}
+.ldoce6 .verbtable .verb_form{color:blue;font-weight:bold}
+.ldoce6 .collocations .last{margin-bottom:20px}
+.ldoce6 .collocations .colloc{display:inline-block;font-weight:bold;margin-left:-2px}
+.ldoce6 .collobox, .ldoce6 .thesbox, .ldoce6 .usagebox, .ldoce6 .grambox, .ldoce6 .f2nbox{border-radius:9px 9px 9px 9px;border-style:solid;border-width:2px;display:block;margin-bottom:1ex;clear:both;margin-top:1ex}
+.ldoce6 .f2nbox{border-color:#00a2e8}
+.ldoce6 .f2nbox .heading{color:#00a2e8}
+.ldoce6 .heading{color:white;font-weight:bold;line-height:100%;padding:3px}
+.ldoce6 .section{display:block;padding:0 3px}
+.ldoce6 .last{border-bottom-left-radius:9px;border-bottom-right-radius:9px}
+.ldoce6 .thesbox{background-color:#652d91;border-color:#652d91}
+.ldoce6 .thesbox .section{background-color:#e8e2f0}
+.ldoce6 .collobox{background-color:#1d3e99;border-color:#1d3e99}
+.ldoce6 .collobox .section{background-color:#e2f4fd}
+.ldoce6 .usagebox{background-color:#00a2e8;border-color:#00a2e8}
+.ldoce6 .usagebox .expl{background-color:#e2f4fd}
+.ldoce6 .grambox{background-color:#00adee;border-color:#00adee}
+.ldoce6 .grambox .expl, .ldoce6 .grambox .compareword{background-color:#e2f4fd;display:block;padding-left:3px}
+.ldoce6 .compareword{padding-top:5px;padding-bottom:5px}
+.ldoce6 .gramrefcont{display:block;text-transform:lowercase;font-variant:small-caps;padding-left:3px;padding-bottom:1px}
+.ldoce6 .thesaurus .sense{padding-left:3px;padding-right:3px;margin-top:0}
+.ldoce6 .thesaurus .section,.collocations .section{margin-bottom:10px}
+.ldoce6 .thesaurus .secheading,.thesbox .secheading{background-color:#a186bd}
+.ldoce6 .add_exa{font-style:italic;display:block}
+.ldoce6 .nodeword{color:blue;font-weight:bold}
+.ldoce6 .phrase{display:block}
+.ldoce6 .phrasetext{font-weight:bold}
+.ldoce6 .expandable{cursor:pointer}
+.ldoce6 .entry div.content{display:none;margin-bottom:10px}
+.ldoce6 .group, .ldoce6 .w{display:block}
+.ldoce6 .group .pos{font-weight:bold;display:block}
+.ldoce6 .item{display:block}
+.ldoce6 .w{font-weight:bold}
+.ldoce6 .popheader{display:block;color:white;font-weight:bold;padding-left:3px}
+.ldoce6 .popheader.popexa{background-color:red}
+.ldoce6 .popheader.popphrase{background-color:purple}
+.ldoce6 .popheader.popcollo{background-color:#1d3e99}
+.ldoce6 .popheader.popthes{background-color:#652d91}
+.ldoce6 .popheader.popetym{background-color:green}
+.ldoce6 .popheader.popwf{background-color:#ffd448}
+.ldoce6 .popheader.pope_menu{background-color:#57c0e0}
+.ldoce6 .ws-head{font-weight:bold;color:blue;font-size:larger}
+.ldoce6 .ws-head.ref{display:block;margin-top:10px}
+.ldoce6 .wswd{font-weight:bold;display:block}
+.ldoce6 .cyan{color:#00a2e8;font-size:larger}
+.ldoce6 .menuitem{display:block}
+.ldoce6 ul.exas{margin-top:.5em;margin-bottom:.5em;padding-left:2em;padding-right:1em}
+.ldoce6 ul.exas li{font-style:italic;color:blue}
+.ldoce6 .grammar{display:block}
+.ldoce6 .str{font-size:large;font-weight:bold}
+.ldoce6 .etymology{margin-top:10px}
+.ldoce6 .group{margin-top:10px}
+.ldoce6 .menuitem .signpost{background-color:transparent;color:black;margin-left:0;font-size:90%}
+.ldoce6 .phrvbs{display:block;margin-top:10px;margin-left:5px}
+.ldoce6 .phrvbs .heading{display:block;color:blue;font-weight:bold}
+.ldoce6 .phrv{font-weight:bold}
+.ldoce6 .secheading, .ldoce6 .subheading{font-variant:normal;text-transform:uppercase}
+.ldoce6 .secheading.no_convert{text-transform:none}
+.ldoce6 .grambox .heading.newline{background-color:#6cd0f6}
+/*max-height:1em;*/
+.ldoce6 img[src*="images/spkr_"]{width:22px; height:22px;}
+.ldoce6 img[src*="images/spkr_g"]{width:18px; height:18px;}
+.ldoce6 .chwd{margin-top:10px}
+.ldoce6 .chwd a{display:inline-block;background-color:green;color:white;padding-top:2px;padding-bottom:3px;padding-left:5px;padding-right:5px;margin-right:3px;margin-bottom:3px;text-decoration:none;font-size:80%;border-radius:2px}
+.ldoce6 .chwd .hw{color:white}
+.ldoce6 .entry, .ldoce6 .entry.lozenge, .ldoce6 .verbtable{margin-top:.5em}
+.ldoce6 a[nattr="no-sound-file"] img{border:1px solid gray;border-radius:3px;max-height:.9em}
+.ldoce6 div[nattr="at-link"]{border:1px solid #e4e4e4;border-radius:9px;padding:.1em .5em;margin:.5em 0;background-color:rgba(199,110,6,0.1)}
+.ldoce6 div[nattr="at-link"]{display:none}
+/*.ldoce6 div[nattr="at-link"]{display:block}*/
+.ldoce6 .popup-button:hover{cursor:pointer}
+.ldoce6 .popup-button{
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none;   /* Chrome/Safari/Opera */
+    -khtml-user-select: none;    /* Konqueror */
+    -moz-user-select: none;      /* Firefox */
+    -ms-user-select: none;       /* IE/Edge */
+    user-select: none;           /* non-prefixed version, currently not supported by any browser */
+}
+.ldoce6 span[onclick*="toggle"]{
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none;   /* Chrome/Safari/Opera */
+    -khtml-user-select: none;    /* Konqueror */
+    -moz-user-select: none;      /* Firefox */
+    -ms-user-select: none;       /* IE/Edge */
+    user-select: none;           /* non-prefixed version, currently not supported by any browser */
+}

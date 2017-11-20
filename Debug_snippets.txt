@@ -1,0 +1,8 @@
+/******************************************************************************************************************/
+/*                                                        WebServer                                               */
+/******************************************************************************************************************/
+List<String> keys = new ArrayList<>();
+    for (Map.Entry<String, RequestHandler> entry : RequestHandlersContainer.getHandlers().entrySet()) {
+        keys.add(entry.getKey());
+    }
+    keys

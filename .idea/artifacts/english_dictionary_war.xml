@@ -1,0 +1,13 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="english-dictionary:war">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <root id="archive" name="englishDictionary.war">
+      <element id="artifact" artifact-name="english-dictionary:war exploded" />
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="httl" />
+        </element>
+      </element>
+    </root>
+  </artifact>
+</component>

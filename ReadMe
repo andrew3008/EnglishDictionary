@@ -1,0 +1,7 @@
+// Necessary environment variables
+// Home computer
+IS_WORK_STATION=false
+JAVA8_HOME=F:\Java\JavaFrameworks\jdk1.8.0_131
+// Work computer
+IS_WORK_STATION=true
+JAVA8_HOME=E:\JavaFrameworks\jdk_1.8.131

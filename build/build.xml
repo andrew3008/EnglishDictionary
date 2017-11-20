@@ -1,0 +1,51 @@
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 http://maven.apache.org/xsd/assembly-1.1.3.xsd">
+    <id>build</id>
+    <formats>
+        <format>zip</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <fileSets>
+        <fileSet>
+            <directory>${project.basedir}</directory>
+            <outputDirectory>.</outputDirectory>
+            <includes>
+                <include>favicon.ico</include>
+            </includes>
+        </fileSet>
+
+        <fileSet>
+            <directory>${project.basedir}/build</directory>
+            <outputDirectory>.</outputDirectory>
+            <includes>
+                <include>runWebServer.bat</include>
+                <include>ReadMe.txt</include>
+            </includes>
+        </fileSet>
+
+        <fileSet>
+            <directory>${project.basedir}/static</directory>
+            <outputDirectory>static</outputDirectory>
+            <includes>
+                <include>/**</include>
+            </includes>
+        </fileSet>
+
+        <fileSet>
+            <directory>${project.basedir}/target/dependency-jars</directory>
+            <outputDirectory>dependency-jars</outputDirectory>
+            <includes>
+                <include>/*</include>
+            </includes>
+        </fileSet>
+
+        <fileSet>
+            <directory>${project.basedir}/target</directory>
+            <outputDirectory>.</outputDirectory>
+            <includes>
+                <include>englishDictionary.jar</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+</assembly>

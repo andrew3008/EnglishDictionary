@@ -1,0 +1,36 @@
+.forvo_headword
+{
+    margin-top: 15px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.forvo_play
+{
+    margin-top: 8px;
+    margin-left: 8px;
+}
+
+.forvo_user
+{
+    text-decoration: none;
+    color: green;
+}
+
+.forvo_location
+{
+    color: grey;
+}
+
+.forvo_positive_votes
+{
+    font-weight: bold;
+    color: green;
+}
+
+.forvo_negative_votes
+{
+    font-weight: bold;
+    color: red;
+}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html lang=en>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="icon" href="/favicon.ico" form="image/x-icon"/>
+    <link rel="shortcut icon" href="/favicon.ico" form="image/x-icon"/>
+
+    <link rel="stylesheet" type="text/css" href="/static/bootstrap/css/bootstrap-theme.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/bootstrap/css/bootstrap.min.css"/>
+
+    <link rel="stylesheet" type="text/css"
+          href="/static/jquery/plugins/datatables/media/css/jquery.dataTables.min.css"/>
+    <link rel="stylesheet" type="text/css"
+          href="/static/jquery/plugins/datatables/extensions/AutoFill/css/autoFill.dataTables.min.css"/>
+    <link rel="stylesheet" type="text/css"
+          href="/static/jquery/plugins/datatables/extensions/Buttons/css/buttons.dataTables.min.css"/>
+
+    <link rel="stylesheet" type="text/css"
+          href="/static/jquery/themes/smoothness/jquery-ui.css"/>
+    <link rel="stylesheet" type="text/css"
+          href="/static/jquery/plugins/datatables/media/css/dataTables.jqueryui.min.css"/>
+
+    <link rel="stylesheet" type="text/css"
+          href="/static/jquery/plugins/toastMessage/jquery.toastmessage.css"/>
+
+    <link rel="stylesheet" type="text/css" href="/static/css/mainPage/mainPage.css"/>
+
+    <title>Residential Order Entry</title>
+</head>
+<body scroll="yes" class="body">
+
+<!-- Navbar -->
+<div class="navbar navbar-inverse navbar-fixed-top"
+     style="overflow: hidden; width: 100%; height: 100%; border-color: white; !important;
+                background-image: linear-gradient(to bottom, white 0px, grey 100%);"
+     role="navigation">
+
+    <div class="container" style="margin-top: 5px;width: 99%;margin-left: 0px;margin-right: 2px;padding-left: 10px;padding-right: 10px;border-right-width: 2px;">
+
+        <div style="overflow:hidden !important;">
+            <div class="panel_of_buttons">
+                <a onclick="showListOfSetWord()" class="button18" tabindex="0">Show the list of words</a>
+                <a onclick="showQuizletFrame()" class="button18" tabindex="0">Show Quizlet Frame</a>
+                <a onclick="exportThisSetToLingualeo()" class="button18" tabindex="0">Export to Lingualeo</a>
+            </div>
+        </div>
+
+        <br>
+
+        <div>
+            <select id="contentFileWords">
+            </select>
+        </div>
+
+        <br>
+
+        <div id="formComments" class="hide">
+            <form>
+                <input id="buttonHideComments" type="Button" value="Hide comments">
+            </form>
+            <div id="containerComments" style="margin: 0px; width: 100%;">
+            </div>
+        </div>
+
+        <br>
+
+        <div id="quizlet_iframe" style="display: none;">
+        </div>
+
+        <table id="tableWords" class="display dataTable cell-border no-footer" style="border: 1px solid black;"
+               cellspacing="0" width="100%">
+        </table>
+
+        <br>
+
+        <div class="modal" id="wordDescriptionWindow">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class="modal-title">Word description</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div>Word: <span class="word"></span></div>
+                        <br>
+
+                        <div>Translate: <span class="translate"></span></div>
+                        <br>
+
+                        <div>Examples:</div>
+                        <div class="examples"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="wordCardWindow">
+            <div class="modal-dialog" style="width: 1870px;">
+                <div class="modal-content" style="width: 1870px;">
+                    <div id="word_card_header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <div style="overflow:hidden !important;">
+                            <div class="panel_of_buttons">
+                                <a onclick="showMainDictionaries()" class="button18" tabindex="0">OALD 9</a>
+                                <a onclick="showLDOCE6Dictionary()" class="button18" tabindex="0">LDOCE 6</a>
+                                <a onclick="showCollocationsDictionaries()" class="button18" tabindex="0">Collocations</a>
+                                <a onclick="showThesaurusDictionaries()" class="button18" tabindex="0">Thesaurus</a>
+                                <a onclick="showADLA2Dictionary()" class="button18" tabindex="0">ADLA 2</a>
+                            </div>
+                            <h4 class="modal-title" style="padding-left:120px !important; margin-left: 284px;"></h4>
+                        </div>
+                    </div>
+                    <div class="modal-body" style="width: 558px; padding: 2px 5px 5px 5px;">
+                        <table>
+                            <tr>
+                                <td>
+                                    <div id="wordCard_first_part"></div>
+                                </td>
+                                <td>
+                                    <div id="wordCard_second_part"></div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="wordForvoCardWindow" style="height: 1298px;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class="modal-title"></h4>
+                    </div>
+                    <div class="modal-body" style="width: 558px;">
+                        <div id="wordForvoCard_articles"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="wordMnemonicWindow" style="height: 1298px;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class="modal-title"></h4>
+                    </div>
+                    <div class="modal-body" style="width: 558px;">
+                        <div id="wordMnemonic_articles"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" language="javascript"
+        src="/static/jquery/plugins/datatables/media/js/jquery.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/bootstrap/js/bootstrap.min.js"></script>
+
+<script src="/static/jquery/plugins/multiLevelMenu/js/bootstrap-dropdownhover.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/jquery/plugins/datatables/media/js/jquery.dataTables.min.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/jquery/plugins/datatables/extensions/AutoFill/js/dataTables.autoFill.min.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/jquery/plugins/datatables/extensions/Buttons/js/dataTables.buttons.min.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/jquery/plugins/datatables/extensions/Buttons/js/buttons.colVis.min.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/jquery/plugins/datatables/extensions/Buttons/js/buttons.print.min.js"></script>
+
+<script type="text/javascript" src="/static/js/wordCard.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/jquery/plugins/toastMessage/jquery.toastmessage.js"></script>
+
+<script type="text/javascript" language="javascript"
+        src="/static/js/mainPage.js"></script>
+
+</body>
+</html>

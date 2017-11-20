@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/bootsnipp/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/bootsnipp/bootsnipp.min.css">
+    <link rel="stylesheet" href="/static/css/forvo/forvo.css"/>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel with-nav-tabs panel-default">
+                    <!-- #set(List<String> headWords) -->
+                    <!-- #if(headWords.size() > 1) -->
+                    <div id="headTabs" class="panel-heading">
+                        <ul class="nav nav-tabs">
+                            <!-- #set(ForvoCard forvoCard) -->
+                            <!-- #set(Map<String, List<ForvoCard>> forvoCardsGroupByWords) -->
+                            <!-- #for(headWord: headWords) -->
+                            <li>
+                                <a id="tab-headWord-${headWord}" href="#tab-pane-headWord-${headWord}" data-toggle="tab">${headWord}</a>
+                            </li>
+                            <!-- #end-->
+                        </ul>
+                    </div>
+                    <!-- #end -->
+                    <div class="panel-body">
+                        <div class="tab-content">
+                            <!-- #if(headWords.size() == 0) -->
+                            <span>Not a single record was found.</span>
+                            <!-- #end -->
+
+                            <!-- #for(headWord: headWords) -->
+                            <!-- #if(headWords.size() == 1) -->
+                                <div class="tab-pane fade active in" id="tab-pane-headWord-${headWord}">
+                                    <!-- #else -->
+                                    <div class="tab-pane fade" id="tab-pane-headWord-${headWord}">
+                                        <!-- #end -->
+                                <!-- #for(forvoCard: forvoCardsGroupByWords.get(headWord)) -->
+                                <table class="forvo_play">
+                                    <tr>
+                                        <td>
+                                            <audio controls>
+                                                <source src="${forvoCard.pathmp3}" type = "audio/ogg">
+                                                "Your browser does not support the audio element."
+                                            </audio>
+                                            ${forvoCard.addTime}
+                                        </td>
+
+                                        <td>
+                                            by <a class="forvo_user" href="${forvoCard.userProfile}"> ${forvoCard.user} </a>
+
+                                            <span class="forvo_location">
+                                            <!-- #if(forvoCard.male) -->
+                                                " Male"
+                                            <!-- #else -->
+                                                " Female"
+                                            <!-- #end -->
+                                                from
+                                            <!-- #if(forvoCard.flagFileName != null) -->
+                                                <img src="http://localhost:8080/static/images/flags/${forvoCard.flagFileName}.gif"/>
+                                            <!-- #end -->
+                                                ${forvoCard.country}
+                                            </span>
+
+                                            <span class="forvo_positive_votes">
+                                                ${forvoCard.positiveVotes}
+                                            </span>
+
+                                            <span class="forvo_negative_votes">
+                                                ${forvoCard.negativeVotes}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <!-- #end-->
+                            </div>
+                            <!-- #end-->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/bootsnipp/jquery-1.11.0.min.js"></script>
+    <script src="/static/bootsnipp/bootstrap.min.js"></script>
+    <script src="/static/bootsnipp/scripts.min.js"></script>
+
+    <script type="text/javascript">
+        // #set(List<String> headWords) //
+        $(function() {
+            // #if(headWords.size() > 1) //
+            document.getElementById("tab-headWord-${headWords.get(0)}").click();
+            // #end //
+        });
+    </script>
+
+</body>
+</html>
