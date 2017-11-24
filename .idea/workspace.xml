@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="BookmarkManager">
-    <bookmark url="file://$PROJECT_DIR$/pom.xml" />
-  </component>
   <component name="ChangeListManager">
-    <list default="true" id="8af7ae90-7154-493c-9de5-bc790b84a7c4" name="Default" comment="" />
-    <ignored path="english-dictionary.iws" />
-    <ignored path=".idea/workspace.xml" />
+    <list default="true" id="1cd0ee30-8840-4880-b107-e3085e18c536" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/compiler.xml" afterPath="$PROJECT_DIR$/.idea/compiler.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/encodings.xml" afterPath="$PROJECT_DIR$/.idea/encodings.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/vcs.xml" afterPath="$PROJECT_DIR$/.idea/vcs.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/english-dictionary.iml" afterPath="$PROJECT_DIR$/english-dictionary.iml" />
+    </list>
     <ignored path="$PROJECT_DIR$/target/" />
-    <ignored path="$PROJECT_DIR$/parent/target/" />
-    <ignored path="$PROJECT_DIR$/web/target/" />
-    <ignored path=".idea/dataSources.local.xml" />
-    <ignored path="$PROJECT_DIR$/../Netty_WebServer/httl/httl-master/httl/target/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -19,172 +17,25 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ChangesViewManager" flattened_view="true" show_ignored="false" />
-  <component name="CreatePatchCommitExecutor">
-    <option name="PATCH_PATH" value="" />
-  </component>
-  <component name="DatabaseView">
-    <option name="FLATTEN" value="false" />
-    <option name="GROUP_BY_TYPE" value="true" />
-    <option name="SORT_CHILDREN" value="false" />
-    <option name="SHOW_TABLE_CONSTRAINTS" value="true" />
-  </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="default_target" />
-  <component name="FavoritesManager">
-    <favorites_list name="english-dictionary" />
-  </component>
   <component name="FileEditorManager">
-    <leaf>
-      <file leaf-file-name="mainPage.css" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/static/css/mainPage/mainPage.css">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-0.051359516">
-              <caret line="91" column="2" selection-start-line="91" selection-start-column="2" selection-end-line="91" selection-end-column="2" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-    </leaf>
-  </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="Jsp File" />
-        <option value="Interface" />
-        <option value="Class" />
-      </list>
-    </option>
-  </component>
-  <component name="FindInProjectRecents">
-    <findStrings>
-      <find>4010</find>
-      <find>@media</find>
-      <find>width: 500px;</find>
-      <find>height: 1052px;</find>
-      <find>iFrame</find>
-    </findStrings>
-    <dirStrings>
-      <dir>E:\___English_Application\EnglishDictionary</dir>
-      <dir>C:\English\EnglishDictionary</dir>
-    </dirStrings>
+    <leaf />
   </component>
   <component name="GradleLocalSettings">
     <option name="externalProjectsViewState">
       <projects_view />
     </option>
   </component>
-  <component name="IdeDocumentHistory">
-    <option name="CHANGED_PATHS">
-      <list>
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/utils/ResourceUtils.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/resources/soundDatFile/MP3Player.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/ByteArrayOutputStream.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/json/JsonHelper.java" />
-        <option value="$PROJECT_DIR$/static/js/ldoce6.js" />
-        <option value="$PROJECT_DIR$/static/css/wordCard/LDOCE6.css" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/resources/htmlDatFile/HTMLFragmentReader.java" />
-        <option value="$PROJECT_DIR$/static/css/wordCard/WordCardCommonStyles.css" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/WordInfo.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LoginRequest.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoWordCard.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoApiSecurityCooker.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/ImportResponce.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/ExportRequest.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeo.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/LingvoController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoConfig.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/json/ParserJSonFiles.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoHttpClient.java" />
-        <option value="$PROJECT_DIR$/TODO.txt" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/config/ConfigLocation.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/utils/httl/HttlEngineKeeper.java" />
-        <option value="$PROJECT_DIR$/pom.xml" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/config/ConfigHome.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/config/ConfigWork.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/HttpServletResponse.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/MainController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/WebServer.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/MnemonicsCardController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/ForvoController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/IndexController.java" />
-        <option value="$PROJECT_DIR$/static/js/wordCard.js" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/CommentsController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/utils/json/ParserJSonFiles.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/quizlet/Auth2ClientAccount.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/QuizletController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/RequestHandlersContainer.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoClient.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/LingualeoController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/quizlet/SetsControl.java" />
-        <option value="$PROJECT_DIR$/ReadMe" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/RootController.java" />
-        <option value="$PROJECT_DIR$/static/httl/mainPage.httl" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/StaticResourcesController.java" />
-        <option value="$PROJECT_DIR$/build/runWebServer.bat" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/forvo/Forvo.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/WordCardController.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/resources/htmlDatFile/HTMLDatFileReader.java" />
-        <option value="$PROJECT_DIR$/static/js/mainPage.js" />
-        <option value="$PROJECT_DIR$/src/main/java/com/englishDictionary/config/Config.java" />
-        <option value="$PROJECT_DIR$/static/css/mainPage/mainPage.css" />
-      </list>
-    </option>
-  </component>
-  <component name="JsBuildToolGruntFileManager" detection-done="true" />
+  <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
   <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
   <component name="JsGulpfileManager">
     <detection-done>true</detection-done>
+    <sorting>DEFINITION_ORDER</sorting>
   </component>
-  <component name="LogFilters">
-    <option name="FILTER_ERRORS" value="false" />
-    <option name="FILTER_WARNINGS" value="false" />
-    <option name="FILTER_INFO" value="false" />
-    <option name="FILTER_DEBUG" value="false" />
-    <option name="CUSTOM_FILTER" />
-  </component>
-  <component name="MavenImportPreferences">
-    <option name="generalSettings">
-      <MavenGeneralSettings>
-        <option name="mavenHome" value="Bundled (Maven 3)" />
-        <option name="threads" value="4" />
-      </MavenGeneralSettings>
-    </option>
-  </component>
-  <component name="MavenProjectNavigator">
-    <treeState>
-      <expand>
-        <path>
-          <item name="" type="16c1761:MavenProjectsStructure$RootNode" />
-          <item name="EnglishDictionary" type="9519ce18:MavenProjectsStructure$ProjectNode" />
-        </path>
-        <path>
-          <item name="" type="16c1761:MavenProjectsStructure$RootNode" />
-          <item name="EnglishDictionary" type="9519ce18:MavenProjectsStructure$ProjectNode" />
-          <item name="Lifecycle" type="58874e2:MavenProjectsStructure$LifecycleNode" />
-        </path>
-      </expand>
-      <select />
-    </treeState>
-  </component>
-  <component name="NamedScopeManager">
-    <order />
-  </component>
-  <component name="ProjectFrameBounds">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="-8" />
     <option name="y" value="-8" />
     <option name="width" value="1936" />
     <option name="height" value="1176" />
-  </component>
-  <component name="ProjectLevelVcsManager" settingsEditedManually="false">
-    <OptionsSetting value="true" id="Add" />
-    <OptionsSetting value="true" id="Remove" />
-    <OptionsSetting value="true" id="Checkout" />
-    <OptionsSetting value="true" id="Update" />
-    <OptionsSetting value="true" id="Status" />
-    <OptionsSetting value="true" id="Edit" />
-    <ConfirmationsSetting value="0" id="Add" />
-    <ConfirmationsSetting value="0" id="Remove" />
   </component>
   <component name="ProjectView">
     <navigator currentView="ProjectPane" proportions="" version="1">
@@ -192,77 +43,85 @@
       <showMembers />
       <showModules />
       <showLibraryContents />
-      <hideEmptyPackages ProjectPane="false" />
+      <hideEmptyPackages />
       <abbreviatePackageNames />
       <autoscrollToSource />
       <autoscrollFromSource />
       <sortByType />
+      <manualOrder />
+      <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="AndroidView" />
       <pane id="ProjectPane">
         <subPane>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="english-dictionary" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="english-dictionary" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="EnglishDictionary" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
+          <expand>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="lib" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="src" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="src" type="462c0819:PsiDirectoryNode" />
+              <item name="main" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="src" type="462c0819:PsiDirectoryNode" />
+              <item name="main" type="462c0819:PsiDirectoryNode" />
+              <item name="java" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="src" type="462c0819:PsiDirectoryNode" />
+              <item name="main" type="462c0819:PsiDirectoryNode" />
+              <item name="java" type="462c0819:PsiDirectoryNode" />
+              <item name="englishDictionary" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="src" type="462c0819:PsiDirectoryNode" />
+              <item name="main" type="462c0819:PsiDirectoryNode" />
+              <item name="java" type="462c0819:PsiDirectoryNode" />
+              <item name="englishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="utils" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="english-dictionary" type="b2602c69:ProjectViewProjectNode" />
+              <item name="EnglishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="src" type="462c0819:PsiDirectoryNode" />
+              <item name="main" type="462c0819:PsiDirectoryNode" />
+              <item name="java" type="462c0819:PsiDirectoryNode" />
+              <item name="englishDictionary" type="462c0819:PsiDirectoryNode" />
+              <item name="utils" type="462c0819:PsiDirectoryNode" />
+              <item name="httl" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
         </subPane>
       </pane>
-      <pane id="PackagesPane" />
-      <pane id="Scratches" />
       <pane id="Scope" />
-      <pane id="AndroidView" />
+      <pane id="Scratches" />
+      <pane id="PackagesPane" />
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="aspect.path.notification.shown" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="recentsLimit" value="5" />
-    <property name="restartRequiresConfirmation" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../EnglishDictionary_prevVersion" />
-    <property name="FullScreen" value="false" />
-    <property name="OverrideImplement.combined" value="true" />
-    <property name="OverrideImplement.overriding.sorted" value="false" />
-    <property name="dynamic.classpath" value="false" />
-    <property name="project.structure.last.edited" value="SDKs" />
-    <property name="project.structure.proportion" value="0.15" />
-    <property name="project.structure.side.proportion" value="0.39425287" />
-    <property name="settings.editor.selected.configurable" value="configurable.group.language" />
-    <property name="settings.editor.splitter.proportion" value="0.2" />
-  </component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\EN_Apllications\EnglishDictionary" />
-      <recent name="D:\EN_Apllications\EnglishDictionary\src\main\java\com\englishDictionary\webServices\lingualeo" />
-      <recent name="D:\EN_Apllications\EnglishDictionary\src\main\java\com\englishDictionary\utils" />
-      <recent name="E:\English_Dictionary_Application\EnglishDictionary\src\main\java\com\englishDictionary\sounden\mp3player" />
-      <recent name="F:\English_Dictionary_Application\EnglishDictionary\static\images\oald9" />
-    </key>
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="F:\English_Dictionary_Application\EnglishDictionary_NewTranscriptions\static\css\mainPage" />
-      <recent name="F:\English_Dictionary_Application\EnglishDictionary_NewTranscriptions\static\css\forvo" />
-      <recent name="F:\Java_English_Dictionary\DataTables_ChildRows\static\jquery\plugins\datatables_1.10.12" />
-      <recent name="F:\Java_English_Dictionary\DataTables_ChildRows" />
-      <recent name="F:\Java_English_Dictionary\DataTables_ChildRows\src\main" />
-    </key>
-    <key name="CopyClassDialog.RECENTS_KEY">
-      <recent name="com.englishDictionary.webServer" />
-      <recent name="com.englishDictionary.transcriptions" />
-      <recent name="com.englishDictionary.sounden.mp3player.SoundFileIndex" />
-      <recent name="com.englishDictionary.sounden.mp3player" />
-      <recent name="com.englishDictionary.IrregularWords.IrregularVerbs" />
-    </key>
+    <property name="aspect.path.notification.shown" value="true" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -276,110 +135,13 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Application.WebServer">
-    <configuration default="false" name="WebServer" type="Application" factoryName="Application" singleton="true" temporary="true" nameIsGenerated="true">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea">
-        <pattern>
-          <option name="PATTERN" value="com.englishDictionary.webServer.*" />
-          <option name="ENABLED" value="true" />
-        </pattern>
-      </extension>
-      <option name="MAIN_CLASS_NAME" value="com.englishDictionary.webServer.WebServer" />
-      <option name="VM_PARAMETERS" value="-Dfile.encoding=UTF-8" />
-      <option name="PROGRAM_PARAMETERS" value="" />
-      <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" value="" />
-      <option name="ENABLE_SWING_INSPECTOR" value="false" />
-      <option name="ENV_VARIABLES" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <module name="english-dictionary" />
-      <envs>
-        <env name="file.encoding" value="UTF-8" />
-      </envs>
-      <RunnerSettings RunnerId="Profile ">
-        <option name="myExternalizedOptions" value="force-bitness=64&#13;&#10;additional-options2=onexit\=snapshot" />
-      </RunnerSettings>
-      <method />
-    </configuration>
-    <configuration default="true" type="#com.intellij.j2ee.web.tomcat.TomcatRunConfigurationFactory" factoryName="Local" ALTERNATIVE_JRE_ENABLED="false">
-      <deployment />
-      <server-settings />
-      <predefined_log_file id="Tomcat" enabled="true" />
-      <predefined_log_file id="Tomcat Catalina" enabled="true" />
-      <predefined_log_file id="Tomcat Manager" enabled="false" />
-      <predefined_log_file id="Tomcat Host Manager" enabled="false" />
-      <predefined_log_file id="Tomcat Localhost Access" enabled="false" />
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <method />
-    </configuration>
-    <configuration default="true" type="#com.intellij.j2ee.web.tomcat.TomcatRunConfigurationFactory" factoryName="Remote" ALTERNATIVE_JRE_ENABLED="false">
-      <option name="LOCAL" value="false" />
-      <deployment />
-      <server-settings>
-        <data>
-          <option name="transportHostId" value="" />
-          <host-id />
-        </data>
-      </server-settings>
-      <predefined_log_file id="Tomcat" enabled="true" />
-      <predefined_log_file id="TOMCAT_LOCALHOST_LOG_ID" enabled="true" />
-      <method />
-    </configuration>
-    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" factoryName="Plugin">
-      <module name="" />
-      <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m -ea" />
-      <option name="PROGRAM_PARAMETERS" />
-      <predefined_log_file id="idea.log" enabled="true" />
-      <method />
-    </configuration>
-    <configuration default="true" type="AndroidRunConfigurationType" factoryName="Android Application">
-      <module name="" />
-      <option name="ACTIVITY_CLASS" value="" />
-      <option name="MODE" value="default_activity" />
-      <option name="DEPLOY" value="true" />
-      <option name="ARTIFACT_NAME" value="" />
-      <option name="TARGET_SELECTION_MODE" value="EMULATOR" />
-      <option name="USE_LAST_SELECTED_DEVICE" value="false" />
-      <option name="PREFERRED_AVD" value="" />
-      <option name="USE_COMMAND_LINE" value="true" />
-      <option name="COMMAND_LINE" value="" />
-      <option name="WIPE_USER_DATA" value="false" />
-      <option name="DISABLE_BOOT_ANIMATION" value="false" />
-      <option name="NETWORK_SPEED" value="full" />
-      <option name="NETWORK_LATENCY" value="none" />
-      <option name="CLEAR_LOGCAT" value="false" />
-      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="true" />
-      <option name="FILTER_LOGCAT_AUTOMATICALLY" value="true" />
-      <method />
-    </configuration>
-    <configuration default="true" type="AndroidTestRunConfigurationType" factoryName="Android Tests">
-      <module name="" />
-      <option name="TESTING_TYPE" value="0" />
-      <option name="INSTRUMENTATION_RUNNER_CLASS" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="PACKAGE_NAME" value="" />
-      <option name="TARGET_SELECTION_MODE" value="EMULATOR" />
-      <option name="USE_LAST_SELECTED_DEVICE" value="false" />
-      <option name="PREFERRED_AVD" value="" />
-      <option name="USE_COMMAND_LINE" value="true" />
-      <option name="COMMAND_LINE" value="" />
-      <option name="WIPE_USER_DATA" value="false" />
-      <option name="DISABLE_BOOT_ANIMATION" value="false" />
-      <option name="NETWORK_SPEED" value="full" />
-      <option name="NETWORK_LATENCY" value="none" />
-      <option name="CLEAR_LOGCAT" value="false" />
-      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="true" />
-      <option name="FILTER_LOGCAT_AUTOMATICALLY" value="true" />
-      <method />
-    </configuration>
+  <component name="RunManager">
     <configuration default="true" type="Applet" factoryName="Applet">
+      <option name="HTML_USED" value="false" />
       <option name="WIDTH" value="400" />
       <option name="HEIGHT" value="300" />
       <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
       <module />
-      <method />
     </configuration>
     <configuration default="true" type="Application" factoryName="Application">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
@@ -394,131 +156,6 @@
       <option name="PASS_PARENT_ENVS" value="true" />
       <module name="" />
       <envs />
-      <method />
-    </configuration>
-    <configuration default="true" type="BatchConfigurationType" factoryName="Batch">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <module name="english-dictionary" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="PARAMETERS" value="" />
-      <method />
-    </configuration>
-    <configuration default="true" type="CucumberJavaRunConfigurationType" factoryName="Cucumber java">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <option name="myFilePath" />
-      <option name="GLUE" />
-      <option name="myNameFilter" />
-      <option name="myGeneratedName" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="VM_PARAMETERS" />
-      <option name="PROGRAM_PARAMETERS" />
-      <option name="WORKING_DIRECTORY" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="ENABLE_SWING_INSPECTOR" value="false" />
-      <option name="ENV_VARIABLES" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <module name="" />
-      <envs />
-      <method />
-    </configuration>
-    <configuration default="true" type="DjangoTestsConfigurationType" factoryName="Django tests">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="TARGET" value="" />
-      <option name="SETTINGS_FILE" value="" />
-      <option name="CUSTOM_SETTINGS" value="false" />
-      <option name="USE_OPTIONS" value="false" />
-      <option name="OPTIONS" value="" />
-      <method />
-    </configuration>
-    <configuration default="true" type="FlashRunConfigurationType" factoryName="Flash App">
-      <option name="BCName" value="" />
-      <option name="IOSSimulatorSdkPath" value="" />
-      <option name="adlOptions" value="" />
-      <option name="airProgramParameters" value="" />
-      <option name="appDescriptorForEmulator" value="Android" />
-      <option name="debugTransport" value="USB" />
-      <option name="debuggerSdkRaw" value="BC SDK" />
-      <option name="emulator" value="NexusOne" />
-      <option name="emulatorAdlOptions" value="" />
-      <option name="fastPackaging" value="true" />
-      <option name="fullScreenHeight" value="0" />
-      <option name="fullScreenWidth" value="0" />
-      <option name="launchUrl" value="false" />
-      <option name="launcherParameters">
-        <LauncherParameters>
-          <option name="browser" value="a7bb68e0-33c0-4d6f-a81a-aac1fdb870c8" />
-          <option name="launcherType" value="OSDefault" />
-          <option name="newPlayerInstance" value="false" />
-          <option name="playerPath" value="FlashPlayerDebugger.exe" />
-        </LauncherParameters>
-      </option>
-      <option name="mobileRunTarget" value="Emulator" />
-      <option name="moduleName" value="" />
-      <option name="overriddenMainClass" value="" />
-      <option name="overriddenOutputFileName" value="" />
-      <option name="overrideMainClass" value="false" />
-      <option name="runTrusted" value="true" />
-      <option name="screenDpi" value="0" />
-      <option name="screenHeight" value="0" />
-      <option name="screenWidth" value="0" />
-      <option name="url" value="http://" />
-      <option name="usbDebugPort" value="7936" />
-      <method />
-    </configuration>
-    <configuration default="true" type="FlexUnitRunConfigurationType" factoryName="FlexUnit" appDescriptorForEmulator="Android" class_name="" emulatorAdlOptions="" method_name="" package_name="" scope="Class">
-      <option name="BCName" value="" />
-      <option name="launcherParameters">
-        <LauncherParameters>
-          <option name="browser" value="a7bb68e0-33c0-4d6f-a81a-aac1fdb870c8" />
-          <option name="launcherType" value="OSDefault" />
-          <option name="newPlayerInstance" value="false" />
-          <option name="playerPath" value="FlashPlayerDebugger.exe" />
-        </LauncherParameters>
-      </option>
-      <option name="moduleName" value="" />
-      <option name="trusted" value="true" />
-      <method />
-    </configuration>
-    <configuration default="true" type="GradleRunConfiguration" factoryName="Gradle">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list />
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <method />
-    </configuration>
-    <configuration default="true" type="GrailsRunConfigurationType" factoryName="Grails">
-      <module name="" />
-      <setting name="vmparams" value="" />
-      <setting name="cmdLine" value="run-app" />
-      <setting name="depsClasspath" value="false" />
-      <setting name="passParentEnv" value="true" />
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <setting name="launchBrowser" value="false" />
-      <method />
     </configuration>
     <configuration default="true" type="JUnit" factoryName="JUnit">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
@@ -539,84 +176,12 @@
       </option>
       <envs />
       <patterns />
-      <method />
     </configuration>
-    <configuration default="true" type="JarApplication" factoryName="JAR Application">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <option name="JAR_PATH" value="$PROJECT_DIR$/lib/httl-1.0.12.jar" />
-      <envs />
-      <method />
-    </configuration>
-    <configuration default="true" type="JavascriptDebugType" factoryName="JavaScript Debug">
-      <method />
-    </configuration>
-    <configuration default="true" type="MavenRunConfiguration" factoryName="Maven">
-      <MavenSettings>
-        <option name="myGeneralSettings" />
-        <option name="myRunnerSettings" />
-        <option name="myRunnerParameters">
-          <MavenRunnerParameters>
-            <option name="profiles">
-              <set />
-            </option>
-            <option name="goals">
-              <list />
-            </option>
-            <option name="profilesMap">
-              <map />
-            </option>
-            <option name="resolveToWorkspace" value="false" />
-            <option name="workingDirPath" value="" />
-          </MavenRunnerParameters>
-        </option>
-      </MavenSettings>
-      <method />
-    </configuration>
-    <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="ADDITIONAL_ARGS" value="" />
-      <method />
-    </configuration>
-    <configuration default="true" type="PyLettuceRunConfigurationType" factoryName="Lettuce">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="ADDITIONAL_ARGS" value="" />
-      <method />
-    </configuration>
-    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <method />
+    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" factoryName="Plugin">
+      <module name="" />
+      <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m -ea" />
+      <option name="PROGRAM_PARAMETERS" />
+      <predefined_log_file id="idea.log" enabled="true" />
     </configuration>
     <configuration default="true" type="Remote" factoryName="Remote">
       <option name="USE_SOCKET_TRANSPORT" value="true" />
@@ -624,13 +189,6 @@
       <option name="SHMEM_ADDRESS" value="javadebug" />
       <option name="HOST" value="localhost" />
       <option name="PORT" value="5005" />
-      <method />
-    </configuration>
-    <configuration default="true" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <module name="" />
-      <envs />
-      <method />
     </configuration>
     <configuration default="true" type="TestNG" factoryName="TestNG">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
@@ -645,7 +203,7 @@
       <option name="TEST_OBJECT" value="CLASS" />
       <option name="VM_PARAMETERS" value="-ea" />
       <option name="PARAMETERS" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$MODULE_DIR$" />
       <option name="OUTPUT_DIRECTORY" />
       <option name="ANNOTATION_TYPE" />
       <option name="ENV_VARIABLES" />
@@ -658,1006 +216,113 @@
       <envs />
       <properties />
       <listeners />
-      <method />
     </configuration>
-    <configuration default="true" type="js.build_tools.gulp" factoryName="Gulp.js">
-      <node-options />
-      <gulpfile />
-      <tasks />
-      <arguments />
-      <pass-parent-envs>true</pass-parent-envs>
-      <envs />
-      <method />
-    </configuration>
-    <configuration default="true" type="osgi.bnd.run" factoryName="Run Launcher">
-      <method />
-    </configuration>
-    <configuration default="true" type="osgi.bnd.run" factoryName="Test Launcher (JUnit)">
-      <method />
-    </configuration>
-    <configuration default="true" type="tests" factoryName="Attests">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="FOLDER_NAME" value="" />
-      <option name="TEST_TYPE" value="TEST_SCRIPT" />
-      <option name="PATTERN" value="" />
-      <option name="USE_PATTERN" value="false" />
-      <method />
-    </configuration>
-    <configuration default="true" type="tests" factoryName="Doctests">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="FOLDER_NAME" value="" />
-      <option name="TEST_TYPE" value="TEST_SCRIPT" />
-      <option name="PATTERN" value="" />
-      <option name="USE_PATTERN" value="false" />
-      <method />
-    </configuration>
-    <configuration default="true" type="tests" factoryName="Nosetests">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="FOLDER_NAME" value="" />
-      <option name="TEST_TYPE" value="TEST_SCRIPT" />
-      <option name="PATTERN" value="" />
-      <option name="USE_PATTERN" value="false" />
-      <option name="PARAMS" value="" />
-      <option name="USE_PARAM" value="false" />
-      <method />
-    </configuration>
-    <configuration default="true" type="tests" factoryName="Unittests">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="FOLDER_NAME" value="" />
-      <option name="TEST_TYPE" value="TEST_SCRIPT" />
-      <option name="PATTERN" value="" />
-      <option name="USE_PATTERN" value="false" />
-      <option name="PUREUNITTEST" value="true" />
-      <option name="PARAMS" value="" />
-      <option name="USE_PARAM" value="false" />
-      <method />
-    </configuration>
-    <configuration default="true" type="tests" factoryName="py.test">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="english-dictionary" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="FOLDER_NAME" value="" />
-      <option name="TEST_TYPE" value="TEST_SCRIPT" />
-      <option name="PATTERN" value="" />
-      <option name="USE_PATTERN" value="false" />
-      <option name="testToRun" value="" />
-      <option name="keywords" value="" />
-      <option name="params" value="" />
-      <option name="USE_PARAM" value="false" />
-      <option name="USE_KEYWORD" value="false" />
-      <method />
-    </configuration>
-    <configuration default="false" name="Remote" type="Remote" factoryName="Remote">
-      <option name="USE_SOCKET_TRANSPORT" value="false" />
-      <option name="SERVER_MODE" value="false" />
-      <option name="SHMEM_ADDRESS" value="EnglishDictionary" />
-      <option name="HOST" value="127.0.0.1" />
-      <option name="PORT" value="4010" />
-      <RunnerSettings RunnerId="Debug">
-        <option name="DEBUG_PORT" value="4010" />
-        <option name="LOCAL" value="false" />
-      </RunnerSettings>
-      <method />
-    </configuration>
-    <list size="2">
-      <item index="0" class="java.lang.String" itemvalue="Remote.Remote" />
-      <item index="1" class="java.lang.String" itemvalue="Application.WebServer" />
-    </list>
-    <recent_temporary>
-      <list size="1">
-        <item index="0" class="java.lang.String" itemvalue="Application.WebServer" />
-      </list>
-    </recent_temporary>
   </component>
-  <component name="ShelveChangesManager" show_recycled="false" />
-  <component name="SvnConfiguration">
-    <configuration />
+  <component name="ShelveChangesManager" show_recycled="false">
+    <option name="remove_strategy" value="false" />
+  </component>
+  <component name="SvnConfiguration" cleanupOnStartRun="true">
+    <configuration>C:\Users\Andrew\AppData\Roaming\Subversion</configuration>
+  </component>
+  <component name="SvnFileUrlMappingImpl">
+    <option name="myMappingRoots">
+      <list>
+        <SvnCopyRootSimple>
+          <option name="myVcsRoot" value="D:\EN_Apllications\EnglishDictionary" />
+          <option name="myCopyRoot" value="D:\EN_Apllications\EnglishDictionary" />
+        </SvnCopyRootSimple>
+        <SvnCopyRootSimple>
+          <option name="myVcsRoot" value="D:\EN_Apllications\EnglishDictionary\.idea" />
+          <option name="myCopyRoot" value="D:\EN_Apllications\EnglishDictionary\.idea" />
+        </SvnCopyRootSimple>
+      </list>
+    </option>
+    <option name="myMoreRealMappingRoots">
+      <list>
+        <SvnCopyRootSimple>
+          <option name="myVcsRoot" value="D:\EN_Apllications\EnglishDictionary" />
+          <option name="myCopyRoot" value="D:\EN_Apllications\EnglishDictionary" />
+        </SvnCopyRootSimple>
+      </list>
+    </option>
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="8af7ae90-7154-493c-9de5-bc790b84a7c4" name="Default" comment="" />
-      <created>1451434105115</created>
+      <changelist id="1cd0ee30-8840-4880-b107-e3085e18c536" name="Default" comment="" />
+      <created>1511504928593</created>
       <option name="number" value="Default" />
-      <updated>1451434105115</updated>
-      <workItem from="1451434106570" duration="3108000" />
-      <workItem from="1451456352566" duration="1096000" />
-      <workItem from="1451494731121" duration="823000" />
-      <workItem from="1451495661018" duration="1844000" />
-      <workItem from="1451542691641" duration="1787000" />
-      <workItem from="1451551261578" duration="22614000" />
-      <workItem from="1451629387146" duration="6682000" />
-      <workItem from="1451645003962" duration="24875000" />
-      <workItem from="1451723032152" duration="22257000" />
-      <workItem from="1451759175524" duration="6000" />
-      <workItem from="1451759236676" duration="1987000" />
-      <workItem from="1451761311969" duration="3886000" />
-      <workItem from="1452104767223" duration="625000" />
-      <workItem from="1452189824660" duration="2468000" />
-      <workItem from="1452350204709" duration="1034000" />
-      <workItem from="1452407972377" duration="15780000" />
-      <workItem from="1452430827860" duration="5586000" />
-      <workItem from="1452437708604" duration="6131000" />
-      <workItem from="1452534643933" duration="5673000" />
-      <workItem from="1452568250600" duration="1435000" />
-      <workItem from="1452928964959" duration="1213000" />
-      <workItem from="1453651344748" duration="10000" />
-      <workItem from="1453655884872" duration="700000" />
-      <workItem from="1453741183539" duration="2355000" />
-      <workItem from="1454159242718" duration="6101000" />
-      <workItem from="1454270690320" duration="263000" />
-      <workItem from="1455305183862" duration="4003000" />
-      <workItem from="1455362998433" duration="4273000" />
-      <workItem from="1457633422284" duration="1117000" />
-      <workItem from="1459668510303" duration="4226000" />
-      <workItem from="1462593193416" duration="13345000" />
-      <workItem from="1462691201635" duration="18148000" />
-      <workItem from="1462801385325" duration="1838000" />
-      <workItem from="1463200845258" duration="43170000" />
-      <workItem from="1463287714602" duration="11891000" />
-      <workItem from="1463421937765" duration="6713000" />
-      <workItem from="1463428765192" duration="158000" />
-      <workItem from="1463457720936" duration="472000" />
-      <workItem from="1463510380874" duration="1399000" />
-      <workItem from="1463513517386" duration="403000" />
-      <workItem from="1463592393963" duration="2970000" />
-      <workItem from="1463684491231" duration="634000" />
-      <workItem from="1463930205393" duration="766000" />
-      <workItem from="1463932232154" duration="947000" />
-      <workItem from="1465013495098" duration="17989000" />
-      <workItem from="1465103137920" duration="4548000" />
-      <workItem from="1465145118383" duration="688000" />
-      <workItem from="1465654374085" duration="9693000" />
-      <workItem from="1465713758455" duration="21357000" />
-      <workItem from="1465808995202" duration="2000000" />
-      <workItem from="1465813842312" duration="10212000" />
-      <workItem from="1466226213235" duration="6264000" />
-      <workItem from="1466237298715" duration="7000" />
-      <workItem from="1466331667717" duration="7000" />
-      <workItem from="1466848103577" duration="321000" />
-      <workItem from="1466848436607" duration="1569000" />
-      <workItem from="1466931472364" duration="1251000" />
-      <workItem from="1466967442570" duration="68000" />
-      <workItem from="1467226275490" duration="832000" />
-      <workItem from="1468043606832" duration="59000" />
-      <workItem from="1468056074733" duration="15828000" />
-      <workItem from="1468127971575" duration="2590000" />
-      <workItem from="1468130576083" duration="3415000" />
-      <workItem from="1468134095695" duration="7269000" />
-      <workItem from="1468151448812" duration="1085000" />
-      <workItem from="1468349705866" duration="85000" />
-      <workItem from="1468350261718" duration="682000" />
-      <workItem from="1468692099817" duration="874000" />
-      <workItem from="1468743033491" duration="7727000" />
-      <workItem from="1468814278444" duration="12234000" />
-      <workItem from="1468923190829" duration="1488000" />
-      <workItem from="1468939736108" duration="924000" />
-      <workItem from="1468951927344" duration="16000" />
-      <workItem from="1468955324496" duration="800000" />
-      <workItem from="1468986636132" duration="1164000" />
-      <workItem from="1468988948111" duration="16990000" />
-      <workItem from="1469074463103" duration="16029000" />
-      <workItem from="1469107938128" duration="2898000" />
-      <workItem from="1469129180673" duration="361000" />
-      <workItem from="1469163118057" duration="23632000" />
-      <workItem from="1469266273420" duration="4242000" />
-      <workItem from="1469271157039" duration="3457000" />
-      <workItem from="1469297975779" duration="613000" />
-      <workItem from="1469340750116" duration="150000" />
-      <workItem from="1469342390112" duration="13001000" />
-      <workItem from="1469453855893" duration="6034000" />
-      <workItem from="1469461012865" duration="10796000" />
-      <workItem from="1469509977088" duration="9784000" />
-      <workItem from="1469524587859" duration="25000" />
-      <workItem from="1469524714587" duration="747000" />
-      <workItem from="1469529845220" duration="2377000" />
-      <workItem from="1469532303910" duration="72000" />
-      <workItem from="1469542986057" duration="127000" />
-      <workItem from="1469547525572" duration="11163000" />
-      <workItem from="1469593953163" duration="3080000" />
-      <workItem from="1469597053560" duration="80000" />
-      <workItem from="1469598536366" duration="2890000" />
-      <workItem from="1469608154921" duration="740000" />
-      <workItem from="1469610249746" duration="2999000" />
-      <workItem from="1469626846224" duration="2480000" />
-      <workItem from="1469683472198" duration="3559000" />
-      <workItem from="1469690375705" duration="4403000" />
-      <workItem from="1469702634375" duration="11175000" />
-      <workItem from="1469719361743" duration="2052000" />
-      <workItem from="1469727141180" duration="5328000" />
-      <workItem from="1469771288129" duration="7443000" />
-      <workItem from="1469854174313" duration="516000" />
-      <workItem from="1469854728913" duration="1664000" />
-      <workItem from="1469863291794" duration="1539000" />
-      <workItem from="1469896359018" duration="10881000" />
-      <workItem from="1469944651620" duration="5271000" />
-      <workItem from="1469959462410" duration="10000" />
-      <workItem from="1469959488511" duration="1072000" />
-      <workItem from="1470460349489" duration="35482000" />
-      <workItem from="1470540452021" duration="2956000" />
-      <workItem from="1470550222918" duration="2464000" />
-      <workItem from="1471675247086" duration="30536000" />
-      <workItem from="1471721168123" duration="761000" />
-      <workItem from="1471721974625" duration="92000" />
-      <workItem from="1471794117983" duration="1502000" />
-      <workItem from="1472273590363" duration="12369000" />
-      <workItem from="1472287068781" duration="49000" />
-      <workItem from="1472287135272" duration="1229000" />
-      <workItem from="1472288426061" duration="4305000" />
-      <workItem from="1472318434465" duration="9970000" />
-      <workItem from="1472380744409" duration="7906000" />
-      <workItem from="1472840455947" duration="2327000" />
-      <workItem from="1472890151872" duration="30666000" />
-      <workItem from="1472968208828" duration="14043000" />
-      <workItem from="1472983340024" duration="61000" />
-      <workItem from="1473000096838" duration="8313000" />
-      <workItem from="1473019001447" duration="90000" />
-      <workItem from="1473095430617" duration="3776000" />
-      <workItem from="1473276849941" duration="639000" />
-      <workItem from="1473482834337" duration="762000" />
-      <workItem from="1473487875885" duration="35182000" />
-      <workItem from="1473536752666" duration="552000" />
-      <workItem from="1473569826584" duration="2797000" />
-      <workItem from="1473786697840" duration="8409000" />
-      <workItem from="1473873449280" duration="6835000" />
-      <workItem from="1473962471109" duration="5909000" />
-      <workItem from="1474045195558" duration="6281000" />
-      <workItem from="1474052365737" duration="119000" />
-      <workItem from="1474085049316" duration="986000" />
-      <workItem from="1474108054791" duration="6434000" />
-      <workItem from="1474117419365" duration="16821000" />
-      <workItem from="1474173030284" duration="16707000" />
-      <workItem from="1474291735702" duration="1271000" />
-      <workItem from="1474297844238" duration="724000" />
-      <workItem from="1474351709209" duration="10906000" />
-      <workItem from="1474362778082" duration="183000" />
-      <workItem from="1474364865031" duration="4309000" />
-      <workItem from="1474375022113" duration="1365000" />
-      <workItem from="1474376400645" duration="39000" />
-      <workItem from="1474387393681" duration="230000" />
-      <workItem from="1477420993224" duration="613000" />
-      <workItem from="1477505191951" duration="84000" />
-      <workItem from="1477717527034" duration="11323000" />
-      <workItem from="1477745337702" duration="11621000" />
-      <workItem from="1478238287765" duration="18142000" />
-      <workItem from="1478289253146" duration="133000" />
-      <workItem from="1478325307336" duration="20506000" />
-      <workItem from="1478408797675" duration="15228000" />
-      <workItem from="1478493886453" duration="22144000" />
-      <workItem from="1478589271366" duration="601000" />
-      <workItem from="1478602533145" duration="14576000" />
-      <workItem from="1478679101526" duration="10546000" />
-      <workItem from="1478757384041" duration="9469000" />
-      <workItem from="1478787413991" duration="15000" />
-      <workItem from="1478787441017" duration="940000" />
-      <workItem from="1478795914320" duration="950000" />
-      <workItem from="1478845843337" duration="1586000" />
-      <workItem from="1478852325516" duration="603000" />
-      <workItem from="1478934160388" duration="1112000" />
-      <workItem from="1478950002920" duration="606000" />
-      <workItem from="1479032433282" duration="634000" />
-      <workItem from="1479493022176" duration="10000" />
-      <workItem from="1479538554703" duration="6121000" />
-      <workItem from="1479551810954" duration="10600000" />
-      <workItem from="1479570814678" duration="46000" />
-      <workItem from="1480145590515" duration="3571000" />
-      <workItem from="1480151710138" duration="6160000" />
-      <workItem from="1481222903844" duration="381000" />
-      <workItem from="1482432233630" duration="45000" />
-      <workItem from="1483704861339" duration="113000" />
-      <workItem from="1483781370529" duration="644000" />
-      <workItem from="1484155529441" duration="17000" />
-      <workItem from="1485618767796" duration="866000" />
-      <workItem from="1485699441256" duration="625000" />
-      <workItem from="1485766874864" duration="1806000" />
-      <workItem from="1486062809895" duration="608000" />
-      <workItem from="1486303567956" duration="606000" />
-      <workItem from="1488114974616" duration="607000" />
-      <workItem from="1488308999908" duration="607000" />
-      <workItem from="1488391396026" duration="808000" />
-      <workItem from="1488557929045" duration="609000" />
-      <workItem from="1488720487762" duration="631000" />
-      <workItem from="1489084713781" duration="599000" />
-      <workItem from="1489245441480" duration="607000" />
-      <workItem from="1489294880692" duration="303000" />
-      <workItem from="1489296902352" duration="605000" />
-      <workItem from="1489324525863" duration="608000" />
-      <workItem from="1489432634588" duration="35000" />
-      <workItem from="1489518464108" duration="755000" />
-      <workItem from="1490432709810" duration="160000" />
-      <workItem from="1491069910541" duration="627000" />
-      <workItem from="1491591944268" duration="606000" />
-      <workItem from="1491635655764" duration="599000" />
-      <workItem from="1491814027176" duration="856000" />
-      <workItem from="1491924740139" duration="760000" />
-      <workItem from="1492015342085" duration="607000" />
-      <workItem from="1492063119528" duration="599000" />
-      <workItem from="1492239490503" duration="6167000" />
-      <workItem from="1492316157874" duration="3418000" />
-      <workItem from="1492708656121" duration="1243000" />
-      <workItem from="1492930072751" duration="950000" />
-      <workItem from="1493440004699" duration="157000" />
-      <workItem from="1493440514016" duration="1673000" />
-      <workItem from="1493461010662" duration="11558000" />
-      <workItem from="1493528372786" duration="6106000" />
-      <workItem from="1493742579717" duration="630000" />
-      <workItem from="1493918380483" duration="71000" />
-      <workItem from="1494002198500" duration="16000" />
-      <workItem from="1494138548431" duration="607000" />
-      <workItem from="1494235393511" duration="2263000" />
-      <workItem from="1494323340752" duration="90000" />
-      <workItem from="1494323596345" duration="10152000" />
-      <workItem from="1494522309911" duration="1000000" />
-      <workItem from="1494611539560" duration="614000" />
-      <workItem from="1494616053140" duration="657000" />
-      <workItem from="1494780427896" duration="12000" />
-      <workItem from="1494784556232" duration="3985000" />
-      <workItem from="1494959939140" duration="601000" />
-      <workItem from="1495295705145" duration="10368000" />
-      <workItem from="1495350145732" duration="11362000" />
-      <workItem from="1495366831140" duration="1611000" />
-      <workItem from="1495368609423" duration="2464000" />
-      <workItem from="1495371975800" duration="3030000" />
-      <workItem from="1495620621704" duration="880000" />
-      <workItem from="1495626522194" duration="836000" />
-      <workItem from="1495629492349" duration="636000" />
-      <workItem from="1495636106719" duration="670000" />
-      <workItem from="1495636978967" duration="1852000" />
-      <workItem from="1495655715372" duration="786000" />
-      <workItem from="1495684668215" duration="8819000" />
-      <workItem from="1495769097590" duration="26000" />
-      <workItem from="1495905398121" duration="2036000" />
-      <workItem from="1495955445174" duration="1200000" />
-      <workItem from="1496066564222" duration="657000" />
-      <workItem from="1496130898238" duration="12000" />
-      <workItem from="1496136112588" duration="1201000" />
-      <workItem from="1496152975929" duration="603000" />
-      <workItem from="1496208004241" duration="19000" />
-      <workItem from="1496215760064" duration="24830000" />
-      <workItem from="1496296553908" duration="23951000" />
-      <workItem from="1496329232943" duration="9598000" />
-      <workItem from="1496347827178" duration="40000" />
-      <workItem from="1496381719622" duration="27076000" />
-      <workItem from="1496470269172" duration="1504000" />
-      <workItem from="1496479699802" duration="17660000" />
-      <workItem from="1496552800915" duration="16958000" />
-      <workItem from="1496682457509" duration="609000" />
-      <workItem from="1496771893802" duration="603000" />
-      <workItem from="1496944954977" duration="980000" />
-      <workItem from="1497169137848" duration="427000" />
-      <workItem from="1497180575160" duration="1260000" />
-      <workItem from="1497278610714" duration="6607000" />
-      <workItem from="1497379053497" duration="619000" />
-      <workItem from="1497461696518" duration="602000" />
-      <workItem from="1497547253949" duration="11000" />
-      <workItem from="1497805871555" duration="1663000" />
-      <workItem from="1497900384537" duration="383000" />
-      <workItem from="1497981796713" duration="783000" />
-      <workItem from="1498017269009" duration="594000" />
-      <workItem from="1498065534235" duration="605000" />
-      <workItem from="1498157267924" duration="14000" />
-      <workItem from="1498380488161" duration="1237000" />
-      <workItem from="1498396624828" duration="65000" />
-      <workItem from="1498401321058" duration="601000" />
-      <workItem from="1498494843232" duration="8426000" />
-      <workItem from="1498679594733" duration="100000" />
-      <workItem from="1498709851462" duration="1051000" />
-      <workItem from="1498982143995" duration="1891000" />
-      <workItem from="1499225529961" duration="44000" />
-      <workItem from="1499279642429" duration="610000" />
-      <workItem from="1499357533123" duration="1209000" />
-      <workItem from="1499397549568" duration="605000" />
-      <workItem from="1499587647055" duration="678000" />
-      <workItem from="1499608929044" duration="1245000" />
-      <workItem from="1499711912208" duration="5012000" />
-      <workItem from="1499738058330" duration="4381000" />
-      <workItem from="1499799651097" duration="610000" />
-      <workItem from="1499921350626" duration="195000" />
-      <workItem from="1499962325925" duration="1278000" />
-      <workItem from="1500097719756" duration="737000" />
-      <workItem from="1500148434389" duration="985000" />
-      <workItem from="1500181060412" duration="5493000" />
-      <workItem from="1500403426413" duration="604000" />
-      <workItem from="1500524623043" duration="878000" />
-      <workItem from="1500705049985" duration="3000" />
-      <workItem from="1500705653059" duration="1602000" />
-      <workItem from="1500710709247" duration="21431000" />
-      <workItem from="1500753879179" duration="147000" />
-      <workItem from="1500788508986" duration="117000" />
-      <workItem from="1500797324342" duration="18000" />
-      <workItem from="1500806664006" duration="9000" />
-      <workItem from="1500882400568" duration="2683000" />
-      <workItem from="1500885155522" duration="988000" />
-      <workItem from="1500900888730" duration="2654000" />
-      <workItem from="1501156740321" duration="3380000" />
-      <workItem from="1501829510860" duration="1184000" />
-      <workItem from="1501831307030" duration="2629000" />
-      <workItem from="1501834790720" duration="701000" />
-      <workItem from="1501835886711" duration="465000" />
-      <workItem from="1501949717431" duration="1482000" />
-      <workItem from="1501995805327" duration="19370000" />
-      <workItem from="1502525036785" duration="296000" />
-      <workItem from="1502525538629" duration="29139000" />
-      <workItem from="1502598299492" duration="13184000" />
-      <workItem from="1502634895899" duration="627000" />
-      <workItem from="1502948746148" duration="6000" />
-      <workItem from="1502949037481" duration="5295000" />
-      <workItem from="1503141173048" duration="14632000" />
-      <workItem from="1503339088204" duration="1927000" />
-      <workItem from="1503592608594" duration="609000" />
-      <workItem from="1503681025966" duration="2200000" />
-      <workItem from="1503725699752" duration="66000" />
-      <workItem from="1503770937882" duration="114000" />
-      <workItem from="1503771064142" duration="2572000" />
-      <workItem from="1503777408122" duration="1335000" />
-      <workItem from="1503809292537" duration="4274000" />
-      <workItem from="1503815640269" duration="10488000" />
-      <workItem from="1503826777072" duration="48000" />
-      <workItem from="1503834775216" duration="4594000" />
-      <workItem from="1504350026433" duration="6000" />
-      <workItem from="1504361164417" duration="6694000" />
-      <workItem from="1504420089042" duration="39000" />
-      <workItem from="1504420165789" duration="113000" />
-      <workItem from="1504420514304" duration="60000" />
-      <workItem from="1504425288517" duration="8378000" />
-      <workItem from="1504542091432" duration="1289000" />
-      <workItem from="1504634098539" duration="609000" />
-      <workItem from="1505021273553" duration="7216000" />
-      <workItem from="1505848598806" duration="624000" />
-      <workItem from="1506006228350" duration="612000" />
-      <workItem from="1506781232584" duration="605000" />
-      <workItem from="1506961155744" duration="908000" />
-      <workItem from="1507057137093" duration="1348000" />
-      <workItem from="1507224957506" duration="615000" />
-      <workItem from="1507572183341" duration="1199000" />
-      <workItem from="1508181340839" duration="615000" />
-      <workItem from="1508403438418" duration="605000" />
-      <workItem from="1508606513681" duration="607000" />
-      <workItem from="1508666535026" duration="5466000" />
-      <workItem from="1508781562798" duration="610000" />
-      <workItem from="1509121887071" duration="604000" />
-      <workItem from="1509176545884" duration="743000" />
-      <workItem from="1509207205074" duration="620000" />
-      <workItem from="1509252436977" duration="617000" />
-      <workItem from="1509264563871" duration="740000" />
-      <workItem from="1509390970527" duration="605000" />
-      <workItem from="1509541603191" duration="1199000" />
-      <workItem from="1509689539490" duration="603000" />
-      <workItem from="1509776473573" duration="16000" />
-      <workItem from="1509779385121" duration="17629000" />
-      <workItem from="1509861154732" duration="25717000" />
-      <workItem from="1509937822828" duration="6865000" />
-      <workItem from="1510043163390" duration="563000" />
-      <workItem from="1510044047159" duration="298000" />
-      <workItem from="1510044406440" duration="350000" />
-      <workItem from="1510044816880" duration="8881000" />
-      <workItem from="1510669392427" duration="1001000" />
-      <workItem from="1511018298266" duration="2969000" />
-      <workItem from="1511165396864" duration="140000" />
-      <workItem from="1511187235697" duration="139000" />
-      <workItem from="1511199716442" duration="92000" />
+      <option name="presentableId" value="Default" />
+      <updated>1511504928593</updated>
+      <workItem from="1511504930543" duration="214000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="1596362000" />
-  </component>
-  <component name="TodoView">
-    <todo-panel id="selected-file">
-      <is-autoscroll-to-source value="true" />
-    </todo-panel>
-    <todo-panel id="all">
-      <are-packages-shown value="true" />
-      <is-autoscroll-to-source value="true" />
-    </todo-panel>
+    <option name="totallyTimeSpent" value="214000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1176" extended-state="6" />
-    <editor active="true" />
     <layout>
-      <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32950193" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Palette&#9;" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4243295" sideWeight="0.42697227" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32950193" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.18336888" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32950193" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
-      <window_info id="Designer" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.21215352" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.22814499" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="UI Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="true" content_ui="tabs" />
-      <window_info id="PlantUML" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Capture Tool" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.41065484" sideWeight="0.57302773" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4675835" sideWeight="0.5" order="12" side_tool="false" content_ui="tabs" />
-      <window_info id="Image Layers" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Java Enterprise" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32950193" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Capture Analysis" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="NativeScript" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="13" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.427303" sideWeight="0.6359275" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Bean Validation" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Web" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="true" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.41748527" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Theme Preview" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Palette&#9;" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Image Layers" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Capture Analysis" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
+      <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Capture Tool" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="UI Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Theme Preview" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="1" />
   </component>
-  <component name="Vcs.Log.UiProperties">
-    <option name="RECENTLY_FILTERED_USER_GROUPS">
-      <collection />
-    </option>
-    <option name="RECENTLY_FILTERED_BRANCH_GROUPS">
-      <collection />
-    </option>
-  </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/LingualeoController.java</url>
-          <line>23</line>
-          <properties />
-          <option name="timeStamp" value="466" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/com/englishDictionary/config/Config.java</url>
-          <line>14</line>
-          <properties />
-          <option name="timeStamp" value="470" />
-        </line-breakpoint>
-      </breakpoints>
-      <breakpoints-dialog>
-        <breakpoints-dialog />
-      </breakpoints-dialog>
-      <option name="time" value="471" />
-    </breakpoint-manager>
+    <breakpoint-manager />
     <watches-manager />
   </component>
-  <component name="antWorkspaceConfiguration">
-    <option name="IS_AUTOSCROLL_TO_SOURCE" value="false" />
-    <option name="FILTER_TARGETS" value="false" />
-  </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoHttpClient.java" />
-    <entry file="jar://F:/Java/JavaFrameworks/jdk1.8.0_131/src.zip!/java/lang/System.java" />
-    <entry file="file://$PROJECT_DIR$/TODO.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="18" column="0" selection-start-line="18" selection-start-column="0" selection-end-line="18" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/resources/htmlDatFile/HTMLFragmentReader.java" />
-    <entry file="jar://$APPLICATION_HOME_DIR$/plugins/JavaScriptLanguage/lib/JavaScriptLanguage.jar!/com/intellij/lang/javascript/index/predefined/DOMEvents.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="162" column="0" selection-start-line="162" selection-start-column="0" selection-end-line="162" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/utils/httl/HttlEngineKeeper.java" />
-    <entry file="file://$PROJECT_DIR$/Debug_snippets.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/pom.xml">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="9" column="21" selection-start-line="9" selection-start-column="20" selection-end-line="9" selection-end-column="21" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/config/ConfigHome.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="14" column="0" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/config/ConfigLocation.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="8" column="41" selection-start-line="8" selection-start-column="41" selection-end-line="8" selection-end-column="41" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/utils/json/JsonHelper.java" />
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/annotations/Controller.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="9" column="22" selection-start-line="9" selection-start-column="22" selection-end-line="9" selection-end-column="22" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/CommentsListWords.java" />
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/DictionaryType.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="2" column="12" selection-start-line="2" selection-start-column="12" selection-end-line="2" selection-end-column="12" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/IndexController.java" />
-    <entry file="file://$PROJECT_DIR$/static/js/ldoce6.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/js/wordCard.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/ForvoController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="18" column="31" selection-start-line="18" selection-start-column="19" selection-end-line="18" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/MnemonicsCardController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="26" column="34" selection-start-line="26" selection-start-column="27" selection-end-line="26" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/CommentsController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="27" column="66" selection-start-line="27" selection-start-column="66" selection-end-line="27" selection-end-column="66" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/quizlet/Auth2ClientAccount.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="4" column="57" selection-start-line="4" selection-start-column="57" selection-end-line="4" selection-end-column="57" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/HttpServletResponse.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="64" column="34" selection-start-line="64" selection-start-column="34" selection-end-line="64" selection-end-column="34" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/annotations/RequestMethod.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="2" column="25" selection-start-line="2" selection-start-column="12" selection-end-line="2" selection-end-column="25" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/RequestHandler.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="10" column="12" selection-start-line="10" selection-start-column="12" selection-end-line="10" selection-end-column="12" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/RequestHandlersContainer.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="24" column="49" selection-start-line="24" selection-start-column="49" selection-end-line="24" selection-end-column="49" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/jquery/plugins/toastMessage/jquery.toastmessage.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="112" column="0" selection-start-line="112" selection-start-column="0" selection-end-line="112" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/jquery/plugins/toastMessage/jquery.toastmessage.css">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/utils/json/ParserJSonFiles.java" />
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/LingualeoController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="21" column="27" selection-start-line="21" selection-start-column="27" selection-end-line="21" selection-end-column="27" />
-          <folding>
-            <element signature="imports" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/quizlet/SetsControl.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="28" column="65" selection-start-line="28" selection-start-column="65" selection-end-line="28" selection-end-column="65" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoClient.java" />
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/lingualeo/LinguaLeoConfig.java" />
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/RootController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="5" column="36" selection-start-line="5" selection-start-column="36" selection-end-line="5" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/jquery/plugins/datatables_1.10.12/media/css/jquery.dataTables.css">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="432" column="0" selection-start-line="432" selection-start-column="0" selection-end-line="432" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/forvo/ForvoCardsCache.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="14" column="13" selection-start-line="14" selection-start-column="13" selection-end-line="14" selection-end-column="13" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/WebServer.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="116" column="0" selection-start-line="116" selection-start-column="0" selection-end-line="116" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/QuizletController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="56" column="0" selection-start-line="56" selection-start-column="0" selection-end-line="56" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/forvo/ForvoCard.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="2" column="13" selection-start-line="2" selection-start-column="13" selection-end-line="2" selection-end-column="13" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/build/build.xml">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/StaticResourcesController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="25" column="0" selection-start-line="25" selection-start-column="0" selection-end-line="25" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ReadMe">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="6" column="30" selection-start-line="6" selection-start-column="11" selection-end-line="6" selection-end-column="40" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/build/runWebServer.bat">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="14" column="92" selection-start-line="14" selection-start-column="92" selection-end-line="14" selection-end-column="92" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/config/ConfigWork.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="16" column="33" selection-start-line="16" selection-start-column="33" selection-end-line="16" selection-end-column="33" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServices/forvo/Forvo.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="29" column="73" selection-start-line="29" selection-start-column="73" selection-end-line="29" selection-end-column="73" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/js/mainPage.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="415" column="44" selection-start-line="415" selection-start-column="44" selection-end-line="415" selection-end-column="44" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/httl/mainPage.httl">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="70" column="17" selection-start-line="70" selection-start-column="17" selection-end-line="70" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/resources/htmlDatFile/HTMLDatFileReader.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="123" column="0" selection-start-line="123" selection-start-column="0" selection-end-line="123" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/webServer/controllers/WordCardController.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="85" column="41" selection-start-line="85" selection-start-column="41" selection-end-line="85" selection-end-column="41" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/config/Config.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="15" column="84" selection-start-line="15" selection-start-column="84" selection-end-line="15" selection-end-column="84" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/Bug_notes">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        <state relative-caret-position="17">
+          <caret line="1" column="28" lean-forward="false" selection-start-line="1" selection-start-column="28" selection-end-line="1" selection-end-column="28" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/static/css/mainPage/mainPage.css">
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/englishDictionary/utils/httl/HttlEngineKeeper.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-0.051359516">
-          <caret line="91" column="2" selection-start-line="91" selection-start-column="2" selection-end-line="91" selection-end-column="2" />
-          <folding />
+        <state relative-caret-position="187">
+          <caret line="11" column="13" lean-forward="false" selection-start-line="11" selection-start-column="13" selection-end-line="11" selection-end-column="13" />
+          <folding>
+            <element signature="imports" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
   </component>
   <component name="masterDetails">
     <states>
-      <state key="ArtifactsStructureConfigurable.UI">
-        <settings>
-          <artifact-editor />
-          <last-edited>english-dictionary:war</last-edited>
-          <splitter-proportions>
-            <option name="proportions">
-              <list>
-                <option value="0.39425287" />
-                <option value="0.5" />
-              </list>
-            </option>
-          </splitter-proportions>
-        </settings>
-      </state>
-      <state key="FacetStructureConfigurable.UI">
-        <settings>
-          <last-edited>No facets are configured</last-edited>
-          <splitter-proportions>
-            <option name="proportions">
-              <list>
-                <option value="0.39425287" />
-              </list>
-            </option>
-          </splitter-proportions>
-        </settings>
-      </state>
-      <state key="GlobalLibrariesConfigurable.UI">
-        <settings>
-          <last-edited>Python 2.7.12 (C:\Python27\python.exe) interpreter library</last-edited>
-          <splitter-proportions>
-            <option name="proportions">
-              <list>
-                <option value="0.39425287" />
-              </list>
-            </option>
-          </splitter-proportions>
-        </settings>
-      </state>
-      <state key="JdkListConfigurable.UI">
-        <settings>
-          <last-edited>1.8</last-edited>
-          <splitter-proportions>
-            <option name="proportions">
-              <list>
-                <option value="0.39425287" />
-              </list>
-            </option>
-          </splitter-proportions>
-        </settings>
-      </state>
-      <state key="ModuleStructureConfigurable.UI">
-        <settings>
-          <last-edited>english-dictionary</last-edited>
-          <splitter-proportions>
-            <option name="proportions">
-              <list>
-                <option value="0.39425287" />
-              </list>
-            </option>
-          </splitter-proportions>
-        </settings>
-      </state>
       <state key="ProjectJDKs.UI">
         <settings>
           <last-edited>1.8</last-edited>
@@ -1665,18 +330,6 @@
             <option name="proportions">
               <list>
                 <option value="0.2" />
-              </list>
-            </option>
-          </splitter-proportions>
-        </settings>
-      </state>
-      <state key="ProjectLibrariesConfigurable.UI">
-        <settings>
-          <last-edited>activation</last-edited>
-          <splitter-proportions>
-            <option name="proportions">
-              <list>
-                <option value="0.39425287" />
               </list>
             </option>
           </splitter-proportions>
