@@ -27,7 +27,7 @@ import java.util.*;
 public class Forvo {
 
     static final String RESOURCE_URL_FOR_DEMO_FORM = "https://api.forvo.com/demo";
-    static final String FORVO_API_KEY = "c7b090749c47e725a31ef8dba82e5a90";
+    static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
     static final String RESOURCE_URL_WITH_API_KEY = "http://apifree.forvo.com/key/" + FORVO_API_KEY + "/format/xml/action/word-pronunciations/word/%1s/language/%2s/order/rate-desc/format/json";
     static final String MESSAGE_LIMIT_REQUESTS_FINISHED = "[\"Limit\\/day reached.\"]";
     static final String MESSAGE_ACCOUNT_IS_DISSABLED = "[\"Account disabled.\"]";
