@@ -3,20 +3,14 @@ package com.englishDictionary.webServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 
 /**
  * Created by Andrew on 8/27/2016.
  */
 public class ByteArrayOutputStream extends OutputStream {
 
-    private static final int DEFAULT_BUFFER_SIZE = 32;
     private byte[] buffer;
     private int count;
-
-    public ByteArrayOutputStream() {
-        this(DEFAULT_BUFFER_SIZE);
-    }
 
     public ByteArrayOutputStream(int size) {
         if (size < 0) {
@@ -72,20 +66,16 @@ public class ByteArrayOutputStream extends OutputStream {
         return count;
     }
 
-    public void reset() {
-        count = 0;
+    public void writeTo(OutputStream out) throws IOException {
+        out.write(buffer, 0, count);
+    }
+
+    public int size() {
+        return count;
     }
 
     public byte[] toByteArray() {
-        return copyOf(buffer, count);
-    }
-
-    public ByteBuffer toByteBuffer() {
-        return ByteBuffer.wrap(buffer, 0, count);
-    }
-
-    public void writeTo(OutputStream out) throws IOException {
-        out.write(buffer, 0, count);
+        return buffer;
     }
 
     public String toString() {
@@ -94,6 +84,10 @@ public class ByteArrayOutputStream extends OutputStream {
 
     public String toString(String charset) throws UnsupportedEncodingException {
         return new String(buffer, 0, count, charset);
+    }
+
+    public void reset() {
+        count = 0;
     }
 
     public void close() throws IOException {

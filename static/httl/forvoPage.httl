@@ -9,7 +9,9 @@
     <link rel="stylesheet" href="/static/css/forvo/forvo.css"/>
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="
+                               margin-top: -42px;
+                           ">
         <div class="row">
             <div class="col-md-12">
                 <div class="panel with-nav-tabs panel-default">
@@ -42,12 +44,16 @@
                                 <!-- #for(forvoCard: forvoCardsGroupByWords.get(headWord)) -->
                                 <table class="forvo_play">
                                     <tr>
-                                        <td>
-                                            <audio controls>
-                                                <source src="${forvoCard.pathmp3}" type = "audio/ogg">
-                                                "Your browser does not support the audio element."
-                                            </audio>
-                                            ${forvoCard.addTime}
+                                        <td style="
+                                                padding-right: 4px;
+                                            ">
+                                            <button onclick="playForvoAudioStream('${headWord}', '${forvoCard.pathmp3}')" style="
+                                                                      width: 25px;
+                                                                      height: 25px;
+                                                                  ">
+                                                <img src="http://localhost:8080/static/images/play.png"/>
+                                            </button>
+                                            <span>${forvoCard.addTime}
                                         </td>
 
                                         <td>
@@ -55,9 +61,9 @@
 
                                             <span class="forvo_location">
                                             <!-- #if(forvoCard.male) -->
-                                                " Male"
+                                                "Male"
                                             <!-- #else -->
-                                                " Female"
+                                                "Female"
                                             <!-- #end -->
                                                 from
                                             <!-- #if(forvoCard.flagFileName != null) -->
@@ -89,6 +95,7 @@
     <script src="/static/bootsnipp/jquery-1.11.0.min.js"></script>
     <script src="/static/bootsnipp/bootstrap.min.js"></script>
     <script src="/static/bootsnipp/scripts.min.js"></script>
+    <script src="/static/js/forvoCard.js"></script>
 
     <script type="text/javascript">
         // #set(List<String> headWords) //

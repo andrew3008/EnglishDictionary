@@ -112,7 +112,7 @@
                                 <a onclick="showLDOCE6Dictionary()" class="button18" tabindex="0">LDOCE 6</a>
                                 <a onclick="showCollocationsDictionaries()" class="button18" tabindex="0">Collocations</a>
                                 <a onclick="showThesaurusDictionaries()" class="button18" tabindex="0">Thesaurus</a>
-                                <a onclick="showADLA2Dictionary()" class="button18" tabindex="0">ADLA 2</a>
+                                <a onclick="showADLA2Dictionary()" class="button18" tabindex="0">MED 2</a>
                             </div>
                             <h4 class="modal-title" style="padding-left:120px !important; margin-left: 284px;"></h4>
                         </div>

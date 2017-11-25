@@ -71,7 +71,9 @@ public class ParserJSonFiles {
                 String word = wordCardNode.get("Word").asText().trim();
                 responceWriter.write("\"word\":\"" + word + "\",");
                 responceWriter.write("\"haseMnemonics\":" + mnemonics.existHTMLByPhrase(word) + ",");
-                responceWriter.write("\"transcription\":\"" + transcription.getHTMLByPhrase(word) + "\",");
+                responceWriter.write("\"transcription\":\"");
+                transcription.readHTMLByPhrase(responceWriter, word);
+                responceWriter.write("\",");
                 responceWriter.write("\"translation\":\"" + wordCardNode.get("Translation").asText().trim() + "\",");
                 responceWriter.write("\"examples\":\"" + wordCardNode.get("Examples").asText() + "\"");
                 responceWriter.write("}");

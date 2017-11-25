@@ -69,6 +69,10 @@ public class Forvo {
         return getForvoCardsByAPIKey(word);
     }
 
+    public List<ForvoCard> getForvoCardFromCache(String word) {
+        return cacheCards.get(word);
+    }
+
     public List<ForvoCard> getForvoCardsByAPIKey(String word) {
         HttpGet get = new HttpGet(String.format(RESOURCE_URL_WITH_API_KEY, word, "en"));
         HttpClient client = HttpClientBuilder.create().build();
@@ -278,8 +282,9 @@ public class Forvo {
                                 forvoResponce.setPositiveVotes(voiceCardNode.get(fieldName).asInt());
                                 forvoResponce.setNegativeVotes(forvoResponce.getTotalVotes() - forvoResponce.getPositiveVotes());
                             } else if (fieldName.equals("addtime")) {
-                                forvoResponce.setAddTime(fieldValue);
-                            } else if (fieldName.equals("pathogg")) {
+                                forvoResponce.setAddTime(fieldValue.trim().substring(0, fieldValue.lastIndexOf(' ')));
+                            //} else if (fieldName.equals("pathogg")) {
+                            } else if (fieldName.equals("pathmp3")) {
                                 forvoResponce.setPathmp3(fieldValue);
                             }
                         }

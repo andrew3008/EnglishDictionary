@@ -26,10 +26,16 @@ public class ForvoCardsCache {
     }
 
     public void put(String key, List<ForvoCard> value) {
-        cache.put(key, value);
+        if (cache != null) {
+            cache.put(key, value);
+        }
     }
 
     public List<ForvoCard> get(String key) {
+        if (cache == null) {
+            return null;
+        }
+
         return (List<ForvoCard>)cache.get(key);
     }
 }

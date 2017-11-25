@@ -14,6 +14,7 @@ public class HttpServletResponse {
 
     private ByteArrayOutputStream outputStream;
     private String contentType;
+    private int presetContentLength;
     private HttpResponseStatus status;
     private String errorMessage;
     private String internalRedirectURL;
@@ -23,6 +24,7 @@ public class HttpServletResponse {
 
     public HttpServletResponse() {
         headers = new HashMap<>();
+        presetContentLength = -1;
         outputStream = new ByteArrayOutputStream(INIT_RESPONSE_OUTPUT_STREAM_SIZE);
     }
 
@@ -36,6 +38,14 @@ public class HttpServletResponse {
 
     public void setContentType(String contentType) {
         this.contentType = contentType;
+    }
+
+    public int getPresetContentLength() {
+        return presetContentLength;
+    }
+
+    public void setPresetContentLength(int presetContentLength) {
+        this.presetContentLength = presetContentLength;
     }
 
     public HttpResponseStatus getStatus() {

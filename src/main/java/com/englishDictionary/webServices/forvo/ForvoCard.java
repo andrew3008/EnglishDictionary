@@ -1,5 +1,7 @@
 package com.englishDictionary.webServices.forvo;
 
+import com.englishDictionary.webServer.ByteArrayOutputStream;
+
 public class ForvoCard {
     private boolean male;
     private String user;
@@ -11,6 +13,13 @@ public class ForvoCard {
     int negativeVotes;
     private String addTime;
     private String pathmp3;
+    private ByteArrayOutputStream audioStreamBuffer;
+
+    private static int AUDIO_STREAM_BUFFER_SIZE_DEFAULT = 2048;
+
+    public ForvoCard() {
+        audioStreamBuffer = new ByteArrayOutputStream(AUDIO_STREAM_BUFFER_SIZE_DEFAULT);
+    }
 
     public boolean isMale() {
         return male;
@@ -90,5 +99,9 @@ public class ForvoCard {
 
     public void setPathmp3(String pathmp3) {
         this.pathmp3 = pathmp3;
+    }
+
+    public ByteArrayOutputStream getAudioStreamBuffer() {
+        return audioStreamBuffer;
     }
 }

@@ -1,12 +1,11 @@
 package com.englishDictionary.resources.htmlDatFile;
 
-import com.englishDictionary.config.Config;
 import com.englishDictionary.utils.ResourceUtils;
+import com.englishDictionary.utils.SplitterPhraseToWords;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
-import java.util.Set;
 
 public class HTMLFragmentReader {
     private HTMLDatFileReader datFileReader;
@@ -31,7 +30,7 @@ public class HTMLFragmentReader {
     }
 
     public boolean existHTMLByPhrase(String phrase) {
-        for (String word : phrase.trim().split(" ")) {
+        for (String word : SplitterPhraseToWords.splitPhrase(phrase)) {
             if (existHTMLByWord(word)) {
                 return true;
             }
@@ -43,38 +42,25 @@ public class HTMLFragmentReader {
         return datFileReader.getHTML(word);
     }
 
-    public String getHTMLByPhrase(String word) {
-        word = word.trim();
-        if (word.indexOf(' ') == -1) {
+    public void readHTMLByPhrase(OutputStream outputStream, String phrase) {
+        boolean isFirstFoundWord = true;
+        for (String word : SplitterPhraseToWords.splitPhrase(phrase)) {
             String html = getHTMLByWord(word);
             if (html != null) {
-                return html;
-            }
-        }
-
-        String resHTML = new String();
-        boolean isLastWord = false;
-        while (true) {
-            String wordCheck = null;
-            if (word.indexOf(' ') == -1) {
-                wordCheck = word;
-                isLastWord = true;
-            } else {
-                String[] arrWords = word.split(" ");
-                wordCheck = arrWords[0];
-                word = arrWords[1];
-            }
-
-            String html = getHTMLByWord(wordCheck);
-            if ((html != null) && Config.isNecessaryWord(wordCheck)) {
-                if (resHTML.length() != 0) {
-                    resHTML = resHTML.concat("\\n");
+                if (isFirstFoundWord) {
+                    isFirstFoundWord = false;
+                } else {
+                    try {
+                        outputStream.write("<br>".getBytes());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
-                resHTML = resHTML.concat(html);
-            }
-
-            if (isLastWord) {
-                return resHTML;
+                try {
+                    outputStream.write(html.getBytes("UTF-8"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

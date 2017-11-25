@@ -4,6 +4,7 @@ import com.englishDictionary.config.Config;
 import com.englishDictionary.resources.soundDatFile.InputStreamFromRandomAccessFile;
 import com.englishDictionary.resources.soundDatFile.MP3Player;
 import com.englishDictionary.resources.soundDatFile.SoundDatFileReader;
+import com.englishDictionary.utils.SplitterPhraseToWords;
 import com.englishDictionary.utils.httl.HttlEngineKeeper;
 import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.webServer.*;
@@ -15,10 +16,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.*;
 import java.net.URISyntaxException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Controller(url = "/wordCard/")
 public class WordCardController {
@@ -51,13 +49,7 @@ public class WordCardController {
         }
 
         try {
-            List<String> headWords = new ArrayList<>();
-            for (String headWord : phrase.trim().split(" ")) {
-                if (Config.isNecessaryWord(headWord)) {
-                    headWords.add(headWord);
-                }
-            }
-
+            List<String> headWords = SplitterPhraseToWords.splitPhrase(phrase);
             ByteArrayOutputStream outputStream = response.getOutputStream();
             Map<String, Object> viewParameters = new HashMap<>();
             viewParameters.put("headWords", headWords);
@@ -148,19 +140,9 @@ public class WordCardController {
         }
 
         try {
-            List<String> headWords = new ArrayList<>();
-            if (processWholeWord) {
-                headWords.add(phrase);
-            } else {
-                for (String headWord : phrase.trim().split(" ")) {
-                    if (Config.isNecessaryWord(headWord)) {
-                        headWords.add(headWord);
-                    }
-                }
-            }
-
             ByteArrayOutputStream outputStream = response.getOutputStream();
             Map<String, Object> viewParameters = new HashMap<>();
+            List<String> headWords = processWholeWord ? Collections.singletonList(phrase) : SplitterPhraseToWords.splitPhrase(phrase);
             viewParameters.put("headWords", headWords);
             HttlEngineKeeper.engine.getTemplate("wordCardPageHeader.httl").render(viewParameters, outputStream);
 
@@ -259,19 +241,9 @@ public class WordCardController {
         }
 
         try {
-            List<String> headWords = new ArrayList<>();
-            if (processWholeWord) {
-                headWords.add(phrase);
-            } else {
-                for (String headWord : phrase.trim().split(" ")) {
-                    if (Config.isNecessaryWord(headWord)) {
-                        headWords.add(headWord);
-                    }
-                }
-            }
-
             ByteArrayOutputStream outputStream = response.getOutputStream();
             Map<String, Object> viewParameters = new HashMap<>();
+            List<String> headWords = processWholeWord ? Collections.singletonList(phrase) : SplitterPhraseToWords.splitPhrase(phrase);
             viewParameters.put("headWords", headWords);
             HttlEngineKeeper.engine.getTemplate("wordCardPageHeader.httl").render(viewParameters, outputStream);
 
@@ -360,19 +332,9 @@ public class WordCardController {
         }
 
         try {
-            List<String> headWords = new ArrayList<>();
-            if (processWholeWord) {
-                headWords.add(phrase);
-            } else {
-                for (String headWord : phrase.trim().split(" ")) {
-                    if (Config.isNecessaryWord(headWord)) {
-                        headWords.add(headWord);
-                    }
-                }
-            }
-
             ByteArrayOutputStream outputStream = response.getOutputStream();
             Map<String, Object> viewParameters = new HashMap<>();
+            List<String> headWords = processWholeWord ? Collections.singletonList(phrase) : SplitterPhraseToWords.splitPhrase(phrase);
             viewParameters.put("headWords", headWords);
             HttlEngineKeeper.engine.getTemplate("wordCardPageHeader.httl").render(viewParameters, outputStream);
 
@@ -469,17 +431,10 @@ public class WordCardController {
             isOpenCollocationDictionaries = true;
         }
 
-        String phrase = request.getParameter("word");
-        List<String> headWords = new ArrayList<>();
-        for (String headWord : phrase.trim().split(" ")) {
-            if (Config.isNecessaryWord(headWord)) {
-                headWords.add(headWord);
-            }
-        }
-
         try {
             ByteArrayOutputStream outputStream = response.getOutputStream();
             Map<String, Object> viewParameters = new HashMap<>();
+            List<String> headWords = SplitterPhraseToWords.splitPhrase(request.getParameter("word"));
             viewParameters.put("headWords", headWords);
             HttlEngineKeeper.engine.getTemplate("wordCardPageHeader.httl").render(viewParameters, outputStream);
 
@@ -568,19 +523,9 @@ public class WordCardController {
         }
 
         try {
-            List<String> headWords = new ArrayList<>();
-            if (processWholeWord) {
-                headWords.add(phrase);
-            } else {
-                for (String headWord : phrase.trim().split(" ")) {
-                    if (Config.isNecessaryWord(headWord)) {
-                        headWords.add(headWord);
-                    }
-                }
-            }
-
             ByteArrayOutputStream outputStream = response.getOutputStream();
             Map<String, Object> viewParameters = new HashMap<>();
+            List<String> headWords = processWholeWord ? Collections.singletonList(phrase) : SplitterPhraseToWords.splitPhrase(phrase);
             viewParameters.put("headWords", headWords);
             HttlEngineKeeper.engine.getTemplate("wordCardPageHeader.httl").render(viewParameters, outputStream);
 

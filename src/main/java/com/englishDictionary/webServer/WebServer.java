@@ -154,7 +154,8 @@ public class WebServer {
 
                 if (HttpUtil.isKeepAlive(request)) {
                     response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-                    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, responseOutputStream.writedBytes());
+                    int contentLength = (responseServlet.getPresetContentLength() == -1) ? responseOutputStream.writedBytes() : responseServlet.getPresetContentLength();
+                    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, contentLength);
                 }
 
                 // Write the initial line, headers and body response.
