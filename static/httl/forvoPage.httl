@@ -47,12 +47,10 @@
                                         <td style="
                                                 padding-right: 4px;
                                             ">
-                                            <button onclick="playForvoAudioStream('${headWord}', '${forvoCard.pathmp3}')" style="
-                                                                      width: 25px;
-                                                                      height: 25px;
-                                                                  ">
-                                                <img src="http://localhost:8080/static/images/play.png"/>
-                                            </button>
+                                            <audio controls preload="none">
+                                            	<source src="${forvoCard.pathmp3}" type = "audio/ogg">
+                                            	"Your browser does not support the audio element."
+                                            </audio>
                                             <span>${forvoCard.addTime}
                                         </td>
 
