@@ -32,7 +32,7 @@ $(function () {
                     }
                 },
                 {
-                    "title": "FV", visible: false, "width": "1px",
+                    "title": "FV", "width": "1px",
                     "render": function (data, type, row) {
                         var word = row[2];
                         if (isEmptyString(word)) {
@@ -103,21 +103,6 @@ $(function () {
                             });
                         return false;
                     }
-                },
-                {
-                    text: 'Forvo',
-                    className: 'forvo-button',
-                    action: function (e, dt, node, config) {
-                        var column = tableWords.column(5);
-                        column.visible(!column.visible());
-                        if (column.visible()) {
-                            $(".dt-button.forvo-button").addClass("active");
-                        } else {
-                            $(".dt-button.forvo-button").removeClass("active");
-                        }
-                        addListenersOnButtonsForvoCard();
-                        return false;
-                    }
                 }
             ],
 
@@ -146,6 +131,7 @@ $(function () {
                     $('td:eq(5)', row).css('display', 'none');
                     $('td:eq(6)', row).css('display', 'none');
                     $('td:eq(7)', row).css('display', 'none');
+                    $('td:eq(8)', row).css('display', 'none');
                 }
             },
 
@@ -313,7 +299,6 @@ function showListWords(response) {
     });
 
     initEventHandlersTableWords();
-    addListenersOnButtonsForvoCard();
     addListenersOnButtonsMnemonicsCard();
 }
 
@@ -485,13 +470,6 @@ function handleExportThisSetToLingualeo(responce) {
 /****************************************************************************************************************************************************************************************************************************************/
 /*                                                                                                                      Forvo                                                                                                           */
 /****************************************************************************************************************************************************************************************************************************************/
-function addListenersOnButtonsForvoCard() {
-    $('#tableWords tbody a[word_of_forvo_card]').on('click', function () {
-        showForvoWordCard($(this).attr('word_of_forvo_card'));
-        return false;
-    });
-}
-
 function showForvoWordCard(word) {
     var wordCardWindow = $("#wordForvoCardWindow");
     wordCardWindow.find(".modal-title").text(word);
