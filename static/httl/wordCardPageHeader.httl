@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="/static/bootsnipp/bootsnipp.min.css">
     <link rel="stylesheet" type="text/css" href="/static/css/wordCard/WordCardCommonStyles.css"/>
     <link rel="stylesheet" type="text/css" href="/static/css/wordCard/OALD9.css"/>
-    <!--<link rel="stylesheet" type="text/css" href="/static/css/wordCard/LDOCE6_inner.css"/>-->
     <link rel="stylesheet" type="text/css" href="/static/css/wordCard/LDOCE6.css"/>
 </head>
 <body>

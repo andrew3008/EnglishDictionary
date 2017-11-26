@@ -299,7 +299,6 @@ function showListWords(response) {
     });
 
     initEventHandlersTableWords();
-    addListenersOnButtonsMnemonicsCard();
 }
 
 function initEventHandlersTableWords() {
@@ -317,6 +316,16 @@ function initEventHandlersTableWords() {
 
         tableWords.draw();
         initEventHandlersTableWords();
+    });
+
+    $('#tableWords tbody a[word_of_forvo_card]').on('click', function () {
+        showForvoWordCard($(this).attr('word_of_forvo_card'));
+        return false;
+    });
+
+    $('#tableWords tbody a[word_of_mnemonic_card]').on('click', function () {
+        showMnemonicWordCard($(this).attr('word_of_mnemonic_card'));
+        return false;
     });
 }
 
@@ -484,13 +493,6 @@ function showForvoWordCard(word) {
 /****************************************************************************************************************************************************************************************************************************************/
 /*                                                                                                                      Mnemonics                                                                                                       */
 /****************************************************************************************************************************************************************************************************************************************/
-function addListenersOnButtonsMnemonicsCard() {
-    $('#tableWords tbody a[word_of_mnemonic_card]').on('click', function () {
-        showMnemonicWordCard($(this).attr('word_of_mnemonic_card'));
-        return false;
-    });
-}
-
 function showMnemonicWordCard(word) {
     var wordCardWindow = $("#wordMnemonicWindow");
     wordCardWindow.find(".modal-title").text(word);
