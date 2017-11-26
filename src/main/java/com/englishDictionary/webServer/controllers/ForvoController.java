@@ -1,9 +1,6 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
-import com.englishDictionary.resources.soundDatFile.MP3Player;
-import com.englishDictionary.resources.soundDatFile.InputStreamFromURL;
-import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServices.forvo.Forvo;
 import com.englishDictionary.webServices.forvo.ForvoCard;
 import com.englishDictionary.utils.httl.HttlEngineKeeper;
@@ -13,8 +10,6 @@ import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,28 +23,6 @@ public class ForvoController {
 
     public ForvoController() {
         forvo = new Forvo();
-    }
-
-    @RequestMapping(url = "playAudioStream.html")
-    public void playAudioStream(HttpServletRequest request) throws ParseException, IOException {
-        String word = request.getParameter("word");
-        String streamPath = request.getParameter("streamPath");
-        try {
-            ByteArrayOutputStream audioStreamBuffer = null;
-            List<ForvoCard> forvoCards = forvo.getForvoCardFromCache(word);
-            if (forvoCards != null) {
-                for (ForvoCard forvoCard : forvoCards) {
-                    if (streamPath.equals(forvoCard.getPathmp3())) {
-                        audioStreamBuffer = forvoCard.getAudioStreamBuffer();
-                        break;
-                    }
-                }
-            }
-
-            MP3Player.play(streamPath, audioStreamBuffer);
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
     }
 
     @RequestMapping(url = "show.html")

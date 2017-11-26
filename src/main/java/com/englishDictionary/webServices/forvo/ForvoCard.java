@@ -11,7 +11,6 @@ public class ForvoCard {
     int totalVotes;
     int positiveVotes;
     int negativeVotes;
-    private String addTime;
     private String pathmp3;
     private ByteArrayOutputStream audioStreamBuffer;
 
@@ -83,14 +82,6 @@ public class ForvoCard {
 
     public void setNegativeVotes(int negativeVotes) {
         this.negativeVotes = negativeVotes;
-    }
-
-    public String getAddTime() {
-        return addTime;
-    }
-
-    public void setAddTime(String addTime) {
-        this.addTime = addTime;
     }
 
     public String getPathmp3() {

@@ -281,10 +281,7 @@ public class Forvo {
                             } else if (fieldName.equals("num_positive_votes")) {
                                 forvoResponce.setPositiveVotes(voiceCardNode.get(fieldName).asInt());
                                 forvoResponce.setNegativeVotes(forvoResponce.getTotalVotes() - forvoResponce.getPositiveVotes());
-                            } else if (fieldName.equals("addtime")) {
-                                forvoResponce.setAddTime(fieldValue.trim().substring(0, fieldValue.lastIndexOf(' ')));
                             } else if (fieldName.equals("pathogg")) {
-//                            } else if (fieldName.equals("pathmp3")) {
                                 forvoResponce.setPathmp3(fieldValue);
                             }
                         }
