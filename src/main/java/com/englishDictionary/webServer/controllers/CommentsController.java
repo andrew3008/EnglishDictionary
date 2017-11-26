@@ -12,21 +12,19 @@ import java.io.*;
 @Controller(url = "/comments/")
 public class CommentsController {
 
-    private byte[] buffer = new byte[2*1024];
+    private static int BUFFER_SIZE = 2048;
+    private byte[] buffer = new byte[BUFFER_SIZE];
 
     @RequestMapping(url = "load.html")
     public void loadComments(HttpServletRequest request, HttpServletResponse response) {
         String fileName = request.getParameter("fileName");
-        String fullFileName = Config.WORDS_FILES_FOLDER + fileName + "_comments.html";
-        File file = new File(fullFileName);
-
-        CommentsListWords comments = new CommentsListWords();
-        comments.setHaseComments(file.exists());
-        comments.setCommentsFileName("http://localhost:8080/comments/commentsFile.html?fileName=" + fileName);
-        comments.setNoCommentsMessage("There are not comments for current list of words");
-
+        File file = new File(Config.WORDS_FILES_FOLDER + fileName + "_comments.html");
         response.setContentType("application/json;charset=utf-8");
         try {
+            CommentsListWords comments = new CommentsListWords();
+            comments.setHaseComments(file.exists());
+            comments.setCommentsFileName("http://localhost:8080/comments/commentsFile.html?fileName=" + fileName);
+            comments.setNoCommentsMessage("There are not comments for current list of words");
             response.getOutputStream().write(JsonHelper.toJson(comments));
         } catch (IOException e) {
             e.printStackTrace();
@@ -38,7 +36,6 @@ public class CommentsController {
         try {
             String fullFileName = Config.WORDS_FILES_FOLDER + "\\" + request.getParameter("fileName") + "_comments.html";
             BufferedInputStream commentsFileIS = new BufferedInputStream(new FileInputStream(fullFileName));
-
             int lengthReadData;
             while ((lengthReadData = commentsFileIS.read(buffer, 0, buffer.length)) != -1) {
                 response.getOutputStream().write(buffer, 0, lengthReadData);

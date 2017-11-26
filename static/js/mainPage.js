@@ -516,9 +516,7 @@ function showComments(response) {
         tableWords.buttons(buttonCommentsIndex).enable(false);
         $('#formComments').removeClass("hide");
     } else {
-        var wordCardWindow = $("#wordForvoCardWindow");
-        document.getElementById("wordForvoCard_articles").innerHTML = "<span style='color:black; font-weight: bold; font-size: 20px;'>" + response.noCommentsMessage + "</span>";
-        wordCardWindow.modal("show");
+        showNoticeMessage("Comments", response.noCommentsMessage, false);
     }
     return false;
 }
