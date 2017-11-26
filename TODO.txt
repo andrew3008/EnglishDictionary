@@ -2,7 +2,6 @@ OALD9 поиск происходит без учёта регистра
 pip
 cap
 
-
 Add button for card on entire phrase
 
 // Remove "/static/images/wordCard/playsound.png" из сконвертированных файлах из DSL:
