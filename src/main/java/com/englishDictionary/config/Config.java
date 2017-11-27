@@ -8,6 +8,8 @@ import java.util.List;
 public class Config  {
     private static ConfigLocation configLocation = (Boolean.TRUE.toString().equals(System.getenv("IS_WORK_STATION")) ? new ConfigWork() : new ConfigHome());
 
+    public static final int WEB_SERVER_PORT = 8080;
+
     public static final String ROOT_DIR = configLocation.getRootDir();
 
     public static final String DICTIONARIES_FOLDER = ROOT_DIR + "\\Dictionaries\\";

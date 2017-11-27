@@ -1,5 +1,6 @@
 package com.englishDictionary.webServer;
 
+import com.englishDictionary.config.Config;
 import com.englishDictionary.utils.FileUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.Unpooled;
@@ -20,7 +21,6 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
  * Created by Andrew on 8/27/2016.
  */
 public class WebServer {
-    private final static int WEB_SERVER_PORT = 8080;
 
     public static void main(String[] args) throws Exception {
         WebServer webServer = new WebServer();
@@ -35,7 +35,7 @@ public class WebServer {
             b.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
                     .childHandler(new ServerInitializer());
-            Channel ch = b.bind(WEB_SERVER_PORT).sync().channel();
+            Channel ch = b.bind(Config.WEB_SERVER_PORT).sync().channel();
             ch.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
@@ -201,4 +201,5 @@ public class WebServer {
             }
         }
     }
+
 }
