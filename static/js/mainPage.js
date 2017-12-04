@@ -172,6 +172,8 @@ $(function () {
                         groupRows.addClass('hide');
                     }
                 });
+
+                initEventHandlersTableWords();
             }
         });
     tableWordsScrollYElement = document.getElementsByClassName("dataTables_scrollBody")[0];
@@ -292,13 +294,6 @@ function showListWords(response) {
     }
     tableWords.draw();
     tableWordsScrollYElement.scrollTop = tableWordsLastScrollPosition;
-
-    $('#tableWords tbody a[word_of_card]').on('click', function () {
-        showWordCard($(this).attr('word_of_card'));
-        return false;
-    });
-
-    initEventHandlersTableWords();
 }
 
 function initEventHandlersTableWords() {
@@ -316,6 +311,11 @@ function initEventHandlersTableWords() {
 
         tableWords.draw();
         initEventHandlersTableWords();
+    });
+
+    $('#tableWords tbody a[word_of_card]').on('click', function () {
+        showWordCard($(this).attr('word_of_card'));
+        return false;
     });
 
     $('#tableWords tbody a[word_of_forvo_card]').on('click', function () {
