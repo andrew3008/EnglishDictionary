@@ -1,5 +1,6 @@
 
-.mdict .entry {font-family: Arial, sans-serif; color: #333; line-height: 160%; margin: 20px 0 0 0; padding: 0;}
+.mdict { margin-top: -1px; }
+.mdict .entry {font-family: Arial, sans-serif; color: #333; line-height: 160%; margin: 0; padding: 0;}
 .mdict .h-g {margin: 0; padding: 0;}
 .mdict ol {list-style-type: none;}
 .mdict img {max-width: 100%; border: none;}
@@ -9,13 +10,12 @@
 .mdict .gram-g, .mdict .label-g, .mdict .dis-g {color: #004AAC;}
 .mdict .hm, .mdict pnc.hm, .mdict .xhm {font-size: smaller; margin-left: 1px; position: relative; top: -5.25px;}/* homonym number */
 .mdict .xh, .mdict .xw {cursor: pointer;}
-.mdict block {margin: 0 0 5px 0; display: block; border-bottom: 1px dashed #333;}
+.mdict block {margin: 5px 0 5px 0; display: block; border-bottom: 1px dashed #333;}
 .mdict block a {color:#8f0610;}
 
 .mdict .top-container,
 .mdict .top-g {margin: 0; padding: 0;}
 
-/* .mdict .webtop-g .academic {display:inline-block; margin-top: 0px; padding: 1px 4px 0; line-height: 15px; font-size: 75%; font-weight: bold; color: white; background-color: #C76E06;} */
 .mdict .webtop-g .academic {
     display:inline-block;
     margin: 2px 0px 0px 0px;
@@ -31,18 +31,17 @@
     text-decoration: none;
 }
 
-.mdict .webtop-g:first-child {
-    background-color: rgb(222, 231, 243);
-    margin: 0px -6px 0px -11px;
-    padding: 0 0 0 12px;
-}
+/* TODO: FIX it */
+/*.mdict .webtop-g {*/
+    /*background-color: rgb(222, 231, 243);*/
+    /*margin: 20px -6px 0px -11px;*/
+    /*padding: 0 0 0 12px;*/
+/*}*/
 
-.mdict .webtop-g {
-    /*background-color: #9bb6dd;*/
+.mdict:first-child .webtop-g {
     background-color: rgb(222, 231, 243);
-    margin: 10px -6px 0px -11px;
+    margin: 0px -5px 0px -11.31px;
     padding: 0 0 0 12px;
-    /* margin: 36px -6px 0px -11px; */
 }
 
 .mdict .webtop-g .oxford3000 {font-size: 20px;}

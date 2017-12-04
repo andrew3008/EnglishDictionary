@@ -10,6 +10,8 @@ public class Config  {
 
     public static final int WEB_SERVER_PORT = 8080;
 
+    public static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
+
     public static final String ROOT_DIR = configLocation.getRootDir();
 
     public static final String DICTIONARIES_FOLDER = ROOT_DIR + "\\Dictionaries\\";
@@ -45,17 +47,23 @@ public class Config  {
     }
 
     private static final List<String> WORD_UNNECESSARY_FOR_HANDLING = new ArrayList<String>() {{
+        add("i");
+        add("she");
+        add("he");
+        add("it");
+        add("is");
         add("a");
         add("the");
         add("to");
         add("at");
         add("on");
         add("in");
+        add("into");
         add("for");
         add("of");
     }};
 
     public static boolean isNecessaryWord(String word) {
-        return !(Config.WORD_UNNECESSARY_FOR_HANDLING.contains(word) || StringUtils.isNumber(word));
+        return !(StringUtils.isNumber(word) || Config.WORD_UNNECESSARY_FOR_HANDLING.contains(word.toLowerCase()));
     }
 }
