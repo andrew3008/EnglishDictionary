@@ -4,6 +4,12 @@ cap
 
 Add button for card on entire phrase
 
+search filter
+
+my character has never been questioned
+
+словарь имён
+
 // Remove "/static/images/wordCard/playsound.png" из сконвертированных файлах из DSL:
 <span class="dsl_s_wav"><a onclick="playSound('cork-screw')"><img src="/static/images/wordCard/playsound.png" border="0" align="absmiddle" alt="Play"></a></span>
 
