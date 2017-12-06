@@ -3,7 +3,9 @@ package com.englishDictionary.config;
 import httl.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class Config  {
     private static ConfigLocation configLocation = (Boolean.TRUE.toString().equals(System.getenv("IS_WORK_STATION")) ? new ConfigWork() : new ConfigHome());
@@ -46,21 +48,184 @@ public class Config  {
         return configLocation.getFileNameOfWordsFromExcel();
     }
 
-    private static final List<String> WORD_UNNECESSARY_FOR_HANDLING = new ArrayList<String>() {{
-        add("i");
-        add("she");
-        add("he");
-        add("it");
-        add("is");
+    private static final Set<String> WORD_UNNECESSARY_FOR_HANDLING = new HashSet<String>() {{
+        // Articles
         add("a");
+        add("an");
         add("the");
-        add("to");
+
+        // To be
+        add("am");
+        add("is");
+        add("are");
+        add("was");
+        add("were");
+        add("be");
+        add("been");
+
+        // Pronouns
+        add("i");
+        add("you");
+        add("he");
+        add("she");
+        add("it");
+        add("we");
+        add("they");
+        add("me");
+        add("him");
+        add("her");
+        add("it");
+        add("us");
+        add("them");
+        add("my");
+        add("your");
+        add("his");
+        add("her");
+        add("its");
+        add("our");
+        add("their");
+        add("mine");
+        add("yours");
+        add("his");
+        add("hers");
+        add("ours");
+        add("theirs");
+        add("this");
+        add("that");
+        add("these");
+        add("those");
+        add("such");
+        add("myself");
+        add("yourself");
+        add("himself");
+        add("herself");
+        add("itself");
+        add("ourselves");
+        add("yourselves");
+        add("themselves");
+        add("who");
+        add("what");
+        add("which");
+        add("whose");
+        add("whoever");
+        add("whatever");
+        add("whichever");
+        add("some");
+        add("something");
+        add("somebody");
+        add("someone");
+        add("any");
+        add("anything");
+        add("anybody");
+        add("anyone");
+        add("no");
+        add("nothing");
+        add("nobody");
+        add("none");
+        add("neither");
+        add("other");
+        add("another");
+        add("all");
+        add("each");
+        add("both");
+        add("either");
+        add("every");
+        add("everything");
+        add("everybody");
+        add("everyone");
+
+        // Prepositions
         add("at");
         add("on");
         add("in");
-        add("into");
+        add("about");
+        add("above");
+        add("below");
+        add("after");
+        add("before");
+        add("by");
         add("for");
+        add("from");
         add("of");
+        add("since");
+        add("to");
+        add("with");
+        add("among");
+        add("between");
+
+        // Particles
+        add("alone");
+        add("but");
+        add("even");
+        add("just");
+        add("merely");
+        add("only");
+        add("solely");
+        add("all");
+        add("even");
+        add("just");
+        add("never");
+        add("simply");
+        add("still");
+        add("yet");
+        add("exactly");
+        add("just");
+        add("precisely");
+        add("right");
+        add("up");
+        add("down");
+        add("not");
+        add("no");
+        add("nor");
+        add("else");
+
+        // Modal verbs
+        add("can");
+        add("could");
+        add("may");
+        add("might");
+        add("must");
+        add("got");
+        add("be");
+        add("need");
+        add("ought");
+        add("should");
+        add("would");
+        add("shall");
+        add("dare");
+        add("used");
+        add("have");
+        add("has");
+        add("will");
+        add("wont");
+
+        // Conjunctions
+        add("and");
+        add("or");
+        add("but");
+        add("as");
+        add("like");
+        add("far");
+        add("long");
+        add("soon");
+        add("because");
+        add("both");
+        add("if");
+        add("moreover");
+        add("neither");
+        add("now");
+        add("once");
+        add("still");
+        add("than");
+        add("thus");
+        add("what");
+        add("yet");
+        add("with");
+        add("without");
+        add("within");
+        add("according");
+        add("beyond");
+        add("whereas");
     }};
 
     public static boolean isNecessaryWord(String word) {
