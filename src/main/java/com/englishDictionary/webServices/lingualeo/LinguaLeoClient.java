@@ -4,9 +4,22 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.*;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.DELETE_WORDS_FROM_DICTIONARY;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.EMAIL;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.EXPORT_WORDS_URL;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.EXPORT_WORD_URL;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.GET_DICTIONARIES;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.GET_WORDS_FROM_DICTIONARY;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.IMPORT_URL;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.LOGIN_URL;
+import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.PASSWORD;
 
 /**
  * Created by Andrew on 8/20/2016.

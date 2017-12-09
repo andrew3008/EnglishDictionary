@@ -1,22 +1,27 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
+import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.resources.soundDatFile.InputStreamFromRandomAccessFile;
 import com.englishDictionary.resources.soundDatFile.MP3Player;
 import com.englishDictionary.resources.soundDatFile.SoundDatFileReader;
 import com.englishDictionary.utils.SplitterPhraseToWords;
 import com.englishDictionary.utils.httl.HttlEngineKeeper;
-import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
-import com.englishDictionary.webServer.*;
+import com.englishDictionary.webServer.ByteArrayOutputStream;
+import com.englishDictionary.webServer.HttpServletRequest;
+import com.englishDictionary.webServer.HttpServletResponse;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
-import com.englishDictionary.webServer.ByteArrayOutputStream;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller(url = "/wordCard/")
 public class WordCardController {

@@ -1,6 +1,12 @@
 package com.englishDictionary.resources.soundDatFile;
 
-import javax.sound.sampled.*;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;

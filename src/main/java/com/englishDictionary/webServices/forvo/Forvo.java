@@ -23,7 +23,12 @@ import org.jsoup.nodes.Node;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+
 
 public class Forvo {
 

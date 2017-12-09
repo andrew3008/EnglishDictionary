@@ -1,15 +1,22 @@
 package com.englishDictionary.utils.json;
 
 import com.englishDictionary.config.Config;
-
 import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
-import com.englishDictionary.webServer.*;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
+import com.englishDictionary.webServer.HttpServletResponse;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.*;
-import java.util.*;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.BufferedReader;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Created by Andrew on 1/10/2016.
@@ -36,9 +43,9 @@ public class ParserJSonFiles {
 
     static public void parseWordsFile(HttpServletResponse response, String file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode;
         FileInputStream fileIS;
         BufferedReader reader;
+        JsonNode rootNode;
         ByteArrayOutputStream responceWriter;
         try {
             fileIS = new FileInputStream(file);
