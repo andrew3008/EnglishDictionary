@@ -22,8 +22,8 @@ import java.util.Map;
 @Controller(url = "/excel/")
 public class ExcelController {
 
-    private static String LINGVO_LIVE_GET_WORD_TRANSLATE_URL_TEMPLATE = "http://api.lingvolive.com/api/Translation/Minicard?text=%s&srclang=1033&dstlang=1049&returnXml=false";
-    private static String GOOGLE_TRANSLATE_URL_TEMPLATE = "http://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=%s&ie=UTF-8&oe=UTF-8";
+    private static final String GOOGLE_TRANSLATE_URL_TEMPLATE = "http://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=%s&ie=UTF-8&oe=UTF-8";
+    private static final String LINGVO_LIVE_GET_WORD_TRANSLATE_URL_TEMPLATE = "http://api.lingvolive.com/api/Translation/Minicard?text=%s&srclang=1033&dstlang=1049&returnXml=false";
 
     private SEDHttpClient sedHttpClient;
 
