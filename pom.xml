@@ -229,7 +229,6 @@
             <artifactId>lucene-queryparser</artifactId>
             <version>${lucene.version}</version>
         </dependency>
-
     </dependencies>
 
 </project>
