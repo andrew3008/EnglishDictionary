@@ -71,14 +71,14 @@ tr.group:hover {
     background-color: #ddd !important;
 }
 
-@media screen and (max-height: 1200px) {
+/*@media screen and (max-height: 1200px) {*/
     .dataTables_scroll .dataTables_scrollBody {
-        max-height: 932px !important;
+        max-height: 960px !important;
     }
 
     #wordCard_first_part iframe,
     #wordCard_second_part iframe {
-        height: 1020px;
+        height: 1045px;
     }
 
     #wordCardWindow div.modal-body table {
@@ -88,25 +88,25 @@ tr.group:hover {
     #quizlet_iframe iframe {
         height: 975px;
     }
-}
-@media screen and (max-height: 1080px) {
-    .dataTables_scroll .dataTables_scrollBody {
-        max-height: 810px !important;
-    }
+/*}*/
+/*@media screen and (max-height: 1080px) {*/
+    /*.dataTables_scroll .dataTables_scrollBody {*/
+        /*max-height: 810px !important;*/
+    /*}*/
 
-    #wordCard_first_part iframe,
-    #wordCard_second_part iframe {
-        height: 900px;
-    }
+    /*#wordCard_first_part iframe,*/
+    /*#wordCard_second_part iframe {*/
+        /*height: 900px;*/
+    /*}*/
 
-    #wordCardWindow div.modal-body table {
-        height: 913px;
-    }
+    /*#wordCardWindow div.modal-body table {*/
+        /*height: 913px;*/
+    /*}*/
 
-    #quizlet_iframe iframe {
-        height: 975px;
-    }
-}
+    /*#quizlet_iframe iframe {*/
+        /*height: 975px;*/
+    /*}*/
+/*}*/
 
 #wordCard_first_part iframe {
     width: 500px;
