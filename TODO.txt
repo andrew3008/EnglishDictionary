@@ -11,6 +11,16 @@ Add button for card on entire phrase
 // Transcriptions
 insult
 
+// Word cards
+I've seen college photos of you two together
+clothes basket,bag
+
+// Collocation tabs
+leather jacket
+
+// OALD9
+header of word article
+
 // Remove "/static/images/wordCard/playsound.png" из сконвертированных файлах из DSL:
 <span class="dsl_s_wav"><a onclick="playSound('cork-screw')"><img src="/static/images/wordCard/playsound.png" border="0" align="absmiddle" alt="Play"></a></span>
 

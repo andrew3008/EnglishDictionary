@@ -463,9 +463,9 @@ public class WordCardController {
                 outputStream.write("                </tr>");
                 outputStream.write("            </table>");
                 outputStream.write("        </div>");
-            }
 
-            outputStream.write("</div>");
+                outputStream.write("</div>");
+            }
 
             HttlEngineKeeper.engine.getTemplate("wordCardPageFooter.httl").render(viewParameters, outputStream);
         } catch (ParseException | IOException e) {
