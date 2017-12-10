@@ -4,11 +4,12 @@ cap
 
 Add button for card on entire phrase
 
-search filter
-
-my character has never been questioned
+[V] search filter
 
 словарь имён
+
+// Transcriptions
+insult
 
 // Remove "/static/images/wordCard/playsound.png" из сконвертированных файлах из DSL:
 <span class="dsl_s_wav"><a onclick="playSound('cork-screw')"><img src="/static/images/wordCard/playsound.png" border="0" align="absmiddle" alt="Play"></a></span>
@@ -17,15 +18,9 @@ my character has never been questioned
 
 System of interval repeat
 1) Add support comments [V]
-2) Load position of sound and pronuncation of word shut load from same map
 3) Load card of words [V]
 4) Find words in lists of words
 5) Improve architecture of application
-6) Support embedded transcriptions (with part of speech)
-7) Support embedded sounds
-
-Transcriptions
-1) Dopolnit database of transcriptions from LinguaLeo in otdelnuu DB SQLite
 
 Excel
 1) Add button 'All to ClipBoard'
@@ -36,22 +31,13 @@ Word
 1) Add button for audio link
 
 Bags:
-1) Transcriptions in phrases [V]
+[V] 1) Transcriptions in phrases
 
 Perfomans:
 1) Override the functions equals and hash for HashMap of index files of transcription and etc.
    Make hash by name of word.
 
 Collapse all groups of listWords.
-
-// -------------------------------------------------------------------------------------------------------
-
-// TODO
-1) Mnemonic cards
-   Add support +
-
-[?]
-by saying
 
 // -------------------------------------------------------------------------------------------------------
 
