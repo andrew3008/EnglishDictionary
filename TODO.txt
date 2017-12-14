@@ -8,6 +8,12 @@ Add button for card on entire phrase
 
 словарь имён
 
+Excel:
+1) кнопка для изменения регистра слов
+2) Export through Keep Alive
+3) Выделение для Quizlet
+4) кнопка для вставки пустых строк (возможно через горячие кнопки)
+
 // Transcriptions
 insult
 
@@ -19,7 +25,11 @@ clothes basket,bag
 leather jacket
 
 // OALD9
-header of word article
+1) header of word article
+2) Phrases for test
+   I've seen college photos of you two together
+   Time is valuable
+   he didn't pick up (the phone)
 
 // Remove "/static/images/wordCard/playsound.png" из сконвертированных файлах из DSL:
 <span class="dsl_s_wav"><a onclick="playSound('cork-screw')"><img src="/static/images/wordCard/playsound.png" border="0" align="absmiddle" alt="Play"></a></span>
