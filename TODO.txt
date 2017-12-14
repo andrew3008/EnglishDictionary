@@ -1,3 +1,15 @@
+// CSS
+// Удалить у всех элементов
+id="shake_2" subentrynum="2"
+
+.entry {
+   margin-bottom: 30px;
+}
+
+.entry:last-child {
+   margin-bottom: 0;
+}
+
 OALD9 поиск происходит без учёта регистра
 pip
 cap
@@ -16,6 +28,10 @@ Excel:
 
 // Transcriptions
 insult
+
+consequence - озвучка
+переходы по словам в Lingvo Universal
+озвучка в Lingvo Universal
 
 // Word cards
 I've seen college photos of you two together

@@ -1,6 +1,7 @@
 
 .mdict { margin-top: -1px; }
-.mdict .entry {font-family: Arial, sans-serif; color: #333; line-height: 160%; margin: 0; padding: 0;}
+.mdict .entry {font-family: Arial, sans-serif; color: #333; line-height: 160%; margin: 0 0 23px 0; padding: 0;}
+.mdict .entry:last-child {margin: 0;}
 .mdict .h-g {margin: 0; padding: 0;}
 .mdict ol {list-style-type: none;}
 .mdict img {max-width: 100%; border: none;}
