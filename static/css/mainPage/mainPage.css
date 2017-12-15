@@ -71,7 +71,7 @@ tr.group:hover {
     background-color: #ddd !important;
 }
 
-@media screen and (max-width: 1920px) {
+@media screen and (max-width: 1080px) {
     .dataTables_scroll .dataTables_scrollBody {
         max-height: 810px !important;
     }
@@ -89,7 +89,7 @@ tr.group:hover {
         height: 975px;
     }
 }
-@media screen and (min-width: 1920px) {
+@media screen and (min-width: 1200px) {
     .dataTables_scroll .dataTables_scrollBody {
         max-height: 957.2px !important;
     }
