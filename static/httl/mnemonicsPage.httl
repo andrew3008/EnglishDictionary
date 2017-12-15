@@ -21,7 +21,7 @@
                         <li>
                             <a id="tab-headWord-${headWord}" href="#tab-pane-headWord-${headWord}" data-toggle="tab">${headWord}</a>
                         </li>
-                        <!-- #end-->
+                        <!-- #end -->
                     </ul>
                 </div>
                 <!-- #end -->
