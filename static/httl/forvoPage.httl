@@ -88,14 +88,14 @@
     <script src="/static/bootsnipp/jquery-1.11.0.min.js"></script>
     <script src="/static/bootsnipp/bootstrap.min.js"></script>
     <script src="/static/bootsnipp/scripts.min.js"></script>
+    <!-- #set(List<String> headWords) -->
+    <!-- #if(headWords.size() > 1) -->
     <script type="text/javascript">
-        // #set(List<String> headWords) //
-        $(function() {
-            // #if(headWords.size() > 1) //
-            document.getElementById("tab-headWord-${headWords.get(0)}").click();
-            // #end //
-        });
+         $(function() {
+           document.getElementById("tab-heardWord-${headWords.get(0)}").click();
+         });
     </script>
+    <!-- #end -->
 
 </body>
 </html>
