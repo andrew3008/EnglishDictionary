@@ -1,5 +1,6 @@
 package com.englishDictionary.webServer;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 public class HttpServletRequest {
     private String contextPath;
     private Map<String, List<String>> parameters;
+    private ByteBuf content;
     private String ifModifiedSince;
     private ChannelHandlerContext channelHandlerContext;
 
@@ -33,6 +35,14 @@ public class HttpServletRequest {
 
     public Map<String, List<String>> getParameters() {
         return parameters;
+    }
+
+    public ByteBuf getContent() {
+        return content;
+    }
+
+    public void setContent(ByteBuf content) {
+        this.content = content;
     }
 
     public String getIfModifiedSince() {

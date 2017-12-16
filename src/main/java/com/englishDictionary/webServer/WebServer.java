@@ -15,24 +15,27 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpRequestDecoder;
-import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.CharsetUtil;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
 
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
@@ -40,6 +43,8 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
  * Created by Andrew on 8/27/2016.
  */
 public class WebServer {
+
+    private static final int AGGREFATOR_HTTP_REQUESTS_BUFFER_INIT_SIZE = 10240;
 
     public static void main(String[] args) throws Exception {
         WebServer webServer = new WebServer();
@@ -66,37 +71,40 @@ public class WebServer {
         @Override
         public void initChannel(SocketChannel ch) throws Exception {
             ChannelPipeline pipeline = ch.pipeline();
-            pipeline.addLast("decoder", new HttpRequestDecoder());
-            pipeline.addLast("encoder", new HttpResponseEncoder());
-            pipeline.addLast("handler", new ServerRequestHandler());
+            pipeline.addLast(new HttpServerCodec());
+            pipeline.addLast(new HttpObjectAggregator(AGGREFATOR_HTTP_REQUESTS_BUFFER_INIT_SIZE));
+            pipeline.addLast(new ServerRequestHandler());
         }
     }
 
     class ServerRequestHandler extends SimpleChannelInboundHandler<Object> {
-        private HttpRequest request;
+        private FullHttpRequest request;
         private HttpServletRequest requestServlet = new HttpServletRequest();
         private HttpServletResponse responseServlet = new HttpServletResponse();
 
-        private final String DEFAULT_CONTENT_TYPE = "text/html; charset=UTF-8";
+        private final static String DEFAULT_CONTENT_TYPE = "text/html; charset=UTF-8";
+        private final Set<HttpMethod> SUPPORTED_HTTP_METHODS = new HashSet<>(Arrays.asList(HttpMethod.GET, HttpMethod.POST));
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-            if (msg instanceof HttpRequest) {
-                request = (HttpRequest) msg;
+            if (msg instanceof FullHttpRequest) {
+                request = (FullHttpRequest) msg;
+                if (request == null) {
+                    return;
+                }
 
                 if (!request.decoderResult().isSuccess()) {
                     sendError(ctx, HttpResponseStatus.BAD_REQUEST);
                     return;
                 }
 
-                if (request.method() != HttpMethod.GET) {
+                if (!SUPPORTED_HTTP_METHODS.contains(request.method()))  {
                     sendError(ctx, HttpResponseStatus.METHOD_NOT_ALLOWED);
                     return;
                 }
 
                 QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.uri());
                 final String contextPath = queryStringDecoder.path();
-                //System.out.println("[WebServer] contextPath:" + contextPath);
                 RequestHandler requestHandler = RequestHandlersContainer.getHandlers().get(contextPath);
                 if (requestHandler == null) {
                     String fileExt = FileUtils.getFileExtension(contextPath);
@@ -112,6 +120,9 @@ public class WebServer {
 
                 requestServlet.setContextPath(contextPath);
                 requestServlet.setParameters(queryStringDecoder.parameters());
+                if (HttpMethod.POST.equals(request.method())) {
+                    requestServlet.setContent(request.content());
+                }
                 requestServlet.setIfModifiedSince(request.headers().get(HttpHeaderNames.IF_MODIFIED_SINCE));
                 requestServlet.setChannelHandlerContext(ctx);
 
@@ -145,7 +156,7 @@ public class WebServer {
                 // Internal redirect
                 String internalRedirectURL = responseServlet.getInternalRedirectURL();
                 if (internalRedirectURL != null) {
-                    channelRead0(ctx, new DefaultHttpRequest(HTTP_1_1, HttpMethod.GET, internalRedirectURL));
+                    channelRead0(ctx, new DefaultFullHttpRequest(HTTP_1_1, HttpMethod.GET, internalRedirectURL));
                 }
 
                 // External redirect
@@ -163,7 +174,6 @@ public class WebServer {
 
                 ByteArrayOutputStream responseOutputStream = responseServlet.getOutputStream();
                 HttpResponseStatus status = (responseServlet.getStatus() == null) ? HttpResponseStatus.OK : responseServlet.getStatus();
-                // TODO: Find reason of nulls
                 String contentType = (responseServlet.getContentType() == null) ? DEFAULT_CONTENT_TYPE : responseServlet.getContentType();
                 FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, status, Unpooled.copiedBuffer(responseOutputStream.toByteArray(), 0, responseOutputStream.writedBytes()));
                 response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
@@ -171,7 +181,8 @@ public class WebServer {
                     response.headers().set(headerEntry.getKey(), headerEntry.getValue());
                 }
 
-                if (HttpUtil.isKeepAlive(request)) {
+                boolean isKeepAlive = HttpMethod.POST.equals(request.method()) ? false : HttpUtil.isKeepAlive(request);
+                if (isKeepAlive) {
                     response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
                     int contentLength = (responseServlet.getPresetContentLength() == -1) ? responseOutputStream.writedBytes() : responseServlet.getPresetContentLength();
                     response.headers().set(HttpHeaderNames.CONTENT_LENGTH, contentLength);
@@ -184,7 +195,7 @@ public class WebServer {
                 ChannelFuture lastContentFuture = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
 
                 // Decide whether to close the connection or not.
-                if (!HttpUtil.isKeepAlive(request)) {
+                if (!isKeepAlive) {
                     // Close the connection when the whole content is written out.
                     lastContentFuture.addListener(ChannelFutureListener.CLOSE);
                 }

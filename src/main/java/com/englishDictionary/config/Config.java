@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Config  {
-    private static ConfigLocation configLocation = (Boolean.TRUE.toString().equals(System.getenv("IS_WORK_STATION")) ? new ConfigWork() : new ConfigHome());
+    private static ConfigLocation configLocation = ((Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("IS_WORK_STATION")) == 0) ? new ConfigWork() : new ConfigHome());
 
     public static final int WEB_SERVER_PORT = 8080;
 
@@ -43,6 +43,7 @@ public class Config  {
     public static final String WORDS_FILES_FOLDER = configLocation.getWordsFilesFolder();
     public static final String WORDS_FILES_CONTENT_FILE = WORDS_FILES_FOLDER + "_content.json";
     public static final String FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS = "WordsFromExcel";
+    public static final boolean NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER = (Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER")) == 0);
     public static String getFileNameOfWordsFromExcel() {
         return configLocation.getFileNameOfWordsFromExcel();
     }

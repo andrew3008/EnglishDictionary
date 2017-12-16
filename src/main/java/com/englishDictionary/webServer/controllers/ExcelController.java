@@ -4,7 +4,9 @@ import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
+import com.englishDictionary.webServer.annotations.RequestMethod;
 import com.englishDictionary.webServer.utils.SEDHttpClient;
+import com.englishDictionary.webServices.excel.BufferListOfWordsFromExcel;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -124,6 +126,11 @@ public class ExcelController {
             httpResponse.setStatus(HttpResponseStatus.INTERNAL_SERVER_ERROR);
             return;
         }
+    }
+
+    @RequestMapping(url = "exportListOfWords", method = RequestMethod.POST)
+    public void exportListOfWords(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        BufferListOfWordsFromExcel.INSTANCE.updateBuffer(httpRequest.getContent());
     }
 
 }

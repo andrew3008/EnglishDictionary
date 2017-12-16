@@ -2,11 +2,10 @@ package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
 import com.englishDictionary.utils.json.ParserJSonFiles;
-import com.englishDictionary.webServer.annotations.Controller;
-import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import com.englishDictionary.webServer.annotations.Controller;
+import com.englishDictionary.webServer.annotations.RequestMapping;
 
 import java.io.IOException;
 
@@ -22,14 +21,7 @@ public class IndexController {
     @RequestMapping(url = "getListWords.html")
     public void getListWords(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json;charset=utf-8");
-        String fileName = request.getParameter("fileName");
-        String fullFileName = "";
-        if (Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
-            fullFileName = Config.getFileNameOfWordsFromExcel();
-        } else {
-            fullFileName = Config.WORDS_FILES_FOLDER + "\\" + fileName + ".json";
-        }
-        ParserJSonFiles.parseWordsFile(response, fullFileName);
+        ParserJSonFiles.parseWordsFile(response, request.getParameter("fileName"));
     }
 
 }

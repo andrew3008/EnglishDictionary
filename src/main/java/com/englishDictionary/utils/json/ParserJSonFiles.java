@@ -4,15 +4,18 @@ import com.englishDictionary.config.Config;
 import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServer.HttpServletResponse;
+import com.englishDictionary.webServices.excel.BufferListOfWordsFromExcel;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.BufferedReader;
+import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -41,15 +44,13 @@ public class ParserJSonFiles {
         }
     }
 
-    static public void parseWordsFile(HttpServletResponse response, String file) throws IOException {
+    static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        FileInputStream fileIS;
         BufferedReader reader;
         JsonNode rootNode;
         ByteArrayOutputStream responceWriter;
         try {
-            fileIS = new FileInputStream(file);
-            reader = new BufferedReader(new InputStreamReader(fileIS, "UTF-8"));
+            reader = createReaderOfSetWords(fileName);
             rootNode = mapper.readTree(reader);
             responceWriter = response.getOutputStream();
         } catch (IOException e) {
@@ -89,7 +90,6 @@ public class ParserJSonFiles {
         responceWriter.write("]");
         try {
             reader.close();
-            fileIS.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -98,17 +98,9 @@ public class ParserJSonFiles {
     static public Map<String, String> readWordsForSet(String fileName) {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode rootNode;
-        FileInputStream fileIS;
         BufferedReader reader;
         try {
-            String fullFileName;
-            if (Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
-                fullFileName = Config.getFileNameOfWordsFromExcel();
-            } else {
-                fullFileName = Config.WORDS_FILES_FOLDER + "\\" + fileName + ".json";
-            }
-            fileIS = new FileInputStream(fullFileName);
-            reader = new BufferedReader(new InputStreamReader(fileIS, "UTF-8"));
+            reader = createReaderOfSetWords(fileName);
             rootNode = mapper.readTree(reader);
         } catch (IOException e) {
             e.printStackTrace();
@@ -128,12 +120,27 @@ public class ParserJSonFiles {
 
         try {
             reader.close();
-            fileIS.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         return mapWordNameToTranslate;
+    }
+
+    private static BufferedReader createReaderOfSetWords(String fileName) throws FileNotFoundException, UnsupportedEncodingException {
+        InputStream inputStream;
+        if (Config.NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
+            inputStream = BufferListOfWordsFromExcel.INSTANCE.getInputStream();
+        } else {
+            String fullFileName;
+            if (Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
+                fullFileName = Config.getFileNameOfWordsFromExcel();
+            } else {
+                fullFileName = Config.WORDS_FILES_FOLDER + "\\" + fileName + ".json";
+            }
+            inputStream = new FileInputStream(fullFileName);
+        }
+        return new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
     }
 
 }
