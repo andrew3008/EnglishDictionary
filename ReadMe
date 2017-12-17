@@ -9,3 +9,6 @@ IS_WORK_STATION=TRUE
 NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER=TRUE
 FILE_PATH_WORDS_FROM_EXCEL=E:\tmp\WordsFromExcel.json
 JAVA8_HOME=E:\JavaFrameworks\jdk_1.8.131
+
+// Excel
+http://office-guru.ru/excel/primer-excel
