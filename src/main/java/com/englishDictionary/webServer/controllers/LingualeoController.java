@@ -1,6 +1,6 @@
 package com.englishDictionary.webServer.controllers;
 
-import com.englishDictionary.utils.json.ParserJSonFiles;
+import com.englishDictionary.utils.json.ParserSetsWords;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.HttpServletRequest;
@@ -31,7 +31,7 @@ public class LingualeoController {
 
         lingualeoClient.deleteAllWords();
 
-        Map<String, String> words = ParserJSonFiles.readWordsForSet(fileName);
+        Map<String, String> words = ParserSetsWords.readWordsForSet(fileName);
         List<LinguaLeoWordInfo> wordInfos = new ArrayList<>();
         for (Map.Entry<String, String> wordEntry : words.entrySet()) {
             if (!wordEntry.getKey().isEmpty()) {
