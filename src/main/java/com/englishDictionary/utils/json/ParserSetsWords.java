@@ -94,10 +94,13 @@ public class ParserSetsWords {
                         responceWriter.write(",");
                     }
 
-                    if (CSV_GROUP_NAME.equals(line.get(0))) {
-                        groupName = line.get(1);
+                    String word = line.get(0).trim();
+                    String translation = line.get(1).trim();
+                    String examples = line.get(2).trim();
+                    if (CSV_GROUP_NAME.equals(word)) {
+                        groupName = translation;
                     } else {
-                        writeWordDescription(responceWriter, groupName, line.get(0), line.get(1), line.get(2));
+                        writeWordDescription(responceWriter, groupName, word, translation, examples);
                     }
                 }
                 scanner.close();

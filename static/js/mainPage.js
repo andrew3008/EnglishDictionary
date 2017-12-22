@@ -146,30 +146,33 @@ $(function () {
                     }
 
                     var groupName = group.toString().trim();
-                    var groupRows = $(rows).eq(i);
-                    if (last !== group) {
-                        var iconFileName;
-                        if (mapGroupWords[groupName] != null) {
-                            iconFileName = (mapGroupWords[groupName] === true) ? "minus.png" : "plus.png";
-                        } else {
-                            mapGroupWords[groupName] = true;
-                            iconFileName = "minus.png";
+                    // TODO: Make for different groups when there are groups with other names
+                    if (groupName != "") {
+                        var groupRows = $(rows).eq(i);
+                        if (last !== group) {
+                            var iconFileName;
+                            if (mapGroupWords[groupName] != null) {
+                                iconFileName = (mapGroupWords[groupName] === true) ? "minus.png" : "plus.png";
+                            } else {
+                                mapGroupWords[groupName] = true;
+                                iconFileName = "minus.png";
+                            }
+
+                            $(groupRows).before(
+                                '<tr class=\"group\"><td colspan=\"' + settings.aoColumns.length + '\">' +
+                                '<a class=\"smallButtonDataTablesHeader linkRemoveMessage\" type_lang=2 name_group_words=' + group + ' href=\"#\" >' +
+                                '<img src=\"/static/images/' + iconFileName + '\" class=\"iconSmallButtonDataTablesHeader\">' +
+                                '</a>' + '&nbsp' + group + '</td></tr>'
+                            );
+
+                            last = group;
                         }
 
-                        $(groupRows).before(
-                            '<tr class=\"group\"><td colspan=\"' + settings.aoColumns.length + '\">' +
-                            '<a class=\"smallButtonDataTablesHeader linkRemoveMessage\" type_lang=2 name_group_words=' + group + ' href=\"#\" >' +
-                            '<img src=\"/static/images/' + iconFileName + '\" class=\"iconSmallButtonDataTablesHeader\">' +
-                            '</a>' + '&nbsp' + group + '</td></tr>'
-                        );
-
-                        last = group;
-                    }
-
-                    if (mapGroupWords[groupName] === true) {
-                        groupRows.removeClass('hide');
-                    } else {
-                        groupRows.addClass('hide');
+                        if (mapGroupWords[groupName] === true) {
+                            groupRows.removeClass('hide');
+                        } else {
+                            groupRows.addClass('hide');
+                        }
                     }
                 });
 
