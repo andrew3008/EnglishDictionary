@@ -20,7 +20,7 @@
                         <ul class="nav nav-tabs">
                             <!-- #for(headWord: headWords) -->
                             <li>
-                                <a id="tab-heardWord-${headWord}" href="#tab-pane-heardWord-${headWord}" data-toggle="tab">${headWord}</a>
+                                <a id="tab-headWord-${headWord}" href="#tab-pane-heardWord-${headWord}" data-toggle="tab">${headWord}</a>
                             </li>
                             <!-- #end-->
                         </ul>

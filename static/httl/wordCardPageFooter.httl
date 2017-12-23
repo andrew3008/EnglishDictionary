@@ -15,7 +15,7 @@
     <!-- #if(headWords.size() > 1) -->
     <script type="text/javascript">
         $(function() {
-            document.getElementById("tab-heardWord-${headWords.get(0)}").click();
+            document.getElementById("tab-headWord-${headWords.get(0)}").click();
         });
     </script>
     <!-- #end -->
