@@ -57,7 +57,7 @@ public class ParserSetsWords {
             if (Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
                 fullFileName = Config.getFileNameOfWordsFromExcel();
             } else {
-                fullFileName = Config.WORDS_FILES_FOLDER + "\\" + fileName + ".json";
+                fullFileName = Config.WORDS_FILES_DIR + "\\" + fileName + ".json";
             }
             inputStream = new FileInputStream(fullFileName);
         }

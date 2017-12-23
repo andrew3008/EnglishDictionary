@@ -26,7 +26,7 @@ $(function () {
                             return "";
                         } else {
                             return "<a class=\"btn btn-primary smallButtonDataTables\" style=\"margin-left: 8px;\" word_of_card=\"" + word + "\" >" +
-                                "<img src=\"/static/images/word-card.png\" class=\"iconSmallButtonDataTables\">" +
+                                "<img src=\"/static/images/wordCard/word-card.png\" class=\"iconSmallButtonDataTables\">" +
                                 "</a>";
                         }
                     }

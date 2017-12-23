@@ -6,7 +6,7 @@ package com.englishDictionary.config;
 public class ConfigHome implements ConfigLocation {
 
     private static final String ROOT_DIR = "D:\\EnglishDictionary_Resources";
-    private static final String WORDS_FILES_FOLDER = "C:\\EnglishVocabulary\\VocabularyFiles\\";
+    private static final String WORDS_FILES_DIR = "C:\\EnglishVocabulary\\VocabularyFiles\\";
     private static final String FILE_NAME_OF_WORDS_FROM_EXCEL = "F:\\WordsFromExcel.json";
 
     public String getRootDir() {
@@ -14,7 +14,7 @@ public class ConfigHome implements ConfigLocation {
     }
 
     public String getWordsFilesFolder() {
-        return WORDS_FILES_FOLDER;
+        return WORDS_FILES_DIR;
     }
 
     public String getFileNameOfWordsFromExcel() {

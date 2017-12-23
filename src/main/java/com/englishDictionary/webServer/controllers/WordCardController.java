@@ -44,7 +44,7 @@ public class WordCardController {
             dictFileNames.add("Lingvo Universal.dat");
 
             for (String fileName : dictFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DICTIONARIES_FOLDER + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
                 enRuDictionaries.add(dictionary);
             }
 
@@ -137,7 +137,7 @@ public class WordCardController {
             slangDictionaryFileNames.add("LDOCE6.dat");
 
             for (String fileName : slangDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DICTIONARIES_FOLDER + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
                 slangDictionaries.add(dictionary);
             }
 
@@ -238,7 +238,7 @@ public class WordCardController {
             slangDictionaryFileNames.add("ADLA2.dat");
 
             for (String fileName : slangDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DICTIONARIES_FOLDER + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
                 adla2Dictionaries.add(dictionary);
             }
 
@@ -329,7 +329,7 @@ public class WordCardController {
             collocationDictionaryFileNames.add("OALD 9.dat");
 
             for (String fileName : collocationDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DICTIONARIES_FOLDER + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
                 OALD9Dictionaries.add(dictionary);
             }
 
@@ -429,7 +429,7 @@ public class WordCardController {
             collocationDictionaryFileNames.add("LDOCE5_Extras.dat");
 
             for (String fileName : collocationDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DICTIONARIES_FOLDER + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
                 collocationDictionaries.add(dictionary);
             }
 
@@ -520,7 +520,7 @@ public class WordCardController {
             thesaurusDictionaryFileNames.put("eng_eng_errors_di_1_0.dat", DictionaryType.DSL);
 
             for (Map.Entry<String, DictionaryType> fileEntry : thesaurusDictionaryFileNames.entrySet()) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DICTIONARIES_FOLDER + fileEntry.getKey());
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileEntry.getKey());
                 thesaurusDictionaries.put(dictionary, fileEntry.getValue());
             }
 

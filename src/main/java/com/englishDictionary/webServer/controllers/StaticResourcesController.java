@@ -28,7 +28,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-
 //https://www.sitepoint.com/web-foundations/mime-types-complete-list/
 //https://netty.io/4.0/xref/io/netty/example/http/file/HttpStaticFileServerHandler.html
 
@@ -37,8 +36,8 @@ public class StaticResourcesController {
 
     public static final String HTTP_DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss zzz";
     public static final String HTTP_DATE_GMT_TIMEZONE = "GMT";
-//    public static final int HTTP_CACHE_SECONDS = 1; // 1 sec
-    public static final int HTTP_CACHE_SECONDS = 31536000; // 1 year
+    public static final int HTTP_CACHE_SECONDS = 1; // 1 sec
+//    public static final int HTTP_CACHE_SECONDS = 31536000; // 1 year
 
     private static final int BUFFER_SIZE = 4096;
     private static final Map<String, String> mimeTypes = new HashMap<String, String>() {
@@ -54,17 +53,23 @@ public class StaticResourcesController {
     public void getStaticResource(HttpServletRequest request, HttpServletResponse response) throws IOException, ParseException {
         String contextPath = request.getContextPath();
         String realpath;
-        if (contextPath.startsWith("/mnemonics/images/")) {
-            realpath = Config.MNEMONICS_IMAGES_FOLDER + contextPath.substring("/mnemonics/images/".length(), contextPath.length());
+        if (contextPath.startsWith("/static/images/mnemonics/mnemonics.png")) {
+            realpath = Config.MNEMONICS_DIR + "mnemonics.png";
+        } else if (contextPath.startsWith("/mnemonics/images/")) {
+            realpath = Config.MNEMONICS_IMAGES_DIR + contextPath.substring("/mnemonics/images/".length(), contextPath.length());
+        } else if (contextPath.startsWith("/static/images/flags/")) {
+            realpath = Config.MNEMONICS_FLAGS_DIR + contextPath.substring("/static/images/flags/".length(), contextPath.length());
+        } else if (contextPath.startsWith("/static/images/forvo.png")) {
+            realpath = Config.FORVO_DIR + "forvo.png";
         } else if (contextPath.startsWith("/OALD9/images/")) {
-            realpath = Config.OALD9_IMAGES_FOLDER + contextPath.substring("/OALD9/images/".length(), contextPath.length());
+            realpath = Config.OALD9_IMAGES_DIR + contextPath.substring("/OALD9/images/".length(), contextPath.length());
         } else if (contextPath.startsWith("/LDOCE6/images/")) {
-            realpath = Config.LDOCE6_IMAGES_FOLDER + contextPath.substring("/LDOCE6/images/".length(), contextPath.length());
-        } else if (contextPath.startsWith("/comments/images/")) {
-            realpath = Config.WORDS_FILES_FOLDER + contextPath.substring("/comments/images/".length(), contextPath.length());
-        }
-
-        else {
+            realpath = Config.LDOCE6_IMAGES_DIR + contextPath.substring("/LDOCE6/images/".length(), contextPath.length());
+        } else if (contextPath.startsWith("/static/images/wordCard/")) {
+            realpath = Config.WORD_CARDS_IMAGES_DIR + contextPath.substring("/static/images/wordCard/".length(), contextPath.length());
+        } else if (contextPath.startsWith("/static/images/")) {
+            realpath = Config.COMMON_IMAGES_DIR + contextPath.substring("/static/images/".length(), contextPath.length());
+        } else {
             realpath = System.getProperty("user.dir") + contextPath;
         }
         File file = new File(realpath);
@@ -162,6 +167,7 @@ public class StaticResourcesController {
         try {
             return filePath.substring(filePath.lastIndexOf(".") + 1);
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }

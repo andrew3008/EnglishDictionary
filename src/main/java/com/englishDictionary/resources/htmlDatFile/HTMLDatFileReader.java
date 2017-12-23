@@ -191,7 +191,7 @@ class HTMLDatFileReader {
             String dictionaryName = ResourceUtils.getFileNameWithoutExtnFromPath(fileName);
             Directory dir = null;
             try {
-                dir = FSDirectory.open(Paths.get(Config.DICTIONARIES_FOLDER + dictionaryName + "_Lucene_Index"));
+                dir = FSDirectory.open(Paths.get(Config.DIGITAL_DICTIONARIES_DIR + dictionaryName + "_Lucene_Index"));
             } catch (IOException e) {
                 e.printStackTrace();
             }
