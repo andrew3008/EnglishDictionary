@@ -20,9 +20,9 @@ public class Config  {
     public static final String DICTIONARIES_DIR = RESOURCES_ROOT_DIR + "\\Dictionaries\\";
     public static final String DIGITAL_DICTIONARIES_DIR = DICTIONARIES_DIR + "DigitalDictionaries\\";
 
-    public static final String LINGVO_DIR = DICTIONARIES_DIR + "\\Lingvo\\";
-    public static final String LINGVO_SOUND_DAT_FILE = LINGVO_DIR + "Sounds\\SoundEn.dat";
-    public static final String LINGVO_SOUND_IND_FILE = LINGVO_DIR + "Sounds\\SoundEn.ind";
+    public static final String LINGVO_UNIVERSAL_DIR = DICTIONARIES_DIR + "\\LingvoUniversal\\";
+    public static final String LINGVO_UNIVERSAL_SOUND_DAT_FILE = LINGVO_UNIVERSAL_DIR + "Sounds\\SoundEn.dat";
+    public static final String LINGVO_UNIVERSAL_SOUND_IND_FILE = LINGVO_UNIVERSAL_DIR + "Sounds\\SoundEn.ind";
 
     public static final String MED2_DIR = DICTIONARIES_DIR + "MED2\\";
     public static final String MED2_WORD_CARD_HEADERS_FILE = MED2_DIR + "WordCardHeaders\\WordCardHeaders.dat";
