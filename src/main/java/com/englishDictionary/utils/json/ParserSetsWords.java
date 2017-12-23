@@ -1,7 +1,7 @@
 package com.englishDictionary.utils.json;
 
 import com.englishDictionary.config.Config;
-import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
+import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.utils.csv.CSVParser;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServer.HttpServletResponse;

@@ -1,4 +1,4 @@
-package com.englishDictionary.resources.htmlDatFile;
+package com.englishDictionary.resourceReaders.htmlDatFile;
 
 /**
  * Created by Andrew on 7/10/2017.

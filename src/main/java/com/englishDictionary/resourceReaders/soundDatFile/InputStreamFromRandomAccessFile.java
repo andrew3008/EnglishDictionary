@@ -1,4 +1,4 @@
-package com.englishDictionary.resources.soundDatFile;
+package com.englishDictionary.resourceReaders.soundDatFile;
 
 import java.io.IOException;
 import java.io.InputStream;

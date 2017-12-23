@@ -1,4 +1,4 @@
-package com.englishDictionary.resources.soundDatFile;
+package com.englishDictionary.resourceReaders.soundDatFile;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;

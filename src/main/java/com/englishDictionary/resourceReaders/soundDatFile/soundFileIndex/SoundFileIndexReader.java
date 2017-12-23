@@ -1,4 +1,4 @@
-package com.englishDictionary.resources.soundDatFile.soundFileIndex;
+package com.englishDictionary.resourceReaders.soundDatFile.soundFileIndex;
 
 import java.io.File;
 import java.io.FileInputStream;

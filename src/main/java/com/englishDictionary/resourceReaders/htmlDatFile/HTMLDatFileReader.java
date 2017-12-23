@@ -1,4 +1,4 @@
-package com.englishDictionary.resources.htmlDatFile;
+package com.englishDictionary.resourceReaders.htmlDatFile;
 
 import com.englishDictionary.config.Config;
 import com.englishDictionary.utils.LRUCache;

@@ -1,4 +1,4 @@
-package com.englishDictionary.resources.soundDatFile.soundFileIndex;
+package com.englishDictionary.resourceReaders.soundDatFile.soundFileIndex;
 
 /**
  * Created by Andrew on 7/10/2017.

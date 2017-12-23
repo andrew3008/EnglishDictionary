@@ -1,6 +1,6 @@
-package com.englishDictionary.resources.soundDatFile;
+package com.englishDictionary.resourceReaders.soundDatFile;
 
-import com.englishDictionary.resources.soundDatFile.soundFileIndex.SoundFileIndexReader;
+import com.englishDictionary.resourceReaders.soundDatFile.soundFileIndex.SoundFileIndexReader;
 import com.englishDictionary.utils.LRUCache;
 
 import java.io.IOException;

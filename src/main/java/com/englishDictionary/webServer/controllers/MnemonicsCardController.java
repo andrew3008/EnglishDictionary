@@ -2,7 +2,7 @@ package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
 import com.englishDictionary.utils.httl.HttlEngineKeeper;
-import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
+import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.HttpServletRequest;

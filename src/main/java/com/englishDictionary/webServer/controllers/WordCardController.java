@@ -1,10 +1,10 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
-import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
-import com.englishDictionary.resources.soundDatFile.InputStreamFromRandomAccessFile;
-import com.englishDictionary.resources.soundDatFile.MP3Player;
-import com.englishDictionary.resources.soundDatFile.SoundDatFileReader;
+import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
+import com.englishDictionary.resourceReaders.soundDatFile.InputStreamFromRandomAccessFile;
+import com.englishDictionary.resourceReaders.soundDatFile.MP3Player;
+import com.englishDictionary.resourceReaders.soundDatFile.SoundDatFileReader;
 import com.englishDictionary.utils.SplitterPhraseToWords;
 import com.englishDictionary.utils.httl.HttlEngineKeeper;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
