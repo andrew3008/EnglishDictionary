@@ -311,9 +311,7 @@ function initEventHandlersTableWords() {
     $('.iconSmallButtonDataTablesHeader').click(function () {
         var groupName = $(this).parent().parent().text().toString().trim();
         mapGroupWords[groupName] = (mapGroupWords[groupName] === true) ? false : true;
-
         tableWords.draw();
-        initEventHandlersTableWords();
     });
 
     $('#tableWords tbody a[word_of_card]').on('click', function () {
