@@ -5,7 +5,7 @@ import com.englishDictionary.resources.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.utils.csv.CSVParser;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServer.HttpServletResponse;
-import com.englishDictionary.webServices.excel.BufferListOfWordsFromExcel;
+import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 

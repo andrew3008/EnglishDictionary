@@ -6,7 +6,7 @@ import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.annotations.RequestMethod;
 import com.englishDictionary.webServer.utils.SEDHttpClient;
-import com.englishDictionary.webServices.excel.BufferListOfWordsFromExcel;
+import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;

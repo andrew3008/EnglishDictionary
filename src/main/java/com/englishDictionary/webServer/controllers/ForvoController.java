@@ -1,8 +1,8 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
-import com.englishDictionary.webServices.forvo.Forvo;
-import com.englishDictionary.webServices.forvo.ForvoCard;
+import com.englishDictionary.servicesThirdParty.forvo.Forvo;
+import com.englishDictionary.servicesThirdParty.forvo.ForvoCard;
 import com.englishDictionary.utils.httl.HttlEngineKeeper;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;

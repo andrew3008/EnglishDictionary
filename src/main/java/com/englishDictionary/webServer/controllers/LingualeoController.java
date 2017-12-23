@@ -4,8 +4,8 @@ import com.englishDictionary.utils.json.ParserSetsWords;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.HttpServletRequest;
-import com.englishDictionary.webServices.lingualeo.LinguaLeoClient;
-import com.englishDictionary.webServices.lingualeo.LinguaLeoWordInfo;
+import com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoClient;
+import com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoWordInfo;
 
 import java.util.ArrayList;
 import java.util.List;

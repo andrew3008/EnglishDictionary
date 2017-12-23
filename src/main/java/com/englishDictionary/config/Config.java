@@ -11,8 +11,6 @@ public class Config  {
 
     public static final int WEB_SERVER_PORT = 8080;
 
-    public static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
-
     public static final String RESOURCES_ROOT_DIR = configLocation.getRootDir();
 
     public static final String COMMON_IMAGES_DIR = RESOURCES_ROOT_DIR + "\\CommonImages\\";
@@ -22,8 +20,9 @@ public class Config  {
     public static final String DICTIONARIES_DIR = RESOURCES_ROOT_DIR + "\\Dictionaries\\";
     public static final String DIGITAL_DICTIONARIES_DIR = DICTIONARIES_DIR + "DigitalDictionaries\\";
 
-    //public static final String LINGVO_SOUND_EN_DIR = RESOURCES_ROOT_DIR + "\\Lingvo\\Sounds\\";
-    //public static final String LINGVO_SOUND_FILE = LINGVO_SOUND_EN_DIR + "SoundEn.dat";
+    public static final String LINGVO_DIR = DICTIONARIES_DIR + "\\Lingvo\\";
+    public static final String LINGVO_SOUND_DAT_FILE = LINGVO_DIR + "Sounds\\SoundEn.dat";
+    public static final String LINGVO_SOUND_IND_FILE = LINGVO_DIR + "Sounds\\SoundEn.ind";
 
     public static final String MED2_DIR = DICTIONARIES_DIR + "MED2\\";
     public static final String MED2_WORD_CARD_HEADERS_FILE = MED2_DIR + "WordCardHeaders\\WordCardHeaders.dat";
@@ -47,6 +46,7 @@ public class Config  {
     public static final String MNEMONICS_FILE = MNEMONICS_DIR + "Mnemonics.dat";
 
     public static final String FORVO_DIR = RESOURCES_ROOT_DIR + "\\WebServices\\Forvo\\";
+    public static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
 
     public static final String WORDS_FILES_DIR = configLocation.getWordsFilesFolder();
     public static final String WORDS_FILES_CONTENT_FILE = WORDS_FILES_DIR + "_content.json";

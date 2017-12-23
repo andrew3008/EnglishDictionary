@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.lingualeo;
+package com.englishDictionary.servicesThirdParty.lingualeo;
 
 import java.util.List;
 

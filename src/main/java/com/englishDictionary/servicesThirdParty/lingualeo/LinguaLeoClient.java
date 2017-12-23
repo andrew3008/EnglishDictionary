@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.lingualeo;
+package com.englishDictionary.servicesThirdParty.lingualeo;
 
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -11,15 +11,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.DELETE_WORDS_FROM_DICTIONARY;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.EMAIL;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.EXPORT_WORDS_URL;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.EXPORT_WORD_URL;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.GET_DICTIONARIES;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.GET_WORDS_FROM_DICTIONARY;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.IMPORT_URL;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.LOGIN_URL;
-import static com.englishDictionary.webServices.lingualeo.LinguaLeoConfig.PASSWORD;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.DELETE_WORDS_FROM_DICTIONARY;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.EMAIL;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.EXPORT_WORDS_URL;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.EXPORT_WORD_URL;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.GET_DICTIONARIES;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.GET_WORDS_FROM_DICTIONARY;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.IMPORT_URL;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.LOGIN_URL;
+import static com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoConfig.PASSWORD;
 
 /**
  * Created by Andrew on 8/20/2016.

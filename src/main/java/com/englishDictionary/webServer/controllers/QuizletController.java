@@ -1,8 +1,8 @@
 package com.englishDictionary.webServer.controllers;
-import com.englishDictionary.webServices.quizlet.QuizletAuthenticationURL;
+import com.englishDictionary.servicesThirdParty.quizlet.QuizletAuthenticationURL;
 import com.englishDictionary.utils.json.JsonHelper;
-import com.englishDictionary.webServices.quizlet.Auth2Client;
-import com.englishDictionary.webServices.quizlet.SetsControl;
+import com.englishDictionary.servicesThirdParty.quizlet.Auth2Client;
+import com.englishDictionary.servicesThirdParty.quizlet.SetsControl;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.HttpServletRequest;

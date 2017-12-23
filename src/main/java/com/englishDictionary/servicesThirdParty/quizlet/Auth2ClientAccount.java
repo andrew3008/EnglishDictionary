@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.quizlet;
+package com.englishDictionary.servicesThirdParty.quizlet;
 
 class Auth2ClientAccount {
     static String CLIENT_ID = "nUuXffHUWb";

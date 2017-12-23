@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.forvo;
+package com.englishDictionary.servicesThirdParty.forvo;
 
 import java.util.HashMap;
 import java.util.Map;

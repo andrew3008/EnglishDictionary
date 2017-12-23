@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.excel;
+package com.englishDictionary.servicesThirdParty.excel;
 
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import io.netty.buffer.ByteBuf;

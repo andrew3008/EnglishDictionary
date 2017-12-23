@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.lingualeo;
+package com.englishDictionary.servicesThirdParty.lingualeo;
 
 import com.englishDictionary.webServer.utils.SEDHttpClient;
 import org.apache.http.cookie.Cookie;

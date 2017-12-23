@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.lingualeo;
+package com.englishDictionary.servicesThirdParty.lingualeo;
 
 /**
  * Created by Andrew on 9/20/2016.

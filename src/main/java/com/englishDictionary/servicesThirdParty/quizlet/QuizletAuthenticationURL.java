@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.quizlet;
+package com.englishDictionary.servicesThirdParty.quizlet;
 
 public class QuizletAuthenticationURL {
     private String authenticationURL;

@@ -1,3 +1,11 @@
+function playSound(fileName) {
+    $.get('/wordCard/playLingvoSoundFile.html?fileName=' + fileName)
+        .error(function (err) {
+            alert("Произошла серверная ошибка при озвучивании слова:\\n" + err.toString());
+        });
+    return false;
+}
+
 function playOALD9SoundFile(fileName) {
     $.get('/wordCard/playOALD9SoundFile.html?fileName=' + fileName)
         .error(function (err) {

@@ -611,7 +611,6 @@ function registerHotKeys() {
     })();
 
     npup.listen(npup.key.VK_Z, function (event) {
-        console.log('ctrl-Z');
         needToShowKeyWords = true;
         if (redrawRightWordCard != null) {
             redrawRightWordCard();
@@ -619,7 +618,6 @@ function registerHotKeys() {
     }, {ctrl: true});
 
     npup.listen(npup.key.VK_X, function (event) {
-        console.log('ctrl-X');
         needToShowKeyWords = false;
         if (redrawRightWordCard != null) {
             redrawRightWordCard();

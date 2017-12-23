@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.forvo;
+package com.englishDictionary.servicesThirdParty.forvo;
 
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;

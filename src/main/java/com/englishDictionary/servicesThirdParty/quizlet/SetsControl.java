@@ -1,4 +1,4 @@
-package com.englishDictionary.webServices.quizlet;
+package com.englishDictionary.servicesThirdParty.quizlet;
 
 import com.englishDictionary.config.Config;
 import org.apache.http.HttpEntity;

@@ -604,6 +604,22 @@ public class WordCardController {
 
     // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+    @RequestMapping(url = "playLingvoSoundFile.html")
+    public void playLingvoSoundFile(HttpServletRequest request) {
+        /*try {
+            if (oald9SoundEn == null) {
+                oald9SoundEn = new SoundDatFileReader(Config.OALD9_SOUND_IND_FILE, Config.OALD9_SOUND_DAT_FILE);
+                oald9SoundEnStream = new InputStreamFromRandomAccessFile(oald9SoundEn);
+            }
+
+            if (oald9SoundEn.seekToFile(request.getParameter("fileName"))) {
+                MP3Player.play(oald9SoundEnStream);
+            }
+        } catch (IOException | URISyntaxException ex) {
+            ex.printStackTrace();
+        }*/
+    }
+
     @RequestMapping(url = "playOALD9SoundFile.html")
     public void playOALD9SoundFile(HttpServletRequest request) {
         try {

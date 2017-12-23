@@ -15,7 +15,7 @@ public class HttlEngineKeeper {
     static
     {
         Properties httlProperties = new Properties();
-        httlProperties.put("import.packages", "com.englishDictionary.webServices.forvo, java.util, java.lang");
+        httlProperties.put("import.packages", "com.englishDictionary.servicesThirdParty.forvo, java.util, java.lang");
         httlProperties.put("template.directory", System.getProperty("user.dir") + "/static/httl/");
         httlProperties.put("template.suffix", ".httl");
         httlProperties.put("input.encoding", "UTF-8");
