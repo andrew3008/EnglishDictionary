@@ -23,7 +23,7 @@
         <jdkVersion>1.8</jdkVersion>
         <need.optimize.code>true</need.optimize.code>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <lucene.version>7.2.0</lucene.version>
+        <lucene.version>6.6.0</lucene.version>
     </properties>
 
     <repositories>
