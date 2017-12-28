@@ -32,6 +32,7 @@ import io.netty.util.CharsetUtil;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
@@ -52,18 +53,14 @@ public class WebServer {
     }
 
     public void start() throws Exception {
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        EventLoopGroup group = new NioEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
-            b.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer());
+            b.group(group).channel(NioServerSocketChannel.class).childHandler(new ServerInitializer());
             Channel ch = b.bind(Config.WEB_SERVER_PORT).sync().channel();
             ch.closeFuture().sync();
         } finally {
-            bossGroup.shutdownGracefully();
-            workerGroup.shutdownGracefully();
+            group.shutdownGracefully();
         }
     }
 
@@ -77,10 +74,31 @@ public class WebServer {
         }
     }
 
+    private static class ServletResponsePoolFactory {
+        static final ServletResponsePoolFactory INSTANCE = new ServletResponsePoolFactory();
+        Map<HttpServletResponse, Boolean> httpServletResponsePool = new HashMap<HttpServletResponse, Boolean>();
+
+        HttpServletResponse getHttpServletResponse() {
+            for (Map.Entry<HttpServletResponse, Boolean> entry : httpServletResponsePool.entrySet()) {
+                if (Boolean.TRUE.equals(entry.getValue())) {
+                    httpServletResponsePool.put(entry.getKey(), Boolean.FALSE);
+                    return entry.getKey();
+                }
+            }
+            HttpServletResponse responseServlet = new HttpServletResponse();
+            httpServletResponsePool.put(responseServlet, Boolean.TRUE);
+            return responseServlet;
+        }
+
+        void freeHttpServletResponse(HttpServletResponse response) {
+            httpServletResponsePool.put(response, Boolean.TRUE);
+        }
+    }
+
     class ServerRequestHandler extends SimpleChannelInboundHandler<Object> {
         private FullHttpRequest request;
         private HttpServletRequest requestServlet = new HttpServletRequest();
-        private HttpServletResponse responseServlet = new HttpServletResponse();
+        private HttpServletResponse responseServlet = ServletResponsePoolFactory.INSTANCE.getHttpServletResponse();
 
         private final static String DEFAULT_CONTENT_TYPE = "text/html; charset=UTF-8";
         private final Set<HttpMethod> SUPPORTED_HTTP_METHODS = new HashSet<>(Arrays.asList(HttpMethod.GET, HttpMethod.POST));
@@ -162,12 +180,14 @@ public class WebServer {
                 // External redirect
                 String externalRedirectURL = responseServlet.getExternalRedirectURL();
                 if (externalRedirectURL != null) {
+                    ServletResponsePoolFactory.INSTANCE.freeHttpServletResponse(responseServlet);
                     sendExternalRedirect(ctx, externalRedirectURL);
                     return;
                 }
 
                 // Send error of requestHandler
                 if (responseServlet.getErrorMessage() != null) {
+                    ServletResponsePoolFactory.INSTANCE.freeHttpServletResponse(responseServlet);
                     sendError(ctx, responseServlet.getStatus(), responseServlet.getErrorMessage());
                     return;
                 }
@@ -197,6 +217,7 @@ public class WebServer {
                 // Decide whether to close the connection or not.
                 if (!isKeepAlive) {
                     // Close the connection when the whole content is written out.
+                    ServletResponsePoolFactory.INSTANCE.freeHttpServletResponse(responseServlet);
                     lastContentFuture.addListener(ChannelFutureListener.CLOSE);
                 }
             }

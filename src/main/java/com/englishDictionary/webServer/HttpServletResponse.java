@@ -2,16 +2,18 @@ package com.englishDictionary.webServer;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
 
+import java.util.UUID;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Created by Andrew on 9/3/2016.
  */
-public class HttpServletResponse {
+public class HttpServletResponse implements Comparable<HttpServletResponse> {
 
     private static int INIT_RESPONSE_OUTPUT_STREAM_SIZE = 8388608; // 8 MB
 
+    private String id;
     private ByteArrayOutputStream outputStream;
     private String contentType;
     private int presetContentLength;
@@ -23,9 +25,18 @@ public class HttpServletResponse {
     private boolean forceClosed;
 
     public HttpServletResponse() {
+        id = UUID.randomUUID().toString();
         headers = new HashMap<>();
         presetContentLength = -1;
         outputStream = new ByteArrayOutputStream(INIT_RESPONSE_OUTPUT_STREAM_SIZE);
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public ByteArrayOutputStream getOutputStream() {
@@ -95,4 +106,10 @@ public class HttpServletResponse {
     public void setForceClosed(boolean forceClosed) {
         this.forceClosed = forceClosed;
     }
+
+    @Override
+    public int compareTo(HttpServletResponse anotherResponse) {
+        return id.compareTo(anotherResponse.getId());
+    }
+
 }
