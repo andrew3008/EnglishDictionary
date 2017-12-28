@@ -3,12 +3,12 @@
 IS_WORK_STATION=FALSE
 NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER=TRUE
 FILE_PATH_WORDS_FROM_EXCEL=F:\WordsFromExcel.json
-JAVA8_HOME=F:\Java\JavaFrameworks\jdk1.8.0_131
+SED_JAVA_HOME=F:\Java\JavaFrameworks\jdk1.8.0_131
 // Work computer
 IS_WORK_STATION=TRUE
 NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER=TRUE
 FILE_PATH_WORDS_FROM_EXCEL=E:\tmp\WordsFromExcel.json
-JAVA8_HOME=E:\JavaFrameworks\jdk_1.8.131
+SED_JAVA_HOME=E:\JavaFrameworks\jdk_1.8.131
 
 // Excel
 http://www.excel-vba.ru/forum/index.php
