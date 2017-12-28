@@ -2,6 +2,7 @@ package com.englishDictionary.utils.httl;
 
 import httl.Engine;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 //http://httl.github.io/en/config.html
@@ -18,8 +19,8 @@ public class HttlEngineKeeper {
         httlProperties.put("import.packages", "com.englishDictionary.servicesThirdParty.forvo, java.util, java.lang");
         httlProperties.put("template.directory", System.getProperty("user.dir") + "/static/httl/");
         httlProperties.put("template.suffix", ".httl");
-        httlProperties.put("input.encoding", "UTF-8");
-        httlProperties.put("output.encoding", "UTF-8");
+        httlProperties.put("input.encoding", StandardCharsets.UTF_8.name());
+        httlProperties.put("output.encoding", StandardCharsets.UTF_8.name());
         httlProperties.put("precompiled", "true");
         httlProperties.put("cache", "httl.spi.caches.AdaptiveCache");
         httlProperties.put("cache_capacity", "1024");

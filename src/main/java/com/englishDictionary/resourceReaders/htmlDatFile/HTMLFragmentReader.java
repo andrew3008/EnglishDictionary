@@ -5,6 +5,7 @@ import com.englishDictionary.utils.SplitterPhraseToWords;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class HTMLFragmentReader {
@@ -57,7 +58,7 @@ public class HTMLFragmentReader {
                     }
                 }
                 try {
-                    outputStream.write(html.getBytes("UTF-8"));
+                    outputStream.write(html.getBytes(StandardCharsets.UTF_8.name()));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

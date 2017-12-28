@@ -1,12 +1,12 @@
 package com.englishDictionary.webServer.controllers;
 
+import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.annotations.RequestMethod;
 import com.englishDictionary.webServer.utils.SEDHttpClient;
-import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -17,6 +17,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -114,7 +115,7 @@ public class ExcelController {
 
             String inputLine;
             String translateResponce = "";
-            BufferedReader in = new BufferedReader(new InputStreamReader(uc.getInputStream(), "UTF-8"));
+            BufferedReader in = new BufferedReader(new InputStreamReader(uc.getInputStream(), StandardCharsets.UTF_8.name()));
             while ((inputLine = in.readLine()) != null) {
                 translateResponce += inputLine;
             }

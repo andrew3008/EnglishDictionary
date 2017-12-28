@@ -14,6 +14,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +83,7 @@ public class SEDHttpClient {
             entityParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
         }
         try {
-            post.setEntity(new UrlEncodedFormEntity(entityParams, "UTF-8"));
+            post.setEntity(new UrlEncodedFormEntity(entityParams, StandardCharsets.UTF_8.name()));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return null;

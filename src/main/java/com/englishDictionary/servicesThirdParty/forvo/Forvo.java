@@ -23,6 +23,7 @@ import org.jsoup.nodes.Node;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -153,7 +154,7 @@ public class Forvo {
             params.add(new BasicNameValuePair("rate", ""));
             params.add(new BasicNameValuePair("order", "rate-desc"));
             params.add(new BasicNameValuePair("limit", ""));
-            post.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+            post.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8.name()));
 
             response = client.execute(post);
             response = client.execute(post);
@@ -273,7 +274,7 @@ public class Forvo {
                                 forvoResponce.setUser(fieldValue);
                                 String userNamePercent = "";
                                 try {
-                                    userNamePercent = URLDecoder.decode(forvoResponce.getUser(), "UTF-8");
+                                    userNamePercent = URLDecoder.decode(forvoResponce.getUser(), StandardCharsets.UTF_8.name());
                                 } catch (UnsupportedEncodingException e) {
                                     e.printStackTrace();
                                 }

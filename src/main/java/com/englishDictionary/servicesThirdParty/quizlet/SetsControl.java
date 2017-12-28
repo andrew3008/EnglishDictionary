@@ -21,6 +21,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -149,7 +150,7 @@ public class SetsControl {
             params.add(new BasicNameValuePair("lang_terms", "en"));
             params.add(new BasicNameValuePair("lang_definitions", "ru"));
             readTermsFromFileListWord(fileName, params);
-            post.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+            post.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8.name()));
 
             response = client.execute(post);
             code = response.getStatusLine().getStatusCode();

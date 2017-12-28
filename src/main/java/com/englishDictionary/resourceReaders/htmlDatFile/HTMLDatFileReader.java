@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -106,7 +107,7 @@ class HTMLDatFileReader {
                 bufferIO = new byte[indexNode.htmlSize];
             }
             inStream.read(bufferIO, 0, indexNode.htmlSize);
-            html = new String(bufferIO, 0, indexNode.htmlSize, "UTF-8");
+            html = new String(bufferIO, 0, indexNode.htmlSize, StandardCharsets.UTF_8.name());
         } catch (IOException e) {
             e.printStackTrace();
         }

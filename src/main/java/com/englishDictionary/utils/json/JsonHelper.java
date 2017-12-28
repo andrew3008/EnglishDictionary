@@ -4,6 +4,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Created by Андрей on 04.03.15.
@@ -13,7 +14,7 @@ public class JsonHelper {
         ObjectMapper mapper = new ObjectMapper();
         ByteArrayOutputStream buffOS = new ByteArrayOutputStream();
         mapper.writeValue(buffOS, obj);
-        return buffOS.toString("UTF-8");
+        return buffOS.toString(StandardCharsets.UTF_8.name());
     }
 
     public static final class Data {

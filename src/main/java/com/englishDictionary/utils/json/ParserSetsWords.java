@@ -2,10 +2,10 @@ package com.englishDictionary.utils.json;
 
 import com.englishDictionary.config.Config;
 import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
+import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import com.englishDictionary.utils.csv.CSVParser;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServer.HttpServletResponse;
-import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -61,7 +62,7 @@ public class ParserSetsWords {
             }
             inputStream = new FileInputStream(fullFileName);
         }
-        return new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+        return new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8.name()));
     }
 
     static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
