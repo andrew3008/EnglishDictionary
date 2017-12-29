@@ -23,9 +23,8 @@ cmd /k %SED_JAVA_HOME%/bin/java -server -d64 ^
 								-Djava.rmi.server.randomIDs=true ^
 								-Dsun.boot.class.path=%SED_JAVA_HOME%\jre\lib\resources.jar;%SED_JAVA_HOME%\jre\lib\rt.jar;%SED_JAVA_HOME%\jre\lib\sunrsasign.jar;%SED_JAVA_HOME%\jre\lib\jsse.jar;%SED_JAVA_HOME%\jre\lib\jce.jar;%SED_JAVA_HOME%\jre\lib\charsets.jar;%SED_JAVA_HOME%\jre\lib\jfr.jar;%SED_JAVA_HOME%\jre\classes ^
 								-Dsun.boot.library.path=%SED_JAVA_HOME%\jre\bin ^
-								-Djdt.compiler.useSingleThread=true ^
-								-Dcompile.parallel=false ^
-								-Drebuild.on.dependency.change=true ^
+								-Dcompile.parallel=true ^
+								-Djdt.compiler.useSingleThread=false ^
 								-Dio.netty.initialSeedUniquifier=5983645092831540934 ^
 								-Djps.file.types.component.name=FileTypeManager ^
 								-Duser.language=en ^
