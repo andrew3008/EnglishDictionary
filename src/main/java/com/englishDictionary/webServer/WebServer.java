@@ -57,7 +57,7 @@ public class WebServer {
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(group).channel(NioServerSocketChannel.class).childHandler(new ServerInitializer());
-            Channel ch = b.bind(Config.WEB_SERVER_PORT).sync().channel();
+            Channel ch = b.bind(Config.WEB_SERVER_PORT).channel();
             ch.closeFuture().sync();
         } finally {
             group.shutdownGracefully();
