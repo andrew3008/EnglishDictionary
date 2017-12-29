@@ -10,7 +10,7 @@ SET PATH=%SED_JAVA_HOME%\bin;%PATH%
 
 cmd /k %SED_JAVA_HOME%/bin/java -server -d64 ^
 								-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 -Dsun.cpu.endian=little -Dsun.io.unicode.encoding=UnicodeLittle -Dfile.encoding.pkg=sun.io ^
-								-Xms1024m -Xmx2048m -XX:ReservedCodeCacheSize=512m -XX:+UseConcMarkSweepGC -XX:SoftRefLRUPolicyMSPerMB=50 -XX:-OmitStackTraceInFastThrow -Dio.netty.maxDirectMemory:3758096384 ^
+								-Xms512m -Xmx1024m -XX:ReservedCodeCacheSize=512m -XX:+UseConcMarkSweepGC -XX:SoftRefLRUPolicyMSPerMB=50 -XX:-OmitStackTraceInFastThrow -Dio.netty.maxDirectMemory:1073741824 ^
 								-Dsun.io.useCanonCaches=false -Djava.net.preferIPv4Stack=true ^
 								-Djava.awt.headless=true ^
 								-Dawt.toolkit=sun.awt.windows.WToolkit ^
