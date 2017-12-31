@@ -190,7 +190,6 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
             <version>4.1.19.Final</version>
-            <scope>compile</scope>
         </dependency>
 
         <!-- HTTL - template engine -->
@@ -232,30 +231,30 @@
         <!--</dependency>-->
     </dependencies>
 
-    <!--<profiles>-->
-        <!--<profile>-->
-            <!--<id>jarProduct</id>-->
-            <!--<activation>-->
-                <!--<activeByDefault>true</activeByDefault>-->
-            <!--</activation>-->
-        <!--</profile>-->
-        <!--<profile>-->
-            <!--<id>warProduct</id>-->
-            <!--<build>-->
-                <!--<finalName>test</finalName>-->
-                <!--<plugins>-->
-                    <!--<plugin>-->
-                        <!--<groupId>org.apache.maven.plugins</groupId>-->
-                        <!--<artifactId>maven-war-plugin</artifactId>-->
-                        <!--<version>3.2.0</version>-->
-                        <!--<configuration>-->
-                            <!--<outputDirectory>webapps</outputDirectory>-->
-                            <!--<warName>ROOT</warName>-->
-                        <!--</configuration>-->
-                    <!--</plugin>-->
-                <!--</plugins>-->
-            <!--</build>-->
-        <!--</profile>-->
-    <!--</profiles>-->
+    <profiles>
+        <profile>
+            <id>desktop</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>openshift</id>
+            <build>
+                <finalName>englishDictionary</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <configuration>
+                            <outputDirectory>webapps</outputDirectory>
+                            <warName>ROOT</warName>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
