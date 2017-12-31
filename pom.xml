@@ -164,9 +164,6 @@
                                     <mainClass>com.englishDictionary.webServer.WebServer</mainClass>
                                     <classpathPrefix>dependency-jars/</classpathPrefix>
                                 </manifest>
-                                <manifestEntries>
-                                    <Class-Path>dependency-jars/httl-1.0.12.jar</Class-Path>
-                                </manifestEntries>
                             </archive>
                         </configuration>
                     </plugin>
@@ -186,28 +183,6 @@
                                 <configuration>
                                     <includeScope>runtime</includeScope>
                                     <outputDirectory>${project.build.directory}/dependency-jars/</outputDirectory>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>com.github.httl</groupId>
-                                            <artifactId>httl</artifactId>
-                                            <version>1.0.12</version>
-                                            <type>jar</type>
-                                            <overWrite>false</overWrite>
-                                            <destFileName>httl-1.0.12.jar</destFileName>
-                                        </artifactItem>
-                                    </artifactItems>
-                                    <outputDirectory>${project.build.directory}/dependency-jars/</outputDirectory>
-                                    <overWriteReleases>false</overWriteReleases>
-                                    <overWriteSnapshots>true</overWriteSnapshots>
                                 </configuration>
                             </execution>
                         </executions>
@@ -258,28 +233,6 @@
                                 <configuration>
                                     <includeScope>runtime</includeScope>
                                     <outputDirectory>${project.build.directory}</outputDirectory>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>com.github.httl</groupId>
-                                            <artifactId>httl</artifactId>
-                                            <version>1.0.12</version>
-                                            <type>jar</type>
-                                            <overWrite>false</overWrite>
-                                            <destFileName>httl-1.0.12.jar</destFileName>
-                                        </artifactItem>
-                                    </artifactItems>
-                                    <outputDirectory>${project.build.directory}</outputDirectory>
-                                    <overWriteReleases>false</overWriteReleases>
-                                    <overWriteSnapshots>true</overWriteSnapshots>
                                 </configuration>
                             </execution>
                         </executions>
