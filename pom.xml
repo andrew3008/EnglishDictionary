@@ -92,6 +92,8 @@
                                     <artifactId>httl</artifactId>
                                     <version>1.0.12</version>
                                     <type>jar</type>
+									<scope>system</scope>
+									<systemPath>${project.basedir}/lib/httl-1.0.12.jar</systemPath>
                                     <overWrite>false</overWrite>
                                     <destFileName>httl-1.0.12.jar</destFileName>
                                 </artifactItem>
