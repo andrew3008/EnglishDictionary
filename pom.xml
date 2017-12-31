@@ -26,6 +26,13 @@
         <lucene.version>6.6.0</lucene.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>localRepository</id>
+            <url>file:///${project.basedir}/lib</url>
+        </repository>
+    </repositories>
+
     <build>
         <defaultGoal>package</defaultGoal>
         <finalName>englishDictionary</finalName>
@@ -65,7 +72,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.10</version>
+                <version>3.0.2</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -92,7 +99,6 @@
                                     <artifactId>httl</artifactId>
                                     <version>1.0.12</version>
                                     <type>jar</type>
-									<systemPath>${project.basedir}/lib/httl-1.0.12.jar</systemPath>
                                     <overWrite>false</overWrite>
                                     <destFileName>httl-1.0.12.jar</destFileName>
                                 </artifactItem>
@@ -129,9 +135,7 @@
                     </execution>
                 </executions>
             </plugin>
-
         </plugins>
-
     </build>
 
     <dependencies>
@@ -194,8 +198,6 @@
             <groupId>com.github.httl</groupId>
             <artifactId>httl</artifactId>
             <version>1.0.12</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/httl-1.0.12.jar</systemPath>
         </dependency>
 
         <!-- Ehcache -->
