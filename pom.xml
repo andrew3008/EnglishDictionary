@@ -26,13 +26,6 @@
         <lucene.version>6.6.0</lucene.version>
     </properties>
 
-    <repositories>
-        <repository>
-            <id>localRepository</id>
-            <url>file://${basedir}/lib</url>
-        </repository>
-    </repositories>
-
     <build>
         <defaultGoal>package</defaultGoal>
         <finalName>englishDictionary</finalName>
@@ -200,6 +193,8 @@
             <groupId>com.github.httl</groupId>
             <artifactId>httl</artifactId>
             <version>1.0.12</version>
+            <scope>system</scope>
+            <systemPath>${basedir}\lib\httl-1.0.12.jar</systemPath>
         </dependency>
 
         <!-- Ehcache -->
