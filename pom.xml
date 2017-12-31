@@ -199,7 +199,7 @@
             <artifactId>httl</artifactId>
             <version>1.0.12</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/com/github/httl/httl/1.0.12/httl-1.0.12.jar</systemPath>
+            <systemPath>${project.basedir}/lib/httl-1.0.12.jar</systemPath>
         </dependency>
 
         <!-- Ehcache -->
