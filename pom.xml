@@ -29,7 +29,7 @@
     <repositories>
         <repository>
             <id>localRepository</id>
-            <url>file:///${project.basedir}/lib</url>
+            <url>file:///${project.basedir}/src/lib</url>
         </repository>
     </repositories>
 
@@ -198,8 +198,6 @@
             <groupId>com.github.httl</groupId>
             <artifactId>httl</artifactId>
             <version>1.0.12</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/httl-1.0.12.jar</systemPath>
         </dependency>
 
         <!-- Ehcache -->
