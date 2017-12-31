@@ -194,7 +194,7 @@
             <artifactId>httl</artifactId>
             <version>1.0.12</version>
             <scope>system</scope>
-            <systemPath>${project.build.directory}/dependency-jars/httl-1.0.12.jar</systemPath>
+            <systemPath>${project.basedir}/lib/httl-1.0.12.jar</systemPath>
         </dependency>
 
         <!-- Ehcache -->
