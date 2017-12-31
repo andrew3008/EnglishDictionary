@@ -200,8 +200,6 @@
             <groupId>com.github.httl</groupId>
             <artifactId>httl</artifactId>
             <version>1.0.12</version>
-            <scope>system</scope>
-            <systemPath>${pom.basedir}/lib/httl-1.0.12.jar</systemPath>
         </dependency>
 
         <!-- Ehcache -->
