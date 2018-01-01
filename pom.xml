@@ -176,8 +176,8 @@
                             <archive>
                                 <manifest>
                                     <addClasspath>true</addClasspath>
-                                    <mainClass>com.englishDictionary.webServer.WebServer</mainClass>
                                     <classpathPrefix>dependency-jars/</classpathPrefix>
+                                    <mainClass>com.englishDictionary.webServer.WebServer</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
@@ -241,6 +241,8 @@
                         <configuration>
                             <archive>
                                 <manifest>
+                                    <addClasspath>true</addClasspath>
+                                    <classpathPrefix>deployments/</classpathPrefix>
                                     <mainClass>com.englishDictionary.webServer.WebServer</mainClass>
                                 </manifest>
                             </archive>
