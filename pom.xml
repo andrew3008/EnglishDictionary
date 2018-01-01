@@ -265,6 +265,17 @@
                                     <outputDirectory>${project.build.directory}</outputDirectory>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>copy-dependencies</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeScope>runtime</includeScope>
+                                    <outputDirectory>/</outputDirectory>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
