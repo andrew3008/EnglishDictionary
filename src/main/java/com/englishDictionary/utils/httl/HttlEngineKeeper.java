@@ -1,5 +1,7 @@
 package com.englishDictionary.utils.httl;
 
+import com.englishDictionary.config.Config;
+import com.englishDictionary.config.EnvironmentType;
 import httl.Engine;
 
 import java.nio.charset.StandardCharsets;
@@ -15,9 +17,11 @@ public class HttlEngineKeeper {
 
     static
     {
+        String userDir = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/" : System.getProperty("user.dir");
+
         Properties httlProperties = new Properties();
         httlProperties.put("import.packages", "com.englishDictionary.servicesThirdParty.forvo, java.util, java.lang");
-        httlProperties.put("template.directory", System.getProperty("user.dir") + "/static/httl/");
+        httlProperties.put("template.directory", userDir + "/static/httl/");
         httlProperties.put("template.suffix", ".httl");
         httlProperties.put("input.encoding", StandardCharsets.UTF_8.name());
         httlProperties.put("output.encoding", StandardCharsets.UTF_8.name());
@@ -38,8 +42,8 @@ public class HttlEngineKeeper {
         httlProperties.put("compile.version", "1.8");
         httlProperties.put("source.in.class", "true");
         httlProperties.put("text.in.class", "true");
-        httlProperties.put("code.directory", System.getProperty("user.dir") + "/target/generated-sources/");
-        httlProperties.put("compile.directory", System.getProperty("user.dir") + "/target/generated-sources/");
+        httlProperties.put("code.directory", userDir + "/target/generated-sources/");
+        httlProperties.put("compile.directory", userDir + "/target/generated-sources/");
         httlProperties.put("lint.unchecked", "true");
 
         engine = httl.Engine.getEngine(httlProperties);
