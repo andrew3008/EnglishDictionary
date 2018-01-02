@@ -8,12 +8,23 @@ import java.util.stream.Stream;
 
 public class Config  {
     private static ConfigLocation configLocation;
+    private static EnvironmentType environmentType;
     static {
-        switch (System.getenv("SED_ENVIRONMENT_TYPE")) {
-            case EnvironmentType.HOME_STATION: configLocation = new ConfigHomeStation(); break;
-            case EnvironmentType.WORK_STATION: configLocation = new ConfigWorkStation(); break;
-            case EnvironmentType.OPEN_SHIFT_CLUSTER: configLocation = new ConfigOpenShiftCluster(); break;
+        String environmentTypeSV = System.getenv("SED_ENVIRONMENT_TYPE");
+        if (EnvironmentType.HOME_STATION.name().equals(environmentTypeSV)) {
+            configLocation = new ConfigHomeStation();
+            environmentType = EnvironmentType.HOME_STATION;
+        } else if (EnvironmentType.WORK_STATION.name().equals(environmentTypeSV)) {
+            configLocation = new ConfigWorkStation();
+            environmentType = EnvironmentType.WORK_STATION;
+        } else if (EnvironmentType.OPEN_SHIFT_CLUSTER.name().equals(environmentTypeSV)) {
+            configLocation = new ConfigOpenShiftCluster();
+            environmentType = EnvironmentType.OPEN_SHIFT_CLUSTER;
         }
+    }
+
+    public EnvironmentType getEnvironmentType() {
+        return environmentType;
     }
 
     public static final int WEB_SERVER_PORT = 8080;
@@ -58,7 +69,8 @@ public class Config  {
     public static final String WORDS_FILES_DIR = configLocation.getWordsFilesFolder();
     public static final String WORDS_FILES_CONTENT_FILE = WORDS_FILES_DIR + "_content.json";
     public static final String FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS = "WordsFromExcel";
-    public static final boolean NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER = (Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("SED_NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER")) == 0);
+    public static final boolean NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER =
+            (environmentType == EnvironmentType.OPEN_SHIFT_CLUSTER) ? false : (Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("SED_NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER")) == 0);
     public static String getFileNameOfWordsFromExcel() {
         return configLocation.getFileNameOfWordsFromExcel();
     }
