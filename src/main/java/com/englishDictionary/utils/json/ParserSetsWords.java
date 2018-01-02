@@ -33,8 +33,10 @@ public class ParserSetsWords {
     private static byte[] bufferIO = new byte[BUFFER_IO_SIZE];
     private static String CSV_GROUP_NAME = "csvGroupName";
 
-    private static HTMLFragmentReader transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
-    private static HTMLFragmentReader mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
+    /*private static HTMLFragmentReader transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
+    private static HTMLFragmentReader mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);*/
+    private static HTMLFragmentReader transcription;
+    private static HTMLFragmentReader mnemonics;
 
     static public void readContentFile(HttpServletResponse response, String fileName) {
         try {
@@ -66,6 +68,11 @@ public class ParserSetsWords {
     }
 
     static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
+        if (transcription == null) {
+            transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
+            mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
+        }
+
         BufferedReader reader;
         ByteArrayOutputStream responceWriter;
         try {

@@ -1,6 +1,7 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
+import com.englishDictionary.config.EnvironmentType;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
 import com.englishDictionary.webServer.annotations.Controller;
@@ -52,6 +53,7 @@ public class StaticResourcesController {
     @RequestMappingByFileExtensions(exts = {"js", "css", "ico", "png", "jpg", "gif", "json"})
     public void getStaticResource(HttpServletRequest request, HttpServletResponse response) throws IOException, ParseException {
         String contextPath = request.getContextPath();
+        String userDir = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/" : System.getProperty("user.dir");
         String realpath;
         if (contextPath.startsWith("/static/images/mnemonics/mnemonics.png")) {
             realpath = Config.MNEMONICS_DIR + "mnemonics.png";
@@ -70,7 +72,7 @@ public class StaticResourcesController {
         } else if (contextPath.startsWith("/static/images/")) {
             realpath = Config.COMMON_IMAGES_DIR + contextPath.substring("/static/images/".length(), contextPath.length());
         } else {
-            realpath = System.getProperty("user.dir") + contextPath;
+            realpath = userDir + contextPath;
         }
         File file = new File(realpath);
         if (!file.exists()) {

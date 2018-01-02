@@ -23,7 +23,7 @@ public class Config  {
         }
     }
 
-    public EnvironmentType getEnvironmentType() {
+    public static EnvironmentType getEnvironmentType() {
         return environmentType;
     }
 
