@@ -7,7 +7,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Config  {
-    private static ConfigLocation configLocation = ((Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("SED_IS_WORK_STATION")) == 0) ? new ConfigWork() : new ConfigHome());
+    private static ConfigLocation configLocation;
+    static {
+        switch (System.getenv("SED_ENVIRONMENT_TYPE")) {
+            case EnvironmentType.HOME_STATION: configLocation = new ConfigHomeStation(); break;
+            case EnvironmentType.WORK_STATION: configLocation = new ConfigWorkStation(); break;
+            case EnvironmentType.OPEN_SHIFT_CLUSTER: configLocation = new ConfigOpenShiftCluster(); break;
+        }
+    }
 
     public static final int WEB_SERVER_PORT = 8080;
 

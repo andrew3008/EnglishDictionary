@@ -25,7 +25,6 @@ cmd /k %SED_JAVA_HOME%/bin/java -server -d64 ^
 								-Dsun.boot.library.path=%SED_JAVA_HOME%\jre\bin ^
 								-Dcompile.parallel=true ^
 								-Djdt.compiler.useSingleThread=false ^
-								-Dio.netty.initialSeedUniquifier=5983645092831540934 ^
 								-Djps.file.types.component.name=FileTypeManager ^
 								-Duser.language=en ^
 								-Duser.country=US ^
