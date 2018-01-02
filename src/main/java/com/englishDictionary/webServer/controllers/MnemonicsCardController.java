@@ -20,12 +20,12 @@ public class MnemonicsCardController {
 
     private HTMLFragmentReader mnemonics;
 
-    public MnemonicsCardController(){
-        mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
-    }
-
     @RequestMapping(url = "show.html")
     public void showMnemonicsCard(HttpServletRequest request, HttpServletResponse response) throws IOException, ParseException {
+        if (mnemonics == null) {
+            mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
+        }
+
         String phrase = request.getParameter("word");
         String[] words = phrase.trim().split(" ");
         List<String> headWords = new ArrayList<>();
