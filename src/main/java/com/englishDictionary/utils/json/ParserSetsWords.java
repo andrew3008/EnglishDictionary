@@ -1,6 +1,7 @@
 package com.englishDictionary.utils.json;
 
 import com.englishDictionary.config.Config;
+import com.englishDictionary.config.EnvironmentType;
 import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import com.englishDictionary.utils.csv.CSVParser;
@@ -68,6 +69,10 @@ public class ParserSetsWords {
     }
 
     static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+            return;
+        }
+
         if (transcription == null) {
             transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
             mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
