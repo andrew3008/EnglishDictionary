@@ -7,6 +7,7 @@ import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel
 import com.englishDictionary.utils.csv.CSVParser;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServer.HttpServletResponse;
+import com.englishDictionary.webServer.utils.SEDHttpClient;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -20,6 +21,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,15 +42,30 @@ public class ParserSetsWords {
     private static HTMLFragmentReader mnemonics;
 
     static public void readContentFile(HttpServletResponse response, String fileName) {
-        try {
-            InputStream fileIS = new FileInputStream(fileName);
-            OutputStream responceOS = response.getOutputStream();
-            for (int n = 0; n != -1; n = fileIS.read(bufferIO, 0, BUFFER_IO_SIZE)) {
-                responceOS.write(bufferIO, 0, n);
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+            SEDHttpClient httpClient = new SEDHttpClient();
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
+            headers.put("Host", "webdav.yandex.ru");
+            headers.put("Accept", "*/*");
+            headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
+            String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
+            try {
+                response.getOutputStream().write(responce);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            fileIS.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } else {
+            try {
+                InputStream fileIS = new FileInputStream(fileName);
+                OutputStream responceOS = response.getOutputStream();
+                for (int n = 0; n != -1; n = fileIS.read(bufferIO, 0, BUFFER_IO_SIZE)) {
+                    responceOS.write(bufferIO, 0, n);
+                }
+                fileIS.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -69,23 +86,21 @@ public class ParserSetsWords {
     }
 
     static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
-        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
-            return;
-        }
+        BufferedReader reader = null;
+        ByteArrayOutputStream responceWriter = null;
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
+            if (transcription == null) {
+                transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
+                mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
+            }
 
-        if (transcription == null) {
-            transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
-            mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
-        }
-
-        BufferedReader reader;
-        ByteArrayOutputStream responceWriter;
-        try {
-            reader = createReaderOfSetWords(fileName);
-            responceWriter = response.getOutputStream();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
+            try {
+                reader = createReaderOfSetWords(fileName);
+                responceWriter = response.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return;
+            }
         }
 
         boolean isListWordInCSV = Config.NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName);
@@ -124,7 +139,19 @@ public class ParserSetsWords {
         } else {
             responceWriter.write("[");
             boolean isFirstWord = true;
-            JsonNode rootNode = new ObjectMapper().readTree(reader);
+            JsonNode rootNode;
+            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+                SEDHttpClient httpClient = new SEDHttpClient();
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
+                headers.put("Host", "webdav.yandex.ru");
+                headers.put("Accept", "*/*");
+                headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
+                String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
+                rootNode = new ObjectMapper().readTree(responce);
+            } else {
+                rootNode = new ObjectMapper().readTree(reader);
+            }
             Iterator<Map.Entry<String, JsonNode>> itGroupWordNode = rootNode.getFields();
             while (itGroupWordNode.hasNext()) {
                 Map.Entry<String, JsonNode> groupWordNode = itGroupWordNode.next();
@@ -159,10 +186,15 @@ public class ParserSetsWords {
             responceWriter.write("{");
             responceWriter.write("\"groupWords\":\"" + groupName + "\",");
             responceWriter.write("\"word\":\"" + word + "\",");
-            responceWriter.write("\"haseMnemonics\":" + mnemonics.existHTMLByPhrase(word) + ",");
-            responceWriter.write("\"transcription\":\"");
-            transcription.readHTMLByPhrase(responceWriter, word);
-            responceWriter.write("\",");
+            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+                responceWriter.write("\"haseMnemonics\":\"\",");
+                responceWriter.write("\"transcription\":\"\",");
+            } else {
+                responceWriter.write("\"haseMnemonics\":" + mnemonics.existHTMLByPhrase(word) + ",");
+                responceWriter.write("\"transcription\":\"");
+                transcription.readHTMLByPhrase(responceWriter, word);
+                responceWriter.write("\",");
+            }
             responceWriter.write("\"translation\":\"" + translation + "\",");
             responceWriter.write("\"examples\":\"" + examples + "\"");
             responceWriter.write("}");
