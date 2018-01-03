@@ -67,7 +67,7 @@ public class Config  {
     public static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
 
     public static final String WORDS_FILES_DIR = configLocation.getWordsFilesFolder();
-    public static final String WORDS_FILES_CONTENT_FILE = WORDS_FILES_DIR + "_content.json";
+    public static final String WORDS_FILES_CONTENT_FILE = (environmentType == EnvironmentType.OPEN_SHIFT_CLUSTER) ? "_content.json" : WORDS_FILES_DIR + "_content.json";
     public static final String FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS = "WordsFromExcel";
     public static final boolean NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER =
             (environmentType == EnvironmentType.OPEN_SHIFT_CLUSTER) ? false : (Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("SED_NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER")) == 0);

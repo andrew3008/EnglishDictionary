@@ -50,7 +50,7 @@ public class ParserSetsWords {
             headers.put("Host", "webdav.yandex.ru");
             headers.put("Accept", "application/json;charset=utf-8");
             headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
-            String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + ResourceUtils.getFileNameFromPath(fileName), headers);
+            String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
             try {
                 response.getOutputStream().write(responce);
             } catch (IOException e) {
@@ -149,9 +149,7 @@ public class ParserSetsWords {
                 headers.put("Accept", "application/json;charset=utf-8");
                 headers.put("charset", "utf-8");
                 headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
-                String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + ResourceUtils.getFileNameFromPath(fileName) + ".json", headers);
-                System.out.println("fileName:" + ResourceUtils.getFileNameFromPath(fileName));
-                System.out.println("responce:" + responce);
+                String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName + ".json", headers);
                 rootNode = new ObjectMapper().readTree(responce);
             } else {
                 rootNode = new ObjectMapper().readTree(reader);
