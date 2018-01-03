@@ -62,7 +62,7 @@ public class SEDHttpClient {
 							"Could not regenerate access token");
 				}*/
 
-            return EntityUtils.toString(response.getEntity());
+            return EntityUtils.toString(response.getEntity(), "UTF-8");
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -109,7 +109,7 @@ public class SEDHttpClient {
             //return handleResponse(response);
             //System.out.println("[Post] response:[" + response + "]");
             //handleResponse(response);
-            return EntityUtils.toString(response.getEntity());
+            return EntityUtils.toString(response.getEntity(), "UTF-8");
         } catch (ClientProtocolException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

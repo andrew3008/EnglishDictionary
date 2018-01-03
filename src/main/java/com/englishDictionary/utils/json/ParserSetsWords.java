@@ -4,6 +4,7 @@ import com.englishDictionary.config.Config;
 import com.englishDictionary.config.EnvironmentType;
 import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
+import com.englishDictionary.utils.ResourceUtils;
 import com.englishDictionary.utils.csv.CSVParser;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServer.HttpServletResponse;
@@ -47,9 +48,9 @@ public class ParserSetsWords {
             Map<String, String> headers = new HashMap<>();
             headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
             headers.put("Host", "webdav.yandex.ru");
-            headers.put("Accept", "*/*");
+            headers.put("Accept", "application/json;charset=utf-8");
             headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
-            String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
+            String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + ResourceUtils.getFileNameFromPath(fileName), headers);
             try {
                 response.getOutputStream().write(responce);
             } catch (IOException e) {
@@ -145,9 +146,12 @@ public class ParserSetsWords {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
                 headers.put("Host", "webdav.yandex.ru");
-                headers.put("Accept", "*/*");
+                headers.put("Accept", "application/json;charset=utf-8");
+                headers.put("charset", "utf-8");
                 headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
-                String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
+                String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + ResourceUtils.getFileNameFromPath(fileName) + ".json", headers);
+                System.out.println("fileName:" + ResourceUtils.getFileNameFromPath(fileName));
+                System.out.println("responce:" + responce);
                 rootNode = new ObjectMapper().readTree(responce);
             } else {
                 rootNode = new ObjectMapper().readTree(reader);
