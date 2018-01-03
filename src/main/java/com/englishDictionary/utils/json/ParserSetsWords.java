@@ -175,7 +175,9 @@ public class ParserSetsWords {
             }
             responceWriter.write("]");
             try {
-                reader.close();
+                if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
+                    reader.close();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
