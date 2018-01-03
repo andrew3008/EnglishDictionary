@@ -90,12 +90,11 @@ public class ParserSetsWords {
     static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
         BufferedReader reader = null;
         ByteArrayOutputStream responceWriter = response.getOutputStream();
+        if (transcription == null) {
+            transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
+            mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
+        }
         if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
-            if (transcription == null) {
-                transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
-                mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
-            }
-
             try {
                 reader = createReaderOfSetWords(fileName);
             } catch (IOException e) {
@@ -190,15 +189,10 @@ public class ParserSetsWords {
             responceWriter.write("{");
             responceWriter.write("\"groupWords\":\"" + groupName + "\",");
             responceWriter.write("\"word\":\"" + word + "\",");
-            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
-                responceWriter.write("\"haseMnemonics\":\"\",");
-                responceWriter.write("\"transcription\":\"\",");
-            } else {
-                responceWriter.write("\"haseMnemonics\":" + mnemonics.existHTMLByPhrase(word) + ",");
-                responceWriter.write("\"transcription\":\"");
-                transcription.readHTMLByPhrase(responceWriter, word);
-                responceWriter.write("\",");
-            }
+            responceWriter.write("\"haseMnemonics\":" + mnemonics.existHTMLByPhrase(word) + ",");
+            responceWriter.write("\"transcription\":\"");
+            transcription.readHTMLByPhrase(responceWriter, word);
+            responceWriter.write("\",");
             responceWriter.write("\"translation\":\"" + translation + "\",");
             responceWriter.write("\"examples\":\"" + examples + "\"");
             responceWriter.write("}");
