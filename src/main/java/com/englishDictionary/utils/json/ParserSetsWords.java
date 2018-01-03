@@ -89,7 +89,7 @@ public class ParserSetsWords {
 
     static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
         BufferedReader reader = null;
-        ByteArrayOutputStream responceWriter = null;
+        ByteArrayOutputStream responceWriter = response.getOutputStream();
         if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
             if (transcription == null) {
                 transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
@@ -98,7 +98,6 @@ public class ParserSetsWords {
 
             try {
                 reader = createReaderOfSetWords(fileName);
-                responceWriter = response.getOutputStream();
             } catch (IOException e) {
                 e.printStackTrace();
                 return;
