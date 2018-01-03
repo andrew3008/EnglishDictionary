@@ -50,6 +50,7 @@ public class ParserSetsWords {
             headers.put("Host", "webdav.yandex.ru");
             headers.put("Accept", "application/json;charset=utf-8");
             headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
+            System.out.println("[readContentFile] url:" + "http://webdav.yandex.ru/" + fileName);
             String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
             try {
                 response.getOutputStream().write(responce);
