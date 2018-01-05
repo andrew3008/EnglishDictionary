@@ -1,6 +1,7 @@
 package com.englishDictionary.resourceReaders.htmlDatFile;
 
 import com.englishDictionary.config.Config;
+import com.englishDictionary.config.EnvironmentType;
 import com.englishDictionary.utils.LRUCache;
 import com.englishDictionary.utils.ResourceUtils;
 import org.apache.lucene.index.DirectoryReader;
@@ -17,10 +18,8 @@ import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -33,7 +32,7 @@ import java.util.List;
 class HTMLDatFileReader {
 
     private static int INDEX_CACHE_SIZE = 30;
-    private static final int INIT_SIZE_BUFFER_IO = 1024;
+    private static final int INIT_SIZE_BUFFER_IO = 8192;
 
     private class IndexNode {
         private int keyHashCode;
@@ -53,7 +52,7 @@ class HTMLDatFileReader {
         }
     }
 
-    private RandomAccessFile inStream;
+    private SEDReader inStream;
     private IndexNode tempNode;
     int indexTreeSize;
     private int[] indexTree;
@@ -73,8 +72,12 @@ class HTMLDatFileReader {
     public void open(String fileName) throws IOException {
         this.fileName = fileName;
 
-        File file = new File(fileName);
-        inStream = new RandomAccessFile(file, "r");
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType() ||
+                fileName.endsWith("Transcriptions.dat") || fileName.endsWith("Mnemonics.dat") || fileName.endsWith("IrregularVerbs.dat") || fileName.endsWith("WordCardHeaders.dat")) {
+            inStream = new SEDFileReader(fileName, "r");
+        } else {
+            inStream = new SEDYandexDiskReader("EnglishDictionary_Resources/Dictionaries/DigitalDictionaries/" + ResourceUtils.getFileNameFromPath(fileName).replace(" ", "%20"));
+        }
 
         // Size of header with tree index
         byte[] indexTreeSizeBytes = new byte[4];
@@ -127,15 +130,30 @@ class HTMLDatFileReader {
                 return;
             }
 
-            for (int nrBytes = 0; nrBytes != -1; nrBytes = inStream.read(bufferIO, 0, Integer.min(bufferIO.length, remainNumBytes))) {
-                if (nrBytes == 0) {
-                    continue;
-                }
+            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+                for (int nrBytes = 0; nrBytes != -1; nrBytes = inStream.read(outputStream, Integer.min(bufferIO.length, remainNumBytes))) {
+                    if (nrBytes == 0) {
+                        continue;
+                    }
 
-                outputStream.write(bufferIO, 0, nrBytes);
-                remainNumBytes -= nrBytes;
-                if (remainNumBytes == 0) {
-                    return;
+                    //outputStream.write(bufferIO, 0, nrBytes);
+                    remainNumBytes -= nrBytes;
+                    if (remainNumBytes == 0) {
+                        return;
+                    }
+                }
+            } else {
+                // TODO: need to optimize without buffer
+                for (int nrBytes = 0; nrBytes != -1; nrBytes = inStream.read(bufferIO, 0, Integer.min(bufferIO.length, remainNumBytes))) {
+                    if (nrBytes == 0) {
+                        continue;
+                    }
+
+                    outputStream.write(bufferIO, 0, nrBytes);
+                    remainNumBytes -= nrBytes;
+                    if (remainNumBytes == 0) {
+                        return;
+                    }
                 }
             }
         } catch (IOException e) {
@@ -173,7 +191,7 @@ class HTMLDatFileReader {
         return null;
     }
 
-    private IndexNode getIndexNodeByIndex(IndexNode node, int index)  {
+    private IndexNode getIndexNodeByIndex(IndexNode node, int index) {
         if ((index == -1) || (index >= indexTree.length)) {
             return null;
         }
@@ -245,9 +263,10 @@ class HTMLDatFileReader {
 
     /**
      * Search using FuzzyQuery.
-     * @param toSearch string to search
+     *
+     * @param toSearch    string to search
      * @param searchField field where to search. We have "body" and "title" fields
-     * @param limit how many results to return
+     * @param limit       how many results to return
      * @throws IOException
      * @throws ParseException
      */
