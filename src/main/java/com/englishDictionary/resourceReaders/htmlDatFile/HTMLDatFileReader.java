@@ -72,8 +72,8 @@ class HTMLDatFileReader {
     public void open(String fileName) throws IOException {
         this.fileName = fileName;
 
-        if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType() ||
-                fileName.endsWith("Transcriptions.dat") || fileName.endsWith("Mnemonics.dat") || fileName.endsWith("IrregularVerbs.dat") || fileName.endsWith("WordCardHeaders.dat")) {
+        if (fileName.endsWith("Transcriptions.dat") || fileName.endsWith("Mnemonics.dat") || fileName.endsWith("IrregularVerbs.dat") || fileName.endsWith("WordCardHeaders.dat") ||
+                EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
             inStream = new SEDFileReader(fileName, "r");
         } else {
             inStream = new SEDYandexDiskReader("EnglishDictionary_Resources/Dictionaries/DigitalDictionaries/" + ResourceUtils.getFileNameFromPath(fileName).replace(" ", "%20"));
