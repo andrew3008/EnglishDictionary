@@ -43,7 +43,7 @@ public class Config  {
     public static final String LINGVO_UNIVERSAL_SOUND_IND_FILE = LINGVO_UNIVERSAL_DIR + "Sounds\\SoundEn.ind";
 
     public static final String MED2_DIR = DICTIONARIES_DIR + "MED2\\";
-    public static final String MED2_WORD_CARD_HEADERS_FILE = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/MED2/WordCardHeaders.dat" : MED2_DIR + "WordCardHeaders\\WordCardHeaders.dat";
+    public static final String MED2_WORD_CARD_HEADERS_FILE = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/MED2/WordCardHeaders/WordCardHeaders.dat" : MED2_DIR + "WordCardHeaders\\WordCardHeaders.dat";
 
     public static final String OALD9_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/OALD9/" : DICTIONARIES_DIR + "OALD9\\";
     public static final String OALD9_IMAGES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? OALD9_DIR + "Images/" : OALD9_DIR + "Images\\";
