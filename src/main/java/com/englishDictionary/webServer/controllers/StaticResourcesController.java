@@ -65,6 +65,8 @@ public class StaticResourcesController {
             realpath = Config.FORVO_DIR + "forvo.png";
         } else if (contextPath.startsWith("/static/images/oald9/")) {
             realpath = Config.OALD9_IMAGES_DIR + contextPath.substring("/static/images/oald9/".length(), contextPath.length());
+        } else if (contextPath.startsWith("/OALD9/images/")) { // For OpenShift
+            realpath = Config.OALD9_IMAGES_DIR + contextPath.substring("/OALD9/images/".length(), contextPath.length());
         } else if (contextPath.startsWith("/LDOCE6/images/")) {
             realpath = Config.LDOCE6_IMAGES_DIR + contextPath.substring("/LDOCE6/images/".length(), contextPath.length());
         } else if (contextPath.startsWith("/static/images/wordCard/")) {
