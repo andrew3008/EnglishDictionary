@@ -179,8 +179,10 @@ class HTMLDatFileReader {
         int keyHashCode = key.hashCode();
         //if (ByteOrder.BIG_ENDIAN == ByteOrder.nativeOrder()) {
         if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
-            keyHashCode = (((keyHashCode >> 24) & 0x000000ff) | ((keyHashCode >> 8) & 0x0000ff00) |
-                    ((keyHashCode << 8) & 0x00ff0000) | ((keyHashCode << 24) & 0xff000000));
+            keyHashCode = ((((keyHashCode) & 0xFF) << 24) |
+            (((keyHashCode) & 0xFF00) << 8) |
+            (((keyHashCode) & 0xFF0000) >> 8) |
+            (((keyHashCode) & 0xFF000000) >> 24));
         }
 
         IndexNode node = getIndexNodeByIndex(tempNode, 0);
