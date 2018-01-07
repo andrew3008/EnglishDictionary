@@ -20,6 +20,7 @@ import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -176,6 +177,11 @@ class HTMLDatFileReader {
 
     private IndexNode getIndexNodeByKey(String key) {
         int keyHashCode = key.hashCode();
+        if (ByteOrder.BIG_ENDIAN == ByteOrder.nativeOrder()) {
+            keyHashCode = (((keyHashCode >> 24) & 0x000000ff) | ((keyHashCode >> 8) & 0x0000ff00) |
+                    ((keyHashCode << 8) & 0x00ff0000) | ((keyHashCode << 24) & 0xff000000));
+        }
+
         IndexNode node = getIndexNodeByIndex(tempNode, 0);
         while (node != null) {
             if (keyHashCode == node.keyHashCode) {
@@ -188,6 +194,7 @@ class HTMLDatFileReader {
                 node = getIndexNodeByIndex(tempNode, node.right);
             }
         }
+
         return null;
     }
 

@@ -26,7 +26,7 @@ public class CommentsController {
         try {
             CommentsListWords comments = new CommentsListWords();
             comments.setHaseComments(file.exists());
-            comments.setCommentsFileName("http://localhost:8080/comments/commentsFile.html?fileName=" + fileName);
+            comments.setCommentsFileName("/comments/commentsFile.html?fileName=" + fileName);
             comments.setNoCommentsMessage("There are not comments for current list of words");
             response.getOutputStream().write(JsonHelper.toJson(comments));
         } catch (IOException e) {
