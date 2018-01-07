@@ -36,7 +36,7 @@ public class Config  {
     public static final String WORD_CARDS_IMAGES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/WordCards/" : RESOURCES_ROOT_DIR + "\\WordCards\\";
 
     public static final String DICTIONARIES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/" : RESOURCES_ROOT_DIR + "\\Dictionaries\\";
-    public static final String DIGITAL_DICTIONARIES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/DigitalDictionaries/" : DICTIONARIES_DIR + "DigitalDictionaries\\";
+    public static final String DIGITAL_DICTIONARIES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/" : DICTIONARIES_DIR + "DigitalDictionaries\\";
 
     public static final String LINGVO_UNIVERSAL_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/LingvoUniversal/" : DICTIONARIES_DIR + "LingvoUniversal\\";
     public static final String LINGVO_UNIVERSAL_SOUND_DAT_FILE = LINGVO_UNIVERSAL_DIR + "Sounds\\SoundEn.dat";
