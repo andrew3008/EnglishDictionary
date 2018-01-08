@@ -7,6 +7,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
@@ -33,6 +34,12 @@ public class SEDHttpClient {
 
     public BasicCookieStore getHttpCookieStore() {
         return httpCookieStore;
+    }
+
+    public void printHttpCookieStore() {
+        for (Cookie cookie : httpCookieStore.getCookies()) {
+            System.out.println("cookieName:" + cookie.getName() + ", cookieValue:" + cookie.getValue());
+        }
     }
 
     public String sendGetRequest(String resourceURL) {
@@ -64,7 +71,6 @@ public class SEDHttpClient {
 							"Could not regenerate access token");
 				}*/
 
-            System.out.println("[SEDHttpClient][sendGetRequest] code:" + code);
             return EntityUtils.toString(response.getEntity(), "UTF-8");
         } catch (IOException e) {
             // TODO Auto-generated catch block

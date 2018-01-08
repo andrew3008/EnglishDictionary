@@ -7,8 +7,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Config  {
+
     private static ConfigLocation configLocation;
     private static EnvironmentType environmentType;
+
     static {
         String environmentTypeSV = System.getenv("SED_ENVIRONMENT_TYPE");
         if (EnvironmentType.HOME_STATION.name().equals(environmentTypeSV)) {
