@@ -10,11 +10,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Config implements ConfigInterface {
+public class Config implements EnvironmentInterface {
 
     public static final Config INSTANCE = new Config();
 
     private static ConfigLocation configLocation;
+    //private static EnvironmentInterface configLocation;
     private static EnvironmentType environmentType;
 
     static {

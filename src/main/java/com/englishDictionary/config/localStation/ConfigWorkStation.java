@@ -3,7 +3,7 @@ package com.englishDictionary.config.localStation;
 /**
  * Created by Andrew on 8/12/2017.
  */
-public class ConfigWorkStation implements ConfigLocation {
+public class ConfigWorkStation extends ConfigLocationStationAbstract implements ConfigLocation {
 
     private static final String ROOT_DIR = "C:\\English\\EnglishDictionary_Resources\\";
     private static final String WORDS_FILES_DIR = "C:\\English\\VocabularyFiles\\";

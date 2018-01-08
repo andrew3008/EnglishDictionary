@@ -1,6 +1,6 @@
 package com.englishDictionary.config;
 
-public interface ConfigInterface {
+public interface EnvironmentInterface {
 
     /*
     public static final String RESOURCES_ROOT_DIR = configLocation.getRootDir();
