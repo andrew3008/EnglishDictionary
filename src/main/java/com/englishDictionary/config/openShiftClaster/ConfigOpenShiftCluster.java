@@ -1,4 +1,6 @@
-package com.englishDictionary.config;
+package com.englishDictionary.config.openShiftClaster;
+
+import com.englishDictionary.config.localStation.ConfigLocation;
 
 public class ConfigOpenShiftCluster implements ConfigLocation {
     public String getRootDir() {

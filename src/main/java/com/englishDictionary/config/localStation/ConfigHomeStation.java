@@ -1,4 +1,4 @@
-package com.englishDictionary.config;
+package com.englishDictionary.config.localStation;
 
 /**
  * Created by Andrew on 8/12/2017.

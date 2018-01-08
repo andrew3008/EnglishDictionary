@@ -2,6 +2,9 @@ package com.englishDictionary.resourceReaders.htmlDatFile;
 
 import com.englishDictionary.config.Config;
 import com.englishDictionary.config.EnvironmentType;
+import com.englishDictionary.resourceReaders.htmlDatFile.resourceReader.SEDFileReader;
+import com.englishDictionary.resourceReaders.htmlDatFile.resourceReader.SEDReader;
+import com.englishDictionary.resourceReaders.htmlDatFile.resourceReader.SEDYandexDiskReader;
 import com.englishDictionary.utils.LRUCache;
 import com.englishDictionary.utils.ResourceUtils;
 import org.apache.lucene.index.DirectoryReader;
@@ -20,7 +23,6 @@ import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Collections;

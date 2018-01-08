@@ -1,4 +1,4 @@
-package com.englishDictionary.resourceReaders.htmlDatFile;
+package com.englishDictionary.resourceReaders.htmlDatFile.resourceReader;
 
 import java.io.IOException;
 import java.io.OutputStream;

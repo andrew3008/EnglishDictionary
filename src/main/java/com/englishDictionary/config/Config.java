@@ -1,12 +1,18 @@
 package com.englishDictionary.config;
 
+import com.englishDictionary.config.localStation.ConfigHomeStation;
+import com.englishDictionary.config.localStation.ConfigLocation;
+import com.englishDictionary.config.localStation.ConfigWorkStation;
+import com.englishDictionary.config.openShiftClaster.ConfigOpenShiftCluster;
 import httl.util.StringUtils;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Config  {
+public class Config implements ConfigInterface {
+
+    public static final Config INSTANCE = new Config();
 
     private static ConfigLocation configLocation;
     private static EnvironmentType environmentType;

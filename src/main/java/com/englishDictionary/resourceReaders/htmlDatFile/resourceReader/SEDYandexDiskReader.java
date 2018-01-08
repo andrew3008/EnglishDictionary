@@ -1,4 +1,4 @@
-package com.englishDictionary.resourceReaders.htmlDatFile;
+package com.englishDictionary.resourceReaders.htmlDatFile.resourceReader;
 
 import com.englishDictionary.webServer.utils.SEDHttpClient;
 

@@ -1,6 +1,4 @@
-package com.englishDictionary.resourceReaders.htmlDatFile;
-
-import com.englishDictionary.webServer.ByteArrayOutputStream;
+package com.englishDictionary.resourceReaders.htmlDatFile.resourceReader;
 
 import java.io.IOException;
 import java.io.OutputStream;
