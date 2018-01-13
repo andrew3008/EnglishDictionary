@@ -41,22 +41,20 @@ public class ParserSetsWords {
     private static HTMLFragmentReader mnemonics;
 
     static public void readContentFile(HttpServletResponse response, String fileName) {
-        //if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
             SEDHttpClient httpClient = new SEDHttpClient();
             Map<String, String> headers = new HashMap<>();
             headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
             headers.put("Host", "webdav.yandex.ru");
             headers.put("Accept", "application/json;charset=utf-8");
             headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
-            System.out.println("[readContentFile] url:" + "http://webdav.yandex.ru/" + fileName);
-            //SEDHttpClient.HttpRequestResponse responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
-        SEDHttpClient.HttpRequestResponse responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + "_content.json", headers);
+            SEDHttpClient.HttpRequestResponse responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
             try {
                 response.getOutputStream().write(responce.getContent());
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        /*} else {
+        } else {
             try {
                 InputStream fileIS = new FileInputStream(fileName);
                 OutputStream responceOS = response.getOutputStream();
@@ -67,7 +65,7 @@ public class ParserSetsWords {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }*/
+        }
     }
 
     private static BufferedReader createReaderOfSetWords(String fileName) throws FileNotFoundException, UnsupportedEncodingException {

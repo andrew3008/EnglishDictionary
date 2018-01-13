@@ -6,7 +6,10 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SEDYandexDiskReader implements SEDReader {
@@ -14,6 +17,11 @@ public class SEDYandexDiskReader implements SEDReader {
     private final String YANDEX_WEBDAV_URL = "http://webdav.yandex.ru/";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String CONTENT_RANGE_HEADER = "Range";
+    private static List<HttpResponseStatus> successfulHttpStatuses = Arrays.asList(
+            HttpResponseStatus.OK,
+            HttpResponseStatus.CREATED,
+            HttpResponseStatus.ACCEPTED,
+            HttpResponseStatus.PARTIAL_CONTENT);
 
     private String resourceURL;
     private SEDHttpClient httpClient;
@@ -44,7 +52,7 @@ public class SEDYandexDiskReader implements SEDReader {
 
         SEDHttpClient.HttpRequestResponse response = httpClient.sendRequest(resourceURL, "PROPFIND", headers, body);
         String responseContent = SEDHttpClient.responseContentToString(response);
-        if (response.getResponseCode() != HttpResponseStatus.CREATED.code() || response.getResponseCode() != HttpResponseStatus.CREATED.code()) {
+        if (!successfulHttpStatuses.contains(response.getResponseCode())) {
             printResponseErrorMessage(response);
             return -1;
         }
@@ -66,7 +74,7 @@ public class SEDYandexDiskReader implements SEDReader {
     public int read(byte[] b, int off, int len) throws IOException {
         headers.put(CONTENT_RANGE_HEADER, createRangeHeaderValue(position, len));
         SEDHttpClient.HttpRequestResponse response = httpClient.sendGetRequest(resourceURL, headers);
-        if (response.getResponseCode() != HttpResponseStatus.CREATED.code() || response.getResponseCode() != HttpResponseStatus.CREATED.code()) {
+        if (!successfulHttpStatuses.contains(response.getResponseCode())) {
             printResponseErrorMessage(response);
             return -1;
         }
@@ -79,7 +87,7 @@ public class SEDYandexDiskReader implements SEDReader {
     public int read(OutputStream outputStream, int len) throws IOException {
         headers.put(CONTENT_RANGE_HEADER, createRangeHeaderValue(position, len));
         SEDHttpClient.HttpRequestResponse response = httpClient.sendGetRequest(resourceURL, headers, outputStream);
-        if (response.getResponseCode() != HttpResponseStatus.CREATED.code() || response.getResponseCode() != HttpResponseStatus.CREATED.code()) {
+        if (!successfulHttpStatuses.contains(response.getResponseCode())) {
             printResponseErrorMessage(response);
             return -1;
         }
