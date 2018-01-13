@@ -18,6 +18,7 @@ import org.apache.oltu.oauth2.common.OAuth;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -150,7 +151,7 @@ public class SetsControl {
             params.add(new BasicNameValuePair("lang_terms", "en"));
             params.add(new BasicNameValuePair("lang_definitions", "ru"));
             readTermsFromFileListWord(fileName, params);
-            post.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8.name()));
+            post.setEntity(new UrlEncodedFormEntity(params, Config.CHARSET));
 
             response = client.execute(post);
             code = response.getStatusLine().getStatusCode();

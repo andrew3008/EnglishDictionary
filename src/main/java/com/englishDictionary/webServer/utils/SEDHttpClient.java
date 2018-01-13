@@ -20,11 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.ProtocolException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -91,18 +86,20 @@ public class SEDHttpClient {
         }
 
         HttpResponse response = executeRequest(get);
-        get.releaseConnection();
+        if (response == null) {
+            get.releaseConnection();
+            return new HttpRequestResponse(null, getHttpResponseContentLength(response), getHttpResponseCode(response));
+        }
 
         byte[] responseBody = null;
-        if (response != null) {
-            try {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                response.getEntity().writeTo(baos);
-                responseBody = baos.toByteArray();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            response.getEntity().writeTo(baos);
+            responseBody = baos.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        get.releaseConnection();
         return new HttpRequestResponse(responseBody, getHttpResponseContentLength(response), getHttpResponseCode(response));
     }
 
@@ -115,8 +112,6 @@ public class SEDHttpClient {
         }
 
         HttpResponse response = executeRequest(get);
-        get.releaseConnection();
-
         if (response != null) {
             try {
                 response.getEntity().writeTo(outputStream);
@@ -124,6 +119,7 @@ public class SEDHttpClient {
                 e.printStackTrace();
             }
         }
+        get.releaseConnection();
         return new HttpRequestResponse(null, getHttpResponseContentLength(response), getHttpResponseCode(response));
     }
 
@@ -146,23 +142,25 @@ public class SEDHttpClient {
             entityParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
         }
         try {
-            post.setEntity(new UrlEncodedFormEntity(entityParams, StandardCharsets.UTF_8.name()));
+            post.setEntity(new UrlEncodedFormEntity(entityParams, Config.CHARSET));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return null;
         }
 
         HttpResponse response = executeRequest(post);
-        post.releaseConnection();
+        if (response == null) {
+            post.releaseConnection();
+            return new HttpRequestResponse(null, getHttpResponseContentLength(response), getHttpResponseCode(response));
+        }
 
         byte[] responseBody = null;
-        if (response != null) {
-            try {
-                responseBody = EntityUtils.toByteArray(response.getEntity());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            responseBody = EntityUtils.toByteArray(response.getEntity());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        post.releaseConnection();
         return new HttpRequestResponse(responseBody, getHttpResponseContentLength(response), getHttpResponseCode(response));
     }
 

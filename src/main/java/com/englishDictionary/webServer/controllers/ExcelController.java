@@ -117,7 +117,7 @@ public class ExcelController {
 
             String inputLine;
             String translateResponce = "";
-            BufferedReader in = new BufferedReader(new InputStreamReader(uc.getInputStream(), StandardCharsets.UTF_8.name()));
+            BufferedReader in = new BufferedReader(new InputStreamReader(uc.getInputStream(), Config.CHARSET));
             while ((inputLine = in.readLine()) != null) {
                 translateResponce += inputLine;
             }

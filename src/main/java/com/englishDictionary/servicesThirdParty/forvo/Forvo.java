@@ -154,7 +154,7 @@ public class Forvo {
             params.add(new BasicNameValuePair("rate", ""));
             params.add(new BasicNameValuePair("order", "rate-desc"));
             params.add(new BasicNameValuePair("limit", ""));
-            post.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8.name()));
+            post.setEntity(new UrlEncodedFormEntity(params, Config.CHARSET));
 
             response = client.execute(post);
             response = client.execute(post);
@@ -274,7 +274,7 @@ public class Forvo {
                                 forvoResponce.setUser(fieldValue);
                                 String userNamePercent = "";
                                 try {
-                                    userNamePercent = URLDecoder.decode(forvoResponce.getUser(), StandardCharsets.UTF_8.name());
+                                    userNamePercent = URLDecoder.decode(forvoResponce.getUser(), Config.CHARSET);
                                 } catch (UnsupportedEncodingException e) {
                                     e.printStackTrace();
                                 }

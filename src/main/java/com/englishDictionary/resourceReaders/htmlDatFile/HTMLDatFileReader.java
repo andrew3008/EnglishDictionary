@@ -113,7 +113,7 @@ class HTMLDatFileReader {
                 bufferIO = new byte[indexNode.htmlSize];
             }
             inStream.read(bufferIO, 0, indexNode.htmlSize);
-            html = new String(bufferIO, 0, indexNode.htmlSize, StandardCharsets.UTF_8.name());
+            html = new String(bufferIO, 0, indexNode.htmlSize, Config.CHARSET);
         } catch (IOException e) {
             e.printStackTrace();
         }

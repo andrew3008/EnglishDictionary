@@ -1,5 +1,6 @@
 package com.englishDictionary.resourceReaders.htmlDatFile;
 
+import com.englishDictionary.config.Config;
 import com.englishDictionary.utils.ResourceUtils;
 import com.englishDictionary.utils.SplitterPhraseToWords;
 
@@ -58,7 +59,7 @@ public class HTMLFragmentReader {
                     }
                 }
                 try {
-                    outputStream.write(html.getBytes(StandardCharsets.UTF_8.name()));
+                    outputStream.write(html.getBytes(Config.CHARSET));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

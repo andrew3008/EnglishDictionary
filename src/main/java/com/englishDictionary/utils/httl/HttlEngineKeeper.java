@@ -23,8 +23,8 @@ public class HttlEngineKeeper {
         httlProperties.put("import.packages", "com.englishDictionary.servicesThirdParty.forvo, java.util, java.lang");
         httlProperties.put("template.directory", userDir + "/static/httl/");
         httlProperties.put("template.suffix", ".httl");
-        httlProperties.put("input.encoding", StandardCharsets.UTF_8.name());
-        httlProperties.put("output.encoding", StandardCharsets.UTF_8.name());
+        httlProperties.put("input.encoding", Config.CHARSET);
+        httlProperties.put("output.encoding", Config.CHARSET);
         httlProperties.put("precompiled", "true");
         httlProperties.put("cache", "httl.spi.caches.AdaptiveCache");
         httlProperties.put("cache_capacity", "1024");

@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -34,7 +33,7 @@ import java.util.Scanner;
 public class ParserSetsWords {
     private static final int BUFFER_IO_SIZE = 10240;
     private static byte[] bufferIO = new byte[BUFFER_IO_SIZE];
-    private static String CSV_GROUP_NAME = "csvGroupName";
+    private static String CSV_GROUP_NAME_PROPERTY = "csvGroupName";
 
     /*private static HTMLFragmentReader transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
     private static HTMLFragmentReader mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);*/
@@ -42,7 +41,7 @@ public class ParserSetsWords {
     private static HTMLFragmentReader mnemonics;
 
     static public void readContentFile(HttpServletResponse response, String fileName) {
-        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
+        //if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
             SEDHttpClient httpClient = new SEDHttpClient();
             Map<String, String> headers = new HashMap<>();
             headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
@@ -50,13 +49,14 @@ public class ParserSetsWords {
             headers.put("Accept", "application/json;charset=utf-8");
             headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
             System.out.println("[readContentFile] url:" + "http://webdav.yandex.ru/" + fileName);
-            SEDHttpClient.HttpRequestResponse responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
+            //SEDHttpClient.HttpRequestResponse responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
+        SEDHttpClient.HttpRequestResponse responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + "_content.json", headers);
             try {
                 response.getOutputStream().write(responce.getContent());
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        } else {
+        /*} else {
             try {
                 InputStream fileIS = new FileInputStream(fileName);
                 OutputStream responceOS = response.getOutputStream();
@@ -67,7 +67,7 @@ public class ParserSetsWords {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }
+        }*/
     }
 
     private static BufferedReader createReaderOfSetWords(String fileName) throws FileNotFoundException, UnsupportedEncodingException {
@@ -83,7 +83,7 @@ public class ParserSetsWords {
             }
             inputStream = new FileInputStream(fullFileName);
         }
-        return new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8.name()));
+        return new BufferedReader(new InputStreamReader(inputStream, Config.CHARSET));
     }
 
     static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
@@ -124,7 +124,7 @@ public class ParserSetsWords {
                     String word = line.get(0).trim();
                     String translation = line.get(1).trim();
                     String examples = line.get(2).trim();
-                    if (CSV_GROUP_NAME.equals(word)) {
+                    if (CSV_GROUP_NAME_PROPERTY.equals(word)) {
                         groupName = translation;
                     } else {
                         writeWordDescription(responceWriter, groupName, word, translation, examples);
