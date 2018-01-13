@@ -33,7 +33,7 @@ public class SoundDatFileReader /*extends RandomAccessFile*/ {
         soundEnInd.readFromFile(indFilePath);
         //randomFile = new RandomAccessFile(datFilePath, "r");
         randomFile = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) ? new SEDYandexDiskReader(datFilePath) : new SEDFileReader(datFilePath, "r");
-        //randomFile = new SEDYandexDiskReader(datFilePath);
+//        randomFile = new SEDYandexDiskReader(datFilePath);
         positionNodesCache = new LRUCache(POSITION_NODES_CACHE_SIZE);
     }
 

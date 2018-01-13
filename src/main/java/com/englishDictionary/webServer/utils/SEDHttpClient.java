@@ -3,6 +3,7 @@ package com.englishDictionary.webServer.utils;
 import com.englishDictionary.config.Config;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
+import org.apache.http.ProtocolVersion;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -55,11 +56,11 @@ public class SEDHttpClient {
         StringEntity entity = null;
         try {
             entity = new StringEntity(body);
+            requestBuilder.setEntity(entity);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return null;
         }
-        requestBuilder.setEntity(entity);
 
         HttpResponse response = executeRequest(requestBuilder.build());
         byte[] responseBody = null;
@@ -100,7 +101,7 @@ public class SEDHttpClient {
             e.printStackTrace();
         }
         get.releaseConnection();
-        return new HttpRequestResponse(responseBody, getHttpResponseContentLength(response), getHttpResponseCode(response));
+        return new HttpRequestResponse(responseBody, responseBody.length, getHttpResponseCode(response));
     }
 
     public HttpRequestResponse sendGetRequest(String resourceURL, Map<String, String> headers, OutputStream outputStream) {
@@ -174,6 +175,10 @@ public class SEDHttpClient {
     }
 
     public static String responseContentToString(HttpRequestResponse response) {
+        if (response.getContent() == null) {
+            return null;
+        }
+
         try {
             return new String(response.getContent(), Config.CHARSET);
         } catch (UnsupportedEncodingException e) {

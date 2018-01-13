@@ -629,8 +629,8 @@ public class WordCardController {
         try {
             if (oald9SoundEn == null) {
                 oald9SoundEn = new SoundDatFileReader(Config.INSTANCE.getOALD9SoundIndFilePath(), Config.INSTANCE.getOALD9SoundDatFilePath());
-                /*oald9SoundEn = new SoundDatFileReader("EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.ind",
-                        "EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.dat");*/
+//                oald9SoundEn = new SoundDatFileReader("EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.ind",
+//                        "EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.dat");
                 oald9SoundEnStream = new InputStreamFromRandomAccessFile(oald9SoundEn);
             }
 

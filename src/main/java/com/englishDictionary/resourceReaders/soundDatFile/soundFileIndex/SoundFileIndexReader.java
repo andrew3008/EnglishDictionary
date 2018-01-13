@@ -54,13 +54,13 @@ public class SoundFileIndexReader {
 
     public void readFromFile(String fileName) throws IOException {
         SEDReader reader = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) ? new SEDYandexDiskReader(fileName) : new SEDFileReader(fileName, "r");
-        //SEDReader reader = new SEDYandexDiskReader(fileName);
+//        SEDReader reader = new SEDYandexDiskReader(fileName);
         byte[] bytes = null;
-        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
+        //if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
             //bytes = new byte[6086656];
-        } else {
+        //} else {
             bytes = new byte[(int)reader.fileLength()];
-        }
+        //}
         reader.read(bytes);
         reader.close();
 
