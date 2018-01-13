@@ -1,4 +1,4 @@
-package com.englishDictionary.resourceReaders.htmlDatFile.resourceReader;
+package com.englishDictionary.resourceReaders.resourceReader;
 
 import com.englishDictionary.config.Config;
 import com.englishDictionary.webServer.utils.SEDHttpClient;
@@ -29,6 +29,35 @@ public class SEDYandexDiskReader implements SEDReader {
     }
 
     @Override
+    public long fileLength() {
+        Map<String, String> requestHeaders = new HashMap<>(headers);
+        requestHeaders.put("Depth", "1");
+        requestHeaders.put("Accept", "*/*");
+        requestHeaders.put("Content-Type", "application/x-www-form-urlencoded");
+
+        String body = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" +
+                "<propfind xmlns=\"DAV:\">\n" +
+                "  <prop>\n" +
+                "    <myprop xmlns=\"mynamespace\"/>\n" +
+                "  </prop>\n" +
+                "</propfind>";
+
+        SEDHttpClient.HttpRequestResponse response = httpClient.sendRequest(resourceURL, "PROPFIND", headers, body);
+        String responseContent = SEDHttpClient.responseContentToString(response);
+        if (response.getResponseCode() != HttpResponseStatus.CREATED.code() || response.getResponseCode() != HttpResponseStatus.CREATED.code()) {
+            printResponseErrorMessage(response);
+            return -1;
+        }
+        //String responseContent = SEDHttpClient.responseContentToString(response);
+        return -1;
+    }
+
+    @Override
+    public int read() throws IOException {
+        return read(new byte[1]);
+    }
+
+    @Override
     public int read(byte[] b) throws IOException {
         return read(b, 0, b.length);
     }
@@ -37,11 +66,12 @@ public class SEDYandexDiskReader implements SEDReader {
     public int read(byte[] b, int off, int len) throws IOException {
         headers.put(CONTENT_RANGE_HEADER, createRangeHeaderValue(position, len));
         SEDHttpClient.HttpRequestResponse response = httpClient.sendGetRequest(resourceURL, headers);
-        System.arraycopy(response.getContent(), 0, b, off, response.getContentLength());
-        position += response.getContentLength();
         if (response.getResponseCode() != HttpResponseStatus.CREATED.code() || response.getResponseCode() != HttpResponseStatus.CREATED.code()) {
             printResponseErrorMessage(response);
+            return -1;
         }
+        System.arraycopy(response.getContent(), 0, b, off, response.getContentLength());
+        position += response.getContentLength();
         return response.getContentLength();
     }
 
@@ -49,10 +79,11 @@ public class SEDYandexDiskReader implements SEDReader {
     public int read(OutputStream outputStream, int len) throws IOException {
         headers.put(CONTENT_RANGE_HEADER, createRangeHeaderValue(position, len));
         SEDHttpClient.HttpRequestResponse response = httpClient.sendGetRequest(resourceURL, headers, outputStream);
-        position += response.getContentLength();
         if (response.getResponseCode() != HttpResponseStatus.CREATED.code() || response.getResponseCode() != HttpResponseStatus.CREATED.code()) {
             printResponseErrorMessage(response);
+            return -1;
         }
+        position += response.getContentLength();
         return response.getContentLength();
     }
 

@@ -6,20 +6,55 @@ function playSound(fileName) {
     return false;
 }
 
+var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var source;
+
 function playOALD9SoundFile(fileName) {
-    $.get('/wordCard/playOALD9SoundFile.html?fileName=' + fileName)
+    /*$.get('/wordCard/playOALD9SoundFile.html?fileName=' + fileName)
         .error(function (err) {
             alert("Произошла серверная ошибка при озвучивании слова:\\n" + err.toString());
         });
-    return false;
+    return false;*/
+
+    source = audioCtx.createBufferSource();
+    var request = new XMLHttpRequest();
+    request.open('GET', '/wordCard/playOALD9SoundFile.html?fileName=' + fileName, true);
+    request.responseType = 'arraybuffer';
+    request.onload = function() {
+        var audioData = request.response;
+        audioCtx.decodeAudioData(audioData, function(buffer) {
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.loop = false;
+            },
+            function(e){ console.log("Error with decoding audio data" + e.err); });
+    }
+    request.send();
+    source.start(0);
 }
 
 function playLDOCE6SoundFile(fileName) {
-    $.get('/wordCard/playLDOCE6SoundFile.html?fileName=' + fileName)
+    /*$.get('/wordCard/playLDOCE6SoundFile.html?fileName=' + fileName)
         .error(function (err) {
             alert("Произошла серверная ошибка при озвучивании слова:\\n" + err.toString());
         });
-    return false;
+    return false;*/
+
+    source = audioCtx.createBufferSource();
+    var request = new XMLHttpRequest();
+    request.open('GET', '/wordCard/playLDOCE6SoundFile.html?fileName=' + fileName, true);
+    request.responseType = 'arraybuffer';
+    request.onload = function() {
+        var audioData = request.response;
+        audioCtx.decodeAudioData(audioData, function(buffer) {
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.loop = false;
+            },
+            function(e){ console.log("Error with decoding audio data" + e.err); });
+    }
+    request.send();
+    source.start(0);
 }
 
 var wordCardBaseURL = "";

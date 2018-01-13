@@ -9,9 +9,9 @@ import java.io.RandomAccessFile;
  */
 public class InputStreamFromRandomAccessFile extends InputStream {
 
-    private RandomAccessFile raFile;
+    private SoundDatFileReader raFile;
 
-    public InputStreamFromRandomAccessFile(RandomAccessFile raFile) {
+    public InputStreamFromRandomAccessFile(SoundDatFileReader raFile) {
         this.raFile = raFile;
     }
 

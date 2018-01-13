@@ -1,6 +1,7 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
+import com.englishDictionary.config.openShiftClaster.ConfigOpenShiftCluster;
 import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.resourceReaders.soundDatFile.InputStreamFromRandomAccessFile;
 import com.englishDictionary.resourceReaders.soundDatFile.MP3Player;
@@ -620,24 +621,33 @@ public class WordCardController {
         }*/
     }
 
+    private static int BUFFER_SIZE = 6144;
+    private byte[] buffer = new byte[BUFFER_SIZE];
+
     @RequestMapping(url = "playOALD9SoundFile.html")
-    public void playOALD9SoundFile(HttpServletRequest request) {
+    public void playOALD9SoundFile(HttpServletRequest request, HttpServletResponse response) {
         try {
             if (oald9SoundEn == null) {
                 oald9SoundEn = new SoundDatFileReader(Config.INSTANCE.getOALD9SoundIndFilePath(), Config.INSTANCE.getOALD9SoundDatFilePath());
+                /*oald9SoundEn = new SoundDatFileReader("EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.ind",
+                        "EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.dat");*/
                 oald9SoundEnStream = new InputStreamFromRandomAccessFile(oald9SoundEn);
             }
 
             if (oald9SoundEn.seekToFile(request.getParameter("fileName"))) {
-                MP3Player.play(oald9SoundEnStream);
+                //MP3Player.play(oald9SoundEnStream);
+                int lengthReadData;
+                while ((lengthReadData = oald9SoundEnStream.read(buffer, 0, buffer.length)) != -1) {
+                    response.getOutputStream().write(buffer, 0, lengthReadData);
+                }
             }
-        } catch (IOException | URISyntaxException ex) {
+        } catch (IOException /*| URISyntaxException*/ ex) {
             ex.printStackTrace();
         }
     }
 
     @RequestMapping(url = "playLDOCE6SoundFile.html")
-    public void playLDOCE6SoundFile(HttpServletRequest request) {
+    public void playLDOCE6SoundFile(HttpServletRequest request, HttpServletResponse response) {
         try {
             if (ldoce6SoundEn == null) {
                 ldoce6SoundEn = new SoundDatFileReader(Config.INSTANCE.getLDOCE6SoundIndFileParh(), Config.INSTANCE.getLDOCE6SoundDatFilePath());
@@ -645,9 +655,13 @@ public class WordCardController {
             }
 
             if (ldoce6SoundEn.seekToFile(request.getParameter("fileName"))) {
-                MP3Player.play(ldoce6SoundEnStream);
+                //MP3Player.play(ldoce6SoundEnStream);
+                int lengthReadData;
+                while ((lengthReadData = ldoce6SoundEnStream.read(buffer, 0, buffer.length)) != -1) {
+                    response.getOutputStream().write(buffer, 0, lengthReadData);
+                }
             }
-        } catch (IOException | URISyntaxException ex) {
+        } catch (IOException /*| URISyntaxException*/ ex) {
             ex.printStackTrace();
         }
     }

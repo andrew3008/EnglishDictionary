@@ -1,15 +1,29 @@
-package com.englishDictionary.resourceReaders.htmlDatFile.resourceReader;
+package com.englishDictionary.resourceReaders.resourceReader;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 
 public class SEDFileReader implements SEDReader {
 
+    private String filePath;
     private RandomAccessFile file;
 
-    public SEDFileReader(String fileName, String accessMode) throws IOException {
-        file = new RandomAccessFile(fileName, accessMode);
+    public SEDFileReader(String filePath, String accessMode) throws IOException {
+        this.filePath = filePath;
+        file = new RandomAccessFile(filePath, accessMode);
+    }
+
+    @Override
+    public long fileLength() {
+        File file = new File(filePath);
+        return file.length();
+    }
+
+    @Override
+    public int read() throws IOException {
+        return file.read();
     }
 
     @Override

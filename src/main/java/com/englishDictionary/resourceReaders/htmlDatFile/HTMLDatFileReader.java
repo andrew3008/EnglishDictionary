@@ -2,9 +2,9 @@ package com.englishDictionary.resourceReaders.htmlDatFile;
 
 import com.englishDictionary.config.Config;
 import com.englishDictionary.config.EnvironmentType;
-import com.englishDictionary.resourceReaders.htmlDatFile.resourceReader.SEDFileReader;
-import com.englishDictionary.resourceReaders.htmlDatFile.resourceReader.SEDReader;
-import com.englishDictionary.resourceReaders.htmlDatFile.resourceReader.SEDYandexDiskReader;
+import com.englishDictionary.resourceReaders.resourceReader.SEDFileReader;
+import com.englishDictionary.resourceReaders.resourceReader.SEDReader;
+import com.englishDictionary.resourceReaders.resourceReader.SEDYandexDiskReader;
 import com.englishDictionary.utils.LRUCache;
 import com.englishDictionary.utils.ResourceUtils;
 import org.apache.lucene.index.DirectoryReader;

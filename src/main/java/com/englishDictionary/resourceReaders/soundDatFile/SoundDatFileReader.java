@@ -1,5 +1,10 @@
 package com.englishDictionary.resourceReaders.soundDatFile;
 
+import com.englishDictionary.config.Config;
+import com.englishDictionary.config.EnvironmentType;
+import com.englishDictionary.resourceReaders.resourceReader.SEDFileReader;
+import com.englishDictionary.resourceReaders.resourceReader.SEDReader;
+import com.englishDictionary.resourceReaders.resourceReader.SEDYandexDiskReader;
 import com.englishDictionary.resourceReaders.soundDatFile.soundFileIndex.SoundFileIndexReader;
 import com.englishDictionary.utils.LRUCache;
 
@@ -9,11 +14,12 @@ import java.io.RandomAccessFile;
 /**
  * Created by Andrew on 7/10/2017.
  */
-public class SoundDatFileReader extends RandomAccessFile {
+public class SoundDatFileReader /*extends RandomAccessFile*/ {
 
     private static int POSITION_NODES_CACHE_SIZE = 30;
 
-    private RandomAccessFile randomFile;
+    //private RandomAccessFile randomFile;
+    private SEDReader randomFile;
     private SoundFileIndexReader soundEnInd;
     private LRUCache<String, SoundFileIndexReader.Node> positionNodesCache;
     private long curPosition = -1;
@@ -21,11 +27,13 @@ public class SoundDatFileReader extends RandomAccessFile {
     private boolean eof = false;
     private long realBegPosition = -1;
 
-    public SoundDatFileReader(String indFileName, String datFileName) throws IOException {
-        super(datFileName, "r");
+    public SoundDatFileReader(String indFilePath, String datFilePath) throws IOException {
+        //super(datFilePath, "r");
         soundEnInd = new SoundFileIndexReader();
-        soundEnInd.readFromFile(indFileName);
-        randomFile = new RandomAccessFile(datFileName, "r");
+        soundEnInd.readFromFile(indFilePath);
+        //randomFile = new RandomAccessFile(datFilePath, "r");
+        randomFile = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) ? new SEDYandexDiskReader(datFilePath) : new SEDFileReader(datFilePath, "r");
+        //randomFile = new SEDYandexDiskReader(datFilePath);
         positionNodesCache = new LRUCache(POSITION_NODES_CACHE_SIZE);
     }
 
@@ -53,7 +61,7 @@ public class SoundDatFileReader extends RandomAccessFile {
         return true;
     }
 
-    @Override
+    //@Override
     public int read() throws IOException {
         if (eof) {
             return -1;
@@ -69,7 +77,7 @@ public class SoundDatFileReader extends RandomAccessFile {
         }
     }
 
-    @Override
+    //@Override
     public int read(byte b[], int off, int len) throws IOException {
         if (len > (b.length - off)) {
             throw new IOException("[SoundEn] len > (b.length - off)");
@@ -93,17 +101,17 @@ public class SoundDatFileReader extends RandomAccessFile {
         return rb;
     }
 
-    @Override
+    //@Override
     public int read(byte b[]) throws IOException {
         return read(b, 0, b.length);
     }
 
-    @Override
+    //@Override
     public long getFilePointer() throws IOException {
         return eof ? length() : curPosition;
     }
 
-    @Override
+    //@Override
     public void seek(long pos) throws IOException {
         if (pos >= length()) {
             eof = true;
@@ -117,12 +125,12 @@ public class SoundDatFileReader extends RandomAccessFile {
         randomFile.seek(realBegPosition + pos);
     }
 
-    @Override
+    //@Override
     public long length() throws IOException {
         return endPosition + 1;
     }
 
-    @Override
+    //@Override
     public void close() throws IOException {
     }
 

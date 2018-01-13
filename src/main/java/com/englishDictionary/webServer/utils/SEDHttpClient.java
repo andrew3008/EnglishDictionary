@@ -8,7 +8,9 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.cookie.Cookie;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
@@ -18,6 +20,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +47,35 @@ public class SEDHttpClient {
         for (Cookie cookie : httpCookieStore.getCookies()) {
             System.out.println("cookieName:" + cookie.getName() + ", cookieValue:" + cookie.getValue());
         }
+    }
+
+    public HttpRequestResponse sendRequest(String resourceURL, String method, Map<String, String> headers, String body) {
+        RequestBuilder requestBuilder = RequestBuilder.create(method);
+        requestBuilder.setUri(resourceURL);
+        if (headers != null) {
+            for (Map.Entry<String, String> headersEntry : headers.entrySet()) {
+                requestBuilder.addHeader(headersEntry.getKey(), headersEntry.getValue());
+            }
+        }
+        StringEntity entity = null;
+        try {
+            entity = new StringEntity(body);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return null;
+        }
+        requestBuilder.setEntity(entity);
+
+        HttpResponse response = executeRequest(requestBuilder.build());
+        byte[] responseBody = null;
+        if (response != null) {
+            try {
+                responseBody = EntityUtils.toByteArray(response.getEntity());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return new HttpRequestResponse(responseBody, getHttpResponseContentLength(response), getHttpResponseCode(response));
     }
 
     public HttpRequestResponse sendGetRequest(String resourceURL) {
