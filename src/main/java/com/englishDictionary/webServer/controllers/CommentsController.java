@@ -21,7 +21,7 @@ public class CommentsController {
     @RequestMapping(url = "load.html")
     public void loadComments(HttpServletRequest request, HttpServletResponse response) {
         String fileName = request.getParameter("fileName");
-        File file = new File(Config.WORDS_FILES_DIR + fileName + "_comments.html");
+        File file = new File(Config.INSTANCE.getWordsFilesDir() + fileName + "_comments.html");
         response.setContentType("application/json;charset=utf-8");
         try {
             CommentsListWords comments = new CommentsListWords();
@@ -37,7 +37,7 @@ public class CommentsController {
     @RequestMapping(url = "commentsFile.html")
     public void sendCommentsFile(HttpServletRequest request, HttpServletResponse response) {
         try {
-            String fullFileName = Config.WORDS_FILES_DIR + "\\" + request.getParameter("fileName") + "_comments.html";
+            String fullFileName = Config.INSTANCE.getWordsFilesDir() + "\\" + request.getParameter("fileName") + "_comments.html";
             BufferedInputStream commentsFileIS = new BufferedInputStream(new FileInputStream(fullFileName));
             int lengthReadData;
             while ((lengthReadData = commentsFileIS.read(buffer, 0, buffer.length)) != -1) {

@@ -44,12 +44,12 @@ public class WordCardController {
             dictFileNames.add("Lingvo Universal.dat");
 
             for (String fileName : dictFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.INSTANCE.getDigitalDictionariesDir() + fileName);
                 enRuDictionaries.add(dictionary);
             }
 
-            irregularVerbs = new HTMLFragmentReader(Config.IRREGULAR_VERBS_FILE);
-            wordCardHeaders = new HTMLFragmentReader(Config.MED2_WORD_CARD_HEADERS_FILE);
+            irregularVerbs = new HTMLFragmentReader(Config.INSTANCE.getIrregularVerbsFilePath());
+            wordCardHeaders = new HTMLFragmentReader(Config.INSTANCE.getMED2WordCardHeadersFilePath());
             isOpenEnRuDictionaries = true;
         }
 
@@ -137,7 +137,7 @@ public class WordCardController {
             slangDictionaryFileNames.add("LDOCE6.dat");
 
             for (String fileName : slangDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.INSTANCE.getDigitalDictionariesDir() + fileName);
                 slangDictionaries.add(dictionary);
             }
 
@@ -238,7 +238,7 @@ public class WordCardController {
             slangDictionaryFileNames.add("ADLA2.dat");
 
             for (String fileName : slangDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.INSTANCE.getDigitalDictionariesDir() + fileName);
                 adla2Dictionaries.add(dictionary);
             }
 
@@ -329,7 +329,7 @@ public class WordCardController {
             collocationDictionaryFileNames.add("OALD 9.dat");
 
             for (String fileName : collocationDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.INSTANCE.getDigitalDictionariesDir() + fileName);
                 OALD9Dictionaries.add(dictionary);
             }
 
@@ -429,7 +429,7 @@ public class WordCardController {
             collocationDictionaryFileNames.add("LDOCE5_Extras.dat");
 
             for (String fileName : collocationDictionaryFileNames) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileName);
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.INSTANCE.getDigitalDictionariesDir() + fileName);
                 collocationDictionaries.add(dictionary);
             }
 
@@ -520,7 +520,7 @@ public class WordCardController {
             thesaurusDictionaryFileNames.put("eng_eng_errors_di_1_0.dat", DictionaryType.DSL);
 
             for (Map.Entry<String, DictionaryType> fileEntry : thesaurusDictionaryFileNames.entrySet()) {
-                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.DIGITAL_DICTIONARIES_DIR + fileEntry.getKey());
+                HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.INSTANCE.getDigitalDictionariesDir() + fileEntry.getKey());
                 thesaurusDictionaries.put(dictionary, fileEntry.getValue());
             }
 
@@ -624,7 +624,7 @@ public class WordCardController {
     public void playOALD9SoundFile(HttpServletRequest request) {
         try {
             if (oald9SoundEn == null) {
-                oald9SoundEn = new SoundDatFileReader(Config.OALD9_SOUND_IND_FILE, Config.OALD9_SOUND_DAT_FILE);
+                oald9SoundEn = new SoundDatFileReader(Config.INSTANCE.getOALD9SoundIndFilePath(), Config.INSTANCE.getOALD9SoundDatFilePath());
                 oald9SoundEnStream = new InputStreamFromRandomAccessFile(oald9SoundEn);
             }
 
@@ -640,7 +640,7 @@ public class WordCardController {
     public void playLDOCE6SoundFile(HttpServletRequest request) {
         try {
             if (ldoce6SoundEn == null) {
-                ldoce6SoundEn = new SoundDatFileReader(Config.LDOCE6_SOUND_IND_FILE, Config.LDOCE6_SOUND_DAT_FILE);
+                ldoce6SoundEn = new SoundDatFileReader(Config.INSTANCE.getLDOCE6SoundIndFileParh(), Config.INSTANCE.getLDOCE6SoundDatFilePath());
                 ldoce6SoundEnStream = new InputStreamFromRandomAccessFile(ldoce6SoundEn);
             }
 

@@ -1,5 +1,6 @@
 package com.englishDictionary.servicesThirdParty.lingualeo;
 
+import com.englishDictionary.webServer.utils.SEDHttpClient;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -52,14 +53,14 @@ public class LinguaLeoClient {
     }
 
     private Boolean isAuthorized() {
-        String response = httpClient.sendGetRequest(LinguaLeoConfig.CHECK_AUTHORIZED_URL);
+        SEDHttpClient.HttpRequestResponse response = httpClient.sendGetRequest(LinguaLeoConfig.CHECK_AUTHORIZED_URL);
         //System.out.println("[LinguaLeo] [isAuthorized] response:" + response);
 
         // Handling response
         ObjectMapper mapper = new ObjectMapper();
         JsonNode rootNode;
         try {
-            rootNode = mapper.readTree(response);
+            rootNode = mapper.readTree(response.getContent());
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -123,7 +124,7 @@ public class LinguaLeoClient {
     /*                                                  Sets of words                                       */
     /********************************************************************************************************/
     public List<String> getExistSets() {
-        String responce = httpClient.sendGetRequest(GET_DICTIONARIES);
+        httpClient.sendGetRequest(GET_DICTIONARIES);
         return Collections.EMPTY_LIST;
     }
 
@@ -134,12 +135,12 @@ public class LinguaLeoClient {
         params.put("page", "1");
         params.put("filter", "all");
         params.put("groupId", "dictionary");
-        String response = httpClient.sendPostRequest(GET_WORDS_FROM_DICTIONARY, params);
+        SEDHttpClient.HttpRequestResponse response = httpClient.sendPostRequest(GET_WORDS_FROM_DICTIONARY, params);
 
         ObjectMapper mapper = new ObjectMapper();
         JsonNode rootNode;
         try {
-            rootNode = mapper.readTree(response);
+            rootNode = mapper.readTree(response.getContent());
         } catch (IOException e) {
             e.printStackTrace();
             return Collections.emptyList();

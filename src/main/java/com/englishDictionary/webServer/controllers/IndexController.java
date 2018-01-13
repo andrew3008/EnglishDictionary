@@ -15,7 +15,7 @@ public class IndexController {
     @RequestMapping(url = "getContent.html")
     public void getContent(HttpServletResponse response) {
         response.setContentType("application/json;charset=utf-8");
-        ParserSetsWords.readContentFile(response, Config.WORDS_FILES_CONTENT_FILE);
+        ParserSetsWords.readContentFile(response, Config.INSTANCE.getWordsFilesDir() + Config.WORDS_FILES_CONTENT_FILE);
     }
 
     @RequestMapping(url = "getListWords.html")

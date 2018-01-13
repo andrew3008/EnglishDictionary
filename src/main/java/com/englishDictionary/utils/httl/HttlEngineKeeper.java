@@ -17,7 +17,7 @@ public class HttlEngineKeeper {
 
     static
     {
-        String userDir = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/" : System.getProperty("user.dir");
+        String userDir = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) ? "/tmp/src/" : System.getProperty("user.dir");
 
         Properties httlProperties = new Properties();
         httlProperties.put("import.packages", "com.englishDictionary.servicesThirdParty.forvo, java.util, java.lang");

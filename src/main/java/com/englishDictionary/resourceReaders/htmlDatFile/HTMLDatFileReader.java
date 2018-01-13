@@ -76,7 +76,7 @@ class HTMLDatFileReader {
         this.fileName = fileName;
 
         if (fileName.endsWith("Transcriptions.dat") || fileName.endsWith("Mnemonics.dat") || fileName.endsWith("IrregularVerbs.dat") || fileName.endsWith("WordCardHeaders.dat") ||
-                EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
+                EnvironmentType.OPEN_SHIFT_CLUSTER != Config.INSTANCE.getEnvironmentType()) {
             inStream = new SEDFileReader(fileName, "r");
         } else {
             inStream = new SEDYandexDiskReader("EnglishDictionary_Resources/Dictionaries/DigitalDictionaries/" + ResourceUtils.getFileNameFromPath(fileName).replace(" ", "%20"));
@@ -133,7 +133,7 @@ class HTMLDatFileReader {
                 return;
             }
 
-            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
                 for (int nrBytes = 0; nrBytes != -1; nrBytes = inStream.read(outputStream, Integer.min(bufferIO.length, remainNumBytes))) {
                     if (nrBytes == 0) {
                         continue;
@@ -214,7 +214,7 @@ class HTMLDatFileReader {
             String dictionaryName = ResourceUtils.getFileNameWithoutExtnFromPath(fileName);
             Directory dir = null;
             try {
-                dir = FSDirectory.open(Paths.get(Config.DIGITAL_DICTIONARIES_DIR + dictionaryName + "_Lucene_Index"));
+                dir = FSDirectory.open(Paths.get(Config.INSTANCE.getDigitalDictionariesDir() + dictionaryName + "_Lucene_Index"));
             } catch (IOException e) {
                 e.printStackTrace();
             }

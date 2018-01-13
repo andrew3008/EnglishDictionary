@@ -18,7 +18,7 @@ public class LinguaLeoHttpClient {
         sedHttpClient = new SEDHttpClient();
     }
 
-    public String sendGetRequest(String resourceURL) {
+    public SEDHttpClient.HttpRequestResponse sendGetRequest(String resourceURL) {
         return sedHttpClient.sendGetRequest(resourceURL);
     }
 
@@ -43,7 +43,7 @@ public class LinguaLeoHttpClient {
         //System.out.println("[securityCooker]: " + securityCooker.build());
     }
 
-    public String sendPostRequest(String resourceURL, Map<String, String> params) {
+    public SEDHttpClient.HttpRequestResponse sendPostRequest(String resourceURL, Map<String, String> params) {
         if (securityCooker == null) {
             // TODO: Send to client Internel_Server_Err with message "Not authetorization yet"
             return null;

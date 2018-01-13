@@ -53,26 +53,26 @@ public class StaticResourcesController {
     @RequestMappingByFileExtensions(exts = {"js", "css", "ico", "png", "jpg", "gif", "json"})
     public void getStaticResource(HttpServletRequest request, HttpServletResponse response) throws IOException, ParseException {
         String contextPath = request.getContextPath();
-        String userDir = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/" : System.getProperty("user.dir");
+        String userDir = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) ? "/tmp/src/" : System.getProperty("user.dir");
         String realpath;
         if (contextPath.startsWith("/static/images/mnemonics/mnemonics.png")) {
-            realpath = Config.MNEMONICS_DIR + "mnemonics.png";
+            realpath = Config.INSTANCE.getMnemonicsDir() + "mnemonics.png";
         } else if (contextPath.startsWith("/mnemonics/images/")) {
-            realpath = Config.MNEMONICS_IMAGES_DIR + contextPath.substring("/mnemonics/images/".length(), contextPath.length());
+            realpath = Config.INSTANCE.getMnemonicsImagesDir() + contextPath.substring("/mnemonics/images/".length(), contextPath.length());
         } else if (contextPath.startsWith("/static/images/flags/")) {
-            realpath = Config.MNEMONICS_FLAGS_DIR + contextPath.substring("/static/images/flags/".length(), contextPath.length());
+            realpath = Config.INSTANCE.getMnemonicsFlagsDir() + contextPath.substring("/static/images/flags/".length(), contextPath.length());
         } else if (contextPath.startsWith("/static/images/forvo.png")) {
-            realpath = Config.FORVO_DIR + "forvo.png";
+            realpath = Config.INSTANCE.getForvoDir() + "forvo.png";
         } else if (contextPath.startsWith("/static/images/oald9/")) {
-            realpath = Config.OALD9_IMAGES_DIR + contextPath.substring("/static/images/oald9/".length(), contextPath.length());
+            realpath = Config.INSTANCE.getOALD9ImagesDir() + contextPath.substring("/static/images/oald9/".length(), contextPath.length());
         } else if (contextPath.startsWith("/OALD9/images/")) { // For OpenShift
-            realpath = Config.OALD9_IMAGES_DIR + contextPath.substring("/OALD9/images/".length(), contextPath.length());
+            realpath = Config.INSTANCE.getOALD9ImagesDir() + contextPath.substring("/OALD9/images/".length(), contextPath.length());
         } else if (contextPath.startsWith("/LDOCE6/images/")) {
-            realpath = Config.LDOCE6_IMAGES_DIR + contextPath.substring("/LDOCE6/images/".length(), contextPath.length());
+            realpath = Config.INSTANCE.getLDOCE6ImagesDir() + contextPath.substring("/LDOCE6/images/".length(), contextPath.length());
         } else if (contextPath.startsWith("/static/images/wordCard/")) {
-            realpath = Config.WORD_CARDS_IMAGES_DIR + contextPath.substring("/static/images/wordCard/".length(), contextPath.length());
+            realpath = Config.INSTANCE.getWordCardsImagesDir() + contextPath.substring("/static/images/wordCard/".length(), contextPath.length());
         } else if (contextPath.startsWith("/static/images/")) {
-            realpath = Config.COMMON_IMAGES_DIR + contextPath.substring("/static/images/".length(), contextPath.length());
+            realpath = Config.INSTANCE.getCommonImagesDir() + contextPath.substring("/static/images/".length(), contextPath.length());
         } else {
             realpath = userDir + contextPath;
         }

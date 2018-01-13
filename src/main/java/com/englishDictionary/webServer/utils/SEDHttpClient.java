@@ -1,12 +1,13 @@
 package com.englishDictionary.webServer.utils;
 
+import com.englishDictionary.config.Config;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -42,11 +43,11 @@ public class SEDHttpClient {
         }
     }
 
-    public String sendGetRequest(String resourceURL) {
+    public HttpRequestResponse sendGetRequest(String resourceURL) {
         return sendGetRequest(resourceURL, null);
     }
 
-    public String sendGetRequest(String resourceURL, Map<String, String> headers) {
+    public HttpRequestResponse sendGetRequest(String resourceURL, Map<String, String> headers) {
         HttpGet get = new HttpGet(resourceURL);
         if (headers != null) {
             for (Map.Entry<String, String> headersEntry : headers.entrySet()) {
@@ -54,36 +55,23 @@ public class SEDHttpClient {
             }
         }
 
-        HttpResponse response = null;
-        int code = -1;
-        try {
-            response = httpClient.execute(get);
-            code = response.getStatusLine().getStatusCode();
-                    /*if (code >= 400) {
-                        throw new RuntimeException(
-								"Could not access protected resource. Server returned http code: "
-										+ code);
+        HttpResponse response = executeRequest(get);
+        get.releaseConnection();
 
-					}*/
-
-				/*} else {
-                    throw new RuntimeException(
-							"Could not regenerate access token");
-				}*/
-
-            return EntityUtils.toString(response.getEntity(), "UTF-8");
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } finally {
-            get.releaseConnection();
+        byte[] responseBody = null;
+        if (response != null) {
+            try {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                response.getEntity().writeTo(baos);
+                responseBody = baos.toByteArray();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        return null;
+        return new HttpRequestResponse(responseBody, getHttpResponseContentLength(response), getHttpResponseCode(response));
     }
 
-//    ByteArrayOutputStream outputStreamBuffer = new ByteArrayOutputStream(2048);
-
-    public int sendGetRequestBytes(String resourceURL, Map<String, String> headers, OutputStream outputStream) {
+    public HttpRequestResponse sendGetRequest(String resourceURL, Map<String, String> headers, OutputStream outputStream) {
         HttpGet get = new HttpGet(resourceURL);
         if (headers != null) {
             for (Map.Entry<String, String> headersEntry : headers.entrySet()) {
@@ -91,76 +79,28 @@ public class SEDHttpClient {
             }
         }
 
-        HttpResponse response = null;
-        int code = -1;
-        try {
-            response = httpClient.execute(get);
-            code = response.getStatusLine().getStatusCode();
-                    /*if (code >= 400) {
-                        throw new RuntimeException(
-								"Could not access protected resource. Server returned http code: "
-										+ code);
+        HttpResponse response = executeRequest(get);
+        get.releaseConnection();
 
-					}*/
-
-				/*} else {
-                    throw new RuntimeException(
-							"Could not regenerate access token");
-				}*/
-
-//            System.out.println("[SEDHttpClient][sendGetRequest] code:" + code);
-            response.getEntity().writeTo(outputStream);
-            return (int)response.getEntity().getContentLength();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } finally {
-            get.releaseConnection();
-        }
-        return -1;
-    }
-
-    public byte[] sendGetRequestBytes(String resourceURL, Map<String, String> headers) {
-        HttpGet get = new HttpGet(resourceURL);
-        if (headers != null) {
-            for (Map.Entry<String, String> headersEntry : headers.entrySet()) {
-                get.addHeader(headersEntry.getKey(), headersEntry.getValue());
+        if (response != null) {
+            try {
+                response.getEntity().writeTo(outputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
-
-        HttpResponse response = null;
-        int code = -1;
-        try {
-            response = httpClient.execute(get);
-            code = response.getStatusLine().getStatusCode();
-                    /*if (code >= 400) {
-                        throw new RuntimeException(
-								"Could not access protected resource. Server returned http code: "
-										+ code);
-
-					}*/
-
-				/*} else {
-                    throw new RuntimeException(
-							"Could not regenerate access token");
-				}*/
-
-//            System.out.println("[SEDHttpClient][sendGetRequest] code:" + code);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            response.getEntity().writeTo(baos);
-            return baos.toByteArray();
-            /*response.getEntity().writeTo(outputStreamBuffer);
-            return outputStreamBuffer.toByteArray();*/
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } finally {
-            get.releaseConnection();
-        }
-        return null;
+        return new HttpRequestResponse(null, getHttpResponseContentLength(response), getHttpResponseCode(response));
     }
 
-    public String sendPostRequest(String resourceURL, Map<String, String> headers, Map<String, String> params) {
+    public HttpRequestResponse sendPostRequest(String resourceURL) {
+        return sendPostRequest(resourceURL, null, null);
+    }
+
+    public HttpRequestResponse sendPostRequest(String resourceURL, Map<String, String> headers) {
+        return sendPostRequest(resourceURL, headers, null);
+    }
+
+    public HttpRequestResponse sendPostRequest(String resourceURL, Map<String, String> headers, Map<String, String> params) {
         HttpPost post = new HttpPost(resourceURL);
         for (Map.Entry<String, String> headersEntry : headers.entrySet()) {
             post.addHeader(headersEntry.getKey(), headersEntry.getValue());
@@ -177,38 +117,68 @@ public class SEDHttpClient {
             return null;
         }
 
-        HttpResponse response = null;
-        int code = -1;
+        HttpResponse response = executeRequest(post);
+        post.releaseConnection();
+
+        byte[] responseBody = null;
+        if (response != null) {
+            try {
+                responseBody = EntityUtils.toByteArray(response.getEntity());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return new HttpRequestResponse(responseBody, getHttpResponseContentLength(response), getHttpResponseCode(response));
+    }
+
+    private HttpResponse executeRequest(HttpUriRequest httpRequest) {
         try {
-            response = httpClient.execute(post);
-            code = response.getStatusLine().getStatusCode();
-                    /*if (code >= 400) {
-                        throw new RuntimeException(
-								"Could not access protected resource. Server returned http code: "
-										+ code);
-
-					}*/
-
-				/*} else {
-                    throw new RuntimeException(
-							"Could not regenerate access token");
-				}*/
-
-            //return handleResponse(response);
-            //System.out.println("[Post] response:[" + response + "]");
-            //handleResponse(response);
-            return EntityUtils.toString(response.getEntity(), "UTF-8");
-        } catch (ClientProtocolException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            return httpClient.execute(httpRequest);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
-        } finally {
-            post.releaseConnection();
+        }
+        return null;
+    }
+
+    public static String responseContentToString(HttpRequestResponse response) {
+        try {
+            return new String(response.getContent(), Config.CHARSET);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private int getHttpResponseContentLength(HttpResponse response) {
+        return (response == null) ? -1 : (int) response.getEntity().getContentLength();
+    }
+
+    private int getHttpResponseCode(HttpResponse response) {
+        return (response == null) ? -1 : response.getStatusLine().getStatusCode();
+    }
+
+    public class HttpRequestResponse {
+        private byte[] content;
+        private int contentLength;
+        private int responseCode;
+
+        public HttpRequestResponse(byte[] content, int contentLength, int responseCode) {
+            this.content = content;
+            this.contentLength = contentLength;
+            this.responseCode = responseCode;
         }
 
-        return null;
+        public byte[] getContent() {
+            return content;
+        }
+
+        public int getContentLength() {
+            return contentLength;
+        }
+
+        public int getResponseCode() {
+            return responseCode;
+        }
     }
 
 }

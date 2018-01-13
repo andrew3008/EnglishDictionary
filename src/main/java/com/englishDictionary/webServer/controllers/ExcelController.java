@@ -1,5 +1,6 @@
 package com.englishDictionary.webServer.controllers;
 
+import com.englishDictionary.config.Config;
 import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
@@ -14,6 +15,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -47,8 +49,8 @@ public class ExcelController {
         headers.put("Accept-Charset", "windows-1251,utf-8;q=0.7,*;q=0.7");
         headers.put("Accept-Language", "ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4");
         headers.put("User-Agent", "Mozilla/5.0");
-        String postResponceJSon = sedHttpClient.sendGetRequest(String.format(LINGVO_LIVE_GET_WORD_TRANSLATE_URL_TEMPLATE, word), headers);
-        if (postResponceJSon == null) {
+        SEDHttpClient.HttpRequestResponse getHttpResponse = sedHttpClient.sendGetRequest(String.format(LINGVO_LIVE_GET_WORD_TRANSLATE_URL_TEMPLATE, word), headers);
+        if (getHttpResponse == null) {
             httpResponse.setStatus(HttpResponseStatus.INTERNAL_SERVER_ERROR);
             return;
         }
@@ -56,7 +58,7 @@ public class ExcelController {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode rootNode;
         try {
-            rootNode = mapper.readTree(postResponceJSon);
+            rootNode = mapper.readTree(getHttpResponse.getContent());
         } catch (IOException e) {
             e.printStackTrace();
             httpResponse.setStatus(HttpResponseStatus.INTERNAL_SERVER_ERROR);

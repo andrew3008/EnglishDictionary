@@ -1,87 +1,49 @@
 package com.englishDictionary.config;
 
 import com.englishDictionary.config.localStation.ConfigHomeStation;
-import com.englishDictionary.config.localStation.ConfigLocation;
 import com.englishDictionary.config.localStation.ConfigWorkStation;
 import com.englishDictionary.config.openShiftClaster.ConfigOpenShiftCluster;
 import httl.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Config implements EnvironmentInterface {
+public class Config implements EnvironmentResourcesInterface {
 
     public static final Config INSTANCE = new Config();
 
-    private static ConfigLocation configLocation;
-    //private static EnvironmentInterface configLocation;
-    private static EnvironmentType environmentType;
+    public static final int WEB_SERVER_PORT = 8080;
+    public static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
+    public static final String YANDEX_WEBDAV_AUTHORIZATION_TOKEN = "AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY";
+    public static final String WORDS_FILES_CONTENT_FILE = "_content.json";
+    public static final String FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS = "WordsFromExcel";
+    public static final String CHARSET = StandardCharsets.UTF_8.name();
 
-    static {
+    private EnvironmentResourcesInterface environmentResources;
+    private EnvironmentType environmentType;
+
+    public Config() {
         String environmentTypeSV = System.getenv("SED_ENVIRONMENT_TYPE");
         if (EnvironmentType.HOME_STATION.name().equals(environmentTypeSV)) {
-            configLocation = new ConfigHomeStation();
+            environmentResources = new ConfigHomeStation();
             environmentType = EnvironmentType.HOME_STATION;
         } else if (EnvironmentType.WORK_STATION.name().equals(environmentTypeSV)) {
-            configLocation = new ConfigWorkStation();
+            environmentResources = new ConfigWorkStation();
             environmentType = EnvironmentType.WORK_STATION;
         } else if (EnvironmentType.OPEN_SHIFT_CLUSTER.name().equals(environmentTypeSV)) {
-            configLocation = new ConfigOpenShiftCluster();
+            environmentResources = new ConfigOpenShiftCluster();
             environmentType = EnvironmentType.OPEN_SHIFT_CLUSTER;
         }
     }
 
-    public static EnvironmentType getEnvironmentType() {
+    public EnvironmentType getEnvironmentType() {
         return environmentType;
     }
 
-    public static final int WEB_SERVER_PORT = 8080;
-
-    public static final String RESOURCES_ROOT_DIR = configLocation.getRootDir();
-
-    public static final String COMMON_IMAGES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/CommonImages/" : RESOURCES_ROOT_DIR + "\\CommonImages\\";
-
-    public static final String WORD_CARDS_IMAGES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/WordCards/" : RESOURCES_ROOT_DIR + "\\WordCards\\";
-
-    public static final String DICTIONARIES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/" : RESOURCES_ROOT_DIR + "\\Dictionaries\\";
-    public static final String DIGITAL_DICTIONARIES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/" : DICTIONARIES_DIR + "DigitalDictionaries\\";
-
-    public static final String LINGVO_UNIVERSAL_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/LingvoUniversal/" : DICTIONARIES_DIR + "LingvoUniversal\\";
-    public static final String LINGVO_UNIVERSAL_SOUND_DAT_FILE = LINGVO_UNIVERSAL_DIR + "Sounds\\SoundEn.dat";
-    public static final String LINGVO_UNIVERSAL_SOUND_IND_FILE = LINGVO_UNIVERSAL_DIR + "Sounds\\SoundEn.ind";
-
-    public static final String MED2_DIR = DICTIONARIES_DIR + "MED2\\";
-    public static final String MED2_WORD_CARD_HEADERS_FILE = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/MED2/WordCardHeaders/WordCardHeaders.dat" : MED2_DIR + "WordCardHeaders\\WordCardHeaders.dat";
-
-    public static final String OALD9_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/OALD9/" : DICTIONARIES_DIR + "OALD9\\";
-    public static final String OALD9_IMAGES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? OALD9_DIR + "Images/" : OALD9_DIR + "Images\\";
-    public static final String OALD9_SOUND_DAT_FILE = OALD9_DIR + "Sounds\\SoundEn.dat";
-    public static final String OALD9_SOUND_IND_FILE = OALD9_DIR + "Sounds\\SoundEn.ind";
-    public static final String OALD9_TRANSCRIPTIONS_FILE = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? OALD9_DIR + "/Transcriptions/Transcriptions.dat" : OALD9_DIR + "\\Transcriptions\\Transcriptions.dat";
-
-    public static final String LDOCE6_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/LDOCE6/" : DICTIONARIES_DIR + "LDOCE6\\";
-    public static final String LDOCE6_IMAGES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? LDOCE6_DIR + "Images/" : LDOCE6_DIR + "Images\\";
-    public static final String LDOCE6_SOUND_DAT_FILE = LDOCE6_DIR + "Sounds\\SoundEn.dat";
-    public static final String LDOCE6_SOUND_IND_FILE = LDOCE6_DIR + "Sounds\\SoundEn.ind";
-
-    public static final String IRREGULAR_VERBS_FILE = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Dictionaries/IrregularVerbs/IrregularVerbs.dat" : DICTIONARIES_DIR + "\\IrregularVerbs\\IrregularVerbs.dat";
-
-    public static final String MNEMONICS_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/Mnemonics/" : RESOURCES_ROOT_DIR + "\\Mnemonics\\";
-    public static final String MNEMONICS_FLAGS_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? MNEMONICS_DIR + "Flags/" : MNEMONICS_DIR + "Flags\\";
-    public static final String MNEMONICS_IMAGES_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? MNEMONICS_DIR + "Images/" : MNEMONICS_DIR + "Images\\";
-    public static final String MNEMONICS_FILE = MNEMONICS_DIR + "Mnemonics.dat";
-
-    public static final String FORVO_DIR = (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) ? "/tmp/src/static/openshift/WebServices/Forvo/" : RESOURCES_ROOT_DIR + "\\WebServices\\Forvo\\";
-    public static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
-
-    public static final String WORDS_FILES_DIR = configLocation.getWordsFilesFolder();
-    public static final String WORDS_FILES_CONTENT_FILE = (environmentType == EnvironmentType.OPEN_SHIFT_CLUSTER) ? "_content.json" : WORDS_FILES_DIR + "_content.json";
-    public static final String FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS = "WordsFromExcel";
-    public static final boolean NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER =
-            (environmentType == EnvironmentType.OPEN_SHIFT_CLUSTER) ? false : (Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("SED_NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER")) == 0);
-    public static String getFileNameOfWordsFromExcel() {
-        return configLocation.getFileNameOfWordsFromExcel();
+    public boolean isNeedExportWordsFromExcelThroughBuffer() {     
+         return (environmentType == EnvironmentType.OPEN_SHIFT_CLUSTER) ? false : (Boolean.TRUE.toString().compareToIgnoreCase(System.getenv("SED_NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER")) == 0);
     }
 
     private static final Set<String> WORD_UNNECESSARY_FOR_HANDLING = Stream.of(
@@ -267,4 +229,144 @@ public class Config implements EnvironmentInterface {
     public static boolean isNecessaryWord(String word) {
         return !(Config.WORD_UNNECESSARY_FOR_HANDLING.contains(word.toLowerCase()) || StringUtils.isNumber(word));
     }
+    
+    
+    /*********************************************************************************************************************************************/
+    /*                                                     Delegating to a config of the adopted environment                                     */                                                  
+    /*********************************************************************************************************************************************/
+    @Override
+    public String getResourcesRootDir() {
+        return environmentResources.getResourcesRootDir();
+    }
+
+    @Override
+    public String getCommonImagesDir() {
+        return environmentResources.getCommonImagesDir();
+    }
+
+    @Override
+    public String getWordCardsImagesDir() {
+        return environmentResources.getWordCardsImagesDir();
+    }
+
+    @Override
+    public String getDictionariesDir() {
+        return environmentResources.getDictionariesDir();
+    }
+
+    @Override
+    public String getDigitalDictionariesDir() {
+        return environmentResources.getDigitalDictionariesDir();
+    }
+
+    @Override
+    public String getLingvoUniversalDir() {
+        return environmentResources.getLingvoUniversalDir();
+    }
+
+    @Override
+    public String getLingvoUniversalSoundDatFilePath() {
+        return environmentResources.getLingvoUniversalSoundDatFilePath();
+    }
+
+    @Override
+    public String getLingvoUniversalSoundIndFilePath() {
+        return environmentResources.getLingvoUniversalSoundIndFilePath();
+    }
+
+    @Override
+    public String getMED2Dir() {
+        return environmentResources.getMED2Dir();
+    }
+
+    @Override
+    public String getMED2WordCardHeadersFilePath() {
+        return environmentResources.getMED2WordCardHeadersFilePath();
+    }
+
+    @Override
+    public String getOALD9Dir() {
+        return environmentResources.getOALD9Dir();
+    }
+
+    @Override
+    public String getOALD9ImagesDir() {
+        return environmentResources.getOALD9ImagesDir();
+    }
+
+    @Override
+    public String getOALD9SoundDatFilePath() {
+        return environmentResources.getOALD9SoundDatFilePath();
+    }
+
+    @Override
+    public String getOALD9SoundIndFilePath() {
+        return environmentResources.getOALD9SoundIndFilePath();
+    }
+
+    @Override
+    public String getOALD9TranscriptionsFilePath() {
+        return environmentResources.getOALD9TranscriptionsFilePath();
+    }
+
+    @Override
+    public String getLDOCE6Dir() {
+        return environmentResources.getLDOCE6Dir();
+    }
+
+    @Override
+    public String getLDOCE6ImagesDir() {
+        return environmentResources.getLDOCE6ImagesDir();
+    }
+
+    @Override
+    public String getLDOCE6SoundDatFilePath() {
+        return environmentResources.getLDOCE6SoundDatFilePath();
+    }
+
+    @Override
+    public String getLDOCE6SoundIndFileParh() {
+        return environmentResources.getLDOCE6SoundIndFileParh();
+    }
+
+    @Override
+    public String getIrregularVerbsFilePath() {
+        return environmentResources.getIrregularVerbsFilePath();
+    }
+
+    @Override
+    public String getMnemonicsDir() {
+        return environmentResources.getMnemonicsDir();
+    }
+
+    @Override
+    public String getMnemonicsFlagsDir() {
+        return environmentResources.getMnemonicsFlagsDir();
+    }
+
+    @Override
+    public String getMnemonicsImagesDir() {
+        return environmentResources.getMnemonicsImagesDir();
+    }
+
+    @Override
+    public String getMnemonicsFilePath() {
+        return environmentResources.getMnemonicsFilePath();
+    }
+
+    @Override
+    public String getForvoDir() {
+        return environmentResources.getForvoDir();
+    }
+
+    @Override
+    public String getWordsFilesDir() {
+        return environmentResources.getWordsFilesDir();
+    }
+
+    @Override
+    public String getFileNameOfWordsFromExcel() {
+        return environmentResources.getFileNameOfWordsFromExcel();
+    }
+
 }

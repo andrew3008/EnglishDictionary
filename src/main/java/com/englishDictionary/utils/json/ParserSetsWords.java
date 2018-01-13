@@ -4,7 +4,6 @@ import com.englishDictionary.config.Config;
 import com.englishDictionary.config.EnvironmentType;
 import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
-import com.englishDictionary.utils.ResourceUtils;
 import com.englishDictionary.utils.csv.CSVParser;
 import com.englishDictionary.webServer.ByteArrayOutputStream;
 import com.englishDictionary.webServer.HttpServletResponse;
@@ -43,7 +42,7 @@ public class ParserSetsWords {
     private static HTMLFragmentReader mnemonics;
 
     static public void readContentFile(HttpServletResponse response, String fileName) {
-        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
             SEDHttpClient httpClient = new SEDHttpClient();
             Map<String, String> headers = new HashMap<>();
             headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
@@ -51,9 +50,9 @@ public class ParserSetsWords {
             headers.put("Accept", "application/json;charset=utf-8");
             headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
             System.out.println("[readContentFile] url:" + "http://webdav.yandex.ru/" + fileName);
-            String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
+            SEDHttpClient.HttpRequestResponse responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName, headers);
             try {
-                response.getOutputStream().write(responce);
+                response.getOutputStream().write(responce.getContent());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -73,14 +72,14 @@ public class ParserSetsWords {
 
     private static BufferedReader createReaderOfSetWords(String fileName) throws FileNotFoundException, UnsupportedEncodingException {
         InputStream inputStream;
-        if (Config.NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
+        if (Config.INSTANCE.isNeedExportWordsFromExcelThroughBuffer() && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
             inputStream = BufferListOfWordsFromExcel.INSTANCE.getInputStream();
         } else {
             String fullFileName;
             if (Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
-                fullFileName = Config.getFileNameOfWordsFromExcel();
+                fullFileName = Config.INSTANCE.getFileNameOfWordsFromExcel();
             } else {
-                fullFileName = Config.WORDS_FILES_DIR + "\\" + fileName + ".json";
+                fullFileName = Config.INSTANCE.getWordsFilesDir() + "\\" + fileName + ".json";
             }
             inputStream = new FileInputStream(fullFileName);
         }
@@ -91,10 +90,10 @@ public class ParserSetsWords {
         BufferedReader reader = null;
         ByteArrayOutputStream responceWriter = response.getOutputStream();
         if (transcription == null) {
-            transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
-            mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
+            transcription = new HTMLFragmentReader(Config.INSTANCE.getOALD9TranscriptionsFilePath());
+            mnemonics = new HTMLFragmentReader(Config.INSTANCE.getMnemonicsFilePath());
         }
-        if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.INSTANCE.getEnvironmentType()) {
             try {
                 reader = createReaderOfSetWords(fileName);
             } catch (IOException e) {
@@ -103,7 +102,7 @@ public class ParserSetsWords {
             }
         }
 
-        boolean isListWordInCSV = Config.NEED_EXPORT_WORDS_FROM_EXCEL_TROUGH_BUFFER && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName);
+        boolean isListWordInCSV = Config.INSTANCE.isNeedExportWordsFromExcelThroughBuffer() && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName);
         if (isListWordInCSV) {
             try {
                 responceWriter.write("[");
@@ -140,7 +139,7 @@ public class ParserSetsWords {
             responceWriter.write("[");
             boolean isFirstWord = true;
             JsonNode rootNode;
-            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.getEnvironmentType()) {
+            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
                 SEDHttpClient httpClient = new SEDHttpClient();
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
@@ -148,8 +147,8 @@ public class ParserSetsWords {
                 headers.put("Accept", "application/json;charset=utf-8");
                 headers.put("charset", "utf-8");
                 headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
-                String responce = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName + ".json", headers);
-                rootNode = new ObjectMapper().readTree(responce);
+                SEDHttpClient.HttpRequestResponse requestResponse = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName + ".json", headers);
+                rootNode = new ObjectMapper().readTree(requestResponse.getContent());
             } else {
                 rootNode = new ObjectMapper().readTree(reader);
             }
@@ -174,7 +173,7 @@ public class ParserSetsWords {
             }
             responceWriter.write("]");
             try {
-                if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.getEnvironmentType()) {
+                if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.INSTANCE.getEnvironmentType()) {
                     reader.close();
                 }
             } catch (IOException e) {

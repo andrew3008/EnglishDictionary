@@ -3,22 +3,21 @@ package com.englishDictionary.config.localStation;
 /**
  * Created by Andrew on 8/12/2017.
  */
-public class ConfigHomeStation extends ConfigLocationStationAbstract implements ConfigLocation {
+public class ConfigHomeStation extends LocaleResourcesAbstract {
 
-    private static final String ROOT_DIR = "D:\\EnglishDictionary_Resources";
-    private static final String WORDS_FILES_DIR = "C:\\EnglishVocabulary\\VocabularyFiles\\";
-    private static final String FILE_NAME_OF_WORDS_FROM_EXCEL = "F:\\WordsFromExcel.json";
-
-    public String getRootDir() {
-        return ROOT_DIR;
+    @Override
+    public String getResourcesRootDir() {
+        return "D:\\EnglishDictionary_Resources";
     }
 
-    public String getWordsFilesFolder() {
-        return WORDS_FILES_DIR;
+    @Override
+    public String getWordsFilesDir() {
+        return "C:\\EnglishVocabulary\\VocabularyFiles\\";
     }
 
+    @Override
     public String getFileNameOfWordsFromExcel() {
-        return FILE_NAME_OF_WORDS_FROM_EXCEL;
+        return "F:\\WordsFromExcel.json";
     }
 
 }

@@ -1,99 +1,83 @@
-package com.englishDictionary.config.openShiftClaster;
+package com.englishDictionary.config.localStation;
 
 import com.englishDictionary.config.EnvironmentResourcesInterface;
 
-public class ConfigOpenShiftCluster implements EnvironmentResourcesInterface {
-
-    @Override
-    public String getResourcesRootDir() {
-        return "";
-    }
+abstract class LocaleResourcesAbstract implements EnvironmentResourcesInterface {
 
     @Override
     public String getCommonImagesDir() {
-        return "/tmp/src/static/openshift/CommonImages/";
+        return getResourcesRootDir() + "\\CommonImages\\";
     }
 
     @Override
     public String getWordCardsImagesDir() {
-        return "/tmp/src/static/openshift/WordCards/";
+        return getResourcesRootDir() + "\\WordCards\\";
     }
 
     @Override
     public String getDictionariesDir() {
-        return "/tmp/src/static/openshift/Dictionaries/";
+        return getResourcesRootDir() + "\\Dictionaries\\";
     }
-
     @Override
     public String getDigitalDictionariesDir() {
-        return "/";
+        return getDictionariesDir() + "DigitalDictionaries\\";
     }
 
     @Override
     public String getLingvoUniversalDir() {
-        return "/tmp/src/static/openshift/Dictionaries/LingvoUniversal/";
+        return getDictionariesDir() + "LingvoUniversal\\";
     }
-
     @Override
     public String getLingvoUniversalSoundDatFilePath() {
-        return null;
+        return getLingvoUniversalDir() + "Sounds\\SoundEn.dat";
     }
-
     @Override
     public String getLingvoUniversalSoundIndFilePath() {
-        return null;
+        return getLingvoUniversalDir() + "Sounds\\SoundEn.ind";
     }
 
     @Override
     public String getMED2Dir() {
         return getDictionariesDir() + "MED2\\";
     }
-
     @Override
     public String getMED2WordCardHeadersFilePath() {
-        return "/tmp/src/static/openshift/Dictionaries/MED2/WordCardHeaders/WordCardHeaders.dat";
+        return getMED2Dir() + "WordCardHeaders\\WordCardHeaders.dat";
     }
 
     @Override
     public String getOALD9Dir() {
-        return "/tmp/src/static/openshift/Dictionaries/OALD9/";
+        return getDictionariesDir() + "OALD9\\";
     }
-
     @Override
     public String getOALD9ImagesDir() {
-        return getOALD9Dir() + "Images/";
+        return getOALD9Dir() + "Images\\";
     }
-
     @Override
     public String getOALD9SoundDatFilePath() {
         return getOALD9Dir() + "Sounds\\SoundEn.dat";
     }
-
     @Override
     public String getOALD9SoundIndFilePath() {
         return getOALD9Dir() + "Sounds\\SoundEn.ind";
     }
-
     @Override
     public String getOALD9TranscriptionsFilePath() {
-        return getOALD9Dir() + "/Transcriptions/Transcriptions.dat";
+        return getOALD9Dir() + "\\Transcriptions\\Transcriptions.dat";
     }
 
     @Override
     public String getLDOCE6Dir() {
-        return "/tmp/src/static/openshift/Dictionaries/LDOCE6/";
+        return getDictionariesDir() + "LDOCE6\\";
     }
-
     @Override
     public String getLDOCE6ImagesDir() {
-        return getLDOCE6Dir() + "Images/";
+        return getLDOCE6Dir() + "Images\\";
     }
-
     @Override
     public String getLDOCE6SoundDatFilePath() {
         return getLDOCE6Dir() + "Sounds\\SoundEn.dat";
     }
-
     @Override
     public String getLDOCE6SoundIndFileParh() {
         return getLDOCE6Dir() + "Sounds\\SoundEn.ind";
@@ -101,24 +85,21 @@ public class ConfigOpenShiftCluster implements EnvironmentResourcesInterface {
 
     @Override
     public String getIrregularVerbsFilePath() {
-        return "/tmp/src/static/openshift/Dictionaries/IrregularVerbs/IrregularVerbs.dat";
+        return getDictionariesDir() + "\\IrregularVerbs\\IrregularVerbs.dat";
     }
 
     @Override
     public String getMnemonicsDir() {
-        return "/tmp/src/static/openshift/Mnemonics/";
+        return getResourcesRootDir() + "\\Mnemonics\\";
     }
-
     @Override
     public String getMnemonicsFlagsDir() {
-        return getMnemonicsDir() + "Flags/";
+        return getMnemonicsDir() + "Flags\\";
     }
-
     @Override
     public String getMnemonicsImagesDir() {
-        return getMnemonicsDir() + "Images/";
+        return getMnemonicsDir() + "Images\\";
     }
-
     @Override
     public String getMnemonicsFilePath() {
         return getMnemonicsDir() + "Mnemonics.dat";
@@ -126,17 +107,7 @@ public class ConfigOpenShiftCluster implements EnvironmentResourcesInterface {
 
     @Override
     public String getForvoDir() {
-        return "/tmp/src/static/openshift/WebServices/Forvo/";
-    }
-
-    @Override
-    public String getWordsFilesDir() {
-        return null;
-    }
-
-    @Override
-    public String getFileNameOfWordsFromExcel() {
-        return null;
+        return getResourcesRootDir() + "\\WebServices\\Forvo\\";
     }
 
 }

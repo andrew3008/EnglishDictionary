@@ -23,7 +23,7 @@ public class MnemonicsCardController {
     @RequestMapping(url = "show.html")
     public void showMnemonicsCard(HttpServletRequest request, HttpServletResponse response) throws IOException, ParseException {
         if (mnemonics == null) {
-            mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);
+            mnemonics = new HTMLFragmentReader(Config.INSTANCE.getMnemonicsFilePath());
         }
 
         String phrase = request.getParameter("word");
