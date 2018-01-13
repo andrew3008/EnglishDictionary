@@ -131,7 +131,7 @@ public class ConfigOpenShiftCluster implements EnvironmentResourcesInterface {
 
     @Override
     public String getWordsFilesDir() {
-        return null;
+        return "";
     }
 
     @Override
