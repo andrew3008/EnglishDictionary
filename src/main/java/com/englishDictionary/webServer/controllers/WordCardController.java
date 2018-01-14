@@ -1,6 +1,7 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
+import com.englishDictionary.config.EnvironmentType;
 import com.englishDictionary.config.openShiftClaster.ConfigOpenShiftCluster;
 import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
 import com.englishDictionary.resourceReaders.soundDatFile.InputStreamFromRandomAccessFile;
@@ -628,9 +629,13 @@ public class WordCardController {
     public void playOALD9SoundFile(HttpServletRequest request, HttpServletResponse response) {
         try {
             if (oald9SoundEn == null) {
-                oald9SoundEn = new SoundDatFileReader(Config.INSTANCE.getOALD9SoundIndFilePath(), Config.INSTANCE.getOALD9SoundDatFilePath());
-//                oald9SoundEn = new SoundDatFileReader("EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.ind",
-//                        "EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.dat");
+                if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
+                    oald9SoundEn = new SoundDatFileReader(
+                            "EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.ind",
+                            "EnglishDictionary_Resources/Dictionaries/OALD9/Sounds/SoundEn.dat");
+                } else {
+                    oald9SoundEn = new SoundDatFileReader(Config.INSTANCE.getOALD9SoundIndFilePath(), Config.INSTANCE.getOALD9SoundDatFilePath());
+                }
                 oald9SoundEnStream = new InputStreamFromRandomAccessFile(oald9SoundEn);
             }
 
