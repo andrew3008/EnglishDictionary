@@ -26,7 +26,7 @@ public class ConfigOpenShiftCluster implements EnvironmentResourcesInterface {
 
     @Override
     public String getDigitalDictionariesDir() {
-        return "/";
+        return "";
     }
 
     @Override
