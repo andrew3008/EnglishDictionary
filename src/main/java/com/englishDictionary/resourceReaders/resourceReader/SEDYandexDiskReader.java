@@ -75,7 +75,7 @@ public class SEDYandexDiskReader implements SEDReader {
             xmlReader = factory.createXMLStreamReader(new ByteArrayInputStream(response.getContent()));
             int event = xmlReader.getEventType();
             boolean notAllValuesFound = true;
-            while (notAllValuesFound) {
+            while (true) {
                 switch (event) {
                     case XMLStreamConstants.START_ELEMENT:
                         isGetContentLengthElement = WEBDAV_PROPERTY_GETCONTENTLENGTH.equals(xmlReader.getLocalName());
