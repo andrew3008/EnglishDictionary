@@ -7,6 +7,7 @@ import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoClient;
 import com.englishDictionary.servicesThirdParty.lingualeo.LinguaLeoWordInfo;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ public class LingualeoController {
     private LinguaLeoClient lingualeoClient = new LinguaLeoClient();
 
     @RequestMapping(url = "exportCurrentSet.html")
-    public void exportWordsToLingualeo(HttpServletRequest request) {
+    public void exportWordsToLingualeo(HttpServletRequest request) throws IOException {
         String fileName = request.getParameter("fileName");
 
         if (!lingualeoClient.authorization()) {
@@ -31,7 +32,7 @@ public class LingualeoController {
 
         lingualeoClient.deleteAllWords();
 
-        Map<String, String> words = ParserSetsWords.readWordsForSet(fileName);
+        Map<String, String> words = ParserSetsWords.INSTANCE.readWordSetFile(fileName);
         List<LinguaLeoWordInfo> wordInfos = new ArrayList<>();
         for (Map.Entry<String, String> wordEntry : words.entrySet()) {
             if (!wordEntry.getKey().isEmpty()) {

@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -31,16 +32,15 @@ import java.util.Scanner;
  * Created by Andrew on 1/10/2016.
  */
 public class ParserSetsWords {
+    public static final ParserSetsWords INSTANCE = new ParserSetsWords();
+
     private static final int BUFFER_IO_SIZE = 10240;
     private static byte[] bufferIO = new byte[BUFFER_IO_SIZE];
-    private static String CSV_GROUP_NAME_PROPERTY = "csvGroupName";
-
-    /*private static HTMLFragmentReader transcription = new HTMLFragmentReader(Config.OALD9_TRANSCRIPTIONS_FILE);
-    private static HTMLFragmentReader mnemonics = new HTMLFragmentReader(Config.MNEMONICS_FILE);*/
+    private static final String CSV_GROUP_NAME_PROPERTY = "csvGroupName";
     private static HTMLFragmentReader transcription;
     private static HTMLFragmentReader mnemonics;
 
-    static public void readContentFile(HttpServletResponse response, String fileName) {
+    public void readContentFile(HttpServletResponse response, String fileName) {
         if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
             SEDHttpClient httpClient = new SEDHttpClient();
             Map<String, String> headers = new HashMap<>();
@@ -68,7 +68,91 @@ public class ParserSetsWords {
         }
     }
 
-    private static BufferedReader createReaderOfSetWords(String fileName) throws FileNotFoundException, UnsupportedEncodingException {
+    public String getFullFileName(String fileName) {
+        if (Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
+            return Config.INSTANCE.getFileNameOfWordsFromExcel();
+        } else {
+            return Config.INSTANCE.getWordsFilesDir() + "\\" + fileName + ".json";
+        }
+    }
+
+    public void readWordSetFile(HttpServletResponse response, String fileName) throws IOException {
+        ByteArrayOutputStream responceWriter = response.getOutputStream();
+        if (transcription == null) {
+            transcription = new HTMLFragmentReader(Config.INSTANCE.getOALD9TranscriptionsFilePath());
+            mnemonics = new HTMLFragmentReader(Config.INSTANCE.getMnemonicsFilePath());
+        }
+
+        byte[] json = null;
+        if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
+            SEDHttpClient httpClient = new SEDHttpClient();
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
+            headers.put("Host", "webdav.yandex.ru");
+            headers.put("Accept", "application/json;charset=utf-8");
+            headers.put("charset", "utf-8");
+            headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
+            SEDHttpClient.HttpRequestResponse requestResponse = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName + ".json", headers);
+            json = requestResponse.getContent();
+        }
+
+        boolean isFirstWord = true;
+        responceWriter.write("[");
+        for (WordCardDescription wordCardDescription : readWordSet(fileName, json)) {
+            if (isFirstWord) {
+                isFirstWord = false;
+            } else {
+                responceWriter.write(",");
+            }
+            writeWordDescription(responceWriter, wordCardDescription);
+        }
+        responceWriter.write("]");
+    }
+
+    public Map<String, String> readWordSetFile(String fileName) throws IOException {
+        BufferedReader reader;
+        try {
+            reader = createReaderOfSetWords(fileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Collections.EMPTY_MAP;
+        }
+
+        Map<String, String> mapWordNameToTranslate = new LinkedHashMap<>();
+        for (WordCardDescription description : readWordSet(fileName, null)) {
+            mapWordNameToTranslate.put(description.word, description.translation);
+        }
+
+        if (reader != null) {
+            try {
+                reader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return mapWordNameToTranslate;
+    }
+
+
+    /**********************************************************************************************************************************************************/
+    /*                                                                  Private methods                                                                       */
+    /**********************************************************************************************************************************************************/
+    private class WordCardDescription {
+        String groupName;
+        String word;
+        String translation;
+        String examples;
+
+        WordCardDescription(String groupName, String word, String translation, String examples) {
+            this.groupName = groupName;
+            this.word = word;
+            this.translation = translation;
+            this.examples = examples;
+        }
+    }
+
+    private BufferedReader createReaderOfSetWords(String fileName) throws FileNotFoundException, UnsupportedEncodingException {
         InputStream inputStream;
         if (Config.INSTANCE.isNeedExportWordsFromExcelThroughBuffer() && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
             inputStream = BufferListOfWordsFromExcel.INSTANCE.getInputStream();
@@ -84,150 +168,90 @@ public class ParserSetsWords {
         return new BufferedReader(new InputStreamReader(inputStream, Config.CHARSET));
     }
 
-    static public void parseWordsFile(HttpServletResponse response, String fileName) throws IOException {
-        BufferedReader reader = null;
-        ByteArrayOutputStream responceWriter = response.getOutputStream();
-        if (transcription == null) {
-            transcription = new HTMLFragmentReader(Config.INSTANCE.getOALD9TranscriptionsFilePath());
-            mnemonics = new HTMLFragmentReader(Config.INSTANCE.getMnemonicsFilePath());
-        }
-        if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.INSTANCE.getEnvironmentType()) {
-            try {
-                reader = createReaderOfSetWords(fileName);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return;
-            }
-        }
-
+    private List<WordCardDescription> readWordSet(String fileName, byte[] json) throws IOException {
         boolean isListWordInCSV = Config.INSTANCE.isNeedExportWordsFromExcelThroughBuffer() && Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName);
         if (isListWordInCSV) {
-            try {
-                responceWriter.write("[");
-                boolean isFirstWord = true;
-                String groupName = "";
-                Scanner scanner = new Scanner(reader);
-                while (scanner.hasNext()) {
-                    List<String> line = CSVParser.parseLine(scanner.nextLine());
-                    if (line.isEmpty()) {
-                        continue;
-                    }
-
-                    if (isFirstWord) {
-                        isFirstWord = false;
-                    } else {
-                        responceWriter.write(",");
-                    }
-
-                    String word = line.get(0).trim();
-                    String translation = line.get(1).trim();
-                    String examples = line.get(2).trim();
-                    if (CSV_GROUP_NAME_PROPERTY.equals(word)) {
-                        groupName = translation;
-                    } else {
-                        writeWordDescription(responceWriter, groupName, word, translation, examples);
-                    }
-                }
-                scanner.close();
-                responceWriter.write("]");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            return readWordSetFromCSV(fileName);
         } else {
-            responceWriter.write("[");
-            boolean isFirstWord = true;
-            JsonNode rootNode;
-            if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
-                SEDHttpClient httpClient = new SEDHttpClient();
-                Map<String, String> headers = new HashMap<>();
-                headers.put("Cookie", "yandexuid=137029991514971623; lah=;");
-                headers.put("Host", "webdav.yandex.ru");
-                headers.put("Accept", "application/json;charset=utf-8");
-                headers.put("charset", "utf-8");
-                headers.put("Authorization", "OAuth AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY");
-                SEDHttpClient.HttpRequestResponse requestResponse = httpClient.sendGetRequest("http://webdav.yandex.ru/" + fileName + ".json", headers);
-                rootNode = new ObjectMapper().readTree(requestResponse.getContent());
-            } else {
-                rootNode = new ObjectMapper().readTree(reader);
-            }
-            Iterator<Map.Entry<String, JsonNode>> itGroupWordNode = rootNode.getFields();
-            while (itGroupWordNode.hasNext()) {
-                Map.Entry<String, JsonNode> groupWordNode = itGroupWordNode.next();
-                String groupName = groupWordNode.getKey();
-
-                Iterator<JsonNode> itWordCardNode = groupWordNode.getValue().getElements();
-                while (itWordCardNode.hasNext()) {
-                    JsonNode wordCardNode = itWordCardNode.next();
-                    if (isFirstWord) {
-                        isFirstWord = false;
-                    } else {
-                        responceWriter.write(",");
-                    }
-                    writeWordDescription(responceWriter, groupName,
-                            wordCardNode.get("Word").asText().trim(),
-                            wordCardNode.get("Translation").asText().trim(),
-                            wordCardNode.get("Examples").asText().trim());
-                }
-            }
-            responceWriter.write("]");
-            try {
-                if (EnvironmentType.OPEN_SHIFT_CLUSTER != Config.INSTANCE.getEnvironmentType()) {
-                    reader.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            return readWordSetFromJSon(fileName, json);
         }
     }
 
-    static private void writeWordDescription(ByteArrayOutputStream responceWriter,
-                                             String groupName, String word, String translation, String examples) {
+    private List<WordCardDescription> readWordSetFromCSV(String fileName) throws IOException {
+        List<WordCardDescription> wordCardDescriptions = new ArrayList<>();
+        String groupName = "";
+        BufferedReader reader = createReaderOfSetWords(fileName);
+        Scanner scanner = new Scanner(reader);
+        while (scanner.hasNext()) {
+            List<String> line = CSVParser.parseLine(scanner.nextLine());
+            if (line.isEmpty()) {
+                continue;
+            }
+
+            String word = line.get(0).trim();
+            String translation = line.get(1).trim();
+            String examples = line.get(2).trim();
+            if (CSV_GROUP_NAME_PROPERTY.equals(word)) {
+                groupName = translation;
+            } else {
+                wordCardDescriptions.add(new WordCardDescription(groupName, word, translation, examples));
+            }
+        }
+        scanner.close();
+        return wordCardDescriptions;
+    }
+
+    private List<WordCardDescription> readWordSetFromJSon(String fileName, byte[] json) throws IOException {
+        if ((json == null || json.length == 0) && (fileName == null || fileName.isEmpty())) {
+            return Collections.EMPTY_LIST;
+        }
+
+        List<WordCardDescription> wordCardDescriptions = new ArrayList<>();
+        JsonNode rootNode = null;
+        BufferedReader reader = null;
+        if (json == null) {
+            reader = createReaderOfSetWords(fileName);
+            rootNode = new ObjectMapper().readTree(reader);
+        } else {
+            rootNode = new ObjectMapper().readTree(json);
+        }
+
+        Iterator<Map.Entry<String, JsonNode>> itGroupWordNode = rootNode.getFields();
+        while (itGroupWordNode.hasNext()) {
+            Map.Entry<String, JsonNode> groupWordNode = itGroupWordNode.next();
+            String groupName = groupWordNode.getKey();
+
+            Iterator<JsonNode> itWordCardNode = groupWordNode.getValue().getElements();
+            while (itWordCardNode.hasNext()) {
+                JsonNode wordCardNode = itWordCardNode.next();
+                wordCardDescriptions.add(new WordCardDescription(
+                        groupName,
+                        wordCardNode.get("Word").asText().trim(),
+                        wordCardNode.get("Translation").asText().trim(),
+                        wordCardNode.get("Examples").asText().trim()));
+            }
+        }
+        if (reader != null) {
+            reader.close();
+        }
+        return wordCardDescriptions;
+    }
+
+    private void writeWordDescription(ByteArrayOutputStream responceWriter, WordCardDescription description) {
         try {
             responceWriter.write("{");
-            responceWriter.write("\"groupWords\":\"" + groupName + "\",");
-            responceWriter.write("\"word\":\"" + word + "\",");
-            responceWriter.write("\"haseMnemonics\":" + mnemonics.existHTMLByPhrase(word) + ",");
+            responceWriter.write("\"groupWords\":\"" + description.groupName + "\",");
+            responceWriter.write("\"word\":\"" + description.word + "\",");
+            responceWriter.write("\"haseMnemonics\":" + mnemonics.existHTMLByPhrase(description.word) + ",");
             responceWriter.write("\"transcription\":\"");
-            transcription.readHTMLByPhrase(responceWriter, word);
+            transcription.readHTMLByPhrase(responceWriter, description.word);
             responceWriter.write("\",");
-            responceWriter.write("\"translation\":\"" + translation + "\",");
-            responceWriter.write("\"examples\":\"" + examples + "\"");
+            responceWriter.write("\"translation\":\"" + description.translation + "\",");
+            responceWriter.write("\"examples\":\"" + description.examples + "\"");
             responceWriter.write("}");
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    static public Map<String, String> readWordsForSet(String fileName) {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode;
-        BufferedReader reader;
-        try {
-            reader = createReaderOfSetWords(fileName);
-            rootNode = mapper.readTree(reader);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return Collections.EMPTY_MAP;
-        }
-
-        Map<String, String> mapWordNameToTranslate = new LinkedHashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> itGroupWordNode = rootNode.getFields();
-        while (itGroupWordNode.hasNext()) {
-            Map.Entry<String, JsonNode> groupWordNode = itGroupWordNode.next();
-            Iterator<JsonNode> itWordCardNode = groupWordNode.getValue().getElements();
-            while (itWordCardNode.hasNext()) {
-                JsonNode wordCardNode = itWordCardNode.next();
-                mapWordNameToTranslate.put(wordCardNode.get("Word").asText().trim(), wordCardNode.get("Translation").asText().trim());
-            }
-        }
-
-        try {
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return mapWordNameToTranslate;
     }
 
 }

@@ -49,7 +49,8 @@ public class QuizletController {
     @RequestMapping(url = "exportSet.html")
     public void exportSet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (accessToken != null) {
-            String setName = request.getParameter("setName");
+            //String setName = request.getParameter("setName");
+            String setName = "CurrentSet";
             String fileName = request.getParameter("fileName");
             SetsControl.exportSet(accessToken, setName, fileName);
             List<String> setIds = SetsControl.getAllSetsID(accessToken);

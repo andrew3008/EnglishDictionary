@@ -44,6 +44,8 @@ public class WordCardController {
         if (!isOpenEnRuDictionaries) {
             List<String> dictFileNames = new ArrayList<>();
             dictFileNames.add("Lingvo Universal.dat");
+            dictFileNames.add("Right_Word_Wrong_Word.dat");
+            dictFileNames.add("Logman_Common_Errors.dat");
 
             for (String fileName : dictFileNames) {
                 HTMLFragmentReader dictionary = new HTMLFragmentReader(Config.INSTANCE.getDigitalDictionariesDir() + fileName);
@@ -517,7 +519,6 @@ public class WordCardController {
 
         if (!isOpenThesaurusDictionaries) {
             Map<String, DictionaryType> thesaurusDictionaryFileNames = new HashMap<>();
-            thesaurusDictionaryFileNames.put("Logman_Common_Errors.dat", DictionaryType.DICT);
             thesaurusDictionaryFileNames.put("Collins_Thesaurus.dat", DictionaryType.DSL);
             thesaurusDictionaryFileNames.put("eng_eng_errors_di_1_0.dat", DictionaryType.DSL);
 
@@ -640,13 +641,13 @@ public class WordCardController {
             }
 
             if (oald9SoundEn.seekToFile(request.getParameter("fileName"))) {
-                //MP3Player.play(oald9SoundEnStream);
-                int lengthReadData;
+                MP3Player.play(oald9SoundEnStream);
+                /*int lengthReadData;
                 while ((lengthReadData = oald9SoundEnStream.read(buffer, 0, buffer.length)) != -1) {
                     response.getOutputStream().write(buffer, 0, lengthReadData);
-                }
+                }*/
             }
-        } catch (IOException /*| URISyntaxException*/ ex) {
+        } catch (IOException | URISyntaxException ex) {
             ex.printStackTrace();
         }
     }

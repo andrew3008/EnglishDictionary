@@ -1,6 +1,7 @@
 package com.englishDictionary.servicesThirdParty.quizlet;
 
 import com.englishDictionary.config.Config;
+import com.englishDictionary.utils.json.ParserSetsWords;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
@@ -18,11 +19,8 @@ import org.apache.oltu.oauth2.common.OAuth;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.Console;
-import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -75,8 +73,7 @@ public class SetsControl {
     }
 
     public static void exportSet(String accessToken, String setName, String fileName) {
-        //createProtectedResourse(accessToken, "https://api.quizlet.com/2.0/sets", setName, fileName);
-        createProtectedResourse(accessToken, "https://api.quizlet.com/2.0/sets", "CurrentSet", fileName);
+        createProtectedResourse(accessToken, "https://api.quizlet.com/2.0/sets", setName, fileName);
     }
 
     // -------------------------------------------------------------------------------
@@ -92,44 +89,16 @@ public class SetsControl {
     }
 
     private static void readTermsFromFileListWord(String fileName, List<NameValuePair> params) {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode nodeRoot;
+        Map<String, String> mapWordNameToTranslate;
         try {
-            String fullFileName;
-            if (Config.FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS.equals(fileName)) {
-                fullFileName = Config.INSTANCE.getFileNameOfWordsFromExcel();
-            } else {
-                fullFileName = Config.INSTANCE.getWordsFilesDir() + "\\" + fileName + ".json";
-            }
-            nodeRoot = mapper.readTree(new File(fullFileName));
+            mapWordNameToTranslate = ParserSetsWords.INSTANCE.readWordSetFile(fileName);
         } catch (IOException e) {
             e.printStackTrace();
             return;
         }
-
-        String wordName = null;
-        Iterator<JsonNode> nodeSets = nodeRoot.getElements();
-        while (nodeSets.hasNext()) {
-            JsonNode nodeSet = nodeSets.next();
-            Iterator<JsonNode> nodeTerms = nodeSet.getElements();
-            while (nodeTerms.hasNext()) {
-                JsonNode nodeTerm = nodeTerms.next();
-                Iterator<String> fieldNames = nodeTerm.getFieldNames();
-                while (fieldNames.hasNext()) {
-                    String fieldName = fieldNames.next();
-                    if ("Word".equals(fieldName)) {
-                        wordName = nodeTerm.get(fieldName).asText().trim();
-                        if (wordName.isEmpty()) {
-                            wordName = null;
-                        } else {
-                            params.add(new BasicNameValuePair("terms[]", wordName));
-                        }
-                    } else if ((wordName != null) && "Translation".equals(fieldName)) {
-                        params.add(new BasicNameValuePair("definitions[]", nodeTerm.get(fieldName).asText()));
-                        wordName = null;
-                    }
-                }
-            }
+        for (Map.Entry<String, String> entry : mapWordNameToTranslate.entrySet()) {
+            params.add(new BasicNameValuePair("terms[]", entry.getKey()));
+            params.add(new BasicNameValuePair("definitions[]", entry.getValue()));
         }
     }
 
@@ -169,7 +138,6 @@ public class SetsControl {
 
             //return handleResponse(response);
             System.out.println("[Post] response:[" + response + "]");
-
         } catch (ClientProtocolException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
