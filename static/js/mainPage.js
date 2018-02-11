@@ -6,6 +6,9 @@ var mapGroupWords = new Object();
 var buttonCommentsIndex = 3;
 var needToShowKeyWords = false;
 var redrawRightWordCard = null;
+var isQuizletFrameMode = false;
+var lastChosenFileName;
+var lastChosenSetName;
 
 $(function () {
      tableWords = $('#tableWords').DataTable(
@@ -218,10 +221,7 @@ $(function () {
 /*                                                                                                                      List words                                                                                                      */
 /****************************************************************************************************************************************************************************************************************************************/
 function showListOfSetWord() {
-    // TODO: Need to do redirect to "/" whith auto choosen set of words
-    $('#tableWords_wrapper').show();
-    $('#quizlet_iframe').hide();
-    document.getElementById('quizlet_iframe').innerHTML = "";
+    window.location.href = 'http://localhost:8080/index.html';
 }
 
 function loadContent() {
@@ -232,11 +232,13 @@ function loadContent() {
 }
 
 function loadListWords() {
-    showListOfSetWord();
     if (selectContentFileWords.selectedIndex != -1) {
         tableWordsLastScrollPosition = tableWordsScrollYElement.scrollTop;
-        var fileName = selectContentFileWords.options[selectContentFileWords.selectedIndex].value;
-        $.get('/index/getListWords.html?fileName=' + fileName, showListWords)
+        var setName = selectContentFileWords.options[selectContentFileWords.selectedIndex].key;
+        var setFileName = selectContentFileWords.options[selectContentFileWords.selectedIndex].value;
+        lastChosenSetName = setName;
+        lastChosenFileName = setFileName;
+        $.get('/index/getListWords.html?fileName=' + setFileName, showListWords)
             .error(function (jqXHR, textStatus, errorThrown) {
                 showErrorMessage('Loading of the set of words', 'Error of load words: (' + jqXHR.status + ") " + errorThrown, true);
             });
@@ -271,11 +273,17 @@ function showContent(response) {
         $('#quizlet_iframe').show();
 
         quizletDeleteAllSets( function() {
+            console.log('DeleteAllSets was done')
             quizletExportThisSet( function(responseText) {
+                console.log('quizletExportThisSet was done')
                 var jsonResponse = JSON.parse(responseText);
                 document.getElementById('quizlet_iframe').innerHTML = "<iframe src=\"https://quizlet.com/" + jsonResponse.setId + "/match/embed\" width=\"99%\" style=\"border:0;position: absolute;top: 86px;\"></iframe>";
             });
         });
+    } else {
+        if (typeof lastChosenSetName != 'undefined') {
+            selectContentFileWords.options[lastChosenSetName].setAttribute("selected", "selected");
+        }
     }
 }
 
@@ -406,9 +414,12 @@ function showQuizletFrameCallback(responseText) {
         quizletDeleteAllSets( function() {
             quizletExportThisSet( function(responseText1) {
                 var jsonResponse = JSON.parse(responseText1);
-                // TODO
                 document.getElementById('quizlet_iframe').innerHTML = "<iframe src=\"https://quizlet.com/" + jsonResponse.setId + "/match/embed\" width=\"99%\" style=\"border:0;position: absolute;top: 86px;\"></iframe>";
                 $('#quizlet_iframe').show();
+                document.getElementById('buttonShowTheListOfWords').classList.remove('disabled')
+                document.getElementById('buttonShowQuizletFrame').classList.add('disabled');
+                document.getElementById('buttonExportToLingualeo').classList.add('disabled');
+                document.getElementById('contentFileWords').disabled = true;
             });
         });
     } else {
@@ -451,9 +462,9 @@ function quizletDeleteAllSets(callback) {
 }
 
 function quizletExportThisSet(callback) {
-    var setName = selectContentFileWords.options[selectContentFileWords.selectedIndex].key;
-    var setFileName = selectContentFileWords.options[selectContentFileWords.selectedIndex].value;
-    httpGetAsync('/quizlet/exportSet.html?setName=' + setName + '&fileName=' + setFileName, null, callback);
+    isQuizletFrameMode = true;
+    console.log('[quizletExportThisSet] setName:' + lastChosenSetName + ', setFileName:' + lastChosenFileName)
+    httpGetAsync('/quizlet/exportSet.html?setName=' + lastChosenSetName + '&fileName=' + lastChosenFileName, null, callback);
 }
 
 

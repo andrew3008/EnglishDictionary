@@ -43,9 +43,9 @@
 
         <div style="overflow:hidden !important;">
             <div class="panel_of_buttons">
-                <a onclick="showListOfSetWord()" class="button18" tabindex="0">Show the list of words</a>
-                <a onclick="showQuizletFrame()" class="button18" tabindex="0">Show Quizlet Frame</a>
-                <a onclick="exportThisSetToLingualeo()" class="button18" tabindex="0">Export to Lingualeo</a>
+                <a onclick="showListOfSetWord()" id="buttonShowTheListOfWords" class="button18 disabled" tabindex="0">Show the list of words</a>
+                <a onclick="showQuizletFrame()" id="buttonShowQuizletFrame" class="button18" tabindex="0">Show Quizlet Frame</a>
+                <a onclick="exportThisSetToLingualeo()" id="buttonExportToLingualeo" class="button18" tabindex="0">Export to Lingualeo</a>
             </div>
         </div>
 
