@@ -6,9 +6,6 @@ var mapGroupWords = new Object();
 var buttonCommentsIndex = 3;
 var needToShowKeyWords = false;
 var redrawRightWordCard = null;
-var isQuizletFrameMode = false;
-var lastChosenFileName;
-var lastChosenSetName;
 
 $(function () {
      tableWords = $('#tableWords').DataTable(
@@ -234,10 +231,7 @@ function loadContent() {
 function loadListWords() {
     if (selectContentFileWords.selectedIndex != -1) {
         tableWordsLastScrollPosition = tableWordsScrollYElement.scrollTop;
-        var setName = selectContentFileWords.options[selectContentFileWords.selectedIndex].key;
         var setFileName = selectContentFileWords.options[selectContentFileWords.selectedIndex].value;
-        lastChosenSetName = setName;
-        lastChosenFileName = setFileName;
         $.get('/index/getListWords.html?fileName=' + setFileName, showListWords)
             .error(function (jqXHR, textStatus, errorThrown) {
                 showErrorMessage('Loading of the set of words', 'Error of load words: (' + jqXHR.status + ") " + errorThrown, true);
@@ -281,9 +275,16 @@ function showContent(response) {
             });
         });
     } else {
-        if (typeof lastChosenSetName != 'undefined') {
-            selectContentFileWords.options[lastChosenSetName].setAttribute("selected", "selected");
-        }
+        /*$.get('/index/restoreChosenSetWords', function(textResponse, status){
+            var jsonResponse = JSON.parse(textResponse);
+            if (!jsonResponse.chosenSetWordsName) {
+                console.log(jsonResponse.chosenSetWordsName);
+                $('.contentFileWords option[value="' + jsonResponse.chosenSetWordsName + '"]').prop('selected', true);
+                loadListWords();
+            }
+        }).error(function (jqXHR, textStatus, errorThrown) {
+            showErrorMessage("Quizlet", "There was a server error while restoring of chosen word set: (" + jqXHR.status + ") " + errorThrown, true);
+        });*/
     }
 }
 
@@ -400,6 +401,12 @@ function showThesaurusDictionaries() {
 /*                                                                                                                      Quizlet                                                                                                         */
 /****************************************************************************************************************************************************************************************************************************************/
 function showQuizletFrame() {
+    var postData = { "isQuizletFrameMode":true, "chosenSetWordsName":selectContentFileWords.options[selectContentFileWords.selectedIndex].value};
+    $.post('/index/saveChosenSetWords', JSON.stringify(postData))
+        .error(function (jqXHR, textStatus, errorThrown) {
+            showErrorMessage("Quizlet", "There was a server error while saving of chosen set: (" + jqXHR.status + ") " + errorThrown, true);
+        });
+
     if (selectContentFileWords.selectedIndex == 0) {
         showWarningMessage("Quizlet", "Need to choose set of words", false);
     } else {
@@ -462,9 +469,14 @@ function quizletDeleteAllSets(callback) {
 }
 
 function quizletExportThisSet(callback) {
-    isQuizletFrameMode = true;
-    console.log('[quizletExportThisSet] setName:' + lastChosenSetName + ', setFileName:' + lastChosenFileName)
-    httpGetAsync('/quizlet/exportSet.html?setName=' + lastChosenSetName + '&fileName=' + lastChosenFileName, null, callback);
+    $.get('/index/restoreChosenSetWords', function(textResponse, status){
+        var jsonResponse = JSON.parse(textResponse);
+        httpGetAsync('/quizlet/exportSet?setWordName=' + jsonResponse.chosenSetWordsName, null, callback);
+        $('.contentFileWords option[value="' + jsonResponse.chosenSetWordsName + '"]').attr('selected', 'selected');
+        console.log(jsonResponse.chosenSetWordsName);
+    }).error(function (jqXHR, textStatus, errorThrown) {
+        showErrorMessage("Quizlet", "There was a server error while restoring of chosen word set: (" + jqXHR.status + ") " + errorThrown, true);
+    });
 }
 
 

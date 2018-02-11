@@ -220,7 +220,6 @@ public class ParserSetsWords {
         while (itGroupWordNode.hasNext()) {
             Map.Entry<String, JsonNode> groupWordNode = itGroupWordNode.next();
             String groupName = groupWordNode.getKey();
-
             Iterator<JsonNode> itWordCardNode = groupWordNode.getValue().getElements();
             while (itWordCardNode.hasNext()) {
                 JsonNode wordCardNode = itWordCardNode.next();

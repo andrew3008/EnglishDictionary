@@ -1,12 +1,13 @@
 package com.englishDictionary.webServer.controllers;
-import com.englishDictionary.servicesThirdParty.quizlet.QuizletAuthenticationURL;
-import com.englishDictionary.utils.json.JsonHelper;
+
 import com.englishDictionary.servicesThirdParty.quizlet.Auth2Client;
+import com.englishDictionary.servicesThirdParty.quizlet.QuizletAuthenticationURL;
 import com.englishDictionary.servicesThirdParty.quizlet.SetsControl;
-import com.englishDictionary.webServer.annotations.Controller;
-import com.englishDictionary.webServer.annotations.RequestMapping;
+import com.englishDictionary.utils.json.JsonHelper;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
+import com.englishDictionary.webServer.annotations.Controller;
+import com.englishDictionary.webServer.annotations.RequestMapping;
 
 import java.io.IOException;
 import java.util.List;
@@ -46,11 +47,11 @@ public class QuizletController {
         }
     }
 
-    @RequestMapping(url = "exportSet.html")
+    @RequestMapping(url = "exportSet")
     public void exportSet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (accessToken != null) {
-            String setName = request.getParameter("setName");
-            String fileName = request.getParameter("fileName");
+            String setName = request.getParameter("setWordName");
+            String fileName = request.getParameter("setWordName");
             SetsControl.exportSet(accessToken, setName, fileName);
             List<String> setIds = SetsControl.getAllSetsID(accessToken);
             response.setContentType("application/json;charset=utf-8");
