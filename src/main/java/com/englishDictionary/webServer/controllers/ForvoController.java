@@ -1,13 +1,13 @@
 package com.englishDictionary.webServer.controllers;
 
-import com.englishDictionary.config.Config;
+import com.englishDictionary.config.WordsUnnecessaryForHandling;
 import com.englishDictionary.servicesThirdParty.forvo.Forvo;
 import com.englishDictionary.servicesThirdParty.forvo.ForvoCard;
 import com.englishDictionary.utils.httl.HttlEngineKeeper;
-import com.englishDictionary.webServer.annotations.Controller;
-import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
+import com.englishDictionary.webServer.annotations.Controller;
+import com.englishDictionary.webServer.annotations.RequestMapping;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -32,7 +32,7 @@ public class ForvoController {
         List<String> headWords = new ArrayList<>();
         Map<String, List<ForvoCard>> forvoCardsGroupByWords = new HashMap<String, List<ForvoCard>>();
         for (String word : words) {
-            if (!Config.isNecessaryWord(word)) {
+            if (!WordsUnnecessaryForHandling.isNecessaryWord(word)) {
                 continue;
             }
 

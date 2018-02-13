@@ -134,9 +134,4 @@ public class ConfigOpenShiftCluster implements EnvironmentResourcesInterface {
         return "";
     }
 
-    @Override
-    public String getFileNameOfWordsFromExcel() {
-        return null;
-    }
-
 }
