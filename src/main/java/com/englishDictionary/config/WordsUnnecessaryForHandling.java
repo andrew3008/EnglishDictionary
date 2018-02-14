@@ -182,9 +182,7 @@ public class WordsUnnecessaryForHandling {
             "with",
             "without",
             "within",
-            "according",
-            "beyond",
-            "whereas"
+            "according"
     ).collect(Collectors.toSet());
 
     public static boolean isNecessaryWord(String word) {
