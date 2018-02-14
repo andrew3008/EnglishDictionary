@@ -1,12 +1,13 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.config.Config;
-import com.englishDictionary.utils.httl.HttlEngineKeeper;
+import com.englishDictionary.config.WordsUnnecessaryForHandling;
 import com.englishDictionary.resourceReaders.htmlDatFile.HTMLFragmentReader;
-import com.englishDictionary.webServer.annotations.Controller;
-import com.englishDictionary.webServer.annotations.RequestMapping;
+import com.englishDictionary.utils.httl.HttlEngineKeeper;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
+import com.englishDictionary.webServer.annotations.Controller;
+import com.englishDictionary.webServer.annotations.RequestMapping;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -31,7 +32,7 @@ public class MnemonicsCardController {
         List<String> headWords = new ArrayList<>();
         Map<String, String> mnemonicsCardsGroupByWords = new HashMap<>();
         for (String word : words) {
-            if (!Config.isNecessaryWord(word)) {
+            if (!WordsUnnecessaryForHandling.isNecessaryWord(word)) {
                 continue;
             }
 

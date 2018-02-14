@@ -15,9 +15,4 @@ public class ConfigHomeStation extends LocaleResourcesAbstract {
         return "C:\\EnglishVocabulary\\VocabularyFiles\\";
     }
 
-    @Override
-    public String getFileNameOfWordsFromExcel() {
-        return "F:\\WordsFromExcel.json";
-    }
-
 }

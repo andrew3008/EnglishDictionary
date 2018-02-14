@@ -39,6 +39,5 @@ public interface EnvironmentResourcesInterface {
     String getForvoDir();
 
     String getWordsFilesDir();
-    String getFileNameOfWordsFromExcel();
 
 }
