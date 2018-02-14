@@ -44,7 +44,7 @@ public class WordCardController {
         if (!isOpenEnRuDictionaries) {
             List<String> dictFileNames = new ArrayList<>();
             dictFileNames.add("Lingvo Universal.dat");
-            //dictFileNames.add("Right_Word_Wrong_Word.dat");
+            dictFileNames.add("Right_Word_Wrong_Word.dat");
             dictFileNames.add("Logman_Common_Errors.dat");
 
             for (String fileName : dictFileNames) {
