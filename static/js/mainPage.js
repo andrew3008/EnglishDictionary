@@ -218,7 +218,10 @@ $(function () {
 /*                                                                                                                      List words                                                                                                      */
 /****************************************************************************************************************************************************************************************************************************************/
 function showListOfSetWord() {
-    window.location.href = 'http://localhost:8080/index.html';
+    var selectedOptionElement = selectContentFileWords.options[selectContentFileWords.selectedIndex];
+    saveChosenSetWords(false, selectedOptionElement.text, selectedOptionElement.value, function () {
+        window.location.href = '/';
+    });
 }
 
 function loadContent() {
@@ -254,37 +257,19 @@ function addOption(oListbox, text, value, isDefaultSelected, isSelected) {
 }
 
 function showContent(response) {
-    for (var i = 0; i < response.length; ++i) {
-        var fileName = response[i].FileName;
-        var content = response[i].Content;
+    for (var i = 0; i < response.contentItems.length; ++i) {
+        var fileName = response.contentItems[i].FileName;
+        var content = response.contentItems[i].Content;
         addOption(selectContentFileWords, content, fileName, false, false);
     }
 
-    if (window.location.href.localeCompare("http://localhost:8080/index.html?showQuizletFrame=true") == 0) {
-        isLoginned = true;
-
-        $('#tableWords_wrapper').hide();
-        $('#quizlet_iframe').show();
-
-        quizletDeleteAllSets( function() {
-            console.log('DeleteAllSets was done')
-            quizletExportThisSet( function(responseText) {
-                console.log('quizletExportThisSet was done')
-                var jsonResponse = JSON.parse(responseText);
-                document.getElementById('quizlet_iframe').innerHTML = "<iframe src=\"https://quizlet.com/" + jsonResponse.setId + "/match/embed\" width=\"99%\" style=\"border:0;position: absolute;top: 86px;\"></iframe>";
-            });
-        });
+    if (response.isQuizletMode === true) {
+        quizletReexportChosenSet();
     } else {
-        /*$.get('/index/restoreChosenSetWords', function(textResponse, status){
-            var jsonResponse = JSON.parse(textResponse);
-            if (!jsonResponse.chosenSetWordsName) {
-                console.log(jsonResponse.chosenSetWordsName);
-                $('.contentFileWords option[value="' + jsonResponse.chosenSetWordsName + '"]').prop('selected', true);
-                loadListWords();
-            }
-        }).error(function (jqXHR, textStatus, errorThrown) {
-            showErrorMessage("Quizlet", "There was a server error while restoring of chosen word set: (" + jqXHR.status + ") " + errorThrown, true);
-        });*/
+        if (response.chosenSetWordsFileName) {
+            $('#contentFileWords option[value="' + response.chosenSetWordsFileName + '"]').attr('selected', 'selected');
+            loadListWords();
+        }
     }
 }
 
@@ -401,82 +386,88 @@ function showThesaurusDictionaries() {
 /*                                                                                                                      Quizlet                                                                                                         */
 /****************************************************************************************************************************************************************************************************************************************/
 function showQuizletFrame() {
-    var postData = { "isQuizletFrameMode":true, "chosenSetWordsName":selectContentFileWords.options[selectContentFileWords.selectedIndex].value};
-    $.post('/index/saveChosenSetWords', JSON.stringify(postData))
-        .error(function (jqXHR, textStatus, errorThrown) {
-            showErrorMessage("Quizlet", "There was a server error while saving of chosen set: (" + jqXHR.status + ") " + errorThrown, true);
-        });
-
     if (selectContentFileWords.selectedIndex == 0) {
         showWarningMessage("Quizlet", "Need to choose set of words", false);
     } else {
-        httpGetAsync('/quizlet/isAutorizated.html', null, showQuizletFrameCallback);
-    }
-}
-
-function showQuizletFrameCallback(responseText) {
-    var jsonResponse = JSON.parse(responseText);
-    if (jsonResponse.isQuizletAutorizated === true) {
-        $('#tableWords_wrapper').hide();
-        quizletDeleteAllSets( function() {
-            quizletExportThisSet( function(responseText1) {
-                var jsonResponse = JSON.parse(responseText1);
-                document.getElementById('quizlet_iframe').innerHTML = "<iframe src=\"https://quizlet.com/" + jsonResponse.setId + "/match/embed\" width=\"99%\" style=\"border:0;position: absolute;top: 86px;\"></iframe>";
-                $('#quizlet_iframe').show();
-                document.getElementById('buttonShowTheListOfWords').classList.remove('disabled')
-                document.getElementById('buttonShowQuizletFrame').classList.add('disabled');
-                document.getElementById('buttonExportToLingualeo').classList.add('disabled');
-                document.getElementById('contentFileWords').disabled = true;
-            });
+        var selectedOptionElement = selectContentFileWords.options[selectContentFileWords.selectedIndex];
+        saveChosenSetWords(true, selectedOptionElement.text, selectedOptionElement.value, function () {
+            httpGetAsync('/quizlet/isAutorizated.html', null, quizletAutorizationCallback);
         });
-    } else {
-        quizletLogin();
     }
 }
 
-function httpGetAsync(theUrl, successCallback, externalCallback) {
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() {
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-            if (successCallback != null) {
-                successCallback(xmlHttp.responseText);
-            }
+function saveChosenSetWords(isQuizletFrameMode, chosenSetWordsName, chosenSetWordsFileName, callback) {
+    var postData = {"isQuizletFrameMode":isQuizletFrameMode, "chosenSetWordsName":chosenSetWordsName, "chosenSetWordsFileName":chosenSetWordsFileName};
+    $.post('/index/saveChosenSetWords', JSON.stringify(postData))
+        .success(function () {
+            callback();
+        })
+        .error(function (jqXHR, textStatus, errorThrown) {
+            showErrorMessage("Quizlet", "There was a server error while saving the params of chosen set: (" + jqXHR.status + ") " + errorThrown, true);
+        });
+}
 
-            if (externalCallback != null) {
-                externalCallback(xmlHttp.responseText);
-            }
+function quizletAutorizationCallback(response) {
+    try {
+        //alert("[quizletAutorizationCallback] response:" + response.toString());
+        //alert("[quizletAutorizationCallback] response.isQuizletAutorizated:" + response.isQuizletAutorizated);
+        //alert("[quizletAutorizationCallback] response.isQuizletAutorizated_1:" + JSON.parse(response.toString()).isQuizletAutorizated);
+        //if (JSON.parse(response.toString()).isQuizletAutorizated === true) {
+        if (response.isQuizletAutorizated === true) {
+            var selectedOptionElement = selectContentFileWords.options[selectContentFileWords.selectedIndex];
+            saveChosenSetWords(true, selectedOptionElement.text, selectedOptionElement.value, function () {
+                quizletReexportChosenSet();
+            });
+        } else {
+            quizletLogin();
         }
-    };
-    xmlHttp.open("GET", theUrl, true); // true for asynchronous
-    xmlHttp.send(null);
+    } catch (exception) {
+        showErrorMessage(exception.name, exception.message, true);
+    }
 }
 
 function quizletLogin() {
-    $.get('/quizlet/authenticationURL.html', authenticationOnQuizlet)
-        .error(function (jqXHR, textStatus, errorThrown) {
-            showErrorMessage("Quizlet", "There was a server error when requesting authorization URL'a Quizlet: (" + jqXHR.status + ") " + errorThrown, true);
-        });
-}
-
-function authenticationOnQuizlet(response) {
-    if (response.authenticationURL != null) {
+    $.get('/quizlet/authenticationURL.html', function(response){
         window.location.href = response.authenticationURL;
-    }
-}
-
-function quizletDeleteAllSets(callback) {
-    httpGetAsync('/quizlet/deleteAllSets.html', null, callback);
-}
-
-function quizletExportThisSet(callback) {
-    $.get('/index/restoreChosenSetWords', function(textResponse, status){
-        var jsonResponse = JSON.parse(textResponse);
-        httpGetAsync('/quizlet/exportSet?setWordName=' + jsonResponse.chosenSetWordsName, null, callback);
-        $('.contentFileWords option[value="' + jsonResponse.chosenSetWordsName + '"]').attr('selected', 'selected');
-        console.log(jsonResponse.chosenSetWordsName);
-    }).error(function (jqXHR, textStatus, errorThrown) {
-        showErrorMessage("Quizlet", "There was a server error while restoring of chosen word set: (" + jqXHR.status + ") " + errorThrown, true);
+    })
+    .error(function (jqXHR, textStatus, errorThrown) {
+        throw new UserException("Quizlet - Get of the authentication URL", "There was a server error during requesting authorization URL'a Quizlet: (" + jqXHR.status + ") " + errorThrown);
     });
+}
+
+function quizletReexportChosenSet() {
+    quizletDeleteAllSets(function () {
+        quizletExportChosenSet(function (response) {
+            document.getElementById('quizlet_iframe').innerHTML = "<iframe src=\"https://quizlet.com/" + response.quizletIFrameId + "/match/embed\" width=\"99%\" style=\"border:0;position: absolute;top: 86px;\"></iframe>";
+            $('#quizlet_iframe').show();
+            $('#tableWords_wrapper').hide();
+            $('#contentFileWords option[value="' + response.chosenSetWordsFileName + '"]').attr('selected', 'selected');
+            document.getElementById('buttonShowTheListOfWords').classList.remove('disabled');
+            document.getElementById('buttonShowQuizletFrame').classList.add('disabled');
+            document.getElementById('buttonExportToLingualeo').classList.add('disabled');
+            document.getElementById('contentFileWords').disabled = true;
+        });
+    });
+}
+
+function quizletDeleteAllSets(externalCallback) {
+    httpGetAsync('/quizlet/deleteAllSets.html', function(response) {
+        if (response.successful === true) {
+            externalCallback(response);
+        } else {
+            throw new UserException(response.errorName, response.errorMessage);
+        }
+    }, null);
+}
+
+function quizletExportChosenSet(externalCallback) {
+    httpGetAsync('/quizlet/exportChosenSet', function(response) {
+        if (response.successful === true) {
+            externalCallback(response);
+        } else {
+            throw new UserException(response.errorName, response.errorMessage);
+        }
+    }, null);
 }
 
 
@@ -700,8 +691,38 @@ function showToastMessage(title, message, sticky, messageType) {
 
 
 /****************************************************************************************************************************************************************************************************************************************/
-/*                                                                                                                      Utils                                                                                                           */
+/*                                                                                                                 Exeptions                                                                                                            */
+/****************************************************************************************************************************************************************************************************************************************/
+function UserException(name, message) {
+    this.name = name;
+    this.message = message;
+}
+
+
+/****************************************************************************************************************************************************************************************************************************************/
+/*                                                                                                                String utils                                                                                                          */
 /****************************************************************************************************************************************************************************************************************************************/
 function isEmptyString(str) {
     return (!str || 0 === str.length);
+}
+
+
+/****************************************************************************************************************************************************************************************************************************************/
+/*                                                                                                                HTTP requests                                                                                                         */
+/****************************************************************************************************************************************************************************************************************************************/
+function httpGetAsync(theUrl, callback, externalCallback) {
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+            if (callback != null) {
+                callback(JSON.parse(xmlHttp.responseText));
+            }
+
+            if (externalCallback != null) {
+                externalCallback(JSON.parse(xmlHttp.response));
+            }
+        }
+    };
+    xmlHttp.open("GET", theUrl, true); // true for asynchronous
+    xmlHttp.send(null);
 }

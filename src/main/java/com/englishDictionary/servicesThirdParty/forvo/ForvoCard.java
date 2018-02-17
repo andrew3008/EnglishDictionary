@@ -1,6 +1,6 @@
 package com.englishDictionary.servicesThirdParty.forvo;
 
-import com.englishDictionary.webServer.ByteArrayOutputStream;
+import com.englishDictionary.webServer.utils.ByteArrayOutputStream;
 
 public class ForvoCard {
     private boolean male;

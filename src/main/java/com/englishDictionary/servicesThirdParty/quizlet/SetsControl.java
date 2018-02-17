@@ -1,7 +1,7 @@
 package com.englishDictionary.servicesThirdParty.quizlet;
 
 import com.englishDictionary.config.Config;
-import com.englishDictionary.utils.json.ParserSetsWords;
+import com.englishDictionary.resourceReaders.parserSetsWords.ParserSetsWords;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
@@ -59,16 +59,16 @@ public class SetsControl {
 
     public static void deleteAllSets(String accessToken) {
         List<String> setsID = getAllSetsID(accessToken);
-        System.out.println("setsID writedBytes: " + setsID.size());
+        /*System.out.println("setsID writedBytes: " + setsID.size());
         for (String setID : setsID) {
             System.out.println("setID:" + setID);
-        }
+        }*/
 
         for (String setID : setsID) {
             //String accessToken1 = Auth2Client.getAccessToken(code);
-            System.out.println("Before delete");
+            //System.out.println("Before delete");
             deleteProtectedResourse(accessToken, "https://api.quizlet.com/2.0/sets/" + setID);
-            System.out.println("After delete");
+            //System.out.println("After delete");
         }
     }
 
@@ -137,7 +137,7 @@ public class SetsControl {
 				}*/
 
             //return handleResponse(response);
-            System.out.println("[Post] response:[" + response + "]");
+            //System.out.println("[Post] response:[" + response + "]");
         } catch (ClientProtocolException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -172,7 +172,7 @@ public class SetsControl {
 				}*/
 
             //return handleResponse(response);
-            System.out.println("[Delete] response:[" + response + "]");
+            //System.out.println("[Delete] response:[" + response + "]");
         } catch (ClientProtocolException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -230,7 +230,7 @@ public class SetsControl {
         String contentType = null;
         if (response.getEntity().getContentType() != null) {
             contentType = response.getEntity().getContentType().getValue();
-            System.out.println("[OAuthUtils] handleResponse:[" + contentType + "]");
+            //System.out.println("[OAuthUtils] handleResponse:[" + contentType + "]");
         }
         if (contentType.contains(OAuth.ContentType.JSON)) {
             return handleJsonResponse(response);
@@ -260,7 +260,7 @@ public class SetsControl {
     private static String handleJsonResponse(HttpResponse response) {
         try {
             String result = EntityUtils.toString(response.getEntity());
-            System.out.println("JsonResponse: [" + result);
+            //System.out.println("JsonResponse: [" + result);
             return result;
         } catch (IOException e) {
             e.printStackTrace();

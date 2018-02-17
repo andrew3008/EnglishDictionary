@@ -1,6 +1,6 @@
 package com.englishDictionary.servicesThirdParty.excel;
 
-import com.englishDictionary.webServer.ByteArrayOutputStream;
+import com.englishDictionary.webServer.utils.ByteArrayOutputStream;
 import io.netty.buffer.ByteBuf;
 
 import java.io.ByteArrayInputStream;

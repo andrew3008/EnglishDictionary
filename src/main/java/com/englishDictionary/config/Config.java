@@ -20,7 +20,7 @@ public class Config implements EnvironmentResourcesInterface {
     private EnvironmentResourcesInterface environmentResources;
     private EnvironmentType environmentType;
 
-    public Config() {
+    private Config() {
         String environmentTypeSV = System.getenv(EnvironmentVariables.SED_ENVIRONMENT_TYPE.name());
         if (EnvironmentType.HOME_STATION.name().equals(environmentTypeSV)) {
             environmentResources = new ConfigHomeStation();

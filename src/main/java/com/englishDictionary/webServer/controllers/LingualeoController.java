@@ -1,6 +1,6 @@
 package com.englishDictionary.webServer.controllers;
 
-import com.englishDictionary.utils.json.ParserSetsWords;
+import com.englishDictionary.resourceReaders.parserSetsWords.ParserSetsWords;
 import com.englishDictionary.webServer.annotations.Controller;
 import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.HttpServletRequest;

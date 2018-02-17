@@ -82,7 +82,7 @@ public class Auth2Client {
         // the API sends back the username of the user in the access token
         //$username = $token['user_id']
 
-        System.out.println("token: [" + tokenResponse.getAccessToken() + "]  expiresIn:" + tokenResponse.getExpiresIn());
+        //System.out.println("token: [" + tokenResponse.getAccessToken() + "]  expiresIn:" + tokenResponse.getExpiresIn());
         //tokenResponse.getExpiresIn();
         return tokenResponse.getAccessToken();
     }
