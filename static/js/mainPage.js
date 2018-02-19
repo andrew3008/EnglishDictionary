@@ -209,7 +209,7 @@ $(function () {
         tableWords.buttons(buttonCommentsIndex).enable(true);
     });
 
-    loadContent();
+    initRequest();
     registerHotKeys();
 });
 
@@ -217,18 +217,37 @@ $(function () {
 /****************************************************************************************************************************************************************************************************************************************/
 /*                                                                                                                      List words                                                                                                      */
 /****************************************************************************************************************************************************************************************************************************************/
-function showListOfSetWord() {
-    var selectedOptionElement = selectContentFileWords.options[selectContentFileWords.selectedIndex];
-    saveChosenSetWords(false, selectedOptionElement.text, selectedOptionElement.value, function () {
-        window.location.href = '/';
-    });
-}
-
-function loadContent() {
-    $.get('/index/getContent.html', showContent)
+function initRequest() {
+    $.get('/index/init', handleInitResponse)
         .error(function (jqXHR, textStatus, errorThrown) {
             showErrorMessage('Loading of content', 'There was a server error when requesting the file list with the words from the server: (' + jqXHR.status + ") " + errorThrown, true);
         })
+}
+
+function handleInitResponse(response) {
+    if (response.environmentType === 'OPEN_SHIFT_CLUSTER') {
+        var panelOfButtons = document.getElementsByClassName('panel_of_buttons')[0];
+        panelOfButtons.parentElement.parentElement.removeChild(panelOfButtons.parentElement);
+
+        var tableWordsWrapper = document.getElementById('tableWords_wrapper');
+        tableWordsWrapper.removeChild(tableWordsWrapper.getElementsByClassName('dt-buttons')[0]);
+        tableWordsWrapper.removeChild(document.querySelector('#tableWords_wrapper #tableWords_filter'));
+    }
+
+    for (var i = 0; i < response.contentItems.length; ++i) {
+        var fileName = response.contentItems[i].FileName;
+        var content = response.contentItems[i].Content;
+        addOption(selectContentFileWords, content, fileName, false, false);
+    }
+
+    if (response.isQuizletMode === true) {
+        quizletReexportChosenSet();
+    } else {
+        if (response.chosenSetWordsFileName) {
+            $('#contentFileWords option[value="' + response.chosenSetWordsFileName + '"]').attr('selected', 'selected');
+            loadListWords();
+        }
+    }
 }
 
 function loadListWords() {
@@ -256,23 +275,6 @@ function addOption(oListbox, text, value, isDefaultSelected, isSelected) {
     oListbox.appendChild(oOption);
 }
 
-function showContent(response) {
-    for (var i = 0; i < response.contentItems.length; ++i) {
-        var fileName = response.contentItems[i].FileName;
-        var content = response.contentItems[i].Content;
-        addOption(selectContentFileWords, content, fileName, false, false);
-    }
-
-    if (response.isQuizletMode === true) {
-        quizletReexportChosenSet();
-    } else {
-        if (response.chosenSetWordsFileName) {
-            $('#contentFileWords option[value="' + response.chosenSetWordsFileName + '"]').attr('selected', 'selected');
-            loadListWords();
-        }
-    }
-}
-
 function showListWords(response) {
     tableWords.buttons(buttonCommentsIndex).enable(true);
 
@@ -291,6 +293,13 @@ function showListWords(response) {
     }
     tableWords.draw();
     tableWordsScrollYElement.scrollTop = tableWordsLastScrollPosition;
+}
+
+function showListOfSetWord() {
+    var selectedOptionElement = selectContentFileWords.options[selectContentFileWords.selectedIndex];
+    saveChosenSetWords(false, selectedOptionElement.text, selectedOptionElement.value, function () {
+        window.location.href = '/';
+    });
 }
 
 function initEventHandlersTableWords() {

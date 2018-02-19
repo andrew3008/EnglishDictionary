@@ -44,9 +44,6 @@ public class ParserSetsWords {
     public void readContentFile(HttpServletResponse response, String fileName) throws IOException {
         ChosenSetWordsByClient chosenSet = ChosenSetWordsByClient.INSTANCE;
         ByteArrayOutputStream responceOS = response.getOutputStream();
-        responceOS.write("{\"isQuizletMode\":" + chosenSet.isQuizletFrameMode());
-        responceOS.write(",\"chosenSetWordsFileName\":\"" + chosenSet.getChosenSetWordsFileName() + "\"");
-        responceOS.write(",\"contentItems\":");
         if (EnvironmentType.OPEN_SHIFT_CLUSTER == Config.INSTANCE.getEnvironmentType()) {
             SEDHttpClient httpClient = new SEDHttpClient();
             Map<String, String> headers = new HashMap<>();
@@ -63,7 +60,6 @@ public class ParserSetsWords {
             }
             fileIS.close();
         }
-        response.getOutputStream().write("}");
 
         if (chosenSet.isQuizletFrameMode() == false) {
             chosenSet.setChosenSetWordsFileName(null);

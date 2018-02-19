@@ -22,10 +22,18 @@ public class IndexController {
 
     private ByteArrayOutputStream outputStreamBuffer = new ByteArrayOutputStream(BUFFER_IO_INIT_LENGTH);
 
-    @RequestMapping(url = "getContent.html")
-    public void getContent(HttpServletResponse response) throws IOException {
+    @RequestMapping(url = "init")
+    public void init(HttpServletResponse response) throws IOException {
         response.setContentType("application/json;charset=utf-8");
+        ChosenSetWordsByClient chosenSet = ChosenSetWordsByClient.INSTANCE;
+        com.englishDictionary.webServer.utils.ByteArrayOutputStream responseOS = response.getOutputStream();
+        response.getOutputStream().write("{");
+        responseOS.write("\"environmentType\":\"" + Config.INSTANCE.getEnvironmentType().name() + "\"");
+        responseOS.write(",\"isQuizletMode\":" + chosenSet.isQuizletFrameMode());
+        responseOS.write(",\"chosenSetWordsFileName\":\"" + chosenSet.getChosenSetWordsFileName() + "\"");
+        responseOS.write(",\"contentItems\":");
         ParserSetsWords.INSTANCE.readContentFile(response, Config.INSTANCE.getWordsFilesDir() + Config.WORDS_FILES_CONTENT_FILE);
+        response.getOutputStream().write("}");
     }
 
     @RequestMapping(url = "getListWords.html")
