@@ -346,7 +346,7 @@ function showWordCard(word) {
 
     var wordCardWindow = $("#wordCardWindow");
     wordCardWindow.find(".modal-title").text(word);
-    document.getElementById("wordCard_first_part").innerHTML = "<iframe src='/wordCard/loadFromEnRuDictionaries.html?word=" + word + "' wordCardBaseURL='/wordCard/loadFromEnRuDictionaries.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
+    document.getElementById("wordCard_left_column").innerHTML = "<iframe src='/wordCard/loadFromEnRuDictionaries.html?word=" + word + "' wordCardBaseURL='/wordCard/loadFromEnRuDictionaries.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
         "    Your agent does not support frames or is configured not to display them." +
         "</iframe>";
     wordNameActiveCard = word;
@@ -356,35 +356,35 @@ function showWordCard(word) {
 }
 
 function showMainDictionaries() {
-    document.getElementById("wordCard_second_part").innerHTML = "<iframe id='mainOALD9' src='/wordCard/loadFromOALD9.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromOALD9.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
+    document.getElementById("wordCard_right_column").innerHTML = "<iframe id='mainOALD9' src='/wordCard/loadFromOALD9.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromOALD9.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
         "    Your agent does not support frames or is configured not to display them." +
         "</iframe>";
     redrawRightWordCard = showMainDictionaries;
 }
 
 function showLDOCE6Dictionary() {
-    document.getElementById("wordCard_second_part").innerHTML = "<iframe id='mainLDOCE6' src='/wordCard/loadFromLDOCE6.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromLDOCE6.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
+    document.getElementById("wordCard_right_column").innerHTML = "<iframe id='mainLDOCE6' src='/wordCard/loadFromLDOCE6.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromLDOCE6.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
         "    Your agent does not support frames or is configured not to display them." +
         "</iframe>";
     redrawRightWordCard = showLDOCE6Dictionary;
 }
 
 function showADLA2Dictionary() {
-    document.getElementById("wordCard_second_part").innerHTML = "<iframe id='mainADLA2' src='/wordCard/loadFromADLA2.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromADLA2.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
+    document.getElementById("wordCard_right_column").innerHTML = "<iframe id='mainADLA2' src='/wordCard/loadFromADLA2.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromADLA2.html?word=' scrolling='hidden' frameborder='1' style='background-color: white;'>" +
         "    Your agent does not support frames or is configured not to display them." +
         "</iframe>";
     redrawRightWordCard = showADLA2Dictionary;
 }
 
 function showCollocationsDictionaries() {
-    document.getElementById("wordCard_second_part").innerHTML = "<iframe src='/wordCard/loadFromCollocations.html?word=" + wordNameActiveCard + "' onFocus=\"setWordCardBaseURL('/wordCard/loadFromCollocations.html?word=')\" scrolling='hidden' frameborder='1' style='background-color: white;'>" +
+    document.getElementById("wordCard_right_column").innerHTML = "<iframe src='/wordCard/loadFromCollocations.html?word=" + wordNameActiveCard + "' onFocus=\"setWordCardBaseURL('/wordCard/loadFromCollocations.html?word=')\" scrolling='hidden' frameborder='1' style='background-color: white;'>" +
         "    Your agent does not support frames or is configured not to display them." +
         "</iframe>";
     redrawRightWordCard = showCollocationsDictionaries;
 }
 
 function showThesaurusDictionaries() {
-    document.getElementById("wordCard_second_part").innerHTML = "<iframe id='mainThesaurus' src='/wordCard/loadFromThesaurus.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromThesaurus.html?word=' onFocus=\"setWordCardBaseURL('/loadWordCardFromThesaurus.html?word=')\" scrolling='hidden' frameborder='1' style='background-color: white;'>" +
+    document.getElementById("wordCard_right_column").innerHTML = "<iframe id='mainThesaurus' src='/wordCard/loadFromThesaurus.html?word=" + wordNameActiveCard + "&needToShowKeyWords=" + needToShowKeyWords + "' wordCardBaseURL='/wordCard/loadFromThesaurus.html?word=' onFocus=\"setWordCardBaseURL('/loadWordCardFromThesaurus.html?word=')\" scrolling='hidden' frameborder='1' style='background-color: white;'>" +
         "    Your agent does not support frames or is configured not to display them." +
         "</iframe>";
     redrawRightWordCard = showThesaurusDictionaries;

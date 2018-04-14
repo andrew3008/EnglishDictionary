@@ -39,7 +39,7 @@
                 background-image: linear-gradient(to bottom, white 0px, grey 100%);"
      role="navigation">
 
-    <div class="container" style="margin-top: 5px;width: 99%;margin-left: 0px;margin-right: 2px;padding-left: 10px;padding-right: 10px;border-right-width: 2px;">
+    <div id="main_page_body_container" class="container" style="margin-top: 5px;width: 99%;margin-left: 0px;margin-right: 2px;padding-left: 10px;padding-right: 10px;border-right-width: 2px;">
 
         <div style="overflow:hidden !important;">
             <div class="panel_of_buttons">
@@ -102,8 +102,8 @@
         </div>
 
         <div class="modal" id="wordCardWindow">
-            <div class="modal-dialog" style="width: 1870px;">
-                <div class="modal-content" style="width: 1870px;">
+            <div class="modal-dialog" style="width: 1870px; height: 100%;">
+                <div class="modal-content" style="width: 1870px; height: 99.8%;">
                     <div id="word_card_header">
                         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
                         <div style="overflow:hidden !important;">
@@ -117,15 +117,11 @@
                             <h4 class="modal-title" style="padding-left:120px !important; margin-left: 284px;"></h4>
                         </div>
                     </div>
-                    <div class="modal-body" style="width: 558px; padding: 2px 5px 5px 5px;">
-                        <table>
+                    <div class="modal-body" style="width: 558px; height: 100%; padding: 2px 5px 5px 5px;">
+                        <table style="height: 96.5%;">
                             <tr>
-                                <td>
-                                    <div id="wordCard_first_part"></div>
-                                </td>
-                                <td>
-                                    <div id="wordCard_second_part"></div>
-                                </td>
+                                <td id="wordCard_left_column"/>
+                                <td id="wordCard_right_column"/>
                             </tr>
                         </table>
                     </div>
