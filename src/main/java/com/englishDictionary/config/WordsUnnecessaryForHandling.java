@@ -125,7 +125,7 @@ public class WordsUnnecessaryForHandling {
             "just",
             "never",
             "simply",
-            "still",
+//            "still",
             "yet",
             "exactly",
             "just",
@@ -174,14 +174,14 @@ public class WordsUnnecessaryForHandling {
             "neither",
             "now",
             "once",
-            "still",
+//            "still",
             "than",
             "thus",
             "what",
             "yet",
             "with",
             "without",
-            "within",
+//            "within",
             "according"
     ).collect(Collectors.toSet());
 

@@ -37,8 +37,8 @@ public class StaticResourcesController {
 
     public static final String HTTP_DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss zzz";
     public static final String HTTP_DATE_GMT_TIMEZONE = "GMT";
-//    public static final int HTTP_CACHE_SECONDS = 1; // 1 sec
-    public static final int HTTP_CACHE_SECONDS = 31536000; // 1 year
+    public static final int HTTP_CACHE_SECONDS = 1; // 1 sec
+//    public static final int HTTP_CACHE_SECONDS = 31536000; // 1 year
 
     private static final int BUFFER_SIZE = 4096;
     private static final Map<String, String> mimeTypes = new HashMap<String, String>() {
