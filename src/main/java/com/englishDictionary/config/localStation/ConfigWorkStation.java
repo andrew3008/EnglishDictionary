@@ -12,7 +12,7 @@ public class ConfigWorkStation extends LocaleResourcesAbstract {
 
     @Override
     public String getWordsFilesDir() {
-        return "C:\\English\\VocabularyFiles\\";
+        return "C:\\English\\VocabularyFiles\\___GLOSSARIES_APP\\";
     }
 
 }
