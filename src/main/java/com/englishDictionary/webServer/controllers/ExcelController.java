@@ -106,8 +106,8 @@ public class ExcelController {
 //        }
     }
 
-    //private final YandexCloudTranslate translate = new YandexCloudTranslate();
-    private final Google2Translate translate = new Google2Translate();
+    private final YandexCloudTranslate translate = new YandexCloudTranslate();
+//    private final Google2Translate translate = new Google2Translate();
 
     @RequestMapping(url = "getTranslateOfPhrase")
     public void getTranslateOfPhrase(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
