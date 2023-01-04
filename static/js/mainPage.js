@@ -328,6 +328,7 @@ function showListWords(response) {
     }
     tableWords.draw();
     tableWordsScrollYElement.scrollTop = tableWordsLastScrollPosition;
+    tableWordsScrollYElement.style = "position: relative; overflow: auto; width: 100.1%; max-height: calc(100% - 45.7px) !important; height: calc(100% - 45.7px) !important;";
 }
 
 function showListOfSetWord() {

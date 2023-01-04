@@ -86,8 +86,8 @@ tr.group:hover {
 }
 
 #tableWords_wrapper {
-    max-height: calc(100% - 23.7px) !important;
-    height: calc(100% - 23.7px) !important;
+    max-height: calc(100% - 21.5px) !important;
+    height: calc(100% - 21.5px) !important;
 }
 
 .dataTables_scroll {
@@ -104,6 +104,9 @@ tr.group:hover {
     height: calc(100% - 45.7px) !important;
 }
 
+.dataTables_scroll .dataTables_scrollBody #tableWords {
+    width: 99.93% !important;
+}
 
 
 #wordCard_left_column iframe,

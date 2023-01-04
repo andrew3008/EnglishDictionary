@@ -1,0 +1,631 @@
+/**********************************************************************************************************************/
+/*                                          Global, non-dictionary-specific classes                                   */
+/**********************************************************************************************************************/
+body {
+    background: #EAF0F8;
+    margin: 0.3em;
+    font-family: Tahoma, Verdana, "Lucida Sans Unicode", sans-serif;
+    /*font-family: "Lucida Sans Unicode","Lucida Grande";*/
+    /*font-family: "Lucida Sans Unicode";*/
+    font-size: 16px;
+    line-height: 120%;
+}
+
+a {
+    color: darkblue;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+h3 {
+    color: inherit;
+    font-family: Arial;
+}
+
+/* Plaintext dictionaries are usually 80-column formatted and take a lot
+ * of space. We try to use smaller fonts for them therefore. */
+pre {
+    font-size: 12px;
+}
+
+
+
+/**********************************************************************************************************************/
+/*                                                          Text selection                                            */
+/**********************************************************************************************************************/
+::selection {
+    background: #839EC7;
+    color:#fff;
+}
+
+code::selection {
+    background: #839EC7;
+}
+
+#navmenuRes ul {
+    display:table;
+}
+
+#navmenuRes li{
+    border-bottom: 1px solid #2c3e50;
+    display: table-row;
+}
+
+#navmenuRes a{
+    text-transform: uppercase;
+    font-weight: bold;
+    color:rgb(131, 158, 199);
+    display: block;
+    height: 70px;
+    padding:0 15px;
+    border-bottom: 1px solid #2c3e50;
+    display:table-cell;
+    vertical-align:middle;
+}
+
+
+/**********************************************************************************************************************/
+/*                                                       Parts of word card                                           */
+/**********************************************************************************************************************/
+.gdarticleseparator {
+    display: none;
+}
+
+.gdarticle {
+    background: #FFFEF2;
+    margin-top: 0.1em;
+    margin-bottom: 0.35em;
+    padding: 5px;
+    padding-top: -10px;
+    padding-left: 11px;
+    border: 1px solid #C7D4DC;
+    border-radius: 8px;
+}
+
+/* The article span. Here we have a padding/margin hack to make fragment links
+   behave better (have some space before the start of article) */
+.gdarticle {
+    display: block;
+    padding-top: 1px;
+    margin-top: -9px;
+    margin-bottom: 8px;
+    background: #fefdeb;
+    /*fix for invalid blg*/
+    font-style:normal;
+}
+
+/* CSS trick to prevent the floating elements to overflow
+   the article boundaries, see Issue #333. */
+.gdarticle:after {
+    content: "";
+    display: block;
+    height: 0;
+    clear: both;
+}
+
+.gddictname {
+    display: -webkit-box; /* needed to be able to reorder elements, e.g. icon, dictionary name, collapse icon */
+    font-weight: normal;
+    float: right;
+    border: 0px;
+    border-top: 1px solid #C7D4DC;
+    border-right: 1px solid #C7D4DC;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 6px;
+    margin: -6px;
+    margin-bottom: 5px;
+    margin-left: 2px;
+    padding-right: 0.4em;
+    color: #34517D;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+}
+
+/* Dictionary's name heading */
+.gddictname {
+    border: 1px solid #C7D4DC;
+    padding: 0.2em 0.5em 0.2em 0.5em;
+    margin-top: -2px;
+    margin-bottom: 2px;
+    font-weight: bold;
+    font-size: 12px;
+    background: inherit;
+}
+
+/* The first headword in a (possibly) multi-headword DSL article */
+.gdarticlebody > span:first-child .dsl_headwords,
+.gdarticlebody > h3:first-child {
+    margin-top: -3px;
+    display: inline-block;
+}
+
+
+
+/**********************************************************************************************************************/
+/*                                                       MDX dictionaries                                             */
+/**********************************************************************************************************************/
+/************* MDict dictionaries **************/
+.mdict
+{
+    margin-top: 1em;
+}
+
+.mdict a[name]
+{
+    text-decoration: none;
+    color: inherit;
+}
+
+/*/!* A table which contains a play icon and a word's link *!/*/
+/*.lsa_play*/
+/*{*/
+/*margin-top: 8px;*/
+/*margin-left: 8px;*/
+/*}*/
+
+/*.lsa_play a*/
+/*{*/
+/*text-decoration: none;*/
+/*}*/
+
+.mdx_pron img {
+    display: none;
+}
+
+.mdx_pron img
+{
+    /* Ugly hack since "vertical-align: middle;" looks _terrible_ in Qt4's webkit: */
+    vertical-align: -30%;
+}
+
+.mdx_pron a {
+    text-decoration: none;
+    -webkit-user-select: none;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    -webkit-border-radius: 100px;
+    text-align: center;
+    vertical-align: text-bottom;
+}
+
+.mdx_pron a {
+    color: #FFF;
+    border: 1px solid #798415;
+    -webkit-box-shadow: 1px 1px #CCC, inset -1px -1px #4E7500;
+
+    background: -webkit-gradient(linear, left top, right bottom, color-stop(0%,rgba(191,210,85,1)), color-stop(50%,rgba(142,185,42,1)), color-stop(51%,rgba(114,170,0,1)), color-stop(100%,rgba(158,203,45,1)));
+}
+
+.mdx_pron a:hover {
+    background: -webkit-gradient(linear, left top, right bottom, color-stop(0%,#e6f0a3), color-stop(50%,#d2e638), color-stop(51%,#c3d825), color-stop(100%,#dbf043));
+
+    border: 1px solid #A2B01C;
+    -webkit-box-shadow: 1px 1px #CCC, inset -1px -1px #8A991A;
+}
+
+.mdx_pron a:active {
+    -webkit-box-shadow: 1px 1px #CCC, inset 1px 1px #B1C421;
+}
+
+.mdx_pron a:after {
+    display: inline-block;
+    font-family: "Webdings";
+    content:"X";
+    width: 18px;
+    height: 18px;
+    font-size: 16px;
+    text-align: center;
+    vertical-align: center;
+    -webkit-background-clip: text;
+    color: #E6EF8F;
+    -webkit-text-stroke: 1px #51580E;
+}
+
+.mdx_pron a:hover:after {
+    -webkit-text-stroke: 1px #656E11;
+}
+
+
+
+/**********************************************************************************************************************/
+/*                                                      DSL dictionaries                                              */
+/**********************************************************************************************************************/
+.dsl_u
+{
+    text-decoration: underline;
+}
+
+.dsl_article font[color=c_default_color]
+{
+    color: green;
+}
+
+.dsl_m, .dsl_m0
+{
+    padding-left: 0px;
+}
+
+.dsl_m1
+{
+    padding-left: 9px;
+}
+
+.dsl_m2
+{
+    padding-left: 18px;
+}
+
+.dsl_m3
+{
+    padding-left: 27px;
+}
+
+.dsl_m4
+{
+    padding-left: 36px;
+}
+
+.dsl_m5
+{
+    padding-left: 45px;
+}
+
+.dsl_m6
+{
+    padding-left: 54px;
+}
+
+.dsl_m7
+{
+    padding-left: 63px;
+}
+
+.dsl_m8
+{
+    padding-left: 72px;
+}
+
+.dsl_m9
+{
+    padding-left: 81px;
+}
+
+.dsl_p, .dsl_p :not(a) /* DSL Feature: Enforce the style even if the childen tags say otherwise, except links */
+{
+    color: green !important; /* DSL label color must have highest priority */
+    font-style: italic;
+    cursor: default;
+    font-weight: normal; /* DSL feature: labels are always of normal weight */
+}
+
+.dsl_stress_without_accent {
+    display: none;
+}
+
+.dsl_t {
+    font-family: "Lucida Sans Unicode","Lucida Grande";
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin-right: 4px;
+    margin-left: 1px;
+}
+
+.dsl_headwords
+{
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.dsl_headwords p
+{
+    font-weight: bold;
+    font-size: 15px;
+    margin: 0;
+}
+
+.dsl_definition p
+{
+    margin: 0;
+}
+
+.dsl_opt
+{
+    display: none;
+}
+
+.dsl_opt,
+.dsl_opt .dsl_ex,
+.dsl_opt .dsl_ex :not(a),
+.dsl_opt .dsl_ex font[color] /* DSL Feature: Enforce the optional zone color even if the childen tags say otherwise */
+{
+    color: gray;
+}
+
+.dsl_ex, .dsl_ex .dsl_opt
+{
+    color: gray;
+}
+
+/* Style for expand optional parts button */
+.hidden_expand_opt
+{
+    color: blue;
+    cursor: pointer;
+    vertical-align: text-bottom;
+}
+
+
+
+/******** DSL Dictionaries from article-style-st-lingoes-blue ****************/
+
+/* DSL headwords */
+.dsl_headwords {
+    color: inherit;
+    font-family: Arial;
+}
+
+/* Formatting */
+.dsl_b {
+    font-family: Arial;
+}
+
+.dsl_ex, .dsl_ex .dsl_opt
+{
+    color: slategray;
+}
+
+.dsl_ref {
+    color: #0000DD;
+}
+
+.dsl_url {
+    color: #0000DD;
+}
+
+/* Stress settings */
+.dsl_stress_without_accent,
+.dsl_opt .dsl_ex .dsl_stress_without_accent {
+    display: none;
+    color: green;
+}
+
+.dsl_stress_with_accent,
+.dsl_opt .dsl_ex .dsl_stress_with_accent {
+    display: inline;
+    color: #DD0000;
+}
+.dsl_stress,
+.dsl_opt .dsl_ex .dsl_stress {
+    display: inline;
+    color: blue;
+}
+
+
+/**********************************************************************************************************************/
+/*                                                          Sound icon                                                */
+/**********************************************************************************************************************/
+.dsl_s_wav img {
+    display: none;
+}
+
+.dsl_s_wav a {
+    display: inline-block;
+    width: 21px;
+    height: 21px;
+    border: 0px none #798415;
+    -webkit-box-shadow: 1px 1px #CCC, inset -1px -1px #4E7500;
+    -webkit-border-radius: 100px;
+
+    color: #FFF;
+    background: -webkit-gradient(linear, left top, right bottom, color-stop(0%,rgba(191,210,85,1)), color-stop(50%,rgba(142,185,42,1)), color-stop(51%,rgba(114,170,0,1)), color-stop(100%,rgba(158,203,45,1)));
+    text-align: center;
+    vertical-align: middle;
+    text-decoration: none;
+    -webkit-user-select: none;
+}
+
+.dsl_s_wav a:hover {
+    border: 1px solid #A2B01C;
+    -webkit-box-shadow: 1px 1px #CCC, inset -1px -1px #8A991A;
+    background: -webkit-gradient(linear, left top, right bottom, color-stop(0%,#e6f0a3), color-stop(50%,#d2e638), color-stop(51%,#c3d825), color-stop(100%,#dbf043));
+}
+
+.dsl_s_wav a:after {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: none
+    -webkit-box-shadow: 1px 1px #CCC, inset 1px 1px #B1C421;
+
+    content:"X";
+    font-family: "Webdings";
+    font-size: 18px;
+    text-align: center;
+    color: #E6EF8F;
+    -webkit-text-stroke: 1px #51580E;
+}
+
+.dsl_s_wav a:hover:after {
+    -webkit-text-stroke: 1px #656E11;
+}
+
+
+/**********************************************************************************************************************/
+/*                                                     Irregular words                                                */
+/**********************************************************************************************************************/
+.irregular_verb_panel {
+    margin-top: -12px;
+    margin-bottom: 12px;
+    border-radius: 8px !important;
+    -moz-border-radius: 8px !important;
+}
+
+.irregular_verb_panel,
+.irregular_verb_panel tr,
+.irregular_verb_panel td {
+    border: 1px solid #C7D4DC;
+    border-collapse: collapse;
+    cellpadding: 5px;
+    padding: 0 15px 5px 15px;
+}
+
+.irregular_verb_panel td {
+    padding-bottom: 0px;
+}
+
+/*.irregular_verb_panel table tbody tr:first-child td:first-child {*/
+/*border-radius: 8px 0 0 0;*/
+/*}*/
+
+/*.irregular_verb_panel table tbody tr:last-child td:first-child {*/
+/*border-radius: 0 0 0 8px;*/
+/*}*/
+
+.irregular_verb_panel .iconSmallButtonDataTables {
+    width: 18px;
+    height: 18px;
+}
+
+.irregular_verb_panel .btn {
+    background-color: white;
+}
+
+
+.pron-gs {display: inline-block; margin: 0; padding-left: 5px;}
+.pron-gs .phon {color:#004aac;}
+.pron-gs a {display: inline-block;}/*????*/
+.pron-gs img {width: 22px; height: 20px;  margin-bottom: -3px;}
+
+.vp-g .pron-gs {display: inline;}
+
+.pron-g { white-space: nowrap; }
+.pron-g[geo~=br] .prefix { /* British English styling */  color: #07255e;}
+.pron-g[geo~=n_am] .prefix { /* American English styling */ color: #8f0610;}
+.pron-g .sound { display:none; }
+
+
+
+/*/!* This stylesheet is used to highligh current selection when doing a search.*/
+/*It changes the default selection color (e.g. blue under Windows, orange under Ubuntu) *!/*/
+
+/*/!* highlight/select color in Windows when a widget is inactive is nearly impossible to read (light gray).*/
+/** then change it to green to use with the find option. *!/*/
+/*::selection {*/
+/*background: #c00;*/
+/*color: #fff;*/
+/*}*/
+
+/* Don't allow to select [] */
+/* For test */
+/*.dsl_article :before,*/
+/*.dsl_article :after {*/
+/*-webkit-user-select: none;*/
+/*user-select: none;*/
+/*}*/
+
+.two_column_layout {
+    width: 100% !important;
+    /*margin: auto;*/
+
+    /*background:#ffff66; width:500px;*/
+    overflow:hidden !important;
+}
+
+.two_column_layout_left_column {
+    /*margin-right: 50px; /!* ????????? ????? *!/*/
+
+    /*background-color:#8080FF;*/
+    /*margin-left:202px;*/
+    /*margin-right:202px;*/
+
+    float:left !important;
+    /*background:#ccff66;*/
+    /*width:350px;*/
+    /*border-right:1px solid #ff9900 !important;*/
+
+    width: 74%;
+
+
+    /*margin-top: -12px;*/
+}
+
+.two_column_layout_right_column {
+    /*float: right;*/
+    /*background: #e0ecb8; /!*margin-left: 180px; /!* ?????? ?????? *!/!*/
+
+    /*width:200px;*/
+    /*background-color:#FFFF00;*/
+    /*float:left;*/
+
+    /*background:#ccff66;*/
+
+    position: absolute;
+    padding-left: 896px !important;
+
+    top: 15px;
+    padding-top: -10px;
+    padding-top: 0px;
+
+    width: 23.5%;
+    position: absolute;
+    padding-left: 0px !important;
+    right: 13px;
+    left: 994px !important;
+    height: auto;
+    /*left: 485.406px !important;*/
+}
+
+
+
+.dictionary_search_results {
+    /*float: right;*/
+    /*background: #e0ecb8; /!*margin-left: 180px; /!* ?????? ?????? *!/!*/
+
+    /*width:200px;*/
+    /*background-color:#FFFF00;*/
+    /*float:left;*/
+
+    /*padding-left:600px !important;*/
+    /*background:#ccff66;*/
+
+    line-height: 0.7em;
+    padding-left: 0px !important;
+}
+
+.dictionary_search_results .search_title {
+    display: block;
+    font-size: 1.1em;
+    /*margin-top: 9px;*/
+    /*margin-bottom: 0px;*/
+
+    -webkit-margin-before: 0.67em;
+    -webkit-margin-after: 0.67em;
+    -webkit-margin-start: 0px;
+    -webkit-margin-end: 0px;
+    font-weight: bold;
+
+    margin-bottom: 0px;
+    margin-top: 0px;
+}
+
+.dictionary_search_results ul {
+    list-style-type: none;
+    padding-left: 0px !important;
+}
+
+.dictionary_search_results li {
+    padding: 0.5em;
+    background: aliceblue;
+    margin-bottom: 5px;
+}
+
+.dictionary_search_results a {
+    cursor: pointer;
+}
