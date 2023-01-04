@@ -29,7 +29,7 @@
 
     <link rel="stylesheet" type="text/css" href="/static/css/mainPage/mainPage.css"/>
 
-    <title>Residential Order Entry</title>
+    <title>English Dictionary</title>
 </head>
 <body scroll="yes" class="body">
 
@@ -41,13 +41,13 @@
 
     <div id="main_page_body_container" class="container" style="margin-top: 5px;width: 99%;margin-left: 0px;margin-right: 2px;padding-left: 10px;padding-right: 10px;border-right-width: 2px;">
 
-        <div style="overflow:hidden !important;">
+        <!--  <div style="overflow:hidden !important;">
             <div class="panel_of_buttons">
                 <a onclick="showListOfSetWord()" id="buttonShowTheListOfWords" class="button18 disabled" tabindex="0">Show the list of words</a>
                 <a onclick="showQuizletFrame()" id="buttonShowQuizletFrame" class="button18" tabindex="0">Show Quizlet Frame</a>
                 <a onclick="exportThisSetToLingualeo()" id="buttonExportToLingualeo" class="button18" tabindex="0">Export to Lingualeo</a>
             </div>
-        </div>
+        </div>  -->
 
         <br>
 
@@ -71,7 +71,7 @@
         <div id="quizlet_iframe" style="display: none;">
         </div>
 
-        <table id="tableWords" class="display dataTable cell-border no-footer" style="border: 1px solid black;"
+        <table id="tableWords" class="display dataTable cell-border no-footer" style="border: 1px solid black; border-top: none; border-bottom: none;"
                cellspacing="0" width="100%">
         </table>
 

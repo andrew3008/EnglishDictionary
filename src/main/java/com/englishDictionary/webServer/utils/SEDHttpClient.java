@@ -4,6 +4,7 @@ import com.englishDictionary.config.Config;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -147,6 +148,32 @@ public class SEDHttpClient {
             e.printStackTrace();
             return null;
         }
+
+        HttpResponse response = executeRequest(post);
+        if (response == null) {
+            post.releaseConnection();
+            return new HttpRequestResponse(null, getHttpResponseContentLength(response), getHttpResponseCode(response));
+        }
+
+        byte[] responseBody = null;
+        try {
+            responseBody = EntityUtils.toByteArray(response.getEntity());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        post.releaseConnection();
+        return new HttpRequestResponse(responseBody, getHttpResponseContentLength(response), getHttpResponseCode(response));
+    }
+
+    public HttpRequestResponse sendPostRequestWithBody(String resourceURL, Map<String, String> headers, String body) {
+        HttpPost post = new HttpPost(resourceURL);
+        for (Map.Entry<String, String> headersEntry : headers.entrySet()) {
+            post.addHeader(headersEntry.getKey(), headersEntry.getValue());
+        }
+
+        EntityBuilder builder = EntityBuilder.create();
+        builder.setText(body);
+        post.setEntity(builder.build());
 
         HttpResponse response = executeRequest(post);
         if (response == null) {

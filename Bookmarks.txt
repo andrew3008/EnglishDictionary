@@ -1,0 +1,42 @@
+ED
+localhost:8080/index.html
+
+Create a set
+https://quizlet.com/create-set
+
+Gen a set name
+javascript:(function(){var currentdate = new Date(); document.querySelector(".AutoExpandTextarea .AutoExpandTextarea-wrapper textarea").value = "set_" + currentdate.getDate() + "/" + (currentdate.getMonth()+1)  + "/" + currentdate.getFullYear() + " @ " + currentdate.getHours() + ":" + currentdate.getMinutes() + ":" + currentdate.getSeconds();})();
+
+Import
+javascript:(function(){function simulate(a,b){var c,d=extend(defaultOptions,arguments[2]||{}),e=null;for(var f in eventMatchers)if(eventMatchers[f].test(b)){e=f;break}if(!e)throw new SyntaxError("Only HTMLEvents and MouseEvents interfaces are supported");if(document.createEvent)c=document.createEvent(e),"HTMLEvents"==e?c.initEvent(b,d.bubbles,d.cancelable):c.initMouseEvent(b,d.bubbles,d.cancelable,document.defaultView,d.button,d.pointerX,d.pointerY,d.pointerX,d.pointerY,d.ctrlKey,d.altKey,d.shiftKey,d.metaKey,d.button,a),a.dispatchEvent(c);else{d.clientX=d.pointerX,d.clientY=d.pointerY;var g=document.createEventObject();c=extend(g,d),a.fireEvent("on"+b,c)}return a}function extend(a,b){for(var c in b)a[c]=b[c];return a}var eventMatchers={HTMLEvents:/^(?:load|unload|abort|error|select|change|submit|reset|focus|blur|resize|scroll)$/,MouseEvents:/^(?:click|dblclick|mouse(?:down|up|over|move|out))$/},defaultOptions={pointerX:0,pointerY:0,button:0,ctrlKey:!1,altKey:!1,shiftKey:!1,metaKey:!1,bubbles:!0,cancelable:!0};simulate(window.document.querySelector(".UIDiv.CreateSetHeader-permissionsAndImport .UILink"),"click"),navigator.clipboard.readText().then(a=>{document.querySelector(".ImportTerms-textarea").value=a,simulate(document.querySelector(".ImportTerms-textarea"),"change");var b=a.split("\n").length;setTimeout(function(){simulate(document.querySelector(".ImportTerms-importButtonWrap .UIButton"),"click"),setTimeout(function(){for(var a=window.document.querySelectorAll(".CreateSetPage-container .CreateSetPage-list .TermRows .TermContent .StudiableItemToolbar .StudiableItemToolbar-actionableToggles .UIButton[aria-label=%27\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u044D\u0442\u0443 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443%27]"),c=a.length-b,d=0;d<c;++d)simulate(a[d],"click");setTimeout(function(){simulate(document.querySelector(".CreateSetHeader-infoButtonWrap .UIButton"),"click")},20*b)},400>30*b?400:30*b)},20*b)}).catch(a=>{console.error("Failed to read clipboard contents: ",a)});})();
+
+Writing
+javascript:var setId = window.location.pathname.split('/')[2]; window.location.href='https://quizlet.com/' + setId + '/write';
+
+Remove Ad
+javascript:(function(){document.querySelector(".TopNavigationWrapper").style.display="none"; document.querySelector(".ModeLayout-controls").style.top="8px";})();
+/
+javascript:(function(){document.querySelector(".TopNavigation-contentLeft .TopNavigationItem").style.display="none", document.querySelector(".UIOverlayTrigger").style.display="none", document.querySelector(".TopNavigation-menuItems").style.display="none", document.querySelector(".TopNavigation .TopNavigation-content .TopNavigation-contentRight :nth-child(1)").style.display="none", document.querySelector(".TopNavigation .TopNavigation-content .TopNavigation-contentRight :nth-child(2)").style.display="none"})();
+/
+TopNavigationWrapper
+/
+javascript:(function(){document.querySelector(".TopNavigationWrapper").style.display="none"})();
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Edit
+https://quizlet.com/507213610/edit
+
+Learning
+javascript:(function(){function simulate(a,b){var c,d=extend(defaultOptions,arguments[2]||{}),e=null;for(var f in eventMatchers)if(eventMatchers[f].test(b)){e=f;break}if(!e)throw new SyntaxError("Only HTMLEvents and MouseEvents interfaces are supported");if(document.createEvent)c=document.createEvent(e),"HTMLEvents"==e?c.initEvent(b,d.bubbles,d.cancelable):c.initMouseEvent(b,d.bubbles,d.cancelable,document.defaultView,d.button,d.pointerX,d.pointerY,d.pointerX,d.pointerY,d.ctrlKey,d.altKey,d.shiftKey,d.metaKey,d.button,a),a.dispatchEvent(c);else{d.clientX=d.pointerX,d.clientY=d.pointerY;var g=document.createEventObject();c=extend(g,d),a.fireEvent("on"+b,c)}return a}function extend(a,b){for(var c in b)a[c]=b[c];return a}var eventMatchers={HTMLEvents:/^(?:load|unload|abort|error|select|change|submit|reset|focus|blur|resize|scroll)$/,MouseEvents:/^(?:click|dblclick|mouse(?:down|up|over|move|out))$/},defaultOptions={pointerX:0,pointerY:0,button:0,ctrlKey:!1,altKey:!1,shiftKey:!1,metaKey:!1,bubbles:!0,cancelable:!0};simulate(document.querySelector(".SetPageModeButton[data-testid=%27SetPageModeButton-mode-link-spell%27]"),"click");})();
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+https://css-tricks.com/snippets/javascript/get-url-and-url-parts-in-javascript/
+https://stackoverflow.com/questions/6944744/javascript-get-portion-of-url-path
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+https://learn.javascript.ru/popup-windows
+
+https://developer.mozilla.org/en-US/docs/Web/API/Window/open

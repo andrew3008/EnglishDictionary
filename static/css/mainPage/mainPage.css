@@ -86,13 +86,17 @@ tr.group:hover {
 }
 
 #tableWords_wrapper {
-    max-height: calc(100% - 45.7px) !important;
-    height: calc(100% - 45.7px) !important;
+    max-height: calc(100% - 23.7px) !important;
+    height: calc(100% - 23.7px) !important;
 }
 
 .dataTables_scroll {
     max-height: calc(100% - 45.7px) !important;
     height: calc(100% - 45.7px) !important;
+}
+
+.dataTables_scroll .dataTables_scrollHeadInner {
+    border-top: 1px solid black;
 }
 
 .dataTables_scroll .dataTables_scrollBody {

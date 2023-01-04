@@ -88,12 +88,6 @@ $(function () {
                     }
                 },
                 {
-                    text: 'Reload',
-                    action: function (e, dt, node, config) {
-                        loadListWords();
-                    }
-                },
-                {
                     text: 'Comments',
                     action: function (e, dt, node, config) {
                         var fileName = selectContentFileWords.options[selectContentFileWords.selectedIndex].value;
@@ -101,6 +95,47 @@ $(function () {
                             .error(function (jqXHR, textStatus, errorThrown) {
                                 showErrorMessage('Loading of comments', 'There was a server error when requesting comment for this word list: (' + jqXHR.status + ") " + errorThrown, true);
                             });
+                        return false;
+                    }
+                },
+                {
+                    text: 'Reload',
+                    action: function (e, dt, node, config) {
+                        loadListWords();
+                    }
+                },
+                // {
+                //     text: 'Quizlet CS',
+                //     action: function (e, dt, node, config) {
+                //         createANewSetForQuizlet();
+                //         return false;
+                //     }
+                // },
+                {
+                    text: 'Quizlet NW',
+                    action: function (e, dt, node, config) {
+                        showCountOfWordsForQuizlet();
+                        return false;
+                    }
+                },
+                {
+                    text: 'Quizlet P1',
+                    action: function (e, dt, node, config) {
+                        exportWordsToClipboardForQuizletPart1();
+                        return false;
+                    }
+                },
+                {
+                    text: 'Quizlet P2',
+                    action: function (e, dt, node, config) {
+                        exportWordsToClipboardForQuizletPart2();
+                        return false;
+                    }
+                },
+                {
+                    text: 'Quizlet P3',
+                    action: function (e, dt, node, config) {
+                        exportWordsToClipboardForQuizletPart3();
                         return false;
                     }
                 }
@@ -459,6 +494,205 @@ function quizletReexportChosenSet() {
     });
 }
 
+function createANewSetForQuizlet() {
+    fetch('https://el.quizlet.com/', {
+        method: 'POST',
+        headers: {
+            'access-control-allow-origin': 'https://quizlet.com',
+            'cf-cache-status': 'DYNAMIC',
+            'cf-ray': '77659f249f7f76a9-DME',
+            'content-length': '2',
+            'content-type': 'application/json; charset=UTF-8',
+            'date': 'Thu, 08 Dec 2022 12:49:33 GMT',
+            'server': 'cloudflare',
+            'set-cookie': '__cf_bm=kKQ_1bR0PjYrLO3D9zkxV6.FYDoyfdC01o083evfIWM-1670503773-0-AWmfjA25rPlZDAUHbsc0tzvKvDzYtd9aBaVHWYe0M/3V1CcDxQr+kI2wdZ7rNc8nUEvGg6aMIb6zx+ZHHl8P/S0=; path=/; expires=Thu, 08-Dec-22 13:19:33 GMT; domain=.quizlet.com; HttpOnly; Secure; SameSite=None',
+            'set-cookie': '__cfruid=9475e6cf1ca46e3e8126bc9d263b2e6e26f78a97-1670503773; path=/; domain=.quizlet.com; HttpOnly; Secure; SameSite=None',
+            'set-cookie': '_cfuvid=fcJQzX9p_wLAYUqu0uugXU66gnPCLuFOVEXz1wQKu9M-1670503773083-0-604800000; path=/; domain=.quizlet.com; HttpOnly; Secure; SameSite=None',
+            'via': '1.1 google',
+            'x-envoy-upstream-service-time': '6'
+        },
+        body: JSON.stringify([
+            {
+                "type": "page_actions",
+                "namespace": "events",
+                "event": {
+                    "app_session_id": "10afff9b-d63f-495f-a583-15d8ba69ad7a",
+                    "is_cookie_accessible": true,
+                    "client_timestamp": 1670503770.77,
+                    "cloudflare_ray": "77659de79e189d57-ARN",
+                    "platform": 1,
+                    "uid": "-8551015020383997146",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+                    "user_id": 69466599,
+                    "username": "andrew30124",
+                    "action_name": "new_create_set_click_header_publish_button",
+                    "current_url": "https://quizlet.com/create-set",
+                    "device_category": "desktop",
+                    "request_id": "sHHbyTUhNuSmGh8bjhVs",
+                    "server_timestamp": 1670503722,
+                    "service": "monolith",
+                    "dedupe_id": "71850c9a-6b23-4903-b683-a86d45c24202"
+                },
+                "dev_name": null
+            },
+            {
+                "type": "page_actions",
+                "namespace": "events",
+                "event": {
+                    "app_session_id": "10afff9b-d63f-495f-a583-15d8ba69ad7a",
+                    "is_cookie_accessible": true,
+                    "client_timestamp": 1670503770.788,
+                    "cloudflare_ray": "77659de79e189d57-ARN",
+                    "platform": 1,
+                    "uid": "-8551015020383997146",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+                    "user_id": 69466599,
+                    "username": "andrew30124",
+                    "action_name": "new_create_set_publish_error",
+                    "current_url": "https://quizlet.com/create-set",
+                    "device_category": "desktop",
+                    "request_id": "sHHbyTUhNuSmGh8bjhVs",
+                    "server_timestamp": 1670503722,
+                    "additional_info": "{\"identifier\":\"requires_word_lang\",\"message\":\"Выберите язык терминов.\"}",
+                    "service": "monolith",
+                    "dedupe_id": "8bb99ed1-f994-4aa4-8ca8-23f5a1972aac"
+                },
+                "dev_name": null
+            },
+            {
+                "type": "page_actions",
+                "namespace": "events",
+                "event": {
+                    "app_session_id": "10afff9b-d63f-495f-a583-15d8ba69ad7a",
+                    "is_cookie_accessible": true,
+                    "client_timestamp": 1670503770.789,
+                    "cloudflare_ray": "77659de79e189d57-ARN",
+                    "platform": 1,
+                    "uid": "-8551015020383997146",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+                    "user_id": 69466599,
+                    "username": "andrew30124",
+                    "action_name": "new_create_set_publish_error",
+                    "current_url": "https://quizlet.com/create-set",
+                    "device_category": "desktop",
+                    "request_id": "sHHbyTUhNuSmGh8bjhVs",
+                    "server_timestamp": 1670503722,
+                    "additional_info": "{\"identifier\":\"requires_def_lang\",\"message\":\"Выберите язык определений.\"}",
+                    "service": "monolith",
+                    "dedupe_id": "d72c018e-1238-4fb2-85fa-6c092cedc878"
+                },
+                "dev_name": null
+            }
+        ])
+    })
+        //.then(response => response.json())
+        .then(response => console.log(JSON.stringify(response)));
+}
+
+function showCountOfWordsForQuizlet() {
+    var text = "";
+    var clipboardNumWords = 0;
+    tableWords.rows().every(function (index, element) {
+        const row = $(this.node());
+        const word = row.find('td').eq(0).get(0).innerText;
+        if (word !== "") {
+            text += word + "\t" + row.find('td').eq(5).get(0).innerText;
+            if ((tableWords.rows().count()-1) !== index) {
+                text += "\n";
+            }
+            ++clipboardNumWords;
+        }
+    });
+
+    showNoticeMessage('', '<b>' + '&nbsp;&nbsp;&nbsp;<span style="font-family: \'Times New Roman\', Times, serif; font-size: 170%;">' + clipboardNumWords + '</span></b>', false);
+}
+
+function exportWordsToClipboardForQuizletPart1() {
+    var text = "";
+    var clipboardNumWords = 0;
+    tableWords.rows().every(function (index, element) {
+        if (clipboardNumWords !== 40) {
+            const row = $(this.node());
+            const word = row.find('td').eq(0).get(0).innerText;
+            if (word !== "") {
+                text += word + "\t" + row.find('td').eq(5).get(0).innerText;
+                if ((tableWords.rows().count() - 1) !== index) {
+                    text += "\n";
+                }
+                ++clipboardNumWords;
+            }
+        }
+    });
+
+    navigator.clipboard.writeText(text).then(function() {
+        //console.log('Async: Copying to clipboard was successful!');
+    }, function(err) {
+        console.error('Async: Could not copy text: ', err);
+    });
+
+    showNoticeMessage('', '<b>' + '&nbsp;&nbsp;&nbsp;<span style="font-family: \'Times New Roman\', Times, serif; font-size: 170%;">' + clipboardNumWords + '</span></b>', false);
+}
+
+function exportWordsToClipboardForQuizletPart2() {
+    var text = "";
+    var clipboardNumWords = 0;
+    tableWords.rows().every(function (index, element) {
+        if (clipboardNumWords < 40) {
+            ++clipboardNumWords;
+        }
+
+        if (clipboardNumWords >= 40 && clipboardNumWords < 80) {
+            const row = $(this.node());
+            const word = row.find('td').eq(0).get(0).innerText;
+            if (word !== "") {
+                text += word + "\t" + row.find('td').eq(5).get(0).innerText;
+                if ((tableWords.rows().count() - 1) !== index) {
+                    text += "\n";
+                }
+            }
+            ++clipboardNumWords;
+        }
+    });
+
+    navigator.clipboard.writeText(text).then(function() {
+        //console.log('Async: Copying to clipboard was successful!');
+    }, function(err) {
+        console.error('Async: Could not copy text: ', err);
+    });
+
+    showNoticeMessage('', '<b>' + '&nbsp;&nbsp;&nbsp;<span style="font-family: \'Times New Roman\', Times, serif; font-size: 170%;">' + (clipboardNumWords-40) + '</span></b>', false);
+}
+
+function exportWordsToClipboardForQuizletPart3() {
+    var text = "";
+    var clipboardNumWords = 0;
+    tableWords.rows().every(function (index, element) {
+        if (clipboardNumWords < 80) {
+            ++clipboardNumWords;
+        }
+
+        if (clipboardNumWords >= 80 && clipboardNumWords < 120) {
+            const row = $(this.node());
+            const word = row.find('td').eq(0).get(0).innerText;
+            if (word !== "") {
+                text += word + "\t" + row.find('td').eq(5).get(0).innerText;
+                if ((tableWords.rows().count() - 1) !== index) {
+                    text += "\n";
+                }
+            }
+            ++clipboardNumWords;
+        }
+    });
+
+    navigator.clipboard.writeText(text).then(function() {
+        //console.log('Async: Copying to clipboard was successful!');
+    }, function(err) {
+        console.error('Async: Could not copy text: ', err);
+    });
+
+    showNoticeMessage('', '<b>' + '&nbsp;&nbsp;&nbsp;<span style="font-family: \'Times New Roman\', Times, serif; font-size: 170%;">' + (clipboardNumWords-80) + '</span></b>', false);
+}
+
 function quizletDeleteAllSets(externalCallback) {
     httpGetAsync('/quizlet/deleteAllSets.html', function(response) {
         if (response.successful === true) {
@@ -554,28 +788,30 @@ function registerHotKeys() {
         // Object to hold keyCode/handler mappings
         var mappings = {};
         // Default options for additional meta keys
-        var defaultOptions = {ctrl:false, alt:false};
+        var defaultOptions = {ctrl:false, alt:false, shift: false};
         // Flag for if we're running checks or not
         var active = false;
 
         // The function that gets called on keyup.
         // Tries to find a handler to execute
         function driver(event) {
-            var keyCode = event.keyCode, ctrl = !!event.ctrlKey, alt = !!event.altKey;
-            var key = buildKey(keyCode, ctrl, alt);
+            var keyCode = event.keyCode, ctrl = !!event.ctrlKey, alt = !!event.altKey, shift = !!event.shiftKey;
+            var key = buildKey(keyCode, ctrl, alt, shift);
             var handler = mappings[key];
             if (handler) {handler(event);}
         }
 
         // Take the three props and make a string to use as key in the hash
-        function buildKey(keyCode, ctrl, alt) {return (keyCode+'_'+ctrl+'_'+alt);}
+        function buildKey(keyCode, ctrl, alt, shift) {return (keyCode+'_'+ctrl+'_'+alt+'_'+shift);}
 
         function listen(keyCode, handler, options) {
             // Build default options if there are none submitted
             options = options || defaultOptions;
-            if (typeof handler!=='function') {throw new Error('Submit a handler for keyCode #'+keyCode+'(ctrl:'+!!options.ctrl+', alt:'+options.alt+')');}
+            if (typeof handler!=='function') {
+                throw new Error('Submit a handler for keyCode #'+keyCode+'(ctrl:'+!!options.ctrl+', alt:'+options.alt+', shift:'+options.shift+')');
+            }
             // Build a key and map handler for the key combination
-            var key = buildKey(keyCode, !!options.ctrl, !!options.alt);
+            var key = buildKey(keyCode, !!options.ctrl, !!options.alt, !!options.shift);
             mappings[key] = handler;
         }
 
@@ -583,7 +819,7 @@ function registerHotKeys() {
             // Build default options if there are none submitted
             options = options || defaultOptions;
             // Build a key and map handler for the key combination
-            var key = buildKey(keyCode, !!options.ctrl, !!options.alt);
+            var key = buildKey(keyCode, !!options.ctrl, !!options.alt, !!options.shift);
             // Delete what was found
             delete mappings[key];
         }
@@ -624,6 +860,8 @@ function registerHotKeys() {
             setActive: setActive,
             // Keycode constants, fill in your own here
             key : {
+                VK_Q: 81,
+                VK_W: 87,
                 VK_X: 88,
                 VK_Z: 90
             }
@@ -644,6 +882,14 @@ function registerHotKeys() {
             redrawRightWordCard();
         }
     }, {ctrl: true});
+
+    npup.listen(npup.key.VK_Q, function (event) {
+        loadListWords();
+    }, {alt: true, shift: true});
+
+    npup.listen(npup.key.VK_W, function (event) {
+        exportWordsToClipboardForQuizlet();
+    }, {alt: true, shift: true});
 
     // Small demo of listen and unListen
     // Usage:

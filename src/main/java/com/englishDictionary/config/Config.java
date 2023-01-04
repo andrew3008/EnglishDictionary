@@ -11,7 +11,7 @@ public class Config implements EnvironmentResourcesInterface {
     public static final Config INSTANCE = new Config();
 
     public static final int WEB_SERVER_PORT = 8080;
-    public static final String FORVO_API_KEY = "9abf6bd699950a762f5793dce5a32a56";
+    public static final String FORVO_API_KEY = "669db1c70c49ea0e8a92ff509c61ec59";
     public static final String YANDEX_WEBDAV_AUTHORIZATION_TOKEN = "AQAEA7qgySSkAAS9YffJNgqU1k9qp75Zd9Dq4WY";
     public static final String WORDS_FILES_CONTENT_FILE = "_content.json";
     public static final String FILE_NAME_OF_WORDS_FROM_EXCEL_ALIAS = "WordsFromExcel";
