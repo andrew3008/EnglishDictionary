@@ -1,5 +1,7 @@
 package com.englishDictionary.servicesThirdParty.translates;
 
+import com.englishDictionary.servicesThirdParty.translates.http.HTMLUtils;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,5 +33,10 @@ public abstract class BaseTranslate {
 
     protected void clearCache() {
         cache.clear();
+    }
+
+    /** Convert entities to character. Ex: "&#39;" to "'". */
+    protected static String unescapeHTML(String text) {
+        return HTMLUtils.entitiesToChars(text);
     }
 }

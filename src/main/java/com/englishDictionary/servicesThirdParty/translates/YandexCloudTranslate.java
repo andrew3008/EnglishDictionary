@@ -1,8 +1,6 @@
-package com.englishDictionary.servicesThirdParty.translates.YandexTranslate;
+package com.englishDictionary.servicesThirdParty.translates;
 
-import com.englishDictionary.servicesThirdParty.translates.BaseTranslate;
-import com.englishDictionary.servicesThirdParty.translates.Language;
-import com.englishDictionary.servicesThirdParty.translates.YandexTranslate.http.HttpConnectionUtils;
+import com.englishDictionary.servicesThirdParty.translates.http.HttpConnectionUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

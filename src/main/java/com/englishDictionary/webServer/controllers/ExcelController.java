@@ -1,9 +1,8 @@
 package com.englishDictionary.webServer.controllers;
 
-import com.englishDictionary.config.Config;
 import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
 import com.englishDictionary.servicesThirdParty.translates.Language;
-import com.englishDictionary.servicesThirdParty.translates.YandexTranslate.YandexCloudTranslate;
+import com.englishDictionary.servicesThirdParty.translates.YandexCloudTranslate;
 import com.englishDictionary.webServer.HttpServletRequest;
 import com.englishDictionary.webServer.HttpServletResponse;
 import com.englishDictionary.webServer.annotations.Controller;
@@ -11,21 +10,8 @@ import com.englishDictionary.webServer.annotations.RequestMapping;
 import com.englishDictionary.webServer.annotations.RequestMethod;
 import com.englishDictionary.webServer.utils.SEDHttpClient;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ObjectNode;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 
 @Controller(url = "/excel/")
 public class ExcelController {
