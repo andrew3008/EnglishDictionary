@@ -86,8 +86,8 @@ tr.group:hover {
 }
 
 #tableWords_wrapper {
-    max-height: calc(100% - 21.5px) !important;
-    height: calc(100% - 21.5px) !important;
+    max-height: calc(100% - 21.8px) !important;
+    height: calc(100% - 21.8px) !important;
 }
 
 .dataTables_scroll {
