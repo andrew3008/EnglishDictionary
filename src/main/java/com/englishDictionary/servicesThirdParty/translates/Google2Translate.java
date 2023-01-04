@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * Support of Google Translate API v.2 machine translation.
  * @see <a href="https://cloud.google.com/translate/docs/basic/setup-basic">Translation API</a>
+ * https://developers.google.com/maps/documentation/javascript/get-api-key
  */
 public class Google2Translate extends BaseTranslate {
 

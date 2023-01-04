@@ -130,49 +130,6 @@ public class ExcelController {
         }
     }
 
-//    static String IAM_TOKEN = "t1.9euelZqek4mQnovLjM2enJSLnovGkO3rnpWajY3Jx5jLxsucj5LKnpLNl87l9Pc2bS9i-e93UQyZ3fT3dhstYvnvd1EMmc3n9euelZqSjIvMzImdy5bHkImVk5fOke_9.lbJ4wXvB50zHGLYHK6U0UCFh0RQZ13cB-KeX8e7Vz2RVjJlJX-3Nt_iZ2Ins_EZV1lSTeFfAqZH8A3jUbj8ADQ";
-
-//    @RequestMapping(url = "getTranslateOfPhrase")
-//    public void getTranslateOfPhrase(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-//        String phrase = httpRequest.getParameter("phrase").trim();
-//
-//        try {
-//            SEDHttpClient httpClient = new SEDHttpClient();
-//
-//            String resourceURL = "https://translate.api.cloud.yandex.net/translate/v2/translate";
-//
-//            Map<String, String> headers = new HashMap<>();
-//            headers.put("Authorization", "Bearer " + IAM_TOKEN);
-//
-//            String body = "{\"sourceLanguageCode\":\"en\", \"targetLanguageCode\":\"ru\", \"format\":\"PLAIN_TEXT\", \"texts\":[\"" + phrase + "\"]}";
-//
-//            SEDHttpClient.HttpRequestResponse response = httpClient.sendPostRequestWithBody(resourceURL, headers, body);
-//
-//            String json = new String(response.getContent());
-//            String translate = parseJSon(json).replace("  ", " ");
-//
-//            httpResponse.getOutputStream().write(translate);
-//            httpResponse.setStatus(HttpResponseStatus.OK);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            httpResponse.setStatus(HttpResponseStatus.INTERNAL_SERVER_ERROR);
-//        }
-//    }
-//
-//    private String parseJSon(String json) {
-//        ObjectMapper mapper = new ObjectMapper();
-//        ObjectNode rootNode;
-//        try {
-//            rootNode = (ObjectNode) mapper.readTree(json);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//
-//        ObjectNode translation = (ObjectNode) (rootNode.get("translations")).get(0);
-//        return translation.get("text").asText();
-//    }
-
 //    @RequestMapping(url = "getTranslateOfPhrase")
 //    public void getTranslateOfPhrase(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 //        String phrase = httpRequest.getParameter("phrase").trim().replace(" ", "+");
