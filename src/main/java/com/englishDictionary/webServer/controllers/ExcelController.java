@@ -1,6 +1,7 @@
 package com.englishDictionary.webServer.controllers;
 
 import com.englishDictionary.servicesThirdParty.excel.BufferListOfWordsFromExcel;
+import com.englishDictionary.servicesThirdParty.translates.Google2Translate;
 import com.englishDictionary.servicesThirdParty.translates.Language;
 import com.englishDictionary.servicesThirdParty.translates.YandexCloudTranslate;
 import com.englishDictionary.webServer.HttpServletRequest;
@@ -105,7 +106,8 @@ public class ExcelController {
 //        }
     }
 
-    private final YandexCloudTranslate translate = new YandexCloudTranslate();
+    //private final YandexCloudTranslate translate = new YandexCloudTranslate();
+    private final Google2Translate translate = new Google2Translate();
 
     @RequestMapping(url = "getTranslateOfPhrase")
     public void getTranslateOfPhrase(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {

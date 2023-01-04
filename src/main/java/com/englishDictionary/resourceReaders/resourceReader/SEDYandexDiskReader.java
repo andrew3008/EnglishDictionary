@@ -1,5 +1,6 @@
 package com.englishDictionary.resourceReaders.resourceReader;
 
+import com.englishDictionary.config.APIKeys;
 import com.englishDictionary.config.Config;
 import com.englishDictionary.webServer.utils.SEDHttpClient;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -49,7 +50,7 @@ public class SEDYandexDiskReader implements SEDReader {
         resourceURL = YANDEX_WEBDAV_URL + filePath;
         httpClient = new SEDHttpClient();
         headers = new HashMap<>();
-        headers.put(AUTHORIZATION_HEADER, createAuthorizationHeaderValue(Config.YANDEX_WEBDAV_AUTHORIZATION_TOKEN));
+        headers.put(AUTHORIZATION_HEADER, createAuthorizationHeaderValue(APIKeys.YANDEX_WEBDAV_AUTHORIZATION_TOKEN));
         position = 0;
     }
 

@@ -1,5 +1,6 @@
 package com.englishDictionary.servicesThirdParty.forvo;
 
+import com.englishDictionary.config.APIKeys;
 import com.englishDictionary.config.Config;
 import com.englishDictionary.webServer.HttpServletResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -37,7 +38,7 @@ import java.util.List;
 public class Forvo {
 
     static final String RESOURCE_URL_FOR_DEMO_FORM = "https://api.forvo.com/demo";
-    static final String RESOURCE_URL_WITH_API_KEY = "http://apifree.forvo.com/key/" + Config.FORVO_API_KEY + "/format/xml/action/word-pronunciations/word/%1s/language/%2s/order/rate-desc/format/json";
+    static final String RESOURCE_URL_WITH_API_KEY = "http://apifree.forvo.com/key/" + APIKeys.FORVO_API_KEY + "/format/xml/action/word-pronunciations/word/%1s/language/%2s/order/rate-desc/format/json";
     static final String MESSAGE_LIMIT_REQUESTS_FINISHED = "[\"Limit\\/day reached.\"]";
     static final String MESSAGE_ACCOUNT_IS_DISSABLED = "[\"Account disabled.\"]";
     static final String MESSAGE_ACCOUNT_IS_EXPIRED = "[\"Account expired.\"]";

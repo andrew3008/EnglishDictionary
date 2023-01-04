@@ -39,7 +39,7 @@ public class HttlEngineKeeper {
         httlProperties.put("comment.right", "-->");
 
         httlProperties.put("compiler", "httl.spi.compilers.JdkCompiler");
-        httlProperties.put("compile.version", "1.8");
+        httlProperties.put("compile.version", "11");
         httlProperties.put("source.in.class", "true");
         httlProperties.put("text.in.class", "true");
         httlProperties.put("code.directory", userDir + "/target/generated-sources/");

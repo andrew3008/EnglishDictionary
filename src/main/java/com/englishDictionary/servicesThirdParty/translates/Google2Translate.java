@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import com.englishDictionary.config.APIKeys;
 import com.englishDictionary.servicesThirdParty.translates.http.HttpConnectionUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -13,8 +14,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class Google2Translate extends BaseTranslate {
 
-    protected static final String API_KEY = ""; //"google.api.key";
-    protected static final String PREMIUM_KEY = ""; //"google.api.premium";
+    protected static final String API_KEY = APIKeys.GOOGLE_2_TRANSLATE_API_KEY;
+    protected static final String PREMIUM_KEY = APIKeys.GOOGLE_2_TRANSLATE_PREMIUM_KEY;
     protected static final String GT_URL = "https://translation.googleapis.com/language/translate/v2";
     private static final int MAX_TEXT_LENGTH = 5000;
 
@@ -38,7 +39,7 @@ public class Google2Translate extends BaseTranslate {
         String targetLang = tLang.value();
 
         Map<String, String> params = new TreeMap<String, String>();
-        if (isPremium()) {
+        if (!PREMIUM_KEY.isEmpty()) {
             params.put("model", "nmt");
         }
         params.put("key", API_KEY);
@@ -82,16 +83,6 @@ public class Google2Translate extends BaseTranslate {
             return "MT_JSON_ERROR";
         }
         return null;
-    }
-
-    /**
-     * Whether or not to use the new Neural Machine Translation System
-     *
-     * @see <a href="https://research.googleblog.com/2016/09/a-neural-network-for-machine.html">A Neural
-     *      Network for Machine Translation, at Production Scale</a>
-     */
-    private boolean isPremium() {
-        return PREMIUM_KEY.isEmpty();
     }
 
     /**

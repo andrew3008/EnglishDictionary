@@ -1,5 +1,6 @@
 package com.englishDictionary.servicesThirdParty.translates;
 
+import com.englishDictionary.config.APIKeys;
 import com.englishDictionary.servicesThirdParty.translates.http.HttpConnectionUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,8 +19,8 @@ import java.util.TreeMap;
  */
 public class YandexCloudTranslate extends BaseTranslate {
 
-    private static final String OAUTH_TOKEN = "y0_AgAAAABnjTu-AATuwQAAAADYer8G3EjcpllgQpKTekLC5rzBgfplP9c";
-    private static final String FOLDER_ID = "b1g7jlooh939n540fm0k";
+    private static final String OAUTH_TOKEN = APIKeys.YANDEX_CLOUD_TRANSLATE_OAUTH_TOKEN;
+    private static final String FOLDER_ID = APIKeys.YANDEX_CLOUD_TRANSLATE_FOLDER_ID;
 
     private static final int MAX_TEXT_LENGTH = 10000;
     private static final int IAM_TOKEN_TTL_SECONDS = 3600; // Recommended value
