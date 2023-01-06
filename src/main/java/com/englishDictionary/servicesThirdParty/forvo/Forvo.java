@@ -189,7 +189,8 @@ public class Forvo {
         return Collections.<ForvoCard>emptyList();
     }
 
-    private static String FORVO_RESULT_ITEMS_FIRST_TAG = "&quot;items&quot;: ";
+    private static final String FORVO_RESULT_ITEMS_FIRST_TAG = "&quot;items&quot;: ";
+    private static final int FORVO_RESULT_ITEMS_FIRST_TAG_SHIFT = 52570;
 
     private List<ForvoCard> handleResponse(HttpResponse response) {
         String contentType = "";
@@ -205,10 +206,12 @@ public class Forvo {
                 e.printStackTrace();
             }
 
-            int itemsBeginIndex = htmlPageResults.indexOf(FORVO_RESULT_ITEMS_FIRST_TAG);
-            int itemsEndIndex = htmlPageResults.indexOf("} </pre>", itemsBeginIndex + FORVO_RESULT_ITEMS_FIRST_TAG.length());
-            String resJSon = htmlPageResults.substring(itemsBeginIndex + FORVO_RESULT_ITEMS_FIRST_TAG.length(), itemsEndIndex).replace("&quot;", "\"").replaceAll("[\\n\\t]", "");
-            return parseJSon(resJSon);
+            int itemsBeginIndex = htmlPageResults.indexOf(FORVO_RESULT_ITEMS_FIRST_TAG, FORVO_RESULT_ITEMS_FIRST_TAG_SHIFT);
+            if (itemsBeginIndex != -1) {
+                int itemsEndIndex = htmlPageResults.indexOf("} </pre>", itemsBeginIndex + FORVO_RESULT_ITEMS_FIRST_TAG.length());
+                String resJSon = htmlPageResults.substring(itemsBeginIndex + FORVO_RESULT_ITEMS_FIRST_TAG.length(), itemsEndIndex).replace("&quot;", "\"").replaceAll("[\\n\\t]", "");
+                return parseJSon(resJSon);
+            }
 
             /*Document document;
             try {
