@@ -73,8 +73,8 @@ public class Forvo {
                 isLimitRequestsFinished = false;
                 dateAchievLimitRequests = null;
             } else {*/
-                return getForvoCardsFromDemoForm(word);
-                //return Collections.emptyList();
+        return getForvoCardsFromDemoForm(word);
+        //return Collections.emptyList();
             /*}
         }
 
@@ -142,49 +142,41 @@ public class Forvo {
         return Collections.<ForvoCard>emptyList();
     }
 
-    public List<ForvoCard> getForvoCardsFromDemoForm(String word) {
-        List<ForvoCard> cardsFromCache = cacheCards.get(word);
-        if (cardsFromCache != null) {
-            return cardsFromCache;
-        }
+    private static final List<NameValuePair> FORVO_CARDS_MAIN_REQUEST_PARAMS = new ArrayList<>();
 
+    static {
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("action", "word-pronunciations"));
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("format", "json"));
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("language", "en"));
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("username", ""));
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("sex", ""));
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("rate", ""));
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("order", "rate-desc"));
+        FORVO_CARDS_MAIN_REQUEST_PARAMS.add(new BasicNameValuePair("limit", ""));
+    }
+
+    public List<ForvoCard> getForvoCardsFromDemoForm(String word) {
         HttpPost post = new HttpPost(RESOURCE_URL_FOR_DEMO_FORM);
         HttpClient client = HttpClientBuilder.create().build();
         HttpResponse response;
         int code = -1;
         try {
-            List<NameValuePair> params = new ArrayList<>();
-            params.add(new BasicNameValuePair("action", "word-pronunciations"));
-            params.add(new BasicNameValuePair("format", "json"));
+            List<NameValuePair> params = new ArrayList<>(FORVO_CARDS_MAIN_REQUEST_PARAMS);
             params.add(new BasicNameValuePair("word", word));
-            params.add(new BasicNameValuePair("language", "en"));
-            params.add(new BasicNameValuePair("username", ""));
-            params.add(new BasicNameValuePair("sex", ""));
-            params.add(new BasicNameValuePair("rate", ""));
-            params.add(new BasicNameValuePair("order", "rate-desc"));
-            params.add(new BasicNameValuePair("limit", ""));
             post.setEntity(new UrlEncodedFormEntity(params, Config.CHARSET));
 
             response = client.execute(post);
-            //response = client.execute(post);
-            //response = client.execute(post);
             code = response.getStatusLine().getStatusCode();
-                    /*if (code >= 400) {
-                        throw new RuntimeException(
-								"Could not access protected resource. Server returned http code: "
-										+ code);
-
-					}*/
-
-				/*} else {
-                    throw new RuntimeException(
-							"Could not regenerate access token");
-				}*/
-
-            List<ForvoCard> responces = handleResponse(response);
-            if (responces != null) {
-                cacheCards.put(word, responces);
-                return responces;
+            if (code == 200) {
+                List<ForvoCard> responces = handleResponse(response);
+                if (responces != null) {
+                    cacheCards.put(word, responces);
+                    return responces;
+                }
+            } else {
+                servletResponse.setStatus(HttpResponseStatus.INTERNAL_SERVER_ERROR);
+                servletResponse.setErrorMessage("Response code:" + code);
+                //" with the message:" + handleErrorResponse(response));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -197,21 +189,28 @@ public class Forvo {
         return Collections.<ForvoCard>emptyList();
     }
 
+    private static String FORVO_RESULT_ITEMS_FIRST_TAG = "&quot;items&quot;: ";
+
     private List<ForvoCard> handleResponse(HttpResponse response) {
-        String contentType = null;
+        String contentType = "";
         if (response.getEntity().getContentType() != null) {
             contentType = response.getEntity().getContentType().getValue();
         }
 
         if (contentType.contains("text/html; charset=UTF-8")) {
-            String htmlPageResultsSearch = "";
+            String htmlPageResults = "";
             try {
-                htmlPageResultsSearch = EntityUtils.toString(response.getEntity());
+                htmlPageResults = EntityUtils.toString(response.getEntity(), "UTF-8");
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            Document document;
+            int itemsBeginIndex = htmlPageResults.indexOf(FORVO_RESULT_ITEMS_FIRST_TAG);
+            int itemsEndIndex = htmlPageResults.indexOf("} </pre>", itemsBeginIndex + FORVO_RESULT_ITEMS_FIRST_TAG.length());
+            String resJSon = htmlPageResults.substring(itemsBeginIndex + FORVO_RESULT_ITEMS_FIRST_TAG.length(), itemsEndIndex).replace("&quot;", "\"").replaceAll("[\\n\\t]", "");
+            return parseJSon(resJSon);
+
+            /*Document document;
             try {
                 document = Jsoup.parse(htmlPageResultsSearch);
             } catch (Exception e) {
@@ -220,16 +219,14 @@ public class Forvo {
             }
 
             Element results = document.getElementsByClass("intro").get(0);
-
             List<Node> resultsTopChild = results.childNodes().get(1).childNodes();
-            String resJSon = resultsTopChild.toString(); //.replace("\n", "").replace("\t", "").replace(": ", ":");
-            //.replace("&quot;", "\"");
+            String resJSon = resultsTopChild.toString();
             if (resJSon.equals(MESSAGE_LIMIT_REQUESTS_FINISHED)) {
                 servletResponse.setStatus(HttpResponseStatus.INTERNAL_SERVER_ERROR);
                 servletResponse.setErrorMessage("Limit day of requests on Forvo reached.");
             } else {
                 return parseJSon(resJSon);
-            }
+            }*/
         }
 
         return null;
@@ -239,32 +236,25 @@ public class Forvo {
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode rootNode;
         try {
-            rootNode = (ArrayNode)mapper.readTree(json);
+            rootNode = (ArrayNode) mapper.readTree(json);
         } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
 
+        List<ForvoCard> forvoResponses = new ArrayList<>();
         Iterator<JsonNode> rootNodeItems = rootNode.getElements();
-        if (rootNodeItems.hasNext()) {
-            JsonNode rootNodeItem = rootNodeItems.next();
-            if (!rootNodeItem.isNull() && rootNodeItem.isContainerNode()) {
-                ObjectNode containerNode = (ObjectNode) rootNodeItem;
-                ArrayNode items = (ArrayNode) containerNode.get("items");
-                Iterator<JsonNode> voiceCardNodes = items.getElements();
-
-                List<ForvoCard> forvoResponses = new ArrayList<>();
-                while (voiceCardNodes.hasNext()) {
-                    JsonNode voiceCardNode = voiceCardNodes.next();
-                    Iterator<String> fieldNames = voiceCardNode.getFieldNames();
-                    ForvoCard forvoResponce = new ForvoCard();
-                    while (fieldNames.hasNext()) {
-                        String fieldName = fieldNames.next();
-                        String fieldValue = voiceCardNode.get(fieldName).asText();
-                        if (fieldName.equals("sex")) {
-                            forvoResponce.setMale(fieldValue.equals("m"));
-                        } else if (fieldName.equals("username")) {
-                            forvoResponce.setUser(fieldValue);
+        while (rootNodeItems.hasNext()) {
+            JsonNode voiceCardNode = rootNodeItems.next();
+            Iterator<String> fieldNames = voiceCardNode.getFieldNames();
+            ForvoCard forvoResponce = new ForvoCard();
+            while (fieldNames.hasNext()) {
+                String fieldName = fieldNames.next();
+                String fieldValue = voiceCardNode.get(fieldName).asText();
+                if (fieldName.equals("sex")) {
+                    forvoResponce.setMale(fieldValue.equals("m"));
+                } else if (fieldName.equals("username")) {
+                    forvoResponce.setUser(fieldValue);
                             /*String userNamePercent = "";
                             try {
                                 userNamePercent = URLDecoder.decode(forvoResponce.getUser(), Config.CHARSET);
@@ -272,24 +262,29 @@ public class Forvo {
                                 e.printStackTrace();
                             }
                             forvoResponce.setUserProfile("http://www.forvo.com/user/" + userNamePercent + "/");*/
-                        } else if (fieldName.equals("country")) {
-                            forvoResponce.setCountry(fieldValue);
-                            forvoResponce.setFlagFileName(Flags.getFlagCode(fieldValue));
-                        } else if (fieldName.equals("num_votes")) {
-                            forvoResponce.setTotalVotes(voiceCardNode.get(fieldName).asInt());
-                        } else if (fieldName.equals("num_positive_votes")) {
-                            forvoResponce.setPositiveVotes(voiceCardNode.get(fieldName).asInt());
-                            forvoResponce.setNegativeVotes(forvoResponce.getTotalVotes() - forvoResponce.getPositiveVotes());
-                        } else if (fieldName.equals("pathogg")) {
-                            forvoResponce.setPathmp3(fieldValue);
-                        }
-                    }
-                    forvoResponses.add(forvoResponce);
+                } else if (fieldName.equals("country")) {
+                    forvoResponce.setCountry(fieldValue);
+                    forvoResponce.setFlagFileName(Flags.getFlagCode(fieldValue));
+                } else if (fieldName.equals("num_votes")) {
+                    forvoResponce.setTotalVotes(voiceCardNode.get(fieldName).asInt());
+                } else if (fieldName.equals("num_positive_votes")) {
+                    forvoResponce.setPositiveVotes(voiceCardNode.get(fieldName).asInt());
+                    forvoResponce.setNegativeVotes(forvoResponce.getTotalVotes() - forvoResponce.getPositiveVotes());
+                } else if (fieldName.equals("pathogg")) {
+                    forvoResponce.setPathmp3(fieldValue);
                 }
-                return forvoResponses;
             }
+            forvoResponses.add(forvoResponce);
         }
-
-        return null;
+        return forvoResponses.isEmpty() ? null : forvoResponses;
     }
+
+    //private List<ForvoCard> handleErrorResponse(HttpResponse response) {
+    // Need to add handling of errors from HTML-elements
+    /*
+        <!-- content -->
+        <div class="superdata">
+        <div class="error">Our apologies. Currently working to improve Forvo.</div>
+        <h2 class="titulo"><strong>Please try reloading later.</strong></h2>
+     */
 }
