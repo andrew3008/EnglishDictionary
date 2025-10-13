@@ -1,0 +1,73 @@
+plugins {
+    id 'maven-publish'
+}
+
+group = 'space.br1440.platform.starters'
+version = '1.0.0'
+
+repositories {
+    mavenLocal()
+    maven {
+        url = "https://n.1440.space/repository/platform-maven/"
+    }
+    maven {
+        url = "https://n.1440.space/repository/platform-maven-dev/"
+    }
+    maven {
+        url = "https://n.1440.space/repository/repo1.maven.org-proxy"
+    }
+    maven {
+        url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
+    }
+}
+
+subprojects {
+    apply plugin: 'maven-publish'
+    apply plugin: 'java-library'
+
+    // Настройка публикации для каждого подпроекта
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin('java') || project.plugins.hasPlugin('java-library')) {
+            publishing {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.java
+                    }
+                }
+                repositories {
+                    maven {
+                        // Snapshot repository
+                        if (project.version.endsWith('-SNAPSHOT')) {
+                            name = 'snapshotRepo'
+                            url = uri("https://n.1440.space/repository/platform-maven-dev")
+                            credentials {
+                                username = System.getenv("NEXUS_USERNAME")
+                                password = System.getenv("NEXUS_PASSWORD")
+                            }
+                        } else {
+                            // Release repository
+                            name = 'releaseRepo'
+                            url = uri("https://n.1440.space/repository/platform-maven")
+                            credentials {
+                                username = System.getenv("PROD_NEXUS_USERNAME")
+                                password = System.getenv("PROD_NEXUS_PASSWORD")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Задача для публикации всех проектов в nexus
+tasks.register("publishAllToNexus") {
+    dependsOn subprojects.publish
+}
+
+// Задача для публикации всех проектов в local
+tasks.register("publishAllToMavenLocal") {
+    dependsOn subprojects.publishToMavenLocal
+}
+
+

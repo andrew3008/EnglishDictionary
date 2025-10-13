@@ -1,0 +1,48 @@
+## Библиотека spring-boot-starter-platform-metrics
+
+### Описание
+
+Данная библиотека добавляет в проект набор универсальных метрик для HTTP/gRPC вызовов. 
+Все метрики добавленные данной бибилиотекой имеют префикс platform_ 
+
+**Важно!** gRPC метрики собираются только при использовании официального стартера https://github.com/spring-projects/spring-grpc
+
+Более подробно о метриках платформы описано [тут](https://c.1440.space/pages/viewpage.action?pageId=508642331#id-[WIP]%D0%A2%D1%80%D0%B5%D0%B1%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F%D0%BA%D0%BC%D0%B5%D1%82%D1%80%D0%B8%D0%BA%D0%B0%D0%BC%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81%D0%BE%D0%B2-%D0%AD%D1%82%D0%B0%D0%BB%D0%BE%D0%BD%D0%BD%D1%8B%D0%B5%D0%BC%D0%B5%D1%82%D1%80%D0%B8%D0%BA%D0%B8)
+
+
+### Использование
+
+Данная библиотека находится в репозитории платформы, по этому для добавления нужно проверить наличие репозитория в **build.gradle**
+
+```groovy
+repositories {
+
+	maven {
+		url = "..."
+	}
+	maven {
+		url = "https://n.1440.space/repository/platform-maven/"
+	}
+	maven {
+		url = "https://n.1440.space/repository/platform-maven-dev/"
+	}
+}
+```
+
+Добавление библиотеки:
+
+```groovy
+dependencies {
+    implementation 'space.br1440.platform:spring-boot-starter-platform-metrics:1.4.0'
+}
+```
+
+**Отдельно тянуть spring-boot-actuator не нужно! Он приедет транзитивно с этим стартером** 
+
+### Функциональность
+
+Так-же библиотека добавляет endpont `/actuator/platform`  с информацией о версии библиотеки 
+
+```json
+{"version":"1.4.0-SNAPSHOT","buildTime":"2025-09-03T12:01:52.575415"}
+```

@@ -1,0 +1,60 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "space.br1440.platform.starters",
+    "module": "spring-boot-starter-platform-logging",
+    "version": "1.0.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-platform-logging-1.0.0.jar",
+          "url": "spring-boot-starter-platform-logging-1.0.0.jar",
+          "size": 1362,
+          "sha512": "958578c9d0f21c743a11912a94855c713f1418bc23674ddb9fac4eb3efa6d274f44b25908c2ed1ade97f5c4c0791f1c5307275d7468985759cea46d90eb656cb",
+          "sha256": "4acedaf5abf4cd3a8021386689e1bb5ed9749054116bf96d3b66e1d3bb5afc75",
+          "sha1": "8cb965c30ebc88f194b784cd41612a0ae363f0c6",
+          "md5": "1ebd64df7786dd3a403c44704b034e13"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-platform-logging-1.0.0.jar",
+          "url": "spring-boot-starter-platform-logging-1.0.0.jar",
+          "size": 1362,
+          "sha512": "958578c9d0f21c743a11912a94855c713f1418bc23674ddb9fac4eb3efa6d274f44b25908c2ed1ade97f5c4c0791f1c5307275d7468985759cea46d90eb656cb",
+          "sha256": "4acedaf5abf4cd3a8021386689e1bb5ed9749054116bf96d3b66e1d3bb5afc75",
+          "sha1": "8cb965c30ebc88f194b784cd41612a0ae363f0c6",
+          "md5": "1ebd64df7786dd3a403c44704b034e13"
+        }
+      ]
+    }
+  ]
+}
