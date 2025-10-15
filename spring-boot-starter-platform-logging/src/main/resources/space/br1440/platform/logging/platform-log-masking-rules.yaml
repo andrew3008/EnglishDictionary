@@ -1,0 +1,63 @@
+rules:
+  - name: password
+    type: scalar
+    apply-to-keys:
+      - password
+      - passwd
+      - pwd
+    mask: "*****"
+
+  - name: secret
+    type: scalar
+    apply-to-keys:
+      - secret
+      - client_secret
+      - app_secret
+    mask: "*****"
+
+  - name: token
+    type: scalar
+    apply-to-keys:
+      - token
+      - access_token
+      - auth_token
+      - bearer_token
+    mask: "*****"
+
+  - name: tokens
+    type: array
+    apply-to-keys:
+      - tokens
+      - access_tokens
+      - auth_tokens
+      - bearer_tokens
+    mask-item: "*****"
+
+  - name: api_key
+    type: scalar
+    apply-to-keys:
+      - api_key
+      - apikey
+      - api-key
+    mask: "*****"
+
+  - name: ssn
+    type: scalar
+    apply-to-keys:
+      - ssn
+      - social_security_number
+    mask: "***-**-****"
+
+  - name: email
+    type: scalar
+    apply-to-keys:
+      - email
+      - e-mail
+    mask: "***@***.***"
+
+  - name: emails
+    type: array
+    apply-to-keys:
+      - emails
+      - email_list
+    mask-item: "***@***.***"

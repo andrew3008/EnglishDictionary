@@ -1,18 +1,32 @@
-## Библиотека spring-boot-starter-platform-metrics
+## Моно-репозиторий spring-boot-platform-starters
 
 ### Описание
 
-Данная библиотека добавляет в проект набор универсальных метрик для HTTP/gRPC вызовов. 
-Все метрики добавленные данной бибилиотекой имеют префикс platform_ 
+#### Данный репозиторий содержит в себе следующие библиотеки:
+- [platform-logging-java;](./spring-boot-starter-platform-logging/README.md)
+- [spring-boot-starter-platform-metrics;](./spring-boot-starter-platform-metrics/README.md)
+- [spring-boot-starter-oauth2-resource-server.](./spring-boot-starter-platform-security/README.md)
 
-**Важно!** gRPC метрики собираются только при использовании официального стартера https://github.com/spring-projects/spring-grpc
+Для ознакомления с полной документацией нужной Вам библиотеки перейдите по одной из ссылок выше.
 
-Более подробно о метриках платформы описано [тут](https://c.1440.space/pages/viewpage.action?pageId=508642331#id-[WIP]%D0%A2%D1%80%D0%B5%D0%B1%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F%D0%BA%D0%BC%D0%B5%D1%82%D1%80%D0%B8%D0%BA%D0%B0%D0%BC%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81%D0%BE%D0%B2-%D0%AD%D1%82%D0%B0%D0%BB%D0%BE%D0%BD%D0%BD%D1%8B%D0%B5%D0%BC%D0%B5%D1%82%D1%80%D0%B8%D0%BA%D0%B8)
+#### platform-logging-java
+Данная библиотека предоставляет:
+- дефолтные Logback Appender’ы для логирования в консоль, logstash, JSON-файл;
+- гибкую настройку логирования body и headers HTTP-запросов и ответов;
+- возможность расширения правил маскирования чувствительных данных;
+- интеграцию в Spring Boot-проекты через авто-конфигурацию.
 
+#### spring-boot-starter-platform-metrics
+Данная библиотека добавляет в проект набор универсальных метрик для HTTP/gRPC вызовов.
+
+
+#### spring-boot-starter-oauth2-resource-server
+Библиотека для аутентификации/авторизации пользователей на http API.
+Сделано поверх стандартного org.springframework.boot:spring-boot-starter-oauth2-resource-server и заменяет его.
 
 ### Использование
 
-Данная библиотека находится в репозитории платформы, по этому для добавления нужно проверить наличие репозитория в **build.gradle**
+Данная библиотека находится в репозитории платформы, поэтому для добавления нужно проверить наличие репозитория в **build.gradle**.
 
 ```groovy
 repositories {
@@ -33,16 +47,6 @@ repositories {
 
 ```groovy
 dependencies {
-    implementation 'space.br1440.platform:spring-boot-starter-platform-metrics:1.4.0'
+    implementation 'space.br1440.platform:spring-boot-platform-starters:{current version}'
 }
-```
-
-**Отдельно тянуть spring-boot-actuator не нужно! Он приедет транзитивно с этим стартером** 
-
-### Функциональность
-
-Так-же библиотека добавляет endpont `/actuator/platform`  с информацией о версии библиотеки 
-
-```json
-{"version":"1.4.0-SNAPSHOT","buildTime":"2025-09-03T12:01:52.575415"}
 ```

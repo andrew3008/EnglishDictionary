@@ -1,0 +1,2 @@
+space.br1440.platform.logging.configuration.LoggingAutoConfiguration
+space.br1440.platform.logging.configuration.GrpcLoggingConfiguration
