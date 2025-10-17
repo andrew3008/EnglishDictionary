@@ -1,35 +1,8 @@
-plugins {
-    id 'java'
-    id 'java-library'
-    id 'io.spring.dependency-management' version '1.1.7'
-}
 
-group = rootProject.group
-version = rootProject.version
-
-
-
-repositories {
-    maven {
-        url "https://n.1440.space/repository/ums-maven"
-        credentials {
-            username System.getenv('PROD_NEXUS_USERNAME')
-            password System.getenv('PROD_NEXUS_PASSWORD')
-        }
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
     }
-    maven {
-        url = "https://n.1440.space/repository/platform-maven/"
-    }
-    maven {
-        url = "https://n.1440.space/repository/platform-maven-dev/"
-    }
-    maven {
-        url "https://n.1440.space/repository/plugins.gradle.org-proxy/"
-    }
-    maven {
-        url "https://n.1440.space/repository/repo1.maven.org-proxy"
-    }
-    mavenLocal()
 }
 
 dependencies {

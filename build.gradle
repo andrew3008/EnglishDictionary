@@ -1,72 +1,76 @@
 plugins {
-    id 'maven-publish'
     id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-group = 'space.br1440.platform.starters'
-version = '1.0.0'
 
-repositories {
-    mavenLocal()
-    maven {
-        url = "https://n.1440.space/repository/platform-maven/"
-    }
-    maven {
-        url = "https://n.1440.space/repository/platform-maven-dev/"
-    }
-    maven {
-        url = "https://n.1440.space/repository/repo1.maven.org-proxy"
-    }
-    maven {
-        url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
-    }
-}
+allprojects {
+    group = 'space.br1440.platform.starters'
+    version = '1.0.0'
 
-subprojects {
-    apply plugin: 'maven-publish'
-    apply plugin: 'java-library'
-    apply plugin: 'io.spring.dependency-management'
-
-    dependencyManagement {
-        imports {
-            mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.5'
+    repositories {
+        mavenLocal()
+        maven {
+            url = "https://n.1440.space/repository/platform-maven/"
+        }
+        maven {
+            url = "https://n.1440.space/repository/platform-maven-dev/"
+        }
+        maven {
+            url = "https://n.1440.space/repository/repo1.maven.org-proxy"
+        }
+        maven {
+            url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
         }
     }
 
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+}
+subprojects {
+    apply plugin: 'maven-publish'
+    if (it.name != 'spring-boot-starter-platform-bom') {
+        apply plugin: 'java-library'
+        apply plugin: 'io.spring.dependency-management'
+
+        dependencyManagement {
+            imports {
+                mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.5'
+            }
         }
     }
 
 
     // Настройка публикации для каждого подпроекта
     afterEvaluate { project ->
-        if (project.plugins.hasPlugin('java') || project.plugins.hasPlugin('java-library')) {
-            publishing {
+        publishing {
+            if (project.plugins.hasPlugin('java') || project.plugins.hasPlugin('java-library')) {
                 publications {
                     mavenJava(MavenPublication) {
-                        from components.java
+                        artifact jar
                     }
                 }
-                repositories {
-                    maven {
-                        // Snapshot repository
-                        if (project.version.endsWith('-SNAPSHOT')) {
-                            name = 'snapshotRepo'
-                            url = uri("https://n.1440.space/repository/platform-maven-dev")
-                            credentials {
-                                username = System.getenv("NEXUS_USERNAME")
-                                password = System.getenv("NEXUS_PASSWORD")
-                            }
-                        } else {
-                            // Release repository
-                            name = 'releaseRepo'
-                            url = uri("https://n.1440.space/repository/platform-maven")
-                            credentials {
-                                username = System.getenv("PROD_NEXUS_USERNAME")
-                                password = System.getenv("PROD_NEXUS_PASSWORD")
-                            }
+            } else {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.javaPlatform
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    // Snapshot repository
+                    if (project.version.endsWith('-SNAPSHOT')) {
+                        name = 'snapshotRepo'
+                        url = uri("https://n.1440.space/repository/platform-maven-dev")
+                        credentials {
+                            username = System.getenv("NEXUS_USERNAME")
+                            password = System.getenv("NEXUS_PASSWORD")
+                        }
+                    } else {
+                        // Release repository
+                        name = 'releaseRepo'
+                        url = uri("https://n.1440.space/repository/platform-maven")
+                        credentials {
+                            username = System.getenv("PROD_NEXUS_USERNAME")
+                            password = System.getenv("PROD_NEXUS_PASSWORD")
                         }
                     }
                 }
@@ -74,6 +78,7 @@ subprojects {
         }
     }
 }
+
 
 // Задача для публикации всех проектов в nexus
 tasks.register("publishAllToNexus") {

@@ -20,6 +20,7 @@ pluginManagement {
 
 
 rootProject.name = 'spring-boot-platform-starters'
+include 'spring-boot-starter-platform-bom'
 include 'spring-boot-starter-platform-metrics'
 include 'spring-boot-starter-platform-logging'
 include 'spring-boot-starter-platform-security'

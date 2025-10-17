@@ -4,35 +4,16 @@ import java.text.DateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-plugins {
-    id 'java-library'
-    id 'io.spring.dependency-management' version '1.1.7'
 
-}
-
-
-group = rootProject.group
-version = rootProject.version
-
-
-repositories {
-    mavenLocal()
-    maven {
-        url = "https://n.1440.space/repository/platform-maven/"
-    }
-    maven {
-        url = "https://n.1440.space/repository/platform-maven-dev/"
-    }
-    maven {
-        url = "https://n.1440.space/repository/repo1.maven.org-proxy"
-    }
-    maven {
-        url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
 dependencies {
-    compileOnly 'org.slf4j:slf4j-api:2.0.17'
+    api platform(project(":spring-boot-starter-platform-bom"))
+    compileOnly 'org.slf4j:slf4j-api'
     compileOnly 'org.springframework.kafka:spring-kafka:3.3.8'
     compileOnly 'org.springframework.boot:spring-boot-starter'
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
@@ -56,7 +37,7 @@ tasks.register('generateBuildInfo') {
         }
 
         def buildInfo = [
-                version: project.version,
+                version: rootProject.version,
                 buildTime: DateTimeFormatter.ISO_DATE_TIME.format(LocalDateTime.now())
         ]
 

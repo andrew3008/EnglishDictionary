@@ -1,39 +1,22 @@
-plugins {
-    id 'java-library'
-    id 'io.spring.dependency-management' version '1.1.7'
 
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
-
-group = rootProject.group
-version = rootProject.version
-
-
-repositories {
-    maven {
-        url "https://n.1440.space/repository/mcc-maven/"
-    }
-    maven {
-        url "https://n.1440.space/repository/mcc-maven-snapshot"
-    }
-    maven {
-        url "https://n.1440.space/repository/maven2-proxy/"
-    }
-    maven {
-        url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
-    }
-    mavenCentral()
-}
 
 dependencies {
-    implementation 'org.slf4j:slf4j-api:2.0.17'
-    implementation 'net.logstash.logback:logstash-logback-encoder:8.1'
+    api platform(project(":spring-boot-starter-platform-bom"))
+    implementation 'org.slf4j:slf4j-api'
+    implementation 'net.logstash.logback:logstash-logback-encoder'
 
-    implementation 'org.zalando:logbook-core:3.12.2'
-    implementation 'org.zalando:logbook-servlet:3.12.2'
-    implementation 'org.zalando:logbook-json:3.12.2'
+    implementation 'org.zalando:logbook-core'
+    implementation 'org.zalando:logbook-servlet'
+    implementation 'org.zalando:logbook-json'
 
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.19.2'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.springframework.boot:spring-boot-starter-security'

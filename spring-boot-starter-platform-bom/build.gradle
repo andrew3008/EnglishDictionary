@@ -1,0 +1,22 @@
+plugins {
+    id 'java-platform'
+}
+
+javaPlatform {
+    allowDependencies()
+}
+
+dependencies {
+    constraints {
+        api 'org.zalando:logbook-core:3.12.2'
+        api 'org.zalando:logbook-servlet:3.12.2'
+        api 'org.zalando:logbook-json:3.12.2'
+        api 'org.slf4j:slf4j-api:2.0.17'
+        api 'net.logstash.logback:logstash-logback-encoder:8.1'
+        api 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.19.2'
+    }
+    // бъявляем constraints (версии) для всех зависимостей
+    api platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+
+
+}

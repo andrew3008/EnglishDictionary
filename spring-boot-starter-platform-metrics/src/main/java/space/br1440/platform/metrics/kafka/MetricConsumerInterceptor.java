@@ -48,7 +48,7 @@ public class MetricConsumerInterceptor<K, V> implements ConsumerInterceptor<K, V
                 timer.record(System.currentTimeMillis() - record.timestamp(), TimeUnit.MILLISECONDS);
             });
         } catch (Exception e) {
-           LOGGER.warn("Error while create metric.", e);
+            LOGGER.warn("Error while create metric.", e);
         }
         return records;
     }
@@ -58,9 +58,15 @@ public class MetricConsumerInterceptor<K, V> implements ConsumerInterceptor<K, V
         try {
             //checkWait
             offsets.forEach((partition, offset) -> {
-                sampleThreadLocal.get().stop(
-                        metricBuilder.kafkaConsumerLag(partition.topic(), clientId, groupId)
-                );
+                var sampler = sampleThreadLocal.get();
+                if (sampler != null) {
+                    sampler.stop(
+                            metricBuilder.kafkaConsumerLag(partition.topic(), clientId, groupId)
+                    );
+                } else {
+                    LOGGER.debug("Sampler is null, can't write lag metric for topic-partition: {} and offset {}", partition, offset);
+                }
+
             });
         } catch (Exception e) {
             LOGGER.info("Error on commit metric", e);

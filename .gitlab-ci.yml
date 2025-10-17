@@ -9,6 +9,7 @@ variables:
   GRADLE_IMAGE: r.1440.space/dockerhub/gradle:8.12.0-jdk21
   GRADLE_BUILD_ARGS: "build --info"
   GRADLE_PUBLISH_ENABLED: true
+  GRADLE_PUBLISH_ARGS: "publishAllToNexus --info"
   GRADLE_SBOM_VERSION: disabled
   GRADLE_DEPENDENCY_CHECK_DISABLED: true
 
