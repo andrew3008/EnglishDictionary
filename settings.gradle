@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+
+        maven {
+            url = "https://n.1440.space/repository/platform-maven/"
+        }
+        maven {
+            url = "https://n.1440.space/repository/platform-maven-dev/"
+        }
+        maven {
+            url = "https://n.1440.space/repository/plugins.gradle.org-proxy/"
+        }
+        maven {
+            url = "https://n.1440.space/repository/repo1.maven.org-proxy"
+        }
+    }
+}
+
+
+
+rootProject.name = 'spring-boot-platform-starters'
+include 'spring-boot-starter-platform-bom'
+include 'spring-boot-starter-platform-metrics'
+include 'spring-boot-starter-platform-logging'
+include 'spring-boot-starter-platform-security'

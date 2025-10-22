@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<included>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty name="APPLICATION" source="spring.application.name" defaultValue="application-name-undefined"/>
+
+    <conversionRule conversionWord="maskedMDC"
+                    class="space.br1440.platform.logging.logback.MdcSensitiveDataMaskerConverter"/>
+
+    <property name="CONSOLE_LOG_PATTERN_BASE"
+              value="%clr([%d{ISO8601}]){faint} %clr([%p]) %clr([${APPLICATION}]){cyan} [%blue(%t)] %yellow(%logger{0}):%maskedMDC"/>
+    <property name="CONSOLE_LOG_PATTERN" value="${CONSOLE_LOG_PATTERN_BASE} %msg%n"/>
+
+    <appender name="PLATFORM-CONSOLE-TEXT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="PLATFORM-CONSOLE-JSON-PRETTY-PRINT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <jsonGeneratorDecorator class="net.logstash.logback.decorate.PrettyPrintingJsonGeneratorDecorator"/>
+            <charset>UTF-8</charset>
+<!--            <customFields>{"app_name":"${APPLICATION}"}</customFields>-->
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <stackTrace>error_stacktrace</stackTrace>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+        </encoder>
+        <filter class="space.br1440.platform.logging.logback.filter.CommonMdcFilter"/>
+    </appender>
+
+    <appender name="PLATFORM-CONSOLE-JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <charset>UTF-8</charset>
+            <charset>UTF-8</charset>
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <stackTrace>error_stacktrace</stackTrace>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+        </encoder>
+        <filter class="space.br1440.platform.logging.logback.filter.CommonMdcFilter"/>
+    </appender>
+
+    <appender name="PLATFORM-FILE-JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/tmp/application.log</file>
+        <append>true</append>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <charset>UTF-8</charset>
+            <customFields>{"app_name":"${APPLICATION}"}</customFields>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/tmp/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+    </appender>
+</included>

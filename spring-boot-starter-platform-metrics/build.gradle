@@ -1,0 +1,54 @@
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.text.DateFormat
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    api platform(project(":spring-boot-starter-platform-bom"))
+    compileOnly 'org.slf4j:slf4j-api'
+    compileOnly 'org.springframework.kafka:spring-kafka:3.3.8'
+    compileOnly 'org.springframework.boot:spring-boot-starter'
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
+    compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.6.0'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation platform('org.junit:junit-bom')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Задача для генерации JSON конфига
+tasks.register('generateBuildInfo') {
+    doLast {
+        def dir = Paths.get(projectDir.absolutePath + '/build/resources/main')
+        def file = dir.resolve("build-info.json")
+        if(!Files.exists(dir)){
+            Files.createDirectories(dir)
+            Files.createFile(file)
+        }
+
+        def buildInfo = [
+                version: rootProject.version,
+                buildTime: DateTimeFormatter.ISO_DATE_TIME.format(LocalDateTime.now())
+        ]
+
+        file.toFile().text = new groovy.json.JsonBuilder(buildInfo).toPrettyString()
+    }
+}
+
+tasks.named('compileJava') {
+    dependsOn('generateBuildInfo')
+}
+
+test {
+    useJUnitPlatform()
+}
