@@ -249,3 +249,92 @@ public FilterRegistrationBean<LogbookFilter> platformLogbookFilterRegistration(L
 
 При необходимости библиотечный Servlet-фильтр можно отключить через свойство "platform.http-logging.servlet-filter.enabled" и 
 заменить на собственную реализацию Servlet-фильтра для интеграции с Logbook.
+
+## Динамическое изменение уровня логирования в runtime
+
+**GET /actuator/loggers** — список логгеров.
+
+**GET /actuator/loggers/{name}** — инфо по логгеру.
+
+**POST /actuator/loggers/{name}** — изменить:
+```json
+json
+{"configuredLevel": "TRACE" }
+```
+
+### 1) Зависимости
+```groovy
+dependencies {
+implementation("org.springframework.boot:spring-boot-starter-actuator")
+}
+```
+### 2) Как посмотреть текущие уровни
+#### 2.1 Список всех логгеров
+
+```
+curl -s http://{service-address}/actuator/loggers
+```
+
+#### 2.2 Конфигурация конкретного логгера
+
+```
+curl -s http://service-address/actuator/loggers/имя класса
+```
+Важно! Если нужно изменить или просмотреть уровень логирования для всего пакета, нужно обращаться ко всему пакету.
+
+#### Примеры:
+| **Цель**                                  | **Имя логгера**       | **Пример запроса**                                 |
+|-------------------------------------------|-----------------------|----------------------------------------------------|
+| **Изменить уровень для всего приложения** | ROOT                  | /actuator/loggers/ROOT                             |
+| **Для определенного пакета**              | имя пакета            | /actuator/loggers/space.br1440                     |
+| **Для одного класса**                     | имя пакета.имя класса | /actuator/loggers/space.br1440/ObtsService         |
+| **Для JPA/Hibernate**                     | org.hibernate.SQL     | /actuator/loggers/space.br1440/org.hibernate.SQL   |
+
+
+
+
+Ответ покажет:
+
+**configuredLevel** — явно заданный через рантайм-вызов уровень (может быть null);
+
+**effectiveLevel** — фактический применённый уровень с учётом наследования.
+
+### 3) Примеры изменений уровня логирования на лету
+
+#### 3.1 Поднять уровень до DEBUG
+```
+   curl -X POST "http://service-address/actuator/loggers/имя логгера" \
+   -H "Content-Type: application/json" \
+   -d '{"configuredLevel":"DEBUG"}'
+```
+#### 3.2 Включить TRACE для конкретного класса
+```
+curl -X POST "http://service-address/actuator/loggers/имя пакета/имя класса" \
+-H "Content-Type: application/json" \
+-d '{"configuredLevel":"TRACE"}'
+```
+#### 3.3 Снизить уровень ROOT до INFO
+```
+curl -X POST "http://service-address/actuator/loggers/ROOT" \
+-H "Content-Type: application/json" \
+-d '{"configuredLevel":"INFO"}'
+```
+#### 3.4 Сбросить принудительный уровень (вернуться к конфигу)
+```
+curl -X POST "http://service-address/actuator/loggers/имя логгера" \
+-H "Content-Type: application/json" \
+-d '{"configuredLevel": null}'
+```
+### 4) Пример минимальной конфигурации
+```yaml
+server:
+  port: "Необходимый порт"
+
+management:
+  server:
+    port: "Порт для Actuator"
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,loggers"
+```
