@@ -258,7 +258,7 @@ public FilterRegistrationBean<LogbookFilter> platformLogbookFilterRegistration(L
 
 **POST /actuator/loggers/{name}** — изменить:
 ```json
-json
+//json
 {"configuredLevel": "TRACE" }
 ```
 
@@ -289,8 +289,6 @@ curl -s http://service-address/actuator/loggers/имя класса
 | **Для определенного пакета**              | имя пакета            | /actuator/loggers/space.br1440                     |
 | **Для одного класса**                     | имя пакета.имя класса | /actuator/loggers/space.br1440/ObtsService         |
 | **Для JPA/Hibernate**                     | org.hibernate.SQL     | /actuator/loggers/space.br1440/org.hibernate.SQL   |
-
-
 
 
 Ответ покажет:
@@ -325,7 +323,7 @@ curl -X POST "http://service-address/actuator/loggers/имя логгера" \
 -H "Content-Type: application/json" \
 -d '{"configuredLevel": null}'
 ```
-### 4) Пример минимальной конфигурации
+### 4) Пример минимальной конфигурации .yaml
 ```yaml
 server:
   port: "Необходимый порт"
