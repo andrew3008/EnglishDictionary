@@ -8,14 +8,24 @@ javaPlatform {
 
 dependencies {
     constraints {
+        //Logbook
         api 'org.zalando:logbook-core:3.12.2'
         api 'org.zalando:logbook-servlet:3.12.2'
         api 'org.zalando:logbook-json:3.12.2'
+
+        //SLF4J и logging
         api 'org.slf4j:slf4j-api:2.0.17'
         api 'net.logstash.logback:logstash-logback-encoder:8.1'
-        api 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.19.2'
+        api 'org.aspectj:aspectjweaver:1.9.24'
+
+        //Jackson
+        api 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
+        api 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.20.2'
+
+        //Lombok
+        api 'org.projectlombok:lombok:1.18.38'
     }
-    // бъявляем constraints (версии) для всех зависимостей
+    // объявляем constraints (версии) для всех зависимостей
     api platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
 
 

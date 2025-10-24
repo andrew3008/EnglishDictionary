@@ -258,24 +258,18 @@ public FilterRegistrationBean<LogbookFilter> platformLogbookFilterRegistration(L
 
 **POST /actuator/loggers/{name}** — изменить:
 ```json
-//json
 {"configuredLevel": "TRACE" }
 ```
 
-### 1) Зависимости
-```groovy
-dependencies {
-implementation("org.springframework.boot:spring-boot-starter-actuator")
-}
-```
-### 2) Как посмотреть текущие уровни
-#### 2.1 Список всех логгеров
+
+### 1) Как посмотреть текущие уровни
+#### 1.1 Список всех логгеров
 
 ```
 curl -s http://{service-address}/actuator/loggers
 ```
 
-#### 2.2 Конфигурация конкретного логгера
+#### 1.2 Конфигурация конкретного логгера
 
 ```
 curl -s http://service-address/actuator/loggers/имя класса
@@ -297,33 +291,33 @@ curl -s http://service-address/actuator/loggers/имя класса
 
 **effectiveLevel** — фактический применённый уровень с учётом наследования.
 
-### 3) Примеры изменений уровня логирования на лету
+### 2) Примеры изменений уровня логирования на лету
 
-#### 3.1 Поднять уровень до DEBUG
+#### 2.1 Поднять уровень до DEBUG
 ```
    curl -X POST "http://service-address/actuator/loggers/имя логгера" \
    -H "Content-Type: application/json" \
    -d '{"configuredLevel":"DEBUG"}'
 ```
-#### 3.2 Включить TRACE для конкретного класса
+#### 2.2 Включить TRACE для конкретного класса
 ```
 curl -X POST "http://service-address/actuator/loggers/имя пакета/имя класса" \
 -H "Content-Type: application/json" \
 -d '{"configuredLevel":"TRACE"}'
 ```
-#### 3.3 Снизить уровень ROOT до INFO
+#### 2.3 Снизить уровень ROOT до INFO
 ```
 curl -X POST "http://service-address/actuator/loggers/ROOT" \
 -H "Content-Type: application/json" \
 -d '{"configuredLevel":"INFO"}'
 ```
-#### 3.4 Сбросить принудительный уровень (вернуться к конфигу)
+#### 2.4 Сбросить принудительный уровень (вернуться к конфигу)
 ```
 curl -X POST "http://service-address/actuator/loggers/имя логгера" \
 -H "Content-Type: application/json" \
 -d '{"configuredLevel": null}'
 ```
-### 4) Пример минимальной конфигурации .yaml
+### 3) Пример минимальной конфигурации .yaml
 ```yaml
 server:
   port: "Необходимый порт"
@@ -334,5 +328,5 @@ management:
   endpoints:
     web:
       exposure:
-        include: "health,info,loggers"
+        include: "loggers" //Нужно добавить loggers, если его нет
 ```

@@ -29,12 +29,6 @@ subprojects {
     if (it.name != 'spring-boot-starter-platform-bom') {
         apply plugin: 'java-library'
         apply plugin: 'io.spring.dependency-management'
-
-        dependencyManagement {
-            imports {
-                mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.5'
-            }
-        }
     }
 
 
