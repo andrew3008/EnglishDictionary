@@ -20,13 +20,20 @@ dependencies {
 
         //Jackson
         api 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
-        api 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.20.2'
+        api 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.20.0'
 
         //Lombok
         api 'org.projectlombok:lombok:1.18.38'
+
+        //Common (Security)
+        api 'org.apache.commons:commons-lang3:3.19.0'
+
+        //annotationProcessor
+        api 'org.springframework.boot:spring-boot-configuration-processor:3.5.5'
+
+        api 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.6.0'
     }
     // объявляем constraints (версии) для всех зависимостей
     api platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
-
 
 }

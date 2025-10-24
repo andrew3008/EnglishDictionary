@@ -9,28 +9,31 @@ java {
 
 dependencies {
     api platform(project(":spring-boot-starter-platform-bom"))
+    compileOnly platform(project(":spring-boot-starter-platform-bom"))
+    annotationProcessor platform(project(":spring-boot-starter-platform-bom"))
+    testImplementation platform(project(":spring-boot-starter-platform-bom"))
+
     implementation 'org.slf4j:slf4j-api'
     implementation 'net.logstash.logback:logstash-logback-encoder'
-
     implementation 'org.zalando:logbook-core'
     implementation 'org.zalando:logbook-servlet'
     implementation 'org.zalando:logbook-json'
-
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'org.aspectj:aspectjweaver'
 
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
     compileOnly "org.springframework.boot:spring-boot-configuration-processor"
     compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
-    compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.6.0'
 
 
-    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+    compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
 
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    implementation 'org.aspectj:aspectjweaver'
 }
 
 tasks.withType(JavaCompile).configureEach {
