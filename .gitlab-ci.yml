@@ -2,7 +2,7 @@ include:
   - component: $CI_SERVER_FQDN/pe/cicd/catalog/java/gitlab-ci@~latest
     inputs:
       kubedock-enabled: true
-  - component: $CI_SERVER_FQDN/sat/devops/ci/catalog/semantic-release/gitlab-ci-semrel@~latest
+  - component: $CI_SERVER_FQDN/pe/cicd/catalog/semantic-release/gitlab-ci@~latest
 
 
 variables:
