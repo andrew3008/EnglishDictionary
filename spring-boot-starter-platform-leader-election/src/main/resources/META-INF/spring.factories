@@ -1,0 +1,2 @@
+org.springframework.context.ApplicationContextInitializer=\
+  space.br1440.platform.leaderelection.validation.LoggingInitializer

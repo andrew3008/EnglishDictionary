@@ -1,0 +1,27 @@
+platform:
+  leader-election:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      key-prefix: test:leader-election
+    lock:
+      enabled: true
+      default-lock-at-most-for: 5m
+      default-lock-at-least-for: 30s
+      lock-expire-after: 1m
+      idle-between-tries: 50ms
+    metrics:
+      enabled: true
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+
+logging:
+  level:
+    space.br1440.platform.leaderelection: DEBUG
+    org.springframework.data.redis: DEBUG

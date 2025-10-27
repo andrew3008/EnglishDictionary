@@ -1,0 +1,3 @@
+space.br1440.platform.leaderelection.validation.LeaderChangeValidationProcessor
+space.br1440.platform.leaderelection.validation.LockingValidationProcessor
+space.br1440.platform.leaderelection.validation.LeaderAwareValidationProcessor

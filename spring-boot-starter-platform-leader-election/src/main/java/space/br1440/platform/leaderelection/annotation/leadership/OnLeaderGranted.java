@@ -1,0 +1,13 @@
+package space.br1440.platform.leaderelection.annotation.leadership;
+
+import java.lang.annotation.*;
+
+/**
+ * Аннотация для методов, которые должны выполняться при получении лидерства.
+ */
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface OnLeaderGranted {
+
+}
