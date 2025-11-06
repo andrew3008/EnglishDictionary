@@ -33,7 +33,7 @@ repositories {
 
 ```groovy
 dependencies {
-    implementation 'space.br1440.platform:spring-boot-starter-platform-metrics:1.1.0'
+    implementation 'space.br1440.platform.starters:spring-boot-starter-platform-metrics:1.1.0'
 }
 ```
 
