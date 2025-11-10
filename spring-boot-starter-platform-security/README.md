@@ -27,7 +27,7 @@ repositories {
 2. Указать зависимость. ВНИМАНИЕ!!! Стандартный org.springframework.boot:spring-boot-starter-oauth2-resource-server может вызывать конфликты.
 ```groovy
 dependencies {
-    implementation 'space.br1440.platform.starters:spring-boot-starter-oauth2-resource-server:<желаемая версия>'
+    implementation 'space.br1440.platform.starters:spring-boot-starter-oauth2-resource-server:{Желаемая версия}'
 }
 ```
 3. Создать файл с маппингом пермиссий на роли в ресурсах сервиса

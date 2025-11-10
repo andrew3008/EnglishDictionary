@@ -17,6 +17,9 @@ ext {
 dependencies {
     // Platform BOM
     api platform(project(":spring-boot-starter-platform-bom"))
+    compileOnly platform(project(":spring-boot-starter-platform-bom"))
+    annotationProcessor platform(project(":spring-boot-starter-platform-bom"))
+    testImplementation platform(project(":spring-boot-starter-platform-bom"))
 
     // Spring Boot Auto-Configuration
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
