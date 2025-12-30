@@ -1,0 +1,19 @@
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // Platform BOM
+    api platform(project(":spring-boot-starter-platform-bom"))
+    api("com.github.f4b6a3:uuid-creator")
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform()
+}
