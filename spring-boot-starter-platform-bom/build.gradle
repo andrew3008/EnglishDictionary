@@ -32,6 +32,10 @@ dependencies {
         api 'org.springframework.boot:spring-boot-configuration-processor:3.5.5'
 
         api 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.6.0'
+
+        //Common
+        //uid1440
+        api 'com.github.f4b6a3:uuid-creator:6.1.1'
     }
     // объявляем constraints (версии) для всех зависимостей
     api platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
