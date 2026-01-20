@@ -12,7 +12,7 @@
 Для подключения библиотеки в Gradle-проекте нужно добавить зависимость:
 ```groovy
 dependencies {
-    implementation 'space.br1440.platform.starters:platform-logging-java:{Желаемая версия}'
+    implementation 'space.br1440.platform.starters:spring-boot-starter-platform-logging:{Желаемая версия}'
 }
 ```
 
