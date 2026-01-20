@@ -1,6 +1,26 @@
 # Библиотека UID1440
 Библиотека предназначена для локальной генерации и валидации UID без обращения к внешним сервисам. Для генерации UUIDv7 использовалась библиотека UUID Generator: https://github.com/f4b6a3/uuid-creator.
 
+<h2>Подключение библиотеки:</h2>
+
+1. Указать репозитории зависимостей:
+```groovy
+repositories {
+    maven {
+        url = "https://n.1440.space/repository/platform-maven/"
+    }
+    maven {
+        url = "https://n.1440.space/repository/platform-maven-dev/"
+    }
+}
+```
+2. Указать зависимость.
+```groovy
+dependencies {
+    implementation 'space.br1440.platform.starters:spring-boot-starter-platform-common:{Желаемая версия}'
+}
+```
+
 ## Формат UID
 
 UID имеет фиксированный строковый формат:
