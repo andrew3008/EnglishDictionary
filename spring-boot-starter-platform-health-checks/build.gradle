@@ -1,0 +1,117 @@
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+ext {
+    minio_version = '8.6.0'
+    lombok_version = '1.18.42'
+    squareup_okhttp3_version = '5.3.0'
+}
+
+dependencies {
+    // Platform BOM
+    api platform(project(":spring-boot-starter-platform-bom"))
+    compileOnly platform(project(":spring-boot-starter-platform-bom"))
+    annotationProcessor platform(project(":spring-boot-starter-platform-bom"))
+    testImplementation platform(project(":spring-boot-starter-platform-bom"))
+
+    // Spring Boot Auto-Configuration
+    api 'org.springframework.boot:spring-boot-autoconfigure'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // Spring Boot Actuator
+    api 'org.springframework.boot:spring-boot-actuator'
+    api 'org.springframework.boot:spring-boot-actuator-autoconfigure'
+
+    // Spring Kafka
+    api 'org.springframework.kafka:spring-kafka'
+
+    // Spring JDBC
+    api 'org.springframework.boot:spring-boot-starter-jdbc'
+
+    // PostgreSQL Driver
+    testImplementation 'org.postgresql:postgresql'
+
+    // HikariCP
+    api 'com.zaxxer:HikariCP'
+
+    // MinIO Client SDK
+    implementation "io.minio:minio:${minio_version}"
+    implementation "com.squareup.okhttp3:okhttp:${squareup_okhttp3_version}"
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${lombok_version}"
+    annotationProcessor "org.projectlombok:lombok:${lombok_version}"
+    testCompileOnly "org.projectlombok:lombok:${lombok_version}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombok_version}"
+
+    // Apache Commons Lang
+    api 'org.apache.commons:commons-lang3'
+
+    // Validation
+    compileOnly 'org.springframework.boot:spring-boot-starter-validation'
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // Test Dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+
+    // Testcontainers
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:minio'
+
+    // H2 Database
+    testImplementation 'com.h2database:h2'
+
+    // JUnit Platform Launcher
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // JUnit Jupiter
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
+    // AssertJ
+    testImplementation 'org.assertj:assertj-core'
+
+    // Mockito
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform()
+
+    enabled = project.hasProperty('runTests') ||
+            gradle.startParameter.taskNames.any { it ==~ /.*test.*/ && it != 'testClasses' }
+            
+    environment 'DOCKER_HOST', System.getenv('DOCKER_HOST') ?: 'unix:///var/run/docker.sock'
+            
+    minHeapSize = "512m"
+    maxHeapSize = "2048m"
+    jvmArgs(
+            '-XX:+EnableDynamicAgentLoading',
+            '-XX:+UseParallelGC',
+            '-Dfile.encoding=UTF-8',
+            '-Duser.timezone=UTC'
+    )
+
+    timeout = Duration.ofMinutes(10)
+    
+    testLogging {
+	events = ['failed', 'standardOut', 'standardError']
+        exceptionFormat = 'full'
+        showStackTraces = true
+        showStandardStreams = false
+    }
+}

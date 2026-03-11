@@ -1,0 +1,5 @@
+space.br1440.platform.healthchecks.configuration.PostgresHealthAutoConfiguration
+space.br1440.platform.healthchecks.configuration.KafkaHealthAutoConfiguration
+space.br1440.platform.healthchecks.configuration.MinioHealthAutoConfiguration
+space.br1440.platform.healthchecks.configuration.AsyncHealthRunnerAutoConfiguration
+space.br1440.platform.healthchecks.configuration.HealthGroupAutoConfiguration
