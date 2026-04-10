@@ -51,7 +51,7 @@ dependencies {
 ```yaml
 platform-metric:
   http:
-    path-mode: normalised
+    path-mode: normalized
 ```
 
 Поддерживаются два значения:
@@ -124,5 +124,5 @@ platform-metric:
 ```yaml
 platform-metric:
   http:
-    path-mode: normalised
+    path-mode: normalized
 ```
