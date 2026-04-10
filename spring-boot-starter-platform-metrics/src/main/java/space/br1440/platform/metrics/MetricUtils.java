@@ -30,8 +30,4 @@ public class MetricUtils {
         }
         return clientId;
     }
-
-
-
-
 }
