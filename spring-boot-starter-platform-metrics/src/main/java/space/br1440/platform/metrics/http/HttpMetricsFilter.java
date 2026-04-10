@@ -52,9 +52,6 @@ public class HttpMetricsFilter extends OncePerRequestFilter {
         String status = resolveStatus(response);
         String path = resolvePath(request, response);
 
-        //DEBUG Logging
-        System.out.println("HTTP_METRIC_DEBUG method=" + method + ", path=" + path + ", status=" + status);
-
         sample.stop(metricBuilder.httpTimer(method, path, status));
         metricBuilder.httpResponseCounter(method, path, status).increment();
     }
