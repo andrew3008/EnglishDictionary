@@ -1,4 +1,4 @@
-package space.br1440.uid1440;
+package space.br1440.platform.uid1440;
 
 public class Uid1440Exception extends IllegalArgumentException {
     public Uid1440Exception(String message) {

@@ -1,0 +1,6 @@
+space.br1440.platform.hbrouting.autoconfig.RoutingAutoConfiguration
+space.br1440.platform.hbrouting.autoconfig.RoutingServletAutoConfiguration
+space.br1440.platform.hbrouting.autoconfig.RoutingFeignAutoConfiguration
+space.br1440.platform.hbrouting.autoconfig.RoutingRestTemplateAutoConfiguration
+space.br1440.platform.hbrouting.autoconfig.RoutingWebClientAutoConfiguration
+space.br1440.platform.hbrouting.autoconfig.RoutingGrpcAutoConfiguration

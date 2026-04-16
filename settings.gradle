@@ -26,4 +26,8 @@ include 'spring-boot-starter-platform-logging'
 include 'spring-boot-starter-platform-leader-election'
 include 'spring-boot-starter-platform-health-checks'
 include 'spring-boot-starter-platform-security'
+
+//Common
 include 'spring-boot-starter-platform-common'
+include 'spring-boot-starter-platform-common:spring-boot-starter-uid1440'
+include 'spring-boot-starter-platform-common:spring-boot-starter-header-based-routing'

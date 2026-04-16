@@ -36,6 +36,16 @@ dependencies {
         //Common
         //uid1440
         api 'com.github.f4b6a3:uuid-creator:6.1.1'
+
+        //Header-based routing
+        api 'org.springframework:spring-web:6.2.3'
+        api 'org.springframework:spring-webflux:6.2.3'
+        api 'org.springframework.cloud:spring-cloud-openfeign-core:4.2.1'
+        api 'io.grpc:grpc-api:1.71.0'
+        api 'org.springframework.grpc:spring-grpc-client-spring-boot-starter:0.11.0'
+        api 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.11.0'
+        api 'org.springframework.boot:spring-boot-configuration-processor:3.4.3'
+
     }
     // объявляем constraints (версии) для всех зависимостей
     api platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
