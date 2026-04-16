@@ -1,4 +1,4 @@
-package space.br1440.uid1440;
+package space.br1440.platform.uid1440;
 
 import com.github.f4b6a3.uuid.UuidCreator;
 

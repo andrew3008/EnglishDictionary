@@ -1,4 +1,4 @@
-package space.br1440.uid1440;
+package space.br1440.platform.uid1440;
 
 import java.util.Objects;
 import java.util.regex.Pattern;
