@@ -9,6 +9,7 @@ import space.br1440.platform.metrics.config.HttpMetricProperties;
 import space.br1440.platform.metrics.config.MetricLabelRulesApplier;
 import space.br1440.platform.metrics.config.MetricLabelRulesProperties;
 import space.br1440.platform.metrics.endpoint.BuildInfoEndpoint;
+import space.br1440.platform.metrics.endpoint.BuildInfoMetric;
 
 @Configuration
 @ComponentScan("space.br1440.platform.metrics")
@@ -34,8 +35,14 @@ public class CommonMetricConfiguration {
         return new SpringContext();
     }
 
+
     @Bean
-    public BuildInfoEndpoint buildInfoEndpoint() {
-        return new BuildInfoEndpoint();
+    public BuildInfoMetric buildInfoMetric(MeterRegistry meterRegistry) {
+        return new BuildInfoMetric(meterRegistry);
+    }
+
+    @Bean
+    public BuildInfoEndpoint buildInfoEndpoint(BuildInfoMetric buildInfoMetric) {
+        return new BuildInfoEndpoint(buildInfoMetric);
     }
 }
