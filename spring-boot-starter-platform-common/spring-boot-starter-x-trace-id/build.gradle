@@ -1,0 +1,40 @@
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // starter runtime
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.springframework:spring-web'
+    implementation 'io.micrometer:micrometer-tracing'
+
+    // compile-only APIs required by the starter
+    compileOnly 'org.slf4j:slf4j-api'
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    compileOnly 'org.springframework:spring-webmvc'
+
+    /* tests
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+
+    // tracing backend for smoke tests
+    testImplementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    testImplementation 'io.micrometer:micrometer-tracing-test'
+
+    // junit platform runtime alignment
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+     */
+
+}
+
+test {
+    useJUnitPlatform()
+}
