@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Logback-конфигурация для тестов модуля error-handling-mvc.
+
+    Цель: подавить WARN-«дождь» от CorrelationIdHttpInboundResolver во время
+    fuzz/invariant-тестов (CorrelationIdResolverInvariantTest и др.), которые
+    намеренно скармливают резолверу тысячи произвольных code points. Сами
+    тесты валидируют возвращаемое значение через assertions; логи здесь —
+    шум, мешающий читать вывод теста.
+
+    Production-логирование от резолвера остаётся на дефолтном уровне через
+    основной spring.application.* конфиг. Этот файл влияет только на test
+    classpath модуля.
+-->
+<configuration>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+        Резолвер штатно репортит каждый отклонённый Correlation-Id заголовок
+        как WARN. В fuzz-тестах это десятки тысяч строк per run; информация
+        дублируется в assertions теста. Поднимаем порог до ERROR.
+    -->
+    <logger name="space.br1440.platform.errorhandling.core.util.correlation.CorrelationIdHttpInboundResolver"
+            level="ERROR"/>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+</configuration>

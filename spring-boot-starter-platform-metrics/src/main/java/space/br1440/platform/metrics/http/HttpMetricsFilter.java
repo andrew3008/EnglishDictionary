@@ -5,32 +5,48 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerMapping;
-import space.br1440.platform.metrics.MetricBuilder;
-import space.br1440.platform.metrics.config.HttpMetricProperties;
+import space.br1440.platform.metrics.PlatformMetrics;
+import space.br1440.platform.metrics.configuration.properties.HttpMetricProperties;
 
 import java.io.IOException;
 
-@Order(Ordered.HIGHEST_PRECEDENCE)
-public class HttpMetricsFilter extends OncePerRequestFilter {
+@Slf4j
+public class HttpMetricsFilter extends OncePerRequestFilter implements Ordered {
+
+    private static final int ORDER = Ordered.HIGHEST_PRECEDENCE + 1;
 
     private static final String UNKNOWN_PATH = "UNKNOWN";
     private static final String NOT_FOUND_PATH = "NOT_FOUND";
     private static final String REDIRECTION_PATH = "REDIRECTION";
-    private static final String ROOT_PATH = "root";
-    private static final String UNKNOWN_METHOD = "UNKNOWN";
-    private static final String UNKNOWN_STATUS = "UNKNOWN";
+    private static final String ROOT_PATH = "ROOT";
 
-    private final MetricBuilder metricBuilder;
+    private static final int HTTP_STATUS_PERMANENT_REDIRECT = 308;
+
+    private final PlatformMetrics platformMetrics;
     private final HttpMetricProperties httpMetricProperties;
 
-    public HttpMetricsFilter(MetricBuilder metricBuilder,
+    public HttpMetricsFilter(PlatformMetrics platformMetrics,
                              HttpMetricProperties httpMetricProperties) {
-        this.metricBuilder = metricBuilder;
+        this.platformMetrics = platformMetrics;
         this.httpMetricProperties = httpMetricProperties;
+
+        if (httpMetricProperties.getPathMode() == HttpMetricProperties.PathMode.RAW) {
+            log.warn("""
+                HttpMetricsFilter: PathMode.RAW включён. \
+                Возможна cardinality explosion в метриках. \
+                Рекомендуется PathMode.TEMPLATE (по умолчанию).\
+            """);
+        }
+    }
+
+    @Override
+    public int getOrder() {
+        return ORDER;
     }
 
     @Override
@@ -52,33 +68,41 @@ public class HttpMetricsFilter extends OncePerRequestFilter {
         String status = resolveStatus(response);
         String path = resolvePath(request, response);
 
-        sample.stop(metricBuilder.httpTimer(method, path, status));
-        metricBuilder.httpResponseCounter(method, path, status).increment();
+        sample.stop(platformMetrics.httpTimer(method, path, status));
+        platformMetrics.httpResponseCounter(method, path, status).increment();
     }
 
     private String resolveMethod(HttpServletRequest request) {
-        String method = request.getMethod();
-        return method != null ? method : UNKNOWN_METHOD;
+        return request.getMethod();
     }
 
     private String resolveStatus(HttpServletResponse response) {
-        int status = response.getStatus();
-        return status > 0 ? String.valueOf(status) : UNKNOWN_STATUS;
+        return String.valueOf(response.getStatus());
     }
 
     private String resolvePath(HttpServletRequest request, HttpServletResponse response) {
         if (httpMetricProperties.getPathMode() == HttpMetricProperties.PathMode.RAW) {
-            String rawPath = request.getRequestURI();
-            return (rawPath == null || rawPath.isBlank()) ? UNKNOWN_PATH : rawPath;
-        }
+            String servletPath = request.getServletPath();
+            if (StringUtils.hasText(servletPath)) {
+                return servletPath;
+            }
 
-        int status = response.getStatus();
+            String pathInfo = request.getPathInfo();
+            if (StringUtils.hasText(pathInfo)) {
+                return pathInfo;
+            }
 
-        if (status >= 300 && status < 400) {
-            return REDIRECTION_PATH;
-        }
-        if (status == HttpServletResponse.SC_NOT_FOUND) {
-            return NOT_FOUND_PATH;
+            String requestUri = request.getRequestURI();
+            if (!StringUtils.hasText(requestUri)) {
+                return UNKNOWN_PATH;
+            }
+
+            String contextPath = request.getContextPath();
+            if (StringUtils.hasText(contextPath)) {
+                requestUri = requestUri.substring(contextPath.length());
+            }
+
+            return StringUtils.hasText(requestUri) ? requestUri : UNKNOWN_PATH;
         }
 
         Object bestMatchingPattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
@@ -86,8 +110,21 @@ public class HttpMetricsFilter extends OncePerRequestFilter {
             return bestMatchingPattern.toString();
         }
 
-        String uri = request.getRequestURI();
-        if (uri == null || uri.isBlank() || "/".equals(uri)) {
+        int status = response.getStatus();
+        if (status == HttpServletResponse.SC_MOVED_PERMANENTLY
+                || status == HttpServletResponse.SC_MOVED_TEMPORARILY
+                || status == HttpServletResponse.SC_SEE_OTHER
+                || status == HttpServletResponse.SC_TEMPORARY_REDIRECT
+                || status == HTTP_STATUS_PERMANENT_REDIRECT) {
+            return REDIRECTION_PATH;
+        }
+
+        if (status == HttpServletResponse.SC_NOT_FOUND) {
+            return NOT_FOUND_PATH;
+        }
+
+        String servletPath = request.getServletPath();
+        if (!StringUtils.hasText(servletPath) || "/".equals(servletPath)) {
             return ROOT_PATH;
         }
 

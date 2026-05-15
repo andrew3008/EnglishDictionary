@@ -1,0 +1,5 @@
+// Precompiled convention plugins для монорепо.
+// Внешние плагины сюда не добавляются: все модули — java-library без bootJar/bootRun и без io.spring.dependency-management.
+plugins {
+    id 'groovy-gradle-plugin'
+}

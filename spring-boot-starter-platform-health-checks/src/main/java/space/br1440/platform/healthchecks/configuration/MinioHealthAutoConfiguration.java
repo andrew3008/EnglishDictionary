@@ -16,7 +16,9 @@ import space.br1440.platform.healthchecks.minio.MinioHealthProperties;
 import space.br1440.platform.healthchecks.minio.MinioSentinelHealthCheck;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnClass(MinioClient.class)
+// MinIO SDK подключается потребителем при необходимости; класс резолвим по имени,
+// чтобы автоконфигурация молча отключалась при отсутствии `io.minio:minio` в classpath.
+@ConditionalOnClass(name = "io.minio.MinioClient")
 @ConditionalOnBean(MinioClient.class)
 @ConditionalOnProperty(prefix = MinioHealthProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter(name = "org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration")

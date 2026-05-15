@@ -1,0 +1,50 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.testing'
+}
+
+dependencies {
+    // API
+    api project(':spring-boot-starter-platform-error-handling-core')
+    api 'org.springframework.boot:spring-boot-starter-web'
+
+
+    // === Optional / conditional dependencies (compileOnly) ===
+
+    // Spring Security
+    compileOnly 'org.springframework.boot:spring-boot-starter-security'
+
+    // Observability
+    compileOnly 'io.micrometer:micrometer-core'
+    compileOnly libs.opentelemetry.api
+
+    // Annotation Processors
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+
+    // === Test infrastructure ===
+
+    // Базовые тестовые зависимости
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Разделяемые тестовые зависимости — из каталога `gradle/libs.versions.toml`
+    testImplementation libs.archunit.junit5
+
+    // Security / OAuth2
+    testImplementation 'org.springframework.security:spring-security-core'
+    testImplementation 'org.springframework.security:spring-security-config'
+    testImplementation 'org.springframework.security:spring-security-web'
+
+    // Observability
+    testImplementation 'io.micrometer:micrometer-core'
+    testImplementation libs.opentelemetry.api
+
+    // Test utilities
+    testImplementation libs.byte.buddy
+
+    // Cross-module test integration
+    testImplementation project(':spring-boot-starter-platform-error-handling-webflux')
+}

@@ -1,0 +1,43 @@
+{
+  "properties": [
+    {
+      "name": "platform.error-handling.security.auto-register-mode",
+      "type": "space.br1440.platform.errorhandling.properties.ErrorHandlingProperties$Security$AutoRegisterMode",
+      "description": "Режим автоматической регистрации SecurityProblemSupport во все бины HttpSecurity. ALL — регистрируется во все цепочки кроме помеченных SkipProblemSupport shared-object. NONE — отключена полностью; пользователь подключает ProblemSupportConfigurer вручную.",
+      "defaultValue": "ALL"
+    },
+    {
+      "name": "platform.error-handling.correlation-id.max-length",
+      "type": "java.lang.Integer",
+      "description": "Максимальная длина значения correlation-id из HTTP-заголовка. Значения длиннее отбрасываются (защита от CWE-113 / DoS), генерируется UUID, инкрементируется счётчик error_handling_correlation_id_rejected_total{reason=length}.",
+      "defaultValue": 128
+    },
+    {
+      "name": "platform.error-handling.correlation-id.allowed-pattern",
+      "type": "java.lang.String",
+      "description": "Whitelist-шаблон допустимых символов значения correlation-id (regex). Значения, не соответствующие шаблону, отбрасываются (защита от CWE-117), инкрементируется счётчик error_handling_correlation_id_rejected_total{reason=charset}.",
+      "defaultValue": "[A-Za-z0-9._\\-:]+"
+    },
+    {
+      "name": "platform.error-handling.tracing.accept-traceparent",
+      "type": "java.lang.Boolean",
+      "description": "Принимать ли заголовок traceparent (W3C Trace Context) как источник correlation-id. При true (default) trace-id из traceparent имеет наивысший приоритет в цепочке резолва.",
+      "defaultValue": true
+    }
+  ],
+  "hints": [
+    {
+      "name": "platform.error-handling.security.auto-register-mode",
+      "values": [
+        {
+          "value": "ALL",
+          "description": "Регистрировать SecurityProblemSupport во все бины HttpSecurity, кроме помеченных SkipProblemSupport shared-object'ом."
+        },
+        {
+          "value": "NONE",
+          "description": "Не регистрировать ни в одном бине — пользователь подключает ProblemSupportConfigurer вручную."
+        }
+      ]
+    }
+  ]
+}

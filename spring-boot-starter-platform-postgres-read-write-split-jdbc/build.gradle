@@ -1,0 +1,93 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.testing'
+}
+
+dependencies {
+    // API
+    api 'org.springframework.boot:spring-boot-starter-validation'
+    api project(':spring-boot-starter-platform-error-handling-model')
+
+    api 'org.springframework.boot:spring-boot-starter-jdbc'
+    api 'org.springframework.boot:spring-boot-starter-aop'
+    api 'com.zaxxer:HikariCP'
+
+    api 'org.springframework:spring-tx'
+    api 'org.springframework:spring-aop'
+
+
+    // === Optional / conditional dependencies (compileOnly) ===
+
+    // Spring Boot autoconfigure
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
+
+    // JPA / jOOQ
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springframework.boot:spring-boot-starter-jooq'
+
+    // Observability
+    compileOnly 'io.micrometer:micrometer-core'
+    compileOnly 'io.micrometer:micrometer-observation'
+
+    compileOnly 'org.springframework.boot:spring-boot-starter-actuator'
+
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
+
+    compileOnly 'org.projectlombok:lombok'
+
+    // Annotation Processors
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+
+
+    // === Test infrastructure ===
+
+    // Базовые тестовые зависимости
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Полный стек persistence / web для сценариев IT
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    testImplementation 'org.springframework.boot:spring-boot-starter-jooq'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Observability
+    testImplementation 'io.micrometer:micrometer-core'
+    testImplementation 'io.micrometer:micrometer-observation'
+    testImplementation 'io.micrometer:micrometer-observation-test'
+
+    testImplementation 'org.springframework:spring-web'
+
+    // Встраиваемая БД для быстрых тестов без Docker.
+    testImplementation 'com.h2database:h2'
+
+    // Разделяемые тестовые зависимости — из каталога `gradle/libs.versions.toml`
+    testImplementation libs.bundles.testcontainers
+    testImplementation libs.testcontainers.postgresql
+    testImplementation libs.testcontainers.toxiproxy
+
+    testImplementation 'org.postgresql:postgresql'
+    testImplementation libs.awaitility
+
+    testImplementation 'ch.qos.logback:logback-classic'
+
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+tasks.named('test', Test) {
+    exclude 'space/br1440/platform/datasource/it/**'
+
+    systemProperty 'testcontainers.reuse.enable', 'true'
+    timeout = Duration.ofMinutes(15)
+}
+
+tasks.register('integrationTest', Test) {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    
+    include 'space/br1440/platform/datasource/it/**'
+
+    systemProperty 'testcontainers.reuse.enable', 'true'
+    timeout = Duration.ofMinutes(20)
+}

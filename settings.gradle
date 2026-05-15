@@ -1,7 +1,7 @@
 pluginManagement {
-    repositories {
-        mavenLocal()
+    includeBuild('build-logic')
 
+    repositories {
         maven {
             url = "https://n.1440.space/repository/platform-maven/"
         }
@@ -14,21 +14,65 @@ pluginManagement {
         maven {
             url = "https://n.1440.space/repository/repo1.maven.org-proxy"
         }
+        mavenLocal()
     }
 }
 
-
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        maven {
+            url = uri("https://n.1440.space/repository/platform-maven/")
+        }
+        maven {
+            url = uri("https://n.1440.space/repository/platform-maven-dev/")
+        }
+        maven {
+            url = uri("https://n.1440.space/repository/repo1.maven.org-proxy")
+        }
+        maven {
+            url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
+        }
+        mavenLocal()
+    }
+}
 
 rootProject.name = 'spring-boot-platform-starters'
-include 'spring-boot-starter-platform-bom'
-include 'spring-boot-starter-platform-metrics'
-include 'spring-boot-starter-platform-logging'
-include 'spring-boot-starter-platform-leader-election'
-include 'spring-boot-starter-platform-health-checks'
-include 'spring-boot-starter-platform-security'
+
+include('spring-boot-starter-platform-bom')
+include('spring-boot-starter-platform-metrics')
+include('spring-boot-starter-platform-logging')
+include('spring-boot-starter-platform-leader-election')
+include('spring-boot-starter-platform-health-checks')
+include('spring-boot-starter-platform-security')
+include('spring-boot-starter-platform-postgres-read-write-split-jdbc')
+
+
+// Error-Handling
+include(':spring-boot-starter-platform-error-handling-model')
+project(':spring-boot-starter-platform-error-handling-model').projectDir = file("${rootDir}/spring-boot-starter-platform-error-handling/error-handling-model")
+
+include(':spring-boot-starter-platform-error-handling-core')
+project(':spring-boot-starter-platform-error-handling-core').projectDir = file("${rootDir}/spring-boot-starter-platform-error-handling/error-handling-core")
+
+include(':spring-boot-starter-platform-error-handling-mvc')
+project(':spring-boot-starter-platform-error-handling-mvc').projectDir = file("${rootDir}/spring-boot-starter-platform-error-handling/error-handling-mvc")
+
+include(':spring-boot-starter-platform-error-handling-webflux')
+project(':spring-boot-starter-platform-error-handling-webflux').projectDir = file("${rootDir}/spring-boot-starter-platform-error-handling/error-handling-webflux")
+
+
+// Tracing
+include(':spring-boot-starter-platform-tracing-api')
+project(':spring-boot-starter-platform-tracing-api').projectDir = file("${rootDir}/spring-boot-starter-platform-tracing/tracing-api")
+
 
 //Common
-include 'spring-boot-starter-platform-common'
-include 'spring-boot-starter-platform-common:spring-boot-starter-uid1440'
-include 'spring-boot-starter-platform-common:spring-boot-starter-header-based-routing'
-include 'spring-boot-starter-platform-common:spring-boot-starter-x-trace-id'
+include(':spring-boot-starter-platform-common-uid1440')
+project(':spring-boot-starter-platform-common-uid1440').projectDir = file("${rootDir}/spring-boot-starter-platform-common/spring-boot-starter-uid1440")
+
+include(':spring-boot-starter-platform-common-header-based-routing')
+project(':spring-boot-starter-platform-common-header-based-routing').projectDir = file("${rootDir}/spring-boot-starter-platform-common/spring-boot-starter-header-based-routing")
+
+include(':spring-boot-starter-platform-common-x-trace-id')
+project(':spring-boot-starter-platform-common-x-trace-id').projectDir = file("${rootDir}/spring-boot-starter-platform-common/spring-boot-starter-x-trace-id")

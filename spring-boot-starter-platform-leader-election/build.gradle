@@ -1,92 +1,57 @@
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-ext {
-    jackson_databind_version = '2.20.0'
-    resilience4j_version = '2.3.0'
-    apache_commons_lang3_version = '3.19.0'
-    jetbrains_annotations_version = '26.0.2-1'
-    redis_clients_version = '7.0.0'
-    testcontainers_version = '1.21.3'
-    awaitility_version = '4.3.0'
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.testing'
 }
 
 dependencies {
-    // Platform BOM
-    api platform(project(":spring-boot-starter-platform-bom"))
-    compileOnly platform(project(":spring-boot-starter-platform-bom"))
-    annotationProcessor platform(project(":spring-boot-starter-platform-bom"))
-    testImplementation platform(project(":spring-boot-starter-platform-bom"))
+    // API
+    api 'org.springframework.boot:spring-boot-starter-data-redis'
 
-    // Spring Boot Auto-Configuration
+    // Implementation
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+
+    // === Optional / conditional dependencies (compileOnly) ===
+
+    // Spring Boot autoconfigure
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
-    // Code Generation
+    // AspectJ
+    compileOnly 'org.aspectj:aspectjweaver'
+
+    // Redis-клиент Lettuce
+    compileOnly 'io.lettuce:lettuce-core'
+
+    // Observability
+    compileOnly 'io.micrometer:micrometer-core'
+
+    // Validation API
+    compileOnly 'org.springframework.boot:spring-boot-starter-validation'
+
+    // JetBrains Annotations — `@NotNull`/`@Nullable`
+    compileOnly 'org.jetbrains:annotations'
+
+    // Annotation Processors
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    compileOnly "org.jetbrains:annotations:${jetbrains_annotations_version}"
 
-    // Core Runtime Dependencies
-    api 'jakarta.annotation:jakarta.annotation-api'
-    api "com.fasterxml.jackson.core:jackson-databind:${jackson_databind_version}"
-    api "io.github.resilience4j:resilience4j-timelimiter:${resilience4j_version}"
+    // === Test infrastructure ===
 
-    // AOP
-    compileOnly 'org.aspectj:aspectjweaver'
-
-    // Utility Libraries
-    implementation "org.apache.commons:commons-lang3:${apache_commons_lang3_version}"
-
-    // Redis/KeyDB Integration
-    api 'org.springframework.boot:spring-boot-starter-data-redis'
-    compileOnly 'io.lettuce:lettuce-core'
-
-    // Metrics & Observability
-    compileOnly 'io.micrometer:micrometer-core'
-
-    // Validation Framework
-    compileOnly 'org.springframework.boot:spring-boot-starter-validation'
-
-    // Test Dependencies
+    // Базовые тестовые зависимости
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation "org.testcontainers:testcontainers:${testcontainers_version}"
-    testImplementation "org.testcontainers:junit-jupiter:${testcontainers_version}"
-    testImplementation "redis.clients:jedis:${redis_clients_version}"
+
+    // Разделяемые тестовые зависимости — из каталога `gradle/libs.versions.toml`
+    testImplementation libs.bundles.testcontainers
+    testImplementation libs.awaitility
+    testImplementation libs.jedis
+
+    // Observability
     testImplementation 'io.micrometer:micrometer-core'
-    testImplementation "org.awaitility:awaitility:${awaitility_version}"
+
+    // AOP
     testImplementation 'org.aspectj:aspectjweaver'
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-}
-
-test {
-    useJUnitPlatform()
-
-    enabled = project.hasProperty('runTests') ||
-            gradle.startParameter.taskNames.any { it ==~ /.*test.*/ && it != 'testClasses' }
-
-    minHeapSize = "512m"
-    maxHeapSize = "2048m"
-    jvmArgs(
-            '-XX:+EnableDynamicAgentLoading',
-            '-XX:+UseParallelGC',
-            '-Dfile.encoding=UTF-8',
-            '-Duser.timezone=UTC'
-    )
-
-    timeout = Duration.ofMinutes(10)
-
-    testLogging {
-        events 'failed', 'standardOut', 'standardError'
-        exceptionFormat 'full'
-        showStackTraces true
-    }
 }

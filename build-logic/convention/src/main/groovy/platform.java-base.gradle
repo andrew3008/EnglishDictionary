@@ -1,0 +1,46 @@
+// =============================================================================
+//  Convention-плагин `platform.java-base`
+// =============================================================================
+//
+//  Назначение
+//  ----------
+//  Базовая конфигурация Java-сборки, общая для всех модулей платформы:
+//   * фиксация целевой версии Java через Toolchain;
+//   * единая кодировка исходников и тестов;
+//   * сохранение имён параметров методов в байт-коде (`-parameters`),
+//     необходимое Spring и фреймворкам, использующим reflection-биндинг;
+//   * нейтрализация чрезмерно строгих проверок Javadoc (`Xdoclint:none`),
+//     которые останавливают сборку при отсутствующих тегах в комментариях,
+//     не влияющих на корректность публикуемых артефактов.
+//
+//  Применимость
+//  ------------
+//  Применяется автоматически как зависимость более специализированных
+//  плагинов (`platform.java-library`, `platform.java-library-publish`).
+//  Прямое использование в модулях допустимо, но в монорепозитории не предполагается.
+// =============================================================================
+
+plugins {
+    id 'java'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += '-parameters'
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+tasks.withType(Test).configureEach {
+    jvmArgs '-Dfile.encoding=UTF-8'
+    systemProperty 'file.encoding', 'UTF-8'
+}

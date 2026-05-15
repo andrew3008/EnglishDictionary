@@ -1,0 +1,157 @@
+package space.br1440.platform.datasource.it;
+
+import com.zaxxer.hikari.HikariDataSource;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
+import space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties;
+import space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties.ReadReplica.Strategy;
+import space.br1440.platform.datasource.configuration.condition.OnPgTopologyDirectCondition;
+import space.br1440.platform.datasource.support.assertj.RoutingAssertions;
+import space.br1440.platform.datasource.support.junit.PgClusterExtension;
+import space.br1440.platform.datasource.support.junit.PgClusterExtension.PgCluster;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Сквозная проверка двух {@link Strategy} на реальном primary+replica кластере.
+ * <p>
+ * В новом контракте стратегия задаётся через канонический ключ
+ * {@code platform.datasource.postgres-cluster.read-replica.strategy} и биндится в
+ * {@link PostgresClusterDataSourceProperties} штатным механизмом
+ * {@code @ConfigurationProperties}. Этот IT поднимает два независимых Spring-контекста
+ * на одном и том же primary+replica кластере: один с {@link Strategy#LOAD_BALANCED}
+ * (programmatic default), другой с {@link Strategy#SECONDARY_ONLY} (override через
+ * default-properties в {@link SpringApplication#setDefaultProperties(Map)}).
+ */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(PgClusterExtension.class)
+@DisplayName("ReadStrategy × живой PostgreSQL кластер")
+class ReadStrategyClusterIT {
+
+    private PgCluster cluster;
+    private ConfigurableApplicationContext secondaryOnlyContext;
+    private ConfigurableApplicationContext loadBalancedContext;
+
+    @BeforeAll
+    void startContexts(PgCluster cluster) {
+        this.cluster = cluster;
+        Map<String, Object> secondaryOnlyOverride = Map.of(
+                "platform.datasource.postgres-cluster.read-replica.strategy", "SECONDARY_ONLY"
+        );
+        this.secondaryOnlyContext = startContext(cluster, ClusterApp.class, secondaryOnlyOverride);
+        this.loadBalancedContext = startContext(cluster, ClusterApp.class, Map.of());
+    }
+
+    @AfterAll
+    void stopContexts() {
+        if (secondaryOnlyContext != null && secondaryOnlyContext.isActive()) secondaryOnlyContext.close();
+        if (loadBalancedContext != null && loadBalancedContext.isActive()) loadBalancedContext.close();
+    }
+
+    @Test
+    @DisplayName("SECONDARY_ONLY: read-пул URL содержит targetServerType=preferSecondary, без loadBalanceHosts")
+    void secondaryOnly_urlConfiguredCorrectly() {
+        HikariDataSource read = (HikariDataSource) secondaryOnlyContext.getBean("readDataSource");
+
+        RoutingAssertions.assertThat(read)
+                .isReadOnly()
+                .jdbcUrl()
+                .hasTargetServerType("preferSecondary")
+                .hasNoParam("loadBalanceHosts");
+    }
+
+    @Test
+    @DisplayName("LOAD_BALANCED: read-пул URL содержит targetServerType=any и loadBalanceHosts=true")
+    void loadBalanced_urlConfiguredCorrectly() {
+        HikariDataSource read = (HikariDataSource) loadBalancedContext.getBean("readDataSource");
+
+        RoutingAssertions.assertThat(read)
+                .isReadOnly()
+                .jdbcUrl()
+                .hasTargetServerType("any")
+                .hasParam("loadBalanceHosts", "true")
+                .hasHostCount(2);
+    }
+
+    @Test
+    @DisplayName("SECONDARY_ONLY: read-соединение приходит на ноду в hot-standby режиме (pg_is_in_recovery=true)")
+    void secondaryOnly_connectsToSecondary() throws Exception {
+        HikariDataSource read = (HikariDataSource) secondaryOnlyContext.getBean("readDataSource");
+        try (Connection conn = read.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT pg_is_in_recovery()")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getBoolean(1))
+                    .as("pg_is_in_recovery() must be TRUE for secondary connections")
+                    .isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("LOAD_BALANCED: read-пул может подключиться, поскольку targetServerType=any")
+    void loadBalanced_canConnect() throws Exception {
+        HikariDataSource read = (HikariDataSource) loadBalancedContext.getBean("readDataSource");
+        try (Connection conn = read.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT 1")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(1);
+        }
+    }
+
+    @Test
+    @DisplayName("Write-пул не зависит от ReadStrategy: всегда targetServerType=primary")
+    void writePool_unaffectedByReadStrategy() {
+        HikariDataSource writeSecondary = (HikariDataSource) secondaryOnlyContext.getBean("writeDataSource");
+        HikariDataSource writeBalanced = (HikariDataSource) loadBalancedContext.getBean("writeDataSource");
+
+        RoutingAssertions.assertThat(writeSecondary).isNotReadOnly()
+                .jdbcUrl().hasTargetServerType("primary");
+        RoutingAssertions.assertThat(writeBalanced).isNotReadOnly()
+                .jdbcUrl().hasTargetServerType("primary");
+    }
+
+    private ConfigurableApplicationContext startContext(PgCluster cluster,
+                                                        Class<?> applicationClass,
+                                                        Map<String, Object> overrides) {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("spring.main.web-application-type", "none");
+        properties.put("spring.main.banner-mode", "off");
+        properties.put(OnPgTopologyDirectCondition.ENV_VAR, OnPgTopologyDirectCondition.DIRECT);
+        properties.put("PG_CLUSTER_NODES", cluster.pgNodesString());
+        properties.put("PG_DATABASE", cluster.dbName());
+        properties.put("PG_USERNAME", cluster.username());
+        properties.put("PG_PASSWORD", cluster.password());
+        properties.put("platform.datasource.postgres-cluster.hikari.write.maximum-pool-size", "3");
+        properties.put("platform.datasource.postgres-cluster.hikari.read.maximum-pool-size", "3");
+        properties.putAll(overrides);
+
+        SpringApplication app = new SpringApplication(applicationClass);
+        app.setWebApplicationType(WebApplicationType.NONE);
+        app.setDefaultProperties(properties);
+        return app.run();
+    }
+
+    /**
+     * Минимальное Spring Boot приложение для IT: без UI, без авто-датасорса от Spring
+     * (только наш стартер). Активируется через {@code PG_TOPOLOGY=DIRECT} в default-properties.
+     */
+    @SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
+    public static class ClusterApp {
+    }
+}
