@@ -1,5 +1,5 @@
-space.br1440.platform.metrics.CommonMetricConfiguration
-space.br1440.platform.metrics.GrpcMetricConfiguration
-space.br1440.platform.metrics.HttpMetricConfiguration
-space.br1440.platform.metrics.HttpWebfluxMetricConfiguration
-space.br1440.platform.metrics.KafkaMetricConfiguration
+space.br1440.platform.metrics.configuration.CommonMetricConfiguration
+space.br1440.platform.metrics.configuration.GrpcMetricConfiguration
+space.br1440.platform.metrics.configuration.HttpMetricConfiguration
+space.br1440.platform.metrics.configuration.HttpWebfluxMetricConfiguration
+space.br1440.platform.metrics.configuration.KafkaMetricsConfiguration

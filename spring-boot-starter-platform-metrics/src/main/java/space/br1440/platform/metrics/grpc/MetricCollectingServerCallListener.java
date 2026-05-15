@@ -5,43 +5,60 @@ import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import io.grpc.Status;
 import io.micrometer.core.instrument.Timer;
-import space.br1440.platform.metrics.MetricBuilder;
+import lombok.extern.slf4j.Slf4j;
+import space.br1440.platform.metrics.PlatformMetrics;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
+@Slf4j
 public class MetricCollectingServerCallListener<Q> extends ForwardingServerCallListener.SimpleForwardingServerCallListener<Q> {
-
 
     private final Supplier<Status.Code> responseCodeSupplier;
     private final Timer.Sample sample;
-    private final MetricBuilder metricBuilder;
-    private final MethodDescriptor methodDescriptor;
+    private final PlatformMetrics platformMetrics;
+    private final MethodDescriptor<?, ?> methodDescriptor;
 
+    private final AtomicBoolean reported = new AtomicBoolean(false);
 
-    public MetricCollectingServerCallListener(
-            final ServerCall.Listener<Q> delegate,
-            Supplier<Status.Code> responseCodeSupplier,
-            Timer.Sample sample,
-            MetricBuilder metricBuilder,
-            MethodDescriptor methodDescriptor
-    ) {
-
+    public MetricCollectingServerCallListener(final ServerCall.Listener<Q> delegate,
+                                              Supplier<Status.Code> responseCodeSupplier,
+                                              Timer.Sample sample,
+                                              PlatformMetrics platformMetrics,
+                                              MethodDescriptor<?, ?> methodDescriptor) {
         super(delegate);
+
         this.responseCodeSupplier = responseCodeSupplier;
         this.sample = sample;
-        this.metricBuilder = metricBuilder;
+        this.platformMetrics = platformMetrics;
         this.methodDescriptor = methodDescriptor;
     }
 
     @Override
     public void onMessage(final Q requestMessage) {
-        metricBuilder.grpcResieved(methodDescriptor.getBareMethodName(), methodDescriptor.getServiceName()).increment();
+        platformMetrics.grpcReceived(
+                methodDescriptor.getBareMethodName(),
+                methodDescriptor.getServiceName()
+        ).increment();
+
         super.onMessage(requestMessage);
     }
 
     @Override
+    public void onHalfClose() {
+        try {
+            super.onHalfClose();
+        } catch (RuntimeException ex) {
+            log.warn("Необработанное исключение в gRPC-обработчике [{}#{}], метрика зафиксирована как INTERNAL",
+                    methodDescriptor.getServiceName(), methodDescriptor.getBareMethodName(), ex);
+            report(Status.Code.INTERNAL);
+            throw ex;
+        }
+    }
+
+    @Override
     public void onComplete() {
-        report(this.responseCodeSupplier.get());
+        report(responseCodeSupplier.get());
         super.onComplete();
     }
 
@@ -52,22 +69,19 @@ public class MetricCollectingServerCallListener<Q> extends ForwardingServerCallL
     }
 
     private void report(final Status.Code code) {
-        //histogram metrics
-        sample.stop(metricBuilder.grpcTimer(
-                        methodDescriptor.getBareMethodName(),
-                        methodDescriptor.getServiceName(),
-                        String.valueOf(code.value())
-                )
-        );
+        if (!reported.compareAndSet(false, true)) {
+            return;
+        }
 
-        //sent response statistic
-        metricBuilder.grpcSent(
-                        methodDescriptor.getBareMethodName(),
-                        methodDescriptor.getServiceName(),
-                        String.valueOf(code.value()))
-                .increment();
+        final String methodName = methodDescriptor.getBareMethodName();
+        final String serviceName = methodDescriptor.getServiceName();
+        // code.name() вместо code.value() — читаемые метки: "OK", "CANCELLED", "INTERNAL" и т.д.
+        final String statusName = code.name();
 
+        // Гистограмма задержки запроса
+        sample.stop(platformMetrics.grpcTimer(methodName, serviceName, statusName));
+
+        // Счётчик отправленных ответов
+        platformMetrics.grpcSent(methodName, serviceName, statusName).increment();
     }
-
 }
-

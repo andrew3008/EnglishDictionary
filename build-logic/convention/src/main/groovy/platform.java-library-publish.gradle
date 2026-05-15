@@ -1,0 +1,93 @@
+// =============================================================================
+//  Convention-плагин `platform.java-library-publish`
+// =============================================================================
+//
+//  Назначение
+//  ----------
+//  Расширяет `platform.java-library` поддержкой публикации артефактов
+//  модуля в корпоративный Nexus. Включает формирование sources-jar и
+//  javadoc-jar, а также корректное проставление версий зависимостей в
+//  публикуемом POM через `versionMapping`.
+//
+//  Включение sources/javadoc выполняется именно здесь, а не в
+//  `platform.java-base`, поскольку для непубликуемых модулей эти
+//  артефакты не требуются и удлиняют сборку.
+//
+//  versionMapping
+//  --------------
+//  В POM публикуются разрешённые версии зависимостей:
+//   * `java-api`     — из `runtimeClasspath`;
+//   * `java-runtime` — из результата разрешения зависимостей.
+//  Это гарантирует потребителям стабильность графа зависимостей без необходимости
+//  иметь доступ к Gradle-метаданным платформы.
+//
+//  Очистка <dependencyManagement> в публикуемом POM
+//  -------------------------------------------------
+//  Платформенный BOM `:spring-boot-starter-platform-bom` подключается к
+//  модулям через `api platform(...)` в `platform.java-library`. На этапе
+//  сборки это даёт единое управление версиями для всех зависимостей,
+//  включая `api`. Однако при стандартной публикации Gradle переносит этот
+//  импорт в секцию `<dependencyManagement>` публикуемого POM, что приводит
+//  к транзитивному импорту платформенного BOM у любого потребителя
+//  опубликованного артефакта. Для тонких контрактных модулей (например,
+//  `tracing-api`) такое поведение нежелательно: потребитель
+//  получает чужие constraints, которыми он не пользуется.
+//
+//  Поскольку `versionMapping` уже фиксирует разрешённые версии прямо в
+//  `<dependency><version>...</version></dependency>`, секция
+//  `<dependencyManagement>` потребителю не нужна. Поэтому при публикации
+//  выполняется post-processing POM, удаляющий узел `<dependencyManagement>`
+//  целиком. Управление версиями в сборке самих платформенных модулей
+//  при этом сохраняется в полном объёме — изменение касается только
+//  опубликованного XML.
+// =============================================================================
+
+plugins {
+    id 'platform.java-library'
+    id 'maven-publish'
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
+
+            pom.withXml {
+                def root = asNode()
+                root.dependencyManagement.each { it.parent().remove(it) }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'nexus'
+            url = version.toString().endsWith('-SNAPSHOT')
+                    ? uri('https://n.1440.space/repository/platform-maven-dev')
+                    : uri('https://n.1440.space/repository/platform-maven')
+            credentials {
+                if (version.toString().endsWith('-SNAPSHOT')) {
+                    username = System.getenv('NEXUS_USERNAME')
+                    password = System.getenv('NEXUS_PASSWORD')
+                } else {
+                    username = System.getenv('PROD_NEXUS_USERNAME')
+                    password = System.getenv('PROD_NEXUS_PASSWORD')
+                }
+            }
+        }
+    }
+}

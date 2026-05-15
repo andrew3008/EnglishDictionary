@@ -1,53 +1,115 @@
-plugins {
-    id 'java-platform'
-}
+// =============================================================================
+//  Платформенный BOM (Bill of Materials)
+// =============================================================================
+//
+//  Назначение
+//  ----------
+//  Артефакт публикуется как POM-only-модуль и подключается потребителями платформы
+//  выражением `api platform(...)` (Gradle). За счёт этого версии управляемых зависимостей 
+//  выравниваются между всеми сервисами, использующими платформенные стартеры.
+//
+//  Импортирует Spring Boot BOM (`spring-boot-dependencies`) и расширяет его
+//  набором ограничений (constraints), необходимых платформе вне контракта Spring Boot. 
+//  Задавать в `constraints` зависимости, которые уже управляет Spring Boot BOM, 
+//  не следует — это создаёт дрейф версий между релизами Boot.
+//
+//  Критерий включения зависимости
+//  ------------------------------
+//  В `constraints` помещаются только те версии, что используются в `src/main` 
+//  хотя бы одного платформенного стартера (конфигурации `api`, `implementation`, `compileOnly`). 
+//  Зависимости, востребованные исключительно тестовым кодом стартеров (`testImplementation`, `testRuntimeOnly`), 
+//  в BOM не публикуются — их версии хранятся в `gradle/libs.versions.toml` и не предлагаются потребителям.
+//
+//  Регламент обновления
+//  --------------------
+//  1. Перед добавлением констрейнта убедиться, что зависимость присутствует
+//     в `src/main` хотя бы одного платформенного стартера. Если зависимость
+//     используется только в тестовом коде (`src/test`), её версия задаётся
+//     в каталоге версий `gradle/libs.versions.toml`, а не в этом BOM.
+//  2. Перед изменением версии проверить отсутствие конфликта с управлением
+//     Spring Boot BOM (`./gradlew dependencyInsight`).
+//  3. Любое изменение констрейнтов должно сопровождаться повышением версии
+//     BOM согласно политике совместимости платформы.
+//  4. Для констрейнтов, ссылающихся на модули этого же монорепозитория, версия
+//     по умолчанию задаётся подстановкой `${rootProject.version}` и не должна
+//     указываться литералом — иначе при подъёме общей версии платформы получают
+//     расхождение между опубликованным BOM и фактическими артефактами.
+//     Исключение — артефакты с независимым жизненным циклом (версии в каталоге
+//     `gradle/libs.versions.toml`, напр. `errorHandlingModel` для модуля
+//     `error-handling-model`). Для них в `constraints` указывается явная
+//     версия через `libs.versions.<ключ>.get()` — см. блок «Внутренние контрактные модули».
+//
+//  Версии внутренних модулей с независимым жизненным циклом
+//  --------------------------------------------------------
+//  Единственный источник истины для версий таких модулей — каталог
+//  `gradle/libs.versions.toml`. Один и тот же ключ используется в двух
+//  местах монорепозитория и из них же подтягивается в BOM:
+//   * в `build.gradle` самого модуля — как `version = libs.versions.<ключ>.get()`;
+//   * в этом BOM — как `api "space.br1440.platform:<artifactId>:${libs.versions.<ключ>.get()}"`.
+//  Благодаря единому ключу версия опубликованного артефакта и значение
+//  констрейнта BOM не расходятся, а потребители платформы подключают
+//  такой модуль без явной версии — её навязывает BOM. Каталог версий
+//  (`libs.versions.toml`) потребителям не доставляется.
+// =============================================================================
 
-javaPlatform {
-    allowDependencies()
+plugins {
+    id 'platform.java-platform-bom'
 }
 
 dependencies {
     constraints {
-        //Logbook
-        api 'org.zalando:logbook-core:3.12.2'
-        api 'org.zalando:logbook-servlet:3.12.2'
-        api 'org.zalando:logbook-json:3.12.2'
+        // ---------------------------------------------------------------------
+        // Логирование и диагностика
+        // ---------------------------------------------------------------------
+        api "net.logstash.logback:logstash-logback-encoder:${libs.versions.bom.logstash.get()}"
 
-        //SLF4J и logging
-        api 'org.slf4j:slf4j-api:2.0.17'
-        api 'net.logstash.logback:logstash-logback-encoder:8.1'
-        api 'org.aspectj:aspectjweaver:1.9.24'
+        // ---------------------------------------------------------------------
+        // Общие утилиты и инструменты сборки
+        // ---------------------------------------------------------------------
+        api "org.apache.commons:commons-lang3:${libs.versions.bom.commons.get()}"
+        api "com.github.f4b6a3:uuid-creator:${libs.versions.bom.uuid.get()}"
 
-        //Jackson
-        api 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
-        api 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.20.0'
+        // ---------------------------------------------------------------------
+        // Аннотации `@NotNull` / `@Nullable`
+        // ---------------------------------------------------------------------
+        api "org.jetbrains:annotations:${libs.versions.bom.jetbrains.get()}"
 
-        //Lombok
-        api 'org.projectlombok:lombok:1.18.38'
+        // ---------------------------------------------------------------------
+        // Интеграция gRPC
+        // ---------------------------------------------------------------------
+        api "org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:${libs.versions.bom.grpc.get()}"
 
-        //Common (Security)
-        api 'org.apache.commons:commons-lang3:3.19.0'
+        // ---------------------------------------------------------------------
+        // Spring Cloud OpenFeign (нет в spring-boot-dependencies — нужен явный constraint)
+        // ---------------------------------------------------------------------
+        api "org.springframework.cloud:spring-cloud-openfeign-core:${libs.versions.bom.openfeign.get()}"
 
-        //annotationProcessor
-        api 'org.springframework.boot:spring-boot-configuration-processor:3.5.5'
+        // ---------------------------------------------------------------------
+        // Внутренние контрактные модули платформы (модели данных, API, SPI),
+        // на которые опираются стартеры и прикладные сервисы.
+        // Версии берутся из libs.versions.toml или rootProject.version согласно регламенту.
+        // ---------------------------------------------------------------------
+        api "space.br1440.platform:error-handling-model:${libs.versions.errorHandlingModel.get()}"
+        api "space.br1440.platform:tracing-api:${rootProject.version}"
 
-        api 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.6.0'
+        // ---------------------------------------------------------------------
+        // Zalando Logbook
+        // ---------------------------------------------------------------------
+        api "org.zalando:logbook-core:${libs.versions.bom.logbook.get()}"
+        api "org.zalando:logbook-servlet:${libs.versions.bom.logbook.get()}"
 
-        //Common
-        //uid1440
-        api 'com.github.f4b6a3:uuid-creator:6.1.1'
-
-        //Header-based routing
-        api 'org.springframework:spring-web:6.2.3'
-        api 'org.springframework:spring-webflux:6.2.3'
-        api 'org.springframework.cloud:spring-cloud-openfeign-core:4.2.1'
-        api 'io.grpc:grpc-api:1.71.0'
-        api 'org.springframework.grpc:spring-grpc-client-spring-boot-starter:0.11.0'
-        api 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.11.0'
-        api 'org.springframework.boot:spring-boot-configuration-processor:3.4.3'
-
+        // ---------------------------------------------------------------------
+        // Сторонние интеграционные клиенты
+        // ---------------------------------------------------------------------
+        api "io.minio:minio:${libs.versions.bom.minio.get()}"
+        api "com.squareup.okhttp3:okhttp:${libs.versions.bom.okhttp.get()}"
+        api "io.github.resilience4j:resilience4j-timelimiter:${libs.versions.bom.resilience.get()}"
     }
-    // объявляем constraints (версии) для всех зависимостей
-    api platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
 
+    // ---------------------------------------------------------------------
+    // Официальный BOM Spring Boot, который задаёт согласованные версии
+    // управляемых артефактов релиза Spring Boot — ядра Spring Framework и Spring Boot,
+    // Jackson-BOM, Micrometer и иных сопутствующих библиотек.
+    // ---------------------------------------------------------------------
+    api platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.bom.springboot.get()}")
 }

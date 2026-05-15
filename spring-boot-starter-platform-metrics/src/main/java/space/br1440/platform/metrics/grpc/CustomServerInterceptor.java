@@ -4,30 +4,29 @@ import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import space.br1440.platform.metrics.MetricBuilder;
+import lombok.RequiredArgsConstructor;
+import space.br1440.platform.metrics.PlatformMetrics;
 
-
+@RequiredArgsConstructor
 public class CustomServerInterceptor implements ServerInterceptor {
 
-    private final MetricBuilder metricBuilder;
-
-    public CustomServerInterceptor(MetricBuilder metricBuilder) {
-        this.metricBuilder = metricBuilder;
-    }
+    private final PlatformMetrics platformMetrics;
+    private final MeterRegistry meterRegistry;
 
     @Override
-    public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-        var sampler = Timer.start();
-
-        GrpcMotitoringServerCall grpcMotitoringServerCall = new GrpcMotitoringServerCall(call);
-
+    public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+                                                                 Metadata headers,
+                                                                 ServerCallHandler<ReqT, RespT> next) {
+        Timer.Sample sampler = Timer.start(meterRegistry);
+        GrpcMonitoringServerCall<ReqT, RespT> monitoringCall = new GrpcMonitoringServerCall<>(call);
 
         return new MetricCollectingServerCallListener<>(
-                next.startCall(grpcMotitoringServerCall, headers),
-                grpcMotitoringServerCall::getResponseCode,
+                next.startCall(monitoringCall, headers),
+                monitoringCall::getResponseCode,
                 sampler,
-                metricBuilder,
+                platformMetrics,
                 call.getMethodDescriptor());
     }
 }

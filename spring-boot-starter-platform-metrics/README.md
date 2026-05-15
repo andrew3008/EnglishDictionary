@@ -49,9 +49,10 @@ dependencies {
 
 Свойство:
 ```yaml
-platform-metric:
-  http:
-    path-mode: normalized
+platform:
+  metrics:
+    http:
+      path-mode: normalized
 ```
 
 Поддерживаются два значения:
@@ -89,40 +90,44 @@ platform-metric:
 
 Пример:
 ```yaml
-platform-metric:
-  labels:
-    metrics:
-      "[platform.http.requests]":
-        disabled-tags:
-          - status
+platform:
+  metrics:
+    labels:
+      metrics:
+        "[platform.http.requests]":
+          disabled-tags:
+            - status
 ```
 
 Механизм отключения тегов работает не только для HTTP-метрик.
 
 **Примеры:**
 ```yaml
-platform-metric:
-  labels:
-    metrics:
-      "[platform.grpc.server.sent]":
-        disabled-tags:
-          - rpc_status_code
+platform:
+  metrics:
+    labels:
+      metrics:
+        "[platform.grpc.server.sent]":
+          disabled-tags:
+            - rpc_status_code
 ```
 
 ```yaml
-platform-metric:
-  labels:
-    metrics:
-      "[platform_consumer_messages_total]":
-        disabled-tags:
-          - client_id
+platform:
+  metrics:
+    labels:
+      metrics:
+        "[platform_consumer_messages_total]":
+          disabled-tags:
+            - client_id
 ```
 
 ## Поведение по умолчанию
 
 Если явно не задано, сервис будет запускаться с такой конфигурацией. Прописывать её необязательно:
 ```yaml
-platform-metric:
-  http:
-    path-mode: normalized
+platform:
+  metrics:
+    http:
+      path-mode: normalized
 ```

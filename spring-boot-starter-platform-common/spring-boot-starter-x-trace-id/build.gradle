@@ -1,40 +1,44 @@
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.testing'
+}
+
+group = rootProject.group
+version = rootProject.version
+
+description = 'Фильтры и автоконфигурация для заголовка X-Trace-Id (Servlet, Micrometer Tracing).'
+
+tasks.named('jar', Jar).configure {
+    archiveBaseName = 'spring-boot-starter-x-trace-id'
+}
+
+publishing {
+    publications.named('mavenJava', MavenPublication).configure {
+        artifactId = 'spring-boot-starter-x-trace-id'
+        pom.description.set(project.description)
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
-    // starter runtime
+    // Рантайм-зависимости стартера; micrometer-tracing версионируется Spring Boot BOM
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework:spring-web'
     implementation 'io.micrometer:micrometer-tracing'
 
-    // compile-only APIs required by the starter
     compileOnly 'org.slf4j:slf4j-api'
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
     compileOnly 'org.springframework:spring-webmvc'
 
-    /* tests
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // Тесты: Brave + mock-tracer из micrometer-tracing-test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
-    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
     testImplementation 'jakarta.servlet:jakarta.servlet-api'
-
-    // tracing backend for smoke tests
     testImplementation 'io.micrometer:micrometer-tracing-bridge-brave'
     testImplementation 'io.micrometer:micrometer-tracing-test'
-
-    // junit platform runtime alignment
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-     */
-
-}
-
-test {
-    useJUnitPlatform()
+    testImplementation libs.archunit.junit5
 }

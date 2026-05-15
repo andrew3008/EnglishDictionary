@@ -1,0 +1,52 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.testing'
+}
+
+group = rootProject.group
+version = libs.versions.errorHandlingModel.get()
+
+description = 'Модель ошибок и исключений платформы: DTO, Problem (RFC 9457), базовые типы.'
+
+tasks.named('jar', Jar).configure {
+    archiveBaseName = 'error-handling-model'
+}
+
+publishing {
+    publications.named('mavenJava', MavenPublication).configure {
+        artifactId = 'error-handling-model'
+        pom.description.set(project.description)
+    }
+}
+
+dependencies {
+    // API
+    api 'org.slf4j:slf4j-api'
+    api 'org.jetbrains:annotations'
+    api 'org.apache.commons:commons-lang3'
+
+
+    // === Optional / conditional dependencies (compileOnly) ===
+
+    // Spring Web
+    compileOnly 'org.springframework:spring-web'
+
+    // Jackson
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+
+    // Annotation Processors
+    annotationProcessor 'org.projectlombok:lombok'
+
+
+    // === Test infrastructure ===
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.springframework:spring-web'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    testImplementation libs.archunit.junit5
+}

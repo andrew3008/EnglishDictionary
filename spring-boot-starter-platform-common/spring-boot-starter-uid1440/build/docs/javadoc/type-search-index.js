@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"space.br1440.platform.uid1440","l":"Domain"},{"p":"space.br1440.platform.uid1440","l":"Uid1440"},{"p":"space.br1440.platform.uid1440","l":"Uid1440Exception"}];updateSearchResults();

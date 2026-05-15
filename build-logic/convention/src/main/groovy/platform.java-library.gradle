@@ -1,0 +1,28 @@
+// =============================================================================
+//  Convention-плагин `platform.java-library`
+// =============================================================================
+//
+//  Назначение
+//  ----------
+//  Конфигурирует модуль как Java-библиотеку платформы и подключает
+//  платформенный BOM нативно — без `io.spring.dependency-management`.
+//  BOM применяется ко всем используемым конфигурациям сборки и тестов,
+//  что обеспечивает единообразное управление версиями зависимостей во всём classpath.
+// =============================================================================
+
+plugins {
+    id 'java-library'
+    id 'platform.java-base'
+}
+
+dependencies {
+    def bom = project(':spring-boot-starter-platform-bom')
+
+    api platform(bom)
+    compileOnly platform(bom)
+    annotationProcessor platform(bom)
+
+    testImplementation platform(bom)
+    testCompileOnly platform(bom)
+    testAnnotationProcessor platform(bom)
+}
