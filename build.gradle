@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
     group = 'space.br1440.platform.starters'
-    version = '1.0.9'
+    version = '1.0.10'
 }
 
 tasks.register('publishAllToNexus') {
