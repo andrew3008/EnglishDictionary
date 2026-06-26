@@ -1,3 +1,6 @@
+import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
+
 plugins {
     id 'platform.java-library-publish'
     id 'platform.java-library'
@@ -11,8 +14,8 @@ platformJavaLibrary {
 
 spotbugs {
     toolVersion = '4.8.6'
-    effort = 'max'
-    reportLevel = 'medium'
+    effort = Effort.MAX
+    reportLevel = Confidence.valueOf('MEDIUM')
     excludeFilter = file('config/spotbugs/exclude.xml')
 }
 
