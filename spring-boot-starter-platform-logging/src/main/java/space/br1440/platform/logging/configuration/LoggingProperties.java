@@ -21,9 +21,16 @@ public class LoggingProperties {
 
     public static final String PREFIX = "platform.http-logging";
 
+    /**
+     * Ключи MDC, исключаемые из текстового блока {@code %maskedMDC} (шумные HTTP/служебные поля).
+     * <p>
+     * Ключи трассировки {@code traceId}/{@code spanId}/{@code traceFlags} (camelCase, platform-tracing v1)
+     * <b>не</b> исключаются — они должны попадать в лог для корреляции с Jaeger/ELK.
+     * Устаревший snake_case {@code trace_flags} удалён из списка: Micrometer bridge больше не пишет его.
+     */
     private static final Set<String> DEFAULT_MDC_KEYS_TO_EXCLUDE = Set.of(
             "status_code", "start_time", "end_time", "duration",
-            "trace_flags", "correlation_id"
+            "correlation_id"
     );
 
     private Boolean enable = true;

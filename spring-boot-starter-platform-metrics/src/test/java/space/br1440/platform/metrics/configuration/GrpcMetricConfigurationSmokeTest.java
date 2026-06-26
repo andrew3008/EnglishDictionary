@@ -46,4 +46,16 @@ class GrpcMetricConfigurationSmokeTest {
                     assertThat(ctx).hasSingleBean(CustomServerInterceptor.class);
                 });
     }
+
+    @Test
+    void grpcInterceptorAbsentWithoutGrpcMetricAutoConfiguration() {
+        new ApplicationContextRunner()
+                .withPropertyValues(defaultPropertiesAsPairs())
+                .withBean(SimpleMeterRegistry.class)
+                .withConfiguration(AutoConfigurations.of(CommonMetricConfiguration.class))
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx.getBeansOfType(CustomServerInterceptor.class)).isEmpty();
+                });
+    }
 }

@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"space.br1440.platform.trace","l":"CustomTraceIdAutoConfiguration"},{"p":"space.br1440.platform.trace","l":"CustomTraceIdFilter"},{"p":"space.br1440.platform.trace","l":"MutableHttpServletRequest"},{"p":"space.br1440.platform.trace","l":"TraceIdResponseFilter"}];updateSearchResults();

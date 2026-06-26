@@ -21,4 +21,6 @@ public class GrpcMetricsProperties {
     private String timerMetricName;
     private String counterSentMetricName;
     private String counterReceivedMetricName;
+    private String streamMessagesSentMetricName;
+    private String streamMessagesReceivedMetricName;
 }

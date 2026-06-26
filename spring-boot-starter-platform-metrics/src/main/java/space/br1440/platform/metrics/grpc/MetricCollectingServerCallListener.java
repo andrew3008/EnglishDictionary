@@ -36,10 +36,11 @@ public class MetricCollectingServerCallListener<Q> extends ForwardingServerCallL
 
     @Override
     public void onMessage(final Q requestMessage) {
-        platformMetrics.grpcReceived(
-                methodDescriptor.getBareMethodName(),
-                methodDescriptor.getServiceName()
-        ).increment();
+        final String methodName = methodDescriptor.getBareMethodName();
+        final String serviceName = methodDescriptor.getServiceName();
+
+        platformMetrics.grpcReceived(methodName, serviceName).increment();
+        platformMetrics.grpcStreamMessageReceived(methodName, serviceName).increment();
 
         super.onMessage(requestMessage);
     }

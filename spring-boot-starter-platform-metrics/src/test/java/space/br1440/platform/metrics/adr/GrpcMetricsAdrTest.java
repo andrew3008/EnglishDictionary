@@ -57,6 +57,91 @@ class GrpcMetricsAdrTest {
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    // 0. platform_grpc_server_stream_messages_received_total (S2)
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("platform_grpc_server_stream_messages_received_total")
+    class StreamMessagesReceivedCounter {
+
+        @Test
+        @DisplayName("onMessage() дважды → stream.messages.received == 2.0 с тегами rpc_method и service")
+        void onMessageTwiceIncrementsStreamMessagesReceivedTwice() {
+            MetricCollectingServerCallListener<Object> l = listener(() -> Status.Code.OK);
+
+            l.onMessage(new Object());
+            l.onMessage(new Object());
+
+            Counter counter = MetricsTestSupport.findCounter(registry,
+                    "platform.grpc.server.stream.messages.received",
+                    MetricTags.RPC_METHOD, METHOD_NAME,
+                    MetricTags.SERVICE, SERVICE_NAME);
+
+            assertThat(counter.count())
+                    .as("stream.messages.received must equal 2.0 after two onMessage() calls")
+                    .isEqualTo(2.0);
+        }
+
+        @Test
+        @DisplayName("stream.messages.received не имеет тега rpc_status_code")
+        void streamMessagesReceivedHasNoRpcStatusCodeTag() {
+            MetricCollectingServerCallListener<Object> l = listener(() -> Status.Code.OK);
+            l.onMessage(new Object());
+
+            assertThat(MetricsTestSupport.tagValue(registry,
+                    "platform.grpc.server.stream.messages.received",
+                    MetricTags.RPC_STATUS_CODE))
+                    .as("stream.messages.received must not carry rpc_status_code tag " +
+                        "(status is unknown at message receive time)")
+                    .isNull();
+        }
+
+        @Test
+        @DisplayName("Test B: legacy platform.grpc.server.received также == 2.0 (оба инкрементируются)")
+        void legacyReceivedAlsoIncrementsPerMessage() {
+            MetricCollectingServerCallListener<Object> l = listener(() -> Status.Code.OK);
+
+            l.onMessage(new Object());
+            l.onMessage(new Object());
+
+            Counter legacyReceived = MetricsTestSupport.findCounter(registry,
+                    "platform.grpc.server.received",
+                    MetricTags.RPC_METHOD, METHOD_NAME,
+                    MetricTags.SERVICE, SERVICE_NAME);
+            assertThat(legacyReceived.count())
+                    .as("legacy platform.grpc.server.received must still equal 2.0 (backward compat)")
+                    .isEqualTo(2.0);
+
+            Counter streamReceived = MetricsTestSupport.findCounter(registry,
+                    "platform.grpc.server.stream.messages.received",
+                    MetricTags.RPC_METHOD, METHOD_NAME,
+                    MetricTags.SERVICE, SERVICE_NAME);
+            assertThat(streamReceived.count())
+                    .as("stream.messages.received must also equal 2.0")
+                    .isEqualTo(2.0);
+        }
+
+        @Test
+        @DisplayName("Test C: onMessage() не инкрементирует S1 stream.messages.sent")
+        void onMessageDoesNotIncrementStreamMessagesSent() {
+            MetricCollectingServerCallListener<Object> l = listener(() -> Status.Code.OK);
+
+            l.onMessage(new Object());
+            l.onMessage(new Object());
+
+            double sentTotal = registry.find("platform.grpc.server.stream.messages.sent")
+                    .counters()
+                    .stream()
+                    .mapToDouble(Counter::count)
+                    .sum();
+
+            assertThat(sentTotal)
+                    .as("inbound onMessage() must not touch outbound stream.messages.sent counter")
+                    .isEqualTo(0.0);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     // 1. platform_grpc_server_received_total
     // ════════════════════════════════════════════════════════════════════════
 

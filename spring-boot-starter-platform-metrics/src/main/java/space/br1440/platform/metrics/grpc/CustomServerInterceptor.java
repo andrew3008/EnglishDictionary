@@ -20,7 +20,11 @@ public class CustomServerInterceptor implements ServerInterceptor {
                                                                  Metadata headers,
                                                                  ServerCallHandler<ReqT, RespT> next) {
         Timer.Sample sampler = Timer.start(meterRegistry);
-        GrpcMonitoringServerCall<ReqT, RespT> monitoringCall = new GrpcMonitoringServerCall<>(call);
+        GrpcMonitoringServerCall<ReqT, RespT> monitoringCall = new GrpcMonitoringServerCall<>(
+                call,
+                platformMetrics,
+                call.getMethodDescriptor().getBareMethodName(),
+                call.getMethodDescriptor().getServiceName());
 
         return new MetricCollectingServerCallListener<>(
                 next.startCall(monitoringCall, headers),

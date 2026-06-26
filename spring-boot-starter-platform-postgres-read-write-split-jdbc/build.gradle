@@ -1,12 +1,25 @@
 plugins {
     id 'platform.java-library-publish'
+    id 'platform.java-library'
     id 'platform.testing'
+    id 'com.github.spotbugs' version '6.1.2'
+}
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+spotbugs {
+    toolVersion = '4.8.6'
+    effort = 'max'
+    reportLevel = 'medium'
+    excludeFilter = file('config/spotbugs/exclude.xml')
 }
 
 dependencies {
     // API
     api 'org.springframework.boot:spring-boot-starter-validation'
-    api project(':spring-boot-starter-platform-error-handling-model')
+    api 'space.br1440.platform:error-handling-model'
 
     api 'org.springframework.boot:spring-boot-starter-jdbc'
     api 'org.springframework.boot:spring-boot-starter-aop'
@@ -16,10 +29,10 @@ dependencies {
     api 'org.springframework:spring-aop'
 
 
-    // === Optional / conditional dependencies (compileOnly) ===
+    // Авто-конфигурация (публичный API стартера)
+    api 'org.springframework.boot:spring-boot-autoconfigure'
 
-    // Spring Boot autoconfigure
-    compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
+    // === Optional / conditional dependencies (compileOnly) ===
 
     // JPA / jOOQ
     compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -57,6 +70,7 @@ dependencies {
     testImplementation 'io.micrometer:micrometer-observation-test'
 
     testImplementation 'org.springframework:spring-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
 
     // Встраиваемая БД для быстрых тестов без Docker.
     testImplementation 'com.h2database:h2'
@@ -68,6 +82,7 @@ dependencies {
 
     testImplementation 'org.postgresql:postgresql'
     testImplementation libs.awaitility
+    testImplementation libs.archunit.junit5
 
     testImplementation 'ch.qos.logback:logback-classic'
 
@@ -75,19 +90,32 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+tasks.named('spotbugsMain') {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.named('spotbugsTest') {
+    enabled = false
+}
+
 tasks.named('test', Test) {
     exclude 'space/br1440/platform/datasource/it/**'
 
     systemProperty 'testcontainers.reuse.enable', 'true'
+    jvmArgs '-XX:+EnableDynamicAgentLoading', '-Djdk.attach.allowAttachSelf=true'
     timeout = Duration.ofMinutes(15)
 }
 
 tasks.register('integrationTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
-    
+
     include 'space/br1440/platform/datasource/it/**'
 
     systemProperty 'testcontainers.reuse.enable', 'true'
-    timeout = Duration.ofMinutes(20)
+    timeout = Duration.ofMinutes(45)
+    maxParallelForks = 1
 }

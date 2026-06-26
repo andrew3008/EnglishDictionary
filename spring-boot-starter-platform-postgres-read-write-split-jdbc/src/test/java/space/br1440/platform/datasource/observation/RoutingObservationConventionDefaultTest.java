@@ -1,11 +1,11 @@
-package space.br1440.platform.datasource.observation;
+package space.br1440.platform.datasource.postgres.internal.integration.observation;
 
 import io.micrometer.common.KeyValues;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.datasource.routing.DataSourceType;
+import space.br1440.platform.datasource.postgres.api.routing.DataSourceType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,7 +31,7 @@ class RoutingObservationConventionDefaultTest {
     }
 
     @Test
-    @DisplayName("WRITE intent → tag db.routing.target=write")
+    @DisplayName("WRITE intent → tag db.routing.target=write + OTel tags")
     void shouldMapWriteIntentToWriteTag() {
         RoutingObservationContext ctx = new RoutingObservationContext(DataSourceType.WRITE, "p1");
 
@@ -40,9 +40,9 @@ class RoutingObservationConventionDefaultTest {
         assertThat(tags.stream())
                 .extracting("key", "value")
                 .contains(
-                        org.assertj.core.groups.Tuple.tuple("db.system", "postgresql"),
+                        org.assertj.core.groups.Tuple.tuple("db.system.name", "postgresql"),
                         org.assertj.core.groups.Tuple.tuple("db.routing.target", "write"),
-                        org.assertj.core.groups.Tuple.tuple("db.routing.pool", "p1"));
+                        org.assertj.core.groups.Tuple.tuple("db.connection.pool.name", "p1"));
     }
 
     @Test
@@ -58,7 +58,7 @@ class RoutingObservationConventionDefaultTest {
     }
 
     @Test
-    @DisplayName("Если poolName == null → тег db.routing.pool=unknown")
+    @DisplayName("Если poolName == null → тег db.connection.pool.name=unknown")
     void shouldDefaultPoolNameToUnknown() {
         RoutingObservationContext ctx = new RoutingObservationContext(DataSourceType.WRITE, null);
 
@@ -66,7 +66,7 @@ class RoutingObservationConventionDefaultTest {
 
         assertThat(tags.stream())
                 .extracting("key", "value")
-                .contains(org.assertj.core.groups.Tuple.tuple("db.routing.pool", "unknown"));
+                .contains(org.assertj.core.groups.Tuple.tuple("db.connection.pool.name", "unknown"));
     }
 
     @Test

@@ -21,7 +21,4 @@ variables:
   STAGING_REF: /^(v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\-]+)?|release\/.*)$/
   PROD_REF: /^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\-]+)?$/
 
-  # SONAR_HOST_URL: https://sq.1440.space
-  # SONAR_PROJECT_KEY: 'sat_mcc_stw-spring3-web-error_4648e0e8-7486-44b6-a13e-2d656a0fd379'
-  # SONAR_PROJECT_NAME: 'stw-spring3-web-error'
   SONAR_DISABLED: true

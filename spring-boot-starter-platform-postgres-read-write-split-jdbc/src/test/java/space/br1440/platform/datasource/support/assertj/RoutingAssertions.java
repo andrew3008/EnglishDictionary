@@ -19,11 +19,11 @@ import java.util.List;
  *     .hasNoParam("sslmode");
  *
  * RoutingAssertions.assertThat(meterRegistry)
- *     .hasCounterValue("datasource.routing.requests", "target", "replica", 3.0);
+ *     .hasCounterValue("datasource.routing.requests", "target", "read", 3.0);
  *
  * RoutingAssertions.assertThat(observationRegistry)
  *     .hasObservationWithName("datasource.routing")
- *         .thatHasLowCardinalityKeyValue("db.routing.target", "replica");
+ *         .thatHasLowCardinalityKeyValue("db.routing.target", "read");
  * }</pre>
  */
 public final class RoutingAssertions {

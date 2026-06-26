@@ -10,28 +10,7 @@
 #  вида `libs.archunit.junit5`, `libs.bundles.testcontainers`) и устраняет
 #  расхождение версий одной и той же библиотеки между модулями.
 #
-#  Версии внутренних модулей с независимым жизненным циклом
-#  --------------------------------------------------------
-#  Некоторые артефакты монорепозитория публикуются из этого репозитория, но их
-#  семантическая версия намеренно не совпадает с общей `rootProject.version`
-#  (лайн релиза платформы). Номера таких версий хранятся в секции `[versions]`
-#  под осмысленными ключами (напр. `errorHandlingModel`).
-#
-#  Этот каталог является единственным источником истины для такой версии и
-#  используется одновременно в двух местах внутри монорепозитория:
-#    1. В `build.gradle` самого модуля — для установки `version` публикуемого
-#       артефакта (напр. `error-handling-model/build.gradle` →
-#       `version = libs.versions.errorHandlingModel.get()`).
-#    2. В платформенном BOM — для констрейнта координаты
-#       `space.br1440.platform:<artifactId>` через `libs.versions.<ключ>.get()`,
-#       благодаря которому потребители платформы подключают артефакт
-#       без явной версии (она навязывается BOM).
-#  За счёт единого источника гарантируется отсутствие расхождения между
-#  фактической версией опубликованного артефакта и констрейнтом BOM.
-#
-#  Сам каталог потребителям платформы не доставляется (`libs.versions.toml`
-#  не публикуется), поэтому хранение версий внутренних модулей здесь не
-#  обязывает микросервисы указывать их в своих `build.gradle`.
+#  Сам каталог потребителям платформы не доставляется (`libs.versions.toml` не публикуется).
 #  См. также регламент в `spring-boot-starter-platform-bom/build.gradle`.
 #
 #  Разграничение с платформенным BOM
@@ -53,8 +32,6 @@
 #   * единственная альтернатива — ext { Map } в build.gradle, который лишён
 #     IDE type-safety, не поддерживается Renovate/Dependabot и является
 #     legacy-паттерном Gradle 8+;
-#   * `libs.versions.toml` уже используется в BOM для `errorHandlingModel` —
-#     прецедент задан самим регламентом;
 #   * потребители BOM получают инлайновые версии в опубликованном POM;
 #     внутренний источник (TOML vs ext) для них невидим.
 #  Ключи BOM-версий намеренно отделены префиксом `bom-`, чтобы отличать их
@@ -110,53 +87,50 @@
 # =============================================================================
 
 [versions]
-# ------------------------------------------------------------
-# Внутренние модули платформы с независимым жизненным циклом
-# ------------------------------------------------------------
-errorHandlingModel  = "1.0.0"
+# ---------------------------------------------------------------------------
+# Модули платформы, публикуемые из других её Git-репозиториев.
+# ---------------------------------------------------------------------------
+errorHandlingModel = "1.1.0"
 
-# ----------------------------------------------------------------------------------
+# Версия внешнего артефакта space.br1440.platform:platform-bom (общий BOM; Spring Boot + часть общих constraints)
+platformBom = "1.0.0"
+
+# ---------------------------------------------------------------------------
 # BOM-версии: сторонние зависимости, публикуемые в constraints платформенного BOM.
-# Используются только в spring-boot-starter-platform-bom/build.gradle.
-# Prefixed with "bom-" to distinguish from test/build-only versions below.
-# ----------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 bom-logstash    = "8.1"
-bom-commons     = "3.19.0"
 bom-uuid        = "6.1.1"
-bom-jetbrains   = "26.0.2-1"
 bom-grpc        = "0.9.0"
 bom-openfeign   = "4.3.0"
 bom-logbook     = "4.0.4"
 bom-minio       = "8.6.0"
 bom-okhttp      = "5.3.2"
 bom-resilience  = "2.3.0"
-bom-springboot  = "3.5.6"
-bom-prometheus  = "1.3.6"
 
-# ----------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Тестовые и вспомогательные зависимости (только для сборки/тестирования стартеров)
-# ----------------------------------------------------------------------------------
-archunit         = "1.3.0"
-testcontainers   = "1.21.3"
-byte-buddy       = "1.15.10"
-blockhound       = "1.0.16.RELEASE"
-opentelemetry    = "1.45.0"
-awaitility       = "4.3.0"
-jedis            = "7.0.0"
+# ---------------------------------------------------------------------------
+archunit                 = "1.3.0"
+testcontainers           = "1.21.3"
+byte-buddy               = "1.15.10"
+blockhound               = "1.0.17.RELEASE"
+opentelemetry            = "1.45.0"
+awaitility               = "4.3.0"
+jedis                    = "7.0.0"
 
 [libraries]
-archunit-junit5            = { module = "com.tngtech.archunit:archunit-junit5",  version.ref = "archunit" }
-testcontainers-core        = { module = "org.testcontainers:testcontainers",     version.ref = "testcontainers" }
-testcontainers-junit       = { module = "org.testcontainers:junit-jupiter",      version.ref = "testcontainers" }
-testcontainers-postgresql  = { module = "org.testcontainers:postgresql",         version.ref = "testcontainers" }
-testcontainers-kafka       = { module = "org.testcontainers:kafka",              version.ref = "testcontainers" }
-testcontainers-toxiproxy   = { module = "org.testcontainers:toxiproxy",          version.ref = "testcontainers" }
-testcontainers-minio       = { module = "org.testcontainers:minio",              version.ref = "testcontainers" }
-byte-buddy                 = { module = "net.bytebuddy:byte-buddy",              version.ref = "byte-buddy" }
-blockhound                 = { module = "io.projectreactor.tools:blockhound",    version.ref = "blockhound" }
-opentelemetry-api          = { module = "io.opentelemetry:opentelemetry-api",    version.ref = "opentelemetry" }
-awaitility                 = { module = "org.awaitility:awaitility",             version.ref = "awaitility" }
-jedis                      = { module = "redis.clients:jedis",                   version.ref = "jedis" }
+archunit-junit5             = { module = "com.tngtech.archunit:archunit-junit5",      version.ref = "archunit" }
+testcontainers-core         = { module = "org.testcontainers:testcontainers",         version.ref = "testcontainers" }
+testcontainers-junit        = { module = "org.testcontainers:junit-jupiter",          version.ref = "testcontainers" }
+testcontainers-postgresql   = { module = "org.testcontainers:postgresql",             version.ref = "testcontainers" }
+testcontainers-kafka        = { module = "org.testcontainers:kafka",                  version.ref = "testcontainers" }
+testcontainers-toxiproxy    = { module = "org.testcontainers:toxiproxy",              version.ref = "testcontainers" }
+testcontainers-minio        = { module = "org.testcontainers:minio",                  version.ref = "testcontainers" }
+byte-buddy                  = { module = "net.bytebuddy:byte-buddy",                  version.ref = "byte-buddy" }
+blockhound                  = { module = "io.projectreactor.tools:blockhound",        version.ref = "blockhound" }
+opentelemetry-api           = { module = "io.opentelemetry:opentelemetry-api",        version.ref = "opentelemetry" }
+awaitility                  = { module = "org.awaitility:awaitility",                 version.ref = "awaitility" }
+jedis                       = { module = "redis.clients:jedis",                       version.ref = "jedis" }
 
 [bundles]
 testcontainers = ["testcontainers-core", "testcontainers-junit"]

@@ -32,7 +32,9 @@ public final class PlatformMetricsFactory {
         GrpcMetricsProperties grpcProps = new GrpcMetricsProperties()
                 .setTimerMetricName("platform.grpc.server")
                 .setCounterSentMetricName("platform.grpc.server.sent")
-                .setCounterReceivedMetricName("platform.grpc.server.received");
+                .setCounterReceivedMetricName("platform.grpc.server.received")
+                .setStreamMessagesSentMetricName("platform.grpc.server.stream.messages.sent")
+                .setStreamMessagesReceivedMetricName("platform.grpc.server.stream.messages.received");
 
         KafkaMetricsProperties kafkaProps = new KafkaMetricsProperties()
                 .setConsumerLagMetricName("platform_consumer_lag_seconds")

@@ -44,7 +44,7 @@
 
 | Gradle-проект | Каталог |
 |-----------------|---------|
-| `:spring-boot-starter-platform-tracing-api` | [`spring-boot-starter-platform-tracing/tracing-api`](./spring-boot-starter-platform-tracing/tracing-api) |
+| `:spring-boot-starter-platform-tracing-api` | [`spring-boot-starter-platform-tracing/tracing-api`](platform-starters-tracing/tracing-api) |
 
 ### Общие стартеры (каталог `spring-boot-starter-platform-common/`)
 
@@ -52,9 +52,9 @@
 
 | Gradle-проект | Каталог | Документация |
 |----------------|---------|----------------|
-| `:spring-boot-starter-platform-common-uid1440` | `spring-boot-starter-uid1440/` | [README](./spring-boot-starter-platform-common/spring-boot-starter-uid1440/README.md) |
-| `:spring-boot-starter-platform-common-header-based-routing` | `spring-boot-starter-header-based-routing/` | [README](./spring-boot-starter-platform-common/spring-boot-starter-header-based-routing/README.md) |
-| `:spring-boot-starter-platform-common-x-trace-id` | `spring-boot-starter-x-trace-id/` | [README](./spring-boot-starter-platform-common/spring-boot-starter-x-trace-id/README.md) |
+| `:spring-boot-starter-platform-common-uid1440` | `spring-boot-starter-uid1440/` | [README](platform-starters-common/spring-boot-starter-uid1440/README.md) |
+| `:spring-boot-starter-platform-common-header-based-routing` | `spring-boot-starter-header-based-routing/` | [README](platform-starters-common/spring-boot-starter-header-based-routing/README.md) |
+| `:spring-boot-starter-platform-common-x-trace-id` | `spring-boot-starter-x-trace-id/` | [README](platform-starters-common/spring-boot-starter-x-trace-id/README.md) |
 
 ## Публикация
 

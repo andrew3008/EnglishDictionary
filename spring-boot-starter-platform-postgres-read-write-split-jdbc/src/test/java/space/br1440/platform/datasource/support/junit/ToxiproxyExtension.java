@@ -39,7 +39,8 @@ public class ToxiproxyExtension implements BeforeAllCallback, AfterAllCallback, 
         Network network = PgClusterExtension.network(context);
         ToxiproxyContainer container = new ToxiproxyContainer(TOXIPROXY_IMAGE)
                 .withNetwork(network)
-                .withNetworkAliases("toxiproxy");
+                .withNetworkAliases("toxiproxy")
+                .withReuse(false);
         container.start();
 
         ToxiproxyClient client = new ToxiproxyClient(container.getHost(), container.getControlPort());

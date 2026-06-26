@@ -1,6 +1,5 @@
 package space.br1440.platform.datasource.config;
 
-import space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,27 +8,19 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.datasource.config.factory.ReadDataSourceFactory;
-import space.br1440.platform.datasource.config.factory.WriteDataSourceFactory;
-import space.br1440.platform.datasource.configuration.support.ReadStrategyStartupLogger;
-import space.br1440.platform.datasource.configuration.support.RoutingStartupValidator;
-import space.br1440.platform.datasource.metrics.RoutingMetricNames;
+import space.br1440.platform.datasource.postgres.internal.pool.ReadDataSourceFactory;
+import space.br1440.platform.datasource.postgres.internal.pool.WriteDataSourceFactory;
+import space.br1440.platform.datasource.postgres.internal.integration.logging.ReadStrategyStartupLogger;
+import space.br1440.platform.datasource.postgres.api.properties.PgNode;
+import space.br1440.platform.datasource.postgres.api.properties.DataSourceRoutingMode;
+import space.br1440.platform.datasource.postgres.api.properties.PgClusterProperties;
+import space.br1440.platform.datasource.postgres.api.properties.PoolGroupProperties;
+import space.br1440.platform.datasource.postgres.api.properties.PoolProperties;
+import space.br1440.platform.datasource.postgres.internal.pool.PgClusterPropertiesValidator;
+import space.br1440.platform.datasource.postgres.internal.integration.metrics.RoutingMetricNames;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Закрепляет контракт публичных имён бинов {@code writeDataSource} и {@code readDataSource},
- * а также дефолтные имена HikariCP-пулов {@code postgres-cluster-write-pool} и {@code postgres-cluster-read-pool}.
- *
- * <p>Тест умышленно <b>не использует</b> {@code @SpringBootTest}: резолюция по
- * {@code @Qualifier} — это чистый Spring bean-factory концепт, и полный контекст
- * Boot'a тут избыточен. Достаточно {@link AnnotationConfigApplicationContext}
- * с минимальной @Configuration.
- *
- * <p>Этот тест — регрессионная страховка: переименование имени бина или пула
- * где-либо в коде ломает потребителей стартера (они используют
- * {@code @Qualifier("writeDataSource")} / {@code @Qualifier("readDataSource")}).
- */
 @DisplayName("writeDataSource/readDataSource qualifier + pool name contract")
 class WriteReadQualifierResolutionTest {
 
@@ -89,39 +80,39 @@ class WriteReadQualifierResolutionTest {
         return context;
     }
 
-    /**
-     * Минимальная тестовая конфигурация: только фабрики пулов и поддерживающие бины.
-     * Не поднимает Spring Boot auto-configuration, не требует YAML, не касается web/actuator.
-     * Пулы создаются с {@code initializationFailTimeout=-1} — без попытки подключения к БД.
-     */
     @Configuration
     static class MinimalRoutingTestConfig {
 
         @Bean
-        PostgresClusterDataSourceProperties props() {
-            // Активация autoconfig теперь идёт через env PG_TOPOLOGY=DIRECT, а не через property,
-            // поэтому setEnabled здесь больше не нужен — заполняем только данные кластера.
-            PostgresClusterDataSourceProperties p = new PostgresClusterDataSourceProperties();
-            p.setNodes(java.util.List.of("localhost:5432"));
-            p.setDatabase("testdb");
-            p.getCredentials().setUsername("user");
-            p.getCredentials().setPassword("pass");
-            return p;
+        PgClusterProperties props() {
+            return new PgClusterProperties(
+                    DataSourceRoutingMode.CLIENT,
+                    java.util.List.of(new PgNode("localhost", 5432)),
+                    "testdb",
+                    new PgClusterProperties.Credentials("user", "pass"),
+                    null,
+                    null,
+                    noConnectPool(),
+                    null);
+        }
+
+        private static PoolGroupProperties noConnectPool() {
+            PoolProperties write = poolWithNoConnect();
+            PoolProperties read = poolWithNoConnect();
+            return new PoolGroupProperties(write, read);
+        }
+
+        private static PoolProperties poolWithNoConnect() {
+            PoolProperties d = PoolProperties.defaults();
+            return new PoolProperties(
+                    d.poolName(), d.maximumPoolSize(), d.minimumIdle(), d.connectionTimeout(),
+                    d.maxLifetime(), d.keepaliveTime(), d.connectionTestQuery(),
+                    d.leakDetectionThreshold(), -1L, d.writerValidationMode());
         }
 
         @Bean
-        HikariRoutingProperties hikariProps() {
-            // HikariCP-специфичные настройки пулов живут в отдельном бине стартера.
-            // initializationFailTimeout=-1 — чтобы Hikari не открывал соединение к реальной БД.
-            HikariRoutingProperties h = new HikariRoutingProperties();
-            h.getWrite().setInitializationFailTimeout(-1);
-            h.getRead().setInitializationFailTimeout(-1);
-            return h;
-        }
-
-        @Bean
-        RoutingStartupValidator validator() {
-            return new RoutingStartupValidator();
+        PgClusterPropertiesValidator validator() {
+            return new PgClusterPropertiesValidator();
         }
 
         @Bean
@@ -130,7 +121,7 @@ class WriteReadQualifierResolutionTest {
         }
 
         @Bean
-        WriteDataSourceFactory writeFactory(RoutingStartupValidator v, ReadStrategyStartupLogger l) {
+        WriteDataSourceFactory writeFactory(PgClusterPropertiesValidator v, ReadStrategyStartupLogger l) {
             return new WriteDataSourceFactory(v, l);
         }
 
@@ -140,17 +131,13 @@ class WriteReadQualifierResolutionTest {
         }
 
         @Bean
-        HikariDataSource writeDataSource(WriteDataSourceFactory f,
-                                         PostgresClusterDataSourceProperties p,
-                                         HikariRoutingProperties h) {
-            return f.build(p, h);
+        HikariDataSource writeDataSource(WriteDataSourceFactory f, PgClusterProperties p) {
+            return f.build(p, p.pool());
         }
 
         @Bean
-        HikariDataSource readDataSource(ReadDataSourceFactory f,
-                                        PostgresClusterDataSourceProperties p,
-                                        HikariRoutingProperties h) {
-            return f.build(p, h);
+        HikariDataSource readDataSource(ReadDataSourceFactory f, PgClusterProperties p) {
+            return f.build(p, p.pool());
         }
 
         @Bean
@@ -160,10 +147,6 @@ class WriteReadQualifierResolutionTest {
         }
     }
 
-    /**
-     * Потребитель, имитирующий конечного пользователя стартера: получает два
-     * {@link HikariDataSource} строго по {@code @Qualifier}.
-     */
     static class Consumer {
         final HikariDataSource writeDs;
         final HikariDataSource readDs;

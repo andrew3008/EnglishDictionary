@@ -38,17 +38,24 @@ dependencies {
 
 | ENV | Свойство | Назначение |
 |---|---|---|
-| `PG_CLUSTER_NODES` | `nodes` (CSV → `List<String>`) | Узлы кластера в формате `host:port`. |
+| `PG_CLUSTER_NODES` | `nodes` (CSV → `List<PgNode>`) | Узлы кластера в формате `host:port`. |
 | `PG_DATABASE` | `database` | Имя базы. |
+| `PG_SCHEMA` | `jdbc.properties.currentSchema` | Схема базы данных. Если не задана — PostgreSQL сохраняет серверный `search_path`. Подробнее: [PostgreSQL Schema](#postgresql-schema). |
 | `PG_USERNAME` | `credentials.username` | Имя пользователя. Допускает пусто (passwordless / trust). |
 | `PG_PASSWORD` | `credentials.password` | Пароль. Допускает пусто (passwordless / trust). |
-| `PG_CONNECTION_PROPERTIES` | `connection-properties` (`k=v;k=v`) | Доп. параметры драйвера (`applicationName`, `sslmode`, `connectTimeout`, …). EPP отбрасывает `user`/`password`. |
+| `PG_CONNECTION_PROPERTIES` | `jdbc.properties.*` (`k=v;k=v`) | Доп. параметры драйвера (`applicationName`, `sslmode`, `connectTimeout`, …). EPP отбрасывает `user`/`password`. |
 
 ### Приоритет источников (от низшего к высшему)
 
-1. `MapPropertySource`, добавленный EPP в самый конец `propertySources` — дефолты из `PG_*`.
-2. `application.yml` потребителя.
-3. OS environment / system properties (`PLATFORM_DATASOURCE_POSTGRES_CLUSTER_*`).
+1. EPP `MapPropertySource` — `pg-cluster-env` (самый конец `propertySources`): `PG_*` ENV-переменные.
+2. Packaged `application.yml` (classpath, в составе JAR).
+3. External `application.yml` (`spring.config.location`).
+4. `@TestPropertySource` / `@DynamicPropertySource` / `withPropertyValues` в тестах.
+5. OS environment variables (`PLATFORM_DATASOURCE_POSTGRES_CLUSTER_*`).
+6. System properties (`-D...`), command-line args.
+
+> Уровни 2–6 перекрывают уровень 1. Для переопределения `currentSchema` достаточно добавить
+> `platform.datasource.postgres-cluster.jdbc.properties.currentSchema=<schema>` в `application.yml`.
 
 ### Ключевые свойства
 
@@ -62,9 +69,62 @@ dependencies {
 | `platform.datasource.postgres-cluster.hikari.write.*` | см. [`HikariRoutingProperties`](src/main/java/space/br1440/platform/datasource/config/HikariRoutingProperties.java) | HikariCP write-пула. |
 | `platform.datasource.postgres-cluster.hikari.read.*` | см. `HikariRoutingProperties` | HikariCP read-пула. `readOnly=true` устанавливается принудительно. |
 
-Cхема (PostgreSQL `search_path`) **не управляется стартером** (SRP — стартер отвечает за топологию и пулы, а не за SQL-слой). Задаётся в ORM:
-- JPA: `spring.jpa.properties.hibernate.default_schema`;
-- JDBC/jOOQ: квалифицированные имена либо `SET search_path` в начале сессии.
+---
+
+## PostgreSQL Schema
+
+Стартер поддерживает задание схемы через переменную окружения `PG_SCHEMA`. Значение транслируется
+в параметр `currentSchema` JDBC URL, что устанавливает `search_path` для каждого соединения на
+уровне драйвера pgJDBC.
+
+### Поведение по умолчанию
+
+Если `PG_SCHEMA` **не задана** — стартер **не добавляет** `currentSchema` в JDBC URL. PostgreSQL
+сохраняет серверный `search_path` (`"$user", public`). Это non-breaking default.
+
+### Задание схемы
+
+```bash
+# Kubernetes Pod env / docker-compose
+PG_SCHEMA=my_app_schema
+```
+
+Или через `application.yml` (приоритет 2+, перекрывает `PG_SCHEMA`):
+
+```yaml
+platform.datasource.postgres-cluster:
+  jdbc:
+    properties:
+      currentSchema: my_app_schema
+```
+
+### Приоритет `currentSchema`
+
+Если `currentSchema` задан несколькими способами одновременно — выигрывает источник с
+наибольшим приоритетом (см. [Приоритет источников](#приоритет-источников-от-низшего-к-высшему)):
+`application.yml` > `PG_SCHEMA` via EPP.
+
+### Предупреждение: `PG_SCHEMA` и `currentSchema` в `PG_CONNECTION_PROPERTIES`
+
+Если `currentSchema` задан одновременно через `PG_SCHEMA` **и** через `PG_CONNECTION_PROPERTIES`
+(например `currentSchema=foo`), стартер логирует `WARN` и использует значение `PG_SCHEMA` в
+canonical EPP map. Чтобы устранить предупреждение — используйте только один из двух источников.
+
+### Предупреждение: `PG_SCHEMA=public`
+
+> **Не рекомендуется** задавать `PG_SCHEMA=public` явно, если ваше приложение полагается
+> на `$user`-схему или `pg_temp` в `search_path`.
+>
+> При `currentSchema=public` pgJDBC устанавливает `SET search_path = public`, что **убирает
+> `"$user"` и `pg_temp`** из пути поиска — это отличается от серверного дефолта
+> `"$user", public`. Если конкретная схема не нужна, просто не задавайте `PG_SCHEMA`.
+
+### Миграционное руководство
+
+Если вы ранее задавали схему через `PG_CONNECTION_PROPERTIES=currentSchema=my_schema`:
+
+1. Перейдите на `PG_SCHEMA=my_schema` (рекомендуется) **или** оставьте `PG_CONNECTION_PROPERTIES` без изменений.
+2. Не задавайте оба источника одновременно — появится `WARN` в логах при старте.
 
 ---
 
@@ -83,7 +143,7 @@ Write-пул всегда `targetServerType=primary` — стратегия не
 
 ## Маршрутизация и API потребителя
 
-Решение о том, какой пул использовать, принимается в [`RoutingDataSource.resolveKey()`](src/main/java/space/br1440/platform/datasource/postgres/RoutingDataSource.java):
+Решение о том, какой пул использовать, принимается в [`RoutingDataSource.resolveKey()`](src/main/java/space/br1440/platform/datasource/postgres1/RoutingDataSource.java):
 
 1. Явный override через `DataSourceContextHolder` (устанавливается аннотацией `@UseReadReplica` или [`RoutingDSLContextFactory`](src/main/java/space/br1440/platform/datasource/jooq/RoutingDSLContextFactory.java)).
 2. `@Transactional(readOnly = true)` (`TransactionSynchronizationManager.isCurrentTransactionReadOnly()`).
@@ -103,7 +163,7 @@ public List<Order> findRecent() { ... }
 public Stats sumOpen() { ... }
 ```
 
-Аспект — [`NonTransactionalRoutingAspect`](src/main/java/space/br1440/platform/datasource/postgres/NonTransactionalRoutingAspect.java), `Order = HIGHEST_PRECEDENCE`. **Комбинирование `@UseReadReplica` с `@Transactional` запрещено**: стартап падает с `IllegalStateException` через `RoutingAnnotationConflictValidator`. Для read-only транзакций — `@Transactional(readOnly = true)`.
+Аспект — [`NonTransactionalRoutingAspect`](src/main/java/space/br1440/platform/datasource/postgres1/NonTransactionalRoutingAspect.java), `Order = HIGHEST_PRECEDENCE`. **Комбинирование `@UseReadReplica` с `@Transactional` запрещено**: стартап падает с `IllegalStateException` через `RoutingAnnotationConflictValidator`. Для read-only транзакций — `@Transactional(readOnly = true)`.
 
 ### jOOQ вне Spring-транзакций
 
@@ -156,26 +216,63 @@ dslFactory.writeVoid(dsl ->
 
 ### Health (Actuator)
 
-[`CqrsRoutingHealthIndicator`](src/main/java/space/br1440/platform/datasource/health/CqrsRoutingHealthIndicator.java) регистрируется как `routingHealthIndicator` → ключ Actuator `routing` → путь `/actuator/health/routing`.
+[`DataSourceRoutingHealthIndicator`](src/main/java/space/br1440/platform/datasource/postgres/internal/integration/health/DataSourceRoutingHealthIndicator.java) регистрируется как `routingHealthIndicator` → ключ Actuator `routing` → путь `/actuator/health/routing`.
 
-Для каждого пула параллельно (на virtual threads, таймаут 5 с) выполняется `SELECT pg_is_in_recovery()`. Один SQL даёт сразу два сигнала: факт доступности и физическую роль ноды (`primary` / `standby`).
+Для каждого пула выполняется `SELECT pg_is_in_recovery()` с `Statement.setQueryTimeout` (настраивается отдельно от response deadline). Single-flight coordinator ограничивает одновременные JDBC-probe **двумя** задачами (write + read); response может завершиться по `health.timeout`, тогда as-yet-running JDBC tasks дренируются через query timeout и pgJDBC/Hikari timeouts.
+
+```yaml
+platform:
+  datasource:
+    postgres-cluster:
+      health:
+        timeout: 5s          # response latency (Actuator caller wait)
+        query-timeout: 3s    # SQL execution after connection acquired
+```
+
+**Timeout budget (операционный контракт):**
+
+| Фаза | Ограничение |
+|---|---|
+| Response latency | `platform.datasource.postgres-cluster.health.timeout` |
+| SQL execution | `health.query-timeout` → `Statement.setQueryTimeout` |
+| Connection acquisition | Hikari `connectionTimeout` (не меняется стартером) |
+| Network read | pgJDBC `socketTimeout` (не меняется стартером) |
+
+Риск: `socketTimeout=0` у pgJDBC — JDBC task может дренироваться неограниченно; single-flight ограничивает **число** задач (≤2), но не гарантирует их завершение.
 
 ```json
 {
   "status": "UP",
-  "components": {
-    "routing": {
-      "status": "UP",
-      "details": {
-        "write": { "status": "UP", "pgRole": "primary" },
-        "read":  { "status": "UP", "pgRole": "standby" }
-      }
-    }
+  "details": {
+    "readMode": "SECONDARY_PREFERRED",
+    "write": { "status": "UP", "pgRole": "primary" },
+    "read":  { "status": "UP", "pgRole": "standby" }
   }
 }
 ```
 
-Агрегат: `UP` (оба пула), `DEGRADED` (один из двух), `DOWN` (оба).
+При failure компонент содержит `failureType` (без raw exception message). Агрегат: `UP` / `DEGRADED` / `DOWN` по `ReadMode`.
+
+**Readiness (нормативный operational endpoint):**
+
+```yaml
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,routing
+          status:
+            order: down,out-of-service,degraded,unknown,up
+            http-mapping:
+              down: 503
+              out-of-service: 503
+              degraded: 503
+```
+
+`routing` **не** включается в liveness. Root `/actuator/health` **не гарантирует** сохранение `DEGRADED` без явного global opt-in (`@Import(DegradedStatusConfiguration)` или собственные beans).
+
+Global `StatusAggregator` / `HttpCodeStatusMapper` стартером **не** регистрируются.
 
 ### Метрики (Micrometer)
 
@@ -211,4 +308,4 @@ dslFactory.writeVoid(dsl ->
 
 ### Ротация пароля БД
 
-[`PasswordExpiryRetryDataSourceProxy`](src/main/java/space/br1440/platform/datasource/postgres/PasswordExpiryRetryDataSourceProxy.java) перехватывает `SQLSTATE 28P01`, дёргает callback с `softEvictConnections()` для обоих пулов и однократно повторяет `getConnection()`.
+[`PasswordExpiryRetryDataSourceProxy`](src/main/java/space/br1440/platform/datasource/postgres1/PasswordExpiryRetryDataSourceProxy.java) перехватывает `SQLSTATE 28P01`, дёргает callback с `softEvictConnections()` для обоих пулов и однократно повторяет `getConnection()`.

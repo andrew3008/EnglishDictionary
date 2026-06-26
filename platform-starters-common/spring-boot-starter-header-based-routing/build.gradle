@@ -1,0 +1,45 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+group = rootProject.group
+version = rootProject.version
+
+description = 'Header-based routing: контекст маршрутизации и интеграции HTTP, gRPC, Feign/WebClient.'
+
+tasks.named('jar', Jar).configure {
+    archiveBaseName = 'spring-boot-starter-header-based-routing'
+}
+
+publishing {
+    publications.named('mavenJava', MavenPublication).configure {
+        artifactId = 'spring-boot-starter-header-based-routing'
+        pom.description.set(project.description)
+    }
+}
+
+dependencies {
+    // Стартер собирается как тонкая обвязка поверх Spring/Feign/gRPC — только compileOnly
+    compileOnly 'org.springframework.boot:spring-boot'
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'org.springframework:spring-webflux'
+    // Версия задаётся платформенным BOM (не входит в spring-boot-dependencies)
+    compileOnly 'org.springframework.cloud:spring-cloud-openfeign-core'
+    compileOnly 'io.grpc:grpc-api'
+    compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation libs.archunit.junit5
+}

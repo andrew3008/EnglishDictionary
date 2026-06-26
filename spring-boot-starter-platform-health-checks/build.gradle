@@ -1,6 +1,11 @@
 plugins {
     id 'platform.java-library-publish'
+    id 'platform.java-library'
     id 'platform.testing'
+}
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
 dependencies {
@@ -55,8 +60,4 @@ dependencies {
 
     // Validation
     testImplementation 'org.springframework.boot:spring-boot-starter-validation'
-}
-
-tasks.named('test', Test) {
-    environment 'DOCKER_HOST', System.getenv('DOCKER_HOST') ?: 'unix:///var/run/docker.sock'
 }

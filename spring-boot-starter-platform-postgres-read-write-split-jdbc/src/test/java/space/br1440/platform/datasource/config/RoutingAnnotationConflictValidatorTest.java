@@ -4,7 +4,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.transaction.annotation.Transactional;
-import space.br1440.platform.datasource.annotation.UseReadReplica;
+import space.br1440.platform.datasource.postgres.api.routing.UseReadReplica;
+import space.br1440.platform.datasource.postgres.internal.proxy.aop.RoutingAnnotationConflictValidator;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

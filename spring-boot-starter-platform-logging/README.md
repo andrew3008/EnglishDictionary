@@ -162,6 +162,30 @@ rules:
 | **@MDCLogKey**   | Параметр                   | Определяет ключ MDC, под которым будет сохранено значение параметра.               | Для передачи в логи бизнес-идентификаторов: requestId, userId, orderId.          |
 | **@Masked**      | Параметр                   | Маскирует значение параметра, предотвращая утечку чувствительных данных.           | Для токенов, паролей, персональных данных и других конфиденциальных значений.    |
 
+## MDC-контракт с platform-tracing v1
+
+При подключении `spring-boot-starter-platform-tracing` tracing-стarter **записывает** в SLF4J MDC
+следующие ключи (camelCase, W3C/Micrometer):
+
+| MDC-ключ | Константа в logging | Источник (writer) |
+|----------|---------------------|-------------------|
+| `traceId` | `TracingMdcLogKeys.TRACE_ID` | `micrometer-tracing-bridge-otel` (interim) или OTel Agent `logback-mdc` (production) |
+| `spanId` | `TracingMdcLogKeys.SPAN_ID` | то же |
+| `traceFlags` | `TracingMdcLogKeys.TRACE_FLAGS` | то же |
+
+Logging-стартер **только читает** эти ключи:
+
+- **Текстовый паттерн** (`PLATFORM-CONSOLE-TEXT`): блок `%maskedMDC` выводит все MDC-поля,
+  кроме служебных из `platform.http-logging.mdc-excluded-keys` (по умолчанию HTTP timing и
+  `correlation_id`; ключи `traceId`/`spanId`/`traceFlags` **не** исключаются).
+- **JSON** (`PLATFORM-CONSOLE-JSON`, `PLATFORM-FILE-JSON`): `LogstashEncoder` включает MDC-поля
+  автоматически.
+
+Устаревшие snake_case-ключи (`trace_id`, `span_id`, `trace_flags`) в v1 **не поддерживаются**.
+
+Циклическая зависимость на `platform-tracing-api` отсутствует — контракт зафиксирован
+дублированием строк в `TracingMdcLogKeys` (logging) и `TracingMdcKeys` (tracing).
+
 Пример использования аннотаций:
 ```java
 public class ProfileService {

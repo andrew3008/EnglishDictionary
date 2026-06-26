@@ -8,10 +8,11 @@
 //  выражением `api platform(...)` (Gradle). За счёт этого версии управляемых зависимостей 
 //  выравниваются между всеми сервисами, использующими платформенные стартеры.
 //
-//  Импортирует Spring Boot BOM (`spring-boot-dependencies`) и расширяет его
-//  набором ограничений (constraints), необходимых платформе вне контракта Spring Boot. 
-//  Задавать в `constraints` зависимости, которые уже управляет Spring Boot BOM, 
-//  не следует — это создаёт дрейф версий между релизами Boot.
+//  Импортирует общий `space.br1440.platform:platform-bom` (тот, в свою очередь,
+//  подтягивает Spring Boot BOM `spring-boot-dependencies`) и расширяет результат
+//  набором ограничений (constraints), необходимых стартерам вне контракта Spring Boot.
+//  Задавать в `constraints` зависимости, которые уже управляет Spring Boot / platform-bom,
+//  не следует — это создаёт дрейф версий между релизами.
 //
 //  Критерий включения зависимости
 //  ------------------------------
@@ -34,29 +35,18 @@
 //     по умолчанию задаётся подстановкой `${rootProject.version}` и не должна
 //     указываться литералом — иначе при подъёме общей версии платформы получают
 //     расхождение между опубликованным BOM и фактическими артефактами.
-//     Исключение — артефакты с независимым жизненным циклом (версии в каталоге
-//     `gradle/libs.versions.toml`, напр. `errorHandlingModel` для модуля
-//     `error-handling-model`). Для них в `constraints` указывается явная
-//     версия через `libs.versions.<ключ>.get()` — см. блок «Внутренние контрактные модули».
-//
-//  Версии внутренних модулей с независимым жизненным циклом
-//  --------------------------------------------------------
-//  Единственный источник истины для версий таких модулей — каталог
-//  `gradle/libs.versions.toml`. Один и тот же ключ используется в двух
-//  местах монорепозитория и из них же подтягивается в BOM:
-//   * в `build.gradle` самого модуля — как `version = libs.versions.<ключ>.get()`;
-//   * в этом BOM — как `api "space.br1440.platform:<artifactId>:${libs.versions.<ключ>.get()}"`.
-//  Благодаря единому ключу версия опубликованного артефакта и значение
-//  констрейнта BOM не расходятся, а потребители платформы подключают
-//  такой модуль без явной версии — её навязывает BOM. Каталог версий
-//  (`libs.versions.toml`) потребителям не доставляется.
+//     Контрактные модули (`error-handling-model`, `tracing-api`) публикуются
+//     из собственных репозиториев; их версии в `constraints` фиксируются литералом.
 // =============================================================================
 
 plugins {
-    id 'platform.java-platform-bom'
+    id 'platform.java-platform-publish'
 }
 
 dependencies {
+    // Общий платформенный BOM: Spring Boot + общие constraints (commons-lang3, jetbrains и т.д.)
+    api platform("space.br1440.platform:platform-bom:${libs.versions.platformBom.get()}")
+
     constraints {
         // ---------------------------------------------------------------------
         // Логирование и диагностика
@@ -66,13 +56,7 @@ dependencies {
         // ---------------------------------------------------------------------
         // Общие утилиты и инструменты сборки
         // ---------------------------------------------------------------------
-        api "org.apache.commons:commons-lang3:${libs.versions.bom.commons.get()}"
         api "com.github.f4b6a3:uuid-creator:${libs.versions.bom.uuid.get()}"
-
-        // ---------------------------------------------------------------------
-        // Аннотации `@NotNull` / `@Nullable`
-        // ---------------------------------------------------------------------
-        api "org.jetbrains:annotations:${libs.versions.bom.jetbrains.get()}"
 
         // ---------------------------------------------------------------------
         // Интеграция gRPC
@@ -85,12 +69,14 @@ dependencies {
         api "org.springframework.cloud:spring-cloud-openfeign-core:${libs.versions.bom.openfeign.get()}"
 
         // ---------------------------------------------------------------------
-        // Внутренние контрактные модули платформы (модели данных, API, SPI),
-        // на которые опираются стартеры и прикладные сервисы.
-        // Версии берутся из libs.versions.toml или rootProject.version согласно регламенту.
+        // Контрактные модули платформы (публикуются из отдельных репозиториев)
         // ---------------------------------------------------------------------
         api "space.br1440.platform:error-handling-model:${libs.versions.errorHandlingModel.get()}"
-        api "space.br1440.platform:tracing-api:${rootProject.version}"
+        api "space.br1440.platform.starters:spring-boot-starter-platform-tracing-api:${rootProject.version}"
+
+        api "space.br1440.platform.starters.error-handling:spring-boot-starter-platform-error-handling-core:${rootProject.version}"
+        api "space.br1440.platform.starters.error-handling:spring-boot-starter-platform-error-handling-mvc:${rootProject.version}"
+        api "space.br1440.platform.starters.error-handling:spring-boot-starter-platform-error-handling-webflux:${rootProject.version}"
 
         // ---------------------------------------------------------------------
         // Zalando Logbook
@@ -104,23 +90,5 @@ dependencies {
         api "io.minio:minio:${libs.versions.bom.minio.get()}"
         api "com.squareup.okhttp3:okhttp:${libs.versions.bom.okhttp.get()}"
         api "io.github.resilience4j:resilience4j-timelimiter:${libs.versions.bom.resilience.get()}"
-
-        // ---------------------------------------------------------------------
-        // Prometheus client (io.prometheus:prometheus-metrics-*)
-        // ---------------------------------------------------------------------
-        // Override Spring Boot 3.5.6 BOM: spring-boot-dependencies задаёт
-        // prometheus-metrics-exposition-textformats=1.3.10, тогда как остальное
-        // семейство io.prometheus:prometheus-metrics-* приходит
-        // на версии 1.3.6. Выравнивание семьи на 1.3.6, чтобы устранить
-        // рассинхрон версий внутри одной группы артефактов у потребителей,
-        // подключающих micrometer-registry-prometheus.
-        api "io.prometheus:prometheus-metrics-exposition-textformats:${libs.versions.bom.prometheus.get()}"
     }
-
-    // ---------------------------------------------------------------------
-    // Официальный BOM Spring Boot, который задаёт согласованные версии
-    // управляемых артефактов релиза Spring Boot — ядра Spring Framework и Spring Boot,
-    // Jackson-BOM, Micrometer и иных сопутствующих библиотек.
-    // ---------------------------------------------------------------------
-    api platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.bom.springboot.get()}")
 }

@@ -188,16 +188,93 @@ class KafkaProducerMetricsAdrTest {
     @DisplayName("Без Callback (TimingFuture)")
     class WithoutCallback {
 
+        @SuppressWarnings("unchecked")
+        private void stubNoCallbackSend(Producer<Object, Object> raw, RecordMetadata meta, RuntimeException error) {
+            doAnswer(inv -> {
+                Callback cb = inv.getArgument(1);
+                cb.onCompletion(error == null ? meta : null, error);
+                return error == null
+                        ? CompletableFuture.completedFuture(meta)
+                        : CompletableFuture.failedFuture(error);
+            }).when(raw).send(any(ProducerRecord.class), any(Callback.class));
+        }
+
+        @Test
+        @DisplayName("result=success + lag_seconds при async completion без Future.get()")
+        @SuppressWarnings("unchecked")
+        void asyncCompletionWithoutFutureGetIncrementsResultSuccessAndRecordsLag() {
+            RecordMetadata meta = successMetadata();
+            Producer<Object, Object> raw = mockRawProducer(CLIENT_ID);
+            stubNoCallbackSend(raw, meta, null);
+
+            decorate(raw).send(record());
+
+            Counter counter = MetricsTestSupport.findCounter(registry, "platform_producer_messages_total",
+                    MetricTags.TOPIC, TOPIC,
+                    MetricTags.CLIENT_ID, CLIENT_ID,
+                    MetricTags.RESULT, MetricTags.RESULT_SUCCESS);
+            assertThat(counter.count()).isEqualTo(1.0);
+
+            Timer lagTimer = MetricsTestSupport.findTimer(registry, "platform_producer_lag_seconds",
+                    MetricTags.TOPIC, TOPIC,
+                    MetricTags.CLIENT_ID, CLIENT_ID);
+            assertThat(lagTimer.count()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("result=failure при async completion без Future.get(); lag_seconds не записывается")
+        @SuppressWarnings("unchecked")
+        void asyncCompletionFailureWithoutFutureGetIncrementsResultFailure() {
+            RuntimeException brokerError = new RuntimeException("broker unavailable");
+            Producer<Object, Object> raw = mockRawProducer(CLIENT_ID);
+            stubNoCallbackSend(raw, null, brokerError);
+
+            decorate(raw).send(record());
+
+            Counter counter = MetricsTestSupport.findCounter(registry, "platform_producer_messages_total",
+                    MetricTags.TOPIC, TOPIC,
+                    MetricTags.CLIENT_ID, CLIENT_ID,
+                    MetricTags.RESULT, MetricTags.RESULT_FAILURE);
+            assertThat(counter.count()).isEqualTo(1.0);
+
+            assertThat(registry.find("platform_producer_lag_seconds")
+                    .tags(MetricTags.TOPIC, TOPIC, MetricTags.CLIENT_ID, CLIENT_ID)
+                    .timer()).isNull();
+        }
+
+        @Test
+        @DisplayName("async completion + Future.get() не double-count")
+        @SuppressWarnings("unchecked")
+        void asyncCompletionAndFutureGetDoNotDoubleCount() throws Exception {
+            RecordMetadata meta = successMetadata();
+            Producer<Object, Object> raw = mockRawProducer(CLIENT_ID);
+            stubNoCallbackSend(raw, meta, null);
+
+            Future<RecordMetadata> future = decorate(raw).send(record());
+            future.get();
+
+            Counter counter = MetricsTestSupport.findCounter(registry, "platform_producer_messages_total",
+                    MetricTags.TOPIC, TOPIC,
+                    MetricTags.CLIENT_ID, CLIENT_ID,
+                    MetricTags.RESULT, MetricTags.RESULT_SUCCESS);
+            assertThat(counter.count()).isEqualTo(1.0);
+
+            Timer lagTimer = MetricsTestSupport.findTimer(registry, "platform_producer_lag_seconds",
+                    MetricTags.TOPIC, TOPIC,
+                    MetricTags.CLIENT_ID, CLIENT_ID);
+            assertThat(lagTimer.count()).isEqualTo(1L);
+        }
+
         @Test
         @DisplayName("result=success + lag_seconds при успешном Future.get()")
         @SuppressWarnings("unchecked")
         void futureGetSuccessIncrementsResultSuccessAndRecordsLag() throws Exception {
             RecordMetadata meta = successMetadata();
             Producer<Object, Object> raw = mockRawProducer(CLIENT_ID);
-            doReturn(CompletableFuture.completedFuture(meta)).when(raw).send(any(ProducerRecord.class));
+            stubNoCallbackSend(raw, meta, null);
 
             Future<RecordMetadata> future = decorate(raw).send(record());
-            future.get(); // вызывает TimingFuture.get() → recordLag()
+            future.get();
 
             Counter counter = MetricsTestSupport.findCounter(registry, "platform_producer_messages_total",
                     MetricTags.TOPIC, TOPIC,
@@ -217,7 +294,7 @@ class KafkaProducerMetricsAdrTest {
         void futureGetFailureIncrementsResultFailure() {
             RuntimeException cause = new RuntimeException("broker down");
             Producer<Object, Object> raw = mockRawProducer(CLIENT_ID);
-            doReturn(CompletableFuture.failedFuture(cause)).when(raw).send(any(ProducerRecord.class));
+            stubNoCallbackSend(raw, null, cause);
 
             Future<RecordMetadata> future = decorate(raw).send(record());
             assertThatThrownBy(future::get).isInstanceOf(ExecutionException.class);
@@ -228,7 +305,6 @@ class KafkaProducerMetricsAdrTest {
                     MetricTags.RESULT, MetricTags.RESULT_FAILURE);
             assertThat(counter.count()).isEqualTo(1.0);
 
-            // success НЕ должен быть записан
             assertThat(MetricsTestSupport.findCounterOrNull(registry, "platform_producer_messages_total",
                     MetricTags.TOPIC, TOPIC,
                     MetricTags.CLIENT_ID, CLIENT_ID,
@@ -242,9 +318,11 @@ class KafkaProducerMetricsAdrTest {
             RecordMetadata meta = successMetadata();
             Producer<Object, Object> raw = mockRawProducer(CLIENT_ID);
             doAnswer(inv -> {
-                Thread.sleep(2); // минимальная задержка, чтобы lag > 0
+                Thread.sleep(2);
+                Callback cb = inv.getArgument(1);
+                cb.onCompletion(meta, null);
                 return CompletableFuture.completedFuture(meta);
-            }).when(raw).send(any(ProducerRecord.class));
+            }).when(raw).send(any(ProducerRecord.class), any(Callback.class));
 
             decorate(raw).send(record()).get();
 

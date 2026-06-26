@@ -105,18 +105,22 @@ public class HttpMetricsFilter extends OncePerRequestFilter implements Ordered {
             return StringUtils.hasText(requestUri) ? requestUri : UNKNOWN_PATH;
         }
 
-        Object bestMatchingPattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-        if (bestMatchingPattern != null) {
-            return bestMatchingPattern.toString();
+        int status = response.getStatus();
+        if (isRedirectStatus(status)) {
+            return REDIRECTION_PATH;
         }
 
-        int status = response.getStatus();
-        if (status == HttpServletResponse.SC_MOVED_PERMANENTLY
-                || status == HttpServletResponse.SC_MOVED_TEMPORARILY
-                || status == HttpServletResponse.SC_SEE_OTHER
-                || status == HttpServletResponse.SC_TEMPORARY_REDIRECT
-                || status == HTTP_STATUS_PERMANENT_REDIRECT) {
-            return REDIRECTION_PATH;
+        Object bestMatchingPattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        if (bestMatchingPattern != null) {
+            String pattern = bestMatchingPattern.toString();
+            if (status == HttpServletResponse.SC_NOT_FOUND
+                    && ("/**".equals(pattern) || pattern.endsWith("/**"))) {
+                return NOT_FOUND_PATH;
+            }
+            if ("/".equals(pattern)) {
+                return ROOT_PATH;
+            }
+            return pattern;
         }
 
         if (status == HttpServletResponse.SC_NOT_FOUND) {
@@ -129,5 +133,13 @@ public class HttpMetricsFilter extends OncePerRequestFilter implements Ordered {
         }
 
         return UNKNOWN_PATH;
+    }
+
+    private static boolean isRedirectStatus(int status) {
+        return status == HttpServletResponse.SC_MOVED_PERMANENTLY
+                || status == HttpServletResponse.SC_MOVED_TEMPORARILY
+                || status == HttpServletResponse.SC_SEE_OTHER
+                || status == HttpServletResponse.SC_TEMPORARY_REDIRECT
+                || status == HTTP_STATUS_PERMANENT_REDIRECT;
     }
 }

@@ -17,33 +17,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-/**
- * {@link BatchInterceptor} платформенных метрик для listener'ов с {@code @KafkaListener(batch = true)}.
- *
- * <p>Публикует:</p>
- * <ul>
- *   <li>{@code platform_consumer_batch_processing_seconds} — Timer длительности обработки
- *       batch'а; теги {@code outcome}, {@code exception_class}, {@code topic},
- *       {@code client_id}, {@code consumer_group};</li>
- *   <li>{@code platform_consumer_batch_messages_total} — DistributionSummary размера
- *       batch'а в записях (baseUnit = "records");</li>
- *   <li>{@code platform_consumer_messages_total} с {@code result=failure} — по одному инкременту
- *       на топик, присутствующий в batch'е, при ошибке обработки.</li>
- * </ul>
- *
- * <h3>Мульти-topic batch</h3>
- * <p>Если один batch содержит записи из нескольких топиков, одна и та же
- * {@code durationNanos} публикуется отдельно для каждого топика (разные time-series
- * с тегом {@code topic}). Это намеренно: каждая серия отражает длительность
- * обработки batch'а с точки зрения данного топика.
- * <b>Не следует суммировать</b> эту latency по всем топикам в PromQL —
- * сумма завысит вклад одного реального прохода listener'а.</p>
- *
- * <h3>ThreadLocal для времени старта</h3>
- * <p>В отличие от {@link ProcessRecordInterceptor}, для batch-сценария стартовое время
- * сохраняется в {@link ThreadLocal}: {@code intercept} и {@code success}/{@code failure}
- * вызываются Spring Kafka в одном потоке listener-контейнера.</p>
- */
+
 @Slf4j
 @RequiredArgsConstructor
 public class BatchProcessInterceptor implements BatchInterceptor<Object, Object> {
@@ -68,6 +42,17 @@ public class BatchProcessInterceptor implements BatchInterceptor<Object, Object>
     public void success(ConsumerRecords<Object, Object> records, Consumer<Object, Object> consumer) {
         Map<String, Integer> sizesByTopic = batchSizeByTopic(records);
         finish(consumer, MetricTags.OUTCOME_SUCCESS, null, sizesByTopic);
+
+        try {
+            String clientId = resolveClientId(consumer);
+            String group = resolveGroupId(consumer);
+            for (Map.Entry<String, Integer> e : sizesByTopic.entrySet()) {
+                platformMetrics.kafkaConsumerTotal(e.getKey(), clientId, group, MetricTags.RESULT_SUCCESS)
+                        .increment(e.getValue());
+            }
+        } catch (Exception e) {
+            log.debug("Failed to increment batch success counter", e);
+        }
     }
 
     @Override

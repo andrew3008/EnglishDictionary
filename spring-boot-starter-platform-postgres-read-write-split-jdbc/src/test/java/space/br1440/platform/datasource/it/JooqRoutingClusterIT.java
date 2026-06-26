@@ -6,11 +6,10 @@ import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import space.br1440.platform.datasource.jooq.RoutingDSLContextFactory;
+import space.br1440.platform.datasource.postgres.api.jooq.RoutingDSLContextFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;

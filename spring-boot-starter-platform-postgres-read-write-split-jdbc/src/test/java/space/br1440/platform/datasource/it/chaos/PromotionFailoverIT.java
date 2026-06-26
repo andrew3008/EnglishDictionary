@@ -6,10 +6,14 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.Container.ExecResult;
+import space.br1440.platform.datasource.support.junit.PgClusterScope;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension.PgCluster;
 
@@ -35,7 +39,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * стартовое состояние. Ниже использован {@link org.junit.jupiter.api.Order @Order} (см. JUnit 5 BOM).
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@PgClusterScope(PgClusterScope.Mode.ISOLATED)
 @ExtendWith(PgClusterExtension.class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Failover: pg_promote() на replica")
 class PromotionFailoverIT {
 
@@ -57,6 +63,7 @@ class PromotionFailoverIT {
     }
 
     @Test
+    @Order(1)
     @DisplayName("До промоции: replica.pg_is_in_recovery() = true")
     void replica_isInRecovery_initially() throws Exception {
         try (Connection conn = replicaPool.getConnection();
@@ -68,6 +75,7 @@ class PromotionFailoverIT {
     }
 
     @Test
+    @Order(2)
     @DisplayName("pg_promote() на replica → переходит в primary, доступен DML; await до 30s")
     void replicaPromotion_acceptsWrites() throws Exception {
         // выполняем pg_promote() через psql внутри контейнера replica (postgres user)

@@ -12,8 +12,9 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
-import space.br1440.platform.datasource.configuration.condition.OnPgTopologyDirectCondition;
-import space.br1440.platform.datasource.postgres.DataSourceRoutingLifecycle;
+import org.springframework.context.SmartLifecycle;
+import space.br1440.platform.datasource.postgres.internal.proxy.lifecycle.DataSourceRoutingLifecycle;
+import space.br1440.platform.datasource.support.junit.ClusterRoutingItProperties;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension.PgCluster;
 
@@ -26,30 +27,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Проверяет, что graceful shutdown библиотеки реально закрывает HikariCP-пулы:
  * после {@link ConfigurableApplicationContext#close()} оба пула становятся {@code closed=true}.
  * <p>
- * Контекст стартует по zero-config контракту: {@code PG_*} «environment variables»
- * подаются через {@link SpringApplication#setDefaultProperties(Map)}, и
- * {@code PostgresClusterEnvironmentPostProcessor} штатно мапит их в канонические
- * {@code platform.datasource.postgres-cluster.*} ключи.
+ * Контекст стартует с canonical {@value PgClusterProperties#PREFIX}.* keys
+ * (см. {@link ClusterRoutingItProperties#baseClusterContextProperties}).
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(PgClusterExtension.class)
 @DisplayName("DataSourceRoutingLifecycle: graceful shutdown")
 class LifecycleShutdownClusterIT {
 
-    private PgCluster cluster;
     private ConfigurableApplicationContext context;
 
     @BeforeAll
     void start(PgCluster cluster) {
-        this.cluster = cluster;
-        Map<String, Object> props = new HashMap<>();
-        props.put("spring.main.web-application-type", "none");
-        props.put("spring.main.banner-mode", "off");
-        props.put(OnPgTopologyDirectCondition.ENV_VAR, OnPgTopologyDirectCondition.DIRECT);
-        props.put("PG_CLUSTER_NODES", cluster.pgNodesString());
-        props.put("PG_DATABASE", cluster.dbName());
-        props.put("PG_USERNAME", cluster.username());
-        props.put("PG_PASSWORD", cluster.password());
+        Map<String, Object> props = new HashMap<>(ClusterRoutingItProperties.baseClusterContextProperties(cluster));
 
         SpringApplication app = new SpringApplication(LifecycleApp.class);
         app.setWebApplicationType(WebApplicationType.NONE);
@@ -65,8 +55,8 @@ class LifecycleShutdownClusterIT {
     }
 
     @Test
-    @DisplayName("Graceful shutdown закрывает оба HikariCP-пула")
-    void contextClose_closesBothPools() {
+    @DisplayName("Graceful shutdown закрывает оба HikariCP-пула + stop() идемпотентен")
+    void contextClose_closesBothPools_andStopIsIdempotent() {
         HikariDataSource master = (HikariDataSource) context.getBean("writeDataSource");
         HikariDataSource replica = (HikariDataSource) context.getBean("readDataSource");
         DataSourceRoutingLifecycle lifecycle = context.getBean(DataSourceRoutingLifecycle.class);
@@ -74,13 +64,20 @@ class LifecycleShutdownClusterIT {
         assertThat(master.isClosed()).isFalse();
         assertThat(replica.isClosed()).isFalse();
         assertThat(lifecycle.isRunning()).isTrue();
-        assertThat(lifecycle.getPhase()).isEqualTo(Integer.MAX_VALUE - 1);
+        assertThat(lifecycle.getPhase()).isEqualTo(SmartLifecycle.DEFAULT_PHASE - 2048);
 
         context.close();
 
         assertThat(master.isClosed()).as("master pool must be closed after shutdown").isTrue();
         assertThat(replica.isClosed()).as("replica pool must be closed after shutdown").isTrue();
         assertThat(lifecycle.isRunning()).isFalse();
+
+        // Идемпотентность: повторный вызов stop() на уже закрытых пулах должен пройти
+        // без исключений (early-return по isClosed() в closeQuietly).
+        org.assertj.core.api.Assertions.assertThatCode(lifecycle::stop).doesNotThrowAnyException();
+        assertThat(lifecycle.isRunning()).isFalse();
+        assertThat(master.isClosed()).isTrue();
+        assertThat(replica.isClosed()).isTrue();
     }
 
     @SpringBootApplication(exclude = DataSourceAutoConfiguration.class)

@@ -4,7 +4,10 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.web.reactive.HandlerMapping;
+import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -23,8 +26,8 @@ public class WebfluxMetricsFilter implements WebFilter, Ordered {
     private static final String UNKNOWN_PATH = "UNKNOWN";
     private static final String NOT_FOUND_PATH = "NOT_FOUND";
     private static final String REDIRECTION_PATH = "REDIRECTION";
-
     private static final String ROOT_PATH = "ROOT";
+
     private static final String UNKNOWN_STATUS = "UNKNOWN";
 
     private final PlatformMetrics platformMetrics;
@@ -52,7 +55,16 @@ public class WebfluxMetricsFilter implements WebFilter, Ordered {
         Timer.Sample sample = Timer.start();
         AtomicBoolean recorded = new AtomicBoolean(false);
         return chain.filter(exchange)
-                .doFinally(signalType -> finishMetrics(exchange, sample, recorded, signalType));
+                .doFinally(signalType -> {
+                    if (signalType == SignalType.CANCEL || signalType == SignalType.ON_ERROR) {
+                        boolean isError = (signalType == SignalType.ON_ERROR);
+                        recordMetrics(exchange, sample, recorded, isError);
+                    }
+                })
+                .then(Mono.defer(() -> {
+                    recordMetrics(exchange, sample, recorded, false);
+                    return Mono.empty();
+                }));
     }
 
     @Override
@@ -60,26 +72,14 @@ public class WebfluxMetricsFilter implements WebFilter, Ordered {
         return ORDER;
     }
 
-    private void finishMetrics(ServerWebExchange exchange, Timer.Sample sample,
-                               AtomicBoolean recorded, SignalType signalType) {
-        if ((signalType == SignalType.CANCEL) || exchange.getResponse().isCommitted()) {
-            recordMetrics(exchange, sample, recorded);
-            return;
-        }
-
-        exchange.getResponse().beforeCommit(() -> {
-            recordMetrics(exchange, sample, recorded);
-            return Mono.empty();
-        });
-    }
-
-    private void recordMetrics(ServerWebExchange exchange, Timer.Sample sample, AtomicBoolean recorded) {
+    private void recordMetrics(ServerWebExchange exchange, Timer.Sample sample,
+                               AtomicBoolean recorded, boolean isError) {
         if (!recorded.compareAndSet(false, true)) {
             return;
         }
 
         String method = resolveMethod(exchange);
-        String status = resolveStatus(exchange);
+        String status = resolveStatus(exchange, isError);
         String path = resolvePath(exchange);
         sample.stop(platformMetrics.httpTimer(method, path, status));
         platformMetrics.httpResponseCounter(method, path, status).increment();
@@ -89,12 +89,17 @@ public class WebfluxMetricsFilter implements WebFilter, Ordered {
         return exchange.getRequest().getMethod().name();
     }
 
-    private String resolveStatus(ServerWebExchange exchange) {
-        if (exchange.getResponse().getStatusCode() == null) {
+    private String resolveStatus(ServerWebExchange exchange, boolean isError) {
+        HttpStatusCode statusCode = exchange.getResponse().getStatusCode();
+        if (statusCode != null) {
+            return String.valueOf(statusCode.value());
+        }
+
+        if (isError) {
             return UNKNOWN_STATUS;
         }
 
-        return String.valueOf(exchange.getResponse().getStatusCode().value());
+        return String.valueOf(HttpStatus.OK.value());
     }
 
     private String resolvePath(ServerWebExchange exchange) {
@@ -105,17 +110,54 @@ public class WebfluxMetricsFilter implements WebFilter, Ordered {
 
         Object bestMatchingPattern = exchange.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
         if (bestMatchingPattern != null) {
-            return bestMatchingPattern.toString();
+            String pattern = bestMatchingPattern.toString();
+            if (exchange.getResponse().getStatusCode() != null) {
+                int status = exchange.getResponse().getStatusCode().value();
+                if (isRedirectStatus(status)) {
+                    return REDIRECTION_PATH;
+                }
+            }
+
+            if (isNotFound(exchange) && ("/**".equals(pattern) || pattern.endsWith("/**"))) {
+                return NOT_FOUND_PATH;
+            }
+
+            if ("/".equals(pattern)) {
+                return ROOT_PATH;
+            }
+
+            return pattern;
+        }
+
+        Object routerFunctionPattern = exchange.getAttribute(RouterFunctions.MATCHING_PATTERN_ATTRIBUTE);
+        if (routerFunctionPattern != null) {
+            String pattern = routerFunctionPattern.toString();
+            if (exchange.getResponse().getStatusCode() != null) {
+                int status = exchange.getResponse().getStatusCode().value();
+                if (isRedirectStatus(status)) {
+                    return REDIRECTION_PATH;
+                }
+            }
+
+            if (isNotFound(exchange) && ("/**".equals(pattern) || pattern.endsWith("/**"))) {
+                return NOT_FOUND_PATH;
+            }
+
+            if ("/".equals(pattern)) {
+                return ROOT_PATH;
+            }
+
+            return pattern;
         }
 
         if (exchange.getResponse().getStatusCode() != null) {
             int status = exchange.getResponse().getStatusCode().value();
 
-            if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
+            if (isRedirectStatus(status)) {
                 return REDIRECTION_PATH;
             }
 
-            if (status == 404) {
+            if (status == HttpStatus.NOT_FOUND.value()) {
                 return NOT_FOUND_PATH;
             }
         }
@@ -126,5 +168,18 @@ public class WebfluxMetricsFilter implements WebFilter, Ordered {
         }
 
         return UNKNOWN_PATH;
+    }
+
+    private boolean isNotFound(ServerWebExchange exchange) {
+        HttpStatusCode statusCode = exchange.getResponse().getStatusCode();
+        return (statusCode != null) && (statusCode.value() == HttpStatus.NOT_FOUND.value());
+    }
+
+    private static boolean isRedirectStatus(int status) {
+        return status == HttpStatus.MOVED_PERMANENTLY.value()
+                || status == HttpStatus.FOUND.value()
+                || status == HttpStatus.SEE_OTHER.value()
+                || status == HttpStatus.TEMPORARY_REDIRECT.value()
+                || status == HttpStatus.PERMANENT_REDIRECT.value();
     }
 }

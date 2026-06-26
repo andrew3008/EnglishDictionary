@@ -10,14 +10,12 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.*;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.springframework.lang.Nullable;
-import space.br1440.platform.metrics.MetricTags;
 import space.br1440.platform.metrics.PlatformMetrics;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 final class DecoratedProducer implements Producer<Object, Object> {
@@ -37,8 +35,16 @@ final class DecoratedProducer implements Producer<Object, Object> {
         String topic = record.topic();
         String clientId = clientIdResolver.resolve();
         long startNano = System.nanoTime();
-        Future<RecordMetadata> future = delegate.send(record);
-        return new TimingFuture(future, startNano, topic, clientId, platformMetrics);
+        ProducerSendMetricsRecorder recorder = new ProducerSendMetricsRecorder(
+                platformMetrics, topic, clientId, startNano);
+        Future<RecordMetadata> future = delegate.send(record, (metadata, exception) -> {
+            if (exception != null) {
+                recorder.failure();
+            } else {
+                recorder.success();
+            }
+        });
+        return new TimingFuture(future, recorder);
     }
 
     @Override
@@ -46,13 +52,14 @@ final class DecoratedProducer implements Producer<Object, Object> {
         String topic = record.topic();
         String clientId = clientIdResolver.resolve();
         long startNano = System.nanoTime();
+        ProducerSendMetricsRecorder recorder = new ProducerSendMetricsRecorder(
+                platformMetrics, topic, clientId, startNano);
         return delegate.send(record, (metadata, exception) -> {
             try {
                 if (exception != null) {
-                    incrementResult(topic, clientId, MetricTags.RESULT_FAILURE);
+                    recorder.failure();
                 } else {
-                    incrementResult(topic, clientId, MetricTags.RESULT_SUCCESS);
-                    recordLag(topic, clientId, System.nanoTime() - startNano);
+                    recorder.success();
                 }
             } catch (Exception metricEx) {
                 log.debug("Failed to record producer metric, topic={}", topic, metricEx);
@@ -62,23 +69,6 @@ final class DecoratedProducer implements Producer<Object, Object> {
                 }
             }
         });
-    }
-
-    private void incrementResult(String topic, String clientId, String result) {
-        try {
-            platformMetrics.kafkaProducerTotal(topic, clientId, result).increment();
-        } catch (Exception e) {
-            log.debug("Failed to increment platform_producer_messages_total, topic={}", topic, e);
-        }
-    }
-
-    private void recordLag(String topic, String clientId, long durationNanos) {
-        try {
-            platformMetrics.kafkaProducerLag(topic, clientId)
-                    .record(durationNanos, TimeUnit.NANOSECONDS);
-        } catch (Exception e) {
-            log.debug("Failed to record platform_producer_lag_seconds, topic={}", topic, e);
-        }
     }
 
     @Override

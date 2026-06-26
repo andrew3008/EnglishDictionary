@@ -51,6 +51,14 @@ public class PlatformMetrics {
         return grpcMetricFactory.grpcSent(methodName, service, code);
     }
 
+    public Counter grpcStreamMessageSent(String methodName, String service) {
+        return grpcMetricFactory.grpcStreamMessageSent(methodName, service);
+    }
+
+    public Counter grpcStreamMessageReceived(String methodName, String service) {
+        return grpcMetricFactory.grpcStreamMessageReceived(methodName, service);
+    }
+
     public Timer httpTimer(String method, String path, String status) {
         return httpMetricFactory.httpTimer(method, path, status);
     }

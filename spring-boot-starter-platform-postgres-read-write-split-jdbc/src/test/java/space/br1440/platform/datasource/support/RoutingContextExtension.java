@@ -4,7 +4,7 @@ import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.slf4j.MDC;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import space.br1440.platform.datasource.postgres.DataSourceContextHolder;
+import space.br1440.platform.datasource.postgres.api.routing.DataSourceContextHolder;
 
 /**
  * JUnit 5 Extension: гарантированная очистка ThreadLocal-контекстов после каждого теста.
@@ -21,7 +21,10 @@ public class RoutingContextExtension implements AfterEachCallback {
 
     @Override
     public void afterEach(ExtensionContext context) {
-        DataSourceContextHolder.clear();
+        // Полностью сбрасываем стек — важно для leak-тестов с вложенными set/clear
+        while (DataSourceContextHolder.currentIfSet() != null) {
+            DataSourceContextHolder.clear();
+        }
         MDC.clear();
         TransactionSynchronizationManager.setActualTransactionActive(false);
         TransactionSynchronizationManager.clear();

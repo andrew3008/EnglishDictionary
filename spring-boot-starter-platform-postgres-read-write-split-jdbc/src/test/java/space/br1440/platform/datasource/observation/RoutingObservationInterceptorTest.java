@@ -1,4 +1,4 @@
-package space.br1440.platform.datasource.observation;
+package space.br1440.platform.datasource.postgres.internal.integration.observation;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -9,7 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import space.br1440.platform.datasource.routing.DataSourceType;
+import space.br1440.platform.datasource.postgres.api.routing.DataSourceType;
 import space.br1440.platform.datasource.support.assertj.RoutingAssertions;
 import space.br1440.platform.datasource.support.junit.MdcCleanupExtension;
 import space.br1440.platform.datasource.support.junit.ObservationRegistryExtension;
@@ -28,10 +28,8 @@ class RoutingObservationInterceptorTest {
     @BeforeEach
     void setUp(TestObservationRegistry registry) {
         this.registry = registry;
-        // В transport-agnostic ядре имя пула извлекается через callback; здесь
-        // используем Hikari-специфичную реализацию из стартера.
         this.interceptor = new RoutingObservationInterceptor(
-                registry, new RoutingObservationConvention.Default(), HikariPoolNameExtractor.INSTANCE);
+                registry, new RoutingObservationConvention.Default());
     }
 
     @Nested
@@ -47,7 +45,7 @@ class RoutingObservationInterceptorTest {
                 obs.start().stop();
 
                 RoutingAssertions.assertThat(registry)
-                        .hasObservationWithName("datasource.routing")
+                        .hasObservationWithName(RoutingObservationConvention.OBSERVATION_NAME)
                         .hasObservationWithRoutingTarget("write");
             } finally {
                 hds.close();
@@ -63,7 +61,7 @@ class RoutingObservationInterceptorTest {
                 obs.start().stop();
 
                 RoutingAssertions.assertThat(registry)
-                        .hasObservationWithName("datasource.routing")
+                        .hasObservationWithName(RoutingObservationConvention.OBSERVATION_NAME)
                         .hasObservationWithRoutingTarget("read");
             } finally {
                 hds.close();
@@ -71,7 +69,7 @@ class RoutingObservationInterceptorTest {
         }
 
         @Test
-        @DisplayName("должен использовать pool name для тега db.routing.pool")
+        @DisplayName("должен использовать pool name для тега db.connection.pool.name")
         void shouldIncludePoolNameTag() {
             HikariDataSource hds = newHikari("special-pool-name");
             try {
@@ -80,9 +78,10 @@ class RoutingObservationInterceptorTest {
 
                 RoutingAssertions.assertThat(registry)
                         .delegateAssert()
-                        .hasObservationWithNameEqualTo("datasource.routing")
+                        .hasObservationWithNameEqualTo(RoutingObservationConvention.OBSERVATION_NAME)
                         .that()
-                        .hasLowCardinalityKeyValue("db.routing.pool", "special-pool-name");
+                        .hasLowCardinalityKeyValue(
+                                RoutingObservationConvention.KEY_DB_CONNECTION_POOL_NAME, "special-pool-name");
             } finally {
                 hds.close();
             }
@@ -97,9 +96,11 @@ class RoutingObservationInterceptorTest {
 
             RoutingAssertions.assertThat(registry)
                     .delegateAssert()
-                    .hasObservationWithNameEqualTo("datasource.routing")
+                    .hasObservationWithNameEqualTo(RoutingObservationConvention.OBSERVATION_NAME)
                     .that()
-                    .hasLowCardinalityKeyValue("db.routing.pool", "unknown");
+                    .hasLowCardinalityKeyValue(
+                            RoutingObservationConvention.KEY_DB_CONNECTION_POOL_NAME,
+                            RoutingObservationConvention.UNKNOWN_POOL);
         }
 
         @Test
@@ -113,7 +114,7 @@ class RoutingObservationInterceptorTest {
 
                 RoutingAssertions.assertThat(registry)
                         .delegateAssert()
-                        .hasObservationWithNameEqualTo("datasource.routing")
+                        .hasObservationWithNameEqualTo(RoutingObservationConvention.OBSERVATION_NAME)
                         .that()
                         .hasError();
             } finally {

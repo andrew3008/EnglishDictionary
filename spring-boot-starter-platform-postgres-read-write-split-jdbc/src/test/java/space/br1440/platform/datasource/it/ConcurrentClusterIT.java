@@ -63,8 +63,10 @@ class ConcurrentClusterIT extends AbstractClusterIntegrationTest {
         }
 
         RoutingAssertions.assertThat(meters)
-                .hasCounterValueAtLeast("datasource.routing.requests", "target", "write", writes)
-                .hasCounterValueAtLeast("datasource.routing.requests", "target", "read", reads);
+                .hasCounterValueAtLeast("datasource.routing.requests",
+                        "db.routing.target", "write", writes)
+                .hasCounterValueAtLeast("datasource.routing.requests",
+                        "db.routing.target", "read", reads);
     }
 
     private void performWrite(WriteService svc, int n) {

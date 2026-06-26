@@ -1,27 +1,21 @@
 package space.br1440.platform.datasource.it;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import space.br1440.platform.datasource.it.support.JpaOrderFixtures;
+import space.br1440.platform.datasource.it.support.JpaOrderFixtures.OrderService;
+import space.br1440.platform.datasource.it.support.JpaOrderRepository;
 import space.br1440.platform.datasource.support.assertj.RoutingAssertions;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,7 +50,6 @@ class JpaRoutingClusterIT extends AbstractClusterIntegrationTest {
 
     @BeforeAll
     void seed() {
-        // создаём данные через master
         try (Connection conn = ((DataSource) context.getBean("writeDataSource")).getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE TABLE IF NOT EXISTS orders (id SERIAL PRIMARY KEY, customer_id VARCHAR(64) NOT NULL)");
@@ -99,61 +92,12 @@ class JpaRoutingClusterIT extends AbstractClusterIntegrationTest {
     }
 
     @SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
-    @EnableJpaRepositories(basePackageClasses = OrderRepository.class)
+    @EnableJpaRepositories(basePackageClasses = JpaOrderRepository.class)
+    @EntityScan(basePackageClasses = JpaOrderFixtures.class)
     public static class JpaTestApp {
-        @Bean OrderService orderService(OrderRepository repo) { return new OrderService(repo); }
-    }
-
-    @Entity
-    @Table(name = "orders")
-    public static class Order {
-        @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Long id;
-
-        @Column(name = "customer_id", nullable = false)
-        private String customerId;
-
-        public Long getId() { return id; }
-        public String getCustomerId() { return customerId; }
-        public void setCustomerId(String customerId) { this.customerId = customerId; }
-    }
-
-    public interface OrderRepository extends JpaRepository<Order, Long> {
-        @org.springframework.data.jpa.repository.Query(
-                value = "SELECT pg_is_in_recovery()", nativeQuery = true)
-        Boolean isInRecovery();
-    }
-
-    @Service
-    public static class OrderService {
-
-        private final OrderRepository repo;
-
-        public OrderService(OrderRepository repo) {
-            this.repo = repo;
-        }
-
-        @Transactional
-        public Order createOrder(String customerId) {
-            Order o = new Order();
-            o.setCustomerId(customerId);
-            return repo.save(o);
-        }
-
-        @Transactional(readOnly = true)
-        public boolean queryPgIsInRecovery() {
-            return Boolean.TRUE.equals(repo.isInRecovery());
-        }
-
-        @Transactional(readOnly = true)
-        public long count() {
-            return repo.count();
-        }
-
-        @Transactional(readOnly = true)
-        public List<Order> all() {
-            return repo.findAll();
+        @Bean
+        OrderService orderService(JpaOrderRepository repo) {
+            return new OrderService(repo);
         }
     }
-
 }

@@ -12,10 +12,10 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
-import space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties;
-import space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties.ReadReplica.Strategy;
-import space.br1440.platform.datasource.configuration.condition.OnPgTopologyDirectCondition;
+import space.br1440.platform.datasource.postgres.api.properties.PgClusterProperties;
+import space.br1440.platform.datasource.postgres.api.properties.ReadMode;
 import space.br1440.platform.datasource.support.assertj.RoutingAssertions;
+import space.br1440.platform.datasource.support.junit.ClusterRoutingItProperties;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension.PgCluster;
 
@@ -28,14 +28,14 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Сквозная проверка двух {@link Strategy} на реальном primary+replica кластере.
+ * Сквозная проверка двух {@link ReadMode} на реальном primary+replica кластере.
  * <p>
- * В новом контракте стратегия задаётся через канонический ключ
- * {@code platform.datasource.postgres-cluster.read-replica.strategy} и биндится в
- * {@link PostgresClusterDataSourceProperties} штатным механизмом
+ * В новом контракте режим чтения задаётся через канонический ключ
+ * {@value PgClusterProperties#PREFIX}.read.mode} и биндится в
+ * {@link PgClusterProperties} штатным механизмом
  * {@code @ConfigurationProperties}. Этот IT поднимает два независимых Spring-контекста
- * на одном и том же primary+replica кластере: один с {@link Strategy#LOAD_BALANCED}
- * (programmatic default), другой с {@link Strategy#SECONDARY_ONLY} (override через
+ * на одном и том же primary+replica кластере: один с {@link ReadMode#ANY_NODE_LOAD_BALANCED}
+ * (programmatic default), другой с {@link ReadMode#SECONDARY_PREFERRED} (override через
  * default-properties в {@link SpringApplication#setDefaultProperties(Map)}).
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -43,18 +43,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("ReadStrategy × живой PostgreSQL кластер")
 class ReadStrategyClusterIT {
 
-    private PgCluster cluster;
     private ConfigurableApplicationContext secondaryOnlyContext;
     private ConfigurableApplicationContext loadBalancedContext;
 
     @BeforeAll
     void startContexts(PgCluster cluster) {
-        this.cluster = cluster;
         Map<String, Object> secondaryOnlyOverride = Map.of(
-                "platform.datasource.postgres-cluster.read-replica.strategy", "SECONDARY_ONLY"
+                PgClusterProperties.PREFIX + ".read.mode", "SECONDARY_PREFERRED"
         );
         this.secondaryOnlyContext = startContext(cluster, ClusterApp.class, secondaryOnlyOverride);
-        this.loadBalancedContext = startContext(cluster, ClusterApp.class, Map.of());
+        Map<String, Object> loadBalancedOverride = Map.of(
+                PgClusterProperties.PREFIX + ".read.mode", "ANY_NODE_LOAD_BALANCED"
+        );
+        this.loadBalancedContext = startContext(cluster, ClusterApp.class, loadBalancedOverride);
     }
 
     @AfterAll
@@ -129,16 +130,9 @@ class ReadStrategyClusterIT {
     private ConfigurableApplicationContext startContext(PgCluster cluster,
                                                         Class<?> applicationClass,
                                                         Map<String, Object> overrides) {
-        Map<String, Object> properties = new HashMap<>();
-        properties.put("spring.main.web-application-type", "none");
-        properties.put("spring.main.banner-mode", "off");
-        properties.put(OnPgTopologyDirectCondition.ENV_VAR, OnPgTopologyDirectCondition.DIRECT);
-        properties.put("PG_CLUSTER_NODES", cluster.pgNodesString());
-        properties.put("PG_DATABASE", cluster.dbName());
-        properties.put("PG_USERNAME", cluster.username());
-        properties.put("PG_PASSWORD", cluster.password());
-        properties.put("platform.datasource.postgres-cluster.hikari.write.maximum-pool-size", "3");
-        properties.put("platform.datasource.postgres-cluster.hikari.read.maximum-pool-size", "3");
+        Map<String, Object> properties = new HashMap<>(ClusterRoutingItProperties.baseClusterContextProperties(cluster));
+        properties.put(PgClusterProperties.PREFIX + ".pool.write.maximum-pool-size", "3");
+        properties.put(PgClusterProperties.PREFIX + ".pool.read.maximum-pool-size", "3");
         properties.putAll(overrides);
 
         SpringApplication app = new SpringApplication(applicationClass);

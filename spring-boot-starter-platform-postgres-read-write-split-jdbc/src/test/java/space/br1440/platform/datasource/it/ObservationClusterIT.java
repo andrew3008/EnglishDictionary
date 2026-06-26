@@ -2,8 +2,12 @@ package space.br1440.platform.datasource.it;
 
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code DataSource.getConnection()} через RoutingDataSource.
  */
 @DisplayName("RoutingObservationInterceptor × живой кластер")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ObservationClusterIT extends AbstractClusterIntegrationTest {
 
     @Override
@@ -30,15 +35,21 @@ class ObservationClusterIT extends AbstractClusterIntegrationTest {
         return ObservationApp.class;
     }
 
+    @BeforeEach
+    void clearObservations() {
+        context.getBean(TestObservationRegistry.class).clear();
+    }
+
     @Test
+    @Order(1)
     @DisplayName("readOnly-транзакция → observation 'datasource.routing' с тегом target=read")
-    void readOnlyTx_emitsReplicaObservation() throws Exception {
+    void readOnlyTx_emitsReadObservation() throws Exception {
         TestObservationRegistry registry = context.getBean(TestObservationRegistry.class);
         DataSource ds = context.getBean(DataSource.class);
         TransactionTemplate readTx = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
         readTx.setReadOnly(true);
 
-        // в read-only транзакции RoutingDataSource резолвит replica;
+        // в read-only транзакции RoutingDataSource выбирает read-пул;
         // observation должен быть создан с тегом db.routing.target=read
         readTx.executeWithoutResult(status -> {
             try (Connection conn = ds.getConnection();
@@ -52,12 +63,13 @@ class ObservationClusterIT extends AbstractClusterIntegrationTest {
         });
 
         RoutingAssertions.assertThat(registry)
-                .hasObservationWithRoutingTarget("replica");
+                .hasObservationWithRoutingTarget("read");
     }
 
     @Test
+    @Order(2)
     @DisplayName("Запись (без readOnly tx) → observation с тегом target=write")
-    void writeTx_emitsMasterObservation() throws Exception {
+    void writeTx_emitsWriteObservation() throws Exception {
         TestObservationRegistry registry = context.getBean(TestObservationRegistry.class);
         DataSource ds = context.getBean(DataSource.class);
         TransactionTemplate writeTx = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
@@ -72,7 +84,7 @@ class ObservationClusterIT extends AbstractClusterIntegrationTest {
         });
 
         RoutingAssertions.assertThat(registry)
-                .hasObservationWithRoutingTarget("master");
+                .hasObservationWithRoutingTarget("write");
     }
 
     @SpringBootApplication(exclude = DataSourceAutoConfiguration.class)

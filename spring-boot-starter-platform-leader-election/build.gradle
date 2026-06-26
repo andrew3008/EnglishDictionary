@@ -1,6 +1,11 @@
 plugins {
     id 'platform.java-library-publish'
+    id 'platform.java-library'
     id 'platform.testing'
+}
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
 dependencies {

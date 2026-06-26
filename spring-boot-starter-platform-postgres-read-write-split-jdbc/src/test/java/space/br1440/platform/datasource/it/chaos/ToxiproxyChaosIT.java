@@ -8,12 +8,14 @@ import eu.rekawek.toxiproxy.model.ToxicDirection;
 import eu.rekawek.toxiproxy.model.toxic.Latency;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.ToxiproxyContainer;
+import space.br1440.platform.datasource.support.junit.PgClusterScope;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension.PgCluster;
 import space.br1440.platform.datasource.support.junit.ToxiproxyExtension;
@@ -38,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Toxiproxy сидит между HikariCP и PostgreSQL primary. Реплика обращается напрямую (без проксирования).
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@PgClusterScope(PgClusterScope.Mode.ISOLATED)
 @ExtendWith({PgClusterExtension.class, ToxiproxyExtension.class})
 @DisplayName("Chaos: Toxiproxy перед master-пулом")
 class ToxiproxyChaosIT {
@@ -48,7 +51,6 @@ class ToxiproxyChaosIT {
      */
     private static final int PROXY_LISTEN_PORT = 8666;
 
-    private PgCluster cluster;
     private ToxiproxyContainer toxiContainer;
     private Proxy proxy;
     private HikariDataSource hds;
@@ -56,7 +58,6 @@ class ToxiproxyChaosIT {
     @BeforeAll
     void setupProxyAndPool(PgCluster cluster, ToxiproxyClient client, ToxiproxyContainer container)
             throws Exception {
-        this.cluster = cluster;
         this.toxiContainer = container;
         this.proxy = ToxiproxyExtension.createProxy(
                 client, "primary-proxy", PROXY_LISTEN_PORT, cluster.primaryAlias(), 5432);
@@ -69,12 +70,35 @@ class ToxiproxyChaosIT {
         cfg.setPassword(cluster.password());
         cfg.setMaximumPoolSize(3);
         cfg.setMinimumIdle(0);
-        cfg.setConnectionTimeout(2_000);
-        cfg.setValidationTimeout(1_000);
+        // Latency toxic 1.5s × 2 directions + PG handshake — 2s мало для cold connect.
+        cfg.setConnectionTimeout(10_000);
+        cfg.setValidationTimeout(2_000);
         // sticky stale-connection eviction: при первом отказе
         cfg.setKeepaliveTime(0);
         cfg.setConnectionTestQuery("SELECT 1");
         this.hds = new HikariDataSource(cfg);
+        try (Connection warm = hds.getConnection();
+             var warmStmt = warm.createStatement()) {
+            warmStmt.execute("SELECT 1");
+        }
+    }
+
+    @AfterEach
+    void resetProxyState() throws IOException {
+        if (proxy == null) {
+            return;
+        }
+        proxy.enable();
+        for (String toxicName : new String[]{"lat-down", "lat-up", "bw-down", "bw-up"}) {
+            try {
+                proxy.toxics().get(toxicName).remove();
+            } catch (Exception ignored) {
+                // toxic may be absent after partial test failure
+            }
+        }
+        if (hds != null && hds.getHikariPoolMXBean() != null) {
+            hds.getHikariPoolMXBean().softEvictConnections();
+        }
     }
 
     @AfterAll

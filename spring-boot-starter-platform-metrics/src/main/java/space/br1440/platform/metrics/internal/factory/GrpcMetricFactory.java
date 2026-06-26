@@ -65,4 +65,26 @@ public final class GrpcMetricFactory {
 
         return meterRegistry.counter(name, tags);
     }
+
+    public Counter grpcStreamMessageSent(String methodName, String service) {
+        String name = grpcMetricsProperties.getStreamMessagesSentMetricName();
+        Tags tags = metricLabelRulesApplier.apply(
+                name,
+                Tags.of(MetricTags.RPC_METHOD, methodName,
+                        MetricTags.SERVICE, service)
+        );
+
+        return meterRegistry.counter(name, tags);
+    }
+
+    public Counter grpcStreamMessageReceived(String methodName, String service) {
+        String name = grpcMetricsProperties.getStreamMessagesReceivedMetricName();
+        Tags tags = metricLabelRulesApplier.apply(
+                name,
+                Tags.of(MetricTags.RPC_METHOD, methodName,
+                        MetricTags.SERVICE, service)
+        );
+
+        return meterRegistry.counter(name, tags);
+    }
 }

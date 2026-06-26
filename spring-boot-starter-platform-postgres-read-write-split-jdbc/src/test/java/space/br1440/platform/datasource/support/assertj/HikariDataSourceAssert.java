@@ -67,6 +67,17 @@ public class HikariDataSourceAssert extends AbstractAssert<HikariDataSourceAsser
         return this;
     }
 
+    public HikariDataSourceAssert hasConnectionInitSqlContaining(String fragment) {
+        isNotNull();
+        String sql = actual.getConnectionInitSql();
+        if (sql == null || !sql.contains(fragment)) {
+            failWithMessage(
+                    "Expected connectionInitSql to contain <%s> but was <%s>",
+                    fragment, sql);
+        }
+        return this;
+    }
+
     public HikariDataSourceAssert hasKeepaliveTime(long expectedMs) {
         isNotNull();
         if (actual.getKeepaliveTime() != expectedMs) {

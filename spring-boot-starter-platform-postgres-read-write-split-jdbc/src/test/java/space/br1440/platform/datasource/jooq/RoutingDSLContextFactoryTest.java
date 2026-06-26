@@ -4,8 +4,9 @@ import org.jooq.DSLContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import space.br1440.platform.datasource.postgres.DataSourceContextHolder;
-import space.br1440.platform.datasource.routing.DataSourceType;
+import space.br1440.platform.datasource.postgres.api.jooq.RoutingDSLContextFactory;
+import space.br1440.platform.datasource.postgres.api.routing.DataSourceContextHolder;
+import space.br1440.platform.datasource.postgres.api.routing.DataSourceType;
 import space.br1440.platform.datasource.support.RoutingContextExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;

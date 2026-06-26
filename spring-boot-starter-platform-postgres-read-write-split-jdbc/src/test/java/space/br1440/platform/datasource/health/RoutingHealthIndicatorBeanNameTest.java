@@ -1,28 +1,18 @@
-package space.br1440.platform.datasource.health;
+package space.br1440.platform.datasource.postgres.internal.integration.health;
 
-import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.datasource.config.autoconfigure.HealthRoutingConfiguration;
+
+import javax.sql.DataSource;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-/**
- * Закрепляет контракт имени бина {@code routingHealthIndicator}.
- *
- * <p>Spring Boot Actuator формирует ключ {@code /actuator/health/{key}} из имени бина,
- * отбрасывая суффикс {@code HealthIndicator}. Имя бина {@code routingHealthIndicator}
- * даёт ключ {@code routing} — публичное API для k8s liveness/readiness probes.
- *
- * <p>Если кто-то в будущем переименует метод в {@link HealthRoutingConfiguration}
- * (или уберёт явное {@code @Bean("routingHealthIndicator")}), ключ Actuator
- * неожиданно изменится — этот тест поймает регрессию.
- */
 @DisplayName("Actuator health key contract: bean name 'routingHealthIndicator'")
 class RoutingHealthIndicatorBeanNameTest {
 
@@ -36,42 +26,43 @@ class RoutingHealthIndicatorBeanNameTest {
     }
 
     @Test
-    @DisplayName("бин регистрируется под именем 'routingHealthIndicator'")
+    @DisplayName("bean is registered under name 'routingHealthIndicator'")
     void beanIsRegisteredUnderFixedName() {
         ctx = new AnnotationConfigApplicationContext();
-        // RoutingDataSource-бин не обязателен для резолюции имени, но нужен для @ConditionalOnBean
-        // → регистрируем заглушку и импортируем HealthRoutingConfiguration.
         ctx.register(MinimalHealthConfig.class);
         ctx.refresh();
 
         assertThat(ctx.containsBean("routingHealthIndicator")).isTrue();
-
-        Object bean = ctx.getBean("routingHealthIndicator");
-        assertThat(bean).isInstanceOf(CqrsRoutingHealthIndicator.class);
+        assertThat(ctx.getBean("routingHealthIndicator")).isInstanceOf(DataSourceRoutingHealthIndicator.class);
     }
 
-    /**
-     * Минимальная конфигурация: заглушки {@link HikariDataSource} + явная регистрация
-     * health-бина. Имитирует результат {@link HealthRoutingConfiguration}, минуя
-     * {@code @ConditionalOnBean(RoutingDataSource)} (его здесь не хотим поднимать).
-     */
     @Configuration
     static class MinimalHealthConfig {
 
         @Bean("writeDataSource")
-        HikariDataSource writeDataSource() {
-            return mock(HikariDataSource.class);
+        DataSource writeDataSource() {
+            return mock(DataSource.class);
         }
 
         @Bean("readDataSource")
-        HikariDataSource readDataSource() {
-            return mock(HikariDataSource.class);
+        DataSource readDataSource() {
+            return mock(DataSource.class);
+        }
+
+        @Bean
+        RoutingHealthProperties routingHealthProperties() {
+            return new RoutingHealthProperties(Duration.ofSeconds(5), Duration.ofSeconds(3));
         }
 
         @Bean("routingHealthIndicator")
-        CqrsRoutingHealthIndicator routingHealthIndicator(HikariDataSource writeDataSource,
-                                                          HikariDataSource readDataSource) {
-            return new CqrsRoutingHealthIndicator(writeDataSource, readDataSource);
+        DataSourceRoutingHealthIndicator routingHealthIndicator(DataSource writeDataSource,
+                                                                DataSource readDataSource,
+                                                                RoutingHealthProperties healthProperties) {
+            return new DataSourceRoutingHealthIndicator(
+                    writeDataSource,
+                    readDataSource,
+                    space.br1440.platform.datasource.postgres.api.properties.ReadMode.SECONDARY_PREFERRED,
+                    healthProperties);
         }
     }
 }

@@ -9,8 +9,9 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
-import space.br1440.platform.datasource.configuration.condition.OnPgTopologyDirectCondition;
+import space.br1440.platform.datasource.support.junit.ClusterRoutingItProperties;
 import space.br1440.platform.datasource.support.junit.PgClusterExtension;
+import space.br1440.platform.datasource.support.junit.PgClusterExtension.PgCluster;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,21 +23,11 @@ import java.util.Map;
  * контекст с авто-конфигурацией библиотеки, и предоставляет наследникам прозрачный
  * доступ к {@link ConfigurableApplicationContext}.
  *
- * <h3>Жизненный цикл</h3>
- * <ul>
- *   <li>{@code @BeforeAll}: PgCluster стартует (primary + replica + replication slot)</li>
- *   <li>{@code @BeforeAll} (наследник): Spring контекст стартует с pg-nodes из кластера</li>
- *   <li>{@code @Test}: тест получает контекст, бины, source/replica datasources</li>
- *   <li>{@code @AfterAll}: контекст и кластер закрываются</li>
- * </ul>
- *
- * <h3>EnvironmentPostProcessor и default-properties</h3>
- * <p>В этом IT мы запускаем полный {@link SpringApplication}, поэтому
- * {@code PostgresClusterEnvironmentPostProcessor} <i>срабатывает</i>: он видит
- * {@code PG_TOPOLOGY=DIRECT} и {@code PG_CLUSTER_NODES=...} в default-properties и
- * инжектирует канонические {@code platform.datasource.postgres-cluster.*} ключи.
- * Это адекватно отражает реальный production-сценарий с {@code PG_*} env-переменными
- * Kubernetes ConfigMap/Secret.
+ * <h3>Property contract</h3>
+ * <p>Контекст активируется через canonical keys {@value PgClusterProperties#PREFIX}.*
+ * (indexed {@code nodes[i].host/port}) в {@code defaultProperties} — тот же контракт, что
+ * {@code @DynamicPropertySource} в unit/slice IT. {@code PG_*} env vars через
+ * {@code setDefaultProperties} EPP не видит (см. {@link ClusterRoutingItProperties}).
  *
  * <h3>Override-точки</h3>
  * Наследники могут добавить свои properties через {@link #extraProperties()},
@@ -46,28 +37,13 @@ import java.util.Map;
 @ExtendWith(PgClusterExtension.class)
 public abstract class AbstractClusterIntegrationTest {
 
-    protected PgClusterExtension.PgCluster cluster;
+    protected PgCluster cluster;
     protected ConfigurableApplicationContext context;
 
     @BeforeAll
-    void startSpringContext(PgClusterExtension.PgCluster cluster) {
+    void startSpringContext(PgCluster cluster) {
         this.cluster = cluster;
-        Map<String, Object> properties = new HashMap<>();
-        properties.put("spring.main.web-application-type", "none");
-        properties.put("spring.main.banner-mode", "off");
-        properties.put("logging.level.space.br1440.platform.datasource", "DEBUG");
-        // Активация стартера: имитация env PG_TOPOLOGY=DIRECT через property-binding.
-        properties.put(OnPgTopologyDirectCondition.ENV_VAR, OnPgTopologyDirectCondition.DIRECT);
-        // PG_* env-переменные Kubernetes ConfigMap/Secret. PostgresClusterEnvironmentPostProcessor
-        // прочитает их и инжектирует platform.datasource.postgres-cluster.* в Environment.
-        properties.put("PG_CLUSTER_NODES", cluster.pgNodesString());
-        properties.put("PG_DATABASE", cluster.dbName());
-        properties.put("PG_USERNAME", cluster.username());
-        properties.put("PG_PASSWORD", cluster.password());
-        properties.put("platform.datasource.postgres-cluster.hikari.write.maximum-pool-size", "5");
-        properties.put("platform.datasource.postgres-cluster.hikari.read.maximum-pool-size", "5");
-        properties.put("platform.datasource.postgres-cluster.hikari.write.connection-timeout", "5000");
-        properties.put("platform.datasource.postgres-cluster.hikari.read.connection-timeout", "5000");
+        Map<String, Object> properties = new HashMap<>(ClusterRoutingItProperties.baseClusterContextProperties(cluster));
         properties.putAll(extraProperties());
 
         SpringApplication app = new SpringApplication(applicationClass());

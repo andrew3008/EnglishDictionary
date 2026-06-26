@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <Match>
+        <Bug code="EI,EI2,MS,FS"/>
+    </Match>
+
+    <Match>
+        <Class name="space.br1440.platform.datasource.it.AbstractClusterIntegrationTest"/>
+        <Field name="cluster"/>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+
+    <Match>
+        <Class name="space.br1440.platform.datasource.integration.RoutingHealthReadinessActuatorTest$DegradedRoutingHealthConfig"/>
+        <Method name="writeDataSource"/>
+        <Bug pattern="OBL_UNSATISFIED_OBLIGATION"/>
+    </Match>
+</FindBugsFilter>

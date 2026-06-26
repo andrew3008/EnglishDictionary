@@ -1,6 +1,5 @@
 package space.br1440.platform.datasource.config;
 
-import space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties;
 import com.zaxxer.hikari.HikariDataSource;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -12,67 +11,53 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.datasource.configuration.condition.OnPgTopologyDirectCondition;
-import space.br1440.platform.datasource.health.CqrsRoutingHealthIndicator;
-import space.br1440.platform.datasource.metrics.RoutingMetricsCollector;
-import space.br1440.platform.datasource.observation.RoutingObservationConvention;
-import space.br1440.platform.datasource.observation.RoutingObservationInterceptor;
-import space.br1440.platform.datasource.postgres.DataSourceRoutingLifecycle;
-import space.br1440.platform.datasource.postgres.NonTransactionalRoutingAspect;
-import space.br1440.platform.datasource.postgres.PasswordExpiryRetryDataSourceProxy;
-import space.br1440.platform.datasource.postgres.RoutingDataSource;
+import space.br1440.platform.datasource.postgres.PostgresDataSourceRoutingAutoConfiguration;
+import space.br1440.platform.datasource.postgres.internal.bootstrap.OnClientDataSourceRoutingCondition;
+import space.br1440.platform.datasource.postgres.api.properties.PgClusterProperties;
+import space.br1440.platform.datasource.postgres.api.properties.PoolGroupProperties;
+import space.br1440.platform.datasource.postgres.internal.pool.PgClusterPropertiesValidator;
+import space.br1440.platform.datasource.postgres.internal.integration.health.DataSourceRoutingHealthIndicator;
+import space.br1440.platform.datasource.postgres.internal.integration.metrics.RoutingMetricsCollector;
+import space.br1440.platform.datasource.postgres.internal.integration.observation.RoutingObservationConvention;
+import space.br1440.platform.datasource.postgres.internal.integration.observation.RoutingObservationInterceptor;
+import space.br1440.platform.datasource.postgres.internal.proxy.lifecycle.DataSourceRoutingLifecycle;
+import space.br1440.platform.datasource.postgres.internal.proxy.aop.NonTransactionalRoutingAspect;
+import space.br1440.platform.datasource.postgres.internal.proxy.core.RoutingDataSource;
 import space.br1440.platform.datasource.support.assertj.RoutingAssertions;
+
+import org.springframework.boot.actuate.health.HttpCodeStatusMapper;
+import org.springframework.boot.actuate.health.Status;
+import org.springframework.boot.actuate.health.StatusAggregator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Проверки JDBC auto-configuration для нового контракта на основе
- * {@code @ConfigurationProperties}.
- *
- * <h2>Контракт</h2>
- * <p>{@link PostgresClusterDataSourceProperties} — это {@code @ConfigurationProperties}-бин
- * с префиксом {@code platform.datasource.postgres-cluster}. В runtime-сценарии
- * Kubernetes-пода значения подставляются {@code PostgresClusterEnvironmentPostProcessor}-ом
- * из {@code PG_*} environment variables. В этом unit-тесте мы напрямую задаём канонические
- * Spring-свойства через {@link ApplicationContextRunner#withPropertyValues}, поскольку
- * {@code ApplicationContextRunner} <i>не</i> прогоняет фазу {@code ApplicationEnvironmentPreparedEvent}
- * — то есть EPP не вызывается. Это адекватно для проверки auto-configuration: контракт
- * стартера = «увидеть {@code platform.datasource.postgres-cluster.*} ключи и
- * {@code PG_TOPOLOGY=DIRECT}». Полный bootstrap (EPP + canonical mapping) проверяется
- * отдельным E2E-IT-тестом {@code PgTopologyDirectFullCycleE2eIT}.
- */
-@DisplayName("JdbcCqrsRoutingAutoConfiguration — auto-configuration через platform.datasource.postgres-cluster.*")
+@DisplayName("JdbcDataSourceRoutingAutoConfiguration — auto-configuration через " + PgClusterProperties.PREFIX + ".*")
 class DataSourceRoutingAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    JdbcCqrsRoutingAutoConfiguration.class,
+                    PostgresDataSourceRoutingAutoConfiguration.class,
                     DataSourceAutoConfiguration.class
             ));
 
-    /** Активирующее property: имитирует env-переменную {@code PG_TOPOLOGY=DIRECT}. */
-    private static final String ACTIVATE_PROP =
-            OnPgTopologyDirectCondition.ENV_VAR + "=" + OnPgTopologyDirectCondition.DIRECT;
+    private static final String ACTIVATE_PROP = OnClientDataSourceRoutingCondition.PROPERTY + "=CLIENT";
 
-    /**
-     * Базовые property для тестов c живым контекстом. Имитируют значения, которые
-     * EPP инжектировал бы из {@code PG_*} env-переменных в продакшене.
-     */
     private static final String[] VALID_PROPS = {
             ACTIVATE_PROP,
-            "platform.datasource.postgres-cluster.nodes=localhost:5432",
-            "platform.datasource.postgres-cluster.database=testdb",
-            "platform.datasource.postgres-cluster.credentials.username=sa",
-            "platform.datasource.postgres-cluster.credentials.password=",
-            "platform.datasource.postgres-cluster.hikari.write.connection-timeout=250",
-            "platform.datasource.postgres-cluster.hikari.read.connection-timeout=250",
-            "platform.datasource.postgres-cluster.hikari.write.initialization-fail-timeout=-1",
-            "platform.datasource.postgres-cluster.hikari.read.initialization-fail-timeout=-1"
+            PgClusterProperties.PREFIX + ".nodes[0].host=localhost",
+            PgClusterProperties.PREFIX + ".nodes[0].port=5432",
+            PgClusterProperties.PREFIX + ".database=testdb",
+            PgClusterProperties.PREFIX + ".credentials.username=sa",
+            PgClusterProperties.PREFIX + ".credentials.password=sa",
+            PgClusterProperties.PREFIX + ".pool.write.connection-timeout=250",
+            PgClusterProperties.PREFIX + ".pool.read.connection-timeout=250",
+            PgClusterProperties.PREFIX + ".pool.write.initialization-fail-timeout=-1",
+            PgClusterProperties.PREFIX + ".pool.read.initialization-fail-timeout=-1"
     };
 
     @Test
-    @DisplayName("PG_TOPOLOGY отсутствует → стартер OFF, бины не создаются")
-    void topologyAbsent_noBeansCreated() {
+    @DisplayName("datasource-routing-mode отсутствует → стартер OFF, бины не создаются")
+    void routingModeAbsent_noBeansCreated() {
         contextRunner
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(RoutingDataSource.class);
@@ -81,10 +66,10 @@ class DataSourceRoutingAutoConfigurationTest {
     }
 
     @Test
-    @DisplayName("PG_TOPOLOGY=HAPROXY → стартер OFF, бины не создаются")
-    void topologyHaproxy_noBeansCreated() {
+    @DisplayName("datasource-routing-mode=PROXY → стартер OFF, бины не создаются")
+    void routingModeProxy_noBeansCreated() {
         contextRunner
-                .withPropertyValues(OnPgTopologyDirectCondition.ENV_VAR + "=HAPROXY")
+                .withPropertyValues(OnClientDataSourceRoutingCondition.PROPERTY + "=PROXY")
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(RoutingDataSource.class);
                     assertThat(context).doesNotHaveBean(NonTransactionalRoutingAspect.class);
@@ -92,18 +77,18 @@ class DataSourceRoutingAutoConfigurationTest {
     }
 
     @Test
-    @DisplayName("PG_TOPOLOGY=<неизвестное> → стартер OFF (защита от опечатки)")
-    void topologyUnknown_noBeansCreated() {
+    @DisplayName("datasource-routing-mode=<неизвестное> → стартер OFF (защита от опечатки)")
+    void routingModeUnknown_noBeansCreated() {
         contextRunner
-                .withPropertyValues(OnPgTopologyDirectCondition.ENV_VAR + "=GARBAGE")
+                .withPropertyValues(OnClientDataSourceRoutingCondition.PROPERTY + "=GARBAGE")
                 .run(context -> assertThat(context).doesNotHaveBean(RoutingDataSource.class));
     }
 
     @Test
-    @DisplayName("PG_TOPOLOGY=direct (lower-case) → стартер ON (case-insensitive по значению)")
-    void topologyDirect_lowerCase_createsBeans() {
+    @DisplayName("datasource-routing-mode=client (lower-case) → стартер ON (case-insensitive по значению)")
+    void routingModeClient_lowerCase_createsBeans() {
         String[] propsLowerCase = VALID_PROPS.clone();
-        propsLowerCase[0] = OnPgTopologyDirectCondition.ENV_VAR + "=direct";
+        propsLowerCase[0] = OnClientDataSourceRoutingCondition.PROPERTY + "=client";
         contextRunner
                 .withPropertyValues(propsLowerCase)
                 .run(context -> {
@@ -113,73 +98,48 @@ class DataSourceRoutingAutoConfigurationTest {
     }
 
     @Test
-    @DisplayName("PG_TOPOLOGY=DIRECT + valid props → создаются routing-бины и PostgresClusterDataSourceProperties")
-    void topologyDirect_withValidProps_createsRoutingBeans() {
+    @DisplayName("CLIENT + valid props → создаются routing-бины и PgClusterProperties")
+    void routingModeClient_withValidProps_createsRoutingBeans() {
         contextRunner
                 .withPropertyValues(VALID_PROPS)
                 .run(context -> {
                     assertThat(context).hasSingleBean(RoutingDataSource.class);
                     assertThat(context).hasSingleBean(NonTransactionalRoutingAspect.class);
-                    assertThat(context).hasSingleBean(PostgresClusterDataSourceProperties.class);
-                    PostgresClusterDataSourceProperties props =
-                            context.getBean(PostgresClusterDataSourceProperties.class);
-                    assertThat(props.getNodes()).containsExactly("localhost:5432");
-                    assertThat(props.getDatabase()).isEqualTo("testdb");
-                    assertThat(props.getCredentials().getUsername()).isEqualTo("sa");
+                    assertThat(context).hasSingleBean(PgClusterProperties.class);
+                    PgClusterProperties props = context.getBean(PgClusterProperties.class);
+                    assertThat(props.nodes()).hasSize(1);
+                    assertThat(props.nodes().getFirst().toHostPort()).isEqualTo("localhost:5432");
+                    assertThat(props.database()).isEqualTo("testdb");
+                    assertThat(props.credentials().username()).isEqualTo("sa");
                 });
     }
 
     @Test
-    @DisplayName("nodes отсутствует → JSR-303 @NotEmpty не пропускает биндинг")
-    void topologyDirect_missingNodes_failsJsr303() {
+    @DisplayName("PgClusterPropertiesValidator зарегистрирован как бин")
+    void enabled_validatorBeanRegistered() {
         contextRunner
-                .withPropertyValues(
-                        ACTIVATE_PROP,
-                        "platform.datasource.postgres-cluster.database=testdb",
-                        "platform.datasource.postgres-cluster.credentials.username=sa",
-                        "platform.datasource.postgres-cluster.credentials.password=")
-                .run(context -> {
-                    assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure())
-                            .rootCause()
-                            .hasMessageContaining("nodes");
-                });
+                .withPropertyValues(VALID_PROPS)
+                .run(context -> assertThat(context).hasSingleBean(PgClusterPropertiesValidator.class));
     }
 
     @Test
-    @DisplayName("database отсутствует → JSR-303 @NotBlank не пропускает биндинг")
-    void topologyDirect_missingDatabase_failsJsr303() {
-        contextRunner
-                .withPropertyValues(
-                        ACTIVATE_PROP,
-                        "platform.datasource.postgres-cluster.nodes=localhost:5432",
-                        "platform.datasource.postgres-cluster.credentials.username=sa",
-                        "platform.datasource.postgres-cluster.credentials.password=")
-                .run(context -> {
-                    assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure())
-                            .rootCause()
-                            .hasMessageContaining("database");
-                });
-    }
-
-    @Test
-    @DisplayName("propertiesDefaults_poolNames")
+    @DisplayName("propertiesDefaults_poolNames — по умолчанию poolName не задан (резолвится policy-слоем)")
     void propertiesDefaults_poolNames() {
-        HikariRoutingProperties hikari = new HikariRoutingProperties();
-        assertThat(hikari.getWrite().getPoolName()).isNull();
-        assertThat(hikari.getRead().getPoolName()).isNull();
+        PoolGroupProperties pool = new PoolGroupProperties(null, null);
+        assertThat(pool.write().poolName()).isNull();
+        assertThat(pool.read().poolName()).isNull();
     }
 
     @Test
-    @DisplayName("PasswordExpiryRetryDataSourceProxy зарегистрирован как @Primary DataSource")
-    void enabled_dataSourceIsPasswordRetryProxy() {
+    @DisplayName("@Primary DataSource — это LazyConnectionDataSourceProxy (Lazy outermost, PR 4.1)")
+    void enabled_dataSourceIsLazyProxy() {
         contextRunner
                 .withPropertyValues(VALID_PROPS)
                 .run(context -> {
-                    assertThat(context).hasSingleBean(PasswordExpiryRetryDataSourceProxy.class);
+                    assertThat(context.getBean("dataSource"))
+                            .isInstanceOf(org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy.class);
                     assertThat(context.getBean(javax.sql.DataSource.class))
-                            .isInstanceOf(PasswordExpiryRetryDataSourceProxy.class);
+                            .isInstanceOf(org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy.class);
                 });
     }
 
@@ -191,12 +151,14 @@ class DataSourceRoutingAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasSingleBean(DataSourceRoutingLifecycle.class);
                     DataSourceRoutingLifecycle lifecycle = context.getBean(DataSourceRoutingLifecycle.class);
-                    assertThat(lifecycle.getPhase()).isEqualTo(Integer.MAX_VALUE - 1);
+
+                    assertThat(lifecycle.getPhase())
+                            .isEqualTo(org.springframework.context.SmartLifecycle.DEFAULT_PHASE - 2048);
                 });
     }
 
     @Test
-    @DisplayName("Write-пул: connectionTestQuery и keepaliveTime имеют защищённые умолчания")
+    @DisplayName("Write-пул: connectionInitSql (primary), connectionTestQuery=SELECT 1 и keepaliveTime")
     void enabled_writePoolHasSafeDefaults() {
         contextRunner
                 .withPropertyValues(VALID_PROPS)
@@ -204,7 +166,8 @@ class DataSourceRoutingAutoConfigurationTest {
                     HikariDataSource write = (HikariDataSource) context.getBean("writeDataSource");
                     RoutingAssertions.assertThat(write)
                             .isNotReadOnly()
-                            .hasConnectionTestQueryContaining("pg_is_in_recovery")
+                            .hasConnectionInitSqlContaining("pg_is_in_recovery")
+                            .hasConnectionTestQueryContaining("SELECT 1")
                             .hasKeepaliveTime(60_000L);
                 });
     }
@@ -238,7 +201,8 @@ class DataSourceRoutingAutoConfigurationTest {
                     assertThat(context).hasSingleBean(RoutingMetricsCollector.class);
                     MeterRegistry registry = context.getBean(MeterRegistry.class);
                     RoutingAssertions.assertThat(registry)
-                            .hasGauge("datasource.routing.read.strategy", "strategy", "load_balanced");
+                            .hasGauge("datasource.routing.read.strategy",
+                                    "db.routing.read.strategy", "secondary_preferred");
                 });
     }
 
@@ -247,7 +211,7 @@ class DataSourceRoutingAutoConfigurationTest {
     void enabled_metricsDisabled_noMetricsCollector() {
         contextRunner
                 .withPropertyValues(VALID_PROPS)
-                .withPropertyValues("platform.datasource.postgres-cluster.metrics.enabled=false")
+                .withPropertyValues(PgClusterProperties.PREFIX + ".metrics.enabled=false")
                 .withUserConfiguration(MeterRegistryConfig.class)
                 .run(context -> assertThat(context).doesNotHaveBean(RoutingMetricsCollector.class));
     }
@@ -270,9 +234,25 @@ class DataSourceRoutingAutoConfigurationTest {
         contextRunner
                 .withPropertyValues(VALID_PROPS)
                 .run(context -> {
-                    assertThat(context).hasSingleBean(CqrsRoutingHealthIndicator.class);
+                    assertThat(context).hasSingleBean(DataSourceRoutingHealthIndicator.class);
                     assertThat(context.containsBean("routingHealthIndicator")).isTrue();
                 });
+    }
+
+    @Test
+    @DisplayName("Глобальный StatusAggregator не регистрируется автоматически")
+    void enabled_noGlobalStatusAggregator() {
+        contextRunner
+                .withPropertyValues(VALID_PROPS)
+                .run(context -> assertThat(context).doesNotHaveBean(StatusAggregator.class));
+    }
+
+    @Test
+    @DisplayName("Глобальный HttpCodeStatusMapper не регистрируется автоматически")
+    void enabled_noGlobalHttpCodeStatusMapper() {
+        contextRunner
+                .withPropertyValues(VALID_PROPS)
+                .run(context -> assertThat(context).doesNotHaveBean(HttpCodeStatusMapper.class));
     }
 
     @Configuration

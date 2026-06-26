@@ -1,6 +1,5 @@
 package space.br1440.platform.datasource.integration;
 
-import space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,16 +15,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import space.br1440.platform.datasource.annotation.UseReadReplica;
-import space.br1440.platform.datasource.config.JdbcCqrsRoutingAutoConfiguration;
-import space.br1440.platform.datasource.configuration.condition.OnPgTopologyDirectCondition;
-import space.br1440.platform.datasource.health.CqrsRoutingHealthIndicator;
-import space.br1440.platform.datasource.postgres.DataSourceContextHolder;
-import space.br1440.platform.datasource.postgres.DataSourceRoutingLifecycle;
-import space.br1440.platform.datasource.postgres.NonTransactionalRoutingAspect;
-import space.br1440.platform.datasource.postgres.PasswordExpiryRetryDataSourceProxy;
-import space.br1440.platform.datasource.postgres.RoutingDataSource;
-import space.br1440.platform.datasource.routing.DataSourceType;
+import space.br1440.platform.datasource.postgres.api.properties.PgClusterProperties;
+import space.br1440.platform.datasource.postgres.api.routing.UseReadReplica;
+import space.br1440.platform.datasource.postgres.PostgresDataSourceRoutingAutoConfiguration;
+import space.br1440.platform.datasource.postgres.internal.bootstrap.OnClientDataSourceRoutingCondition;
+import space.br1440.platform.datasource.postgres.internal.integration.health.DataSourceRoutingHealthIndicator;
+import space.br1440.platform.datasource.postgres.api.routing.DataSourceContextHolder;
+import space.br1440.platform.datasource.postgres.internal.proxy.lifecycle.DataSourceRoutingLifecycle;
+import space.br1440.platform.datasource.postgres.internal.proxy.aop.NonTransactionalRoutingAspect;
+import space.br1440.platform.datasource.postgres.internal.proxy.core.RoutingDataSource;
+import space.br1440.platform.datasource.postgres.api.routing.DataSourceType;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -46,9 +45,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <h3>Контракт активации</h3>
  * <p>В тестовый {@code Environment} через {@link DynamicPropertyRegistry} подаются:
  * <ul>
- *   <li>{@code PG_TOPOLOGY=DIRECT} — активирует {@link OnPgTopologyDirectCondition};</li>
- *   <li>{@code platform.datasource.postgres-cluster.*} — канонические Spring-свойства,
- *       биндятся в {@link space.br1440.platform.datasource.configuration.PostgresClusterDataSourceProperties}.</li>
+ *   <li>{@code datasource-routing-mode=CLIENT} — активирует {@link OnClientDataSourceRoutingCondition};</li>
+ *   <li>{@value PgClusterProperties#PREFIX}.* — канонические Spring-свойства, биндятся в {@link PgClusterProperties}.</li>
  * </ul>
  *
  * <p><b>Почему не {@code PG_*} env-переменные.</b> {@code @DynamicPropertySource}
@@ -56,15 +54,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (это документированное ограничение Spring TestContext, см. SPR-26148).
  * Поэтому в этом IT-сценарии задаём канонические Spring-свойства напрямую.
  * Сквозная проверка цикла «{@code PG_*} ENV → EPP → canonical properties → биндинг»
- * выполняется в {@code PgTopologyDirectFullCycleE2eIT} через {@code ApplicationContextInitializer},
- * который инжектируется до EPP.
+ * выполняется в {@link PgClusterEnvironmentPostProcessorBootstrapTest} (bootstrap, без Docker)
+ * и в {@code PgTopologyDirectFullCycleE2eIT} (E2E с Testcontainers).
  *
  * <p>Кластерные сценарии (switchover, stale connection eviction) требуют multi-node setup
  * и тестируются отдельно в E2E-стенде.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(classes = {
-        JdbcCqrsRoutingAutoConfiguration.class,
+        PostgresDataSourceRoutingAutoConfiguration.class,
         DataSourceRoutingIntegrationTest.TestService.class
 })
 @EnableAutoConfiguration
@@ -79,17 +77,18 @@ class DataSourceRoutingIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add(OnPgTopologyDirectCondition.ENV_VAR, () -> OnPgTopologyDirectCondition.DIRECT);
-        registry.add("platform.datasource.postgres-cluster.nodes",
-                () -> PG.getHost() + ":" + PG.getFirstMappedPort());
-        registry.add("platform.datasource.postgres-cluster.database", PG::getDatabaseName);
-        registry.add("platform.datasource.postgres-cluster.credentials.username", PG::getUsername);
-        registry.add("platform.datasource.postgres-cluster.credentials.password", PG::getPassword);
-        registry.add("platform.datasource.postgres-cluster.hikari.write.pool-name", () -> "it-write-pool");
-        registry.add("platform.datasource.postgres-cluster.hikari.read.pool-name", () -> "it-read-pool");
-        registry.add("platform.datasource.postgres-cluster.hikari.write.maximum-pool-size", () -> "2");
-        registry.add("platform.datasource.postgres-cluster.hikari.read.maximum-pool-size", () -> "2");
-        registry.add("platform.datasource.postgres-cluster.hikari.write.connection-test-query", () -> "SELECT 1");
+        registry.add(OnClientDataSourceRoutingCondition.PROPERTY, () -> "CLIENT");
+        // nodes биндится как indexed list PgNode (host/port), как это делает EPP в проде.
+        registry.add(PgClusterProperties.PREFIX + ".nodes[0].host", PG::getHost);
+        registry.add(PgClusterProperties.PREFIX + ".nodes[0].port", PG::getFirstMappedPort);
+        registry.add(PgClusterProperties.PREFIX + ".database", PG::getDatabaseName);
+        registry.add(PgClusterProperties.PREFIX + ".credentials.username", PG::getUsername);
+        registry.add(PgClusterProperties.PREFIX + ".credentials.password", PG::getPassword);
+        registry.add(PgClusterProperties.PREFIX + ".pool.write.pool-name", () -> "it-write-pool");
+        registry.add(PgClusterProperties.PREFIX + ".pool.read.pool-name", () -> "it-read-pool");
+        registry.add(PgClusterProperties.PREFIX + ".pool.write.maximum-pool-size", () -> "2");
+        registry.add(PgClusterProperties.PREFIX + ".pool.read.maximum-pool-size", () -> "2");
+        registry.add(PgClusterProperties.PREFIX + ".pool.write.connection-test-query", () -> "SELECT 1");
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     }
 
@@ -106,15 +105,14 @@ class DataSourceRoutingIntegrationTest {
         @Test
         void allCoreBeans_arePresent() {
             assertThat(ctx.getBean(RoutingDataSource.class)).isNotNull();
-            assertThat(ctx.getBean(PasswordExpiryRetryDataSourceProxy.class)).isNotNull();
             assertThat(ctx.getBean(NonTransactionalRoutingAspect.class)).isNotNull();
             assertThat(ctx.getBean(DataSourceRoutingLifecycle.class)).isNotNull();
         }
 
         @Test
-        void primaryDataSource_isPasswordExpiryProxy() {
+        void primaryDataSource_isLazyConnectionProxy() {
             DataSource primary = ctx.getBean("dataSource", DataSource.class);
-            assertThat(primary).isInstanceOf(PasswordExpiryRetryDataSourceProxy.class);
+            assertThat(primary).isInstanceOf(org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy.class);
         }
 
         @Test
@@ -182,10 +180,11 @@ class DataSourceRoutingIntegrationTest {
         @Test
         @SuppressWarnings("unchecked")
         void healthIndicator_reportsUp_withIntentDetailsAndPgRole() {
-            CqrsRoutingHealthIndicator indicator = ctx.getBean(CqrsRoutingHealthIndicator.class);
+            DataSourceRoutingHealthIndicator indicator = ctx.getBean(DataSourceRoutingHealthIndicator.class);
             var health = indicator.health();
 
             assertThat(health.getStatus().getCode()).isEqualTo("UP");
+            assertThat(health.getDetails()).containsKey("readMode");
 
             Map<String, Object> write = (Map<String, Object>) health.getDetails().get("write");
             Map<String, Object> read = (Map<String, Object>) health.getDetails().get("read");

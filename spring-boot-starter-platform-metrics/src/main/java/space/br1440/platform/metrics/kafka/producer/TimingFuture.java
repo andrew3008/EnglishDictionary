@@ -1,44 +1,30 @@
 package space.br1440.platform.metrics.kafka.producer;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import space.br1440.platform.metrics.MetricTags;
-import space.br1440.platform.metrics.PlatformMetrics;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-@Slf4j
 final class TimingFuture implements Future<RecordMetadata> {
 
     private final Future<RecordMetadata> delegate;
-    private final long startNano;
-    private final String topic;
-    private final String clientId;
-    private final PlatformMetrics platformMetrics;
+    private final ProducerSendMetricsRecorder recorder;
 
-    TimingFuture(Future<RecordMetadata> delegate,
-                 long startNano,
-                 String topic,
-                 String clientId,
-                 PlatformMetrics platformMetrics) {
+    TimingFuture(Future<RecordMetadata> delegate, ProducerSendMetricsRecorder recorder) {
         this.delegate = delegate;
-        this.startNano = startNano;
-        this.topic = topic;
-        this.clientId = clientId;
-        this.platformMetrics = platformMetrics;
+        this.recorder = recorder;
     }
 
     @Override
     public RecordMetadata get() throws InterruptedException, ExecutionException {
         try {
             RecordMetadata result = delegate.get();
-            recordLag();
+            recorder.success();
             return result;
         } catch (ExecutionException e) {
-            incrementFailure();
+            recorder.failure();
             throw e;
         }
     }
@@ -48,10 +34,10 @@ final class TimingFuture implements Future<RecordMetadata> {
             throws InterruptedException, ExecutionException, TimeoutException {
         try {
             RecordMetadata result = delegate.get(timeout, unit);
-            recordLag();
+            recorder.success();
             return result;
         } catch (ExecutionException e) {
-            incrementFailure();
+            recorder.failure();
             throw e;
         }
     }
@@ -69,23 +55,5 @@ final class TimingFuture implements Future<RecordMetadata> {
     @Override
     public boolean isDone() {
         return delegate.isDone();
-    }
-
-    private void recordLag() {
-        try {
-            platformMetrics.kafkaProducerTotal(topic, clientId, MetricTags.RESULT_SUCCESS).increment();
-            platformMetrics.kafkaProducerLag(topic, clientId)
-                    .record(System.nanoTime() - startNano, TimeUnit.NANOSECONDS);
-        } catch (Exception e) {
-            log.debug("Failed to record platform_producer_lag_seconds (TimingFuture), topic={}", topic, e);
-        }
-    }
-
-    private void incrementFailure() {
-        try {
-            platformMetrics.kafkaProducerTotal(topic, clientId, MetricTags.RESULT_FAILURE).increment();
-        } catch (Exception e) {
-            log.debug("Failed to increment platform_producer_messages_total (TimingFuture), topic={}", topic, e);
-        }
     }
 }
