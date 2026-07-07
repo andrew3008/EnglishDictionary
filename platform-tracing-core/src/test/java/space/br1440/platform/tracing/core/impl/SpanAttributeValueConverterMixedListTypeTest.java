@@ -23,9 +23,19 @@ class SpanAttributeValueConverterMixedListTypeTest {
     }
 
     @Test
-    void nullListElement_throwsIllegalArgumentException() {
+    void nullSingletonListElement_throwsIllegalArgumentException() {
         assertThatThrownBy(() -> SpanAttributeValueConverter.fromOtelValue(java.util.Collections.singletonList(null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Null list elements are not supported");
+    }
+
+    @Test
+    void nullListElementInMixedList_throwsIllegalArgumentException() {
+        var list = new java.util.ArrayList<Object>();
+        list.add("a");
+        list.add(null);
+        assertThatThrownBy(() -> SpanAttributeValueConverter.fromOtelValue(list))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Mixed-type list");
     }
 }

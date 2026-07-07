@@ -9,6 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SpanAttributeValueConverterEmptyListRoundTripTest {
 
+    /**
+     * OTel Attributes do not preserve element type for empty lists, so empty list maps to
+     * {@code StringListValue} by convention.
+     */
     @Test
     void emptyList_mapsToEmptyStringList() {
         SpanAttributeValue result = SpanAttributeValueConverter.fromOtelValue(List.of());

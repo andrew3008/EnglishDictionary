@@ -1,0 +1,14 @@
+PATCH UNAVAILABLE — meaningful git base missing
+
+Repository: E:\Platform_Traces
+Branch: master
+Head commit: a02bb94
+Meaningful base available: no (HEAD~1 does not exist)
+
+Local git history starts after the refactoring/remediation state. Commit a02bb94 is the root commit and contains the full project tree including Slice 3A-7 refactoring and remediation B01-B10.
+
+A meaningful patch against a pre-refactor or pre-remediation base cannot be generated from this workspace.
+
+To generate a patch later, push to a remote with prior history or create a tagged baseline before future changes:
+
+  git diff --stat <BASE>...HEAD -- . ":(exclude)docs/analysis/perplexity-review/**"

@@ -1,0 +1,34 @@
+NAME-STATUS UNAVAILABLE — meaningful git base missing
+
+Repository: E:\Platform_Traces
+Branch: master
+Head commit: a02bb94
+Meaningful base available: no (HEAD~1 does not exist)
+
+Local git history starts after the refactoring/remediation state. A name-status diff against pre-refactor base is unavailable from this workspace.
+
+Use platform-tracing-post-remediation-file-index.md for the authoritative file list (102 Java files in source bundle).
+
+Remediation-only files added since post-Slice 7 bundle (12 net new Java files):
+
+A  platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/semconv/DatabaseSemconvVersion.java
+M  platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseTracing.java
+A  platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/semconv/DatabaseTracingSemconvVersionMarkerTest.java
+M  platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/AbstractSemanticSpanBuilder.java
+M  platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultKafkaTracing.java
+M  platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SpanAttributeValueConverter.java
+A  platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/AbstractSemanticSpanBuilderTopologyRepeatedCallTest.java
+A  platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/impl/SpanAttributeValueConverterMixedListTypeTest.java
+A  platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/impl/SpanAttributeValueConverterEmptyListRoundTripTest.java
+A  platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/HttpSpanBuilderIntegrationTest.java
+A  platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderIntegrationTest.java
+A  platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/RpcSpanBuilderIntegrationTest.java
+M  platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTracingImplementation.java
+M  platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredSpanHandle.java
+M  platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/kafka/KafkaBatchLinksAspect.java
+M  platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/kafka/PlatformKafkaAutoConfiguration.java
+M  platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingCoreAutoConfiguration.java
+A  platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredSpanHandleDoubleCountTest.java
+A  platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/kafka/KafkaBatchAspectMigrationTest.java
+
+Also included in bundle (not remediation-only): KafkaBatchLinksAspect.java and PlatformKafkaAutoConfiguration.java were absent from post-Slice 7 bundle but present in tree.

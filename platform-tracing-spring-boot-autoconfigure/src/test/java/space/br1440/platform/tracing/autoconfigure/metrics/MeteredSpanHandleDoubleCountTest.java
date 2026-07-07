@@ -25,8 +25,13 @@ class MeteredSpanHandleDoubleCountTest {
 
         handle.recordException(new RuntimeException("boom"));
 
-        assertThat(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED).counter().count()).isEqualTo(1.0);
+        assertThat(exceptionsRecordedCount()).isEqualTo(1.0);
         verify(delegate, times(1)).recordException(any());
+    }
+
+    private double exceptionsRecordedCount() {
+        var counter = registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED).counter();
+        return counter == null ? 0.0 : counter.count();
     }
 
     @Test
@@ -39,8 +44,33 @@ class MeteredSpanHandleDoubleCountTest {
         handle.recordException(new RuntimeException("boom"));
         implementation.recordException(handle, new RuntimeException("boom-again"));
 
-        assertThat(registry.find(PlatformTracingMetrics.EXCEPTIONS_RECORDED).counter().count()).isEqualTo(1.0);
+        assertThat(exceptionsRecordedCount()).isEqualTo(1.0);
         verify(spiDelegate, times(1)).recordException(eq(handle), any());
+    }
+
+    @Test
+    void twoArgRecordExceptionWithPlainHandle_doesNotIncrement() {
+        SpanHandle plainHandle = mock(SpanHandle.class);
+        DelegatingTracingImplementation spiDelegate = mock(DelegatingTracingImplementation.class);
+        MeteredTracingImplementation implementation = new MeteredTracingImplementation(spiDelegate, metrics);
+
+        implementation.recordException(plainHandle, new RuntimeException("spi-only"));
+
+        assertThat(exceptionsRecordedCount()).isEqualTo(0.0);
+        verify(spiDelegate, times(1)).recordException(eq(plainHandle), any(RuntimeException.class));
+        verify(plainHandle, times(0)).recordException(any());
+    }
+
+    @Test
+    void twoArgRecordExceptionWithNullThrowable_doesNotIncrement() {
+        SpanHandle plainHandle = mock(SpanHandle.class);
+        DelegatingTracingImplementation spiDelegate = mock(DelegatingTracingImplementation.class);
+        MeteredTracingImplementation implementation = new MeteredTracingImplementation(spiDelegate, metrics);
+
+        implementation.recordException(plainHandle, null);
+
+        assertThat(exceptionsRecordedCount()).isEqualTo(0.0);
+        verify(spiDelegate, times(1)).recordException(eq(plainHandle), isNull());
     }
 
     @Test
