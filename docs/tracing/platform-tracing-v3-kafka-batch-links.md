@@ -15,7 +15,7 @@ platformTracing.manual()
         .run(() -> processor.processBatch(records));
 ```
 
-`messageContexts` is a `SpanLinkContext[]` (varargs) built from record headers. The platform `@Traced` batch aspect (`KafkaBatchLinksAspect`) uses this same API internally.
+`messageContexts` is a `SpanLinkContext[]` (varargs) built from record headers. The platform `KafkaBatchLinksAspect`, which advises `@KafkaListener(batch="true")` methods, uses this same API internally.
 
 ## Building link contexts
 
@@ -57,7 +57,7 @@ The batch builder `batch(destination)` argument drives span naming and `messagin
 |----------------|-------------------|
 | Single topic | Topic name |
 | Multiple topics | Kafka listener id |
-| Fallback | `@KafkaBatchLinks` method name |
+| Fallback | advised method name (`pjp.getSignature().getName()`) |
 
 This matches `KafkaBatchLinksAspect` destination resolution in autoconfigure.
 

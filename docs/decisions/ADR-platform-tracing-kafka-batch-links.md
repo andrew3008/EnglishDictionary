@@ -49,7 +49,7 @@ platformTracing.manual()
 |----------------|----------------------------|
 | Single topic | Topic name |
 | Multiple topics | Kafka listener id |
-| Fallback | `@KafkaBatchLinks` method name |
+| Fallback | advised method name (`pjp.getSignature().getName()`) |
 
 ## Intentional semantic drift
 
