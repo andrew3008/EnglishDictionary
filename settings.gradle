@@ -60,6 +60,9 @@ include 'platform-tracing-collector-config'
 // Тестовая инфраструктура для интеграционного тестирования прикладного кода (in-memory span exporter, JUnit 5 extension).
 include 'platform-tracing-test'
 
+// Compilable v3 API usage examples for documentation (Slice 8). Not published to Nexus.
+include 'platform-tracing-samples'
+
 // JMH micro-benchmark'и: внутренний инструмент для замера runtime overhead основных операций
 // платформенной трассировки. Не публикуется в Nexus, не входит в релизный артефакт-набор.
 include 'platform-tracing-bench'

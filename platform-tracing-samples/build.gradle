@@ -1,0 +1,12 @@
+description = 'Compilable PlatformTracing v3 API usage examples for documentation (Slice 8). ' +
+        'Not published to Nexus; no external services or Docker required.'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+    implementation project(':platform-tracing-api')
+}
+
+// Samples are compile-only documentation artifacts; no tests required for Slice 8 gate.
+tasks.named('test') {
+    enabled = false
+}
