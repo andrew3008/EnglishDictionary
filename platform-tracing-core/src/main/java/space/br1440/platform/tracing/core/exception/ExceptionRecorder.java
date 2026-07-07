@@ -21,13 +21,6 @@ public final class ExceptionRecorder {
         this.messagePolicy = Objects.requireNonNull(messagePolicy, "messagePolicy");
     }
 
-    /**
-     * Создаёт рекордер с секьюр-дефолтом: {@code exception.message} и {@code exception.stacktrace}
-     * НЕ записываются (см. {@link ExceptionMessagePolicy#secureDefault()}).
-     * <p>
-     * Политика делается явной на call site: раньше был no-arg конструктор, скрывавший
-     * security-relevant дефолт; удалён перед выходом в продакшен ради читаемости ревью.
-     */
     @Nonnull
     public static ExceptionRecorder secureDefault() {
         return new ExceptionRecorder(ExceptionMessagePolicy.secureDefault());
