@@ -1,0 +1,9 @@
+# Local lab namespace — PR-9H-E2L (generated with sed from k8s template)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+    platform-tracing.io/lab-tier: LOCAL_REFERENCE_LAB
+    platform-tracing.io/profile-id: REPLACE_PROFILE_ID

@@ -1,0 +1,91 @@
+description = 'Spring Boot autoconfigure для платформенного стартера трассировки. ' +
+        'Содержит TracingProperties, авто-конфигурации общего и веб-уровней (Servlet и WebFlux), ' +
+        'фильтры заголовков ответа и интеграцию с MDC.'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    api project(':platform-tracing-api')
+    api project(':platform-tracing-core')
+
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.springframework.boot:spring-boot'
+
+    // OpenTelemetry API нужен для извлечения текущего span'а внутри фильтров.
+    api 'io.opentelemetry:opentelemetry-api'
+
+    // Micrometer Observation: расширение дефолтных конвенций под платформенный стандарт атрибутов.
+    api 'io.micrometer:micrometer-observation'
+
+    // Micrometer Tracing → OpenTelemetry bridge (dev/staging SDK-only path only).
+    // Production MDC writer — OpenTelemetryAppender + Agent (см. ADR-mdc-via-otel-agent-logback).
+    // compileOnly: не транзитивна потребителям; opt-in — docs/MIGRATION.md.
+    compileOnly 'io.micrometer:micrometer-tracing-bridge-otel'
+
+    // Micrometer Context Propagation: единый стандартный механизм проброса ThreadLocal/Reactor
+    // контекста в Spring Boot 3 (заменяет ручные обёртки MDC-контекста). Версия управляется
+    // Spring Boot BOM, фиксировать отдельно не требуется.
+    api 'io.micrometer:context-propagation'
+
+    implementation 'org.slf4j:slf4j-api'
+
+    // AOP: обработка аннотации @Traced. Spring AOP достаточно — без необходимости в загрузочном AspectJ-агенте.
+    compileOnly 'org.springframework:spring-aop'
+    compileOnly 'org.aspectj:aspectjweaver'
+
+    // Servlet- и WebFlux-специфичные классы вынесены в отдельные модули
+    // (platform-tracing-autoconfigure-webmvc, -webflux), поэтому здесь не нужны соответствующие
+    // compileOnly-зависимости. Если какие-то общие классы потребуют web-API в будущем — лучше
+    // вынести их в один из web-модулей, чем тянуть compileOnly обратно в monolith.
+
+    // Spring Boot Actuator: health indicator и /actuator/tracing endpoint.
+    compileOnly 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Kafka: опциональная интеграция для batch links aspect.
+    compileOnly 'org.springframework.kafka:spring-kafka'
+
+    // Spring Cloud Context: опциональная интеграция с @RefreshScope для динамической перенастройки
+    // TracingProperties без перезапуска JVM. Версия управляется Spring Cloud BOM на стороне сервиса.
+    compileOnly 'org.springframework.cloud:spring-cloud-context'
+
+    // Нужен в runtime для ResponseStatusException из write-операций actuator-эндпоинта трассировки.
+    implementation 'org.springframework:spring-web'
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'org.springframework.boot:spring-boot-starter-aop'
+    testImplementation 'org.springframework.kafka:spring-kafka'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation project(':platform-tracing-test')
+    testImplementation project(':platform-tracing-otel-extension')
+    testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
+
+    // Версия junit-platform-launcher выравнивается с junit-jupiter-api, чтобы исключить конфликт
+    // OutputDirectoryProvider при запуске тестов через Gradle Test Worker.
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform {
+        excludeTags 'r01-red'
+    }
+}
+
+tasks.register('knownDefectTest', Test) {
+    description = 'Runs R01 known-defect RED tests (expected to fail until structural fix in Slice 2/6).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'r01-red'
+    }
+    shouldRunAfter test
+}

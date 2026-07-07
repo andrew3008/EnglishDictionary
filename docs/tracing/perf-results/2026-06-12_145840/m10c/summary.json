@@ -1,0 +1,19 @@
+﻿{
+    "scenario":  "m10c",
+    "runStamp":  "2026-06-12_145840",
+    "gitSha":  "unknown",
+    "dockerHost":  "tcp://192.168.100.70:2375",
+    "rate":  500,
+    "warmupMin":  2,
+    "steadyMin":  10,
+    "jfr":  false,
+    "startupMs":  10483,
+    "k6ExitCode":  1,
+    "runValid":  false,
+    "scenarioJvmOpts":  "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.extensions=/otel/platform-tracing-otel-extension-agent.jar -Dotel.exporter.otlp.endpoint=http://collector:4318 -Dotel.exporter.otlp.protocol=http/protobuf -Dplatform.tracing.sampling.ratio=0.1",
+    "cpusets":  {
+                    "sut":  null,
+                    "k6":  null,
+                    "collector":  null
+                }
+}

@@ -1,0 +1,41 @@
+plugins {
+    id 'java-platform'
+}
+
+description = 'Платформенный BOM модуля распределённой трассировки. ' +
+        'Импортирует Spring Boot dependencies, OpenTelemetry BOM и OTEL Instrumentation BOM, ' +
+        'а также фиксирует версии служебных зависимостей расширения для OpenTelemetry Java Agent.'
+
+javaPlatform {
+    allowDependencies()
+}
+
+dependencies {
+    // Импортируемые BOM. Версии задаются в gradle.properties и являются единым источником истины.
+    api platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    api platform("io.opentelemetry:opentelemetry-bom:${openTelemetryBomVersion}")
+    api platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:${openTelemetryInstrumentationBomVersion}")
+
+    constraints {
+        // Расширение для OpenTelemetry Java Agent публикуется только в alpha-канале и должно
+        // строго соответствовать версии Java Agent в окружении.
+        api "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${openTelemetryInstrumentationAlphaVersion}"
+
+        // Spring gRPC starter — версия согласована с версией основного платформенного BOM `spring-boot-starter-platform-bom`.
+        api 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.6.0'
+
+        // Spring Cloud Context: используется опциональной авто-конфигурацией @RefreshScope в стартере
+        // трассировки. Версия совместима со Spring Boot 3.5.x (Spring Cloud 2024.0.x).
+        api "org.springframework.cloud:spring-cloud-context:${springCloudContextVersion}"
+
+        // ArchUnit (junit5-flavor) — публикуется через platform-tracing-test как api-зависимость,
+        // чтобы сервисы-потребители могли использовать OtelSdkArchRules без повторного объявления версии.
+        api "com.tngtech.archunit:archunit-junit5:${archUnitVersion}"
+
+        // E2E-зависимости (используются модулем platform-tracing-e2e-tests).
+        // Testcontainers BOM — для согласованных версий core и расширений (network, junit-jupiter).
+        api "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+        api "org.awaitility:awaitility:${awaitilityVersion}"
+        api "com.squareup.okhttp3:okhttp:${okhttpVersion}"
+    }
+}

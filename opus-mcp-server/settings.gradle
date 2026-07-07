@@ -1,0 +1,3 @@
+// Standalone project. Intentionally NOT part of the parent platform-tracing
+// multi-module build. Do not add this directory to the parent settings.gradle.
+rootProject.name = 'opus-mcp-server'

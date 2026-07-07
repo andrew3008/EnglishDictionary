@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "java-opus-mcp": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "E:/Platform_Traces/opus-mcp-server/build/libs/opus-mcp-server-0.1.0-SNAPSHOT-all.jar"
+      ],
+      "env": {
+        "OPUS_BASE_URL": "https://api.cheat-ai.shop",
+        "OPUS_MODEL": "claude-opus-4-8"
+      }
+    }
+  }
+}

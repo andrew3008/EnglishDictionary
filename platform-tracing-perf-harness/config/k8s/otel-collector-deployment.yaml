@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-harness-collector
+  namespace: REPLACE_NAMESPACE
+  labels:
+    app: perf-harness-collector
+    platform-tracing.io/tier: reference-perf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perf-harness-collector
+  template:
+    metadata:
+      labels:
+        app: perf-harness-collector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8888"
+    spec:
+      containers:
+        - name: collector
+          image: REPLACE_COLLECTOR_IMAGE
+          args: ["--config=/conf/otel-collector.yaml"]
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 4318
+              name: otlp-http
+            - containerPort: 8888
+              name: metrics
+          volumeMounts:
+            - name: collector-config
+              mountPath: /conf
+          resources:
+            requests:
+              cpu: "REPLACE_COLLECTOR_CPU_REQUEST"
+              memory: "REPLACE_COLLECTOR_MEM_REQUEST"
+            limits:
+              cpu: "REPLACE_COLLECTOR_CPU_LIMIT"
+              memory: "REPLACE_COLLECTOR_MEM_LIMIT"
+      volumes:
+        - name: collector-config
+          configMap:
+            name: perf-harness-collector-config

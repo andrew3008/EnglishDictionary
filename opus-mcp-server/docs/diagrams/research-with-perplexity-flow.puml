@@ -1,0 +1,44 @@
+@startuml research-with-perplexity-flow
+title research_with_perplexity - data flow and missing-key branch
+
+actor "Cursor / User" as User
+box "Local machine" #LightBlue
+  participant "MCP server\n(stdio JSON-RPC)" as MCP
+  participant "research_with_perplexity\n(guard pipeline)" as Tool
+  participant "Perplexity HTTP client\n(Bearer auth)" as Client
+  database "Audit log\n(metadata only)" as Audit
+end box
+cloud "Perplexity provider\n/chat/completions" as Provider
+
+User -> MCP : tools/call research_with_perplexity (explicit input)
+MCP -> Tool : arguments (untrusted DATA)
+
+group Guardrails (before any egress)
+  Tool -> Tool : validate input
+  Tool -> Tool : DenyList scan
+  Tool -> Tool : SecretScanner scan
+  Tool -> Tool : size limits
+end
+
+alt PERPLEXITY_API_KEY missing
+  Tool -> Audit : status=MODEL_ERROR (no content/key)
+  Tool --> MCP : MODEL_ERROR\n"provider not configured"\n(NO network call)
+  MCP --> User : structured MODEL_ERROR
+else key present and guardrails passed
+  Tool -> Tool : RateLimiter + BudgetTracker pre-check
+  Tool -> Client : build prompt (explicit input only)
+  Client -> Provider : HTTPS POST /chat/completions (Bearer)
+  Provider --> Client : choices[0].message.content
+  Client --> Tool : ResearchResponse (text + safe metadata)
+  Tool -> Tool : parse (best-effort) + truncate
+  Tool -> Audit : status + requestId + category + tokens (no content/body/key)
+  Tool --> MCP : structured result (summary/answer/sources/...)
+  MCP --> User : result for human review
+end
+
+note over Tool, Provider
+  No repo reads, no file writes, no shell,
+  no patch application, no auto test execution.
+  Raw provider body and API key never surfaced.
+end note
+@enduml

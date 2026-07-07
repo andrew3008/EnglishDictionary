@@ -1,0 +1,27 @@
+Module: platform-tracing-autoconfigure-webmvc
+Generated: Fri Jun 12 16:08:13 MSK 2026
+
+--- compileClasspath (first-level) ---
+  io.micrometer:micrometer-observation:1.15.3
+  io.opentelemetry:opentelemetry-api:1.62.0
+  jakarta.servlet:jakarta.servlet-api:6.0.0
+  org.projectlombok:lombok:1.18.38
+  org.slf4j:slf4j-api:2.0.17
+  org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.5
+  org.springframework.boot:spring-boot-autoconfigure:3.5.5
+  org.springframework.boot:spring-boot-starter-web:3.5.5
+  org.springframework.boot:spring-boot:3.5.5
+  space.br1440.platform.tracing:platform-tracing-api:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-bom:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-spring-boot-autoconfigure:0.1.0-SNAPSHOT
+
+--- runtimeClasspath (first-level) ---
+  io.micrometer:micrometer-observation:1.15.3
+  io.opentelemetry:opentelemetry-api:1.62.0
+  org.slf4j:slf4j-api:2.0.17
+  org.springframework.boot:spring-boot-autoconfigure:3.5.5
+  org.springframework.boot:spring-boot:3.5.5
+  space.br1440.platform.tracing:platform-tracing-api:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-bom:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-spring-boot-autoconfigure:0.1.0-SNAPSHOT
+

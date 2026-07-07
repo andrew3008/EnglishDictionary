@@ -1,0 +1,22 @@
+# REFERENCE tier — Spring profile + scenario wiring (no secrets).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: perf-harness-app-config
+  namespace: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+    platform-tracing.io/scenario: REPLACE_SCENARIO
+data:
+  SPRING_PROFILES_ACTIVE: "REPLACE_SPRING_PROFILE"
+  PLATFORM_TRACING_ACTUATOR_MUTATION_ENABLED: "false"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,prometheus"
+  # TODO: scenario-specific overrides (S0–S6) — merge from config/profiles/
+  application-reference.yaml: |
+    platform:
+      tracing:
+        service:
+          name: platform-tracing-perf-harness
+          environment: reference-perf
+        actuator:
+          mutation-enabled: false

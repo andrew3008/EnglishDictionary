@@ -1,0 +1,23 @@
+{
+  "status": "ok",
+  "labTier": "LOCAL_REFERENCE_LAB",
+  "w004Eligible": false,
+  "nonAuthoritative": true,
+  "source": "direct-pod-ip",
+  "collectorPodIp": "10.244.0.7",
+  "metricsEndpoint": "http://10.244.0.7:8888/metrics",
+  "collector": {
+    "exporterQueueSize": 0,
+    "exporterQueueCapacity": 1000,
+    "exporterSendFailedSpans": null,
+    "exporterEnqueueFailedSpans": null,
+    "processorDroppedSpans": null,
+    "receiverAcceptedSpans": null,
+    "receiverRefusedSpans": null,
+    "backpressureEvidenceValid": false
+  },
+  "caveats": [
+    "Point-in-time scrape; not tied to steady-state load window",
+    "Local lab only; backpressureEvidenceValid remains false (debug sink)"
+  ]
+}

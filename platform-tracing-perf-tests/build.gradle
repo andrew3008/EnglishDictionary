@@ -1,0 +1,71 @@
+description = 'Macro перф-тесты платформенной трассировки (Фаза 17, PR-3/PR-4). ' +
+        'SUT-приложение (Spring Boot + platform starter) + docker-compose стенд ' +
+        '(SUT / OTel Collector / k6 open-model) + раннеры сценариев M0–M10/S1 ' +
+        'performance-test-matrix. Модуль НЕ публикуется в Nexus (внутренний инструмент).'
+
+// Spring Boot Gradle plugin нужен только этому модулю (bootJar для SUT-образа) —
+// подключаем через buildscript, чтобы не менять корневой build.gradle.
+buildscript {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        maven { url = "https://n.1440.space/repository/platform-maven/" }
+        maven { url = "https://n.1440.space/repository/repo1.maven.org-proxy" }
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+    }
+}
+apply plugin: 'org.springframework.boot'
+
+// Модуль не публикуется (паттерн platform-tracing-bench/e2e-tests).
+afterEvaluate {
+    tasks.matching { it.name.startsWith("publish") }.configureEach { it.enabled = false }
+}
+// SUT — исполняемое приложение, не библиотека: sources/javadoc jar не нужны.
+sourcesJar.enabled = false
+javadocJar.enabled = false
+
+configurations {
+    // OTel Java Agent для прогонов M4/M5/...: тот же пин, что в e2e (single source of truth — BOM-версии).
+    otelJavaAgent
+}
+
+dependencies {
+    implementation platform(project(':platform-tracing-bom'))
+
+    // Production-like SUT: platform starter (facade, MDC, observation conventions) + web + actuator.
+    // Starter присутствует во ВСЕХ конфигурациях матрицы (M0 включительно): дельта M5−M0
+    // измеряет agent+extension+export, а не стоимость самого starter'а (она в обеих частях).
+    implementation project(':platform-tracing-spring-boot-starter-servlet')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    otelJavaAgent "io.opentelemetry.javaagent:opentelemetry-javaagent:${openTelemetryInstrumentationBomVersion}"
+}
+
+// ---------------------------------------------------------------------------------------------
+// Docker build context для SUT-образа.
+//
+// ВАЖНО (remote Docker / Gentoo): volume mount Windows-путей на удалённый daemon не работает
+// (находка collector-config), поэтому ВСЁ содержимое образов попадает туда через build context
+// (COPY в Dockerfile), а не через -v. prepareSutDockerContext собирает в build/docker:
+// bootJar SUT, OTel javaagent, platform extension agent-jar и Dockerfile.
+// ---------------------------------------------------------------------------------------------
+tasks.register('prepareSutDockerContext', Sync) {
+    group = 'perf'
+    description = 'Собирает Docker build context SUT: bootJar + javaagent + extension + Dockerfile.'
+    dependsOn bootJar, ':platform-tracing-otel-extension:agentExtensionJar'
+
+    into layout.buildDirectory.dir('docker')
+    from(bootJar) {
+        rename { 'sut-app.jar' }
+    }
+    from(configurations.otelJavaAgent) {
+        rename { 'opentelemetry-javaagent.jar' }
+    }
+    from(project(':platform-tracing-otel-extension').tasks.named('agentExtensionJar')) {
+        rename { 'platform-tracing-otel-extension-agent.jar' }
+    }
+    from('docker/sut/Dockerfile')
+}

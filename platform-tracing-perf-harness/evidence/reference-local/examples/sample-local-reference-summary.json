@@ -1,0 +1,71 @@
+{
+  "evidenceTier": "REFERENCE",
+  "labTier": "LOCAL_REFERENCE_LAB",
+  "nonAuthoritative": true,
+  "nonAuthoritativeReasons": [
+    "localEnvironment",
+    "singleRunOnly",
+    "provisionalBudgetOnly",
+    "missingMetrics"
+  ],
+  "w004Eligible": false,
+  "profileId": "gentoo-local-reference-lab-v1",
+  "runId": "EXAMPLE-LOCAL-LAB-NOT-REAL",
+  "gitCommit": "example-not-a-real-commit",
+  "environment": {
+    "clusterAlias": "kind-platform-tracing-reference-lab",
+    "namespace": "platform-tracing-reference-lab",
+    "cgroupVersion": "v2",
+    "kernelVersion": "6.12.31-gentoo",
+    "javaVersion": "21",
+    "jfrStartMode": "startup"
+  },
+  "scenario": {
+    "scenarioId": "S4",
+    "springProfile": "s4-production",
+    "loadModel": "constant-arrival-rate",
+    "duration": "10m",
+    "warmupDuration": "2m"
+  },
+  "metrics": {
+    "load": {
+      "executor": "constant-arrival-rate",
+      "warmupSec": 120,
+      "steadyWindowSec": 600
+    },
+    "collector": {
+      "backpressureEvidenceValid": false
+    }
+  },
+  "artifacts": {
+    "command": "command.txt",
+    "jfr": {
+      "storageRef": "file:///var/tmp/platform-tracing-reference-lab-artifacts/EXAMPLE/run.jfr",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "classification": {
+    "w004Candidate": false,
+    "w011Evidence": "none",
+    "w012Evidence": "none"
+  },
+  "budgets": {
+    "cpuOverheadPct": { "threshold": 3.0, "budgetStatus": "provisional" },
+    "rssOverheadPct": { "threshold": 10.0, "budgetStatus": "provisional" },
+    "p99LatencyDeltaPct": { "threshold": 15.0, "budgetStatus": "provisional" },
+    "errorRatePct": { "threshold": 0.1, "budgetStatus": "provisional" }
+  },
+  "reproducibility": {
+    "reproductionRunCount": 1
+  },
+  "caveats": {
+    "missingMetrics": [
+      "EXAMPLE ONLY — no local lab run executed",
+      "achievedRpsAvg",
+      "cpu.per1kRps",
+      "memory.workingSetBytesAvg",
+      "collector.backpressureEvidence"
+    ],
+    "notForProductionReadinessReason": "LOCAL_REFERENCE_LAB example; not SRE/pre-prod evidence"
+  }
+}

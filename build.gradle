@@ -1,0 +1,372 @@
+allprojects {
+    group = 'space.br1440.platform.tracing'
+    version = project.findProperty('platformTracingVersion') ?: '0.1.0-SNAPSHOT'
+
+    repositories {
+        mavenLocal()
+        // Публичные репозитории служат fallback при недоступности корпоративного n.1440.space.
+        mavenCentral()
+        maven { url = "https://n.1440.space/repository/platform-maven/" }
+        maven { url = "https://n.1440.space/repository/platform-maven-dev/" }
+        maven { url = "https://n.1440.space/repository/repo1.maven.org-proxy" }
+        maven { url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/") }
+    }
+}
+
+subprojects {
+    apply plugin: 'maven-publish'
+
+    // BOM-модуль публикуется как java-platform; остальные подпроекты — как java-library.
+    if (it.name != 'platform-tracing-bom') {
+        apply plugin: 'java-library'
+
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(21)
+            }
+            withSourcesJar()
+            withJavadocJar()
+        }
+
+        // Платформенный BOM подключается во все конфигурации, где могут разрешаться зависимости.
+        // Это обеспечивает согласованные версии в compileOnly, annotationProcessor, testImplementation
+        // и прочих производных конфигурациях без дублирования в каждом build.gradle.
+        dependencies {
+            compileOnly platform(project(':platform-tracing-bom'))
+            annotationProcessor platform(project(':platform-tracing-bom'))
+            testImplementation platform(project(':platform-tracing-bom'))
+            testCompileOnly platform(project(':platform-tracing-bom'))
+            testAnnotationProcessor platform(project(':platform-tracing-bom'))
+        }
+
+        test {
+            useJUnitPlatform()
+
+            // Опциональный strict context checker OpenTelemetry: активирует StrictContextStorage,
+            // который логирует/падает при незакрытых Scope'ах. Используется в CI-профиле
+            // и при локальной диагностике подозрений на утечку scope. Включается через
+            // -PstrictContext=true (см. также opentelemetry-sdk-testing в зависимостях
+            // platform-tracing-test). Не включаем по умолчанию, чтобы не замедлять обычный
+            // прогон unit-тестов и не вызывать false-positives в библиотечном коде, где Scope
+            // умышленно остаётся открытым между layer'ами (например, ServletRequest lifecycle).
+            if (project.hasProperty('strictContext') && project.property('strictContext') == 'true') {
+                systemProperty 'io.opentelemetry.context.enableStrictContext', 'true'
+            }
+        }
+
+        tasks.withType(Javadoc).configureEach {
+            options.addStringOption('Xdoclint:none', '-quiet')
+        }
+    }
+
+    afterEvaluate { project ->
+        publishing {
+            if (project.plugins.hasPlugin('java-library') || project.plugins.hasPlugin('java')) {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.java
+                    }
+                }
+            } else {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.javaPlatform
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    if (project.version.toString().endsWith('-SNAPSHOT')) {
+                        name = 'snapshotRepo'
+                        url = uri("https://n.1440.space/repository/platform-maven-dev")
+                        credentials {
+                            username = System.getenv("NEXUS_USERNAME")
+                            password = System.getenv("NEXUS_PASSWORD")
+                        }
+                    } else {
+                        name = 'releaseRepo'
+                        url = uri("https://n.1440.space/repository/platform-maven")
+                        credentials {
+                            username = System.getenv("PROD_NEXUS_USERNAME")
+                            password = System.getenv("PROD_NEXUS_PASSWORD")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Агрегирующая задача: публикация всех артефактов в корпоративный Nexus.
+tasks.register("publishAllToNexus") {
+    dependsOn subprojects.publish
+}
+
+// Агрегирующая задача: публикация всех артефактов в локальный Maven-кэш разработчика.
+tasks.register("publishAllToMavenLocal") {
+    dependsOn subprojects.publishToMavenLocal
+}
+
+// Проверка согласованности OTel instrumentation BOM и alpha-версии extension API.
+tasks.register('verifyOtelBomAlignment') {
+    group = 'verification'
+    description = 'Verifies that OpenTelemetry instrumentation alpha version is aligned with instrumentation BOM version.'
+    notCompatibleWithConfigurationCache(
+            'Reads Gradle properties at execution time for version alignment check')
+
+    def instrumentationBomVersionProvider =
+            providers.gradleProperty('openTelemetryInstrumentationBomVersion')
+    def instrumentationAlphaVersionProvider =
+            providers.gradleProperty('openTelemetryInstrumentationAlphaVersion')
+
+    doLast {
+        def instrumentationBomVersion = instrumentationBomVersionProvider.orNull?.trim()
+        def instrumentationAlphaVersion = instrumentationAlphaVersionProvider.orNull?.trim()
+
+        if (!instrumentationBomVersion) {
+            throw new GradleException(
+                    'Missing required Gradle property: openTelemetryInstrumentationBomVersion')
+        }
+        if (!instrumentationAlphaVersion) {
+            throw new GradleException(
+                    'Missing required Gradle property: openTelemetryInstrumentationAlphaVersion')
+        }
+
+        def expectedAlphaVersion = "${instrumentationBomVersion}-alpha"
+        if (instrumentationAlphaVersion != expectedAlphaVersion) {
+            throw new GradleException(
+                    "OpenTelemetry version mismatch: " +
+                    "openTelemetryInstrumentationAlphaVersion=${instrumentationAlphaVersion}, " +
+                    "expected ${expectedAlphaVersion} based on " +
+                    "openTelemetryInstrumentationBomVersion=${instrumentationBomVersion}")
+        }
+    }
+}
+
+gradle.projectsEvaluated {
+    subprojects.each { sub ->
+        sub.tasks.matching { it.name == 'check' }.configureEach {
+            dependsOn rootProject.tasks.named('verifyOtelBomAlignment')
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// PR-0 — Baseline lock helpers (docs/architecture/pr-0-*.md).
+// Verification-only tasks: no production code, no test deletion, no module collapse.
+// ---------------------------------------------------------------------------------------------
+
+def pr0SnapshotModules = [
+        'platform-tracing-api',
+        'platform-tracing-core',
+        'platform-tracing-otel-extension',
+        'platform-tracing-spring-boot-autoconfigure',
+        'platform-tracing-autoconfigure-webmvc',
+        'platform-tracing-autoconfigure-webflux',
+        'platform-tracing-spring-boot-starter-servlet',
+        'platform-tracing-spring-boot-starter-reactive',
+]
+
+def pr0SnapshotDir = layout.projectDirectory.dir('docs/architecture/baselines/pr-0/dependency-snapshot')
+
+def pr0GitShaProvider = providers.exec {
+    commandLine 'git', 'rev-parse', '--short', 'HEAD'
+    ignoreExitValue = true
+}.standardOutput.asText.map { it.trim() ?: 'unknown' }
+
+tasks.register('pr0DependencySnapshot') {
+    group = 'pr0'
+    description = 'Writes resolved dependency trees for PR-0 migration baseline modules.'
+    notCompatibleWithConfigurationCache('Resolves dependency graphs at execution time')
+
+    pr0SnapshotModules.each { moduleName ->
+        def sub = project(':' + moduleName)
+        dependsOn sub.tasks.matching { it.name == 'compileJava' }
+    }
+
+    inputs.property('modules', pr0SnapshotModules)
+    outputs.dir(pr0SnapshotDir)
+
+    doLast {
+        def outDir = pr0SnapshotDir.asFile
+        outDir.mkdirs()
+
+        pr0SnapshotModules.each { moduleName ->
+            def sub = project(':' + moduleName)
+            def sb = new StringBuilder()
+            sb.append("Module: ${moduleName}\n")
+            sb.append("Generated: ${new Date()}\n\n")
+
+            ['compileClasspath', 'runtimeClasspath', 'apiElements'].each { cfgName ->
+                def cfg = sub.configurations.findByName(cfgName)
+                if (cfg == null || !cfg.canBeResolved) {
+                    return
+                }
+                sb.append("--- ${cfgName} (first-level) ---\n")
+                try {
+                    cfg.resolvedConfiguration.firstLevelModuleDependencies.sort { it.name }.each { dep ->
+                        sb.append("  ${dep.moduleGroup}:${dep.moduleName}:${dep.moduleVersion}\n")
+                    }
+                } catch (Exception e) {
+                    sb.append("  (unresolved: ${e.message})\n")
+                }
+                sb.append('\n')
+            }
+
+            new File(outDir, "${moduleName}.txt").text = sb.toString()
+        }
+
+        def metadata = [
+                savedAt          : new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+                gitSha           : pr0GitShaProvider.get(),
+                jdk              : System.getProperty('java.version'),
+                osName           : System.getProperty('os.name'),
+                osArch           : System.getProperty('os.arch'),
+                cpuCores         : Runtime.runtime.availableProcessors(),
+                gradleVersion    : gradle.gradleVersion,
+                modules          : pr0SnapshotModules,
+        ]
+        new File(outDir.parentFile, 'dependency-snapshot-metadata.json').text =
+                groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata))
+
+        logger.lifecycle('PR-0 dependency snapshot written to {}', outDir)
+    }
+}
+
+tasks.register('pr0StarterDependencySmoke') {
+    group = 'pr0'
+    description = 'Verifies public starter dependency expectations for PR-0 baseline (no production changes).'
+    notCompatibleWithConfigurationCache('Resolves starter dependency graphs at execution time')
+
+    dependsOn ':platform-tracing-spring-boot-starter-servlet:compileJava',
+            ':platform-tracing-spring-boot-starter-reactive:compileJava'
+
+    doLast {
+        def collectProjectNames = { Project starter, String cfgName ->
+            def cfg = starter.configurations.findByName(cfgName)
+            if (cfg == null || !cfg.canBeResolved) {
+                return [] as Set
+            }
+            def names = [] as Set
+            cfg.resolvedConfiguration.lenientConfiguration.allModuleDependencies.each { dep ->
+                if (dep.moduleGroup == 'space.br1440.platform.tracing') {
+                    names << dep.moduleName
+                }
+            }
+            return names
+        }
+
+        def assertStarter = { String starterName, Set required, Set forbidden, Set forbiddenTransitive ->
+            def starter = project(':' + starterName)
+            def compileNames = collectProjectNames(starter, 'compileClasspath')
+            def runtimeNames = collectProjectNames(starter, 'runtimeClasspath')
+            def allNames = compileNames + runtimeNames
+
+            required.each { req ->
+                if (!allNames.contains(req)) {
+                    throw new GradleException(
+                            "PR-0 starter smoke FAIL: ${starterName} missing required platform module '${req}'. " +
+                                    "Found: ${allNames.sort()}")
+                }
+            }
+            forbidden.each { ban ->
+                if (compileNames.contains(ban)) {
+                    throw new GradleException(
+                            "PR-0 starter smoke FAIL: ${starterName} must not declare '${ban}' on compileClasspath. " +
+                                    "Application teams use BOM + exactly one starter.")
+                }
+            }
+            forbiddenTransitive.each { ban ->
+                if (allNames.contains(ban)) {
+                    throw new GradleException(
+                            "PR-0 starter smoke FAIL: ${starterName} transitively pulls '${ban}'. " +
+                                    "Agent extension must not enter application classpath via starter.")
+                }
+            }
+            logger.lifecycle('PR-0 starter smoke OK: {} (platform modules: {})', starterName, allNames.sort())
+        }
+
+        assertStarter(
+                'platform-tracing-spring-boot-starter-servlet',
+                ['platform-tracing-spring-boot-autoconfigure', 'platform-tracing-autoconfigure-webmvc'] as Set,
+                ['platform-tracing-autoconfigure-webflux', 'platform-tracing-otel-extension'] as Set,
+                ['platform-tracing-otel-extension'] as Set
+        )
+        assertStarter(
+                'platform-tracing-spring-boot-starter-reactive',
+                ['platform-tracing-spring-boot-autoconfigure', 'platform-tracing-autoconfigure-webflux'] as Set,
+                ['platform-tracing-autoconfigure-webmvc', 'platform-tracing-otel-extension'] as Set,
+                ['platform-tracing-otel-extension'] as Set
+        )
+
+        def reportDir = layout.projectDirectory.dir('docs/architecture/baselines/pr-0').asFile
+        reportDir.mkdirs()
+        new File(reportDir, 'starter-dependency-smoke.txt').text = """\
+PR-0 starter dependency smoke — PASSED
+Date: ${new Date()}
+Git: ${pr0GitShaProvider.get()}
+
+Expectations verified:
+- platform-tracing-spring-boot-starter-servlet → autoconfigure + webmvc (not webflux, not otel-extension)
+- platform-tracing-spring-boot-starter-reactive → autoconfigure + webflux (not webmvc, not otel-extension)
+- platform-tracing-otel-extension not on application classpath via either starter
+
+Consumer rule (documented, not enforced here):
+- Application teams: BOM + exactly one starter
+- Do not depend directly on core / otel-extension / autoconfigure modules
+""".stripIndent()
+    }
+}
+
+tasks.register('pr0BaselineLockAutomated') {
+    group = 'pr0'
+    description = 'Runs automated PR-0 checks: unit test gate (check), dependency snapshot, starter smoke.'
+    dependsOn 'pr0DependencySnapshot', 'pr0StarterDependencySmoke'
+    dependsOn subprojects.collect { it.tasks.matching { task -> task.name == 'check' } }
+}
+
+tasks.register('pr0BaselineLock') {
+    group = 'pr0'
+    description = 'PR-0 entry point: runs automated checks and prints manual baseline steps (JMH, e2e, perf).'
+    dependsOn 'pr0BaselineLockAutomated'
+    doLast {
+        logger.lifecycle('')
+        logger.lifecycle('PR-0 automated checks completed. Manual steps (see docs/architecture/pr-0-baseline-checklist.md):')
+        logger.lifecycle('  ./gradlew :platform-tracing-bench:jmh')
+        logger.lifecycle('  ./gradlew :platform-tracing-bench:jmhSaveBaseline')
+        logger.lifecycle('  ./gradlew :platform-tracing-bench:performanceReleaseGate')
+        logger.lifecycle('  ./gradlew :platform-tracing-e2e-tests:test -PrunE2e')
+        logger.lifecycle('  Macro perf: platform-tracing-perf-tests/scripts/run-perf-scenario.ps1 -Scenario m0|m5|m10|m10c|m10d')
+        logger.lifecycle('  Fill results: copy docs/architecture/pr-0-baseline-results-template.md → pr-0-baseline-results-<date>.md')
+        logger.lifecycle('')
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// PR-1 — Module taxonomy verification (docs/architecture/platform-tracing-module-taxonomy.md).
+// ArchUnit guardrails + starter smoke; no production code changes.
+// ---------------------------------------------------------------------------------------------
+
+tasks.register('pr1ModuleTaxonomyVerify') {
+    group = 'pr1'
+    description = 'Runs PR-1 module taxonomy ArchUnit guardrails and starter dependency smoke.'
+    dependsOn 'pr0StarterDependencySmoke'
+    dependsOn ':platform-tracing-spring-boot-autoconfigure:test'
+    dependsOn ':platform-tracing-autoconfigure-webmvc:test'
+    dependsOn ':platform-tracing-autoconfigure-webflux:test'
+    dependsOn ':platform-tracing-core:test'
+    dependsOn ':platform-tracing-otel-extension:test'
+    dependsOn ':platform-tracing-test:test'
+}
+
+// ---------------------------------------------------------------------------------------------
+// PR-4 — Architecture fitness functions (docs/architecture/platform-tracing-fitness-functions-implementation.md).
+// Consolidates PR-1/2/3 guardrails + new API wire / spike / production-path checks.
+// ---------------------------------------------------------------------------------------------
+
+tasks.register('pr4ArchitectureFitnessVerify') {
+    group = 'pr4'
+    description = 'Runs PR-4 architecture fitness functions (ArchUnit + PR-1 taxonomy smoke).'
+    dependsOn 'pr1ModuleTaxonomyVerify'
+    dependsOn ':platform-tracing-api:test'
+}

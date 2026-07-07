@@ -1,0 +1,17 @@
+{
+    "savedAt": "2026-06-12T21:10:19+03:00",
+    "gitSha": "unknown",
+    "jdk": "21.0.6",
+    "hardwareProfileId": "windows-i5-13500-pr0",
+    "osName": "Windows 10",
+    "osArch": "amd64",
+    "cpuCores": 20,
+    "baselineMode": "FULL_BASELINE_BATCHED",
+    "heap": "4g",
+    "batchValidatedManifest": "E:\\Platform_Traces\\platform-tracing-bench\\build\\results\\jmh\\batches\\validated-manifest.json",
+    "batchMergedResults": "E:\\Platform_Traces\\platform-tracing-bench\\build\\results\\jmh\\batches\\merged-results.json",
+    "batchManifest": "E:\\Platform_Traces\\platform-tracing-bench\\build\\results\\jmh\\batches\\manifest.json",
+    "validationMergedAt": "2026-06-14T12:46:30+03:00",
+    "validationMergedFrom": "E:\\Platform_Traces\\platform-tracing-bench\\build\\results\\jmh\\batches\\ValidatingSpanProcessorBenchmark.json",
+    "validationBaselineMode": "FULL_REFERENCE_2x5x5"
+}

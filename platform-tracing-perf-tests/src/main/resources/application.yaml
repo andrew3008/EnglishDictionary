@@ -1,0 +1,29 @@
+# Конфигурация SUT для перф-прогонов (Фаза 17).
+# Фиксированный пул Tomcat: воспроизводимость между прогонами (auto-tuning исключён).
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 32
+      min-spare: 32
+
+spring:
+  application:
+    name: perf-sut
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # health — readiness для compose/S1; metrics/prometheus — RSS/heap сэмплирование раннером.
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    # INFO-шум исключён из измерения: логирование — не предмет перф-модели трассировки.
+    root: warn
+    org.springframework.boot.web.embedded.tomcat.TomcatWebServer: info

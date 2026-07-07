@@ -1,0 +1,3 @@
+space.br1440.platform.tracing.autoconfigure.reactive.ReactiveTracingAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.reactive.TracingReactorEagerInitConfiguration
+space.br1440.platform.tracing.autoconfigure.reactive.WebFluxSuppressMicrometerTracingAutoConfiguration

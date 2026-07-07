@@ -1,0 +1,36 @@
+description = 'Публичный API платформенного стартера трассировки. ' +
+        'Содержит интерфейс PlatformTracing, аннотацию @Traced, перечисления SpanCategory и SpanResult, ' +
+        'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), снимок TracingRequestContext для error-handling, точки расширения SPI. ' +
+        'Модуль не зависит от Spring и OpenTelemetry SDK, чтобы прикладной код мог писаться против стабильного контракта. ' +
+        'Единственная runtime-зависимость — slf4j-api для MDC-моста RemoteServiceMdc.'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    // MDC-мост platform.remote.service — единственная runtime-зависимость API-модуля.
+    implementation 'org.slf4j:slf4j-api'
+
+    // Аннотации Jakarta для Nullable / Nonnull без зависимостей на implementation-фреймворки.
+    api 'jakarta.annotation:jakarta.annotation-api'
+
+    // Для PlatformTraceContextKeys (io.opentelemetry.context.ContextKey)
+    compileOnly 'io.opentelemetry:opentelemetry-context'
+
+    // Для SensitiveDataRule.evaluate(AttributeKey<?>, Object): тип/имя атрибута.
+    // compileOnly — runtime предоставляется OTel Agent/SDK в потребляющем модуле.
+    compileOnly 'io.opentelemetry:opentelemetry-api'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation project(':platform-tracing-test')
+    // OTel Context/API нужны для unit-тестов PlatformOutboundInjector (compileOnly в main).
+    testImplementation 'io.opentelemetry:opentelemetry-api'
+    testImplementation 'io.opentelemetry:opentelemetry-context'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Binding для ThreadLocal MDC в unit-тестах RemoteServiceMdc.
+    testRuntimeOnly 'ch.qos.logback:logback-classic'
+}

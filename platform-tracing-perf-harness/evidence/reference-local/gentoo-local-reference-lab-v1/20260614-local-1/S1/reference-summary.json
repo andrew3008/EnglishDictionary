@@ -1,0 +1,91 @@
+﻿{
+    "evidenceTier":  "REFERENCE",
+    "labTier":  "LOCAL_REFERENCE_LAB",
+    "nonAuthoritative":  true,
+    "nonAuthoritativeReasons":  [
+                                    "localEnvironment",
+                                    "singleRunOnly",
+                                    "provisionalBudgetOnly",
+                                    "missingMetrics"
+                                ],
+    "w004Eligible":  false,
+    "profileId":  "gentoo-local-reference-lab-v1",
+    "runId":  "20260614-local-1",
+    "gitCommit":  "unknown-local-lab",
+    "environment":  {
+                        "clusterAlias":  "kind-platform-tracing-reference-lab",
+                        "namespace":  "platform-tracing-reference-lab",
+                        "cgroupVersion":  "v2",
+                        "kernelVersion":  "6.12.31-gentoo",
+                        "javaVersion":  "21",
+                        "jfrStartMode":  "not-captured"
+                    },
+    "scenario":  {
+                     "scenarioId":  "S1",
+                     "springProfile":  "s1-tracing",
+                     "duration":  "3m",
+                     "warmupDuration":  "1m",
+                     "loadModel":  "constant-arrival-rate",
+                     "endpointPath":  "/perf/work",
+                     "targetRps":  20
+                 },
+    "metrics":  {
+                    "load":  {
+                                 "executor":  "constant-arrival-rate",
+                                 "warmupSec":  60,
+                                 "steadyWindowSec":  180,
+                                 "targetRps":  20,
+                                 "achievedRpsAvg":  20.008,
+                                 "achievedRpsPct":  100.04,
+                                 "droppedIterations":  0,
+                                 "httpReqFailedRate":  0
+                             },
+                    "latency":  {
+                                    "p95Ms":  1.955
+                                },
+                    "collector":  {
+                                      "backpressureEvidenceValid":  false
+                                  }
+                },
+    "artifacts":  {
+                      "k6Summary":  "k6-summary.json",
+                      "command":  "command.txt"
+                  },
+    "classification":  {
+                           "w004Candidate":  false,
+                           "w011Evidence":  "none",
+                           "w012Evidence":  "none"
+                       },
+    "budgets":  {
+                    "cpuOverheadPct":  {
+                                           "threshold":  3,
+                                           "budgetStatus":  "provisional"
+                                       },
+                    "rssOverheadPct":  {
+                                           "threshold":  10,
+                                           "budgetStatus":  "provisional"
+                                       },
+                    "p99LatencyDeltaPct":  {
+                                               "threshold":  15,
+                                               "budgetStatus":  "provisional"
+                                           },
+                    "errorRatePct":  {
+                                         "threshold":  0.1,
+                                         "budgetStatus":  "provisional"
+                                     }
+                },
+    "reproducibility":  {
+                            "reproductionRunCount":  1
+                        },
+    "caveats":  {
+                    "missingMetrics":  [
+                                           "cpu.per1kRps",
+                                           "memory.workingSetBytesAvg",
+                                           "prometheus-compact-summary",
+                                           "jfr-summary",
+                                           "collector.backpressureEvidence",
+                                           "kind ClusterIP/DNS broken - pod IP workaround"
+                                       ],
+                    "notForProductionReadinessReason":  "LOCAL_REFERENCE_LAB; single-node kind rehearsal; not SRE/pre-prod evidence"
+                }
+}

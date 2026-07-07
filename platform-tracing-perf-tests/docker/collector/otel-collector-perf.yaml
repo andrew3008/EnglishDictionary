@@ -1,0 +1,42 @@
+# Конфигурация Collector'а для перф-прогонов (Фаза 17, PR-3).
+#
+# Назначение: принять OTLP-поток от SUT и подтвердить приём с МИНИМАЛЬНОЙ собственной
+# стоимостью. Хранилища нет намеренно: измеряется overhead SDK/agent на стороне SUT,
+# а не пропускная способность backend'а. memory_limiter первый, batch последний —
+# инвариант порядка процессоров production-конфига (CollectorPolicyContractTest).
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 384
+    spike_limit_mib: 96
+  batch:
+    send_batch_size: 512
+    timeout: 1s
+
+exporters:
+  # nop: подтверждает и отбрасывает. Debug-выхлоп отключён — I/O Collector'а не должен
+  # становиться узким местом стенда.
+  nop:
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [nop]
+  telemetry:
+    metrics:
+      level: basic

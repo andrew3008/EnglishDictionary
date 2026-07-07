@@ -1,0 +1,93 @@
+# Перф-стенд Фазы 17 (PR-3/PR-4): SUT + OTel Collector + k6 (open model).
+#
+# Топология cpuset (performance-test-matrix): каждый компонент на выделенных ядрах,
+# чтобы co-location генератора/Collector'а не искажала Δ CPU SUT. Значения по умолчанию
+# рассчитаны на reference-хост Gentoo; переопределяются env-переменными.
+#
+# Запуск ТОЛЬКО через scripts/run-perf-scenario.ps1 (он подставляет env-файл сценария,
+# собирает контексты, сэмплирует RSS/CPU и забирает артефакты docker cp).
+#
+# ВАЖНО (remote Docker): никаких volume mounts хостовых путей — всё содержимое образов
+# через COPY (build context), артефакты наружу — docker cp.
+
+services:
+  collector:
+    build:
+      context: docker/collector
+    container_name: perf-collector
+    cpuset: "${COLLECTOR_CPUSET:-4,5}"
+    mem_limit: 512m
+    # Образ contrib distroless — wget недоступен; готовность проверяет раннер через docker inspect.
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "validate", "--config=/etc/otelcol-contrib/config.yaml"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  sut:
+    build:
+      # Контекст собирает :platform-tracing-perf-tests:prepareSutDockerContext.
+      context: build/docker
+    container_name: perf-sut
+    cpuset: "${SUT_CPUSET:-0,1}"
+    mem_limit: 2g
+    environment:
+      # JVM-флаги сценария (агент/extension/ratio/JFR) — из env-файла сценария.
+      PERF_SCENARIO_JVM_OPTS: "${PERF_SCENARIO_JVM_OPTS:-}"
+    ports:
+      # Для S1 (time-to-first-200 с хоста) и ручной диагностики.
+      - "18080:8080"
+    depends_on:
+      collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget -q -O - http://127.0.0.1:8080/actuator/health | grep -q UP"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  # --- Деградационные сценарии (PR-4, профиль degraded) --------------------------------
+
+  # M8a (slow) / M8c (flaky): toxiproxy перед Collector'ом. Прокси и toxics создаёт
+  # setup-хук сценария (scenarios/<id>.setup.ps1) через admin API (порт 18474 на хосте).
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    container_name: perf-toxiproxy
+    cpuset: "${TOXIPROXY_CPUSET:-4,5}"
+    ports:
+      - "18474:8474"
+    profiles:
+      - degraded
+
+  # M8b (backpressure): nginx отвечает 429/503 на OTLP-приём — SDK не должен делать
+  # unbounded retries и копить память (бюджет degraded-no-oom).
+  backpressure:
+    build:
+      context: docker/nginx-backpressure
+    container_name: perf-backpressure
+    cpuset: "${TOXIPROXY_CPUSET:-4,5}"
+    profiles:
+      - degraded
+
+  k6:
+    build:
+      context: docker/k6
+    container_name: perf-k6
+    cpuset: "${K6_CPUSET:-6,7}"
+    mem_limit: 2g
+    environment:
+      TARGET_URL: "http://sut:8080"
+      RATE: "${RATE:-500}"
+      WARMUP_MIN: "${WARMUP_MIN:-2}"
+      STEADY_MIN: "${STEADY_MIN:-10}"
+      ERROR_PCT: "${ERROR_PCT:-0.05}"
+      POST_PCT: "${POST_PCT:-0.15}"
+      TRACE_ON_PCT: "${TRACE_ON_PCT:-0.01}"
+    depends_on:
+      sut:
+        condition: service_healthy
+    # k6 завершится сам по окончании сценария; раннер ждёт его exit code
+    # (валидность прогона: thresholds внутри скрипта).
+    profiles:
+      - load

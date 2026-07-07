@@ -1,0 +1,12 @@
+spring:
+  config:
+    activate:
+      on-profile: s5-strict-diagnostic
+
+platform:
+  tracing:
+    enabled: true
+    validation:
+      enabled: true
+      strict: true
+      strict-runtime-allowed: true

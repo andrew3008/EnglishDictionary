@@ -1,0 +1,128 @@
+﻿{
+    "sessionStamp":  "2026-06-10_official",
+    "rate":  300,
+    "baselineDir":  "2026-06-10_235521\\m0",
+    "m0NoisePct":  1.77,
+    "scenarios":  {
+                      "m0":  {
+                                 "totalRuns":  6,
+                                 "validRuns":  4,
+                                 "median":  {
+                                                "deltaCpuPct":  null,
+                                                "deltaRssPct":  null,
+                                                "deltaP99Ms":  null,
+                                                "rssSlope":  0.9685
+                                            }
+                             },
+                      "m4":  {
+                                 "totalRuns":  3,
+                                 "validRuns":  3,
+                                 "median":  {
+                                                "deltaCpuPct":  22.67,
+                                                "deltaRssPct":  21.3,
+                                                "deltaP99Ms":  0.39,
+                                                "rssSlope":  2.916
+                                            }
+                             },
+                      "m5":  {
+                                 "totalRuns":  3,
+                                 "validRuns":  2,
+                                 "median":  {
+                                                "deltaCpuPct":  48.14,
+                                                "deltaRssPct":  25.37,
+                                                "deltaP99Ms":  0.38,
+                                                "rssSlope":  4.0945
+                                            }
+                             },
+                      "m5w":  {
+                                  "totalRuns":  null,
+                                  "validRuns":  1,
+                                  "median":  {
+                                                 "deltaCpuPct":  114.66,
+                                                 "deltaRssPct":  22.44,
+                                                 "deltaP99Ms":  0.48,
+                                                 "rssSlope":  1.399
+                                             }
+                              },
+                      "m6":  {
+                                 "totalRuns":  3,
+                                 "validRuns":  3,
+                                 "median":  {
+                                                "deltaCpuPct":  52.88,
+                                                "deltaRssPct":  27.23,
+                                                "deltaP99Ms":  0.27,
+                                                "rssSlope":  3.409
+                                            }
+                             },
+                      "m8a":  {
+                                  "totalRuns":  3,
+                                  "validRuns":  3,
+                                  "median":  {
+                                                 "deltaCpuPct":  35.22,
+                                                 "deltaRssPct":  19.54,
+                                                 "deltaP99Ms":  0.2,
+                                                 "rssSlope":  3.099
+                                             }
+                              },
+                      "m8b":  {
+                                  "totalRuns":  3,
+                                  "validRuns":  3,
+                                  "median":  {
+                                                 "deltaCpuPct":  33.65,
+                                                 "deltaRssPct":  19.95,
+                                                 "deltaP99Ms":  0.31,
+                                                 "rssSlope":  2.448
+                                             }
+                              },
+                      "m8c":  {
+                                  "totalRuns":  3,
+                                  "validRuns":  3,
+                                  "median":  {
+                                                 "deltaCpuPct":  37.62,
+                                                 "deltaRssPct":  21.82,
+                                                 "deltaP99Ms":  0.34,
+                                                 "rssSlope":  2.849
+                                             }
+                              },
+                      "m10":  {
+                                  "totalRuns":  3,
+                                  "validRuns":  3,
+                                  "median":  {
+                                                 "deltaCpuPct":  44.95,
+                                                 "deltaRssPct":  20.97,
+                                                 "deltaP99Ms":  0.27,
+                                                 "rssSlope":  3.559
+                                             }
+                              },
+                      "queue-saturation":  {
+                                               "totalRuns":  3,
+                                               "validRuns":  3,
+                                               "median":  {
+                                                              "deltaCpuPct":  111.9,
+                                                              "deltaRssPct":  20.91,
+                                                              "deltaP99Ms":  1.74,
+                                                              "rssSlope":  4.852
+                                                          }
+                                           },
+                      "queue-saturation-upstream":  {
+                                                        "totalRuns":  3,
+                                                        "validRuns":  3,
+                                                        "median":  {
+                                                                       "deltaCpuPct":  116.95,
+                                                                       "deltaRssPct":  22.68,
+                                                                       "deltaP99Ms":  1.43,
+                                                                       "rssSlope":  4.448
+                                                                   }
+                                                    },
+                      "m9":  {
+                                 "totalRuns":  null,
+                                 "validRuns":  1,
+                                 "median":  {
+                                                "deltaCpuPct":  40.99,
+                                                "deltaRssPct":  29.33,
+                                                "deltaP99Ms":  -0.1,
+                                                "rssSlope":  0.302
+                                            }
+                             }
+                  }
+}

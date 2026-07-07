@@ -1,0 +1,31 @@
+package space.br1440.platform.tracing.otel.extension.scrubbing;
+
+
+import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
+
+/**
+ * Правило для IP-адресов. Key-based, TRUNCATE (prefix-grouping /24 и /64).
+ */
+public final class IpAddressRule extends AbstractBuiltInRule {
+
+    /** Маркер reason для IP-prefix усечения в процессоре. */
+    public static final String REASON = "ip-address";
+
+    private static final String[] TOKENS = {
+            "ipaddress", "ipv4address", "ipv6address",
+            "xforwardedfor", "remoteaddress", "clientaddress",
+            "networkpeeraddress", "clientip"
+    };
+
+    IpAddressRule() {
+        super(BuiltInSensitiveDataRules.IP_ADDRESS);
+    }
+
+    @Override
+    public ScrubbingDecision evaluate(String key, Object value) {
+        if (KeyMatcher.containsAny(KeyMatcher.normalize(key), TOKENS)) {
+            return ScrubbingDecision.truncate(REASON, -1);
+        }
+        return ScrubbingDecision.keep();
+    }
+}

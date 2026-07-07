@@ -1,0 +1,8 @@
+runId=20260614-local-metrics-diag
+labTier=LOCAL_REFERENCE_LAB
+w004Eligible=false
+script=collect-local-collector-summary.sh
+note=Point-in-time collector otelcol_* scrape via in-cluster curl probe (pod IP 10.244.0.7:8888)
+prometheus=not-installed
+cadvisor=unavailable
+jfr=not-configured

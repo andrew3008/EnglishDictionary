@@ -1,0 +1,11 @@
+description = 'Платформенный стартер трассировки для Spring MVC (Servlet stack). ' +
+        'Подключается сервисами, использующими spring-boot-starter-web. Транзитивно подтягивает ' +
+        'autoconfigure-модуль платформы и Spring Web (Tomcat по умолчанию).'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    api project(':platform-tracing-spring-boot-autoconfigure')
+    api project(':platform-tracing-autoconfigure-webmvc')
+    api 'org.springframework.boot:spring-boot-starter-web'
+}

@@ -1,0 +1,3 @@
+﻿runId=20260614-local-1 scenario=S1 targetRps=20
+kind cluster=platform-tracing-reference-lab
+labTier=LOCAL_REFERENCE_LAB w004Eligible=false

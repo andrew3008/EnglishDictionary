@@ -1,0 +1,40 @@
+# Minimal kube-prometheus-stack values for kind local lab (PR-9H-E2L-FULL)
+# Use with: scripts/local-reference-lab/install-prometheus-kind.sh --execute
+
+grafana:
+  enabled: false
+
+alertmanager:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 2h
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+    additionalScrapeConfigs:
+      - job_name: perf-harness-collector
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - platform-tracing-reference-lab
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: perf-harness-collector
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_ip]
+            target_label: __address__
+            replacement: ${1}:8888
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true

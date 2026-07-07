@@ -1,0 +1,94 @@
+# Эталонная production-конфигурация OpenTelemetry Collector (Tier 1 / Agent) для платформенной трассировки.
+#
+# Ответственность:
+#   - Сбор телеметрии с узла (DaemonSet)
+#   - Маршрутизация по trace_id для обеспечения Trace Affinity.
+#
+# Topology:
+#   Эта конфигурация предназначена для уровня Agent (DaemonSet). Все спаны
+#   роутятся на Collector Gateway (Tier 2) через load_balancing exporter с использованием
+#   traceID в качестве ключа маршрутизации. Это необходимо для stateful tail_sampling.
+#
+# Рекомендация по памяти (Фаза 16): задавайте env GOMEMLIMIT = 80% hard-лимита контейнера
+# (например, GOMEMLIMIT=205MiB при limit 256MiB) в дополнение к memory_limiter.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Memory limiter ставится первым в pipeline и защищает Collector от OOM при пиках.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: ${env:AGENT_MEMORY_LIMIT_MIB:-256}
+    spike_limit_mib: ${env:AGENT_MEMORY_SPIKE_LIMIT_MIB:-64}
+
+  # Инфраструктурные метаданные Kubernetes — зона Collector'а (ADR-resource-merge-precedence:
+  # SDK отвечает за service identity, Collector — за k8s.*). Только agent-tier (DaemonSet):
+  # матчинг идёт по IP входящего OTLP-соединения, которое на DaemonSet'е равно pod IP
+  # приложения; на gateway-tier IP отправителя — это IP агента, и обогащение молча
+  # не сработает (silent fail, README k8sattributesprocessor).
+  # Требует RBAC: ServiceAccount c get/list/watch на pods/namespaces
+  # (см. docs/runbook/collector-pipeline-production.md).
+  k8sattributes:
+    auth_type: serviceAccount
+    extract:
+      metadata: [k8s.pod.name, k8s.namespace.name, k8s.node.name, k8s.pod.uid]
+    pod_association:
+      - sources:
+          # IP входящего OTLP-соединения = pod IP приложения (DaemonSet-сценарий).
+          - from: connection
+
+  # Batch ставится перед exporters для амортизации сетевых запросов.
+  batch:
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+    timeout: 5s
+
+exporters:
+  load_balancing:
+    # routing_key 'traceID' используется по умолчанию для трасс, 
+    # но мы указываем его явно для ясности и отсутствия неоднозначностей.
+    routing_key: traceID
+    protocol:
+      otlp:
+        timeout: 1s
+    resolver:
+      dns:
+        # Указание headless-сервиса Gateway-узлов
+        hostname: ${env:GATEWAY_HEADLESS_SVC:-otelcol-gateway-headless.observability.svc.cluster.local}
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  zpages:
+    endpoint: 0.0.0.0:55679
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+service:
+  extensions: [health_check, zpages, pprof]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      # Порядок: memory_limiter первый; k8sattributes — context-зависимое обогащение
+      # до batch (после batching IP-ассоциация source-соединения теряется).
+      processors: [memory_limiter, k8sattributes, batch]
+      exporters: [load_balancing]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level: detailed
+      # С contrib 0.123 поле `address` удалено — метрики настраиваются через readers
+      # (Prometheus pull на :8888), см. ADR-collector-boundary.
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888

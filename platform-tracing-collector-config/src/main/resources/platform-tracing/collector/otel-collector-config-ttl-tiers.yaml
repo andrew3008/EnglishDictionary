@@ -1,0 +1,145 @@
+# Расширенная конфигурация Collector'а с маршрутизацией трасс в разные TTL tier'ы Jaeger'а.
+#
+# Используется SRE для реализации требования «errors дольше, ok короче» через два независимых
+# Jaeger backend'а или storage tier'а одного Jaeger'а с разными retention.
+#
+# Логика (Фаза 16, Spike S1 — variant-b «transform → resource routing»):
+#   - tail_sampling формирует решение «сохранять / отбрасывать»;
+#   - transform эскалирует failure-признак со span'а на resource: благодаря trace affinity
+#     (load_balancing routing_key=traceID на agent-tier) все span'ы трейса приходят
+#     в одном ResourceSpans, поэтому resource-атрибут помечает трейс целиком;
+#   - routing CONNECTOR направляет трейс по resource-атрибуту в long/short пайплайн.
+#
+# ВАЖНО (анти-фрагментация, доказано Spike S1 на contrib 0.154.0):
+#   - routing по `context: span` ЗАПРЕЩЁН — он расщепляет multi-span трейс между
+#     backend'ами (error-child уходит в long, parent и success-children — в short);
+#   - `routing` PROCESSOR (deprecated с 0.116) на пине 0.154.0 невалиден — только connector;
+#   - `match_once` удалён с 0.120 — поле не указывать.
+#   Fallback при выявлении фрагментации на production-нагрузке (нарушение trace affinity,
+#   late spans): добавить groupbytrace перед transform (вариант-e Spike S1) ценой
+#   дополнительной RAM/latency.
+#
+# Подключается отдельно от основного otel-collector-gateway-tail-sampling.yaml
+# и заменяет его pipeline'ы.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: ${env:TTL_TIERS_MEMORY_LIMIT_MIB:-1024}
+    spike_limit_mib: ${env:TTL_TIERS_MEMORY_SPIKE_LIMIT_MIB:-256}
+
+  tail_sampling:
+    decision_wait: ${env:TTL_TIERS_DECISION_WAIT:-10s}
+    num_traces: ${env:TTL_TIERS_NUM_TRACES:-50000}
+    expected_new_traces_per_sec: ${env:TTL_TIERS_EXPECTED_NEW_TRACES_PER_SEC:-1000}
+    policies:
+      - name: errors-always
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-always
+        type: latency
+        latency:
+          threshold_ms: ${env:TTL_TIERS_SLOW_TRACE_THRESHOLD_MS:-2000}
+      - name: probabilistic-default
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: ${env:TTL_TIERS_SUCCESS_BASELINE_PERCENT:-10}
+
+  # Эскалация failure-признака со span'а на resource (variant-b Spike S1).
+  # EnrichingSpanProcessor приложения проставляет platform.trace.result на span'ах;
+  # здесь признак поднимается на уровень resource, чтобы routing connector мог
+  # маршрутизировать трейс ЦЕЛИКОМ (routing по span-атрибуту фрагментирует трейс).
+  transform/copy-result-to-resource:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(resource.attributes["platform.trace.result"], "failure") where attributes["platform.trace.result"] == "failure"
+
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+connectors:
+  # Routing CONNECTOR (замена deprecated routing processor, Фаза 16 PR-3).
+  # Условия — ТОЛЬКО по resource-атрибутам (контракт анти-фрагментации,
+  # проверяется CollectorPolicyContractTest).
+  routing:
+    default_pipelines: [traces/short]
+    table:
+      - context: resource
+        condition: resource.attributes["platform.trace.result"] == "failure"
+        pipelines: [traces/long]
+
+exporters:
+  # Long retention: сохраняем ошибки и инциденты на расширенный срок (например, 30 дней).
+  otlp/jaeger-long:
+    endpoint: ${env:TTL_TIERS_JAEGER_LONG_ENDPOINT:-jaeger-long-retention:4317}
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 10000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+
+  # Short retention: успешные трассы с коротким TTL (например, 3 дня).
+  otlp/jaeger-short:
+    endpoint: ${env:TTL_TIERS_JAEGER_SHORT_ENDPOINT:-jaeger-short-retention:4317}
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 10000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    # Входной пайплайн: решение tail_sampling + эскалация признака на resource,
+    # затем передача в routing connector (он выступает exporter'ом этого пайплайна).
+    traces/in:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, transform/copy-result-to-resource]
+      exporters: [routing]
+    # Целевые пайплайны: бонус connector-модели — per-pipeline процессоры (разный batch).
+    traces/long:
+      receivers: [routing]
+      processors: [batch]
+      exporters: [otlp/jaeger-long]
+    traces/short:
+      receivers: [routing]
+      processors: [batch]
+      exporters: [otlp/jaeger-short]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level: detailed
+      # С contrib 0.123 поле `address` удалено — метрики через readers (Prometheus pull).
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888

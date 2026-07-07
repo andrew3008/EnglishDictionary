@@ -1,0 +1,142 @@
+@startuml
+!pragma layout smetana
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam wrapWidth 180
+skinparam defaultTextAlignment center
+
+title Platform Tracing — Target High-Level Architecture
+
+actor "Application Team" as AppTeam
+actor "SRE / Platform Ops" as SRE
+actor "Developer / QA\nnon-prod only" as Dev
+
+cloud "Kubernetes / Helm\nstartup topology\nbootstrap defaults" as Helm
+database "Config Server\nruntime desired policy\nprod source of truth" as ConfigServer
+cloud "OpenTelemetry Collector\nexport / tail sampling" as Collector
+
+package "Public Consumption" {
+  component "platform-tracing-bom" as BOM
+  component "platform-tracing-api\npublic contracts\nsemconv\nwire schema v1" as API
+  component "Servlet Starter" as ServletStarter
+  component "Reactive Starter" as ReactiveStarter
+}
+
+node "Spring Boot Service JVM" {
+
+  frame "Application ClassLoader" as AppCL {
+    component "Business Service\nMVC / WebFlux" as App
+    component "Spring Boot Autoconfigure\nTracingProperties\nTracingConfigReconciler" as AutoConfig
+    component "WebMVC / WebFlux\nAutoConfiguration" as WebAuto
+    component "Actuator READ\nprod-safe diagnostics" as ActuatorRead
+    component "Actuator MUTATION\nnon-prod only" as ActuatorMutation
+    component "SamplingControlClient\nApp-side JMX client" as SamplingClient
+  }
+
+  frame "Private JMX Boundary" as JMXBoundary {
+    component "Validated Map Wire\nTracingControlWire v1\nno raw DTOs" as Wire
+    interface "MBeanServer.invoke(...)\nprivate in-process only" as JMX
+  }
+
+  frame "Agent / Extension ClassLoader" as AgentCL {
+    component "OTel Java Agent Extension\nSPI entry point" as Extension
+    component "OTel Adapters\nSampler / SpanProcessors / Exporter safety" as Adapters
+    component "PlatformTracingControl\nAgent-side MBean\napplied state" as Control
+    component "Applied State Holders\nlast successfully applied config" as AppliedState
+  }
+}
+
+package "Clean Core Policy Layer" as CoreLayer {
+  component "platform-tracing-core\npure Java policy engine" as Core
+  component "Sampling Policy\nPR-6 target" as SamplingPolicy
+  component "Scrubbing Policy\nPR-7 target\nmandatory baseline" as ScrubbingPolicy
+  component "Validation / Enrichment Policy\nPR-8 target\noptional tier" as ValidationPolicy
+}
+
+package "Verification / Evidence" as Verification {
+  component "Architecture Fitness Functions\nArchUnit / dependency guardrails" as Fitness
+  component "Characterization Tests\nsampling / scrubbing / validation" as Characterization
+  component "JMH Benchmarks\nbaseline / compare" as JMHBench
+  component "E2E / Macro Perf\nRuntime smoke / M0-M10" as Evidence
+}
+
+AppTeam --> BOM
+AppTeam --> ServletStarter
+AppTeam --> ReactiveStarter
+ServletStarter --> AutoConfig
+ReactiveStarter --> AutoConfig
+ServletStarter --> WebAuto
+ReactiveStarter --> WebAuto
+App --> API
+
+Helm --> AutoConfig : startup topology
+Helm --> Extension : agent bootstrap
+ConfigServer --> AutoConfig : runtime desired policy
+
+AutoConfig --> SamplingClient : apply validated policy
+AutoConfig --> ActuatorRead : expose diagnostics
+AutoConfig --> ActuatorMutation : non-prod mutation only
+
+SRE --> ActuatorRead
+Dev --> ActuatorMutation
+
+SamplingClient --> JMX
+JMX --> Wire
+Wire --> Control
+Control --> AppliedState
+Control --> Adapters
+
+Extension --> Adapters
+Adapters --> Core
+Core --> SamplingPolicy
+Core --> ScrubbingPolicy
+Core --> ValidationPolicy
+
+Adapters --> Collector : OTLP spans
+
+Fitness ..> API
+Fitness ..> AutoConfig
+Fitness ..> Extension
+Fitness ..> Core
+
+Characterization ..> SamplingPolicy
+Characterization ..> ScrubbingPolicy
+Characterization ..> ValidationPolicy
+
+JMHBench ..> Adapters
+JMHBench ..> Core
+Evidence ..> JMX
+Evidence ..> Collector
+
+note right of Core
+Target invariant:
+pure policy packages do not depend on
+Spring or OpenTelemetry.
+end note
+
+note right of JMXBoundary
+Private in-process control boundary.
+Validated Map only.
+No raw Java DTO crossing.
+end note
+
+note right of ActuatorRead
+Production:
+READ-only diagnostics.
+end note
+
+note right of ActuatorMutation
+Dev / test only:
+runtime mutation behind explicit guard.
+end note
+
+note bottom of Verification
+Extraction PRs are gated by:
+characterization tests,
+architecture fitness functions,
+JMH baseline,
+E2E smoke.
+end note
+
+@enduml

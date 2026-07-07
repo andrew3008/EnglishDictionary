@@ -1,0 +1,372 @@
+@startuml
+!pragma layout smetana
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam wrapWidth 220
+skinparam maxMessageSize 220
+skinparam defaultTextAlignment center
+skinparam ArrowColor #555555
+skinparam ArrowThickness 1.2
+
+skinparam package {
+BorderColor #666666
+BackgroundColor #FAFAFA
+}
+
+skinparam component {
+BorderColor #555555
+BackgroundColor #FFFFFF
+}
+
+skinparam database {
+BorderColor #555555
+BackgroundColor #FFFFFF
+}
+
+skinparam cloud {
+BorderColor #555555
+BackgroundColor #FFFFFF
+}
+
+skinparam node {
+BorderColor #444444
+BackgroundColor #F8F8F8
+}
+
+title Platform Tracing — Target Architecture\nClean Core Hybrid + Desired State Configuration Layer + Private JMX Wire
+
+legend right
+|= Style |= Meaning |
+| Solid arrow | Runtime/data/config flow |
+| Dashed arrow | Uses / depends on / validates |
+| Red note | Forbidden or guarded boundary |
+| Green note | Target architecture invariant |
+endlegend
+
+actor "Application Team\nService owner" as AppTeam
+actor "SRE / Platform Ops" as SRE
+actor "Developer / QA\nnon-prod only" as Developer
+
+cloud "Kubernetes / Helm\nStartup topology\nBootstrap defaults\nEnv / system properties" as Helm
+database "Config Server\nRuntime desired policy\nSource of truth in prod" as ConfigServer
+cloud "OpenTelemetry Collector\nOTLP endpoint\nTail sampling / export routing" as Collector
+
+package "Public Consumption Layer" as PublicLayer {
+component "platform-tracing-bom\nVersion alignment" as BOM
+component "platform-tracing-api\nPublic contracts\nSemconv keys\nDomainConfigHolder\nSensitiveDataRule SPI\nTracingControlWire v1" as API
+component "platform-tracing-spring-boot-starter-servlet\nPublic Servlet starter" as StarterServlet
+component "platform-tracing-spring-boot-starter-reactive\nPublic WebFlux starter" as StarterReactive
+}
+
+package "Verification / Evidence Layer" as VerificationLayer {
+component "platform-tracing-test\nShared test harness\nArchUnit rules\nSampling/Scrubbing assertions" as TestSupport
+component "platform-tracing-e2e-tests\nAgent smoke\nRuntimeSamplingControlSmokeTest\nClassLoader/JMX E2E" as E2E
+component "platform-tracing-bench\nJMH benchmarks\njmhSaveBaseline\njmhCompareBaseline" as Bench
+component "platform-tracing-perf-tests\nMacro perf M0-M10\nk6 scenarios\nPerfAdminController" as PerfTests
+component "Architecture fitness functions\nPR-1 / PR-4 guardrails\nModule taxonomy\nDependency enforcement" as Fitness
+}
+
+package "Supporting Layer" as SupportingLayer {
+component "platform-tracing-collector-config\nCollector config templates\nReference deployment config" as CollectorConfig
+}
+
+node "Spring Boot Service JVM" as ServiceJvm {
+
+frame "Application ClassLoader\nApp CL" as AppCL {
+
+package "Application Service" as AppServicePackage {
+  component "Business service\nSpring MVC or WebFlux" as BusinessService
+  component "Optional direct API use\nPlatformTracing\nTyped builders\nSemconv constants" as OptionalApiUse
+}
+
+package "Spring Boot Tracing Integration" as SpringIntegration {
+  component "platform-tracing-spring-boot-autoconfigure\nTracingProperties\nTracingAutoConfiguration\nTracingRefreshScopeAutoConfiguration" as SpringAutoConfig
+  component "TracingConfigReconciler\nDesired State Configuration Layer\nTarget: PR-10" as Reconciler
+  component "TracingDesiredState\nRuntime policy model\nTopology / policy separation" as DesiredState
+  component "SamplingControlClient\nApp-side private JMX client\nNo otel-extension implementation dependency" as SamplingClient
+  component "DualChannelDriftDiagnostics\nDesired vs applied state\nRead-only diagnostics" as DriftDiagnostics
+}
+
+package "Web Stack AutoConfiguration" as WebStackLayer {
+  component "platform-tracing-autoconfigure-webmvc\nServletTracingAutoConfiguration\nServlet filters\nMVC conventions" as WebMvcAuto
+  component "platform-tracing-autoconfigure-webflux\nReactiveTracingAutoConfiguration\nWebFilter\nReactor context propagation" as WebFluxAuto
+}
+
+package "Actuator Boundary" as ActuatorLayer {
+  component "Tracing Actuator READ\nProduction-safe\nStatus / drift / applied state\nNo mutation" as ActuatorRead
+  component "Tracing Actuator MUTATION\nDev / test / local-debug only\nExplicit property/profile guard\nTarget: PR-11" as ActuatorMutation
+}
+
+}
+
+frame "OpenTelemetry Java Agent\nAgent / Extension CL" as AgentCL {
+
+package "OTel Extension Entry Points" as ExtensionEntry {
+  component "platform-tracing-otel-extension\nPlatformAutoConfigurationCustomizer\nOTel SPI registration" as Extension
+  component "PlatformSamplerProvider\nPlatformSamplerBuilder\nOTel Sampler SPI" as SamplerProvider
+  component "PlatformSpanProcessorFactory\nProcessor chain wiring" as ProcessorFactory
+  component "PlatformExportProcessorFactory\nExport safety wiring" as ExportFactory
+}
+
+package "OTel Adapter Layer\nThin adapters after extraction" as AdapterLayer {
+  component "CompositeSampler\nOTel Sampler adapter\nDelegates to core policy\nTarget after PR-6" as CompositeSampler
+  component "PlatformManagedSampler\nSafeSampler\nAgent-side managed sampler" as ManagedSampler
+  component "ScrubbingSpanProcessor\nOTel SpanProcessor adapter\nMandatory baseline processor" as ScrubbingProcessor
+  component "ValidatingSpanProcessor\nOptional validation adapter" as ValidationProcessor
+  component "EnrichingSpanProcessor\nClassificationSpanProcessor\nOptional enrichment / classification" as EnrichmentProcessor
+  component "PlatformCompositeSpanProcessor\nProcessor chain orchestration" as CompositeProcessor
+  component "PlatformDropOldestExportSpanProcessor\nDrop-oldest export safety" as DropOldestExporter
+  component "SafeSpanExporter\nFail-safe exporter wrapper" as SafeExporter
+}
+
+package "Private Agent Control Plane" as AgentControl {
+  component "PlatformTracingControl\nAgent-side MBean\nApplied state owner\nPrimitive JMX path preserved until migration" as PlatformControl
+  component "Applied State Holders\nDomainConfigHolder snapshots\nSampler / scrubbing / validation policy state" as AppliedState
+}
+
+package "Test-only JMX wire harness (NOT production)" as WireHarness <<test-only>> {
+  component "WireRoundTripTestMBean\nTest-only OTel extension JAR\n(platform-tracing-e2e-tests/src/jmxWireExtension)\nObjectName type=WireRoundTripTest\nNo production gate" as WireSpike
+}
+
+}
+
+frame "Private in-process JMX Boundary" as JmxBoundary {
+interface "MBeanServer.invoke(...)\nPrivate in-process only\nNot public remote API" as JMX
+component "Validated Map<String,Object>\nTracingControlWire v1\nOpenMBean-compatible payload\nNo raw DTO crossing" as WireMap
+}
+}
+
+package "Clean Core Hybrid — Pure Java Policy Layer" as CleanCore {
+component "platform-tracing-core\nPure Java policy engine\nNo Spring\nNo OTel in policy packages" as Core
+
+package "core.sampling\nTarget after PR-6" as CoreSampling {
+component "SamplingPolicyEngine\nFixed 7-rule order" as SamplingPolicyEngine
+component "PolicyRequest\nJDK-only request model\nroute / traceId / force / QA / parent flags" as PolicyRequest
+component "PolicyDecision\nJDK-only decision model\nsample/drop + reason" as PolicyDecision
+component "SamplingPolicySnapshot\nRuntime sampling state\nNo compiled OTel Sampler" as SamplingSnapshot
+component "Sampling rules\nKillSwitch\nHardDrop\nForceHeader\nQaTrace\nParentDecision\nRouteRatio\nDefaultRatio" as SamplingRules
+}
+
+package "core.scrubbing\nTarget after PR-7" as CoreScrubbing {
+component "Scrubbing engine\nRule evaluation\nMergeEngine\nBuiltInRules\nCircuit breaker" as ScrubbingEngine
+component "ScrubbingPolicySnapshot\nMandatory policy state" as ScrubbingSnapshot
+component "SensitiveDataRule SPI use\nAPI-defined extension point" as SensitiveRuleUse
+}
+
+package "core.validation / core.enrichment\nTarget after PR-8" as CoreValidation {
+component "Validation policy\nSTRICT / LENIENT / disabled\nCategory contracts" as ValidationPolicy
+component "Enrichment policy\nClassification\nDefault attributes\nPreserve / overwrite rules" as EnrichmentPolicy
+}
+
+component "AttributePolicy\nExisting core policy\nKeep / protect with JMH" as AttributePolicy
+}
+
+package "Runtime Configuration Model" as RuntimeConfigModel {
+component "Startup topology\nSDK mode\nExporter endpoint\nQueue sizing\nAgent mode\nImmutable after startup" as StartupTopology
+component "Runtime policy\nSampling ratio\nRoute ratios\nKill switch\nQA trace\nScrubbing / validation / enrichment flags" as RuntimePolicy
+component "Validation before apply\nTracingControlWireValidator\nUnknown keys rejected\nTopology rejected at runtime" as WireValidator
+}
+
+package "Data Plane — Span Processing Pipeline" as DataPlane {
+component "Incoming HTTP / messaging request\nServlet or WebFlux" as IncomingRequest
+component "Context propagation\nTrace context\nForce / QA control headers" as ContextPropagation
+component "Sampling decision\nCore policy + OTel adapter" as SamplingDecision
+component "Processor chain\nOptional enrichment/classification\nMandatory scrubbing\nOptional validation/diagnostics" as ProcessorChain
+component "Safe export\nDrop-oldest queue\nSafeSpanExporter" as ExportPipeline
+component "OTLP spans" as OtlpSpans
+}
+
+' Public consumption
+AppTeam --> BOM : imports
+AppTeam --> StarterServlet : Servlet service uses
+AppTeam --> StarterReactive : WebFlux service uses
+StarterServlet --> SpringAutoConfig : brings autoconfigure
+StarterServlet --> WebMvcAuto : brings MVC integration
+StarterReactive --> SpringAutoConfig : brings autoconfigure
+StarterReactive --> WebFluxAuto : brings WebFlux integration
+BusinessService --> OptionalApiUse : optional explicit API use
+OptionalApiUse ..> API : uses public contracts
+
+' Config sources
+Helm --> StartupTopology : startup topology\nbootstrap defaults
+Helm --> SpringAutoConfig : env/system props
+Helm --> Extension : javaagent/system props
+ConfigServer --> RuntimePolicy : runtime desired policy
+ConfigServer --> SpringAutoConfig : Spring Cloud Config refresh
+
+' Desired state / reconciliation
+SpringAutoConfig --> Reconciler : creates when enabled\nTarget PR-10
+SpringAutoConfig --> DesiredState : binds TracingProperties
+DesiredState --> RuntimePolicy : separates runtime policy
+DesiredState --> StartupTopology : rejects topology mutation
+Reconciler --> WireValidator : validates desired policy
+WireValidator ..> API : uses TracingControlWireSchema v1
+Reconciler --> SamplingClient : applies validated runtime policy
+Reconciler --> DriftDiagnostics : records desired vs applied state
+
+' Actuator
+SRE --> ActuatorRead : production diagnostics\nGET/read-only
+ActuatorRead --> DriftDiagnostics : reads drift/status
+ActuatorRead --> SamplingClient : reads applied state if needed
+Developer --> ActuatorMutation : non-prod mutation only
+ActuatorMutation --> Reconciler : dev/test apply path
+ActuatorMutation -[#red,dashed]-> RuntimePolicy : guarded mutation
+
+note right of ActuatorRead
+Production target:
+READ-only actuator is allowed.
+Mutation is not available in prod.
+end note
+
+note right of ActuatorMutation
+Mutation target:
+dev / test / local-debug only.
+Explicit property/profile guard.
+No default prod mutation.
+end note
+
+' JMX boundary
+SamplingClient --> JMX : private MBeanServer.invoke
+JMX --> WireMap : validated Map payload
+WireMap ..> API : contractVersion=1\nstrict unknown-key rejection
+WireMap --> PlatformControl : future Map wire apply\npost-spike migration
+SamplingClient --> PlatformControl : existing primitive JMX path\npreserved until safe migration
+PlatformControl --> AppliedState : updates applied state
+PlatformControl --> ManagedSampler : runtime sampling update
+PlatformControl --> ScrubbingProcessor : future policy state update
+PlatformControl --> ValidationProcessor : future policy state update
+
+note bottom of JMX
+Private in-process adapter only.
+Not a public remote control plane.
+No raw Java DTOs across App CL / Agent CL.
+Allowed wire types only: primitives, String, String[], Map<String,Object>.
+end note
+
+' Test-only wire harness path (removed from production — NEW_HYBRID)
+WireSpike ..> WireMap : validates Map wire (test-only)
+WireSpike -[#red,dashed]-> AppliedState : forbidden mutation
+
+note right of WireSpike
+NEW_HYBRID production purge:
+The former production jmx.spike transport
+(TracingControlWireSpikeMBean, gate
+platform.tracing.spike.jmx.wire, ObjectName
+type=WireSpike, marker SPIKE_JMX_WIRE:) was
+REMOVED from production src/main.
+Round-trip evidence is now produced only by a
+test-only OTel extension JAR loaded via
+-Dotel.javaagent.extensions in E2E.
+Wire schema (TracingControlWireValidator.V1)
+remains the stable production contract.
+end note
+
+' Agent runtime wiring
+Extension --> SamplerProvider : registers sampler SPI
+Extension --> ProcessorFactory : registers processors
+Extension --> ExportFactory : registers exporter safety
+SamplerProvider --> ManagedSampler
+ManagedSampler --> CompositeSampler
+ProcessorFactory --> CompositeProcessor
+CompositeProcessor --> EnrichmentProcessor
+CompositeProcessor --> ScrubbingProcessor
+CompositeProcessor --> ValidationProcessor
+ExportFactory --> DropOldestExporter
+DropOldestExporter --> SafeExporter
+
+' Clean core use
+CompositeSampler --> SamplingPolicyEngine : delegates after PR-6
+SamplingPolicyEngine --> SamplingRules
+SamplingPolicyEngine --> PolicyRequest
+SamplingPolicyEngine --> PolicyDecision
+SamplingPolicyEngine --> SamplingSnapshot
+
+ScrubbingProcessor --> ScrubbingEngine : delegates after PR-7
+ScrubbingEngine --> ScrubbingSnapshot
+ScrubbingEngine --> SensitiveRuleUse
+SensitiveRuleUse ..> API : SensitiveDataRule SPI
+
+ValidationProcessor --> ValidationPolicy : delegates after PR-8
+EnrichmentProcessor --> EnrichmentPolicy : delegates after PR-8
+
+CoreSampling -[#green,dashed]-> Core : pure policy
+CoreScrubbing -[#green,dashed]-> Core : pure policy
+CoreValidation -[#green,dashed]-> Core : pure policy
+AttributePolicy -[#green,dashed]-> Core : existing policy asset
+
+note bottom of CleanCore
+Clean Core invariant:
+core.sampling / core.scrubbing / core.validation / core.enrichment
+must not import Spring or OpenTelemetry.
+OTel-specific callbacks stay in platform-tracing-otel-extension.
+end note
+
+' Data plane
+IncomingRequest --> BusinessService
+BusinessService --> ContextPropagation
+ContextPropagation --> CompositeSampler : OTel shouldSample(...)
+CompositeSampler --> SamplingDecision
+SamplingDecision --> ProcessorChain
+ProcessorChain --> EnrichmentProcessor : optional tier
+ProcessorChain --> ScrubbingProcessor : mandatory baseline
+ProcessorChain --> ValidationProcessor : optional tier
+ProcessorChain --> DropOldestExporter
+DropOldestExporter --> OtlpSpans
+OtlpSpans --> Collector
+
+CollectorConfig --> Collector : deploys reference config
+
+note right of ProcessorChain
+Target pipeline:
+baseline = sampling + mandatory scrubbing + safe export.
+optional tier = enrichment, validation, diagnostics.
+Scrubbing must not become optional.
+end note
+
+' Module boundaries and forbidden dependencies
+SpringAutoConfig -[#red,dashed]-> Extension : forbidden main dependency\nApp CL must not depend on Agent CL impl
+StarterServlet -[#red,dashed]-> Extension : forbidden direct exposure
+StarterReactive -[#red,dashed]-> Extension : forbidden direct exposure
+Core -[#red,dashed]-> Extension : forbidden dependency
+Core -[#red,dashed]-> SpringAutoConfig : forbidden dependency
+Core -[#red,dashed]-> WebMvcAuto : forbidden dependency
+Core -[#red,dashed]-> WebFluxAuto : forbidden dependency
+
+note bottom of PublicLayer
+Consumer model:
+application teams use BOM + exactly one starter.
+Servlet services use servlet starter.
+WebFlux services use reactive starter.
+Teams should not depend on internal runtime modules directly.
+end note
+
+' Verification layer
+Fitness ..> PublicLayer : validates module taxonomy
+Fitness ..> API : API wire purity
+Fitness ..> SpringAutoConfig : no autoconfigure -> otel-extension impl
+Fitness ..> Extension : no Spring in extension
+Fitness ..> WebMvcAuto : no WebFlux contamination
+Fitness ..> WebFluxAuto : no Servlet/MVC contamination
+Fitness ..> Core : future policy package purity
+
+TestSupport ..> CompositeSampler : sampling characterization
+TestSupport ..> ScrubbingProcessor : scrubbing characterization
+TestSupport ..> ValidationProcessor : validation characterization
+TestSupport ..> EnrichmentProcessor : enrichment characterization
+
+E2E ..> JMX : RuntimeSamplingControlSmokeTest
+E2E ..> WireSpike : Map wire / ClassLoader spike
+Bench ..> CompositeSampler : JMH hot-path benchmarks
+Bench ..> ScrubbingEngine : JMH scrubbing benchmarks
+Bench ..> AttributePolicy : JMH attribute policy benchmarks
+PerfTests ..> ServiceJvm : macro perf M0-M10
+
+note bottom of VerificationLayer
+Evidence gates:
+PR-5 characterization tests protect behavior before moves.
+Full JMH baseline is required before PR-6/PR-7/PR-8 extraction.
+Architecture fitness functions prevent boundary regressions.
+end note
+
+@enduml

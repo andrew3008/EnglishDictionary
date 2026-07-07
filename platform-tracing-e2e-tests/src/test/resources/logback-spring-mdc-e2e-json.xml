@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="space/br1440/platform/logging/logback-spring-defaults.xml"/>
+
+    <appender name="PLATFORM-CONSOLE-JSON-OTEL"
+              class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
+        <traceIdKey>traceId</traceIdKey>
+        <spanIdKey>spanId</spanIdKey>
+        <traceFlagsKey>traceFlags</traceFlagsKey>
+        <appender-ref ref="PLATFORM-CONSOLE-JSON"/>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="PLATFORM-CONSOLE-JSON-OTEL"/>
+    </root>
+</configuration>

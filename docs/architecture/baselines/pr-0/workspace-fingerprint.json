@@ -1,0 +1,23 @@
+{
+  "baselineType": "non-git-workspace",
+  "baselineIdentity": "workspace-fingerprint",
+  "createdAt": "2026-06-12T15:10:00+03:00",
+  "gitSha": "N/A — non-git workspace baseline",
+  "machine": "DESKTOP-OEGBG7F",
+  "javaVersion": "21.0.6 (Oracle JDK, build 21.0.6+8-LTS-188)",
+  "gradleVersion": "8.14 (revision 34c560e3be961658a6fbcd7170ec2443a228b109)",
+  "os": "Windows 10 (10.0.19045.0)",
+  "cpu": "13th Gen Intel(R) Core(TM) i5-13500 (14 cores, 20 logical)",
+  "memoryBytes": 68448153600,
+  "fileChecksums": {
+    "settings.gradle": "89a777390967981ab598149334bd8d407fa94cf7a1e9860a972e8b978efa093d",
+    "build.gradle": "3184a0a4eb6bf6c6bdcbec63f93cb0530311289456f80c0e531b04c8ca72f008",
+    "gradle.properties": "7d69c2ab769bc7cad07396d34d6783a8c4997672d8308b517a66b865a5ca1735",
+    "gradle/libs.versions.toml": {
+      "missing": true
+    },
+    "docs/architecture/baselines/pr-0/dependency-snapshot-metadata.json": "0a45bdfb9d41b10e62fba907889843c1d436849564b0dc653a62f1a003d93e81",
+    "docs/architecture/baselines/pr-0/starter-dependency-smoke.txt": "bc890bde017b89f7123604a97f34c8b4d746f5d83109a1667f3c17c32252f5bb",
+    "docs/architecture/platform-tracing-preservation-first-migration-plan.md": "4c10d80c1951eb514a2904c1d823179bbf69f8c6f76a01a3a4d9bfede3e0b3e2"
+  }
+}

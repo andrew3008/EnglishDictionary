@@ -1,0 +1,9 @@
+# REFERENCE tier template — not for production.
+# Skip if namespace is managed externally.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+    platform-tracing.io/profile-id: REPLACE_PROFILE_ID

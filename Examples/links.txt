@@ -1,0 +1,1 @@
+https://www.alibabacloud.com/help/en/arms/application-monitoring/use-cases/use-opentelemetry-sdk-for-java-to-manually-instrument-applications

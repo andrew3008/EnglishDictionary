@@ -1,0 +1,916 @@
+description = 'Macro/load/RSS evidence harness (PR-9H-C): hybrid SMOKE + REFERENCE tiers. ' +
+        'Representative Spring Boot perf app + k6 scenario skeletons + scenario profiles S0–S6. ' +
+        'SMOKE tier is functional-only and non-authoritative. REFERENCE tier (Kubernetes) is future PR. ' +
+        'Module NOT published to Nexus; production modules must NOT depend on it.'
+
+buildscript {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        maven { url = "https://n.1440.space/repository/platform-maven/" }
+        maven { url = "https://n.1440.space/repository/repo1.maven.org-proxy" }
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+    }
+}
+apply plugin: 'org.springframework.boot'
+
+afterEvaluate {
+    tasks.matching { it.name.startsWith("publish") }.configureEach { it.enabled = false }
+}
+sourcesJar.enabled = false
+javadocJar.enabled = false
+
+configurations {
+    otelJavaAgent
+}
+
+dependencies {
+    implementation platform(project(':platform-tracing-bom'))
+    implementation project(':platform-tracing-spring-boot-starter-servlet')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.networknt:json-schema-validator:1.5.6'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    otelJavaAgent "io.opentelemetry.javaagent:opentelemetry-javaagent:${openTelemetryInstrumentationBomVersion}"
+}
+
+bootRun {
+    systemProperty 'spring.profiles.active',
+            project.findProperty('perfProfiles') ?: 'smoke'
+}
+
+ext.resolveGitSha = {
+    try {
+        def out = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = out
+            ignoreExitValue = true
+        }
+        def sha = out.toString().trim()
+        return sha.isEmpty() ? 'unknown' : sha
+    } catch (Exception ignored) {
+        return 'unknown'
+    }
+}
+
+ext.commandAvailable = { String cmd ->
+    try {
+        def probe = providers.exec {
+            commandLine cmd, 'version'
+            ignoreExitValue = true
+        }
+        return probe.result.get().exitValue == 0
+    } catch (Exception ignored) {
+        return false
+    }
+}
+
+ext.sutReachable = { String healthUrl ->
+    try {
+        def conn = new URL(healthUrl).openConnection()
+        conn.connectTimeout = 3000
+        conn.readTimeout = 3000
+        conn.inputStream.withCloseable { it.read() }
+        return true
+    } catch (Exception ignored) {
+        return false
+    }
+}
+
+ext.dockerBaseUrl = { String baseUrl, boolean remoteDocker ->
+    if (remoteDocker) {
+        return baseUrl
+    }
+    if (baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1')) {
+        return baseUrl.replace('localhost', 'host.docker.internal').replace('127.0.0.1', 'host.docker.internal')
+    }
+    return baseUrl
+}
+
+ext.writeSmokeArtifacts = { File outDir, Map summary, String commandText ->
+    outDir.mkdirs()
+    new File(outDir, 'summary.json').text =
+            groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(summary))
+    new File(outDir, 'command.txt').text = commandText
+}
+
+ext.dockerVolumePath = { File dir ->
+    def path = dir.absolutePath.replace('\\', '/')
+    if (path.matches('^[A-Za-z]:/.*')) {
+        return path
+    }
+    return dir.absolutePath
+}
+
+ext.buildK6SmokeImage = { Project p ->
+    def contextDir = p.file("${p.layout.buildDirectory.get().asFile}/docker/k6-smoke")
+    def buildCmd = ['docker', 'build', '-t', 'platform-tracing-perf-harness-k6-smoke:local', contextDir.absolutePath]
+    if (p.hasProperty('DockerHost')) {
+        p.exec {
+            environment 'DOCKER_HOST', p.property('DockerHost').toString()
+            commandLine buildCmd
+        }
+    } else {
+        p.exec { commandLine buildCmd }
+    }
+}
+
+tasks.register('preparePerfAppDockerContext', Sync) {
+    group = 'perf'
+    description = 'Builds Docker context for perf-app (bootJar + javaagent + extension; remote Docker safe).'
+    dependsOn bootJar, ':platform-tracing-otel-extension:agentExtensionJar'
+    into layout.buildDirectory.dir('docker/perf-app')
+    from(bootJar) {
+        rename { 'sut-app.jar' }
+    }
+    from(configurations.otelJavaAgent) {
+        rename { 'opentelemetry-javaagent.jar' }
+    }
+    from(project(':platform-tracing-otel-extension').tasks.named('agentExtensionJar')) {
+        rename { 'platform-tracing-otel-extension-agent.jar' }
+    }
+    from('docker/perf-app/Dockerfile')
+}
+
+tasks.register('prepareK6SmokeDockerContext', Sync) {
+    group = 'perf'
+    description = 'Builds Docker context for k6 smoke (scenarios COPY — remote Docker safe).'
+    into layout.buildDirectory.dir('docker/k6-smoke')
+    from('scenarios/smoke.js') {
+        into 'scenarios'
+    }
+    from('docker/k6-smoke/Dockerfile')
+}
+
+tasks.register('buildK6SmokeDockerImage') {
+    group = 'perf'
+    description = 'Builds platform-tracing-perf-harness-k6-smoke Docker image.'
+    dependsOn 'prepareK6SmokeDockerContext'
+    notCompatibleWithConfigurationCache('docker build')
+    doLast {
+        buildK6SmokeImage(project)
+    }
+}
+
+tasks.register('perfPrintCommands') {
+    group = 'perf'
+    description = 'Prints documented perf harness commands (SMOKE + REFERENCE planning).'
+    doLast {
+        logger.lifecycle('')
+        logger.lifecycle('platform-tracing-perf-harness — SMOKE tier (non-authoritative)')
+        logger.lifecycle('  Terminal 1: ./gradlew :platform-tracing-perf-harness:bootRun -PperfProfiles=smoke')
+        logger.lifecycle('  Terminal 2: ./gradlew :platform-tracing-perf-harness:perfSmoke')
+        logger.lifecycle('  Docker k6:  ./gradlew :platform-tracing-perf-harness:perfSmoke -PperfSmokeUseDocker=true')
+        logger.lifecycle('')
+        logger.lifecycle('REFERENCE tier (W-004 evidence — Kubernetes only)')
+        logger.lifecycle('  Plan:     ./gradlew :platform-tracing-perf-harness:perfReferencePlan -PperfProfileId=<id>')
+        logger.lifecycle('  Validate: ./gradlew :platform-tracing-perf-harness:perfReferenceValidateConfig')
+        logger.lifecycle('  k6 CM:    ./gradlew :platform-tracing-perf-harness:prepareK6ReferenceConfigMap')
+        logger.lifecycle('  Skeleton: ./gradlew :platform-tracing-perf-harness:perfReferenceCreateSummarySkeleton \\')
+        logger.lifecycle('            -PperfProfileId=<id> -PperfScenario=S4 -PperfRunId=<runId> \\')
+        logger.lifecycle('            -PperfNamespace=<ns> -PperfTargetRps=<rps> -PperfOutputDir=build/perf-results/reference/<id>/<runId>')
+        logger.lifecycle('  Runbook:  evidence/templates/PR-9H-E2-runbook.md')
+        logger.lifecycle('  Run:      manual cluster execution per runbook (perfReferenceRun validates only)')
+        logger.lifecycle('')
+        logger.lifecycle('K8s templates: config/k8s/README.md')
+        logger.lifecycle('W-004 checklist: evidence/templates/W-004-resolution-checklist.md')
+        logger.lifecycle('')
+        logger.lifecycle('LOCAL reference lab (PR-9H-E2L — Gentoo, non-authoritative)')
+        logger.lifecycle('  Validate: ./gradlew :platform-tracing-perf-harness:perfReferenceValidateLocalLabConfig')
+        logger.lifecycle('  Inventory: scripts/local-reference-lab/inventory-gentoo.sh')
+        logger.lifecycle('  Runbook:   evidence/templates/PR-9H-E2L-local-reference-lab-runbook.md')
+        logger.lifecycle('')
+    }
+}
+
+ext.referenceRequiredProps = [
+        'perfReferenceConfirmed',
+        'perfProfileId',
+        'perfNamespace',
+        'perfScenario',
+        'perfOutputDir'
+]
+
+ext.k8sTemplateFiles = [
+        'namespace.yaml',
+        'perf-app-configmap.yaml',
+        'perf-app-deployment.yaml',
+        'perf-app-service.yaml',
+        'otel-collector-configmap.yaml',
+        'otel-collector-deployment.yaml',
+        'otel-collector-service.yaml',
+        'reference-sink-deployment.yaml',
+        'reference-sink-service.yaml',
+        'k6-scenarios-configmap.yaml',
+        'k6-job.yaml',
+        'README.md'
+]
+
+ext.referenceForbiddenRawExtensions = [
+        '.jfr', '.hprof', '.heapdump', '.dump', '.tar', '.tar.gz', '.zip'
+]
+
+ext.checkReferenceArtifactHygiene = { File referenceDir ->
+    if (!referenceDir.exists()) {
+        return
+    }
+    referenceDir.eachFileRecurse { f ->
+        if (!f.isFile()) {
+            return
+        }
+        def name = f.name.toLowerCase()
+        if (referenceForbiddenRawExtensions.any { name.endsWith(it) }) {
+            throw new GradleException(
+                    "Forbidden raw artifact under ${referenceDir.name}/: ${f.absolutePath}")
+        }
+        if (name.contains('prometheus-raw') || name.contains('k6-raw')) {
+            throw new GradleException(
+                    "Forbidden raw artifact naming under ${referenceDir.name}/: ${f.absolutePath}")
+        }
+    }
+}
+
+tasks.register('perfReferenceValidateConfig') {
+    group = 'perf'
+    description = 'Validates REFERENCE K8s templates and evidence schemas are present.'
+    doLast {
+        def k8sDir = file("${projectDir}/config/k8s")
+        def missing = k8sTemplateFiles.findAll { !file("${k8sDir}/${it}").exists() }
+        if (!missing.isEmpty()) {
+            throw new GradleException("Missing K8s template files: ${missing}")
+        }
+        def schemas = [
+                'evidence/templates/reference-summary.schema.json',
+                'evidence/templates/smoke-summary.schema.json',
+                'evidence/templates/W-004-resolution-checklist.md',
+                'evidence/templates/PR-9H-reference-run-report-template.md',
+                'evidence/templates/PR-9H-E2-preflight-checklist.md',
+                'evidence/templates/PR-9H-E2-runbook.md',
+                'evidence/reference/README.md',
+                'config/profiles/reference-scenario-matrix.md'
+        ]
+        def missingSchema = schemas.findAll { !file("${projectDir}/${it}").exists() }
+        if (!missingSchema.isEmpty()) {
+            throw new GradleException("Missing evidence contract files: ${missingSchema}")
+        }
+        def collectorYaml = file("${k8sDir}/otel-collector-configmap.yaml").text
+        if (!collectorYaml.contains('otlphttp/reference_sink')) {
+            throw new GradleException(
+                    'Collector template must use otlphttp/reference_sink for backpressure evidence')
+        }
+        if (collectorYaml.contains('exporters: [logging]')) {
+            throw new GradleException(
+                    'Collector template must not use logging as sole traces exporter')
+        }
+        def checklist = file("${projectDir}/evidence/templates/W-004-resolution-checklist.md").text
+        def requiredTerms = [
+                'cpu.per1kRps',
+                'container_memory_working_set_bytes/cAdvisor',
+                'constant-arrival-rate',
+                'dropped_iterations',
+                'throttleRatioPct',
+                'jfrStartMode',
+                'backpressureEvidenceValid',
+                'reproductionRunCount',
+                'budgetStatus'
+        ]
+        def missingTerms = requiredTerms.findAll { !checklist.contains(it) }
+        if (!missingTerms.isEmpty()) {
+            throw new GradleException("W-004 checklist missing terms: ${missingTerms}")
+        }
+        def gitignore = file("${rootProject.projectDir}/.gitignore").text
+        if (!gitignore.contains('evidence/reference/**/*.jfr')) {
+            throw new GradleException('Root .gitignore must ignore raw .jfr under evidence/reference/')
+        }
+        checkReferenceArtifactHygiene(file("${projectDir}/evidence/reference"))
+        checkReferenceArtifactHygiene(file("${projectDir}/evidence/reference-local"))
+        logger.lifecycle('REFERENCE config validation OK: {} K8s templates, {} evidence files',
+                k8sTemplateFiles.size(), schemas.size())
+    }
+}
+
+tasks.register('prepareK6ReferenceConfigMap') {
+    group = 'perf'
+    description = 'Generates k6 scenarios ConfigMap YAML from reference-steady.js (build/k8s/).'
+    dependsOn 'perfReferenceValidateConfig'
+    doLast {
+        def scriptFile = file("${projectDir}/scenarios/reference-steady.js")
+        if (!scriptFile.exists()) {
+            throw new GradleException('Missing scenarios/reference-steady.js')
+        }
+        def indented = scriptFile.readLines().collect { "    ${it}" }.join('\n')
+        def yaml = """# GENERATED — do not edit. Regenerate via prepareK6ReferenceConfigMap.
+# REFERENCE tier — k6 scenario scripts ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: perf-harness-k6-scenarios
+  namespace: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+data:
+  reference-steady.js: |
+${indented}
+"""
+        def out = file("${layout.buildDirectory.get().asFile}/k8s/k6-scenarios-configmap.yaml")
+        out.parentFile.mkdirs()
+        out.text = yaml
+        logger.lifecycle('Generated k6 ConfigMap: {}', out.absolutePath)
+        logger.lifecycle('Substitute REPLACE_NAMESPACE, then: kubectl apply -f {}', out.absolutePath)
+    }
+}
+
+tasks.register('perfReferenceCreateSummarySkeleton') {
+    group = 'perf'
+    description = 'Creates E2 reference-summary skeleton (w004Eligible=false; no fake metrics).'
+    dependsOn 'perfReferenceValidateConfig'
+    doLast {
+        def required = ['perfProfileId', 'perfScenario', 'perfRunId', 'perfNamespace', 'perfTargetRps', 'perfOutputDir']
+        def missing = required.findAll { !project.hasProperty(it) }
+        if (!missing.isEmpty()) {
+            throw new GradleException('Missing properties for skeleton: ' + missing)
+        }
+        def gitSha = resolveGitSha()
+        if (gitSha == 'unknown' && !project.hasProperty('perfAllowUnknownGitCommit')) {
+            throw new GradleException(
+                    'gitCommit is unknown. Resolve git SHA or pass -PperfAllowUnknownGitCommit=true ' +
+                            '(adds missingProvenance to nonAuthoritativeReasons).')
+        }
+        def profileId = project.property('perfProfileId').toString()
+        def scenario = project.property('perfScenario').toString()
+        def runId = project.property('perfRunId').toString()
+        def namespace = project.property('perfNamespace').toString()
+        def targetRps = Integer.parseInt(project.property('perfTargetRps').toString())
+        def outDir = file(project.property('perfOutputDir').toString())
+        def normalized = outDir.absolutePath.replace('\\', '/')
+        if (normalized.contains('perf-results/smoke')) {
+            throw new GradleException('Output dir must not be under perf-results/smoke/')
+        }
+        outDir.mkdirs()
+
+        def reasons = ['singleRunOnly', 'provisionalBudgetOnly', 'missingMetrics']
+        def gitCommitValue = gitSha
+        if (gitSha == 'unknown') {
+            gitCommitValue = 'unknown-allowed-by-perfAllowUnknownGitCommit'
+        }
+
+        def springProfile = [
+                'S0': 's0-baseline',
+                'S1': 's1-tracing',
+                'S2': 's2-validation-lenient-valid',
+                'S3': 's3-validation-lenient-missing',
+                'S4': 's4-production',
+                'S5': 's5-strict-diagnostic',
+                'S6': 's6-soak'
+        ].get(scenario, 'REPLACE_SPRING_PROFILE')
+
+        def skeleton = [
+                evidenceTier            : 'REFERENCE',
+                nonAuthoritative        : true,
+                nonAuthoritativeReasons : reasons,
+                w004Eligible            : false,
+                profileId               : profileId,
+                runId                   : runId,
+                gitCommit               : gitCommitValue,
+                environment             : [
+                        clusterAlias        : 'REPLACE_CLUSTER',
+                        namespace           : namespace,
+                        cgroupVersion       : 'REPLACE_CGROUP',
+                        kernelVersion       : 'REPLACE_KERNEL',
+                        javaVersion         : '21',
+                        springBootVersion   : 'REPLACE_SPRING_BOOT',
+                        otelAgentVersion    : 'REPLACE_OTEL_AGENT',
+                        otelExtensionVersion: 'REPLACE_OTEL_EXTENSION',
+                        collectorImage      : 'REPLACE_COLLECTOR_IMAGE',
+                        collectorVersion    : 'REPLACE_COLLECTOR_VERSION',
+                        jfrStartMode        : 'startup',
+                        jfrSettings         : 'REPLACE_JFR_SETTINGS'
+                ],
+                scenario                : [
+                        scenarioId    : scenario,
+                        springProfile : springProfile,
+                        duration      : '10m',
+                        warmupDuration: '2m',
+                        targetRps     : targetRps,
+                        loadModel     : 'constant-arrival-rate',
+                        endpointPath  : '/perf/work'
+                ],
+                metrics                 : [
+                        load     : [
+                                executor       : 'constant-arrival-rate',
+                                targetRps      : targetRps,
+                                warmupSec      : 120,
+                                steadyWindowSec: 600
+                        ],
+                        latency  : [
+                                source: 'k6/http_req_duration/constant-arrival-rate'
+                        ],
+                        memory   : [
+                                metricSource: 'container_memory_working_set_bytes/cAdvisor'
+                        ],
+                        collector: [
+                                backpressureEvidenceValid: false,
+                                exporterType             : 'otlphttp/reference_sink (populate after run)'
+                        ]
+                ],
+                artifacts               : [
+                        k6Summary           : 'k6-summary.json',
+                        prometheusSnapshot  : 'prometheus-compact-summary.json',
+                        command             : 'command.txt',
+                        jfr                 : [
+                                storageRef: 'external://REPLACE_ARTIFACT_STORE/jfr/run.jfr',
+                                sha256    : 'REPLACE_SHA256'
+                        ]
+                ],
+                classification          : [
+                        w004Candidate: false,
+                        w011Evidence : 'none',
+                        w012Evidence : 'none'
+                ],
+                budgets                 : [
+                        cpuOverheadPct      : [threshold: 3.0, budgetStatus: 'provisional'],
+                        rssOverheadPct      : [threshold: 10.0, budgetStatus: 'provisional'],
+                        p99LatencyDeltaPct  : [threshold: 15.0, budgetStatus: 'provisional'],
+                        errorRatePct        : [threshold: 0.1, budgetStatus: 'provisional']
+                ],
+                reproducibility         : [
+                        reproductionRunCount: 1
+                ],
+                caveats                 : [
+                        missingMetrics                  : [
+                                'Populate after cluster run — skeleton only',
+                                'achievedRpsAvg', 'cpu.per1kRps', 'memory.workingSetBytesAvg',
+                                'latency.p95Ms', 'latency.p99Ms', 'gc summary', 'collector queue metrics'
+                        ],
+                        notForProductionReadinessReason : 'E2 first run: single-run, provisional budgets'
+                ]
+        ]
+
+        def summaryFile = new File(outDir, 'reference-summary.json')
+        summaryFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(skeleton))
+        new File(outDir, 'command.txt').text = '# Populate with exact kubectl/k6/PromQL commands from PR-9H-E2-runbook.md\n'
+        logger.lifecycle('Created E2 skeleton (non-authoritative): {}', summaryFile.absolutePath)
+        logger.lifecycle('Fill metrics from cluster captures. Copy compact files to evidence/reference/{}/{}/', profileId, runId)
+    }
+}
+
+tasks.register('perfReferenceValidateLocalLabConfig') {
+    group = 'perf'
+    description = 'Validates PR-9H-E2L local reference lab scaffolding.'
+    dependsOn 'perfReferenceValidateConfig'
+    doLast {
+        def localFiles = [
+                'scripts/local-reference-lab/README.md',
+                'scripts/local-reference-lab/inventory-gentoo.sh',
+                'scripts/local-reference-lab/diagnose-local-metrics.sh',
+                'scripts/local-reference-lab/collect-local-collector-summary.sh',
+                'scripts/local-reference-lab/collect-local-prometheus-summary.sh',
+                'scripts/local-reference-lab/collect-local-jfr-summary.sh',
+                'scripts/local-reference-lab/summarize-local-jfr.sh',
+                'scripts/local-reference-lab/lib/jfr-local.sh',
+                'scripts/local-reference-lab/lib/summarize-jfr-events.py',
+                'scripts/local-reference-lab/run-local-jfr-smoke.sh',
+                'config/local-reference-lab/jfr/jfr-smoke-check.sh',
+                'scripts/local-reference-lab/patch-local-jfr-startup.sh',
+                'scripts/local-reference-lab/install-prometheus-kind.sh',
+                'scripts/local-reference-lab/query-required-metrics.sh',
+                'scripts/local-reference-lab/run-local-metrics-full.sh',
+                'scripts/local-reference-lab/setup-kind-lab.sh',
+                'scripts/local-reference-lab/deploy-local-reference-lab.sh',
+                'scripts/local-reference-lab/run-local-reference-scenarios.sh',
+                'scripts/local-reference-lab/collect-local-reference-summary.sh',
+                'config/local-reference-lab/kind-cluster.yaml',
+                'config/local-reference-lab/README.md',
+                'config/local-reference-lab/prometheus/README.md',
+                'config/local-reference-lab/prometheus/values-kind.yaml',
+                'config/local-reference-lab/jfr/README.md',
+                'config/local-reference-lab/metrics/local-promql-queries.md',
+                'docker/local-reference-sink/Dockerfile',
+                'docker/perf-app/Dockerfile',
+                'evidence/templates/PR-9H-E2L-local-preflight-checklist.md',
+                'evidence/templates/PR-9H-E2L-local-reference-lab-runbook.md',
+                'evidence/templates/PR-9H-E2L-metrics-debug-runbook.md',
+                'evidence/templates/PR-9H-E2L-metrics-debug-checklist.md',
+                'evidence/reference-local/README.md',
+                'evidence/reference-local/examples/sample-local-reference-summary.json'
+        ]
+        def missing = localFiles.findAll { !file("${projectDir}/${it}").exists() }
+        if (!missing.isEmpty()) {
+            throw new GradleException("Missing local lab files: ${missing}")
+        }
+        def gitignore = file("${rootProject.projectDir}/.gitignore").text
+        if (!gitignore.contains('evidence/reference-local/**/*.jfr')) {
+            throw new GradleException('Root .gitignore must ignore raw .jfr under evidence/reference-local/')
+        }
+        logger.lifecycle('LOCAL reference lab config validation OK: {} files', localFiles.size())
+    }
+}
+
+tasks.register('perfReferenceCreateLocalLabSummarySkeleton') {
+    group = 'perf'
+    description = 'Creates LOCAL_REFERENCE_LAB summary skeleton (w004Eligible=false; no fake metrics).'
+    dependsOn 'perfReferenceValidateLocalLabConfig'
+    doLast {
+        def required = ['perfProfileId', 'perfScenario', 'perfRunId', 'perfNamespace', 'perfOutputDir']
+        def missing = required.findAll { !project.hasProperty(it) }
+        if (!missing.isEmpty()) {
+            throw new GradleException('Missing properties for local lab skeleton: ' + missing)
+        }
+        def gitSha = resolveGitSha()
+        if (gitSha == 'unknown' && !project.hasProperty('perfAllowUnknownGitCommit')) {
+            throw new GradleException(
+                    'gitCommit unknown. Use -PperfAllowUnknownGitCommit=true for local lab skeleton.')
+        }
+        def profileId = project.property('perfProfileId').toString()
+        def scenario = project.property('perfScenario').toString()
+        def runId = project.property('perfRunId').toString()
+        def namespace = project.property('perfNamespace').toString()
+        def targetRps = project.hasProperty('perfTargetRps')
+                ? Integer.parseInt(project.property('perfTargetRps').toString()) : 0
+        def outDir = file(project.property('perfOutputDir').toString())
+        outDir.mkdirs()
+
+        def reasons = ['localEnvironment', 'singleRunOnly', 'provisionalBudgetOnly', 'missingMetrics']
+        def springProfile = [
+                'S0': 's0-baseline', 'S1': 's1-tracing', 'S4': 's4-production'
+        ].get(scenario, 's4-production')
+
+        def skeleton = [
+                evidenceTier            : 'REFERENCE',
+                labTier                 : 'LOCAL_REFERENCE_LAB',
+                nonAuthoritative        : true,
+                nonAuthoritativeReasons : reasons,
+                w004Eligible            : false,
+                profileId               : profileId,
+                runId                   : runId,
+                gitCommit               : gitSha == 'unknown' ? 'unknown-local-lab' : gitSha,
+                environment             : [
+                        clusterAlias : 'kind-platform-tracing-reference-lab',
+                        namespace    : namespace,
+                        cgroupVersion: 'v2',
+                        kernelVersion: 'REPLACE_KERNEL',
+                        javaVersion  : '21',
+                        jfrStartMode : 'startup'
+                ],
+                scenario                : [
+                        scenarioId    : scenario,
+                        springProfile : springProfile,
+                        duration      : '10m',
+                        warmupDuration: '2m',
+                        loadModel     : 'constant-arrival-rate',
+                        endpointPath  : '/perf/work'
+                ] + (targetRps > 0 ? [targetRps: targetRps] : [:]),
+                metrics                 : [
+                        load     : [
+                                executor       : 'constant-arrival-rate',
+                                warmupSec      : 120,
+                                steadyWindowSec: 600
+                        ] + (targetRps > 0 ? [targetRps: targetRps] : [:]),
+                        collector: [backpressureEvidenceValid: false]
+                ],
+                artifacts               : [
+                        command: 'command.txt',
+                        jfr    : [
+                                storageRef: 'file:///var/tmp/platform-tracing-reference-lab-artifacts/REPLACE/run.jfr',
+                                sha256    : 'REPLACE_SHA256'
+                        ]
+                ],
+                classification          : [
+                        w004Candidate: false,
+                        w011Evidence : 'none',
+                        w012Evidence : 'none'
+                ],
+                budgets                 : [
+                        cpuOverheadPct     : [threshold: 3.0, budgetStatus: 'provisional'],
+                        rssOverheadPct     : [threshold: 10.0, budgetStatus: 'provisional'],
+                        p99LatencyDeltaPct : [threshold: 15.0, budgetStatus: 'provisional'],
+                        errorRatePct       : [threshold: 0.1, budgetStatus: 'provisional']
+                ],
+                reproducibility         : [reproductionRunCount: 1],
+                caveats                 : [
+                        missingMetrics                  : [
+                                'Populate after local lab run — skeleton only',
+                                'achievedRpsAvg', 'cpu.per1kRps', 'memory.workingSetBytesAvg',
+                                'collector.backpressureEvidence'
+                        ],
+                        notForProductionReadinessReason : 'LOCAL_REFERENCE_LAB; not SRE/pre-prod evidence'
+                ]
+        ]
+        def summaryFile = new File(outDir, 'reference-summary.json')
+        summaryFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(skeleton))
+        new File(outDir, 'command.txt').text = '# LOCAL_REFERENCE_LAB — PR-9H-E2L runbook commands\n'
+        logger.lifecycle('Created LOCAL lab skeleton: {}', summaryFile.absolutePath)
+        logger.lifecycle('labTier=LOCAL_REFERENCE_LAB w004Eligible=false — fill metrics from captures only')
+    }
+}
+
+tasks.register('perfReferencePlan') {
+    group = 'perf'
+    description = 'Prints PR-9H-E2 REFERENCE run plan (no automated cluster execution).'
+    dependsOn 'perfReferenceValidateConfig'
+    doLast {
+        def profileId = project.findProperty('perfProfileId') ?: '(required: -PperfProfileId=)'
+        def namespace = project.findProperty('perfNamespace') ?: '(required: -PperfNamespace=)'
+        def targetRps = project.findProperty('perfTargetRps') ?: '(required: calibrate then -PperfTargetRps=)'
+        def sinkImage = project.findProperty('perfReferenceSinkImage') ?: '(required: -PperfReferenceSinkImage=)'
+        def artifactStore = project.findProperty('perfArtifactStore') ?: '(required: -PperfArtifactStore=)'
+        def runId = new Date().format("yyyyMMdd-HHmmss")
+        logger.lifecycle('')
+        logger.lifecycle('=== PR-9H-E2 REFERENCE run plan (manual cluster execution) ===')
+        logger.lifecycle('Profile id:     {}', profileId)
+        logger.lifecycle('Suggested runId: {}', runId)
+        logger.lifecycle('Namespace:      {}', namespace)
+        logger.lifecycle('TARGET_RPS:     {} (same for S0/S1/S4)', targetRps)
+        logger.lifecycle('Reference sink: {}', sinkImage)
+        logger.lifecycle('Artifact store: {}', artifactStore)
+        logger.lifecycle('')
+        logger.lifecycle('Required scenarios: S0, S1, S4')
+        logger.lifecycle('Optional:           S2, S3')
+        logger.lifecycle('Deferred:           S5 (diagnostic), S6 (soak PR-9H-F)')
+        logger.lifecycle('')
+        logger.lifecycle('Environment prerequisites (must be satisfied before run):')
+        logger.lifecycle('  1. Complete evidence/templates/PR-9H-E2-preflight-checklist.md')
+        logger.lifecycle('  2. Reference sink image approved and deployed')
+        logger.lifecycle('  3. TARGET_RPS calibrated (~60-70%% S0 saturation)')
+        logger.lifecycle('  4. prepareK6ReferenceConfigMap -> build/k8s/k6-scenarios-configmap.yaml')
+        logger.lifecycle('  5. Prometheus/cAdvisor + collector self-metrics scrape verified')
+        logger.lifecycle('  6. External JFR store + sha256 process defined')
+        logger.lifecycle('  7. gitCommit resolved (not unknown)')
+        logger.lifecycle('')
+        logger.lifecycle('Required artifacts per scenario:')
+        logger.lifecycle('  reference-summary.json, k6-summary.json, prometheus-compact-summary.json')
+        logger.lifecycle('  jfr-summary.json, command.txt, checksums.txt (raw JFR external only)')
+        logger.lifecycle('')
+        logger.lifecycle('E2 non-claims (mandatory):')
+        logger.lifecycle('  - w004Eligible MUST remain false')
+        logger.lifecycle('  - nonAuthoritative=true; reasons: singleRunOnly, provisionalBudgetOnly')
+        logger.lifecycle('  - W-004 remains OPEN')
+        logger.lifecycle('  - W-011/W-012 unchanged by default')
+        logger.lifecycle('  - No raw dumps committed under evidence/reference/')
+        logger.lifecycle('  - No SMOKE artifacts mixed into REFERENCE outputs')
+        logger.lifecycle('')
+        logger.lifecycle('Commands:')
+        logger.lifecycle('  ./gradlew :platform-tracing-perf-harness:prepareK6ReferenceConfigMap')
+        logger.lifecycle('  ./gradlew :platform-tracing-perf-harness:perfReferenceCreateSummarySkeleton \\')
+        logger.lifecycle('    -PperfProfileId={} -PperfScenario=S4 -PperfRunId={} \\', profileId, runId)
+        logger.lifecycle('    -PperfNamespace={} -PperfTargetRps={} \\', namespace, targetRps)
+        logger.lifecycle('    -PperfOutputDir=build/perf-results/reference/{}/{}', profileId, runId)
+        logger.lifecycle('')
+        logger.lifecycle('Runbook: evidence/templates/PR-9H-E2-runbook.md')
+        logger.lifecycle('')
+        def envMissing = []
+        if (namespace.startsWith('(')) envMissing << 'perfNamespace'
+        if (targetRps.toString().startsWith('(')) envMissing << 'perfTargetRps'
+        if (sinkImage.startsWith('(')) envMissing << 'perfReferenceSinkImage'
+        if (artifactStore.startsWith('(')) envMissing << 'perfArtifactStore'
+        if (!envMissing.isEmpty()) {
+            logger.lifecycle('STATUS: E2 scaffolding ready; environment prerequisites MISSING: {}', envMissing)
+            logger.lifecycle('Do not fabricate evidence. Complete pre-flight before cluster run.')
+        } else {
+            logger.lifecycle('STATUS: Environment properties provided — proceed via manual runbook only.')
+        }
+        logger.lifecycle('')
+    }
+}
+
+tasks.register('perfReferenceRun') {
+    group = 'perf'
+    description = 'REFERENCE tier — validates E2 properties; refuses automated cluster execution.'
+    dependsOn 'perfReferenceValidateConfig'
+    doLast {
+        def missing = referenceRequiredProps.findAll { !project.hasProperty(it) }
+        if (!missing.isEmpty()) {
+            logger.lifecycle('')
+            logger.lifecycle('REFUSE perfReferenceRun: missing required properties: {}', missing)
+            logger.lifecycle('Required:')
+            referenceRequiredProps.each { prop ->
+                logger.lifecycle('  -P{}=...', prop)
+            }
+            logger.lifecycle('')
+            logger.lifecycle('Run perfReferencePlan first:')
+            logger.lifecycle('  ./gradlew :platform-tracing-perf-harness:perfReferencePlan -PperfProfileId=<id>')
+            logger.lifecycle('')
+            throw new GradleException(
+                    'REFERENCE run refused: missing properties ' + missing +
+                            '. SMOKE/local artifacts cannot satisfy W-004.')
+        }
+        if (project.property('perfReferenceConfirmed').toString() != 'true') {
+            throw new GradleException(
+                    'REFERENCE run refused: -PperfReferenceConfirmed=true required. ' +
+                            'This tier is Kubernetes/pre-prod only — not local SMOKE.')
+        }
+        def outputDir = file(project.property('perfOutputDir').toString())
+        def normalizedOutput = outputDir.absolutePath.replace('\\', '/')
+        if (normalizedOutput.contains('perf-results/smoke')) {
+            throw new GradleException(
+                    'REFERENCE run refused: output dir must not be under perf-results/smoke/')
+        }
+        if (!normalizedOutput.contains('perf-results/reference')) {
+            throw new GradleException(
+                    'REFERENCE run refused: output dir must be under build/perf-results/reference/')
+        }
+        def e2EnvProps = [
+                'perfReferenceSinkImage',
+                'perfTargetRps',
+                'perfArtifactStore'
+        ]
+        def envMissing = e2EnvProps.findAll { !project.hasProperty(it) }
+        if (!envMissing.isEmpty()) {
+            throw new GradleException(
+                    'E2 environment prerequisites missing: ' + envMissing +
+                            '. Cannot proceed. See PR-9H-E2-preflight-checklist.md. ' +
+                            'Do not fabricate reference evidence.')
+        }
+        if (!project.hasProperty('perfReferenceExecuteCluster') ||
+                project.property('perfReferenceExecuteCluster').toString() != 'true') {
+            throw new GradleException(
+                    'Automated kubectl execution is not implemented. ' +
+                            'Properties validated for profile=' + project.property('perfProfileId') +
+                            ', scenario=' + project.property('perfScenario') +
+                            ', namespace=' + project.property('perfNamespace') +
+                            '. Execute manually via evidence/templates/PR-9H-E2-runbook.md. ' +
+                            'Use perfReferenceCreateSummarySkeleton after capture.')
+        }
+        throw new GradleException(
+                'Even with -PperfReferenceExecuteCluster=true, automated cluster execution is refused. ' +
+                        'Use manual runbook. Never fabricate metrics.')
+    }
+}
+
+tasks.register('perfSmoke') {
+    group = 'perf'
+    description = 'Local SMOKE tier: k6 functional run (local k6 or Docker). Skips cleanly if unavailable.'
+    dependsOn 'prepareK6SmokeDockerContext'
+    notCompatibleWithConfigurationCache('Exec + dynamic probes')
+
+    doLast {
+        def baseUrl = (project.findProperty('perfBaseUrl') ?: project.findProperty('perfSmokeBaseUrl') ?: 'http://localhost:8080').toString()
+        def duration = (project.findProperty('perfSmokeDuration') ?: '30s').toString()
+        def targetRps = Integer.parseInt((project.findProperty('perfSmokeTargetRps') ?: project.findProperty('perfSmokeRps') ?: '5').toString())
+        def springProfile = (project.findProperty('perfProfiles') ?: 'smoke').toString()
+        def profileId = (project.findProperty('perfProfileId') ?: 'local-dev').toString()
+        def healthUrl = "${baseUrl}/perf/health"
+
+        if (!sutReachable(healthUrl)) {
+            logger.lifecycle("SKIP perfSmoke: SUT not reachable at {} — start bootRun first", healthUrl)
+            logger.lifecycle('  ./gradlew :platform-tracing-perf-harness:bootRun -PperfProfiles={}', springProfile)
+            return
+        }
+
+        def k6Local = commandAvailable('k6')
+        def dockerAvailable = commandAvailable('docker')
+        def useDocker = project.hasProperty('perfSmokeUseDocker') || (!k6Local && dockerAvailable)
+        def remoteDocker = project.hasProperty('DockerHost')
+        def timestamp = new Date().format("yyyyMMdd-HHmmss")
+        def outDir = project.hasProperty('perfSmokeOutputDir')
+                ? file(project.property('perfSmokeOutputDir'))
+                : file("${layout.buildDirectory.get().asFile}/perf-results/smoke/${timestamp}")
+        outDir.mkdirs()
+
+        if (!k6Local && !useDocker) {
+            logger.lifecycle('SKIP perfSmoke: k6 not on PATH and Docker not available.')
+            logger.lifecycle('  Install k6, or run with -PperfSmokeUseDocker=true (requires Docker).')
+            logger.lifecycle('  Remote lab: -PDockerHost=tcp://192.168.100.70:2375 -PperfBaseUrl=http://<host-from-gentoo>:8080')
+            return
+        }
+
+        if (useDocker && dockerAvailable && remoteDocker && System.getProperty('os.name').toLowerCase().contains('windows')) {
+            logger.lifecycle('Delegating to PowerShell runner for remote Docker.')
+            def psScript = file("${projectDir}/scripts/run-perf-smoke.ps1").absolutePath
+            exec {
+                commandLine 'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', psScript,
+                        '-DockerHost', project.property('DockerHost').toString(),
+                        '-BaseUrl', dockerBaseUrl(baseUrl, true),
+                        '-Duration', duration,
+                        '-TargetRps', targetRps.toString(),
+                        '-SpringProfile', springProfile,
+                        '-OutDir', outDir.absolutePath
+            }
+            logger.lifecycle('SMOKE artifacts (non-authoritative): {}', outDir)
+            return
+        }
+
+        def gitSha = resolveGitSha()
+        def k6SummaryFile = new File(outDir, 'k6-summary.json')
+        def k6Runner
+        def commandText
+        Integer k6ExitCode = null
+
+        if (k6Local && !project.hasProperty('perfSmokeUseDocker')) {
+            k6Runner = 'local'
+            commandText = "k6 run --summary-export ${k6SummaryFile.absolutePath} scenarios/smoke.js"
+            exec {
+                environment 'BASE_URL', baseUrl
+                environment 'DURATION', duration
+                environment 'TARGET_RPS', targetRps.toString()
+                environment 'SCENARIO', 'smoke'
+                environment 'SPRING_PROFILE', springProfile
+                commandLine 'k6', 'run',
+                        '--summary-export', k6SummaryFile.absolutePath,
+                        file("${projectDir}/scenarios/smoke.js").absolutePath
+            }
+        } else if (useDocker && dockerAvailable) {
+            buildK6SmokeImage(project)
+            k6Runner = remoteDocker ? 'docker-remote' : 'docker-local'
+            def dockerUrl = dockerBaseUrl(baseUrl, remoteDocker)
+            def k6SummaryInContainer = '/artifacts/k6-summary.json'
+            commandText = "docker create/start/cp ${dockerUrl} platform-tracing-perf-harness-k6-smoke:local"
+            def dockerEnv = [
+                    "BASE_URL=${dockerUrl}",
+                    "DURATION=${duration}",
+                    "TARGET_RPS=${targetRps.toString()}",
+                    'SCENARIO=smoke',
+                    "SPRING_PROFILE=${springProfile}"
+            ]
+            def cidOut = new ByteArrayOutputStream()
+            def createCmd = ['docker', 'create'] + dockerEnv.collectMany { ['-e', it] } + [
+                    'platform-tracing-perf-harness-k6-smoke:local',
+                    'run', '/scenarios/smoke.js', '--summary-export', k6SummaryInContainer
+            ]
+            if (remoteDocker) {
+                exec {
+                    environment 'DOCKER_HOST', project.property('DockerHost').toString()
+                    commandLine createCmd
+                    standardOutput = cidOut
+                }
+            } else {
+                exec {
+                    commandLine createCmd
+                    standardOutput = cidOut
+                }
+            }
+            def cid = cidOut.toString().trim()
+            try {
+                if (remoteDocker) {
+                    k6ExitCode = providers.exec {
+                        environment 'DOCKER_HOST', project.property('DockerHost').toString()
+                        commandLine 'docker', 'start', '-a', cid
+                        ignoreExitValue = true
+                    }.result.get().exitValue
+                    exec {
+                        environment 'DOCKER_HOST', project.property('DockerHost').toString()
+                        commandLine 'docker', 'cp', "${cid}:${k6SummaryInContainer}", k6SummaryFile.absolutePath
+                        ignoreExitValue = true
+                    }
+                } else {
+                    k6ExitCode = providers.exec {
+                        commandLine 'docker', 'start', '-a', cid
+                        ignoreExitValue = true
+                    }.result.get().exitValue
+                    exec {
+                        commandLine 'docker', 'cp', "${cid}:${k6SummaryInContainer}", k6SummaryFile.absolutePath
+                        ignoreExitValue = true
+                    }
+                }
+                if (k6ExitCode != 0) {
+                    logger.lifecycle('WARN perfSmoke: k6 exited {} — SMOKE tier is non-gating; check BASE_URL reachability from Docker host', k6ExitCode)
+                }
+            } finally {
+                if (remoteDocker) {
+                    exec {
+                        environment 'DOCKER_HOST', project.property('DockerHost').toString()
+                        commandLine 'docker', 'rm', '-f', cid
+                        ignoreExitValue = true
+                    }
+                } else {
+                    exec {
+                        commandLine 'docker', 'rm', '-f', cid
+                        ignoreExitValue = true
+                    }
+                }
+            }
+        } else {
+            logger.lifecycle('SKIP perfSmoke: no k6 runner available.')
+            return
+        }
+
+        def summary = [
+                evidenceTier     : 'SMOKE',
+                nonAuthoritative : true,
+                w004Eligible     : false,
+                profileId        : profileId,
+                runId            : timestamp,
+                scenario         : 'smoke',
+                springProfile    : springProfile,
+                baseUrl          : baseUrl,
+                duration         : duration,
+                targetRps        : targetRps,
+                k6Runner         : k6Runner,
+                gitSha           : gitSha,
+                k6Summary        : 'k6-summary.json',
+                note             : 'Functional smoke only — not W-004 or pre-prod evidence'
+        ]
+        if (k6ExitCode != null) {
+            summary.k6ExitCode = k6ExitCode
+        }
+        writeSmokeArtifacts(outDir, summary, commandText)
+        logger.lifecycle('SMOKE executed via {} — artifacts (non-authoritative): {}', k6Runner, outDir)
+    }
+}
+

@@ -1,0 +1,8 @@
+spring:
+  config:
+    activate:
+      on-profile: s0-baseline
+
+platform:
+  tracing:
+    enabled: false

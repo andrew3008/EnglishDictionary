@@ -1,0 +1,587 @@
+plugins {
+    // JMH-плагин для запуска micro-benchmark'ов через `./gradlew :platform-tracing-bench:jmh`.
+    // Версия 0.7.2 совместима с Gradle 8.x и Java 21.
+    id 'me.champeau.jmh' version '0.7.2'
+}
+
+description = 'JMH micro-benchmark\'и для платформенной трассировки (Фаза 17, PR-1). ' +
+        'Сюита на реальных API: sampler, scrubbing-движок, typed builders, AttributePolicy, ' +
+        'queue offer (BSP vs drop-oldest), Context/Scope, MDC, SpanLimits, propagation, validation. ' +
+        'JSON-результаты + jmhSaveBaseline/jmhCompareBaseline (per hardware-profile). ' +
+        'Модуль НЕ публикуется в Nexus (внутренний инструмент разработчика).'
+
+// Этот модуль — внутренний инструмент: его артефакты не нужно публиковать в Nexus,
+// иначе релизный пайплайн будет требовать сборки JMH-плагина в production-окружении.
+afterEvaluate {
+    tasks.matching { it.name.startsWith("publish") }.configureEach { it.enabled = false }
+}
+
+dependencies {
+    jmh platform(project(':platform-tracing-bom'))
+
+    implementation platform(project(':platform-tracing-bom'))
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Платформенные модули, поведение которых замеряется.
+    jmh project(':platform-tracing-api')
+    jmh project(':platform-tracing-core')
+    jmh project(':platform-tracing-otel-extension')
+
+    // OpenTelemetry SDK для построения тестового pipeline'а в бенчмарках.
+    jmh 'io.opentelemetry:opentelemetry-sdk'
+    jmh 'io.opentelemetry:opentelemetry-sdk-testing'
+
+    jmh 'org.slf4j:slf4j-api'
+    // Logback на уровне runtime, чтобы JMH-цикл не печатал WARN от SLF4J no-op binder'а.
+    jmhRuntimeOnly 'ch.qos.logback:logback-classic'
+
+    // Контракт-тесты Фазы 17: performance-budgets.yaml (governance) и fixtures
+    // ScrubbingEngineBenchmark (защита от тихого дрейфа hit-путей правил).
+    testImplementation project(':platform-tracing-api')
+    testImplementation project(':platform-tracing-otel-extension')
+    testImplementation 'org.yaml:snakeyaml'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+}
+
+def jmhHeapSize = project.findProperty('jmhHeap') ?: '4g'
+
+def hardwareProfileId = {
+    if (project.hasProperty('jmhProfileId')) {
+        return project.property('jmhProfileId').toString()
+    }
+    def os = System.getProperty('os.name').toLowerCase().replaceAll(/[^a-z0-9]+/, '-')
+    def arch = System.getProperty('os.arch').toLowerCase()
+    def cores = Runtime.runtime.availableProcessors()
+    "${os}-${arch}-${cores}c"
+}()
+
+def resultsJson = project.hasProperty('jmhResultFile')
+        ? project.file(project.property('jmhResultFile'))
+        : project.file("${project.buildDir}/results/jmh/results.json")
+
+def jmhSmokeResultsJson = file("${project.buildDir}/results/jmh-smoke/results.json")
+
+def jmhBenchmarkClassNames = {
+    def names = []
+    fileTree("${projectDir}/src/jmh/java").include('**/*Benchmark.java').each { f ->
+        def rel = projectDir.toPath().relativize(f.toPath()).toString().replace('\\', '/')
+        names << rel.replaceFirst('^src/jmh/java/', '').replaceFirst('\\.java$', '').replace('/', '.')
+    }
+    names.sort()
+}()
+
+jmh {
+    // Базовые параметры запуска: 2 forks × 5 warmup × 5 measurement итераций — достаточно
+    // для стабильного baseline'а без чрезмерной длительности (порядка 3–5 минут на класс).
+    fork = 2
+    warmupIterations = 5
+    iterations = 5
+    // Режим и единицы времени НЕ задаются глобально: каждый класс несёт явные
+    // @BenchmarkMode/@OutputTimeUnit, что позволяет latency-чувствительным бенчам
+    // (QueueOffer, CompositeSampler) дополнительно гонять SampleTime для p50/p95/p99
+    // (статпротокол ADR-performance-model). Глобальный -bm перекрыл бы аннотации.
+    // GC-профайлер: единственная допустимая alloc-метрика — gc.alloc.rate.norm (байт/op);
+    // метрика без .norm имеет известное искажение GC-профайлера JMH (openjdk/jmh PR #87).
+    profilers = ['gc']
+    // JSON — машинно-читаемый формат для jmhCompareBaseline (Фаза 17, PR-1).
+    resultFormat = 'JSON'
+    resultsFile = resultsJson
+    // Fork heap: `-PjmhHeap=4g` (default 4g). Gradle daemon heap is separate (gradle.properties).
+    jvmArgs = ["-Xmx${jmhHeapSize}"]
+    // Опциональный фокус-фильтр: `-PjmhInclude=CompositePipelineBenchmark` гоняет один класс
+    // (regex JMH по имени) — для прицельных baseline-прогонов без всей сюиты.
+    if (project.hasProperty('jmhInclude')) {
+        includes = [project.property('jmhInclude').toString()]
+    }
+    // Diagnostic-only exclude: `-PjmhExclude=...` — не использовать для официального baseline.
+    if (project.hasProperty('jmhExclude')) {
+        excludes = [project.property('jmhExclude').toString()]
+    }
+    // Smoke-режим (-PjmhQuickSmoke): 1 fork × 1×1 итерация по 100ms — проверка, что каждый
+    // бенч корректно стартует и завершается (fixtures, setUp/tearDown). НЕ для измерений.
+    // Output изолирован от build/results/jmh/results.json (PR-9H-B artifact hygiene).
+    if (project.hasProperty('jmhQuickSmoke')) {
+        fork = 1
+        warmupIterations = 1
+        iterations = 1
+        warmup = '100ms'
+        timeOnIteration = '100ms'
+        profilers = []
+        resultsFile = jmhSmokeResultsJson
+    }
+    // Dev-режим (-PjmhDev): 1 fork × 3×5 итераций по 500ms с GC-профайлером — индикативные
+    // цифры на dev-хосте (относительные сравнения/ранжирование). Официальные данные —
+    // только полный профиль на reference-лаборатории (см. performance-budgets.yaml).
+    if (project.hasProperty('jmhDev')) {
+        fork = 1
+        warmupIterations = 3
+        iterations = 5
+        warmup = '500ms'
+        timeOnIteration = '500ms'
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Baseline-инфраструктура (Фаза 17, PR-1): сравнение JMH-результатов с committed baseline.
+//
+// Baseline хранится PER HARDWARE-PROFILE (baselines/<profileId>/), потому что абсолютные
+// ns/op не переносимы между хостами. Сравнения валидны только same-profile; официальные
+// цифры — только с reference-лаборатории (см. performance-budgets.yaml referenceLab).
+// ---------------------------------------------------------------------------------------------
+
+def baselineDir = project.file("baselines/${hardwareProfileId}")
+
+def gitShaProvider = providers.exec {
+    commandLine 'git', 'rev-parse', '--short', 'HEAD'
+    ignoreExitValue = true
+}.standardOutput.asText.map { it.trim() ?: 'unknown' }
+
+def batchDir = { file("${buildDir}/results/jmh/batches") }
+
+def jmhResultKeyOf = { entry ->
+    def params = entry.params ? entry.params.sort().toString() : ''
+    "${entry.benchmark}|${entry.mode}|${params}".toString()
+}
+
+def resolveHardwareProfileId = {
+    def explicit = project.findProperty('jmhProfileId')
+    if (explicit != null) {
+        return explicit.toString()
+    }
+    return hardwareProfileId
+}
+
+def isValidBatchJsonFile = { File file, String className ->
+    if (file == null || !file.exists() || file.length() == 0L) {
+        return false
+    }
+    try {
+        def parsed = new groovy.json.JsonSlurper().parse(file)
+        if (!(parsed instanceof List) || parsed.isEmpty()) {
+            return false
+        }
+        return parsed.every { it.benchmark?.startsWith(className) }
+    } catch (Throwable ignored) {
+        return false
+    }
+}
+
+def runJmhBatchClasses = { boolean resumeOnly ->
+    def dir = batchDir()
+    dir.mkdirs()
+    def manifest = [
+            generatedAt: new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+            mode       : 'FULL_BASELINE_BATCHED',
+            heap       : jmhHeapSize,
+            profileId  : hardwareProfileId,
+            gitSha     : gitShaProvider.get(),
+            resumeOnly : resumeOnly,
+            batches    : []
+    ]
+    def failures = []
+    def skipped = []
+    def isWindows = System.getProperty('os.name').toLowerCase().contains('win')
+    def gradlewPath = isWindows
+            ? rootProject.file('gradlew.bat').absolutePath
+            : rootProject.file('gradlew').absolutePath
+
+    jmhBenchmarkClassNames.each { className ->
+        def simpleName = className.tokenize('.').last()
+        def resultFile = new File(dir, "${simpleName}.json")
+        if (resumeOnly && isValidBatchJsonFile(resultFile, className)) {
+            skipped << className
+            manifest.batches << [
+                    benchmarkClass: className,
+                    status        : 'SKIPPED',
+                    resultFile    : resultFile.absolutePath,
+                    durationMs    : 0,
+                    exitCode      : 0
+            ]
+            return
+        }
+
+        def includeRegex = className.replace('.', '\\.')
+        def startMs = System.currentTimeMillis()
+        logger.lifecycle('JMH batch: {} -> {}', className, resultFile)
+
+        def cmd = [gradlewPath, ':platform-tracing-bench:jmh',
+                   "-PjmhInclude=${includeRegex}",
+                   "-PjmhResultFile=${resultFile.absolutePath}",
+                   "-PjmhHeap=${jmhHeapSize}",
+                   '--console=plain']
+        if (isWindows) {
+            cmd = (['cmd', '/c'] + cmd) as List
+        }
+
+        def stderr = new ByteArrayOutputStream()
+        def exitCode = project.exec {
+            workingDir rootProject.projectDir
+            commandLine cmd
+            errorOutput stderr
+            ignoreExitValue true
+        }.exitValue
+        def durationMs = System.currentTimeMillis() - startMs
+        def status = exitCode == 0 && isValidBatchJsonFile(resultFile, className) ? 'PASS' : 'FAIL'
+        def entry = [
+                benchmarkClass: className,
+                status        : status,
+                resultFile    : resultFile.absolutePath,
+                durationMs    : durationMs,
+                exitCode      : exitCode,
+                bytes         : resultFile.exists() ? resultFile.length() : 0
+        ]
+        if (status != 'PASS') {
+            entry.failure = stderr.toString('UTF-8').take(4000)
+            failures << className
+        }
+        manifest.batches << entry
+    }
+
+    manifest.overallStatus = failures.isEmpty() ? 'PASS' : 'FAIL'
+    manifest.failureCount = failures.size()
+    manifest.skippedCount = skipped.size()
+    manifest.benchmarkClassCount = jmhBenchmarkClassNames.size()
+
+    def manifestFile = new File(dir, 'manifest.json')
+    manifestFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(manifest))
+
+    if (!failures.isEmpty()) {
+        throw new GradleException(
+                "JMH batch baseline failed for: ${failures.join(', ')}. See ${manifestFile}")
+    }
+    logger.lifecycle('JMH batch baseline complete: {} ({} classes, skipped={})',
+            manifestFile, jmhBenchmarkClassNames.size(), skipped.size())
+}
+
+// Batch baseline: один JMH-класс за nested Gradle-прогон (FULL_BASELINE_BATCHED).
+tasks.register('jmhRunBaselineBatches') {
+    group = 'benchmark'
+    description = 'Runs each JMH benchmark class in isolation; writes build/results/jmh/batches/manifest.json.'
+    notCompatibleWithConfigurationCache('Spawns nested Gradle JMH runs')
+    doLast {
+        runJmhBatchClasses(false)
+    }
+}
+
+tasks.register('jmhRunBaselineBatchesResume') {
+    group = 'benchmark'
+    description = 'Runs only missing/invalid batch classes; skips valid batch JSON files.'
+    notCompatibleWithConfigurationCache('Spawns nested Gradle JMH runs')
+    doLast {
+        runJmhBatchClasses(true)
+    }
+}
+
+tasks.register('jmhValidateBatchResults') {
+    group = 'benchmark'
+    description = 'Validates batch JSON files against expected benchmark inventory; writes validated-manifest.json.'
+    notCompatibleWithConfigurationCache('Reads batch JSON in execution phase')
+    doLast {
+        def dir = batchDir()
+        def slurper = new groovy.json.JsonSlurper()
+        def presentClasses = []
+        def missingClasses = []
+        def failedClasses = []
+        def invalidClasses = []
+        def resultFiles = []
+        def totalBenchmarkResults = 0
+
+        jmhBenchmarkClassNames.each { className ->
+            def simpleName = className.tokenize('.').last()
+            def file = new File(dir, "${simpleName}.json")
+            if (!file.exists()) {
+                missingClasses << className
+                return
+            }
+            if (file.length() == 0L) {
+                failedClasses << className
+                return
+            }
+            try {
+                def parsed = slurper.parse(file)
+                if (!(parsed instanceof List) || parsed.isEmpty()) {
+                    invalidClasses << className
+                    return
+                }
+                parsed.each { entry ->
+                    if (!entry.benchmark?.startsWith(className)) {
+                        invalidClasses << "${className} (benchmark=${entry.benchmark})"
+                    }
+                }
+                totalBenchmarkResults += parsed.size()
+                presentClasses << className
+                resultFiles << file.absolutePath
+            } catch (Exception e) {
+                invalidClasses << "${className} (${e.message})"
+            }
+        }
+
+        def status = missingClasses.isEmpty() && failedClasses.isEmpty() && invalidClasses.isEmpty()
+                ? 'PASS' : 'FAIL'
+        def validated = [
+                status               : status,
+                generatedAt          : new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+                expectedClasses      : jmhBenchmarkClassNames.size(),
+                presentClasses       : presentClasses.size(),
+                missingClasses       : missingClasses,
+                failedClasses        : failedClasses,
+                invalidClasses       : invalidClasses,
+                resultFiles          : resultFiles,
+                totalBenchmarkResults: totalBenchmarkResults,
+                expectedInventory    : jmhBenchmarkClassNames
+        ]
+        def validatedFile = new File(dir, 'validated-manifest.json')
+        validatedFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(validated))
+        logger.lifecycle('JMH batch validation: {} (status={}, present={}/{})',
+                validatedFile, status, presentClasses.size(), jmhBenchmarkClassNames.size())
+        if (status != 'PASS') {
+            throw new GradleException("JMH batch validation failed. See ${validatedFile}")
+        }
+    }
+}
+
+tasks.register('jmhMergeBatchResults') {
+    group = 'benchmark'
+    description = 'Merges validated batch JSON files into results.json and batches/merged-results.json.'
+    dependsOn tasks.named('jmhValidateBatchResults')
+    notCompatibleWithConfigurationCache('Merges batch JSON in execution phase')
+    doLast {
+        def dir = batchDir()
+        def slurper = new groovy.json.JsonSlurper()
+        def merged = []
+        def keys = [] as Set
+
+        jmhBenchmarkClassNames.each { className ->
+            def simpleName = className.tokenize('.').last()
+            def file = new File(dir, "${simpleName}.json")
+            def parsed = slurper.parse(file)
+            parsed.each { entry ->
+                def key = jmhResultKeyOf(entry)
+                if (keys.contains(key)) {
+                    throw new GradleException("Duplicate JMH result key during merge: ${key}")
+                }
+                keys << key
+                merged << entry
+            }
+        }
+
+        merged.sort { a, b ->
+            def ak = jmhResultKeyOf(a)
+            def bk = jmhResultKeyOf(b)
+            ak <=> bk
+        }
+
+        def json = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(merged))
+        def mergedFile = new File(dir, 'merged-results.json')
+        mergedFile.text = json
+        resultsJson.parentFile.mkdirs()
+        resultsJson.text = json
+        logger.lifecycle('JMH batch merge complete: {} entries -> {} and {}',
+                merged.size(), mergedFile, resultsJson)
+    }
+}
+
+tasks.register('jmhSaveBaselineFromBatch') {
+    group = 'benchmark'
+    description = 'Validates and merges batch results. Follow with jmhSaveBaseline -PjmhBaselineMode=FULL_BASELINE_BATCHED.'
+    dependsOn tasks.named('jmhMergeBatchResults')
+}
+
+def mergeClassResultsIntoProfileBaseline = { File classResultFile, String benchmarkClassPrefix, File profileBaseline ->
+    if (!classResultFile.exists() || classResultFile.length() == 0L) {
+        throw new GradleException("Missing JMH class results: ${classResultFile}")
+    }
+    if (!profileBaseline.exists()) {
+        throw new GradleException("Profile baseline missing: ${profileBaseline}")
+    }
+    def slurper = new groovy.json.JsonSlurper()
+    def incoming = slurper.parse(classResultFile)
+    def existing = slurper.parse(profileBaseline)
+    if (!(incoming instanceof List) || !(existing instanceof List)) {
+        throw new GradleException("Expected JSON arrays in ${classResultFile} and ${profileBaseline}")
+    }
+    def filtered = existing.findAll { entry ->
+        !entry.benchmark?.startsWith(benchmarkClassPrefix)
+    }
+    incoming.each { entry ->
+        if (!entry.benchmark?.startsWith(benchmarkClassPrefix)) {
+            throw new GradleException("Unexpected benchmark in ${classResultFile}: ${entry.benchmark}")
+        }
+        filtered << entry
+    }
+    filtered.sort { a, b ->
+        jmhResultKeyOf(a) <=> jmhResultKeyOf(b)
+    }
+    profileBaseline.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(filtered))
+    logger.lifecycle('Merged {} entries from {} into {} (total {} entries)',
+            incoming.size(), classResultFile, profileBaseline, filtered.size())
+}
+
+tasks.register('jmhMergeValidationIntoBaseline') {
+    group = 'benchmark'
+    description = 'Merges ValidatingSpanProcessorBenchmark batch JSON into baselines/<profile>/results.json (excludes diagnostic method from batch file).'
+    notCompatibleWithConfigurationCache('Merges committed baseline in execution phase')
+    doLast {
+        def profileId = resolveHardwareProfileId()
+        def batchFile = new File(batchDir(), 'ValidatingSpanProcessorBenchmark.json')
+        def profileBaseline = project.file("baselines/${profileId}/results.json")
+        if (!profileBaseline.exists()) {
+            throw new GradleException(
+                    "Profile baseline missing: ${profileBaseline}. Use -PjmhProfileId=<id> if baseline lives under a named profile.")
+        }
+        mergeClassResultsIntoProfileBaseline(
+                batchFile,
+                'space.br1440.platform.tracing.bench.ValidatingSpanProcessorBenchmark',
+                profileBaseline)
+        def metadataFile = new File(project.file("baselines/${profileId}"), 'baseline-metadata.json')
+        def metadata = metadataFile.exists()
+                ? new groovy.json.JsonSlurper().parse(metadataFile)
+                : [:]
+        metadata.validationMergedAt = new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX")
+        metadata.validationMergedFrom = batchFile.absolutePath
+        metadata.validationBaselineMode = project.findProperty('jmhBaselineMode') ?: 'VALIDATION_CLASS_MERGE'
+        metadataFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata))
+        // Copy batch to official results path so jmhCompareBaseline can run immediately after merge.
+        resultsJson.parentFile.mkdirs()
+        resultsJson.text = batchFile.text
+        logger.lifecycle('Copied {} -> {} for jmhCompareBaseline', batchFile, resultsJson)
+    }
+}
+
+// Сохранение текущего прогона как baseline для данного hardware-профиля.
+tasks.register('jmhSaveBaseline', Copy) {
+    group = 'benchmark'
+    description = 'Сохраняет build/results/jmh/results.json как baseline для текущего hardware-профиля.'
+    from resultsJson
+    into baselineDir
+    doLast {
+        def baselineMode = project.findProperty('jmhBaselineMode') ?: 'SINGLE_RUN'
+        def metadata = [
+                savedAt          : new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+                gitSha           : gitShaProvider.get(),
+                jdk              : System.getProperty('java.version'),
+                hardwareProfileId: hardwareProfileId,
+                osName           : System.getProperty('os.name'),
+                osArch           : System.getProperty('os.arch'),
+                cpuCores         : Runtime.runtime.availableProcessors(),
+                baselineMode     : baselineMode,
+                heap             : jmhHeapSize,
+        ]
+        if (baselineMode == 'FULL_BASELINE_BATCHED') {
+            def validated = new File(batchDir(), 'validated-manifest.json')
+            def merged = new File(batchDir(), 'merged-results.json')
+            metadata.batchValidatedManifest = validated.absolutePath
+            metadata.batchMergedResults = merged.absolutePath
+            metadata.batchManifest = new File(batchDir(), 'manifest.json').absolutePath
+        }
+        new File(baselineDir, 'baseline-metadata.json')
+                .text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata))
+        logger.lifecycle("JMH baseline сохранён: {} (profile: {})", baselineDir, hardwareProfileId)
+    }
+}
+
+// Release-гейт производительности (Фаза 17, PR-6): Gradle-native (без CI-фикции) —
+// активирует PerformanceReleaseGateTest, который блокирует релиз при PENDING hard-бюджетах.
+// Обычный `test` гейт пропускает (pre-release PENDING — корректное состояние сборки).
+// Полный релизный поток — чек-лист в docs/SUPPORTED.md.
+tasks.register('performanceReleaseGate', Test) {
+    group = 'verification'
+    description = 'Release-гейт: hard-бюджеты performance-budgets.yaml закрыты evidence или waiver.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'platform.release.gate', 'true'
+    filter { includeTestsMatching '*PerformanceReleaseGateTest' }
+    outputs.upToDateWhen { false }
+}
+
+// Сравнение текущего прогона с baseline. Пороги (ADR-performance-model, PR-6):
+//   avgt latency (score): WARN +10%, FAIL +25% — hard gate;
+//   alloc (gc.alloc.rate.norm): WARN +5%, FAIL +15% — hard gate (all modes);
+//   sample latency (SampleTime): WARN/FAIL reported as diagnostic by default (PR-6C3).
+// FAIL роняет сборку только при -PjmhFailOnRegression (локальная диагностика не должна
+// блокировать разработку; обязательность гейта — release-процесс SUPPORTED.md).
+// Sample-mode tail latency: -PjmhFailOnSampleRegression=true (requires -PjmhFailOnRegression).
+tasks.register('jmhCompareBaseline') {
+    group = 'benchmark'
+    description = 'Сравнивает build/results/jmh/results.json с baseline текущего hardware-профиля.'
+    dependsOn classes
+    notCompatibleWithConfigurationCache('Читает результаты JMH в момент выполнения')
+    doLast {
+        def profileId = resolveHardwareProfileId()
+        def baselineFile = project.file("baselines/${profileId}/results.json")
+        if (!baselineFile.exists()) {
+            throw new GradleException(
+                    "Baseline отсутствует: ${baselineFile}. Сначала выполните прогон и :platform-tracing-bench:jmhSaveBaseline")
+        }
+        if (!resultsJson.exists()) {
+            throw new GradleException(
+                    "Результаты JMH отсутствуют: ${resultsJson}. Сначала выполните :platform-tracing-bench:jmh")
+        }
+
+        def classLoader = new URLClassLoader(
+                sourceSets.main.runtimeClasspath.files.collect { it.toURI().toURL() } as URL[],
+                (ClassLoader) Thread.currentThread().contextClassLoader)
+        def comparatorClass = classLoader.loadClass('space.br1440.platform.tracing.bench.baseline.JmhBaselineComparator')
+        def report = comparatorClass.compare(baselineFile.toPath(), resultsJson.toPath(), profileId)
+
+        report.lines().each { line -> logger.lifecycle(line) }
+        def failOnSampleRegression = project.hasProperty('jmhFailOnSampleRegression')
+                && project.property('jmhFailOnSampleRegression').toString().equalsIgnoreCase('true')
+        logger.lifecycle(
+                'JMH compare summary (profile: {}): baseline={}, current={}, matched={}, NEW={}, ' +
+                        'hardWARN={}, hardFAIL={}, diagWARN={}, diagFAIL={}',
+                profileId,
+                report.baselineEntries(),
+                report.currentEntries(),
+                report.matched(),
+                report.newEntries(),
+                report.hardWarnings(),
+                report.hardFailures(),
+                report.diagnosticWarnings(),
+                report.diagnosticFailures())
+        report.hardWarningMessages().each { message -> logger.warn('JMH WARN: {}', message) }
+        report.hardFailureMessages().each { message -> logger.error('JMH FAIL: {}', message) }
+        report.diagnosticWarningMessages().each { message -> logger.warn('JMH DIAG WARN: {}', message) }
+        report.diagnosticFailureMessages().each { message -> logger.warn('JMH DIAG FAIL: {}', message) }
+
+        if (report.gateUnreliable()) {
+            def message = "JMH gate unreliable (profile: ${profileId}): ${report.currentEntries()} current entries, " +
+                    "${report.baselineEntries()} baseline entries, but 0 matched"
+            if (project.hasProperty('jmhFailOnRegression')) {
+                throw new GradleException(message)
+            }
+            logger.error(message)
+        } else if (!report.hasBlockingFailures(failOnSampleRegression)
+                && report.hardWarnings() == 0
+                && report.diagnosticWarnings() == 0
+                && report.diagnosticFailures() == 0
+                && report.matched() > 0) {
+            logger.lifecycle('JMH: hard-gate regressions against baseline not detected (profile: {})', profileId)
+        }
+
+        if (report.hasBlockingFailures(failOnSampleRegression)) {
+            def blockingMessages = []
+            report.hardFailureMessages().each { blockingMessages << it }
+            if (failOnSampleRegression) {
+                report.diagnosticFailureMessages().each { blockingMessages << it }
+            }
+            def message = "JMH regression against baseline (${profileId}):\n  " +
+                    blockingMessages.join('\n  ')
+            if (project.hasProperty('jmhFailOnRegression')) {
+                throw new GradleException(message)
+            }
+            logger.error(message)
+            logger.error('Build does not fail: add -PjmhFailOnRegression for strict gate')
+        } else if (report.hasDiagnosticFailures() || report.diagnosticWarnings() > 0) {
+            logger.lifecycle(
+                    'JMH sample-mode diagnostic deltas present (profile: {}); not blocking default strict gate. ' +
+                            'Add -PjmhFailOnSampleRegression=true with -PjmhFailOnRegression for strict sample gate.',
+                    profileId)
+        }
+    }
+}

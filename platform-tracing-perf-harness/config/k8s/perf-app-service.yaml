@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: perf-harness-app
+  namespace: REPLACE_NAMESPACE
+  labels:
+    app: perf-harness-app
+    platform-tracing.io/tier: reference-perf
+spec:
+  type: ClusterIP
+  selector:
+    app: perf-harness-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

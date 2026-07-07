@@ -1,0 +1,54 @@
+description = 'Версионируемые YAML-конфигурации для OpenTelemetry Collector. ' +
+        'Артефакт собирается как jar с ресурсами и подключается на стороне инфраструктуры (SRE) ' +
+        'для гарантии согласованной конфигурации tail_sampling и маршрутизации в Jaeger.'
+
+// Модуль публикуется как обычный jar с resources/; Java-кода в main нет,
+// но в src/test живёт CollectorPolicyContractTest (контракт SDK ↔ Collector YAML).
+sourcesJar.enabled = false
+javadocJar.enabled = false
+
+dependencies {
+    // Контракт-тест: парсинг YAML + константы SDK (PlatformAttributes/PlatformSamplingReasons).
+    testImplementation project(':platform-tracing-api')
+    // Версия snakeyaml управляется Spring Boot dependencies через platform-tracing-bom.
+    testImplementation 'org.yaml:snakeyaml'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// CI-валидация OTel Collector конфигураций (Requires Docker).
+// Проверяет синтаксис и семантику конфигов на пине contrib 0.154.0 (Track B+, ADR-collector-boundary).
+// Все env-переменные имеют default'ы в синтаксисе ${env:VAR:-default}, поэтому
+// инъекция env при валидации не требуется (находка Spike S3: легаси-форма ${VAR:default}
+// на 0.123+ ломает confmap-парсер).
+tasks.register('validateCollectorConfigs', Exec) {
+    description = 'Валидация YAML-конфигураций OTel Collector через Docker (gateway, agent, ttl-tiers, e2e).'
+    group = 'verification'
+
+    def gatewayConfig = "/conf/platform-tracing/collector/otel-collector-gateway-tail-sampling.yaml"
+    def agentConfig = "/conf/platform-tracing/collector/otel-collector-agent-loadbalancing.yaml"
+    def ttlTiersConfig = "/conf/platform-tracing/collector/otel-collector-config-ttl-tiers.yaml"
+    def e2eConfig = "/conf-e2e/e2e/otel-collector-e2e.yaml"
+    def featureGates = "+processor.tailsamplingprocessor.recordpolicy"
+
+    // Команда использует docker run с монтированием resources как /conf (+ e2e test-resources).
+    // ВНИМАНИЕ (Gentoo/remote Docker): volume mount Windows-путей на удалённый daemon не работает —
+    // для удалённой валидации использовать паттерн docker create + cp + start
+    // (см. E:\Platform_Traces_Archive\Testing\Harness\spike-scripts\lib\Remote-Docker.ps1).
+    commandLine 'docker', 'run', '--rm',
+                '-v', "${project.file('src/main/resources').absolutePath}:/conf:ro",
+                '-v', "${project.rootProject.file('platform-tracing-e2e-tests/src/test/resources').absolutePath}:/conf-e2e:ro",
+                'otel/opentelemetry-collector-contrib:0.154.0',
+                'sh', '-c',
+                "otelcol-contrib validate --config ${gatewayConfig} --feature-gates=${featureGates} && " +
+                "otelcol-contrib validate --config ${agentConfig} && " +
+                "otelcol-contrib validate --config ${ttlTiersConfig} && " +
+                "otelcol-contrib validate --config ${e2eConfig}"
+
+    // Игнорируем ошибку, если Docker не запущен локально (чтобы не ломать обычный build без Docker),
+    // но в CI шаг обязан запускаться строго: ./gradlew validateCollectorConfigs -PstrictValidation.
+    ignoreExitValue = !project.hasProperty('strictValidation')
+}
+
+check.dependsOn validateCollectorConfigs

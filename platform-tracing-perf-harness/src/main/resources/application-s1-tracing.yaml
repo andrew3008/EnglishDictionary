@@ -1,0 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: s1-tracing
+
+platform:
+  tracing:
+    enabled: true
+    validation:
+      enabled: false

@@ -1,0 +1,494 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform-tracing.internal/schemas/reference-summary.schema.json",
+  "title": "PlatformTracingPerfReferenceSummary",
+  "type": "object",
+  "required": [
+    "evidenceTier",
+    "nonAuthoritative",
+    "w004Eligible",
+    "profileId",
+    "runId",
+    "gitCommit",
+    "environment",
+    "scenario",
+    "metrics",
+    "artifacts",
+    "classification",
+    "budgets",
+    "reproducibility"
+  ],
+  "properties": {
+    "evidenceTier": { "const": "REFERENCE" },
+    "labTier": {
+      "enum": ["LOCAL_REFERENCE_LAB", "SRE_PREPROD_REFERENCE"],
+      "description": "LOCAL_REFERENCE_LAB is non-authoritative for W-004; cannot set w004Eligible=true"
+    },
+    "nonAuthoritative": { "type": "boolean" },
+    "nonAuthoritativeReasons": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "cpuThrottlingExceeded",
+          "droppedIterationsNonZero",
+          "achievedRpsBelowTarget",
+          "debugExporterUsed",
+          "jfrNotSymmetric",
+          "jfrNotStartedAtStartup",
+          "singleRunOnly",
+          "provisionalBudgetOnly",
+          "missingMetrics",
+          "windowTooShort",
+          "windowNotInSteadyState",
+          "smokeEvidence",
+          "localEnvironment",
+          "unsupportedCollectorPipeline"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "w004Eligible": {
+      "type": "boolean",
+      "description": "true only when all W-004 checklist items satisfied including soak and two-run reproducibility"
+    },
+    "profileId": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "gitCommit": { "type": "string", "minLength": 1 },
+    "environment": {
+      "type": "object",
+      "required": ["clusterAlias", "namespace"],
+      "properties": {
+        "clusterAlias": { "type": "string" },
+        "namespace": { "type": "string" },
+        "nodePool": { "type": "string" },
+        "k8sNodeProfile": { "type": "string" },
+        "osArch": { "type": "string" },
+        "kernelVersion": { "type": "string" },
+        "cgroupVersion": { "type": "string" },
+        "appImage": { "type": "string" },
+        "appCpuRequest": { "type": "string" },
+        "appCpuLimit": { "type": "string" },
+        "appMemRequest": { "type": "string" },
+        "appMemLimit": { "type": "string" },
+        "collectorCpuLimit": { "type": "string" },
+        "collectorMemLimit": { "type": "string" },
+        "collectorImage": { "type": "string" },
+        "collectorVersion": { "type": "string" },
+        "javaVersion": { "type": "string" },
+        "springBootVersion": { "type": "string" },
+        "otelAgentVersion": { "type": "string" },
+        "otelExtensionVersion": { "type": "string" },
+        "jfrSettings": { "type": "string" },
+        "jfrStartMode": { "enum": ["startup", "jcmd", "unknown"] }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "required": ["scenarioId", "loadModel"],
+      "properties": {
+        "scenarioId": { "enum": ["S0", "S1", "S2", "S3", "S4", "S5", "S6"] },
+        "springProfile": { "type": "string" },
+        "duration": { "type": "string" },
+        "warmupDuration": { "type": "string" },
+        "targetRps": { "type": "integer", "minimum": 1 },
+        "loadModel": { "const": "constant-arrival-rate" },
+        "endpointPath": { "type": "string" },
+        "samplingRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "validationMode": { "type": "string" },
+        "scrubbingEnabled": { "type": "boolean" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "load": {
+          "type": "object",
+          "properties": {
+            "executor": { "const": "constant-arrival-rate" },
+            "targetRps": { "type": "integer", "minimum": 1 },
+            "achievedRpsAvg": { "type": "number", "minimum": 0 },
+            "achievedRpsPct": { "type": "number", "minimum": 0, "maximum": 1 },
+            "droppedIterations": { "type": "integer", "minimum": 0 },
+            "warmupSec": { "type": "integer", "minimum": 0 },
+            "steadyWindowSec": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "cpu": {
+          "type": "object",
+          "properties": {
+            "coresRateAvg": { "type": "number", "minimum": 0 },
+            "per1kRps": { "type": "number", "minimum": 0 },
+            "throttleRatioPct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "steadyWindowSec": { "type": "integer", "minimum": 0 },
+            "promqlQuery": { "type": "string" },
+            "deltaPercentVsS0": { "type": "number" }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "properties": {
+            "workingSetBytesAvg": { "type": "integer", "minimum": 0 },
+            "workingSetBytesMax": { "type": "integer", "minimum": 0 },
+            "metricSource": { "type": "string" },
+            "cgroupVersion": { "type": "string" },
+            "deltaPercentVsS0": { "type": "number" }
+          }
+        },
+        "latency": {
+          "type": "object",
+          "properties": {
+            "p50Ms": { "type": "number", "minimum": 0 },
+            "p95Ms": { "type": "number", "minimum": 0 },
+            "p99Ms": { "type": "number", "minimum": 0 },
+            "source": { "type": "string" },
+            "steadyWindowStart": { "type": "string" },
+            "steadyWindowEnd": { "type": "string" }
+          }
+        },
+        "errorRate": {
+          "type": "object",
+          "properties": {
+            "pct": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "gc": {
+          "type": "object",
+          "properties": {
+            "totalPauseMs": { "type": "number", "minimum": 0 },
+            "maxSinglePauseMs": { "type": "number", "minimum": 0 },
+            "gcType": { "type": "string" }
+          }
+        },
+        "allocationSummary": { "type": "string" },
+        "collector": {
+          "type": "object",
+          "properties": {
+            "backpressureEvidenceValid": { "type": "boolean" },
+            "queueSizeMax": { "type": "number", "minimum": 0 },
+            "queueCapacity": { "type": "number", "minimum": 0 },
+            "sendFailedSpans": { "type": "integer", "minimum": 0 },
+            "droppedSpans": { "type": "integer", "minimum": 0 },
+            "receiverRefusedSpans": { "type": "integer", "minimum": 0 },
+            "exporterType": { "type": "string" }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "k6Summary": { "type": "string" },
+        "prometheusSnapshot": { "type": "string" },
+        "logs": { "type": "string" },
+        "command": { "type": "string" },
+        "jfr": {
+          "type": "object",
+          "properties": {
+            "storageRef": { "type": "string" },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "properties": {
+        "w004Candidate": { "type": "boolean" },
+        "w011Evidence": { "enum": ["none", "diagnostic", "high", "resolved-candidate"] },
+        "w012Evidence": { "enum": ["none", "diagnostic", "high", "resolved-candidate"] }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "cpuOverheadPct": { "$ref": "#/$defs/budgetEntry" },
+        "rssOverheadPct": { "$ref": "#/$defs/budgetEntry" },
+        "p99LatencyDeltaPct": { "$ref": "#/$defs/budgetEntry" },
+        "errorRatePct": { "$ref": "#/$defs/budgetEntry" }
+      }
+    },
+    "reproducibility": {
+      "type": "object",
+      "properties": {
+        "reproductionRunCount": { "type": "integer", "minimum": 1 },
+        "variancePct": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "number", "minimum": 0 },
+            "rss": { "type": "number", "minimum": 0 },
+            "p99Latency": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "caveats": {
+      "type": "object",
+      "properties": {
+        "missingMetrics": { "type": "array", "items": { "type": "string" } },
+        "notForProductionReadinessReason": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "budgetEntry": {
+      "type": "object",
+      "required": ["threshold", "budgetStatus"],
+      "properties": {
+        "threshold": { "type": "number" },
+        "observed": { "type": "number" },
+        "budgetStatus": {
+          "enum": ["provisional", "sre-approved", "architecture-approved"]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "labTier": { "const": "LOCAL_REFERENCE_LAB" } },
+        "required": ["labTier"]
+      },
+      "then": {
+        "properties": {
+          "w004Eligible": { "const": false },
+          "nonAuthoritative": { "const": true },
+          "nonAuthoritativeReasons": {
+            "type": "array",
+            "contains": { "enum": ["localEnvironment"] },
+            "minItems": 1
+          }
+        },
+        "required": ["nonAuthoritativeReasons"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "nonAuthoritative": { "const": true } },
+        "required": ["nonAuthoritative"]
+      },
+      "then": {
+        "required": ["nonAuthoritativeReasons"],
+        "properties": {
+          "nonAuthoritativeReasons": { "minItems": 1 },
+          "w004Eligible": { "const": false }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "caveats": {
+            "type": "object",
+            "properties": {
+              "missingMetrics": { "type": "array", "minItems": 1 }
+            },
+            "required": ["missingMetrics"]
+          }
+        },
+        "required": ["caveats"]
+      },
+      "then": {
+        "properties": { "w004Eligible": { "const": false } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "w004Eligible": { "const": true } },
+        "required": ["w004Eligible"]
+      },
+      "then": {
+        "properties": {
+          "nonAuthoritative": { "const": false },
+          "nonAuthoritativeReasons": { "maxItems": 0 }
+        },
+        "required": [
+          "budgets",
+          "reproducibility",
+          "caveats"
+        ],
+        "allOf": [
+          {
+            "properties": {
+              "environment": {
+                "required": [
+                  "clusterAlias",
+                  "namespace",
+                  "javaVersion",
+                  "springBootVersion",
+                  "otelAgentVersion",
+                  "otelExtensionVersion",
+                  "collectorImage",
+                  "collectorVersion",
+                  "cgroupVersion",
+                  "kernelVersion",
+                  "k8sNodeProfile",
+                  "jfrSettings",
+                  "jfrStartMode"
+                ],
+                "properties": {
+                  "jfrStartMode": { "const": "startup" }
+                }
+              },
+              "scenario": {
+                "required": [
+                  "scenarioId",
+                  "loadModel",
+                  "targetRps",
+                  "duration",
+                  "warmupDuration"
+                ],
+                "properties": {
+                  "loadModel": { "const": "constant-arrival-rate" }
+                }
+              },
+              "metrics": {
+                "required": ["load", "cpu", "memory", "latency", "errorRate", "gc", "collector"],
+                "properties": {
+                  "load": {
+                    "required": [
+                      "executor",
+                      "targetRps",
+                      "achievedRpsAvg",
+                      "achievedRpsPct",
+                      "droppedIterations",
+                      "warmupSec",
+                      "steadyWindowSec"
+                    ],
+                    "properties": {
+                      "executor": { "const": "constant-arrival-rate" },
+                      "achievedRpsPct": { "minimum": 0.95 },
+                      "droppedIterations": { "const": 0 },
+                      "steadyWindowSec": { "minimum": 600 }
+                    }
+                  },
+                  "cpu": {
+                    "required": [
+                      "coresRateAvg",
+                      "per1kRps",
+                      "throttleRatioPct",
+                      "steadyWindowSec",
+                      "promqlQuery"
+                    ],
+                    "properties": {
+                      "throttleRatioPct": { "maximum": 5 }
+                    }
+                  },
+                  "memory": {
+                    "required": [
+                      "workingSetBytesAvg",
+                      "workingSetBytesMax",
+                      "metricSource",
+                      "cgroupVersion"
+                    ],
+                    "properties": {
+                      "metricSource": {
+                        "const": "container_memory_working_set_bytes/cAdvisor"
+                      }
+                    }
+                  },
+                  "latency": {
+                    "required": [
+                      "p95Ms",
+                      "p99Ms",
+                      "source",
+                      "steadyWindowStart",
+                      "steadyWindowEnd"
+                    ],
+                    "properties": {
+                      "source": {
+                        "const": "k6/http_req_duration/constant-arrival-rate"
+                      }
+                    }
+                  },
+                  "errorRate": {
+                    "required": ["pct"]
+                  },
+                  "gc": {
+                    "required": ["totalPauseMs", "maxSinglePauseMs", "gcType"]
+                  },
+                  "collector": {
+                    "required": [
+                      "backpressureEvidenceValid",
+                      "queueSizeMax",
+                      "queueCapacity",
+                      "sendFailedSpans",
+                      "droppedSpans",
+                      "receiverRefusedSpans"
+                    ],
+                    "properties": {
+                      "backpressureEvidenceValid": { "const": true }
+                    }
+                  }
+                }
+              },
+              "artifacts": {
+                "required": ["k6Summary", "prometheusSnapshot", "command", "jfr"],
+                "properties": {
+                  "jfr": {
+                    "required": ["storageRef", "sha256"]
+                  }
+                }
+              },
+              "budgets": {
+                "required": [
+                  "cpuOverheadPct",
+                  "rssOverheadPct",
+                  "p99LatencyDeltaPct",
+                  "errorRatePct"
+                ],
+                "properties": {
+                  "cpuOverheadPct": {
+                    "properties": {
+                      "budgetStatus": {
+                        "enum": ["sre-approved", "architecture-approved"]
+                      }
+                    }
+                  },
+                  "rssOverheadPct": {
+                    "properties": {
+                      "budgetStatus": {
+                        "enum": ["sre-approved", "architecture-approved"]
+                      }
+                    }
+                  },
+                  "p99LatencyDeltaPct": {
+                    "properties": {
+                      "budgetStatus": {
+                        "enum": ["sre-approved", "architecture-approved"]
+                      }
+                    }
+                  },
+                  "errorRatePct": {
+                    "properties": {
+                      "budgetStatus": {
+                        "enum": ["sre-approved", "architecture-approved"]
+                      }
+                    }
+                  }
+                }
+              },
+              "reproducibility": {
+                "required": ["reproductionRunCount", "variancePct"],
+                "properties": {
+                  "reproductionRunCount": { "minimum": 2 },
+                  "variancePct": {
+                    "required": ["cpu", "rss", "p99Latency"]
+                  }
+                }
+              },
+              "caveats": {
+                "required": ["missingMetrics"],
+                "properties": {
+                  "missingMetrics": { "maxItems": 0 }
+                }
+              },
+              "classification": {
+                "required": ["w004Candidate"]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

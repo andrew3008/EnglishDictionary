@@ -1,0 +1,13 @@
+{
+  "status": "missing",
+  "evidenceTier": "REFERENCE",
+  "labTier": "LOCAL_REFERENCE_LAB",
+  "w004Eligible": false,
+  "nonAuthoritative": true,
+  "scenario": "S1",
+  "jfrStartMode": "startup-configured",
+  "jfrSettings": "profile",
+  "missingMetrics": ["jfrGc"],
+  "reason": "JFR dump empty (0 bytes); jcmd dump after load did not produce recording file",
+  "caveats": ["detailedGcSummaryUnavailable", "rawJfrNotInGit"]
+}

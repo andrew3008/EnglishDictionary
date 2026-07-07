@@ -1,0 +1,18 @@
+# Strategic merge overlay — JFR volume (PR-9H-E2L-JFR-fix local lab)
+# JFR opts applied via deploy-perf-app-lab.sh LAB_JFR_ENABLED=true (PERF_SCENARIO_JVM_OPTS).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-harness-app
+  namespace: REPLACE_NAMESPACE
+spec:
+  template:
+    spec:
+      volumes:
+        - name: jfr-volume
+          emptyDir: {}
+      containers:
+        - name: perf-app
+          volumeMounts:
+            - name: jfr-volume
+              mountPath: /tmp/jfr

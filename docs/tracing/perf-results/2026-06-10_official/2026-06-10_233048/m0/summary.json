@@ -1,0 +1,30 @@
+﻿{
+    "scenario":  "m0",
+    "runStamp":  "2026-06-10_233048",
+    "gitSha":  "unknown",
+    "dockerHost":  "tcp://192.168.100.70:2375",
+    "rate":  300,
+    "warmupMin":  2,
+    "steadyMin":  10,
+    "jfr":  false,
+    "startupMs":  5196,
+    "k6ExitCode":  99,
+    "runValid":  false,
+    "scenarioJvmOpts":  null,
+    "cpusets":  {
+                    "sut":  null,
+                    "k6":  null,
+                    "collector":  null
+                },
+    "analysis":  {
+                     "run":  {
+                                 "cpuSeconds":  50.68,
+                                 "cpuUtilization":  0.0854,
+                                 "rssAvgMb":  512.5,
+                                 "rssMaxMb":  516.4,
+                                 "rssSlopeMbPerMin":  0.917,
+                                 "steadySamples":  116,
+                                 "p99Ms":  1.19
+                             }
+                 }
+}

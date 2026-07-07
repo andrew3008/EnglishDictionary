@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "note": "EXAMPLE ONLY - fake values. Do not use as real suppressions. See SECURITY-SCAN-CONTRACT.md.",
+  "suppressions": [
+    {
+      "id": "MCP-SEC-0001",
+      "coordinates": "com.example.fake:fake-lib:1.0.0",
+      "advisory": "CVE-YYYY-NNNN",
+      "reason": "Example: no reachable vulnerable code path in local stdio-only usage",
+      "owner": "team-or-person",
+      "expiresOn": "2099-12-31"
+    }
+  ]
+}

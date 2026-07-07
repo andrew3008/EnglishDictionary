@@ -1,0 +1,3 @@
+platform:
+  tracing:
+    enabled: false

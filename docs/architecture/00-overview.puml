@@ -1,0 +1,235 @@
+@startuml platform-tracing-overview
+title **Platform Tracing Starter (JVM) — Solution Overview v0.1.0**
+caption Distributed Tracing Standard for Spring Boot 3.x services  ·  Architecture Board / SRE / Engineering Management
+
+' ============================================================
+' Layout & density
+' ============================================================
+left to right direction
+skinparam linetype          polyline
+skinparam ranksep           24
+skinparam nodesep           16
+skinparam Padding           2
+skinparam shadowing         false
+skinparam roundCorner       8
+skinparam dpi               160
+
+' ============================================================
+' Typography — contrast & weight
+' ============================================================
+skinparam defaultFontName       "Segoe UI"
+skinparam defaultFontSize       13
+skinparam defaultFontColor      #0F172A
+skinparam defaultFontStyle      bold
+
+skinparam TitleFontSize         18
+skinparam TitleFontColor        #0F172A
+skinparam TitleFontStyle        bold
+
+skinparam CaptionFontSize       12
+skinparam CaptionFontColor      #334155
+skinparam CaptionFontStyle      plain
+
+skinparam ArrowColor            #1E293B
+skinparam ArrowFontColor        #0F172A
+skinparam ArrowFontSize         12
+skinparam ArrowFontStyle        bold
+skinparam ArrowThickness        1.6
+
+skinparam rectangle {
+  BackgroundColor               #FFFFFF
+  BorderColor                   #1E293B
+  BorderThickness               1.3
+  FontColor                     #0F172A
+  FontStyle                     bold
+}
+skinparam component {
+  BackgroundColor               #FFFFFF
+  BorderColor                   #1E293B
+  BorderThickness               1.3
+  FontColor                     #0F172A
+  FontStyle                     bold
+}
+skinparam database {
+  BackgroundColor               #E2E8F0
+  BorderColor                   #1E293B
+  FontColor                     #0F172A
+  FontStyle                     bold
+}
+skinparam package {
+  BackgroundColor               #F1F5F9
+  BorderColor                   #334155
+  BorderThickness               1.3
+  FontColor                     #0F172A
+  FontStyle                     bold
+  FontSize                      14
+}
+skinparam actor {
+  BackgroundColor               #F1F5F9
+  BorderColor                   #1E293B
+  FontColor                     #0F172A
+  FontStyle                     bold
+}
+skinparam note {
+  BackgroundColor               #FEF3C7
+  BorderColor                   #92400E
+  BorderThickness               1.3
+  FontColor                     #0F172A
+  FontStyle                     bold
+  FontSize                      12
+}
+skinparam legend {
+  BackgroundColor               #FFFFFF
+  BorderColor                   #1E293B
+  FontColor                     #0F172A
+  FontStyle                     bold
+  FontSize                      12
+}
+
+hide stereotype
+
+' ============================================================
+' 1. APPLICATION PLANE
+' ============================================================
+package "Application Plane  ·  Spring Boot 3.x  ·  Java 21" as APP {
+
+  rectangle "**Spring Boot Service**\nbusiness code  ·  @Traced" as SVC
+
+  package "Platform Starters" as STARTERS {
+    component "**spring-boot-platform-tracing**\nthis Epic"           as TRACING #DBEAFE
+    component "**platform-logging**\nMDC consumer"                    as LOG     #DCFCE7
+    component "**platform-metrics**\nMeterRegistry provider"          as METRICS #FED7AA
+    component "**web-error-model**\nRequestContext + exceptions"      as WEM     #EDE9FE
+  }
+
+  package "OpenTelemetry runtime" as OTEL_RT {
+    component "**OpenTelemetry**\n**Java Agent**"                     as AGENT
+    component "**platform-tracing-otel-extension**\nbootstrap classloader" as EXT #DBEAFE
+    component "**OpenTelemetryAppender**\nMDC writer (camelCase)"    as OTEL_MDC #DCFCE7
+  }
+}
+
+' ============================================================
+' 2. OBSERVABILITY PLANE (SRE-managed)
+' ============================================================
+package "Observability Plane  ·  SRE-managed" as OBS {
+
+  package "OpenTelemetry Collector" as COLLECTOR {
+    component "**OTLP receiver**"                                                as RX
+    component "**tail_sampling**\nerrors · slow · forced · QA · drop-health"     as TS
+    component "**transform / limits / scrubbing**"                               as PROC
+    component "**routing**\nby platform.result"                                  as ROUTE
+  }
+
+  database  "**Jaeger**\nlong retention\n(failure tier)"  as JAEGER_LONG
+  database  "**Jaeger**\nshort retention\n(success tier)" as JAEGER_SHORT
+  database  "**ELK**\nstructured logs"                    as ELK
+  database  "**Prometheus**\nmetrics"                     as PROM
+}
+
+' ============================================================
+' 3. GOVERNANCE (compact)
+' ============================================================
+package "Governance" as GOV {
+  rectangle "**Distributed Tracing Standard**\nDocPortal"   as STD
+  rectangle "**Corporate Maven Nexus**"                     as NEXUS
+  rectangle "**Spring Cloud Config**\noptional @RefreshScope" as SCC
+}
+
+' ============================================================
+' 4. STAKEHOLDERS (compact rail, no clutter)
+' ============================================================
+package "Stakeholders" as PEOPLE {
+  actor "Architecture Board" as ARCH
+  actor "SRE / Observability" as SRE
+  actor "Security"            as SEC
+  actor "App Developer"       as DEV
+}
+
+' ============================================================
+' Edges — Application Plane internals
+' ============================================================
+SVC --> TRACING : depends on (BOM)
+SVC --> LOG
+SVC --> METRICS
+SVC --> WEM     : throws AbstractErrorResponse
+
+TRACING -[#1D4ED8]-> AGENT : provides extension JAR
+TRACING -[#1D4ED8]-> WEM   : Supplier<RequestContext>\n+ InvalidRequestException
+TRACING <.[#64748B]. METRICS : MeterRegistry
+TRACING .[#64748B].> LOG     : platform.remote.service\n(trace-scoped MDC only)
+
+AGENT --> EXT : loads SPI
+AGENT ..> OTEL_MDC : Span.current()\n(production MDC writer)
+OTEL_MDC -[#15803D]-> LOG : traceId · spanId · traceFlags\n(reader: %maskedMDC)
+
+' ============================================================
+' Edges — Application -> Observability
+' ============================================================
+EXT -[#1D4ED8]-> RX : **OTLP / gRPC**
+
+RX   --> TS
+TS   --> PROC
+PROC --> ROUTE
+
+ROUTE -[#B91C1C]-> JAEGER_LONG  : failure
+ROUTE -[#15803D]-> JAEGER_SHORT : success
+
+LOG     -[#15803D]-> ELK  : traceId · spanId\n(camelCase v1 contract)
+METRICS -[#C2410C]-> PROM : actuator/prometheus
+
+' ============================================================
+' Edges — Governance & Stakeholders (dotted)
+' ============================================================
+ARCH .[#7C3AED].> STD          : owns standard
+SRE  .[#7C3AED].> COLLECTOR    : owns config
+SRE  .[#7C3AED].> JAEGER_LONG
+SRE  .[#7C3AED].> JAEGER_SHORT
+SEC  .[#7C3AED].> EXT          : reviews PII rules
+DEV  .[#7C3AED].> SVC
+
+STARTERS .[#64748B].> NEXUS : published
+TRACING  .[#64748B].> SCC   : optional
+TRACING  .[#64748B].> STD   : conforms to
+
+' ============================================================
+' Annotations — concise, high-impact
+' ============================================================
+note right of TRACING
+  **§37 Non-blocking**
+  Tracing never fails the
+  user request. SafeSpanProcessor
+  + always-on RequestContext.
+end note
+
+note right of EXT
+  **Span pipeline**
+  Sampler → Enrich → Scrub
+  → Validate → Watchdog
+  → DropOldest / Prioritizing
+end note
+
+note bottom of COLLECTOR
+  **Centralised TTL & sampling.**
+  Errors retained longer; success traces short.
+  Owned by SRE — not by application code.
+end note
+
+' ============================================================
+' Legend — compact
+' ============================================================
+legend right
+  | <#DBEAFE>     | Tracing components (this Epic) |
+  | <#DCFCE7>     | Logging starter                |
+  | <#FED7AA>     | Metrics starter                |
+  | <#EDE9FE>     | web-error-model                |
+  | <#E2E8F0>     | Observability backends         |
+  | solid blue    | OTLP / runtime dependency      |
+  | solid green   | success traces · logs          |
+  | solid red     | failure traces                 |
+  | solid orange  | metrics scrape                 |
+  | dotted purple | ownership                      |
+  | dotted gray   | optional · publication         |
+endlegend
+
+@enduml

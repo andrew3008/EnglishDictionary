@@ -1,0 +1,58 @@
+description = 'Spring Boot autoconfigure для платформенной трассировки в Servlet-стеке (Spring MVC). ' +
+        'Содержит ServletTracingAutoConfiguration и связанные фильтры/конвенции — отделено от ' +
+        'основного autoconfigure-модуля, чтобы reactive-приложения не тянули Servlet-API в classpath.'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    api project(':platform-tracing-spring-boot-autoconfigure')
+
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.springframework.boot:spring-boot'
+    implementation 'org.slf4j:slf4j-api'
+
+    // Servlet-API и Spring MVC требуются как compileOnly: в production приложение само тянет
+    // spring-boot-starter-web. Условные правила {@code @ConditionalOnClass} / {@code @ConditionalOnWebApplication}
+    // защищают от активации в reactive-окружении.
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+
+    // Spring Boot Actuator autoconfigure нужен для ObservationRegistryCustomizer / ObservationAutoConfiguration
+    // (используются в WebMvcSuppressMicrometerTracingAutoConfiguration). В production-приложении
+    // тянется spring-boot-starter-actuator, поэтому достаточно compileOnly.
+    compileOnly 'org.springframework.boot:spring-boot-actuator-autoconfigure'
+
+    // Micrometer Observation API нужен для платформенных observation conventions.
+    api 'io.micrometer:micrometer-observation'
+
+    // OpenTelemetry API для извлечения текущего span'а внутри фильтров.
+    api 'io.opentelemetry:opentelemetry-api'
+
+    // Платформенный API/Core используются в фильтрах через PlatformTracing.
+    api project(':platform-tracing-api')
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation project(':platform-tracing-test')
+
+    // Зеркальный модуль реактивного autoconfigure добавлен в test-classpath, чтобы можно
+    // было проверить контракт изоляции стэков (WebStackIsolationTest): в Servlet-приложении
+    // не должны подниматься Reactive-бины и наоборот. Это единственный тест, требующий обе
+    // ветки в classpath; production-приложение тянет либо webmvc, либо webflux, но не оба сразу.
+    testImplementation project(':platform-tracing-autoconfigure-webflux')
+    // spring-boot-starter-webflux нужен для проверки positive-кейса reactive-стека
+    // (DefaultServerRequestObservationConvention из WebFlux должен быть в test classpath).
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // Версия junit-platform-launcher выравнивается с junit-jupiter-api для исключения конфликта
+    // OutputDirectoryProvider при запуске тестов через Gradle Test Worker.
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

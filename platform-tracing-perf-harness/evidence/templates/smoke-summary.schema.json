@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PlatformTracingPerfSmokeSummary",
+  "type": "object",
+  "required": [
+    "evidenceTier",
+    "nonAuthoritative",
+    "w004Eligible",
+    "profileId",
+    "runId",
+    "scenario",
+    "baseUrl",
+    "duration",
+    "targetRps",
+    "k6Runner"
+  ],
+  "properties": {
+    "evidenceTier": { "const": "SMOKE" },
+    "nonAuthoritative": { "const": true },
+    "w004Eligible": { "const": false },
+    "profileId": { "type": "string" },
+    "runId": { "type": "string" },
+    "scenario": { "type": "string" },
+    "springProfile": { "type": "string" },
+    "baseUrl": { "type": "string" },
+    "duration": { "type": "string" },
+    "targetRps": { "type": "integer" },
+    "k6Runner": { "enum": ["local", "docker-local", "docker-remote"] },
+    "gitSha": { "type": "string" },
+    "k6Summary": { "type": "string" },
+    "note": { "type": "string" }
+  }
+}

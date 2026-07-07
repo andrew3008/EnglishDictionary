@@ -1,0 +1,32 @@
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 32
+      min-spare: 8
+
+spring:
+  application:
+    name: platform-tracing-perf-harness
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: warn
+
+platform:
+  tracing:
+    service:
+      name: platform-tracing-perf-harness
+      environment: perf-harness
+    actuator:
+      mutation-enabled: false

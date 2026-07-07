@@ -1,0 +1,62 @@
+# REFERENCE tier — one-shot k6 Job (open-model constant-arrival-rate).
+# Run after perf-harness-app is ready. Delete Job between scenario runs.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: perf-harness-k6-REPLACE_SCENARIO
+  namespace: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+    platform-tracing.io/scenario: REPLACE_SCENARIO
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: perf-harness-k6
+        platform-tracing.io/scenario: REPLACE_SCENARIO
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:0.57.0
+          args:
+            - run
+            - /scenarios/reference-steady.js
+            - --summary-export
+            - /artifacts/k6-summary.json
+          env:
+            - name: BASE_URL
+              value: "http://perf-harness-app:8080"
+            - name: TARGET_RPS
+              value: "REPLACE_TARGET_RPS"
+              # MUST be identical for S0, S1, S4 — pin before PR-9H-E2 (see reference-scenario-matrix.md)
+            - name: WARMUP_DURATION
+              value: "REPLACE_WARMUP_DURATION"
+            - name: DURATION
+              value: "REPLACE_STEADY_DURATION"
+            - name: ENDPOINT
+              value: "REPLACE_ENDPOINT_PATH"
+            - name: SCENARIO
+              value: "REPLACE_SCENARIO"
+          resources:
+            requests:
+              cpu: "REPLACE_K6_CPU_REQUEST"
+              memory: "REPLACE_K6_MEM_REQUEST"
+            limits:
+              cpu: "REPLACE_K6_CPU_LIMIT"
+              memory: "REPLACE_K6_MEM_LIMIT"
+          volumeMounts:
+            - name: scenarios
+              mountPath: /scenarios
+              readOnly: true
+            - name: artifacts
+              mountPath: /artifacts
+      volumes:
+        - name: scenarios
+          configMap:
+            name: perf-harness-k6-scenarios
+            # Apply build/k8s/k6-scenarios-configmap.yaml from prepareK6ReferenceConfigMap
+        - name: artifacts
+          emptyDir: {}

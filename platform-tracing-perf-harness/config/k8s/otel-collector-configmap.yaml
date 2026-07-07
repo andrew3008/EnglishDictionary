@@ -1,0 +1,62 @@
+# REFERENCE tier — bounded-queue collector with backpressure-capable OTLP sink.
+# Do NOT use debug/logging as the sole traces exporter for W-004 queue evidence.
+# backpressureEvidenceValid=true only when otlphttp/reference_sink is active (not debug-only).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: perf-harness-collector-config
+  namespace: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+data:
+  otel-collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+        spike_limit_mib: 100
+      batch:
+        timeout: 1s
+        send_batch_size: 512
+    exporters:
+      otlphttp/reference_sink:
+        endpoint: REPLACE_REFERENCE_SINK_ENDPOINT
+        tls:
+          insecure: true
+        sending_queue:
+          enabled: true
+          num_consumers: 4
+          queue_size: 1000
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 30s
+          max_elapsed_time: 300s
+      # DEBUG ONLY — invalidates backpressureEvidenceValid; do not use for W-004 evidence
+      # logging:
+      #   verbosity: basic
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp/reference_sink]
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0
+                    port: 8888

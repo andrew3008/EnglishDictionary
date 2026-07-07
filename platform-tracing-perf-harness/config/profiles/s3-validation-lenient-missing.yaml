@@ -1,0 +1,6 @@
+platform:
+  tracing:
+    enabled: true
+    validation:
+      enabled: true
+      strict: false

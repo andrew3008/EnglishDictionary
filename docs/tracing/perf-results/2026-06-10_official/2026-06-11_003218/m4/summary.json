@@ -1,0 +1,44 @@
+﻿{
+    "scenario":  "m4",
+    "runStamp":  "2026-06-11_003218",
+    "gitSha":  "unknown",
+    "dockerHost":  "tcp://192.168.100.70:2375",
+    "rate":  300,
+    "warmupMin":  2,
+    "steadyMin":  10,
+    "jfr":  false,
+    "startupMs":  11251,
+    "k6ExitCode":  0,
+    "runValid":  true,
+    "scenarioJvmOpts":  "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.extensions=/otel/platform-tracing-otel-extension-agent.jar -Dotel.exporter.otlp.endpoint=http://collector:4318 -Dotel.exporter.otlp.protocol=http/protobuf -Dplatform.tracing.sampling.ratio=0.1 -Dplatform.tracing.scrubbing.enabled=false",
+    "cpusets":  {
+                    "sut":  null,
+                    "k6":  null,
+                    "collector":  null
+                },
+    "analysis":  {
+                     "run":  {
+                                 "cpuSeconds":  60.86,
+                                 "cpuUtilization":  0.1025,
+                                 "rssAvgMb":  609.2,
+                                 "rssMaxMb":  618.2,
+                                 "rssSlopeMbPerMin":  2.903,
+                                 "steadySamples":  116,
+                                 "p99Ms":  1.5
+                             },
+                     "baseline":  {
+                                      "cpuSeconds":  50.31,
+                                      "cpuUtilization":  0.0847,
+                                      "rssAvgMb":  509.3,
+                                      "rssMaxMb":  513.5,
+                                      "rssSlopeMbPerMin":  1.099,
+                                      "steadySamples":  116,
+                                      "p99Ms":  1.18
+                                  },
+                     "delta":  {
+                                   "cpuPct":  21.02,
+                                   "rssPct":  19.62,
+                                   "p99Ms":  0.32
+                               }
+                 }
+}

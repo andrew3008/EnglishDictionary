@@ -1,0 +1,3 @@
+# PR-9H-E2L-JFR-fix 20260614-local-jfr-fix-1 S4
+JFR opts: disk=true repository=/tmp/jfr/repository filename=/tmp/jfr/local-reference.jfr
+JFR copy: largest .jfr in pod (JRE has no jcmd)

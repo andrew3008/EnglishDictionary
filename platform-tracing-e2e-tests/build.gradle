@@ -1,0 +1,211 @@
+description = 'E2E-тесты цепочки трассировки: OpenTelemetry SDK → Collector → Jaeger. ' +
+        'Запускаются через Testcontainers и проверяют tail-sampling политики Collector\'а ' +
+        '(errors-always, slow-always) и доступность span\'ов через Jaeger v3 Query API. ' +
+        'Модуль НЕ публикуется в Nexus (test-only артефакт).'
+
+sourceSets {
+    customRule {
+        java {
+            srcDir 'src/customRule/java'
+        }
+        resources {
+            srcDir 'src/customRule/resources'
+        }
+    }
+    testExtension {
+        java {
+            srcDir 'src/testExtension/java'
+        }
+        resources {
+            srcDir 'src/testExtension/resources'
+        }
+    }
+    // Test-only JMX wire round-trip harness. Packaged into a dedicated test-only OTel extension JAR
+    // (testJmxWireExtensionJar) and loaded via otel.javaagent.extensions in the E2E child JVM, so the
+    // MBean is registered in the Agent ExtensionClassLoader. Replaces the removed production jmx.spike.
+    jmxWireExtension {
+        java {
+            srcDir 'src/jmxWireExtension/java'
+        }
+        resources {
+            srcDir 'src/jmxWireExtension/resources'
+        }
+    }
+}
+
+configurations {
+    otelJavaAgent
+    otelExtensionClasspath {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+// Этот модуль не должен публиковаться: он содержит только e2e-тесты.
+// В корневом build.gradle для всех subprojects применяется maven-publish; здесь подавляем
+// эту публикацию, чтобы избежать публикации пустого jar'а в Nexus.
+afterEvaluate {
+    tasks.matching { it.name.startsWith("publish") }.configureEach { it.enabled = false }
+}
+
+dependencies {
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation platform('org.testcontainers:testcontainers-bom')
+
+    // Платформенные модули — для запуска SDK с CompositeSampler и SpanProcessor'ами в test-режиме.
+    testImplementation project(':platform-tracing-api')
+    testImplementation project(':platform-tracing-core')
+    testImplementation project(':platform-tracing-otel-extension')
+    testImplementation project(':platform-tracing-collector-config')
+
+    // OpenTelemetry SDK + OTLP exporter.
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+
+    // Testcontainers + JUnit 5 extension.
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+
+    // JDBC + OTel Java Agent для DbSemconvAgentSmokeTest (Agent 2.28.x, см. gradle.properties).
+    testImplementation 'org.postgresql:postgresql'
+    otelJavaAgent "io.opentelemetry.javaagent:opentelemetry-javaagent:${openTelemetryInstrumentationBomVersion}"
+
+    // Extension smoke: non-transitive classpath — Agent не подтягивает transitive deps автоматически.
+    otelExtensionClasspath platform(project(':platform-tracing-bom'))
+    otelExtensionClasspath(project(path: ':platform-tracing-otel-extension', configuration: 'runtimeElements')) {
+        transitive = false
+    }
+    otelExtensionClasspath(project(path: ':platform-tracing-api', configuration: 'runtimeElements')) {
+        transitive = false
+    }
+    otelExtensionClasspath 'org.slf4j:slf4j-api'
+
+    // Awaitility для декларативного ожидания tail-sampling decision_wait окна.
+    testImplementation 'org.awaitility:awaitility'
+
+    // OkHttp + Jackson для запросов к Jaeger Query API (v3).
+    testImplementation 'com.squareup.okhttp3:okhttp'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Spring Boot Web для HTTP force-sampling smoke (spring-webmvc + servlet, как prod).
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // G2-05-e2e: WebFlux + platform tracing starter (Reactor publishOn + Agent path).
+    testImplementation project(':platform-tracing-spring-boot-starter-reactive')
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // G2-MDC-e2e (Wave 2): platform-tracing-servlet + platform-logging + OpenTelemetryAppender.
+    testImplementation project(':platform-tracing-spring-boot-starter-servlet')
+
+    // DupSpans HTTP smoke: без bridge Micrometer Observation не экспортирует span'ы в OTel/Jaeger
+    // (production path использует Agent-only; здесь намеренно симулируем dev/staging path с suppress=false).
+    testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    testImplementation 'space.br1440.platform.starters:spring-boot-starter-platform-logging:1.0.4'
+    testImplementation 'org.zalando:logbook-core'
+    testImplementation 'org.zalando:logbook-servlet'
+    testImplementation "io.opentelemetry.instrumentation:opentelemetry-logback-mdc-1.0:${openTelemetryInstrumentationAlphaVersion}"
+
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.slf4j:slf4j-api'
+    testRuntimeOnly 'ch.qos.logback:logback-classic'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.16'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    customRuleImplementation project(':platform-tracing-api')
+    customRuleCompileOnly 'io.opentelemetry:opentelemetry-api'
+    customRuleCompileOnly 'jakarta.annotation:jakarta.annotation-api'
+
+    // Test-only classloader visibility probe extension JAR.
+    // Загружается через otel.javaagent.extensions в дочерней JVM E2E-теста.
+    testExtensionCompileOnly project(':platform-tracing-api')
+    testExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+
+    // Test-only JMX wire round-trip extension JAR (harness for MapWireRoundTripE2ETest).
+    // platform-tracing-api предоставляет TracingControlProtocol.current().validator(); spi — для провайдера.
+    jmxWireExtensionCompileOnly project(':platform-tracing-api')
+    jmxWireExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+
+    // App-CL сторона E2E (MapWireRoundTripMain) использует константы MBean и маркеры харнесса.
+    testImplementation sourceSets.jmxWireExtension.output
+}
+
+tasks.register('verifyExtensionDeps') {
+    dependsOn configurations.otelExtensionClasspath
+    doLast {
+        def allowed = ['platform-tracing-otel-extension', 'platform-tracing-api', 'slf4j-api'] as Set
+        def artifacts = configurations.otelExtensionClasspath.resolvedConfiguration.resolvedArtifacts
+        def unexpected = artifacts.findAll { !allowed.contains(it.moduleVersion.id.name) }
+        if (!unexpected.isEmpty()) {
+            throw new GradleException("Unexpected extension deps: ${unexpected*.name}")
+        }
+    }
+}
+
+tasks.register('customRuleJar', Jar) {
+    archiveClassifier.set('custom-rule')
+    from sourceSets.customRule.output
+}
+
+tasks.named('processCustomRuleResources') {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+// Test-only extension JAR, содержащий ClassLoaderVisibilityTestProbe.
+// Загружается через otel.javaagent.extensions; OTel Agent создаёт отдельный ExtensionClassLoader
+// для каждого JAR в директории extensions, поэтому platform-tracing-api должен быть embedded,
+// чтобы SensitiveDataRule был доступен в этом CL — аналогично agentExtensionJar.
+tasks.register('testClassLoaderProbeJar', Jar) {
+    archiveClassifier.set('cl-probe')
+    dependsOn project(':platform-tracing-api').tasks.named('jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from sourceSets.testExtension.output
+    from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
+}
+
+tasks.named('processTestExtensionResources') {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+// Test-only extension JAR с JMX wire round-trip харнессом (WireRoundTripTest*).
+// Загружается через otel.javaagent.extensions; OTel Agent создаёт отдельный ExtensionClassLoader
+// на каждый JAR, поэтому platform-tracing-api embedded внутрь, чтобы TracingControlProtocol.current().validator()
+// был доступен в CL расширения. Это test-only артефакт, в production agentExtensionJar не входит.
+tasks.register('testJmxWireExtensionJar', Jar) {
+    archiveClassifier.set('jmx-wire')
+    dependsOn project(':platform-tracing-api').tasks.named('jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from sourceSets.jmxWireExtension.output
+    from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
+}
+
+tasks.named('processJmxWireExtensionResources') {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+test {
+    useJUnitPlatform()
+    dependsOn verifyExtensionDeps, ':platform-tracing-otel-extension:agentExtensionJar', customRuleJar,
+              testClassLoaderProbeJar, testJmxWireExtensionJar
+    // E2E-тесты тяжёлые: даём им полный таймаут и не запускаем параллельно.
+    maxParallelForks = 1
+    // По умолчанию e2e-тесты исключаются из обычного gradle test, чтобы не замедлять CI без Docker.
+    // Запускаются через `./gradlew :platform-tracing-e2e-tests:test -PrunE2e`.
+    onlyIf { project.hasProperty('runE2e') }
+    doFirst {
+        systemProperty 'otel.javaagent.jar', configurations.otelJavaAgent.singleFile.absolutePath
+        systemProperty 'smoke.test.runtime.classpath', sourceSets.test.runtimeClasspath.asPath
+        systemProperty 'smoke.otel.extension.jar',
+                project(':platform-tracing-otel-extension').tasks.named('agentExtensionJar').get().archiveFile.get().asFile.absolutePath
+        systemProperty 'smoke.custom.rule.jar', customRuleJar.archiveFile.get().asFile.absolutePath
+        systemProperty 'smoke.test.classloader.probe.extension.jar',
+                testClassLoaderProbeJar.archiveFile.get().asFile.absolutePath
+        systemProperty 'smoke.jmx.wire.extension.jar',
+                testJmxWireExtensionJar.archiveFile.get().asFile.absolutePath
+    }
+}

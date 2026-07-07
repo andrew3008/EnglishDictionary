@@ -1,0 +1,16 @@
+# REFERENCE tier — OTLP HTTP endpoint for collector backpressure sink.
+apiVersion: v1
+kind: Service
+metadata:
+  name: perf-harness-reference-sink
+  namespace: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+spec:
+  selector:
+    app: perf-harness-reference-sink
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+  type: ClusterIP

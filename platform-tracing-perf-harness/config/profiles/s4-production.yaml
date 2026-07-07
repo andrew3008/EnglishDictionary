@@ -1,0 +1,10 @@
+platform:
+  tracing:
+    enabled: true
+    sampling:
+      enabled: true
+    scrubbing:
+      enabled: true
+    validation:
+      enabled: true
+      strict: false

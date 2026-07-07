@@ -1,0 +1,1 @@
+{"status":"ok","evidenceTier":"REFERENCE","labTier":"LOCAL_REFERENCE_LAB","w004Eligible":false,"nonAuthoritative":true,"scenario":"S4","cpu":{"coresRateAvg":0.04636352586903973,"per1kRps":2.317706,"throttleRatioPct":0.0},"memory":{"workingSetBytesAvg":425967616},"caveats":["localKindDnsWorkaround"]}

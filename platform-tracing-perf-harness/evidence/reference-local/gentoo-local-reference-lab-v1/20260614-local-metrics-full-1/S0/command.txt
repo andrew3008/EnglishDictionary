@@ -1,0 +1,6 @@
+# PR-9H-E2L-FULL 20260614-local-metrics-full-1 S0
+TARGET_RPS=20 WARMUP=1m STEADY=3m
+deploy-perf-app-lab.sh S0 LAB_JFR_ENABLED=true
+run-k6-lab.sh S0 20
+Prometheus via pod IP http://10.244.0.10:9090 (in-cluster curl jobs)
+kind DNS workaround: perf-app and collector pod IPs

@@ -1,0 +1,44 @@
+﻿{
+    "scenario":  "m9",
+    "runStamp":  "2026-06-11_054302",
+    "gitSha":  "unknown",
+    "dockerHost":  "tcp://192.168.100.70:2375",
+    "rate":  300,
+    "warmupMin":  2,
+    "steadyMin":  60,
+    "jfr":  true,
+    "startupMs":  12650,
+    "k6ExitCode":  0,
+    "runValid":  true,
+    "scenarioJvmOpts":  "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.extensions=/otel/platform-tracing-otel-extension-agent.jar -Dotel.exporter.otlp.endpoint=http://collector:4318 -Dotel.exporter.otlp.protocol=http/protobuf -Dplatform.tracing.sampling.ratio=0.1 -XX:StartFlightRecording=filename=/perf-artifacts/run.jfr,settings=profile,maxsize=256m,dumponexit=true",
+    "cpusets":  {
+                    "sut":  null,
+                    "k6":  null,
+                    "collector":  null
+                },
+    "analysis":  {
+                     "run":  {
+                                 "cpuSeconds":  422.23,
+                                 "cpuUtilization":  0.1173,
+                                 "rssAvgMb":  659.2,
+                                 "rssMaxMb":  664.3,
+                                 "rssSlopeMbPerMin":  0.302,
+                                 "steadySamples":  698,
+                                 "p99Ms":  1.04
+                             },
+                     "baseline":  {
+                                      "cpuSeconds":  49.41,
+                                      "cpuUtilization":  0.0832,
+                                      "rssAvgMb":  509.7,
+                                      "rssMaxMb":  514.1,
+                                      "rssSlopeMbPerMin":  0.984,
+                                      "steadySamples":  116,
+                                      "p99Ms":  1.14
+                                  },
+                     "delta":  {
+                                   "cpuPct":  40.99,
+                                   "rssPct":  29.33,
+                                   "p99Ms":  -0.1
+                               }
+                 }
+}

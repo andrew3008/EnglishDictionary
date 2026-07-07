@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- JMH harness: production-like log levels. Default logback DEBUG caused millions of
+         repeat-violation DEBUG lines during warnMissingRequired warmup, exhausting Gradle
+         daemon heap while capturing stdout (see perf-baseline-fix-report.md). -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

@@ -1,0 +1,13 @@
+# S6 — soak profile (future PR-9H-F). Not executed in PR-9H-C.
+# Reference runs only; long window under S4-equivalent settings.
+
+platform:
+  tracing:
+    enabled: true
+    sampling:
+      enabled: true
+    scrubbing:
+      enabled: true
+    validation:
+      enabled: true
+      strict: false

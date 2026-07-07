@@ -1,0 +1,11 @@
+spring:
+  config:
+    activate:
+      on-profile: s2-validation-lenient-valid
+
+platform:
+  tracing:
+    enabled: true
+    validation:
+      enabled: true
+      strict: false

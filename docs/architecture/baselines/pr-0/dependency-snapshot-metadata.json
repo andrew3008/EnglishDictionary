@@ -1,0 +1,19 @@
+{
+    "savedAt": "2026-06-12T16:08:13+03:00",
+    "gitSha": "unknown",
+    "jdk": "21.0.6",
+    "osName": "Windows 10",
+    "osArch": "amd64",
+    "cpuCores": 20,
+    "gradleVersion": "8.14",
+    "modules": [
+        "platform-tracing-api",
+        "platform-tracing-core",
+        "platform-tracing-otel-extension",
+        "platform-tracing-spring-boot-autoconfigure",
+        "platform-tracing-autoconfigure-webmvc",
+        "platform-tracing-autoconfigure-webflux",
+        "platform-tracing-spring-boot-starter-servlet",
+        "platform-tracing-spring-boot-starter-reactive"
+    ]
+}

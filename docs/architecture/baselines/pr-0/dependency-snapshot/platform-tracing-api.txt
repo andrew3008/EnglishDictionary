@@ -1,0 +1,16 @@
+Module: platform-tracing-api
+Generated: Fri Jun 12 16:08:13 MSK 2026
+
+--- compileClasspath (first-level) ---
+  io.opentelemetry:opentelemetry-api:1.62.0
+  io.opentelemetry:opentelemetry-context:1.62.0
+  jakarta.annotation:jakarta.annotation-api:2.1.1
+  org.projectlombok:lombok:1.18.38
+  org.slf4j:slf4j-api:2.0.17
+  space.br1440.platform.tracing:platform-tracing-bom:0.1.0-SNAPSHOT
+
+--- runtimeClasspath (first-level) ---
+  jakarta.annotation:jakarta.annotation-api:2.1.1
+  org.slf4j:slf4j-api:2.0.17
+  space.br1440.platform.tracing:platform-tracing-bom:0.1.0-SNAPSHOT
+

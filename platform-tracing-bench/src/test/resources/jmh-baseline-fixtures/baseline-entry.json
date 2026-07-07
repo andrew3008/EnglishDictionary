@@ -1,0 +1,9 @@
+[
+  {
+    "benchmark": "space.example.Benchmark.method",
+    "mode": "avgt",
+    "primaryMetric": {
+      "score": 100.0
+    }
+  }
+]

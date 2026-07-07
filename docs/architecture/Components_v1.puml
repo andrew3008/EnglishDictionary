@@ -1,0 +1,292 @@
+@startuml platform-tracing-otel-extension-architecture
+title platform-tracing-otel-extension — архитектура Gradle-модуля
+
+skinparam componentStyle rectangle
+skinparam defaultFontSize 12
+
+package "Сборка (Gradle)" {
+  [platform-tracing-otel-extension\nJAR artifact] as jar
+  note right of jar
+    **Manifest**
+    • OpenTelemetry-Extension: true
+    • Implementation-Title/Version
+    
+    **Зависимости**
+    • api: platform-tracing-bom
+    • implementation: platform-tracing-api, slf4j-api
+    • compileOnly: otel-sdk, autoconfigure-spi, javaagent-extension-api
+    • lombok (compileOnly + AP)
+  end note
+}
+
+package "Рантайм (вне модуля)" {
+  cloud "OpenTelemetry\nJava Agent" as agent
+  [SDK Auto-configure] as autoconf
+  [Application / Spring\n(другой classloader)] as app
+}
+
+package "META-INF/services (SPI)" {
+  file "io.opentelemetry.sdk.autoconfigure.spi.\nAutoConfigurationCustomizerProvider" as spi_ac
+  file "io.opentelemetry.sdk.autoconfigure.spi.\nResourceProvider" as spi_res
+}
+
+spi_ac --> agent : загрузка при старте агента
+spi_res --> agent
+agent --> autoconf
+
+jar --> spi_ac : ссылается на\nPlatformAutoConfigurationCustomizer
+jar --> spi_res : ссылается на\nPlatformResourceProvider
+
+autoconf ..> "PlatformAutoConfigurationCustomizer\norder() = 100" : customize()
+
+note bottom of agent
+  Расширение инициализируется **до** прикладного кода.
+  JMX-мост связывает extension-CL и app-CL через **MBeanServer**.
+end note
+
+@enduml
+
+
+@startuml platform-tracing-otel-extension-classes
+title platform-tracing-otel-extension — основные классы и связи
+
+skinparam classAttributeIconSize 0
+
+package "entry + config" {
+  class PlatformAutoConfigurationCustomizer implements "AutoConfigurationCustomizerProvider" {
+    + customize(customizer)
+    + order() : int
+    --
+    **состояние**
+    registeredSampler : AtomicReference<MutableRatioSampler>
+    registeredWatchdog : AtomicReference<SpanWatchdogProcessor>
+    mbeanRegistered : boolean
+    --
+    - buildSampler(config) : Sampler
+    - registerSpanProcessors(builder, config) : SdkTracerProviderBuilder
+    - tryRegisterMBean()
+    - collectScrubbingRules(config) : List<SensitiveDataRule>
+  }
+
+  class ExtensionPropertyNames <<utility>> {
+    {static} SAMPLING_RATIO, SAMPLING_FORCE_RECORD_HEADER, ...
+    {static} ENRICHING_*, SCRUBBING_*, ...
+    {static} VALIDATION_ENABLED, WATCHDOG_*
+  }
+  class ExtensionDefaults <<utility>> {
+    {static} DEFAULT_* platform defaults
+  }
+  class PlatformTracingDefaultsProvider {
+    +supply(): Map
+  }
+}
+
+package "sampling" {
+  class MutableRatioSampler implements "Sampler" {
+    + getRatio() / setRatio(double)
+    --
+    parentBased(traceIdRatioBased(ratio))
+    State в AtomicReference
+  }
+
+  class CompositeSampler implements "Sampler" {
+    + shouldSample(...)
+    - matchesForceRecord / matchesQa / matchesDropPath
+    - delegate : Sampler
+  }
+}
+
+CompositeSampler o-- "delegate" MutableRatioSampler
+
+package "jmx — six domain MBeans" {
+  class PlatformTracingObjectNames <<utility>>
+
+  interface PlatformSamplingControlMBean
+  class PlatformSamplingControl implements PlatformSamplingControlMBean
+
+  interface PlatformScrubbingControlMBean
+  class PlatformScrubbingControl implements PlatformScrubbingControlMBean
+
+  interface PlatformValidationControlMBean
+  class PlatformValidationControl implements PlatformValidationControlMBean
+
+  interface PlatformExportControlMBean
+  class PlatformExportControl implements PlatformExportControlMBean
+
+  interface PlatformProcessorMetricsControlMBean
+  class PlatformProcessorMetricsControl implements PlatformProcessorMetricsControlMBean
+
+  interface PlatformDiagnosticsControlMBean
+  class PlatformDiagnosticsControl implements PlatformDiagnosticsControlMBean
+
+  class PlatformTracingJmxRegistrar {
+    + setConfigHolder(...) / setComposite(...) / ...
+    + tryRegisterMBeans() : batch register 6 domains + rollback
+    + unregisterAllMBeans()
+  }
+  PlatformTracingJmxRegistrar ..> PlatformSamplingControl : registerMBean
+  PlatformTracingJmxRegistrar ..> PlatformScrubbingControl
+  PlatformTracingJmxRegistrar ..> PlatformValidationControl
+  PlatformTracingJmxRegistrar ..> PlatformExportControl
+  PlatformTracingJmxRegistrar ..> PlatformProcessorMetricsControl
+  PlatformTracingJmxRegistrar ..> PlatformDiagnosticsControl
+}
+
+PlatformSamplingControl --> MutableRatioSampler
+PlatformSamplingControl --> SamplerStateHolder : configHolder
+PlatformProcessorMetricsControl --> SpanWatchdogProcessor : optional
+
+package "processors" {
+  class SafeSpanProcessor implements "ExtendedSpanProcessor" {
+    {static} wrap(delegate) : SpanProcessor
+    + onStart / onEnd / onEnding / shutdown...
+    -- перехват RuntimeException, WARN в лог --
+  }
+
+  class EnrichingSpanProcessor implements "ExtendedSpanProcessor"
+  class ScrubbingSpanProcessor implements "ExtendedSpanProcessor"
+  class ValidatingSpanProcessor implements "ExtendedSpanProcessor"
+  class SpanWatchdogProcessor implements "ExtendedSpanProcessor"
+}
+
+SafeSpanProcessor o-- "delegate" SpanProcessor
+EnrichingSpanProcessor ..> PlatformAttributes : api
+EnrichingSpanProcessor ..> SpanCategory / SpanResult : api
+ValidatingSpanProcessor ..> PlatformAttributes : api
+ValidatingSpanProcessor ..> PlatformResourceProvider : Javadoc / контракт
+SpanWatchdogProcessor ..> PlatformAttributes : timeout attr
+
+PlatformAutoConfigurationCustomizer ..> ExtensionPropertyNames : чтение ключей config
+PlatformAutoConfigurationCustomizer ..> CompositeSampler : создаёт
+PlatformAutoConfigurationCustomizer ..> MutableRatioSampler : создаёт и держит ref
+PlatformAutoConfigurationCustomizer ..> SafeSpanProcessor : wrap(...)
+PlatformAutoConfigurationCustomizer ..> EnrichingSpanProcessor
+PlatformAutoConfigurationCustomizer ..> ScrubbingSpanProcessor
+PlatformAutoConfigurationCustomizer ..> ValidatingSpanProcessor
+PlatformAutoConfigurationCustomizer ..> SpanWatchdogProcessor
+PlatformAutoConfigurationCustomizer ..> PlatformTracingJmxRegistrar : tryRegisterMBeans()
+
+package "resource" {
+  class PlatformResourceProvider implements "ResourceProvider" {
+    + createResource(config) : Resource
+    + order() : 0
+    - resolveHostName() без блокирующего DNS в приоритете
+  }
+}
+
+PlatformResourceProvider ..> PlatformAttributes : api
+PlatformResourceProvider ..> ConfigProperties : otel.service.name, platform.tracing.service.*
+
+package "scrubbing" {
+  class BuiltInSensitiveDataRules <<utility>> {
+    {static} resolve(name) : SensitiveDataRule
+    EMAIL, JWT, PASSWORD_KEY, PAN, PHONE, IBAN, INN, SNILS
+  }
+
+  class EmailRule
+  class JwtRule
+  class PasswordKeyRule
+  class PanRule
+  class PhoneRule
+  class IbanRule
+  class InnRule
+  class SnilsRule
+}
+
+BuiltInSensitiveDataRules ..> SensitiveDataRule : implements (api)
+EmailRule ..|> SensitiveDataRule
+JwtRule ..|> SensitiveDataRule
+PasswordKeyRule ..|> SensitiveDataRule
+PanRule ..|> SensitiveDataRule
+PhoneRule ..|> SensitiveDataRule
+IbanRule ..|> SensitiveDataRule
+InnRule ..|> SensitiveDataRule
+SnilsRule ..|> SensitiveDataRule
+
+ScrubbingSpanProcessor o-- "rules : List<SensitiveDataRule>"
+PlatformAutoConfigurationCustomizer ..> BuiltInSensitiveDataRules : built-in по имени
+PlatformAutoConfigurationCustomizer ..> ServiceLoader : SPI SensitiveDataRule\n(тот же CL, что и extension)
+
+note right of PlatformAutoConfigurationCustomizer
+  **Порядок addSpanProcessor** (если фичи включены):
+  1. Enriching
+  2. Scrubbing (только если список правил не пуст)
+  3. Validating
+  4. Watchdog
+  
+  Все платформенные процессоры оборачиваются **SafeSpanProcessor**.
+end note
+
+@enduml
+
+
+@startuml platform-tracing-otel-extension-sampling-flow
+title CompositeSampler — порядок решений shouldSample()
+
+start
+:Вход: attributes на head-sampling\n(http.request.header.*, url.path ...);
+if (Заголовок force-record\n(напр. X-Trace-On)\nзначение ∈ forceValues?) then (да)
+  :RECORD_AND_SAMPLE;
+  stop
+endif
+if (QA-заголовок\n(напр. X-QA-Trace)\nприсутствует?) then (да)
+  :RECORD_AND_SAMPLE;
+  stop
+endif
+if (url.path начинается с\nодного из drop-path префиксов?) then (да)
+  :DROP;
+  stop
+endif
+:Делегирование MutableRatioSampler\n(parentBased + traceIdRatioBased);
+stop
+
+note right
+  Force/QA **выше** drop-path,\nчтобы оператор мог «пробить» отбрасывание.
+end note
+
+@enduml
+
+
+@startuml platform-tracing-otel-extension-bootstrap-seq
+title Упрощённая последовательность инициализации (AutoConfigurationCustomizer)
+
+actor "Java Agent" as ja
+participant "AutoConfigurationCustomizer" as ac
+participant "PlatformAutoConfigurationCustomizer" as pac
+participant "MutableRatioSampler +\nCompositeSampler" as samp
+participant "SdkTracerProviderBuilder" as tpb
+participant "SafeSpanProcessor /\nEnriching / Scrubbing /\nValidating / Watchdog" as procs
+participant "PlatformTracingJmxRegistrar\n(6 domain MBeans)" as jmx
+
+ja -> pac : SPI: customize(ac)
+pac -> ac : addSamplerCustomizer(...)
+ac -> pac : buildSampler(config)
+pac -> samp : new MutableRatioSampler(ratio)\n+ new CompositeSampler(...)
+pac -> pac : registeredSampler.set; tryRegisterMBeans()
+
+pac -> ac : addTracerProviderCustomizer(...)
+ac -> pac : registerSpanProcessors(tpb, config)
+opt enriching.enabled
+  pac -> tpb : addSpanProcessor(Safe.wrap(Enriching...))
+end
+opt scrubbing.enabled && rules non-empty
+  pac -> tpb : addSpanProcessor(Safe.wrap(Scrubbing...))
+end
+opt validation.enabled
+  pac -> tpb : addSpanProcessor(Safe.wrap(Validating...))
+end
+opt watchdog.enabled
+  pac -> tpb : addSpanProcessor(Safe.wrap(Watchdog...))
+  pac -> pac : registeredWatchdog.set; tryRegisterMBeans()
+end
+pac -> jmx : batch register 6 domain MBeans
+
+note over jmx
+  Six ObjectNames (examples):
+  **type=SamplingControl,name=PlatformSamplingControl**
+  **type=ScrubbingControl,name=PlatformScrubbingControl**
+  ... (validation, export, processorMetrics, diagnostics)
+  setSamplingRatio → PlatformSamplingControl → MutableRatioSampler
+end note
+
+@enduml

@@ -1,0 +1,1010 @@
+@startuml platform-tracing-classes-00-overview
+' =============================================================================
+' platform-tracing — UML Class Diagram (классы и связи)
+' Модули: api | core | otel-extension | spring-boot-autoconfigure | starter-servlet
+' =============================================================================
+
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Межмодульные связи (implements / uses / Gradle api)
+
+package "platform-tracing-api" as M_API #FFF8E1 {
+  interface PlatformTracing
+  interface SpanScope
+  interface SensitiveDataRule <<SPI>>
+}
+
+package "platform-tracing-core" as M_CORE #FFE0B2 {
+  class DefaultPlatformTracing
+  class NoOpPlatformTracing
+}
+
+package "platform-tracing-otel-extension" as M_OTEL #E1BEE7 {
+  class PlatformAutoConfigurationCustomizer
+  class CompositeSampler
+  class EnrichingSpanProcessor
+}
+
+package "platform-tracing-spring-boot-autoconfigure" as M_AUTO #E3F2FD {
+  class TracingCoreAutoConfiguration
+  class MeteredPlatformTracing
+  class TracingProperties
+  class TracedAspect
+}
+
+package "platform-tracing-spring-boot-starter-servlet" as M_STARTER #E8F5E9 {
+  class StarterArtifact <<Gradle module>> {
+    (no Java sources)
+  }
+}
+
+PlatformTracing <|.. DefaultPlatformTracing
+PlatformTracing <|.. NoOpPlatformTracing
+PlatformTracing <|.. MeteredPlatformTracing
+SpanScope <|.. "DefaultPlatformTracing\n.OtelSpanScope"
+SpanScope <|.. "NoOpPlatformTracing\n.NoOpSpanScope"
+
+SensitiveDataRule <|.. "EmailRule\nJwtRule\nPanRule\n..."
+
+M_STARTER ..> M_AUTO : api
+M_AUTO ..> M_CORE : api
+M_AUTO ..> M_API : api
+M_CORE ..> M_API : api
+M_OTEL ..> M_API : implementation
+
+DefaultPlatformTracing ..> PlatformTracing : implements
+MeteredPlatformTracing o-- PlatformTracing : delegate
+TracingCoreAutoConfiguration ..> DefaultPlatformTracing : @Bean creates
+TracingCoreAutoConfiguration ..> NoOpPlatformTracing : @Bean fallback
+TracingCoreAutoConfiguration ..> TracingProperties : @EnableConfigurationProperties
+
+PlatformAutoConfigurationCustomizer ..> CompositeSampler : buildSampler()
+PlatformAutoConfigurationCustomizer ..> EnrichingSpanProcessor : registerSpanProcessors()
+PlatformAutoConfigurationCustomizer ..> SensitiveDataRule : ServiceLoader
+
+TracedAspect ..> PlatformTracing : uses
+TracedAspect ..> SpanScope : startSpan / close
+
+StarterArtifact ..> M_AUTO : transitive
+StarterArtifact ..> "spring-boot-starter-web" : api
+
+note bottom of M_API
+  Zero Spring / zero OTel SDK
+end note
+
+note bottom of M_OTEL
+  OpenTelemetry Java Agent
+  bootstrap classloader + SPI
+end note
+
+@enduml
+
+
+@startuml platform-tracing-classes-01-api
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-api — классы и связи
+
+package "space.br1440.platform.tracing.api" {
+  interface PlatformTracing {
+    +currentTraceId(): Optional<String>
+    +currentSpanId(): Optional<String>
+    +startSpan(name, category): SpanScope
+    +startHttpServer(name): SpanScope
+    +startHttpClient(name): SpanScope
+    +startDb(name): SpanScope
+    +startRpc(name): SpanScope
+    +startInternal(name): SpanScope
+    +recordException(throwable): void
+  }
+}
+
+package "space.br1440.platform.tracing.api.span" {
+  interface SpanScope {
+    +setAttribute(key, value): SpanScope
+    +addEvent(name): SpanScope
+    +setResult(result): SpanScope
+    +recordException(throwable): SpanScope
+    +close(): void
+  }
+  enum SpanCategory {
+    HTTP_SERVER
+    HTTP_CLIENT
+    DATABASE
+    RPC
+    INTERNAL
+    PLATFORM
+  }
+  enum SpanResult {
+    SUCCESS
+    FAILURE
+  }
+}
+
+package "space.br1440.platform.tracing.api.annotation" {
+  annotation Traced {
+    +value(): String
+    +category(): SpanCategory
+    +attributes(): String[]
+  }
+  annotation TracedAttribute {
+    +value(): String
+  }
+}
+
+package "space.br1440.platform.tracing.api.spi" {
+  interface SpanEnricher <<SPI>> {
+    +enrich(spanScope: SpanScope): void
+  }
+  interface SensitiveDataRule <<SPI>> {
+    +name(): String
+    +priority(): int
+    +matches(key, value): boolean
+    +mask(key, value): String
+  }
+  interface SamplingDecisionContributor <<SPI>> {
+    +priority(): int
+    +decide(name, attrs): Optional<Decision>
+  }
+  enum Decision {
+    RECORD
+    DROP
+  }
+}
+
+package "space.br1440.platform.tracing.api.attributes" {
+  class PlatformAttributes <<utility>> {
+    {static} +PLATFORM_TYPE: String
+    {static} +PLATFORM_RESULT: String
+    {static} +PLATFORM_REMOTE_SERVICE: String
+    {static} +PLATFORM_C_GROUP: String
+    {static} +PLATFORM_ID: String
+    {static} +PLATFORM_ENVIRONMENT: String
+    {static} +HTTP_REQUEST_METHOD: String
+    {static} +HTTP_RESPONSE_STATUS_CODE: String
+    {static} +DB_SYSTEM_NAME: String
+    {static} +RPC_SYSTEM_NAME: String
+    ...
+  }
+}
+
+package "space.br1440.platform.tracing.api.propagation" {
+  class PlatformHeaders <<utility>> {
+    {static} +X_TRACE_ON: String
+    {static} +X_QA_TRACE: String
+    {static} +X_REQUEST_ID: String
+    {static} +X_TRACE_ID: String
+  }
+}
+
+package "space.br1440.platform.tracing.api.mdc" {
+  class TracingMdcKeys <<utility>> {
+    {static} +TRACE_ID: String
+    {static} +SPAN_ID: String
+    {static} +TRACE_FLAGS: String
+    {static} +CORRELATION_ID: String
+    {static} +REMOTE_SERVICE: String
+  }
+}
+
+package "space.br1440.platform.tracing.api.context" {
+  record TracingRequestContext {
+    +correlationId: String
+    +traceId: String
+    +spanId: String
+  }
+}
+
+PlatformTracing ..> SpanScope : «create»
+PlatformTracing ..> SpanCategory : uses
+SpanScope ..> SpanResult : uses
+Traced ..> SpanCategory : default INTERNAL
+SpanEnricher ..> SpanScope : enrich
+SamplingDecisionContributor ..> Decision
+
+note right of SpanEnricher
+  SPI: не wired через ServiceLoader
+  в текущей реализации extension
+end note
+
+note right of SamplingDecisionContributor
+  SPI: объявлен в api,
+  CompositeSampler пока не использует
+end note
+
+@enduml
+
+
+@startuml platform-tracing-classes-02-core
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-core — классы и связи
+
+package "space.br1440.platform.tracing.core" {
+  class DefaultPlatformTracing {
+    {static} +INSTRUMENTATION_NAME: String
+    -tracer: Tracer «OTel»
+    +DefaultPlatformTracing(openTelemetry)
+    +currentTraceId(): Optional<String>
+    +currentSpanId(): Optional<String>
+    +startSpan(name, category): SpanScope
+    +recordException(throwable): void
+    -toSpanKind(category): SpanKind
+  }
+
+  class "DefaultPlatformTracing\n.OtelSpanScope" as OtelSpanScope <<inner>> {
+    -span: Span
+    -scope: Scope
+    -closed: boolean
+    +setAttribute(...): SpanScope
+    +setResult(result): SpanScope
+    +recordException(t): SpanScope
+    +close(): void
+    -applyResult(result): void
+  }
+
+  class NoOpPlatformTracing <<singleton>> {
+    {static} +INSTANCE: NoOpPlatformTracing
+    -NoOpPlatformTracing()
+    +currentTraceId(): Optional.empty
+    +startSpan(...): SpanScope
+  }
+
+  class "NoOpPlatformTracing\n.NoOpSpanScope" as NoOpSpanScope <<inner singleton>> {
+    {static} +INSTANCE
+    +close(): void «no-op»
+  }
+}
+
+package "«external» io.opentelemetry.api" as OTel {
+  interface OpenTelemetry
+  interface Tracer
+  interface Span
+  interface Scope
+  enum SpanKind
+  enum StatusCode
+}
+
+package "«api»" as API {
+  interface PlatformTracing
+  interface SpanScope
+  enum SpanCategory
+  enum SpanResult
+  class PlatformAttributes
+}
+
+PlatformTracing <|.. DefaultPlatformTracing
+PlatformTracing <|.. NoOpPlatformTracing
+SpanScope <|.. OtelSpanScope
+SpanScope <|.. NoOpSpanScope
+
+DefaultPlatformTracing +-- OtelSpanScope : «creates»
+NoOpPlatformTracing +-- NoOpSpanScope : «returns INSTANCE»
+
+DefaultPlatformTracing --> OpenTelemetry : constructor
+DefaultPlatformTracing --> Tracer : field
+OtelSpanScope --> Span : field
+OtelSpanScope --> Scope : field
+DefaultPlatformTracing ..> SpanCategory : startSpan
+DefaultPlatformTracing ..> PlatformAttributes : setAttribute
+OtelSpanScope ..> SpanResult : applyResult
+
+note bottom of DefaultPlatformTracing
+  Единственная production-реализация PlatformTracing
+  вне Spring (чистый OTel API)
+end note
+
+@enduml
+
+
+@startuml platform-tracing-classes-03-otel-extension
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-otel-extension — классы и связи
+
+package "space.br1440.platform.tracing.otel.extension" {
+  class PlatformAutoConfigurationCustomizer {
+    -registeredSampler: AtomicReference<MutableRatioSampler>
+    -registeredWatchdog: AtomicReference<SpanWatchdogProcessor>
+    -mbeanRegistered: volatile boolean
+    +order(): int
+    +customize(customizer): void
+    -platformDefaults(): Map
+    -buildSampler(config): Sampler
+    -registerSpanProcessors(...): SdkTracerProviderBuilder
+    -collectScrubbingRules(config): List
+    -tryRegisterMBean(): void
+  }
+}
+
+package "configuration" {
+  class ExtensionPropertyNames <<utility>> {
+    {static} +SAMPLING_RATIO: String
+    {static} +SAMPLING_FORCE_RECORD_HEADER: String
+    {static} +SAMPLING_DROP_PATHS: String
+    {static} +ENRICHING_*: String
+    {static} +SCRUBBING_*: String
+    {static} +WATCHDOG_*: String
+  }
+  class ExtensionDefaults <<utility>> {
+    {static} +DEFAULT_*: various
+  }
+  class PlatformTracingDefaultsProvider {
+    +supply(): Map
+  }
+  class AutoConfigurationCustomizerOrdering <<utility>> {
+    {static} +PLATFORM_EXTENSION_ORDER: int
+  }
+}
+
+package "sampler" {
+  class CompositeSampler {
+    -delegate: Sampler
+    -forceRecordHeaderKey: AttributeKey
+    -forceRecordValues: Set<String>
+    -qaForceHeaderKey: AttributeKey
+    -dropPathPrefixes: List<String>
+    +shouldSample(...): SamplingResult
+  }
+  class MutableRatioSampler {
+    -state: AtomicReference<State>
+    +getDescription(): String
+    +shouldSample(...): SamplingResult
+    +setRatio(ratio): void
+    +getRatio(): double
+  }
+}
+
+package "processor" {
+  class EnrichingSpanProcessor {
+    -remoteServicePriority: List<AttributeKey>
+    +onStart(...): void
+    +onEnding(...): void
+  }
+  class ScrubbingSpanProcessor {
+    -rules: List<SensitiveDataRule>
+    +onEnding(...): void
+  }
+  class ValidatingSpanProcessor {
+    -clock: LongSupplier
+    +onEnding(...): void
+  }
+  class SpanWatchdogProcessor {
+    -spanTimeoutNanos: long
+    -traceTimeoutNanos: long
+    -scheduler: ScheduledExecutorService
+    +onStart(...): void
+    +onEnd(...): void
+  }
+  class SafeSpanProcessor {
+    -delegate: SpanProcessor
+    -delegateName: String
+    {static} +wrap(processor): SafeSpanProcessor
+  }
+}
+
+package "scrubbing" {
+  class BuiltInSensitiveDataRules <<utility>> {
+    {static} +PASSWORD_KEY, JWT, EMAIL, ...
+    {static} +resolve(name): SensitiveDataRule
+  }
+  class EmailRule
+  class JwtRule
+  class PasswordKeyRule
+  class PanRule
+  class PhoneRule
+  class IbanRule
+  class InnRule
+  class SnilsRule
+}
+
+package "resource" {
+  class PlatformResourceProvider {
+    -envReader: Function<String,String>
+    -inetAddressHostName: Supplier<String>
+    +createResource(...): Resource
+  }
+}
+
+package "jmx" {
+  class PlatformTracingObjectNames <<utility>> {
+    {static} +SAMPLING : ObjectName
+    {static} +SCRUBBING : ObjectName
+    {static} +VALIDATION : ObjectName
+    {static} +EXPORT : ObjectName
+    {static} +PROCESSOR_METRICS : ObjectName
+    {static} +DIAGNOSTICS : ObjectName
+  }
+
+  package "jmx.sampling" {
+    interface PlatformSamplingControlMBean
+    class PlatformSamplingControl implements PlatformSamplingControlMBean
+  }
+  package "jmx.scrubbing" {
+    interface PlatformScrubbingControlMBean
+    class PlatformScrubbingControl implements PlatformScrubbingControlMBean
+  }
+  package "jmx.validation" {
+    interface PlatformValidationControlMBean
+    class PlatformValidationControl implements PlatformValidationControlMBean
+  }
+  package "jmx.export" {
+    interface PlatformExportControlMBean
+    class PlatformExportControl implements PlatformExportControlMBean
+  }
+  package "jmx.metrics" {
+    interface PlatformProcessorMetricsControlMBean
+    class PlatformProcessorMetricsControl implements PlatformProcessorMetricsControlMBean
+  }
+  package "jmx.diagnostics" {
+    interface PlatformDiagnosticsControlMBean
+    class PlatformDiagnosticsControl implements PlatformDiagnosticsControlMBean
+  }
+  package "jmx.support" {
+    class JmxConfigReloadRecorder <<public helper>>
+  }
+
+  class PlatformTracingJmxRegistrar {
+    -sharedInvalidConfigCounter : LongAdder
+    +setConfigHolder(...)/setComposite(...)/...: void
+    +tryRegisterMBeans(): void
+    +unregisterAllMBeans(): void
+  }
+  class PlatformTracingJmxRegistrationException
+
+  PlatformTracingJmxRegistrar ..> PlatformSamplingControl : batch register
+  PlatformTracingJmxRegistrar ..> PlatformScrubbingControl
+  PlatformTracingJmxRegistrar ..> PlatformValidationControl
+  PlatformTracingJmxRegistrar ..> PlatformExportControl
+  PlatformTracingJmxRegistrar ..> PlatformProcessorMetricsControl
+  PlatformTracingJmxRegistrar ..> PlatformDiagnosticsControl
+  PlatformTracingJmxRegistrar ..> PlatformTracingObjectNames : ObjectName constants
+  note bottom of PlatformTracingJmxRegistrar
+    Единственный владелец registerMBean (6 доменов).
+    Batch all-or-nothing + reverse-order rollback.
+    REPLACE_EXISTING, idempotent tryRegisterMBeans().
+  end note
+}
+
+package "«external OTel SDK SPI»" as SPI {
+  interface AutoConfigurationCustomizerProvider
+  interface ResourceProvider
+  interface Sampler
+  interface ExtendedSpanProcessor
+}
+
+package "«api»" as API {
+  interface SensitiveDataRule
+  class PlatformAttributes
+  class PlatformHeaders
+  enum SpanCategory
+  enum SpanResult
+}
+
+AutoConfigurationCustomizerProvider <|.. PlatformAutoConfigurationCustomizer
+ResourceProvider <|.. PlatformResourceProvider
+Sampler <|.. CompositeSampler
+Sampler <|.. MutableRatioSampler
+ExtendedSpanProcessor <|.. EnrichingSpanProcessor
+ExtendedSpanProcessor <|.. ScrubbingSpanProcessor
+ExtendedSpanProcessor <|.. ValidatingSpanProcessor
+ExtendedSpanProcessor <|.. SpanWatchdogProcessor
+ExtendedSpanProcessor <|.. SafeSpanProcessor
+SensitiveDataRule <|.. EmailRule
+SensitiveDataRule <|.. JwtRule
+SensitiveDataRule <|.. PasswordKeyRule
+SensitiveDataRule <|.. PanRule
+SensitiveDataRule <|.. PhoneRule
+SensitiveDataRule <|.. IbanRule
+SensitiveDataRule <|.. InnRule
+SensitiveDataRule <|.. SnilsRule
+
+PlatformAutoConfigurationCustomizer --> CompositeSampler : buildSampler
+PlatformAutoConfigurationCustomizer --> MutableRatioSampler : creates
+CompositeSampler o-- Sampler : delegate
+PlatformAutoConfigurationCustomizer --> EnrichingSpanProcessor : addSpanProcessor
+PlatformAutoConfigurationCustomizer --> ScrubbingSpanProcessor
+PlatformAutoConfigurationCustomizer --> ValidatingSpanProcessor
+PlatformAutoConfigurationCustomizer --> SpanWatchdogProcessor
+SafeSpanProcessor o-- ExtendedSpanProcessor : delegate
+ScrubbingSpanProcessor o-- SensitiveDataRule : rules
+PlatformAutoConfigurationCustomizer ..> BuiltInSensitiveDataRules : resolve
+PlatformAutoConfigurationCustomizer ..> SensitiveDataRule : ServiceLoader
+PlatformAutoConfigurationCustomizer --> PlatformTracingJmxRegistrar : tryRegisterMBeans()
+PlatformSamplingControl --> MutableRatioSampler
+PlatformSamplingControl --> SamplerStateHolder : configHolder
+PlatformProcessorMetricsControl --> SpanWatchdogProcessor
+EnrichingSpanProcessor ..> PlatformAttributes
+EnrichingSpanProcessor ..> SpanCategory
+EnrichingSpanProcessor ..> SpanResult
+ExtensionDefaults ..> PlatformHeaders : DEFAULT_FORCE_VALUES
+
+note bottom of PlatformAutoConfigurationCustomizer
+  SpanProcessor pipeline (onEnd):
+  Safe(Enriching) → Safe(Scrubbing)
+  → Safe(Validating) → Safe(Watchdog)
+end note
+
+@enduml
+
+
+@startuml platform-tracing-classes-04-autoconfigure-core
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-spring-boot-autoconfigure — конфигурация, core beans, MDC, metrics
+
+package "space.br1440.platform.tracing.autoconfigure" {
+  class TracingProperties {
+    +PREFIX: String = "platform.tracing"
+    -enabled: boolean
+    -service: Service
+    -sampling: Sampling
+    -limits: Limits
+    -queue: Queue
+    -scrubbing: Scrubbing
+    -exporter: Exporter
+    -response: Response
+    -serviceNames: ServiceNames
+  }
+
+  class "TracingProperties.Service" as TPService <<nested>> {
+    -name: String
+    -version: String
+    -environment: String
+    -cGroup: String
+  }
+  class "TracingProperties.Sampling" as TPSampling <<nested>> {
+    -ratio: double
+    -forceRecordHeader: String
+    -forceRecordHeaderValues: List
+    -qaForceHeader: String
+  }
+  class "TracingProperties.Limits" as TPLimits <<nested>>
+  class "TracingProperties.Queue" as TPQueue <<nested>> {
+    -policy: OverflowPolicy
+  }
+  enum "TracingProperties.Queue\n.OverflowPolicy" as TPOverflow <<nested>>
+  class "TracingProperties.Scrubbing" as TPScrubbing <<nested>>
+  class "TracingProperties.Exporter" as TPExporter <<nested>>
+  class "TracingProperties.Response" as TPResponse <<nested>>
+  class "TracingProperties.ServiceNames" as TPServiceNames <<nested>>
+
+  class TracingCoreAutoConfiguration {
+    +platformTracing(...): PlatformTracing
+    +platformTracingJmxClient(): PlatformTracingJmxClient
+    +runtimeConfigApplier(...): RuntimeConfigApplier
+    -isFunctional(otel): boolean
+  }
+
+  class TracingMdcContextAutoConfiguration {
+    +registerContextWrapper(): void «@PostConstruct»
+  }
+
+  class TracingMetricsAutoConfiguration {
+    +platformTracingMetrics(...): PlatformTracingMetrics
+    +meteredPlatformTracing(...): MeteredPlatformTracing «@Primary»
+  }
+
+  class TracingRefreshScopeAutoConfiguration {
+    +refreshableTracingProperties(): TracingProperties «@RefreshScope @Primary»
+  }
+
+  class ServiceNameProviderAutoConfiguration {
+    +platformLocalServiceNameProvider(...): PlatformLocalServiceNameProvider
+    +platformRemoteServiceNameProvider(): PlatformRemoteServiceNameProvider
+  }
+
+  class RequestContextSupplierAutoConfiguration {
+    +platformTracingRequestContextSupplier(): Supplier
+  }
+}
+
+TracingProperties *-- TPService
+TracingProperties *-- TPSampling
+TracingProperties *-- TPLimits
+TracingProperties *-- TPQueue
+TPQueue *-- TPOverflow
+TracingProperties *-- TPScrubbing
+TracingProperties *-- TPExporter
+TracingProperties *-- TPResponse
+TracingProperties *-- TPServiceNames
+TPSampling ..> PlatformHeaders : forceRecordHeader default
+
+package "mdc" {
+  class TracingMdcContextWrapper {
+    -delegate: ContextStorage
+    +attach(context): Scope
+    +current(): Context
+  }
+}
+
+package "metrics" {
+  class MeteredPlatformTracing {
+    -delegate: PlatformTracing
+    -metrics: PlatformTracingMetrics
+  }
+  class PlatformTracingMetrics {
+    -meterRegistry: MeterRegistry
+    +incrementSpansStarted(category): void
+    +incrementExceptionsRecorded(): void
+  }
+}
+
+package "jmx" {
+  class PlatformTracingJmxClient {
+    -server: MBeanServer
+    +allMBeansAvailable(): boolean
+    +getMBeansStatus(): Map<TracingControlDomain, Boolean>
+    +setRatio(ratio): void
+    +updateSamplingPolicy(config): void
+    +updateScrubbingPolicy(config): void
+    +updateValidationPolicy(config): void
+    +getCurrentRatio(): Optional<Double>
+  }
+  enum TracingControlDomain {
+    SAMPLING
+    SCRUBBING
+    VALIDATION
+    EXPORT
+    PROCESSOR_METRICS
+    DIAGNOSTICS
+  }
+  class PlatformTracingJmxObjectNames <<utility>> {
+    {static} +SAMPLING : ObjectName
+    {static} +SCRUBBING : ObjectName
+    ...
+  }
+  class PlatformTracingJmxOperationException
+  record ConfigApplyResult {
+    +applied: Set<TracingControlDomain>
+    +failed: Set<TracingControlDomain>
+    +timestamp: Instant
+  }
+}
+
+package "sampling" {
+  class SamplingRuntimeConfig
+  class ScrubbingRuntimeConfig
+  class ValidationRuntimeConfig
+}
+
+class RuntimeConfigApplier {
+  -client: PlatformTracingJmxClient
+  -rejectedApplyCount: LongAdder
+  -partialApplyCount: LongAdder
+  -lastConfigApplyResult: ConfigApplyResult
+  +applyAll(properties): void
+  +getRejectedApplyCount(): long
+  +getPartialApplyCount(): long
+  +getLastConfigApplyResult(): ConfigApplyResult
+}
+
+package "servicename" {
+  class PlatformLocalServiceNameProvider {
+    {static} +UNKNOWN_SERVICE: String
+    -localServiceName: String
+    +get(): String
+  }
+  class PlatformRemoteServiceNameProvider {
+    +get(): Optional<String>
+  }
+}
+
+package "errorhandling" {
+  class TracingRequestContextSupplier {
+    +get(): TracingRequestContext
+    -readMdcSafely(key): String
+  }
+}
+
+package "support" {
+  class DurationToMillis <<utility>>
+}
+
+package "«core»" as CORE {
+  class DefaultPlatformTracing
+  class NoOpPlatformTracing
+}
+
+package "«api»" as API {
+  interface PlatformTracing
+  record TracingRequestContext
+  class TracingMdcKeys
+  class PlatformAttributes
+}
+
+PlatformTracing <|.. MeteredPlatformTracing
+Supplier <|.. PlatformLocalServiceNameProvider
+Supplier <|.. PlatformRemoteServiceNameProvider
+Supplier <|.. TracingRequestContextSupplier
+RuntimeException <|-- PlatformTracingJmxOperationException
+ContextStorage <|.. TracingMdcContextWrapper
+
+TracingCoreAutoConfiguration ..> TracingProperties
+TracingCoreAutoConfiguration ..> DefaultPlatformTracing : @Bean
+TracingCoreAutoConfiguration ..> NoOpPlatformTracing : @Bean fallback
+TracingCoreAutoConfiguration ..> PlatformTracingJmxClient : @Bean
+TracingCoreAutoConfiguration ..> RuntimeConfigApplier : @Bean
+RuntimeConfigApplier o-- PlatformTracingJmxClient
+RuntimeConfigApplier ..> ConfigApplyResult : last result
+PlatformTracingJmxClient ..> PlatformTracingJmxObjectNames : ObjectName constants
+PlatformTracingJmxClient ..> TracingControlDomain : getMBeansStatus()
+TracingMdcContextAutoConfiguration ..> TracingMdcContextWrapper : ContextStorage.addWrapper
+TracingMetricsAutoConfiguration ..> MeteredPlatformTracing : @Primary @Bean
+TracingMetricsAutoConfiguration ..> PlatformTracingMetrics : @Bean
+MeteredPlatformTracing o-- PlatformTracing : delegate
+MeteredPlatformTracing o-- PlatformTracingMetrics
+PlatformLocalServiceNameProvider o-- TracingProperties
+PlatformLocalServiceNameProvider ..> Environment
+TracingRequestContextSupplier ..> TracingRequestContext : creates
+TracingRequestContextSupplier ..> TracingMdcKeys
+TracingMdcContextWrapper o-- ContextStorage : delegate
+TracingMdcContextWrapper ..> TracingMdcKeys
+TracingMdcContextWrapper ..> PlatformAttributes
+
+TracingMdcContextAutoConfiguration ..> TracingCoreAutoConfiguration : @AutoConfigureBefore
+TracingMetricsAutoConfiguration ..> TracingCoreAutoConfiguration : @AutoConfigureBefore
+
+note right of TracingRefreshScopeAutoConfiguration
+  @ConditionalOnClass(RefreshScope)
+  @Primary TracingProperties для /actuator/refresh
+end note
+
+@enduml
+
+
+@startuml platform-tracing-classes-05-autoconfigure-web-aop-actuator
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-spring-boot-autoconfigure — Web, AOP, Actuator, Observation
+
+package "servlet" {
+  class ServletTracingAutoConfiguration {
+    +platformTraceResponseHeaderServletFilterRegistration(...): FilterRegistrationBean
+    +platformServerRequestObservationConvention(): PlatformServerRequestObservationConvention
+  }
+  class TraceResponseHeaderServletFilter {
+    -platformTracing: PlatformTracing
+    -properties: TracingProperties
+    +doFilterInternal(...): void
+  }
+  class PlatformServerRequestObservationConvention {
+    +getName(...): String
+    +getLowCardinalityKeyValues(...): KeyValues
+  }
+}
+
+package "reactive" {
+  class ReactiveTracingAutoConfiguration {
+    +platformTraceResponseHeaderWebFilter(...): TraceResponseHeaderWebFilter
+    +platformReactiveServerRequestObservationConvention(): ...
+  }
+  class TraceResponseHeaderWebFilter {
+    -platformTracing: PlatformTracing
+    -properties: TracingProperties
+    +filter(...): Mono<Void>
+  }
+  class PlatformReactiveServerRequestObservationConvention
+}
+
+package "observation" {
+  class TracingObservationAutoConfiguration {
+    +platformClientRequestObservationConvention(): PlatformClientRequestObservationConvention
+  }
+  class PlatformClientRequestObservationConvention
+}
+
+package "aspect" {
+  class TracingAopAutoConfiguration {
+    +platformTracedAspect(...): TracedAspect
+  }
+  class TracedAspect {
+    -platformTracing: PlatformTracing
+    +aroundTraced(joinPoint): Object
+    -resolveAnnotation(method): Traced
+    -applyParameterAttributes(...): void
+  }
+}
+
+package "actuator" {
+  class TracingActuatorAutoConfiguration {
+    +tracingHealthIndicator(...): TracingHealthIndicator
+    +tracingActuatorEndpoint(...): TracingActuatorEndpoint
+  }
+  class TracingHealthIndicator {
+    -platformTracing: PlatformTracing
+    +doHealthCheck(builder): void
+  }
+  class TracingActuatorEndpoint {
+    -platformTracing: PlatformTracing
+    -properties: TracingProperties
+    -jmxClient: PlatformTracingJmxClient
+    -otelEffectiveSnapshot: OtelEffectiveConfigSnapshot
+    +tracing(): Map «@ReadOperation»
+    +updateTracing(prop, val): Map «@WriteOperation»
+  }
+  class OtelEffectiveConfigSnapshot {
+    -systemPropertyLookup: Function
+    -envLookup: Function
+    +build(): Map
+  }
+}
+
+package "«Spring / Micrometer»" as SPRING {
+  class OncePerRequestFilter
+  interface WebFilter
+  class DefaultServerRequestObservationConvention
+  class DefaultClientRequestObservationConvention
+  class AbstractHealthIndicator
+}
+
+package "«api»" as API {
+  interface PlatformTracing
+  annotation Traced
+  annotation TracedAttribute
+  interface SpanScope
+  enum SpanResult
+  class PlatformHeaders
+}
+
+OncePerRequestFilter <|-- TraceResponseHeaderServletFilter
+WebFilter <|.. TraceResponseHeaderWebFilter
+DefaultServerRequestObservationConvention <|-- PlatformServerRequestObservationConvention
+DefaultServerRequestObservationConvention <|-- PlatformReactiveServerRequestObservationConvention
+DefaultClientRequestObservationConvention <|-- PlatformClientRequestObservationConvention
+AbstractHealthIndicator <|-- TracingHealthIndicator
+
+TraceResponseHeaderServletFilter o-- PlatformTracing
+TraceResponseHeaderServletFilter o-- TracingProperties
+TraceResponseHeaderWebFilter o-- PlatformTracing
+TraceResponseHeaderWebFilter o-- TracingProperties
+TracedAspect o-- PlatformTracing
+TracedAspect ..> Traced : @Around
+TracedAspect ..> TracedAttribute : parameter scan
+TracedAspect ..> SpanScope : try/finally close
+TracedAspect ..> SpanResult
+TracingActuatorEndpoint o-- PlatformTracing
+TracingActuatorEndpoint o-- TracingProperties
+TracingActuatorEndpoint o-- PlatformTracingJmxClient
+TracingActuatorEndpoint o-- OtelEffectiveConfigSnapshot
+TracingHealthIndicator o-- PlatformTracing
+
+ServletTracingAutoConfiguration ..> TraceResponseHeaderServletFilter : @Bean
+ReactiveTracingAutoConfiguration ..> TraceResponseHeaderWebFilter : @Bean
+TracingAopAutoConfiguration ..> TracedAspect : @Bean
+TracingActuatorAutoConfiguration ..> TracingActuatorEndpoint : @Bean
+
+TraceResponseHeaderServletFilter ..> PlatformHeaders : response header
+
+note bottom of ServletTracingAutoConfiguration
+  @ConditionalOnWebApplication(SERVLET)
+  @AutoConfigureAfter(TracingCoreAutoConfiguration)
+end note
+
+note bottom of ReactiveTracingAutoConfiguration
+  @ConditionalOnWebApplication(REACTIVE)
+  coexists with servlet config in same JAR
+end note
+
+@enduml
+
+
+@startuml platform-tracing-classes-06-autoconfigure-order
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-spring-boot-autoconfigure — порядок AutoConfiguration и зависимости bean'ов
+
+class TracingMdcContextAutoConfiguration #LightYellow
+class TracingCoreAutoConfiguration #LightBlue
+class TracingMetricsAutoConfiguration #LightGreen
+class TracingAopAutoConfiguration
+class TracingObservationAutoConfiguration
+class TracingActuatorAutoConfiguration
+class ServletTracingAutoConfiguration
+class ReactiveTracingAutoConfiguration
+class ServiceNameProviderAutoConfiguration
+class RequestContextSupplierAutoConfiguration
+class TracingRefreshScopeAutoConfiguration
+
+TracingMdcContextAutoConfiguration -down-> TracingCoreAutoConfiguration : «@AutoConfigureBefore»
+TracingMetricsAutoConfiguration -down-> TracingCoreAutoConfiguration : «@AutoConfigureBefore»
+TracingMetricsAutoConfiguration -down-> TracingAopAutoConfiguration : «@AutoConfigureBefore»
+TracingMetricsAutoConfiguration -down-> ServletTracingAutoConfiguration : «@AutoConfigureBefore»
+TracingMetricsAutoConfiguration -down-> ReactiveTracingAutoConfiguration : «@AutoConfigureBefore»
+
+TracingCoreAutoConfiguration -down-> TracingAopAutoConfiguration : «@AutoConfigureAfter»
+TracingCoreAutoConfiguration -down-> TracingObservationAutoConfiguration : «@AutoConfigureAfter»
+TracingCoreAutoConfiguration -down-> TracingActuatorAutoConfiguration : «@AutoConfigureAfter»
+TracingCoreAutoConfiguration -down-> ServletTracingAutoConfiguration : «@AutoConfigureAfter»
+TracingCoreAutoConfiguration -down-> ReactiveTracingAutoConfiguration : «@AutoConfigureAfter»
+TracingCoreAutoConfiguration -down-> TracingRefreshScopeAutoConfiguration : «@AutoConfigureAfter»
+
+note as N1
+  **PlatformTracing bean chain**
+  1. TracingCoreAutoConfiguration → DefaultPlatformTracing | NoOpPlatformTracing
+  2. TracingMetricsAutoConfiguration → @Primary MeteredPlatformTracing wraps (1)
+  3. TracedAspect, Filters, Health, Endpoint inject PlatformTracing (often Metered)
+end note
+
+note as N2
+  ServiceNameProviderAutoConfiguration
+  RequestContextSupplierAutoConfiguration
+  — без @AutoConfigureAfter(Core), регистрируются независимо
+end note
+
+@enduml
+
+
+@startuml platform-tracing-classes-07-starter-servlet
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-spring-boot-starter-servlet — Gradle-агрегация (Java-классов нет)
+
+class Starter <<Gradle module>> {
+  no Java sources
+}
+
+note right of Starter
+  **build.gradle**
+  api → autoconfigure
+  api → spring-boot-starter-web
+end note
+
+package "Transitive autoconfigure module" as AUTO {
+  class TracingCoreAutoConfiguration
+  class ServletTracingAutoConfiguration
+  class TracingAopAutoConfiguration
+  class TracingObservationAutoConfiguration
+  class TracingMetricsAutoConfiguration
+  class TracingMdcContextAutoConfiguration
+  class TracingActuatorAutoConfiguration
+  class ReactiveTracingAutoConfiguration <<inactive>>
+}
+
+package "Transitive core and api" as DOMAIN {
+  interface PlatformTracing
+  class DefaultPlatformTracing
+}
+
+package "Transitive Spring Web" as WEB {
+  class DispatcherServlet
+  class PlatformServerRequestObservationConvention
+  class "Micrometer HTTP Observation" as Obs
+}
+
+Starter --> TracingCoreAutoConfiguration : api
+Starter --> DispatcherServlet : api
+ServletTracingAutoConfiguration ..> PlatformTracing : beans at runtime
+PlatformServerRequestObservationConvention ..> Obs : customizes
+
+note bottom of Starter
+  Точка подключения в сервисе:
+  implementation("...starter-servlet")
+end note
+
+@enduml

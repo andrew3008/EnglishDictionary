@@ -1,0 +1,81 @@
+# Минимальная конфигурация OpenTelemetry Collector для e2e-тестов модуля platform-tracing-e2e-tests.
+#
+# В отличие от production-конфига `platform-tracing-collector-config/.../otel-collector-config.yaml`:
+#   - jaeger зовётся `jaeger:4317` (network alias тестового контейнера, не `jaeger-collector`);
+#   - decision_wait уменьшен до 5s, чтобы тесты завершались быстрее;
+#   - num_traces уменьшен до 1000 — достаточно для двух тестов;
+#   - оставлены только critical-policies из production-набора:
+#       errors-always, slow-always, forced-record (через атрибут x-trace-on),
+#       probabilistic-default 0% — чтобы тесты были полностью детерминированными.
+#       В production используется 10%, но e2e должен проверять именно «положительные»
+#       политики (errors/slow/force) по отдельности, без шума случайных трасс.
+#
+# Этот YAML НЕ публикуется как платформенный артефакт; он живёт только в test-resources.
+# Совместим с otel/opentelemetry-collector-contrib:0.154.0 (Track B+, Фаза 16 spike baseline).
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+
+  tail_sampling:
+    decision_wait: 5s
+    num_traces: 1000
+    expected_new_traces_per_sec: 10
+    policies:
+      - name: errors-always
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+
+      - name: slow-always
+        type: latency
+        latency:
+          threshold_ms: 2000
+
+      # Значения синхронизированы с PlatformSamplingReasons.EXPORTED и production-конфигом
+      # (x_trace_on удалён в Фазе 16: SDK никогда его не эмитил — дрейф e2e/production недопустим).
+      - name: forced-record
+        type: string_attribute
+        string_attribute:
+          key: platform.sampling.reason
+          values: [force_header, qa_trace]
+
+      - name: probabilistic-default
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 0
+
+  batch:
+    send_batch_size: 64
+    timeout: 1s
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [otlp/jaeger]
+  telemetry:
+    logs:
+      level: info

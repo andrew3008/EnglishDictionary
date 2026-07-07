@@ -1,0 +1,83 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+
+        // Корпоративные прокси-репозитории платформы.
+        maven { url = "https://n.1440.space/repository/platform-maven/" }
+        maven { url = "https://n.1440.space/repository/platform-maven-dev/" }
+        maven { url = "https://n.1440.space/repository/plugins.gradle.org-proxy/" }
+        maven { url = "https://n.1440.space/repository/repo1.maven.org-proxy" }
+    }
+}
+
+rootProject.name = 'spring-boot-platform-tracing'
+
+// Composite build для e2e Wave 2 (platform-logging). Путь можно переопределить: -PplatformStartersDir=...
+def platformStartersDir = settings.hasProperty('platformStartersDir')
+        ? file(settings.platformStartersDir)
+        : file('../Platform_SpringBoot_Starters/spring-boot-platform-starters-master')
+if (platformStartersDir.exists()) {
+    includeBuild(platformStartersDir)
+}
+
+// Платформенный BOM модуля трассировки (управление версиями OTEL и сопутствующих зависимостей).
+include 'platform-tracing-bom'
+
+// Публичный API стартера: интерфейсы, аннотации, перечисления, точки расширения SPI. Без зависимости на Spring.
+include 'platform-tracing-api'
+
+// Реализация API поверх Micrometer Observation и OpenTelemetry API.
+include 'platform-tracing-core'
+
+// Spring Boot autoconfigure: properties, общие авто-конфигурации (Core, Metrics, AOP, Actuator,
+// MDC bridge, OtelAgentDetector, RefreshScope, ServiceNameProvider). Web-специфичные авто-конфиги
+// вынесены в отдельные модули autoconfigure-webmvc и autoconfigure-webflux, чтобы Servlet и
+// Reactive-приложения не тянули чужие web-зависимости.
+include 'platform-tracing-spring-boot-autoconfigure'
+
+// Spring Boot autoconfigure для Servlet-стека: ServletTracingAutoConfiguration,
+// TraceResponseHeaderServletFilter, PlatformServerRequestObservationConvention.
+include 'platform-tracing-autoconfigure-webmvc'
+
+// Spring Boot autoconfigure для Reactive-стека: ReactiveTracingAutoConfiguration,
+// TraceResponseHeaderWebFilter, PlatformReactiveServerRequestObservationConvention,
+// TracingReactorEagerInitConfiguration.
+include 'platform-tracing-autoconfigure-webflux'
+
+// Стартер для Servlet-приложений (Spring MVC + Tomcat). Тянет autoconfigure-webmvc и spring-boot-starter-web.
+include 'platform-tracing-spring-boot-starter-servlet'
+
+// Стартер для Reactive-приложений (Spring WebFlux + Netty). Тянет autoconfigure-webflux и spring-boot-starter-webflux.
+include 'platform-tracing-spring-boot-starter-reactive'
+
+// Расширение для OpenTelemetry Java Agent: Sampler, SpanProcessor, ResourceProvider.
+include 'platform-tracing-otel-extension'
+
+// Версионируемые YAML-конфигурации для OpenTelemetry Collector (tail_sampling, маршрутизация в Jaeger).
+include 'platform-tracing-collector-config'
+
+// Тестовая инфраструктура для интеграционного тестирования прикладного кода (in-memory span exporter, JUnit 5 extension).
+include 'platform-tracing-test'
+
+// JMH micro-benchmark'и: внутренний инструмент для замера runtime overhead основных операций
+// платформенной трассировки. Не публикуется в Nexus, не входит в релизный артефакт-набор.
+include 'platform-tracing-bench'
+
+// E2E-тесты цепочки SDK → OpenTelemetry Collector → Jaeger через Testcontainers.
+// Включаются только при наличии Docker (см. условия @EnabledIfDockerAvailable внутри модуля).
+include 'platform-tracing-e2e-tests'
+
+// Macro перф-тесты (Фаза 17, PR-3/PR-4): SUT-приложение + docker-compose (SUT/Collector/k6,
+// open-model constant-arrival-rate) + раннеры сценариев M0–M10/S1 performance-test-matrix.
+// Не публикуется в Nexus, внутренний инструмент performance assurance.
+include 'platform-tracing-perf-tests'
+
+// Macro/load/RSS evidence harness (PR-9H-C): hybrid SMOKE + REFERENCE tiers, k6 scenarios,
+// scenario profiles S0–S6. Не публикуется в Nexus; production modules must not depend on it.
+include 'platform-tracing-perf-harness'
+
+// Линтер семантических конвенций платформенных span'ов: библиотека + CLI для CI-пайплайна.
+// Архитекторы отложили разработку модуля до отдельного Story; держим scaffold в дереве,
+// но не подключаем к сборке, чтобы не требовать его компиляции и не создавать пустой артефакт.
+//include 'platform-tracing-semconv-lint'

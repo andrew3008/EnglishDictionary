@@ -1,0 +1,12 @@
+[
+  {
+    "benchmark": "space.br1440.platform.tracing.bench.ValidatingSpanProcessorBenchmark.validationDisabled",
+    "mode": "avgt",
+    "primaryMetric": { "score": 225.0 }
+  },
+  {
+    "benchmark": "space.br1440.platform.tracing.bench.ValidatingSpanProcessorBenchmark.validationLenientValidSpan",
+    "mode": "avgt",
+    "primaryMetric": { "score": 339.0 }
+  }
+]

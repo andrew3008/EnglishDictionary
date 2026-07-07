@@ -1,0 +1,16 @@
+{
+  "evidenceTier": "SMOKE",
+  "nonAuthoritative": true,
+  "w004Eligible": false,
+  "profileId": "local-dev",
+  "runId": "example-non-authoritative",
+  "scenario": "smoke",
+  "springProfile": "smoke",
+  "baseUrl": "http://localhost:8080",
+  "duration": "30s",
+  "targetRps": 5,
+  "k6Runner": "local",
+  "gitSha": "example",
+  "k6Summary": "k6-summary.json",
+  "note": "EXAMPLE ONLY — not real evidence; do not use for W-004"
+}

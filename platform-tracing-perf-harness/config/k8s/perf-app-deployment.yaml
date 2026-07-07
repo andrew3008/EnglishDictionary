@@ -1,0 +1,56 @@
+# REFERENCE tier — perf harness SUT (agent + extension via init/sidecar pattern — adjust for your image build).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-harness-app
+  namespace: REPLACE_NAMESPACE
+  labels:
+    app: perf-harness-app
+    platform-tracing.io/tier: reference-perf
+    platform-tracing.io/scenario: REPLACE_SCENARIO
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perf-harness-app
+  template:
+    metadata:
+      labels:
+        app: perf-harness-app
+        platform-tracing.io/tier: reference-perf
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8080"
+    spec:
+      # TODO: serviceAccountName: REPLACE_SERVICE_ACCOUNT
+      containers:
+        - name: perf-app
+          image: REPLACE_IMAGE_REGISTRY/perf-harness:REPLACE_PERF_APP_IMAGE_TAG
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: perf-harness-app-config
+          resources:
+            requests:
+              cpu: "REPLACE_APP_CPU_REQUEST"
+              memory: "REPLACE_APP_MEM_REQUEST"
+            limits:
+              cpu: "REPLACE_APP_CPU_LIMIT"
+              memory: "REPLACE_APP_MEM_LIMIT"
+          readinessProbe:
+            httpGet:
+              path: /perf/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /perf/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          # TODO: mount OTel javaagent + extension from image or initContainer
+          # TODO: JFR flags via REPLACE_JFR_JVM_OPTS for reference runs only

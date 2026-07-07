@@ -1,0 +1,56 @@
+description = 'Spring Boot autoconfigure для платформенной трассировки в Reactive-стеке (Spring WebFlux). ' +
+        'Содержит ReactiveTracingAutoConfiguration, TracingReactorEagerInitConfiguration и связанные ' +
+        'WebFilter\'ы — отделено от основного autoconfigure-модуля, чтобы Servlet-приложения не ' +
+        'тянули WebFlux в classpath.'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    api project(':platform-tracing-spring-boot-autoconfigure')
+
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.springframework.boot:spring-boot'
+    implementation 'org.slf4j:slf4j-api'
+
+    // WebFlux и общие web-типы требуются как compileOnly: production-приложение само тянет
+    // spring-boot-starter-webflux. Условные правила {@code @ConditionalOnClass} /
+    // {@code @ConditionalOnWebApplication} защищают от активации в Servlet-окружении.
+    compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
+    compileOnly 'org.springframework:spring-webflux'
+    compileOnly 'io.projectreactor:reactor-core'
+    compileOnly 'io.opentelemetry:opentelemetry-api'
+
+    // Spring Boot Actuator autoconfigure нужен для ObservationRegistryCustomizer / ObservationAutoConfiguration
+    // (используются в WebFluxSuppressMicrometerTracingAutoConfiguration).
+    compileOnly 'org.springframework.boot:spring-boot-actuator-autoconfigure'
+
+    // Micrometer Observation API нужен для реактивных observation conventions.
+    api 'io.micrometer:micrometer-observation'
+
+    // Micrometer Context Propagation для RemoteServiceContextPropagation.
+    api 'io.micrometer:context-propagation'
+
+    // Платформенный API нужен в WebFilter'ах через PlatformTracing.
+    api project(':platform-tracing-api')
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation project(':platform-tracing-spring-boot-starter-reactive')
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    testImplementation project(':platform-tracing-test')
+
+    // Servlet-API нужен только для negative-кейса в TracingReactorEagerInitConfigurationTest:
+    // WebApplicationContextRunner требует jakarta.servlet.* для инициализации Servlet-контекста.
+    // Production-зависимости webflux-модуля Servlet-API не подтягивают.
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

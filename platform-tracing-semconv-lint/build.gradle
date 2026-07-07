@@ -1,0 +1,33 @@
+plugins {
+    id 'application'
+}
+
+description = 'Линтер платформенных семантических конвенций трассировки. ' +
+        'Принимает на вход экспортированные span\'ы (JSON-формат) и проверяет их соответствие ' +
+        'спецификации обязательных атрибутов (service.name, platform.*). Поставляется как Java-библиотека ' +
+        'и автономный CLI для подключения в CI/CD пайплайн.'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    api project(':platform-tracing-api')
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.slf4j:slf4j-api'
+
+    runtimeOnly 'ch.qos.logback:logback-classic'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'space.br1440.platform.tracing.semconv.lint.cli.CommandLineLinter'
+    applicationName = 'platform-tracing-semconv-lint'
+}

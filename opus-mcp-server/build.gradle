@@ -1,0 +1,354 @@
+// Gradle Groovy DSL (corporate standard). No Kotlin DSL, no libs.versions.toml.
+// Pinned dependency versions are declared explicitly below via ext.versions.
+
+plugins {
+    id 'java'
+    id 'application'
+    // Fat-jar (shadow) for a single runnable artifact used as the Cursor MCP command.
+    id 'com.gradleup.shadow' version '8.3.6'
+}
+
+group = 'space.br1440.platform.devtools'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+ext.versions = [
+    mcpBom   : '2.0.0',
+    jackson  : '2.18.2',
+    slf4j    : '2.0.16',
+    logback  : '1.5.16',
+    junit    : '5.11.4',
+    assertj  : '3.27.3',
+    mockito  : '5.15.2',
+]
+
+repositories {
+    mavenCentral()
+}
+
+// Phase 6A: dependency locking for reproducible resolution. Lock files are committed and must be
+// refreshed deliberately when versions change (see docs/RELEASE.md):
+//   .\gradlew.bat resolveAndLockAll --write-locks
+dependencyLocking {
+    lockAllConfigurations()
+}
+
+dependencies {
+    // MCP Java SDK convenience bundle (core + STDIO transport + Jackson 3 binding).
+    implementation platform("io.modelcontextprotocol.sdk:mcp-bom:${versions.mcpBom}")
+    implementation 'io.modelcontextprotocol.sdk:mcp'
+
+    // Logging: SLF4J API + Logback (configured to log to stderr only).
+    implementation "org.slf4j:slf4j-api:${versions.slf4j}"
+    runtimeOnly "ch.qos.logback:logback-classic:${versions.logback}"
+
+    // Jackson 2.x for our own JSON (Phase 0B smoke request/response). Coexists with
+    // the Jackson 3 bundled inside the mcp module (different packages).
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+
+    testImplementation "org.junit.jupiter:junit-jupiter:${versions.junit}"
+    testImplementation "org.assertj:assertj-core:${versions.assertj}"
+    testImplementation "org.mockito:mockito-core:${versions.mockito}"
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'space.br1440.platform.devtools.opusmcp.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xlint:deprecation']
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    // Optional escape hatch for constrained CI that cannot spawn a child JVM:
+    //   .\gradlew.bat test -PskipStdioIntegration=true
+    // Default runs the full suite, including the stdio integration test.
+    if (project.hasProperty('skipStdioIntegration')) {
+        exclude '**/StdioMcpIntegrationTest*'
+    }
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
+shadowJar {
+    archiveClassifier = 'all'
+    mergeServiceFiles()
+    // Manifest metadata only; intentionally no build user / host / timestamp / local path
+    // attributes (reproducibility and no information leakage).
+    manifest {
+        attributes(
+            'Main-Class'           : application.mainClass.get(),
+            'Implementation-Title' : project.name,
+            'Implementation-Version': project.version,
+            'Build-Jdk-Spec'       : '21'
+        )
+    }
+}
+
+// Make `build` produce the fat-jar.
+tasks.named('assemble') {
+    dependsOn tasks.named('shadowJar')
+}
+
+// CI-friendly local verification: runs the full test suite (no real network / no real API key
+// required) and builds the runnable fat-jar. Safe to run in CI without credentials.
+tasks.register('verifyLocal') {
+    group = 'verification'
+    description = 'Run tests and build the fat-jar (no network/credentials required).'
+    dependsOn tasks.named('test'), tasks.named('shadowJar')
+}
+
+// Phase 6A: regenerate dependency lock files. Run with --write-locks:
+//   .\gradlew.bat resolveAndLockAll --write-locks
+tasks.register('resolveAndLockAll') {
+    group = 'build setup'
+    description = 'Resolves all lockable configurations to (re)write dependency lock files.'
+    doFirst {
+        assert gradle.startParameter.writeDependencyLocks : 'Run with --write-locks'
+    }
+    doLast {
+        configurations.findAll { it.canBeResolved }.each { it.resolve() }
+    }
+}
+
+// Phase 6A/6B: offline supply-chain INVENTORY (not a CVE verdict). Writes the resolved runtime
+// dependency coordinates in text + machine-readable JSON for a corporate/out-of-band CVE scanner to
+// consume. No network calls, no secrets, no timestamps (reproducible). See docs/SECURITY-SCAN-CONTRACT.md.
+tasks.register('dependencySecurityReport') {
+    group = 'verification'
+    description = 'Writes resolved runtime dependency inventory (txt + json) for offline supply-chain review.'
+    def txtFile = layout.buildDirectory.file('reports/supply-chain/runtime-dependencies.txt')
+    def jsonFile = layout.buildDirectory.file('reports/supply-chain/runtime-dependencies.json')
+    def projectName = project.name
+    def projectVersion = project.version.toString()
+    outputs.file(txtFile)
+    outputs.file(jsonFile)
+    doLast {
+        def modules = configurations.runtimeClasspath.incoming.resolutionResult.allComponents
+            .findAll { it.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+            .collect { it.id as org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+            .toSorted { a, b -> a.toString() <=> b.toString() }
+
+        def txt = txtFile.get().asFile
+        txt.parentFile.mkdirs()
+        txt.text = "# Resolved runtimeClasspath dependencies (group:name:version).\n" +
+                   "# INVENTORY ONLY - not a CVE verdict. Submit to corporate scanner.\n" +
+                   "# Generated offline. No secrets, no network access.\n" +
+                   modules.collect { it.toString() }.join('\n') + '\n'
+
+        def model = [
+            schemaVersion: 1,
+            project      : [name: projectName, version: projectVersion],
+            configuration: 'runtimeClasspath',
+            note         : 'Inventory only. Not a CVE verdict. Submit to corporate scanner.',
+            dependencies : modules.collect { id -> [
+                group      : id.moduleIdentifier.group,
+                name       : id.moduleIdentifier.name,
+                version    : id.version,
+                coordinates: id.toString()
+            ] }
+        ]
+        def json = jsonFile.get().asFile
+        json.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(model)) + '\n'
+
+        logger.lifecycle("Supply-chain inventory written: ${txt} and ${json}")
+    }
+}
+
+// Phase 6B: corporate scanner handoff. Deterministic, network-free, credential-free. Verifies the
+// inventory artifacts exist and validates the JSON shape; does NOT compute or claim a CVE verdict.
+tasks.register('securityHandoff') {
+    group = 'verification'
+    description = 'Validates the dependency inventory artifacts and prints corporate-scanner handoff guidance.'
+    dependsOn tasks.named('dependencySecurityReport')
+    def txtFile = layout.buildDirectory.file('reports/supply-chain/runtime-dependencies.txt')
+    def jsonFile = layout.buildDirectory.file('reports/supply-chain/runtime-dependencies.json')
+    doLast {
+        def txt = txtFile.get().asFile
+        def json = jsonFile.get().asFile
+        if (!txt.exists()) {
+            throw new GradleException("Inventory missing: ${txt}")
+        }
+        if (!json.exists()) {
+            throw new GradleException("Inventory missing: ${json}")
+        }
+        def parsed = new groovy.json.JsonSlurper().parse(json)
+        assert parsed.schemaVersion == 1 : 'inventory schemaVersion must be 1'
+        assert parsed.configuration == 'runtimeClasspath' : 'inventory configuration must be runtimeClasspath'
+        assert parsed.dependencies instanceof List && !parsed.dependencies.isEmpty() : 'inventory dependencies must be non-empty'
+        parsed.dependencies.each { d ->
+            assert d.coordinates && d.group && d.name && d.version : "incomplete dependency entry: ${d}"
+        }
+        logger.lifecycle('Dependency inventory generated (INVENTORY ONLY, not a CVE verdict).')
+        logger.lifecycle("  JSON: ${json}")
+        logger.lifecycle("  TXT : ${txt}")
+        logger.lifecycle('Submit these to the approved corporate scanner for a CVE verdict (PASS/WARN/FAIL).')
+        logger.lifecycle('See docs/SECURITY-SCAN-CONTRACT.md for the handoff contract and policy.')
+    }
+}
+
+// Phase 6A: assert the release artifact (fat-jar) exists.
+tasks.register('verifyJarExists') {
+    group = 'verification'
+    description = 'Asserts the shadow fat-jar artifact exists.'
+    dependsOn tasks.named('shadowJar')
+    doLast {
+        def jar = tasks.named('shadowJar').get().archiveFile.get().asFile
+        if (!jar.exists()) {
+            throw new GradleException("Release fat-jar missing: ${jar}")
+        }
+        logger.lifecycle("Release artifact OK: ${jar.name} (${jar.length()} bytes)")
+    }
+}
+
+// Phase 6A: deterministic local release verification (tests + fat-jar + artifact + dependency
+// report). No real network, no OPUS_API_KEY. Docs hygiene and example-JSON validity are enforced by
+// the test suite (verifyLocal -> test).
+tasks.register('releaseCheck') {
+    group = 'verification'
+    description = 'Deterministic local release verification (no network/credentials).'
+    dependsOn tasks.named('verifyLocal'),
+            tasks.named('verifyJarExists'),
+            tasks.named('securityHandoff')
+}
+
+tasks.register('printVersion') {
+    group = 'help'
+    description = 'Prints the project name and version.'
+    doLast {
+        println "${project.name} ${project.version}"
+    }
+}
+
+// Phase 6C: deterministic SHA-256 helper (no timestamps, no machine info).
+def sha256Of = { File file ->
+    def md = java.security.MessageDigest.getInstance('SHA-256')
+    file.eachByte(8192) { byte[] buf, int len -> md.update(buf, 0, len) }
+    md.digest().collect { String.format('%02x', (it & 0xff)) }.join('')
+}
+
+// Phase 6C: MCP server identity used in the release manifest. Mirrors
+// EchoMcpConnectionTool.SERVER_NAME and the registered tool names (kept in sync by tests).
+def mcpServerName = 'java-mcp-opus-server'
+def mcpToolNames = ['echo_mcp_connection', 'generate_code_with_opus', 'review_code_with_opus', 'generate_tests_with_opus', 'refactor_plan_with_opus', 'explain_diff_with_opus', 'research_with_perplexity', 'analyze_build_failure_with_opus', 'design_class_hierarchy_with_opus', 'review_architecture_with_opus', 'write_mdx_doc_with_opus', 'review_mdx_doc_with_opus', 'generate_migration_plan_with_opus', 'review_tests_with_opus', 'review_gradle_build_with_opus']
+
+// Phase 6C: SHA-256 checksum for the release fat-jar.
+tasks.register('generateReleaseChecksums') {
+    group = 'distribution'
+    description = 'Generates the SHA-256 checksum for the release fat-jar.'
+    dependsOn tasks.named('shadowJar')
+    def projectName = project.name
+    def projectVersion = project.version.toString()
+    def sha = sha256Of
+    def jarFileProvider = tasks.named('shadowJar').flatMap { it.archiveFile }
+    def checksumFile = layout.buildDirectory.file(
+            "distributions/checksums/${projectName}-${projectVersion}-all.jar.sha256")
+    inputs.file(jarFileProvider).withPathSensitivity(PathSensitivity.NONE)
+    outputs.file(checksumFile)
+    doLast {
+        def jar = jarFileProvider.get().asFile
+        if (!jar.exists()) {
+            throw new GradleException("Fat-jar missing for checksum: ${jar}")
+        }
+        def f = checksumFile.get().asFile
+        f.parentFile.mkdirs()
+        // sha256sum-compatible format: "<hash>  <filename>".
+        f.text = "${sha(jar)}  ${jar.name}\n"
+        logger.lifecycle("Checksum written: ${f}")
+    }
+}
+
+// Phase 6C: release manifest (no secrets, no local paths, no timestamps -> reproducible).
+tasks.register('generateReleaseManifest') {
+    group = 'distribution'
+    description = 'Generates a release manifest (project/version/artifact/tools/checksum).'
+    dependsOn tasks.named('shadowJar'), tasks.named('generateReleaseChecksums')
+    def projectName = project.name
+    def projectVersion = project.version.toString()
+    def mainClass = application.mainClass.get()
+    def serverName = mcpServerName
+    def toolNames = mcpToolNames
+    def sha = sha256Of
+    def jarFileProvider = tasks.named('shadowJar').flatMap { it.archiveFile }
+    def manifestFile = layout.buildDirectory.file('distributions/release-manifest.json')
+    inputs.file(jarFileProvider).withPathSensitivity(PathSensitivity.NONE)
+    outputs.file(manifestFile)
+    doLast {
+        def jar = jarFileProvider.get().asFile
+        def model = [
+            schemaVersion: 1,
+            project      : projectName,
+            version      : projectVersion,
+            artifact     : jar.name,
+            mainClass    : mainClass,
+            java         : [requiredVersion: '21'],
+            mcp          : [serverName: serverName, transport: 'stdio', tools: toolNames],
+            checksums    : [sha256: sha(jar)]
+        ]
+        def f = manifestFile.get().asFile
+        f.parentFile.mkdirs()
+        f.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(model)) + '\n'
+        logger.lifecycle("Release manifest written: ${f}")
+    }
+}
+
+// Phase 6C: deterministic release packaging verification. No network, no OPUS_API_KEY, no provider.
+tasks.register('releasePackageCheck') {
+    group = 'verification'
+    description = 'Verifies the release package: fat-jar + checksum + manifest are consistent.'
+    dependsOn tasks.named('releaseCheck'),
+            tasks.named('generateReleaseChecksums'),
+            tasks.named('generateReleaseManifest')
+    def projectName = project.name
+    def projectVersion = project.version.toString()
+    def serverName = mcpServerName
+    def toolNames = mcpToolNames
+    def sha = sha256Of
+    def jarFileProvider = tasks.named('shadowJar').flatMap { it.archiveFile }
+    def checksumFile = layout.buildDirectory.file(
+            "distributions/checksums/${projectName}-${projectVersion}-all.jar.sha256")
+    def manifestFile = layout.buildDirectory.file('distributions/release-manifest.json')
+    def userName = System.getProperty('user.name')
+    doLast {
+        def jar = jarFileProvider.get().asFile
+        def cf = checksumFile.get().asFile
+        def mf = manifestFile.get().asFile
+        if (!jar.exists()) throw new GradleException("Fat-jar missing: ${jar}")
+        if (!cf.exists())  throw new GradleException("Checksum missing: ${cf}")
+        if (!mf.exists())  throw new GradleException("Manifest missing: ${mf}")
+
+        def actual = sha(jar)
+        def fileHash = cf.text.trim().split(/\s+/)[0]
+        if (fileHash != actual) throw new GradleException('Checksum file does not match the jar')
+
+        def manifest = new groovy.json.JsonSlurper().parse(mf)
+        assert manifest.schemaVersion == 1 : 'manifest schemaVersion must be 1'
+        assert manifest.project == projectName : 'manifest project mismatch'
+        assert manifest.version == projectVersion : 'manifest version mismatch'
+        assert manifest.artifact == jar.name : "manifest artifact ${manifest.artifact} != ${jar.name}"
+        assert manifest.mcp?.serverName == serverName : 'manifest serverName mismatch'
+        assert manifest.mcp?.tools?.containsAll(toolNames) : 'manifest tools missing expected entries'
+        assert manifest.checksums?.sha256 == actual : 'manifest sha256 mismatch'
+
+        def text = mf.text
+        ['\\Users\\', '/home/', 'OPUS_API_KEY', 'x-api-key'].each { needle ->
+            if (text.contains(needle)) throw new GradleException("manifest leaks '${needle}'")
+        }
+        if (userName && text.contains(userName)) {
+            throw new GradleException('manifest leaks local username')
+        }
+
+        logger.lifecycle("Release package OK: ${jar.name}")
+        logger.lifecycle("  sha256  : ${actual}")
+        logger.lifecycle("  manifest: ${mf}")
+        logger.lifecycle("  checksum: ${cf}")
+    }
+}

@@ -1,0 +1,127 @@
+package space.br1440.platform.tracing.core.manual;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.manual.ManualTracing;
+import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
+import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
+import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.semconv.SemconvMetrics;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * Slice 3B hard gate: {@code manual().transport().database()} builder behavior.
+ */
+class DatabaseSpanBuilderTest {
+
+    private RecordingTracingImplementation recording;
+    private ManualTracing manual;
+
+    @BeforeEach
+    void setUp() {
+        recording = new RecordingTracingImplementation();
+        AttributePolicy strictPolicy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        manual = new DefaultManualTracing(recording, strictPolicy);
+    }
+
+    @Test
+    void validBuilder_routesSpanSpecThroughTracingImplementation() {
+        manual.transport().database()
+                .operation("SELECT")
+                .system("postgresql")
+                .collection("orders")
+                .start()
+                .close();
+
+        assertThat(recording.receivedSpecs()).hasSize(1);
+        SpanSpec spec = recording.receivedSpecs().getFirst();
+        assertThat(spec.category()).isEqualTo(SpanCategory.DATABASE);
+        assertThat(spec.reason()).isEqualTo(SpanSpecReason.PLATFORM_EDGE_CASE);
+        assertThat(spec.name()).isEqualTo("SELECT orders");
+        assertThat(spec.attributes()).containsKey("db.operation.name");
+        assertThat(spec.attributes()).containsKey("db.system.name");
+        assertThat(spec.attributes()).containsKey("db.collection.name");
+    }
+
+    @Test
+    void missingOperation_rejected() {
+        assertThatThrownBy(() ->
+                manual.transport().database()
+                        .system("postgresql")
+                        .collection("orders")
+                        .start())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("operation");
+    }
+
+    @Test
+    void missingSystem_rejected() {
+        assertThatThrownBy(() ->
+                manual.transport().database()
+                        .operation("SELECT")
+                        .collection("orders")
+                        .start())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("system");
+    }
+
+    @Test
+    void missingCollection_rejected() {
+        assertThatThrownBy(() ->
+                manual.transport().database()
+                        .operation("SELECT")
+                        .system("postgresql")
+                        .start())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("collection");
+    }
+
+    @Test
+    void rootTopology_works() {
+        manual.transport().database()
+                .operation("INSERT")
+                .system("postgresql")
+                .collection("orders")
+                .root()
+                .start()
+                .close();
+
+        assertThat(recording.receivedSpecs().getFirst().options().topology())
+                .isEqualTo(space.br1440.platform.tracing.api.span.spec.Topology.ROOT);
+    }
+
+    @Test
+    void childWithLinks_rejected() {
+        SpanLinkContext link = SpanLinkContext.sampled(
+                "0102030405060708090a0b0c0d0e0f10",
+                "0102030405060708");
+        assertThatThrownBy(() ->
+                manual.transport().database()
+                        .operation("SELECT")
+                        .system("postgresql")
+                        .collection("orders")
+                        .child()
+                        .linkedTo(link)
+                        .start())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CHILD");
+    }
+
+    @Test
+    void strictMode_missingPlatformTypeInjectedBySemanticSpecs() {
+        manual.transport().database()
+                .operation("SELECT")
+                .system("postgresql")
+                .collection("orders")
+                .run(() -> {
+                });
+        assertThat(recording.receivedSpecs()).hasSize(1);
+    }
+}

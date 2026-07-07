@@ -1,0 +1,11 @@
+description = 'Платформенный стартер трассировки для Spring WebFlux (Reactive stack). ' +
+        'Подключается сервисами, использующими spring-boot-starter-webflux. Транзитивно подтягивает ' +
+        'autoconfigure-модуль платформы и Spring WebFlux (Netty по умолчанию).'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    api project(':platform-tracing-spring-boot-autoconfigure')
+    api project(':platform-tracing-autoconfigure-webflux')
+    api 'org.springframework.boot:spring-boot-starter-webflux'
+}

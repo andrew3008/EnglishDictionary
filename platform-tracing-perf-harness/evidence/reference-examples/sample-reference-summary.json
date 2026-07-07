@@ -1,0 +1,114 @@
+{
+  "evidenceTier": "REFERENCE",
+  "nonAuthoritative": true,
+  "nonAuthoritativeReasons": [
+    "singleRunOnly",
+    "provisionalBudgetOnly",
+    "missingMetrics"
+  ],
+  "w004Eligible": false,
+  "profileId": "EXAMPLE-NOT-AUTHORITATIVE",
+  "runId": "example-run-id",
+  "gitCommit": "example-not-a-real-commit",
+  "environment": {
+    "clusterAlias": "REPLACE_CLUSTER",
+    "namespace": "REPLACE_NAMESPACE",
+    "nodePool": "REPLACE_NODE_POOL",
+    "k8sNodeProfile": "REPLACE_NODE_PROFILE",
+    "osArch": "linux/amd64",
+    "kernelVersion": "REPLACE_KERNEL",
+    "cgroupVersion": "v2",
+    "appImage": "REPLACE_IMAGE",
+    "appCpuRequest": "500m",
+    "appCpuLimit": "2",
+    "appMemRequest": "512Mi",
+    "appMemLimit": "2Gi",
+    "collectorCpuLimit": "500m",
+    "collectorMemLimit": "512Mi",
+    "collectorImage": "otel/opentelemetry-collector-contrib:REPLACE_VERSION",
+    "collectorVersion": "REPLACE_VERSION",
+    "javaVersion": "21",
+    "springBootVersion": "REPLACE_SPRING_BOOT",
+    "otelAgentVersion": "REPLACE_OTEL_AGENT",
+    "otelExtensionVersion": "REPLACE_EXTENSION",
+    "jfrSettings": "settings=profile,delay=0s,duration=0s,disk=true",
+    "jfrStartMode": "startup"
+  },
+  "scenario": {
+    "scenarioId": "S4",
+    "springProfile": "s4-production",
+    "duration": "10m",
+    "warmupDuration": "2m",
+    "targetRps": 300,
+    "loadModel": "constant-arrival-rate",
+    "endpointPath": "/perf/work",
+    "samplingRatio": 0.1,
+    "validationMode": "lenient",
+    "scrubbingEnabled": true
+  },
+  "metrics": {
+    "load": {
+      "executor": "constant-arrival-rate",
+      "targetRps": 300,
+      "warmupSec": 120,
+      "steadyWindowSec": 600
+    },
+    "latency": {
+      "source": "k6/http_req_duration/constant-arrival-rate",
+      "steadyWindowStart": "REPLACE_ISO8601",
+      "steadyWindowEnd": "REPLACE_ISO8601"
+    },
+    "collector": {
+      "backpressureEvidenceValid": false,
+      "exporterType": "otlphttp/reference_sink (required for authoritative evidence)"
+    }
+  },
+  "artifacts": {
+    "k6Summary": "k6-summary.json",
+    "prometheusSnapshot": "prometheus/steady-window.json",
+    "command": "command.txt",
+    "jfr": {
+      "storageRef": "external://REPLACE_ARTIFACT_STORE/jfr/run.jfr",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "classification": {
+    "w004Candidate": false,
+    "w011Evidence": "none",
+    "w012Evidence": "none"
+  },
+  "budgets": {
+    "cpuOverheadPct": {
+      "threshold": 3.0,
+      "budgetStatus": "provisional"
+    },
+    "rssOverheadPct": {
+      "threshold": 10.0,
+      "budgetStatus": "provisional"
+    },
+    "p99LatencyDeltaPct": {
+      "threshold": 15.0,
+      "budgetStatus": "provisional"
+    },
+    "errorRatePct": {
+      "threshold": 0.1,
+      "budgetStatus": "provisional"
+    }
+  },
+  "reproducibility": {
+    "reproductionRunCount": 1
+  },
+  "caveats": {
+    "missingMetrics": [
+      "all measured values — EXAMPLE ONLY; not real evidence",
+      "achievedRpsAvg",
+      "cpu.per1kRps",
+      "memory.workingSetBytesAvg",
+      "latency.p95Ms",
+      "latency.p99Ms",
+      "gc summary",
+      "collector queue metrics"
+    ],
+    "notForProductionReadinessReason": "Template example; single run with provisional budgets; cannot satisfy W-004"
+  }
+}

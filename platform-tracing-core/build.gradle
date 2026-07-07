@@ -1,0 +1,46 @@
+description = 'Реализация публичного API платформенной трассировки поверх OpenTelemetry API. ' +
+        'Содержит DefaultPlatformTracing (адаптер к OpenTelemetry SDK), NoOp-реализацию для сред без ' +
+        'подключённого Java Agent и ExceptionRecorder для безопасной записи ошибок в span. ' +
+        'ObservationConvention\'ы реализованы на уровне autoconfigure-модуля и не поставляются этим артефактом.'
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    // Публичный API передаётся вверх по транзитивности, поскольку реализация раскрывает его контракты.
+    api project(':platform-tracing-api')
+
+    // OpenTelemetry API: используется для прямой работы со span'ами; SDK подключается через Java Agent в рантайме.
+    api 'io.opentelemetry:opentelemetry-api'
+
+    implementation 'org.slf4j:slf4j-api'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation project(':platform-tracing-test')
+    testImplementation project(':platform-tracing-spring-boot-autoconfigure')
+    testImplementation 'io.micrometer:micrometer-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform {
+        excludeTags 'r01-red'
+    }
+}
+
+tasks.register('knownDefectTest', Test) {
+    description = 'Runs R01 known-defect RED tests (expected to fail until structural fix in Slice 2/6).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'r01-red'
+    }
+    shouldRunAfter test
+}

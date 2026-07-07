@@ -1,0 +1,2 @@
+space.br1440.platform.tracing.autoconfigure.servlet.ServletTracingAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.servlet.WebMvcSuppressMicrometerTracingAutoConfiguration

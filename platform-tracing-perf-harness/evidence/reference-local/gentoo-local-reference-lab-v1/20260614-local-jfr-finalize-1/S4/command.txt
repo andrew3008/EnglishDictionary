@@ -1,0 +1,3 @@
+# PR-9H-E2L-JFR-finalize 20260614-local-jfr-finalize-1 S4
+JFR: durationBound duration=7m filename=/tmp/jfr/local-reference.jfr
+JFR copy: finalized filename only after jfr summary succeeds in pod

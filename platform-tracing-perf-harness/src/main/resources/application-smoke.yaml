@@ -1,0 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: smoke
+
+platform:
+  tracing:
+    validation:
+      enabled: true
+      strict: false

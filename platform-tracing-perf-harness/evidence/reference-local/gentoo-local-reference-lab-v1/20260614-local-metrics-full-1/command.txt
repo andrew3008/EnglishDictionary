@@ -1,0 +1,16 @@
+# PR-9H-E2L-FULL execution log (20260614-local-metrics-full-1)
+# Gentoo: root@192.168.100.70, context=kind-platform-tracing-reference-lab
+
+# Phase 2 — Prometheus (COMPLETED on Gentoo)
+export LAB_KUBECTL=/usr/local/bin/kubectl-v136
+export LAB_KUBECTX=kind-platform-tracing-reference-lab
+export REPO_HARNESS=/tmp/platform-tracing-lab
+bash scripts/local-reference-lab/install-prometheus-kind.sh --execute
+
+# Phase 4–6 — Full metrics run (PARTIAL — resume when SSH restored)
+export LAB_JFR_ENABLED=true LAB_TARGET_RPS=20 LAB_WARMUP=1m LAB_STEADY=3m
+bash /tmp/run-full-local-metrics-gentoo.sh
+
+# Evidence pull (when Gentoo reachable)
+scp -r root@192.168.100.70:/var/tmp/platform-tracing-reference-lab-artifacts/20260614-local-metrics-full-1/ \
+  platform-tracing-perf-harness/evidence/reference-local/gentoo-local-reference-lab-v1/

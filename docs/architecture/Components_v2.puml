@@ -1,0 +1,850 @@
+@startuml platform-tracing-01-module-dependencies
+' =============================================================================
+' spring-boot-platform-tracing — архитектурная документация (PlantUML)
+' Версия артефактов: 0.1.0-SNAPSHOT | Java 21 | Spring Boot 3.5.5 | OTel 1.61.0
+' Модули: api, core, otel-extension, spring-boot-autoconfigure, starter-servlet
+' Назначение: детальный обзор для архитекторов перед рефакторингом
+' =============================================================================
+
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam defaultFontName "Segoe UI"
+skinparam ArrowColor #444444
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #F9A825
+
+title Модульная карта зависимостей\nspace.br1440.platform.tracing (Gradle multi-project)
+
+package "Платформа (внешние BOM)" as ext #ECEFF1 {
+  component [platform-tracing-bom] as bom <<BOM>>
+  component [Spring Boot 3.5.5] as sb
+  component [OpenTelemetry BOM 1.61.0] as otelbom
+  component [OTel Instrumentation BOM 2.27.0] as instbom
+}
+
+package "Приложение сервиса (Servlet)" as app #E8F5E9 {
+  component [spring-boot-starter-platform-tracing-servlet\nplatform-tracing-spring-boot-starter-servlet] as starter <<Starter>>
+  component [spring-boot-starter-web] as web
+}
+
+package "Spring Boot интеграция" as spring #E3F2FD {
+  component [platform-tracing-spring-boot-autoconfigure] as autoconf <<AutoConfig>>
+  component [micrometer-tracing-bridge-otel] as bridge <<optional dev>>
+}
+
+package "Доменная реализация" as domain #FFF3E0 {
+  component [platform-tracing-core] as core <<Library>>
+  component [platform-tracing-api] as api <<Library>>
+}
+
+package "OpenTelemetry Java Agent (bootstrap CL)" as agent #F3E5F5 {
+  component [platform-tracing-otel-extension] as otel_ext <<Agent Extension>>
+  component [OpenTelemetry Java Agent 2.27.x] as javaagent
+}
+
+package "Инфраструктура observability" as infra #FAFAFA {
+  component [OTel Collector] as collector
+  component [Jaeger / OTLP backend] as backend
+  component [spring-boot-starter-platform-logging] as logging <<optional>>
+  component [spring-boot-starter-platform-metrics] as metrics <<optional>>
+}
+
+' --- Gradle api / implementation edges ---
+starter --> autoconf : api
+starter --> web : api
+starter --> bom : BOM import
+
+autoconf --> api : api
+autoconf --> core : api
+autoconf --> sb : implementation\n(autoconfigure, aop, web*)
+autoconf --> otelbom : api\n(opentelemetry-api)
+autoconf --> bom
+
+core --> api : api
+core --> otelbom : api\n(opentelemetry-api)
+core --> bom
+
+api --> bom : api
+api --> jakarta : jakarta.annotation-api
+
+otel_ext --> api : implementation\n(SPI contracts, headers)
+otel_ext --> javaagent : otel.javaagent.extensions\n+ SPI registration
+otel_ext --> bom
+
+javaagent --> collector : OTLP
+collector --> backend
+
+app ..> logging : traceId/spanId ← MDC reader\n(OpenTelemetryAppender writer)
+app ..> bridge : opt-in dev/staging\n(suppress=false, no Agent)
+autoconf ..> bridge : compileOnly\n(Wave 2c — not transitive)
+autoconf ..> metrics : MeteredPlatformTracing\n(@Primary decorator)
+
+note right of starter
+  **Тонкий агрегатор**
+  Содержит только build.gradle:
+  • api → autoconfigure
+  • api → spring-boot-starter-web
+  Нет собственного Java-кода.
+end note
+
+note bottom of otel_ext
+  **Отдельный classloader**
+  Extension живёт в bootstrap/agent CL.
+  Spring-приложение общается через JMX
+  (SamplingControlClient ↔ PlatformTracingControl MBean).
+end note
+
+legend right
+  |= Обозначение |= Смысл |
+  | <<Starter>> | Точка подключения в POM/Gradle сервиса |
+  | <<AutoConfig>> | Spring Boot 3 AutoConfiguration.imports |
+  | <<Agent Extension>> | SPI AutoConfigurationCustomizerProvider |
+  | * compileOnly | Servlet/WebFlux/Actuator — опционально |
+endlegend
+
+@enduml
+
+
+@startuml platform-tracing-02-layered-architecture
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+
+title Слоистая архитектура и границы ответственности
+
+rectangle "L0 — Потребитель" as L0 #E8F5E9 {
+  card "Микросервис\n(Spring MVC + Tomcat)" as svc
+}
+
+rectangle "L1 — Composition Root" as L1 #C8E6C9 {
+  card "starter-servlet" as st
+}
+
+rectangle "L2 — Framework Adapter" as L2 #BBDEFB {
+  together {
+    card "TracingCoreAutoConfiguration" as core_cfg
+    card "ServletTracingAutoConfiguration" as servlet_cfg
+    card "TracingObservationAutoConfiguration" as obs_cfg
+    card "TracingAopAutoConfiguration" as aop_cfg
+    card "TracingMetricsAutoConfiguration" as metrics_cfg
+    card "TracingMdcContextAutoConfiguration" as mdc_cfg
+    card "TracingActuatorAutoConfiguration" as act_cfg
+    card "ServiceNameProviderAutoConfiguration" as svc_cfg
+    card "RequestContextSupplierAutoConfiguration" as ctx_cfg
+    card "TracingRefreshScopeAutoConfiguration" as refresh_cfg
+  }
+}
+
+rectangle "L3 — Application Port" as L3 #FFE0B2 {
+  card "PlatformTracing\n(interface)" as pt
+  card "@Traced / SpanScope\nSpanCategory / SpanResult" as ann
+  card "SPI:\nSpanEnricher\nSensitiveDataRule\nSamplingDecisionContributor" as spi
+  card "TracingRequestContext\nTracingMdcKeys\nPlatformHeaders" as cross
+}
+
+rectangle "L4 — Domain Adapter" as L4 #FFCC80 {
+  card "DefaultPlatformTracing\n→ OpenTelemetry Tracer" as dpt
+  card "NoOpPlatformTracing" as noop
+  card "MeteredPlatformTracing\n(decorator)" as metered
+}
+
+rectangle "L5 — Telemetry SDK / Agent" as L5 #E1BEE7 {
+  card "OpenTelemetry API\n(GlobalOpenTelemetry / bean)" as otapi
+  card "Java Agent + otel-extension\nSampler / SpanProcessors / Resource" as agent
+}
+
+rectangle "L6 — Export Pipeline" as L6 #CFD8DC {
+  card "BatchSpanProcessor\nOTLP Exporter" as bsp
+  card "Collector + tail_sampling" as coll
+}
+
+svc --> st
+st --> L2
+L2 --> pt : inject bean
+L2 --> ann : AOP / Observation conventions
+pt <|.. dpt
+pt <|.. noop
+pt <|.. metered : @Primary\n(if MeterRegistry)
+dpt --> otapi
+agent --> otapi : инициализирует SDK\nдо старта Spring
+agent --> bsp
+bsp --> coll
+
+note as N_boundary
+  **Ключевая граница рефакторинга L3/L4**
+  api — zero Spring, zero OTel SDK (только jakarta.annotation).
+  core — OTel API, без Spring.
+  autoconfigure — единственное место Spring-зависимостей.
+end note
+
+note as N_dup
+  **Дублирование конфигурации (риск)**
+  TracingProperties (Spring) и agent configuration
+  (ExtensionPropertyNames, ExtensionDefaults, PlatformTracingDefaultsProvider)
+  описывают одни доменные понятия (sampling, limits, scrubbing)
+  через разные каналы доставки.
+end note
+
+@enduml
+
+
+@startuml platform-tracing-03-api-module
+skinparam backgroundColor #FEFEFE
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-api — публичный контракт (framework-agnostic)
+
+package "space.br1440.platform.tracing.api" as root #FFF8E1 {
+
+  interface PlatformTracing {
+    +currentTraceId(): Optional<String>
+    +currentSpanId(): Optional<String>
+    +startSpan(name, category): SpanScope
+    +startHttpServer/Client/Db/Rpc/Internal()
+    +recordException(throwable)
+  }
+
+  interface SpanScope <<AutoCloseable>> {
+    +setAttribute(key, value)
+    +addEvent(name)
+    +setResult(SpanResult)
+    +recordException(throwable)
+    +close()
+  }
+
+  enum SpanCategory {
+    HTTP_SERVER
+    HTTP_CLIENT
+    DATABASE
+    RPC
+    INTERNAL
+    PLATFORM
+  }
+
+  enum SpanResult {
+    SUCCESS
+    FAILURE
+  }
+
+  class PlatformAttributes <<utility>> {
+    +PLATFORM_TYPE
+    +PLATFORM_RESULT
+    +PLATFORM_REMOTE_SERVICE
+    +PLATFORM_C_GROUP
+    +HTTP_*, DB_*, RPC_* (semconv aliases)
+  }
+
+  class PlatformHeaders <<utility>> {
+    +X_TRACE_ON
+    +X_QA_TRACE
+    +X_REQUEST_ID
+    +X_TRACE_ID
+  }
+
+  class TracingMdcKeys <<utility>> {
+    +traceId / spanId / traceFlags
+  }
+
+  record TracingRequestContext {
+    correlationId
+    traceId
+    spanId
+  }
+
+  annotation Traced
+  annotation TracedAttribute
+}
+
+package "spi" as spi_pkg #FFECB3 {
+  interface SpanEnricher <<SPI>> {
+    +enrich(SpanScope)
+  }
+  interface SensitiveDataRule <<SPI>> {
+    +name()
+    +priority()
+    +matches(key, value)
+    +mask(key, value)
+  }
+  interface SamplingDecisionContributor <<SPI>> {
+    +priority()
+    +decide(name, attrs): Optional<Decision>
+  }
+}
+
+PlatformTracing ..> SpanScope : creates
+PlatformTracing ..> SpanCategory
+SpanScope ..> SpanResult
+SpanScope ..> PlatformAttributes : writes
+
+note bottom of root
+  **Зависимости Gradle**
+  • api: jakarta.annotation-api
+  • compileOnly: lombok
+  **Намеренно отсутствуют:** Spring, Micrometer, OTel SDK
+end note
+
+note right of spi_pkg
+  **SPI без ServiceLoader в api**
+  Реализации подключаются:
+  • otel-extension: ServiceLoader<SensitiveDataRule>
+  • SamplingDecisionContributor — задекларирован,\n  но в CompositeSampler пока не wired
+  **→ кандидат на рефакторинг SPI-реестра**
+end note
+
+@enduml
+
+
+@startuml platform-tracing-04-core-module
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-core — адаптация PlatformTracing → OpenTelemetry API
+
+class DefaultPlatformTracing {
+  -tracer: Tracer
+  +INSTRUMENTATION_NAME = "space.br1440.platform.tracing"
+  __
+  +DefaultPlatformTracing(OpenTelemetry)
+  +startSpan() → OtelSpanScope
+  +recordException()
+  -toSpanKind(SpanCategory): SpanKind
+}
+
+class "OtelSpanScope\n(private inner)" as OtelSpanScope {
+  -span: Span
+  -scope: Scope
+  +setAttribute / setResult / close()
+}
+
+class NoOpPlatformTracing <<singleton>> {
+  +INSTANCE
+  +startSpan() → NoOpSpanScope
+}
+
+interface PlatformTracing
+interface SpanScope
+
+PlatformTracing <|.. DefaultPlatformTracing
+PlatformTracing <|.. NoOpPlatformTracing
+DefaultPlatformTracing +-- OtelSpanScope
+SpanScope <|.. OtelSpanScope
+
+DefaultPlatformTracing --> "OpenTelemetry\n.getTracer()" : uses
+OtelSpanScope --> "Span.makeCurrent()\nSpan.end()" : context propagation
+
+note top of DefaultPlatformTracing
+  **Поток создания span**
+  1. tracer.spanBuilder(name)
+  2. setSpanKind + platform.type attribute
+  3. startSpan → makeCurrent
+  4. close → scope.close + span.end
+end note
+
+note bottom of NoOpPlatformTracing
+  Активируется TracingCoreAutoConfiguration когда:
+  • нет OpenTelemetry bean
+  • GlobalOpenTelemetry — noop (probe span invalid)
+  Гарантирует безопасную деградацию без agent.
+end note
+
+note as N_obs
+  **ObservationConvention'ы**
+  Намеренно НЕ в core — только в autoconfigure.
+  Core остаётся usable вне Spring (unit tests, CLI).
+end note
+
+@enduml
+
+
+@startuml platform-tracing-05-otel-extension
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-otel-extension — расширение OpenTelemetry Java Agent
+
+package "META-INF/services" as meta #F3E5F5 {
+  file "AutoConfigurationCustomizerProvider" as acp
+  file "ResourceProvider" as rp
+}
+
+package "configuration" as cfg {
+  class PlatformAutoConfigurationCustomizer {
+    +customize(AutoConfigurationCustomizer)
+    -platformDefaults(): Map
+    -buildSampler(): CompositeSampler
+    -registerSpanProcessors(): SdkTracerProviderBuilder
+    -collectScrubbingRules(): List<SensitiveDataRule>
+    -tryRegisterMBean()
+  }
+  class ExtensionPropertyNames <<constants>>
+  class ExtensionDefaults <<constants>>
+  class PlatformTracingDefaultsProvider
+  class AutoConfigurationCustomizerOrdering
+}
+
+package "sampler" as samp {
+  class CompositeSampler {
+    +shouldSample()
+    -- priority --
+    1. X-Trace-On force
+    2. X-QA-Trace force
+    3. url.path drop prefixes
+    4. delegate (MutableRatioSampler)
+  }
+  class MutableRatioSampler
+}
+
+package "processor" as proc {
+  class EnrichingSpanProcessor
+  class ScrubbingSpanProcessor
+  class ValidatingSpanProcessor
+  class SpanWatchdogProcessor
+  class SafeSpanProcessor <<wrapper>>
+}
+
+package "scrubbing.rules" as rules {
+  class BuiltInSensitiveDataRules
+  class EmailRule
+  class JwtRule
+  class PasswordKeyRule
+  class PanRule
+  class PhoneRule
+  class IbanRule / InnRule / SnilsRule
+}
+
+package "resource" as res {
+  class PlatformResourceProvider
+}
+
+package "jmx" as jmx {
+  class PlatformTracingControl
+  interface PlatformTracingControlMBean
+}
+
+acp --> PlatformAutoConfigurationCustomizer
+rp --> PlatformResourceProvider
+
+PlatformAutoConfigurationCustomizer --> CompositeSampler
+PlatformAutoConfigurationCustomizer --> EnrichingSpanProcessor
+PlatformAutoConfigurationCustomizer --> ScrubbingSpanProcessor
+PlatformAutoConfigurationCustomizer --> ValidatingSpanProcessor
+PlatformAutoConfigurationCustomizer --> SpanWatchdogProcessor
+SafeSpanProcessor ..> proc : wraps\n(isolates failures)
+
+ScrubbingSpanProcessor --> SensitiveDataRule
+BuiltInSensitiveDataRules --> rules
+PlatformAutoConfigurationCustomizer ..> "ServiceLoader\n<SensitiveDataRule>" : custom rules
+
+MutableRatioSampler --> PlatformTracingControl : registered via JMX
+PlatformTracingControl ..> PlatformTracingControlMBean
+
+note right of PlatformAutoConfigurationCustomizer
+  **Pipeline SpanProcessor (onEnd)**
+  enriching → scrubbing → validation → watchdog
+  Каждый обёрнут SafeSpanProcessor.
+end note
+
+note bottom of PlatformTracingDefaultsProvider
+  **Два namespace конфигурации**
+  platform.tracing.* — доменные ключи extension
+  otel.bsp.* / otel.span.* — SDK defaults через addPropertiesSupplier
+  Приоритет: OTEL_* env > -D > SPI defaults
+end note
+
+@enduml
+
+
+@startuml platform-tracing-06-autoconfigure
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-spring-boot-autoconfigure — Spring Boot 3 AutoConfiguration
+
+file "META-INF/spring/\nAutoConfiguration.imports" as imports
+
+package "Core & cross-cutting" as core_pkg #E3F2FD {
+  class TracingCoreAutoConfiguration {
+    +platformTracing(): PlatformTracing
+    +platformSamplingControlClient()
+    -isFunctional(OpenTelemetry): boolean
+  }
+  class TracingProperties {
+    prefix = platform.tracing
+    service / sampling / limits
+    queue / scrubbing / exporter
+    response / serviceNames / mdc
+  }
+  class TracingMdcContextAutoConfiguration {
+    @PostConstruct registerContextWrapper()
+  }
+  class TracingRefreshScopeAutoConfiguration
+  class ServiceNameProviderAutoConfiguration
+  class RequestContextSupplierAutoConfiguration
+}
+
+package "Instrumentation adapters" as inst_pkg #BBDEFB {
+  class TracingObservationAutoConfiguration {
+    +PlatformClientRequestObservationConvention
+  }
+  class ServletTracingAutoConfiguration {
+    +TraceResponseHeaderServletFilter
+    +PlatformServerRequestObservationConvention
+  }
+  class ReactiveTracingAutoConfiguration {
+    +TraceResponseHeaderWebFilter
+    +PlatformReactiveServerRequestObservationConvention
+  }
+}
+
+package "Developer experience" as dx_pkg #C5CAE9 {
+  class TracingAopAutoConfiguration {
+    +TracedAspect
+  }
+  class TracingActuatorAutoConfiguration {
+    +TracingHealthIndicator
+    +TracingActuatorEndpoint (/actuator/tracing)
+  }
+  class TracingMetricsAutoConfiguration {
+    @Primary MeteredPlatformTracing
+  }
+}
+
+package "support" as sup {
+  class TracingMdcContextWrapper
+  class TracedAspect
+  class SamplingControlClient
+  class PlatformLocalServiceNameProvider
+  class PlatformRemoteServiceNameProvider
+  class TracingRequestContextSupplier
+}
+
+imports --> TracingCoreAutoConfiguration
+imports --> TracingMetricsAutoConfiguration
+imports --> TracingAopAutoConfiguration
+imports --> TracingObservationAutoConfiguration
+imports --> TracingActuatorAutoConfiguration
+imports --> TracingMdcContextAutoConfiguration
+imports --> RequestContextSupplierAutoConfiguration
+imports --> ServiceNameProviderAutoConfiguration
+imports --> TracingRefreshScopeAutoConfiguration
+imports --> ServletTracingAutoConfiguration
+imports --> ReactiveTracingAutoConfiguration
+
+TracingCoreAutoConfiguration --> TracingProperties
+TracingCoreAutoConfiguration --> DefaultPlatformTracing
+TracingCoreAutoConfiguration --> NoOpPlatformTracing
+TracingMdcContextAutoConfiguration --> TracingMdcContextWrapper : ContextStorage.addWrapper\n(@AutoConfigureBefore Core)
+
+TracingMetricsAutoConfiguration ..> TracingCoreAutoConfiguration : @AutoConfigureBefore\n(AOP, Servlet, Reactive)
+TracingAopAutoConfiguration ..> TracingCoreAutoConfiguration : @AutoConfigureAfter
+ServletTracingAutoConfiguration ..> TracingCoreAutoConfiguration : @AutoConfigureAfter
+
+TracingActuatorAutoConfiguration --> SamplingControlClient : JMX bridge to agent
+
+note as N_cond
+  **Условная активация (@Conditional*)**
+  • platform.tracing.enabled (default true)
+  • @ConditionalOnWebApplication SERVLET | REACTIVE
+  • @ConditionalOnClass Servlet / WebFlux / Aspect / Actuator
+  • @ConditionalOnBean MeterRegistry (metrics decorator)
+  Servlet и Reactive co-exist in one JAR — stack chosen at runtime.
+end note
+
+note as N_cfg_dup
+  **TracingProperties vs agent configuration**
+  Дубли: sampling.ratio, scrubbing, limits, serviceNames.
+  Spring-app читает TracingProperties;
+  Agent-extension читает ConfigProperties (OTEL_ / -D).
+  Синхронизация сейчас — соглашение + Helm, не единый binder.
+end note
+
+@enduml
+
+
+@startuml platform-tracing-07-starter-servlet-assembly
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+skinparam defaultFontName "Segoe UI"
+
+title platform-tracing-spring-boot-starter-servlet — сборка и точка входа
+
+actor "Разработчик сервиса" as dev
+
+rectangle "build.gradle сервиса" as gradle #E8F5E9 {
+  card "implementation\nplatform-tracing-spring-boot-starter-servlet" as dep
+}
+
+rectangle "Transitive classpath" as cp #FFFDE7 {
+  component [autoconfigure] as ac
+  component [core] as c
+  component [api] as a
+  component [spring-boot-starter-web] as web
+  component [spring-boot-autoconfigure] as sba
+  component [micrometer-observation] as obs
+  component [opentelemetry-api] as otapi
+  component [micrometer-tracing-bridge-otel] as bridge_opt <<optional dev>>
+}
+
+rectangle "Runtime beans (Servlet stack)" as runtime #E3F2FD {
+  component "PlatformTracing\n(@Primary MeteredPlatformTracing?)" as bean_pt
+  component "TraceResponseHeaderServletFilter" as filt
+  component "PlatformServerRequestObservationConvention" as srv_obs
+  component "PlatformClientRequestObservationConvention" as cli_obs
+  component "TracedAspect (@Traced)" as aspect
+  component "TracingRequestContextSupplier" as rcs
+}
+
+rectangle "Micrometer Observation stack" as obs_stack #F3E5F5 {
+  component "Spring MVC HTTP server obs" as mvc
+  component "RestTemplate / RestClient obs" as client
+}
+
+dev --> dep
+dep --> cp
+
+ac --> bean_pt
+ac --> filt
+ac --> srv_obs
+ac --> cli_obs
+ac --> aspect
+ac --> rcs
+
+web --> mvc
+srv_obs --> mvc : customizes\nserver request spans
+cli_obs --> client : enriches\nclient spans
+
+filt --> bean_pt : X-Request-Id header
+
+note bottom of cp
+  starter-servlet **не содержит Java-исходников**.
+  **Wave 2c:** bridge-otel **не** в transitive classpath.
+  Dev/staging SDK-only — явный opt-in (docs/MIGRATION.md).
+  Production MDC — OpenTelemetryAppender + Agent (G2-MDC-e2e).
+end note
+
+@enduml
+
+
+@startuml platform-tracing-08-runtime-sequence
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+skinparam defaultFontName "Segoe UI"
+
+title Runtime: HTTP-запрос в Servlet-приложении с Java Agent
+
+actor Client
+participant "TraceResponseHeader\nServletFilter" as Filter
+participant "Spring MVC\n+ Micrometer Obs" as MVC
+participant "PlatformServerRequest\nObservationConvention" as Conv
+participant "PlatformTracing\n(bean)" as PT
+participant "DefaultPlatformTracing" as DPT
+participant "OpenTelemetry\n(GlobalOpenTelemetry)" as OT
+participant "Java Agent\n+ otel-extension" as Agent
+participant "OTLP Exporter" as Export
+database "Collector / Jaeger" as Backend
+
+== JVM startup ==
+Agent -> OT : SDK init (bootstrap CL)
+Agent -> Agent : CompositeSampler\nSpanProcessor pipeline\nPlatformResourceProvider
+note over Agent
+  TracingMdcContextAutoConfiguration регистрирует
+  TracingMdcContextWrapper в ContextStorage
+  (до первого span, @AutoConfigureBefore Core)
+end note
+
+== Spring context ==
+MVC -> Conv : onObservation start/end
+Conv -> OT : platform.* attributes on span
+
+== Incoming HTTP request ==
+Client -> Filter : GET /api/...\n(traceparent?)
+Filter -> PT : currentTraceId()
+PT -> DPT : delegate
+DPT -> OT : Span.current()
+Filter --> Client : response + X-Request-Id
+
+MVC -> OT : auto-instrumented SERVER span
+Conv -> OT : enrich semconv + platform attrs
+
+== Business code (@Traced) ==
+MVC -> PT : startInternal("OrderService.create")
+PT -> DPT : tracer.spanBuilder
+DPT -> OT : makeCurrent / end
+
+== Error path ==
+MVC -> PT : recordException(e)
+PT -> OT : span.recordException + platform.result=failure
+
+== Export (async BSP) ==
+OT -> Agent : onEnd processors\n(enrich/scrub/validate/watchdog)
+Agent -> Export : batch spans
+Export -> Backend : OTLP
+
+== Dynamic sampling (ops) ==
+note over Agent
+  Actuator POST /actuator/tracing
+  → SamplingControlClient (JMX)
+  → PlatformTracingControl.setSamplingRatio
+  → MutableRatioSampler (без restart JVM)
+end note
+
+@enduml
+
+
+@startuml platform-tracing-09-config-dual-channel
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+
+title Конфигурация: dual-channel mapping (Spring ↔ Agent)
+
+map "TracingProperties\n(Spring @ConfigurationProperties)" as spring_cfg {
+  platform.tracing.enabled => enabled
+  platform.tracing.service.* => service.name/version/env
+  platform.tracing.sampling.ratio => ratio
+  platform.tracing.sampling.force-record-header => X-Trace-On
+  platform.tracing.sampling.qa-header => X-QA-Trace
+  platform.tracing.limits.* => span limits (logical)
+  platform.tracing.queue.* => BSP tuning (logical)
+  platform.tracing.scrubbing.* => scrubbing rules
+  platform.tracing.response.* => response headers
+  platform.tracing.service-names.* => remote service enrichment
+  platform.tracing.mdc.context-wrapper-enabled => MDC sync
+}
+
+map "Agent configuration\n(ExtensionPropertyNames, PlatformTracingDefaultsProvider)" as agent_cfg {
+  platform.tracing.sampling.ratio => SAMPLING_RATIO
+  platform.tracing.sampling.force-record-header => SAMPLING_FORCE_RECORD_HEADER
+  platform.tracing.sampling.drop-paths => SAMPLING_DROP_PATHS
+  platform.tracing.enriching.* => EnrichingSpanProcessor
+  platform.tracing.scrubbing.* => ScrubbingSpanProcessor
+  platform.tracing.validation.enabled => ValidatingSpanProcessor
+  platform.tracing.watchdog.* => SpanWatchdogProcessor
+  otel.bsp.* => SDK queue/batch (addPropertiesSupplier)
+  otel.span.*.limit => SDK span limits
+}
+
+map "Operational delivery" as delivery {
+  application.yml / Spring Cloud Config => spring_cfg
+  OTEL_* env / -D / Helm values => agent_cfg
+  JMX => runtime ratio override
+}
+
+spring_cfg ..> agent_cfg : **semantic parity,\nnot automatic sync**
+
+note as N_risk
+  **Architectural debt**
+  Изменение defaults в TracingProperties не меняет
+  agent configuration / PlatformTracingDefaultsProvider / otel defaults автоматически.
+  Рефакторинг: единый ConfigModel + два Adapter'а
+  (SpringBinder, OtelConfigPropertiesBinder).
+end note
+
+@enduml
+
+
+@startuml platform-tracing-10-refactoring-hotspots
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+
+title Карта точек рефакторинга для архитекторов
+
+together {
+  rectangle "R1 — Configuration unification" as R1 #FFCDD2 {
+    card "TracingProperties\n↔ agent configuration\n↔ otel.* defaults"
+    card "Риск рассинхронизации\nпри изменении defaults"
+    card "**Proposal:** shared config module\nor codegen from single YAML schema"
+  }
+
+  rectangle "R2 — SPI completeness" as R2 #F8BBD0 {
+    card "SamplingDecisionContributor\n declared in api,\n not used in CompositeSampler"
+    card "SpanEnricher — no wired\n ServiceLoader in extension"
+    card "**Proposal:** unified ExtensionRegistry\nwith ordered contributors"
+  }
+
+  rectangle "R3 — Module boundaries" as R3 #E1BEE7 {
+    card "autoconfigure knows\nServlet + Reactive + Actuator\n(compileOnly proliferation)"
+    card "**Proposal:** split autoconfigure\n→ core-autoconfigure\n  servlet-autoconfigure\n  reactive-autoconfigure"
+  }
+
+  rectangle "R4 — PlatformTracing layering" as R4 #C5CAE9 {
+    card "MeteredPlatformTracing\n@Primary decorator in Spring"
+    card "Core stays pure OTel"
+    card "**Proposal:** move metrics decorator\nto optional metrics-autoconfigure\n(or Micrometer Observation only)"
+  }
+
+  rectangle "R5 — Starter granularity" as R5 #B2DFDB {
+    card "starter-servlet = 2 lines Gradle"
+    card "Reactive starter mirrors servlet"
+    card "**Proposal:** single starter + profile\nor BOM-only consumption pattern"
+  }
+
+  rectangle "R6 — Agent ↔ App bridge" as R6 #DCEDC8 {
+    card "JMX-only coupling\n(SamplingControlClient)"
+    card "Fragile in multi-classloader\nand native-image scenarios"
+    card "**Proposal:** OTel SDK autoconfigure\nwithout agent OR\nfile-based config watcher"
+  }
+
+  rectangle "R7 — Observation vs manual API" as R7 #FFF9C4 {
+    card "Dual entry: Micrometer Observation\n+ PlatformTracing.startSpan()"
+    card "Risk of overlapping spans\nif misused"
+    card "**Proposal:** document single primary path;\nconsider deprecating manual API\nfor HTTP boundaries"
+  }
+
+  rectangle "R8 — Error-handling integration" as R8 #FFE0B2 {
+    card "TracingRequestContext\n(record in api)"
+    card "TracingRequestContextSupplier\n(autoconfigure)"
+    card "Loose coupling to web-error-model"
+    card "**Proposal:** formal module\nplatform-tracing-errorhandling-bridge"
+  }
+}
+
+note bottom
+  **Приоритет рефакторинга (рекомендация)**
+  1. R1 Configuration unification — highest ops impact
+  2. R3 Split autoconfigure — maintainability
+  3. R2 SPI wiring — extensibility contract
+  4. R6 Agent bridge — cloud-native readiness
+  5. R5 Starter simplification — DX
+end note
+
+@enduml
+
+
+@startuml platform-tracing-11-mdc-writer-reader-split
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam sequenceMessageAlign center
+
+title Wave 2 — MDC writer / reader split (production path)
+
+participant "OTel Java Agent" as Agent
+participant "Span.current()" as Span
+participant "OpenTelemetryAppender\n(logback overlay)" as Appender
+participant "SLF4J MDC" as MDC
+participant "platform-logging\n%maskedMDC / LogstashEncoder" as Logging
+database "ELK" as ELK
+
+note over Agent, Logging
+  **Production:** suppress-micrometer-tracing=true
+  bridge-otel **не** пишет MDC (NOOP observations)
+  otel.instrumentation.logback-mdc.enabled=false
+end note
+
+Agent -> Span : active span on HTTP thread
+Span -> Appender : read trace context
+Appender -> MDC : put traceId, spanId, traceFlags\n(camelCase keys)
+Logging -> MDC : read + mask sensitive fields
+Logging -> ELK : structured log line
+
+note right of Logging
+  Cross-repo contract (no Gradle dep):
+  TracingMdcKeys (tracing)
+  TracingMdcLogKeys (logging)
+end note
+
+@enduml

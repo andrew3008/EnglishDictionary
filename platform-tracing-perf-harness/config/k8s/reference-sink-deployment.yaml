@@ -1,0 +1,38 @@
+# REFERENCE tier — controlled-rate OTLP sink for backpressure characterization.
+# Not a production service. Accepts spans and applies a configurable rate limit.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-harness-reference-sink
+  namespace: REPLACE_NAMESPACE
+  labels:
+    app: perf-harness-reference-sink
+    platform-tracing.io/tier: reference-perf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perf-harness-reference-sink
+  template:
+    metadata:
+      labels:
+        app: perf-harness-reference-sink
+        platform-tracing.io/tier: reference-perf
+    spec:
+      containers:
+        - name: reference-sink
+          # TODO PR-9H-E2: replace with lab-approved throttled OTLP sink image
+          image: REPLACE_REFERENCE_SINK_IMAGE
+          ports:
+            - containerPort: 4318
+              name: otlp-http
+          env:
+            - name: SINK_MAX_SPANS_PER_SEC
+              value: "REPLACE_SINK_MAX_SPANS_PER_SEC"
+          resources:
+            requests:
+              cpu: "REPLACE_SINK_CPU_REQUEST"
+              memory: "REPLACE_SINK_MEM_REQUEST"
+            limits:
+              cpu: "REPLACE_SINK_CPU_LIMIT"
+              memory: "REPLACE_SINK_MEM_LIMIT"

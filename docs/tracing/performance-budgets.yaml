@@ -1,0 +1,198 @@
+# Performance budgets — версионируемый policy-файл (Фаза 17).
+#
+# Контракт: docs/decisions/ADR-performance-model.md (Решение 6).
+# Валидируется JVM-тестом PerformanceBudgetsContractTest (platform-tracing-bench/src/test):
+#   - обязательные поля budgets[]/waivers[];
+#   - status только PASS|WAIVER|PENDING;
+#   - у каждого WAIVER-бюджета есть запись в waivers[] с непросроченным expires;
+#   - requirement ссылается на REQ-* из requirements-traceability.md.
+#
+# Governance: изменение бюджета = PR с ревью владельца; waiver обязан иметь expires
+# и approvedBy; release-гейт фейлится при PENDING hard-гейтах и просроченных waivers.
+
+version: 1
+
+referenceLab:
+  hostId: gentoo-192-168-100-70
+  cpuNoiseMaxPct: 1.0        # порог Δ(M0,M0); выше — лаборатория непригодна для 3%-SLA
+  warmupMin: 2
+  steadyStateMin: 10
+  runsPerConfig: 3            # медиана; при CV(M0) > 5% увеличить до 5
+  hardwareFingerprint:
+    cpuModel: "Gentoo lab (docker info)"
+    cpuCores: 8
+    ramGB: 32
+    osKernel: "6.12.31-gentoo"
+    officialRateRps: 300        # 500 rps давал OOM k6/SUT на 8c/32GB; зафиксировано в session 2026-06-10_official
+
+budgets:
+  # --- Release hard gates -----------------------------------------------------
+  - id: m5-cpu
+    requirement: REQ-PERF-CPU-001
+    scenario: M5
+    metric: process_cpu_delta_pct_per_core
+    budget: 3.0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: m5-rss
+    requirement: REQ-PERF-MEM-001
+    scenario: M5
+    metric: rss_delta_pct
+    budget: 10.0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: degraded-p99
+    requirement: REQ-DEGRADED-001
+    scenario: M6/M8a/M8b/M8c
+    metric: http_p99_delta_ms_vs_m0
+    budget: 50.0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: degraded-no-oom
+    requirement: REQ-DEGRADED-001
+    scenario: M6/M8a/M8b/M8c
+    metric: oom_or_nonzero_exit
+    budget: 0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: queue-bounded
+    requirement: REQ-QUEUE-001
+    scenario: queue-saturation
+    metric: queue_size_exceeds_capacity
+    budget: 0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: soak-rss-slope
+    requirement: REQ-PERF-MEM-001
+    scenario: M9
+    metric: rss_slope_mb_per_min
+    budget: 1.0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: dynconf-no-stall
+    requirement: REQ-DYNCONF-001
+    scenario: M10
+    metric: p99_spike_during_reload_ms
+    budget: 50.0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: app-thread-no-export-wait
+    requirement: REQ-EXPORT-ASYNC-001
+    scenario: M6/M8a
+    metric: jfr_threadpark_app_threads_on_exporter_path
+    budget: 0
+    tier: hard
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  # --- Component warning gates (JMH, jmhCompareBaseline) ----------------------
+  - id: jmh-latency-regression
+    requirement: REQ-TIMEOUT-001
+    scenario: jmh-suite
+    metric: avgt_regression_pct_vs_baseline
+    budget: 25.0              # FAIL-порог; WARN = 10.0 (см. jmhCompareBaseline)
+    tier: warning
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: jmh-alloc-regression
+    requirement: REQ-TIMEOUT-001
+    scenario: jmh-suite
+    metric: gc_alloc_rate_norm_regression_pct_vs_baseline
+    budget: 15.0              # FAIL-порог; WARN = 5.0 (alloc детерминированнее latency)
+    tier: warning
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: jmh-validation-latency-regression
+    requirement: REQ-TIMEOUT-001
+    scenario: jmh-validation-suite
+    metric: avgt_regression_pct_vs_baseline
+    budget: 25.0              # FAIL; WARN = 10.0 — ValidatingSpanProcessorBenchmark hard-gate methods
+    tier: warning
+    owner: platform-tracing
+    status: PENDING
+    evidence: docs/perf-evidence/PR-9H-validation-jmh.md
+
+  - id: jmh-validation-alloc-regression
+    requirement: REQ-TIMEOUT-001
+    scenario: jmh-validation-suite
+    metric: gc_alloc_rate_norm_regression_pct_vs_baseline
+    budget: 15.0              # FAIL; WARN = 5.0
+    tier: warning
+    owner: platform-tracing
+    status: PENDING
+    evidence: docs/perf-evidence/PR-9H-validation-jmh.md
+
+  # --- Mandatory evidence (без гейта) -----------------------------------------
+  - id: m5w-worst-case
+    requirement: REQ-PERF-CPU-001
+    scenario: M5w
+    metric: process_cpu_delta_pct_per_core
+    budget: null              # бюджет worst case — решение board (открытый вопрос 4)
+    tier: evidence
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: s1-startup
+    requirement: REQ-STARTUP-001
+    scenario: S1
+    metric: premain_plus_time_to_first_200_ms
+    budget: null              # фиксируется после первого замера
+    tier: evidence
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: m12-postgres
+    requirement: REQ-DB-001
+    scenario: M12
+    metric: process_cpu_delta_pct_per_core
+    budget: null
+    tier: evidence
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+  - id: m13-kafka
+    requirement: REQ-KAFKA-001
+    scenario: M13
+    metric: process_cpu_delta_pct_per_core
+    budget: null
+    tier: evidence
+    owner: platform-tracing
+    status: PENDING
+    evidence: null
+
+waivers: []
+# Пример записи (обязательные поля проверяет contract-тест):
+#  - budgetId: m5w-worst-case
+#    reason: "ratio=1.0 — диагностический worst case, не штатный SLA-режим"
+#    expires: 2026-09-01
+#    approvedBy: board
+#    evidence: docs/decisions/ADR-performance-model.md

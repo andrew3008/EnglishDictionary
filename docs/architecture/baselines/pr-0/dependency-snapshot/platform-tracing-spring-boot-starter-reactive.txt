@@ -1,0 +1,15 @@
+Module: platform-tracing-spring-boot-starter-reactive
+Generated: Fri Jun 12 16:08:13 MSK 2026
+
+--- compileClasspath (first-level) ---
+  org.springframework.boot:spring-boot-starter-webflux:3.5.5
+  space.br1440.platform.tracing:platform-tracing-autoconfigure-webflux:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-bom:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-spring-boot-autoconfigure:0.1.0-SNAPSHOT
+
+--- runtimeClasspath (first-level) ---
+  org.springframework.boot:spring-boot-starter-webflux:3.5.5
+  space.br1440.platform.tracing:platform-tracing-autoconfigure-webflux:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-bom:0.1.0-SNAPSHOT
+  space.br1440.platform.tracing:platform-tracing-spring-boot-autoconfigure:0.1.0-SNAPSHOT
+

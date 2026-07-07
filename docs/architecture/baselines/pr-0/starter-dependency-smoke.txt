@@ -1,0 +1,12 @@
+PR-0 starter dependency smoke — PASSED
+Date: Fri Jul 03 09:00:15 MSK 2026
+Git: unknown
+
+Expectations verified:
+- platform-tracing-spring-boot-starter-servlet → autoconfigure + webmvc (not webflux, not otel-extension)
+- platform-tracing-spring-boot-starter-reactive → autoconfigure + webflux (not webmvc, not otel-extension)
+- platform-tracing-otel-extension not on application classpath via either starter
+
+Consumer rule (documented, not enforced here):
+- Application teams: BOM + exactly one starter
+- Do not depend directly on core / otel-extension / autoconfigure modules

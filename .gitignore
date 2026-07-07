@@ -1,0 +1,53 @@
+# Gradle
+.gradle/
+build/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+bin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Локальные секреты
+*.local.properties
+.env
+.env.*
+
+# REFERENCE evidence — raw dumps never committed (PR-9H-E2)
+platform-tracing-perf-harness/evidence/reference/**/*.jfr
+platform-tracing-perf-harness/evidence/reference/**/*.hprof
+platform-tracing-perf-harness/evidence/reference/**/*.heapdump
+platform-tracing-perf-harness/evidence/reference/**/*.dump
+platform-tracing-perf-harness/evidence/reference/**/*prometheus-raw*
+platform-tracing-perf-harness/evidence/reference/**/*k6-raw*
+platform-tracing-perf-harness/evidence/reference/**/*.tar
+platform-tracing-perf-harness/evidence/reference/**/*.tar.gz
+platform-tracing-perf-harness/evidence/reference/**/*.zip
+
+# LOCAL reference lab — raw dumps never committed (PR-9H-E2L)
+platform-tracing-perf-harness/evidence/reference-local/**/*.jfr
+platform-tracing-perf-harness/evidence/reference-local/**/*.hprof
+platform-tracing-perf-harness/evidence/reference-local/**/*.heapdump
+platform-tracing-perf-harness/evidence/reference-local/**/*.dump
+platform-tracing-perf-harness/evidence/reference-local/**/*prometheus-raw*
+platform-tracing-perf-harness/evidence/reference-local/**/*k6-raw*
+platform-tracing-perf-harness/evidence/reference-local/**/*.tar
+platform-tracing-perf-harness/evidence/reference-local/**/*.tar.gz
+platform-tracing-perf-harness/evidence/reference-local/**/*.zip

@@ -1,0 +1,19 @@
+# REFERENCE tier — k6 scenario scripts ConfigMap (template).
+# Do NOT apply this stub directly — script body is injected at generation time.
+#
+# Generate apply-ready manifest:
+#   ./gradlew :platform-tracing-perf-harness:prepareK6ReferenceConfigMap
+# Output:
+#   build/k8s/k6-scenarios-configmap.yaml
+#
+# Substitute REPLACE_NAMESPACE before kubectl apply.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: perf-harness-k6-scenarios
+  namespace: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+data:
+  reference-steady.js: |
+    # PLACEHOLDER — run prepareK6ReferenceConfigMap to generate build/k8s/k6-scenarios-configmap.yaml

@@ -1,0 +1,16 @@
+# Optional — requires Prometheus Operator. Substitute REPLACE_NAMESPACE.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: perf-harness-app
+  namespace: REPLACE_NAMESPACE
+  labels:
+    platform-tracing.io/tier: reference-perf
+spec:
+  selector:
+    matchLabels:
+      app: perf-harness-app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s

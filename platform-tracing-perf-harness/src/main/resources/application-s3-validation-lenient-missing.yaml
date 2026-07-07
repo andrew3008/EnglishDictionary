@@ -1,0 +1,11 @@
+spring:
+  config:
+    activate:
+      on-profile: s3-validation-lenient-missing
+
+platform:
+  tracing:
+    enabled: true
+    validation:
+      enabled: true
+      strict: false

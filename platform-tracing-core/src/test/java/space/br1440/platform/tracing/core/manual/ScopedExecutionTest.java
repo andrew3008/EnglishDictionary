@@ -1,0 +1,180 @@
+package space.br1440.platform.tracing.core.manual;
+
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
+
+import java.util.Arrays;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * Slice 4 hard gate: scoped terminal methods and exactly-once exception recording.
+ */
+class ScopedExecutionTest {
+
+    private InMemorySpanExporter exporter;
+    private SdkTracerProvider tracerProvider;
+    private DefaultPlatformTracing tracing;
+    private RecordingTracingImplementation recording;
+
+    @BeforeEach
+    void setUp() {
+        exporter = InMemorySpanExporter.create();
+        tracerProvider = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build();
+        tracing = new DefaultPlatformTracing(
+                OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
+        recording = new RecordingTracingImplementation();
+    }
+
+    @AfterEach
+    void tearDown() {
+        tracerProvider.shutdown();
+    }
+
+    @Test
+    void run_closesSpanOnSuccess() {
+        tracing.manual().operation("success").run(() -> {
+        });
+        assertThat(exporter.getFinishedSpanItems()).hasSize(1);
+        assertThat(exporter.getFinishedSpanItems().getFirst().getName()).isEqualTo("success");
+    }
+
+    @Test
+    void run_recordsExceptionExactlyOnceAndRethrows() {
+        IllegalStateException error = new IllegalStateException("boom");
+        assertThatThrownBy(() ->
+                tracing.manual().operation("failed").run(() -> {
+                    throw error;
+                }))
+                .isSameAs(error);
+
+        SpanData span = exporter.getFinishedSpanItems().getFirst();
+        assertThat(span.getEvents()).hasSize(1);
+        assertThat(span.getEvents().getFirst().getName()).isEqualTo("exception");
+    }
+
+    @Test
+    void call_returnsValueAndClosesSpan() {
+        String value = tracing.manual().operation("call-op").call(() -> "ok");
+        assertThat(value).isEqualTo("ok");
+        assertThat(exporter.getFinishedSpanItems()).hasSize(1);
+    }
+
+    @Test
+    void call_recordsRuntimeExceptionExactlyOnceAndRethrows() {
+        RuntimeException error = new RuntimeException("call-fail");
+        assertThatThrownBy(() ->
+                tracing.manual().operation("call-fail").call(() -> {
+                    throw error;
+                }))
+                .isSameAs(error);
+
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(1);
+    }
+
+    @Test
+    void callChecked_propagatesCheckedExceptionAndRecordsExactlyOnce() throws Exception {
+        Exception error = new Exception("checked");
+        assertThatThrownBy(() ->
+                tracing.manual().operation("checked").callChecked(() -> {
+                    throw error;
+                }))
+                .isSameAs(error);
+
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(1);
+    }
+
+    @Test
+    void explicitRecordException_isAllowed() {
+        IllegalArgumentException error = new IllegalArgumentException("explicit");
+        try (SpanHandle handle = tracing.manual().operation("explicit").start()) {
+            handle.recordException(error);
+        }
+
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(1);
+    }
+
+    @Test
+    void duplicateSameThrowable_notDoubleRecorded() {
+        IllegalStateException error = new IllegalStateException("dup");
+        try (SpanHandle handle = tracing.manual().operation("dup").start()) {
+            handle.recordException(error);
+            handle.recordException(error);
+        }
+
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(1);
+    }
+
+    @Test
+    void scopedPath_duplicateSameThrowable_notDoubleRecorded() {
+        IllegalStateException error = new IllegalStateException("scoped-dup");
+        SpanHandle[] holder = new SpanHandle[1];
+        assertThatThrownBy(() ->
+                ScopedExecution.run(() -> {
+                    SpanHandle handle = tracing.manual().operation("scoped-dup").start();
+                    holder[0] = handle;
+                    return handle;
+                }, () -> {
+                    holder[0].recordException(error);
+                    throw error;
+                }))
+                .isSameAs(error);
+
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(1);
+    }
+
+    @Test
+    void twoDifferentThrowables_bothRecorded() {
+        RuntimeException first = new RuntimeException("first");
+        IllegalStateException second = new IllegalStateException("second");
+        try (SpanHandle handle = tracing.manual().operation("two-errors").start()) {
+            handle.recordException(first);
+            handle.recordException(second);
+        }
+
+        assertThat(exporter.getFinishedSpanItems().getFirst().getEvents()).hasSize(2);
+    }
+
+    @Test
+    void nestedSpans_closeInLifoOrder() {
+        tracing.manual().operation("outer").run(() ->
+                tracing.manual().operation("inner").run(() -> {
+                }));
+
+        List<SpanData> spans = exporter.getFinishedSpanItems();
+        assertThat(spans).hasSize(2);
+        assertThat(spans.get(0).getName()).isEqualTo("inner");
+        assertThat(spans.get(1).getName()).isEqualTo("outer");
+    }
+
+    @Test
+    void terminalMethods_routeThroughTracingImplementation() {
+        DefaultPlatformTracing recordingTracing = new DefaultPlatformTracing(recording);
+        recordingTracing.manual().operation("routed").run(() -> {
+        });
+        assertThat(recording.receivedSpecs()).hasSize(1);
+        assertThat(recording.receivedSpecs().getFirst().name()).isEqualTo("routed");
+    }
+
+    @Test
+    void platformTracing_hasNoPublicExecuteMethod() {
+        assertThat(Arrays.stream(PlatformTracing.class.getMethods())
+                .map(java.lang.reflect.Method::getName)
+                .noneMatch("execute"::equals))
+                .isTrue();
+    }
+}

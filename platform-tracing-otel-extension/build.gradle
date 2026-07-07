@@ -1,0 +1,150 @@
+description = 'Расширение для OpenTelemetry Java Agent. ' +
+        'Поставляется как отдельный JAR и подключается флагом otel.javaagent.extensions. ' +
+        'Содержит: composite-Sampler с поддержкой X-Trace-On / X-QA-Trace и mutable head-ratio, ' +
+        'SpanProcessor (enriching, scrubbing, validating, watchdog 30s/60s), ' +
+        'ResourceProvider платформенных атрибутов, JMX-мост для оперативного управления ' +
+        'sampling-ratio из application classloader\'а.'
+
+// Стандартный jar — для Maven/Nexus и unit-тестов SDK.
+// agentExtensionJar — self-contained артефакт для otel.javaagent.extensions (api + slf4j-api внутри):
+// у Agent изолированный classloader на один URL, внешние JAR из каталога не подмешиваются.
+
+dependencies {
+    api platform(project(':platform-tracing-bom'))
+
+    // Контракты публичного API стартера используются в обогатителях и SPI расширения.
+    implementation project(':platform-tracing-api')
+
+    // Pure Java sampling policy (PR-6B): CompositeSampler delegates to core engine.
+    implementation project(':platform-tracing-core')
+
+    // SDK Auto-configuration SPI: контракт точки входа для Java Agent'а.
+    compileOnly 'io.opentelemetry:opentelemetry-sdk'
+    compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    // Полный autoconfigure: ResourceConfiguration.createEnvironmentResource (per-key omit / валидация
+    // resource-идентичности, Фаза 9). В Agent mode предоставляется агентом в рантайме — отсюда compileOnly.
+    compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+
+    // API расширения Java Agent'а: предоставляется агентом в рантайме.
+    compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
+
+    implementation 'org.slf4j:slf4j-api'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform(project(':platform-tracing-bom'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    // Полный autoconfigure (содержит AutoConfiguredOpenTelemetrySdk) — используется только SPI-spike'ом
+    // BspReplacementSpikeTest для воспроизведения реального порядка вызова customizer'ов и
+    // фактического типа SpanProcessor, который SDK создаёт под exporter'ом.
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    // B3 propagator для spike otel.propagators=tracecontext,baggage,b3 (PR-2a).
+    testImplementation 'io.opentelemetry:opentelemetry-extension-trace-propagators'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-logging'
+    // OTLP exporter: используется в spike для запроса именно BatchSpanProcessor (logging триггерит
+    // SimpleSpanProcessor). Сетевые вызовы не выполняются — endpoint указывает на 127.0.0.1:1.
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+
+    // JUnit-расширения, harness'ы и архитектурные правила для тестов SDK-компонентов
+    // (Sampler, SpanProcessor). См. platform-tracing-test/docs/testing.md.
+    testImplementation project(':platform-tracing-test')
+
+    testCompileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
+    testAnnotationProcessor 'com.google.auto.service:auto-service:1.1.1'
+
+    // Версия junit-platform-launcher выравнивается с junit-jupiter-api, чтобы исключить конфликт
+    // OutputDirectoryProvider при запуске тестов через Gradle Test Worker.
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Binding for ThreadLocal MDC tests and log-capture tests (e.g. PR-9J startup strict WARN).
+    testImplementation 'ch.qos.logback:logback-classic'
+}
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': 'platform-tracing-otel-extension',
+                'Implementation-Version': project.version,
+                'OpenTelemetry-Extension': 'true'
+        )
+    }
+}
+
+tasks.register('agentExtensionJar', Jar) {
+    archiveClassifier.set('agent')
+    dependsOn classes, project(':platform-tracing-api').tasks.named('jar'), project(':platform-tracing-core').tasks.named('jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from sourceSets.main.output
+    from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
+    from { zipTree(project(':platform-tracing-core').jar.archiveFile) }
+    from { zipTree(configurations.runtimeClasspath.find { it.name.startsWith('slf4j-api') }) }
+    manifest {
+        attributes(
+                'Implementation-Title': 'platform-tracing-otel-extension',
+                'Implementation-Version': project.version,
+                'OpenTelemetry-Extension': 'true'
+        )
+    }
+}
+
+tasks.register('verifyAgentJarContents') {
+    dependsOn agentExtensionJar
+    doLast {
+        def entries = new java.util.jar.JarFile(
+                agentExtensionJar.archiveFile.get().asFile
+        ).entries().toList()*.name
+        assert entries.any { it == 'org/slf4j/LoggerFactory.class' }  // slf4j-api embedded
+        assert entries.any { it.contains('space/br1440/platform/tracing/api/') }  // platform-tracing-api classes
+        assert entries.any { it.contains('space/br1440/platform/tracing/core/sampling/') }  // core sampling policy
+    }
+}
+
+// Фаза 15: гарантирует, что все 4 SPI реально упакованы в self-contained agentExtensionJar и
+// видны ServiceLoader'у Агента — и файл META-INF/services, и сам класс-реализация.
+tasks.register('verifyExtensionSpiRegistration') {
+    dependsOn agentExtensionJar
+    doLast {
+        def jar = new java.util.jar.JarFile(agentExtensionJar.archiveFile.get().asFile)
+        try {
+            // SPI-интерфейс → ожидаемая реализация платформы.
+            def expected = [
+                    'io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider'
+                            : 'space.br1440.platform.tracing.otel.extension.PlatformAutoConfigurationCustomizer',
+                    'io.opentelemetry.sdk.autoconfigure.spi.ResourceProvider'
+                            : 'space.br1440.platform.tracing.otel.extension.resource.SafeResourceProvider',
+                    'io.opentelemetry.sdk.autoconfigure.spi.traces.ConfigurableSamplerProvider'
+                            : 'space.br1440.platform.tracing.otel.extension.sampler.PlatformSamplerProvider',
+                    'io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider'
+                            : 'space.br1440.platform.tracing.otel.extension.propagation.PlatformTraceControlPropagatorProvider',
+            ]
+            expected.each { spi, impl ->
+                def serviceEntry = jar.getJarEntry("META-INF/services/${spi}")
+                assert serviceEntry != null : "Отсутствует META-INF/services/${spi} в agentExtensionJar"
+                def declared = jar.getInputStream(serviceEntry).text
+                assert declared.contains(impl) : "В META-INF/services/${spi} не объявлен ${impl} (нашли: ${declared.trim()})"
+                def classPath = impl.replace('.', '/') + '.class'
+                assert jar.getJarEntry(classPath) != null : "Класс-реализация ${impl} отсутствует в agentExtensionJar"
+            }
+        } finally {
+            jar.close()
+        }
+    }
+}
+
+check.dependsOn verifyAgentJarContents
+check.dependsOn verifyExtensionSpiRegistration
+
+// Публикация self-contained agentExtensionJar (classifier agent) вместе со standard jar.
+afterEvaluate {
+    publishing {
+        publications {
+            named('mavenJava') {
+                artifact agentExtensionJar
+            }
+        }
+    }
+}

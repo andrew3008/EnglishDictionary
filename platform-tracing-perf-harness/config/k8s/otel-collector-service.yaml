@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: perf-harness-collector
+  namespace: REPLACE_NAMESPACE
+  labels:
+    app: perf-harness-collector
+spec:
+  selector:
+    app: perf-harness-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+    - name: metrics
+      port: 8888
+      targetPort: metrics
