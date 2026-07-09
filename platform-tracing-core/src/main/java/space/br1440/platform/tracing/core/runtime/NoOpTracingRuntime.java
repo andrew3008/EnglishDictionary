@@ -10,6 +10,7 @@ import space.br1440.platform.tracing.core.context.DefaultTraceContextView;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Map;
 import java.util.Objects;
@@ -71,6 +72,15 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     @Nonnull
     public TracingState state() {
         return state;
+    }
+
+    /**
+     * No-op runtime has no semconv constraints: returns permissive default {@link AttributePolicy}.
+     */
+    @Override
+    @Nonnull
+    public AttributePolicy attributePolicy() {
+        return new AttributePolicy();
     }
 
     @Nonnull
