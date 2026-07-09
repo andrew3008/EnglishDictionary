@@ -1,7 +1,7 @@
-description = 'Реализация публичного API платформенной трассировки поверх OpenTelemetry API. ' +
-        'Содержит DefaultPlatformTracing (адаптер к OpenTelemetry SDK), NoOp-реализацию для сред без ' +
-        'подключённого Java Agent и ExceptionRecorder для безопасной записи ошибок в span. ' +
-        'ObservationConvention\'ы реализованы на уровне autoconfigure-модуля и не поставляются этим артефактом.'
+description = 'Core platform tracing runtime, facade, manual tracing pipeline, semantic policy, ' +
+        'enrichment, sampling, and validation primitives built around TracingRuntime and the ' +
+        'OpenTelemetry-backed OtelTracingRuntime adapter. ObservationConvention\'s are implemented ' +
+        'in the autoconfigure module and are not shipped by this artifact.'
 
 dependencies {
     api platform(project(':platform-tracing-bom'))

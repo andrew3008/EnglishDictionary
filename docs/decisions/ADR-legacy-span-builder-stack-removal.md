@@ -25,7 +25,7 @@
 
 | Поведение legacy | Решение |
 |---|---|
-| Anti-double guard (re-entry → enrich) | Снято. V3 всегда создаёт span; nested `manual().operation()` — отдельные span'ы |
+| Anti-double guard (re-entry → enrich) | Снято. Legacy `NonOwningSpanScope` / runtime anti-double guard модели B **намеренно удалены**. V3 всегда создаёт span; nested `manual().operation()` — отдельные span'ы. Поддерживаемая v3-модель marker-based enrichment и оставшиеся линии защиты — см. [anti-double-instrumentation.md](../tracing/anti-double-instrumentation.md) §2 «Marker-based enrichment» |
 | `lazyAttribute` после `startSpan` | Снято. Атрибуты задаются через `SpanSpec` / fluent v3 builders до старта |
 | `unsafeAttribute` escape-hatch | Снято. Используйте governed `SpanSpec` / allowlist enrichment |
 | `forceNewSpan()` | Снято. Явная топология через `child()` / `root()` / `detached()` |

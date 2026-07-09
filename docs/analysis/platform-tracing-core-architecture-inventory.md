@@ -1,5 +1,15 @@
 # platform-tracing-core — архитектурный инвентарь
 
+> **HISTORICAL — до рефакторинга Fable_5 v1.2 (snapshot pre-PR-5).**  
+> Этот документ описывает архитектуру `platform-tracing-core` **до** рефакторинга Fable_5 v1.2.
+> Упоминания `core.impl`, `TracingImplementation`, `api.span.builder.*` и `core.span.legacy`
+> отражают **удалённое** состояние и **не** описывают текущую реализацию.  
+> Актуальная post-refactor архитектура определяется:
+> - [ADR-legacy-span-builder-stack-removal.md](../decisions/ADR-legacy-span-builder-stack-removal.md) — финальное решение Fable_5 v1.2;
+> - [platform-tracing-core-extraction-readiness.md](../architecture/platform-tracing-core-extraction-readiness.md) — post-refactor boundary inventory;
+> - [anti-double-instrumentation.md](../tracing/anti-double-instrumentation.md) §2 — v3 marker-based enrichment model.  
+> Post-refactor verification audit (2026-07-08): **PASS WITH WARNINGS** — код core корректен, doc drift устраняется отдельно.
+
 Документ описывает модуль `platform-tracing-core` **без тестов** — иерархию классов, назначение, runtime-потоки и смежный код. Предназначен как база для серьёзного архитектурного рефакторинга.
 
 **Состояние:** pre-production (обратная совместимость не требуется).  
