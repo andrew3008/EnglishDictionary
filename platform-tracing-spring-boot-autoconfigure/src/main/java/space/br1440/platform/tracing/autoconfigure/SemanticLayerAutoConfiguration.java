@@ -14,9 +14,9 @@ import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.api.semconv.ValidationMode;
 import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
-import space.br1440.platform.tracing.core.semconv.SemconvMetrics;
-import space.br1440.platform.tracing.core.span.SpanEnricher;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
+import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
 
 /**
  * Авто-конфигурация платформенного semantic-слоя (Фаза 13): бин {@link AttributePolicy}.

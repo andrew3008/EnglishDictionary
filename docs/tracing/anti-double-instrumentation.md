@@ -26,7 +26,7 @@ messaging span'ы создаёт **OTel Java Agent** автоматически 
 
 Во всех остальных случаях **не создавайте span вручную** — обогащайте уже существующий (агентский).
 
-## Три линии защиты
+## Линии защиты
 
 ### 1) Agent-флаг (primary guard)
 
@@ -37,23 +37,34 @@ messaging span'ы создаёт **OTel Java Agent** автоматически 
 Подавляет дубли вложенных span'ов одного типа на уровне Агента — основной механизм. См.
 [SUPPORTED.md](../SUPPORTED.md), раздел рекомендованных agent-флагов.
 
-### 2) Runtime anti-double guard (модель B)
+### 2) Marker-based enrichment (v3, начиная с рефакторинга Fable_5 v1.2)
 
-Каждый platform-builder помечает свой span в OTel Context маркером категории
-(`PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY`). При попытке создать platform-span той же
-категории, когда в Context уже активен platform-маркер этой категории (re-entry платформы), builder
-**деградирует в enrich** существующего span'а вместо создания нового (`NonOwningSpanScope`).
+> **Важно (актуально после PR-5/PR-2b):** runtime anti-double guard модели B
+> (`NonOwningSpanScope`, деградация builder'а в enrich при re-entry, `forceNewSpan()`) **удалён**
+> вместе с legacy `core.span.legacy` / `api.span.builder.*` — см.
+> [ADR-legacy-span-builder-stack-removal.md](../decisions/ADR-legacy-span-builder-stack-removal.md).
+> V3 `TracingRuntime`/`OtelTracingRuntime` **всегда** создаёт новый span при явном вызове
+> `manual().*()` — топология явная (`child()` / `root()` / `detached()`), автоматической
+> деградации в enrich при повторном входе платформы больше нет.
 
-Важно: агентский span маркера НЕ несёт, поэтому guard срабатывает только на повторный вход самой
-платформы — он не подавляет легитимный child-span под агентским родителем. Чтобы принудительно
-создать новый span, используйте `forceNewSpan()`.
+Вместо runtime-guard'а `OtelTracingRuntime.startSpan()` проставляет в OTel `Context` internal-маркер
+категории (`PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY`, package `core.runtime.otel.context`).
+Маркер используется **только** для marker-based enrichment (`SpanEnricher.
+enrichCurrentSpanIfPlatformCategory`, см. §«Предпочтительная альтернатива» ниже) — он подтверждает,
+что активный span создан платформой с ожидаемой категорией, и позволяет безопасно обогащать его
+типизированными атрибутами. Агентский span маркера не несёт, поэтому такое обогащение — no-op на
+чистых Агентских span'ах.
+
+Если нужно избежать двойной инструментации при повторном вызове `manual().*()` в рамках одной
+операции — контролируйте это на уровне вызывающего кода (не вызывайте builder повторно) или
+используйте enrichment вместо создания нового span'а.
 
 ### 3) ArchUnit + аннотация (historical — removed in Slice 1B)
 
 > **Slice 1B:** правило `TracingArchRules.ESCAPE_HATCH_BUILDERS_REQUIRE_SUPPRESSION` удалено вместе
 > с v1 `Facade*SpanBuilder` factory-методами на `PlatformTracing`. Transport governance для
-> `manual().transport()` вернётся в Slice 3. Primary guards остаются agent-флаг (§1) и runtime
-> anti-double guard (§2).
+> `manual().transport()` вернётся в Slice 3. Primary guard остаётся agent-флаг (§1); §2 описывает
+> текущий marker-based enrichment механизм (runtime anti-double guard модели B удалён, см. выше).
 
 Ранее (до Slice 1B) правило запрещало вызовы escape-hatch builder'ов без явной аннотации
 `@SuppressAgentInstrumentation` на методе или классе:
@@ -103,9 +114,13 @@ span пришёл из источника вне платформенного к
 
 Регрессия на дубли HTTP-span'ов покрыта существующей e2e-инфраструктурой
 (`DuplicateHttpSpanAgentSmokeTest`, профиль `-PrunE2e`, Agent 2.28.1) и startup-матрицей
-`DuplicateSpansRegressionMatrixTest` (Servlet/WebFlux × suppress on/off). Для typed builders основной
-контракт degradation-в-enrich проверяется unit-тестом `EscapeHatchSpanBuilderTest` (anti-double guard,
-`forceNewSpan` override).
+`DuplicateSpansRegressionMatrixTest` (Servlet/WebFlux × suppress on/off). Marker-based enrichment
+(v3) покрыт характеризационными тестами `platform-tracing-core`:
+`V3MarkerPortCharacterizationTest`, `MarkerBasedEnrichmentCharacterizationTest`, а также
+`SpanEnricherTest.enrichCurrentSpanIfPlatformCategory_*`.
+
+> `EscapeHatchSpanBuilderTest` (legacy unit-тест degradation-в-enrich / `forceNewSpan`) удалён
+> вместе с `core.span.legacy` в PR-5 — контракт, который он проверял, больше не существует.
 
 ## Связанные документы
 

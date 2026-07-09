@@ -10,9 +10,6 @@ import java.util.function.Supplier;
 
 /**
  * Common scoped-execution contract for v3 manual semantic builders.
- * <p>
- * Distinct from legacy {@link space.br1440.platform.tracing.api.span.builder.PlatformSpanBuilder}
- * in {@code span.builder} (removed in Slice 1B).
  */
 public interface PlatformSpanBuilder<B extends PlatformSpanBuilder<B>> {
 

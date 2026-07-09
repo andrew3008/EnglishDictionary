@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
 import java.util.Map;
 import java.util.Objects;
@@ -14,9 +14,9 @@ import java.util.Objects;
  */
 public final class ManualTracingDiagnostics {
 
-    private final TracingImplementation tracingImplementation;
+    private final TracingRuntime tracingImplementation;
 
-    public ManualTracingDiagnostics(@Nonnull TracingImplementation tracingImplementation) {
+    public ManualTracingDiagnostics(@Nonnull TracingRuntime tracingImplementation) {
         this.tracingImplementation = Objects.requireNonNull(tracingImplementation, "tracingImplementation");
     }
 

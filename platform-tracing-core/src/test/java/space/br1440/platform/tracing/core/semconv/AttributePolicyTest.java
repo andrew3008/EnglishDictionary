@@ -7,6 +7,9 @@ import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
 import space.br1440.platform.tracing.api.semconv.ValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
+import space.br1440.platform.tracing.core.semconv.policy.ValidatedAttributes;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,6 @@
 package space.br1440.platform.tracing.core;
+import space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;

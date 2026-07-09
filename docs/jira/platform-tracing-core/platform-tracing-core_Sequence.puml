@@ -1,0 +1,61 @@
+@startuml
+title platform-tracing-core — Взаимодействие с другими модулями
+
+actor "Продуктовый код" as APP
+participant "autoconfigure\n(интерцептор/аспект)" as AUTOCFG
+participant "Facade\n(core)" as FACADE
+participant "Manual Builder\n(core)" as BUILDER
+participant "Naming /\nSemconv Policy\n(core)" as POLICY
+participant "Runtime Port\n(core)" as RUNTIME
+participant "OTel Adapter\n(core)" as ADAPTER
+participant "Propagation\n(core)" as PROP
+participant "Enrichment\n(core)" as ENRICH
+participant "OpenTelemetry SDK" as SDK
+participant "OTel Collector" as COLLECTOR
+participant "Downstream-сервис" as DOWNSTREAM
+
+== Входящий запрос: создание span'а ==
+
+APP -> AUTOCFG : входящий HTTP-запрос
+AUTOCFG -> FACADE : начать span (через API-контракт)
+FACADE -> BUILDER : создать HTTP server span
+BUILDER -> POLICY : построить имя span'а +\nвалидировать атрибуты
+POLICY --> BUILDER : имя span'а, safe-атрибуты
+BUILDER -> RUNTIME : startSpan(spec)
+RUNTIME -> ADAPTER : делегировать создание\n(единственная реализация порта)
+ADAPTER -> SDK : Tracer.spanBuilder(...).startSpan()
+SDK --> ADAPTER : Span
+ADAPTER -> ADAPTER : установить маркер категории\nв OTel Context
+ADAPTER --> RUNTIME : SpanHandle
+RUNTIME --> BUILDER : SpanHandle
+BUILDER --> FACADE : SpanScope (try-with-resources)
+FACADE --> AUTOCFG : SpanScope
+AUTOCFG --> APP : управление передано\n(span активен в Context)
+
+== Enrichment: дополнение текущего span'а ==
+
+APP -> AUTOCFG : выполнение бизнес-логики
+AUTOCFG -> ENRICH : enrichCurrentSpanIfPlatformCategory(...)
+ENRICH -> ADAPTER : проверить маркер категории\nв текущем Context
+ADAPTER --> ENRICH : категория подтверждена
+ENRICH -> SDK : Span.setAttribute(...)
+ENRICH --> AUTOCFG : атрибуты добавлены
+
+== Исходящий вызов: propagation контекста ==
+
+APP -> FACADE : подготовить исходящий вызов
+FACADE -> PROP : injectContext(carrier)
+PROP -> SDK : W3C TraceContext propagate
+PROP --> FACADE : carrier с заголовками трассировки
+FACADE --> APP : carrier
+APP -> DOWNSTREAM : HTTP-запрос + trace-заголовки
+
+== Завершение span'а и экспорт ==
+
+APP -> FACADE : завершить span (закрытие SpanScope)
+FACADE -> RUNTIME : закрыть SpanHandle
+RUNTIME -> ADAPTER : end span
+ADAPTER -> SDK : Span.end()
+SDK -> COLLECTOR : экспорт span-батча\n(асинхронно, через SDK exporter)
+
+@enduml

@@ -13,7 +13,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 public class PlatformTracingTestExtension implements BeforeEachCallback, ParameterResolver {
 

@@ -7,7 +7,8 @@ import com.tngtech.archunit.lang.ArchRule;
 import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 
 /**
- * ArchUnit guardrails для {@code api.runtime.state} и запрета legacy {@code api.config}.
+ * ArchUnit guardrails для {@code api.runtime.state} и запрета legacy {@code api.config} /
+ * {@code api.span.builder}.
  */
 @AnalyzeClasses(
         packages = "space.br1440.platform.tracing.api",
@@ -17,4 +18,7 @@ class RuntimeStateArchTest {
 
     @ArchTest
     static final ArchRule noApiConfigPackage = ModuleTaxonomyArchRules.NO_API_CONFIG_PACKAGE;
+
+    @ArchTest
+    static final ArchRule noLegacySpanBuilderApi = ModuleTaxonomyArchRules.NO_LEGACY_SPAN_BUILDER_API;
 }

@@ -15,32 +15,32 @@ import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingImplementation;
+import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
 import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeResolver;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformContextPropagation;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
-import space.br1440.platform.tracing.core.OtelPlatformContextPropagation;
-import space.br1440.platform.tracing.core.impl.DefaultTracingImplementation;
-import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.impl.TracingMode;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.propagation.NoOpPlatformContextPropagation;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
+import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 
 /**
  * Базовая авто-конфигурация платформенного модуля трассировки.
  * <p>
- * Slice 2: registers {@link TracingImplementation} as the internal span-creation boundary and
+ * Slice 2: registers {@link TracingRuntime} as the internal span-creation boundary and
  * {@link PlatformTracing} as a thin facade over it.
  * <p>
  * <b>Extension point note (B10):</b> if the application supplies its own
- * {@code TracingImplementation} bean (via {@code @ConditionalOnMissingBean}), platform
- * autoconfiguration will <b>not</b> wrap it with {@link MeteredTracingImplementation}. This is
+ * {@code TracingRuntime} bean (via {@code @ConditionalOnMissingBean}), platform
+ * autoconfiguration will <b>not</b> wrap it with {@link MeteredTracingRuntime}. This is
  * an advanced extension path, not the default application wiring, and is covered by
- * {@code BeanTopologyTest#userPrimaryTracingImplementation_replacesDefaultWithoutHiddenBypass}.
+ * {@code BeanTopologyTest#userPrimaryTracingRuntime_replacesDefaultWithoutHiddenBypass}.
  */
 @AutoConfiguration
 @ConditionalOnClass(OpenTelemetry.class)
@@ -70,68 +70,68 @@ public class TracingCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public TracingImplementation tracingImplementation(
+    public TracingRuntime tracingImplementation(
             org.springframework.beans.factory.ObjectProvider<OpenTelemetry> openTelemetryProvider,
             org.springframework.beans.factory.ObjectProvider<
-                    space.br1440.platform.tracing.core.semconv.AttributePolicy> policyProvider,
+                    space.br1440.platform.tracing.core.semconv.policy.AttributePolicy> policyProvider,
             org.springframework.beans.factory.ObjectProvider<
                     space.br1440.platform.tracing.core.exception.ExceptionRecorder> exceptionRecorderProvider,
             org.springframework.beans.factory.ObjectProvider<PlatformTracingMetrics> metricsProvider,
             SdkModeDiagnostics sdkModeDiagnostics) {
-        TracingImplementation base = resolveTracingImplementation(
+        TracingRuntime base = resolveTracingRuntime(
                 openTelemetryProvider,
                 policyProvider,
                 exceptionRecorderProvider,
                 sdkModeDiagnostics);
         PlatformTracingMetrics metrics = metricsProvider.getIfAvailable();
         if (metrics != null && base.state().mode() == TracingMode.ENABLED) {
-            return new MeteredTracingImplementation(base, metrics);
+            return new MeteredTracingRuntime(base, metrics);
         }
         return base;
     }
 
-    private TracingImplementation resolveTracingImplementation(
+    private TracingRuntime resolveTracingRuntime(
             org.springframework.beans.factory.ObjectProvider<OpenTelemetry> openTelemetryProvider,
             org.springframework.beans.factory.ObjectProvider<
-                    space.br1440.platform.tracing.core.semconv.AttributePolicy> policyProvider,
+                    space.br1440.platform.tracing.core.semconv.policy.AttributePolicy> policyProvider,
             org.springframework.beans.factory.ObjectProvider<
                     space.br1440.platform.tracing.core.exception.ExceptionRecorder> exceptionRecorderProvider,
             SdkModeDiagnostics sdkModeDiagnostics) {
         if (sdkModeDiagnostics.mode() == SdkMode.DISABLED) {
-            log.info("platform.tracing.sdk.mode=DISABLED — TracingImplementation DISABLED_BY_CONFIGURATION");
-            return NoOpTracingImplementation.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED");
+            log.info("platform.tracing.sdk.mode=DISABLED — TracingRuntime DISABLED_BY_CONFIGURATION");
+            return NoOpTracingRuntime.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED");
         }
 
-        space.br1440.platform.tracing.core.semconv.AttributePolicy policy =
-                policyProvider.getIfAvailable(space.br1440.platform.tracing.core.semconv.AttributePolicy::new);
+        space.br1440.platform.tracing.core.semconv.policy.AttributePolicy policy =
+                policyProvider.getIfAvailable(space.br1440.platform.tracing.core.semconv.policy.AttributePolicy::new);
         space.br1440.platform.tracing.core.exception.ExceptionRecorder exceptionRecorder =
                 exceptionRecorderProvider.getIfAvailable(
                         space.br1440.platform.tracing.core.exception.ExceptionRecorder::secureDefault);
 
         OpenTelemetry openTelemetry = openTelemetryProvider.getIfAvailable();
         if (openTelemetry != null) {
-            log.debug("TracingImplementation: OpenTelemetry bean from application context");
-            return new DefaultTracingImplementation(openTelemetry, policy, exceptionRecorder);
+            log.debug("TracingRuntime: OpenTelemetry bean from application context");
+            return new OtelTracingRuntime(openTelemetry, policy, exceptionRecorder);
         }
         OpenTelemetry global;
         try {
             global = GlobalOpenTelemetry.get();
         } catch (RuntimeException e) {
-            log.warn("TracingImplementation: GlobalOpenTelemetry unavailable ({}); UNAVAILABLE mode",
+            log.warn("TracingRuntime: GlobalOpenTelemetry unavailable ({}); UNAVAILABLE mode",
                     e.getMessage());
-            return NoOpTracingImplementation.unavailable("GlobalOpenTelemetry unavailable: " + e.getMessage());
+            return NoOpTracingRuntime.unavailable("GlobalOpenTelemetry unavailable: " + e.getMessage());
         }
         if (!isFunctional(global)) {
-            log.info("TracingImplementation: GlobalOpenTelemetry no-op; UNAVAILABLE mode");
-            return NoOpTracingImplementation.unavailable("GlobalOpenTelemetry not functional");
+            log.info("TracingRuntime: GlobalOpenTelemetry no-op; UNAVAILABLE mode");
+            return NoOpTracingRuntime.unavailable("GlobalOpenTelemetry not functional");
         }
-        log.debug("TracingImplementation: GlobalOpenTelemetry (agent)");
-        return new DefaultTracingImplementation(global, policy, exceptionRecorder);
+        log.debug("TracingRuntime: GlobalOpenTelemetry (agent)");
+        return new OtelTracingRuntime(global, policy, exceptionRecorder);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformTracing platformTracing(TracingImplementation tracingImplementation) {
+    public PlatformTracing platformTracing(TracingRuntime tracingImplementation) {
         TracingMode mode = tracingImplementation.state().mode();
         if (mode != TracingMode.ENABLED) {
             log.info("PlatformTracing facade: {} — NoOpPlatformTracing", mode);
@@ -169,7 +169,7 @@ public class TracingCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ManualTracingDiagnostics manualTracingDiagnostics(TracingImplementation tracingImplementation) {
+    public ManualTracingDiagnostics manualTracingDiagnostics(TracingRuntime tracingImplementation) {
         return new ManualTracingDiagnostics(tracingImplementation);
     }
 

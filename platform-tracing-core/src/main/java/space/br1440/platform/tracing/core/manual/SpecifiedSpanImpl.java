@@ -5,17 +5,17 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpecifiedSpan;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
 import java.util.Objects;
 import java.util.function.Supplier;
 
 final class SpecifiedSpanImpl implements SpecifiedSpan {
 
-    private final TracingImplementation implementation;
+    private final TracingRuntime implementation;
     private final SpanSpec spec;
 
-    SpecifiedSpanImpl(@Nonnull TracingImplementation implementation, @Nonnull SpanSpec spec) {
+    SpecifiedSpanImpl(@Nonnull TracingRuntime implementation, @Nonnull SpanSpec spec) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.spec = Objects.requireNonNull(spec, "spec");
     }

@@ -8,17 +8,17 @@ import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.sanitize.UrlSanitizer;
 import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
 
 final class DefaultHttpTracing implements HttpTracing {
 
-    private final TracingImplementation implementation;
+    private final TracingRuntime implementation;
     private final AttributePolicy policy;
 
-    DefaultHttpTracing(@Nonnull TracingImplementation implementation,
+    DefaultHttpTracing(@Nonnull TracingRuntime implementation,
                          @Nonnull AttributePolicy policy) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
@@ -40,7 +40,7 @@ final class DefaultHttpTracing implements HttpTracing {
 final class HttpServerSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpServerSpanBuilder>
         implements HttpServerSpanBuilder {
 
-    HttpServerSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    HttpServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                               @Nonnull AttributePolicy policy) {
         super(implementation, policy, SpanCategory.HTTP_SERVER, SpanCategory.HTTP_SERVER.value(),
                 "HttpServerSpanBuilder");
@@ -76,7 +76,7 @@ final class HttpServerSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpSe
 final class HttpClientSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpClientSpanBuilder>
         implements HttpClientSpanBuilder {
 
-    HttpClientSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    HttpClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                               @Nonnull AttributePolicy policy) {
         super(implementation, policy, SpanCategory.HTTP_CLIENT, SpanCategory.HTTP_CLIENT.value(),
                 "HttpClientSpanBuilder");

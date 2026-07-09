@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;

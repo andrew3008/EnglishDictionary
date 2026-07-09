@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.core.impl.TracingMode;
-import space.br1440.platform.tracing.core.impl.TracingState;
+import space.br1440.platform.tracing.core.runtime.state.TracingMode;
+import space.br1440.platform.tracing.core.runtime.state.TracingState;
 
 import java.util.Objects;
 

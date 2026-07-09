@@ -2,8 +2,8 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
-import space.br1440.platform.tracing.core.impl.TracingMode;
+import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 
 import java.util.Map;
 import java.util.Optional;
@@ -38,7 +38,7 @@ class TracingDiagnosticsViewJsonContractTest {
     @Test
     void actuatorMap_includesReasonWhenPresent() throws Exception {
         TracingDiagnosticsView view = TracingDiagnosticsMapper.fromState(
-                NoOpTracingImplementation.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED").state());
+                NoOpTracingRuntime.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED").state());
 
         @SuppressWarnings("unchecked")
         Map<String, Object> json = OBJECT_MAPPER.readValue(
@@ -53,7 +53,7 @@ class TracingDiagnosticsViewJsonContractTest {
 
     @Test
     void internalTestMode_mapsToUnknownPublicMode() {
-        TracingDiagnosticsView view = TracingDiagnosticsMapper.fromState(new TestModeTracingImplementation().state());
+        TracingDiagnosticsView view = TracingDiagnosticsMapper.fromState(new TestModeTracingRuntime().state());
 
         assertThat(view.mode()).isEqualTo("UNKNOWN");
         assertThat(view.reason()).isEqualTo("test-primary");
@@ -74,16 +74,16 @@ class TracingDiagnosticsViewJsonContractTest {
         }
     }
 
-    private static final class TestModeTracingImplementation implements space.br1440.platform.tracing.core.impl.TracingImplementation {
+    private static final class TestModeTracingRuntime implements space.br1440.platform.tracing.core.runtime.TracingRuntime {
         @Override
         public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(
                 space.br1440.platform.tracing.api.span.spec.SpanSpec spec) {
-            return space.br1440.platform.tracing.core.manual.NoOpSpanHandle.INSTANCE;
+            return space.br1440.platform.tracing.core.runtime.NoOpSpanHandle.INSTANCE;
         }
 
         @Override
         public space.br1440.platform.tracing.api.manual.TraceContextView currentTraceContext() {
-            return NoOpTracingImplementation.noop().currentTraceContext();
+            return NoOpTracingRuntime.noop().currentTraceContext();
         }
 
         @Override
@@ -92,8 +92,8 @@ class TracingDiagnosticsViewJsonContractTest {
         }
 
         @Override
-        public space.br1440.platform.tracing.core.impl.TracingState state() {
-            return new space.br1440.platform.tracing.core.impl.TracingState() {
+        public space.br1440.platform.tracing.core.runtime.state.TracingState state() {
+            return new space.br1440.platform.tracing.core.runtime.state.TracingState() {
                 @Override
                 public TracingMode mode() {
                     return TracingMode.TEST;

@@ -1,0 +1,74 @@
+@startuml
+title Платформенное решение трассировки — высокоуровневая архитектура (agent-first)
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+package "Поставляемые платформенные артефакты" {
+  component "platform-tracing-api\n(публичный контракт,\nбез зависимости на OTel)" as API
+  component "platform-tracing-core\n(runtime SPI + manual tracing\npipeline + policies + pure-Java\nsampling engine)" as CORE
+  component "platform-tracing-otel-extension\n(OTel Java Agent extension:\nSampler / SpanProcessor /\nResourceProvider / Propagator +\nJMX control surface)" as EXT
+  component "platform-tracing-spring-boot-\nstarter-mvc\n(Spring MVC / Tomcat)" as ST_SERVLET
+  component "platform-tracing-spring-boot-\nstarter-webflux\n(Spring WebFlux / Netty)" as ST_REACTIVE
+}
+
+CORE ..> API : реализует контракт
+EXT ..> API : использует контракты\nв обогатителях
+EXT --> CORE : переиспользует Sampling Engine\n(pure Java, без OTel)
+ST_SERVLET --> CORE : autoconfigure\n(agent-first, SDK не создаёт)
+ST_REACTIVE --> CORE : autoconfigure\n(agent-first, SDK не создаёт)
+
+component "OpenTelemetry Collector" as COLLECTOR
+
+package "Микросервис — единственная продовая конфигурация\n(одинаковая для всех ~80 сервисов)" as SERVICE {
+
+  node "Agent classloader\n(bootstrap, инжектится Java Agent'ом)" as AGENT_CL {
+    component "OpenTelemetry Java Agent\n(байткод-инструментация:\nTomcat/Netty, JDBC, HTTP-клиенты,\nKafka-клиент и т.д.)" as AGENT
+    component "platform-tracing-otel-extension\n(загружен флагом\notel.javaagent.extensions)" as EXT_RT
+    component "PlatformSamplerProvider /\nScrubbingSpanProcessor /\nSafeResourceProvider" as SPI_IMPL
+    component "Sampling/Scrubbing\nControl MBeans (JMX)" as MBEANS
+  }
+
+  node "Application classloader" as APP_CL {
+    component "Бизнес-код сервиса" as APP
+    component "platform-tracing-api" as API_RT
+    component "platform-tracing-spring-boot-\nstarter-{servlet|reactive}\n(SdkMode = AGENT)" as STARTER_RT
+    component "platform-tracing-core\n(manual span'ы, naming,\nenrichment, exception recording)" as CORE_RT
+    component "Actuator endpoint +\nJMX-клиент\n(runtime config control)" as JMXCLIENT
+  }
+
+  AGENT *-- EXT_RT : загружает как SPI-расширение
+  EXT_RT *-- SPI_IMPL
+  EXT_RT *-- MBEANS : регистрирует
+
+  APP --> API_RT : создаёт span'ы через\nfluent-контракт
+  API_RT <.. CORE_RT : реализация
+  STARTER_RT --> CORE_RT : autoconfigure
+
+  CORE_RT ..> AGENT : GlobalOpenTelemetry.get()\n(SDK не создаётся повторно)
+
+  JMXCLIENT -[#blue]-> MBEANS : JMX-мост:\nизменение sampling-ratio /\nscrubbing-правил из\napplication classloader'а\n(без перезапуска сервиса)
+
+  AGENT --> COLLECTOR : экспорт span'ов\n(уже сэмплированных)
+}
+
+note bottom of SERVICE
+  Единая конфигурация для всех ~80 сервисов:
+  Java Agent + platform-tracing-otel-extension —
+  обязательны (ADR-otel-direct-integration,
+  agent-first production model).
+  platform-tracing-core работает ПОВЕРХ SDK,
+  который поднял агент, а не вместо него —
+  "агент или библиотека" здесь не альтернативы,
+  а два слоя одного решения.
+end note
+
+note right of SPI_IMPL
+  Официальные OTel SPI:
+  ConfigurableSamplerProvider,
+  ResourceProvider,
+  AutoConfigurationCustomizerProvider
+  (без форка SDK-классов — ADR-otel-direct-integration)
+end note
+
+@enduml

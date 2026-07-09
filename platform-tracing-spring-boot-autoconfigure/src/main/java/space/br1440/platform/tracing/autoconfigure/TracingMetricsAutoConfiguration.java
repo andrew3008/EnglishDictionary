@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingImplementation;
+import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSamplerMetricsBinder;
 
@@ -21,8 +21,8 @@ import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSample
  * вспомогательные MeterBinder'ы.
  * <p>
  * Slice 6: when {@link MeterRegistry} is present, {@link TracingCoreAutoConfiguration} wraps the
- * active {@link space.br1440.platform.tracing.core.impl.TracingImplementation} with
- * {@link MeteredTracingImplementation}.
+ * active {@link space.br1440.platform.tracing.core.runtime.TracingRuntime} with
+ * {@link MeteredTracingRuntime}.
  */
 @AutoConfiguration
 @AutoConfigureBefore(value = TracingAopAutoConfiguration.class,
@@ -42,8 +42,8 @@ public class TracingMetricsAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(space.br1440.platform.tracing.core.semconv.SemconvMetrics.class)
-    public space.br1440.platform.tracing.core.semconv.SemconvMetrics platformSemconvMetrics(MeterRegistry meterRegistry) {
+    @ConditionalOnMissingBean(space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics.class)
+    public space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics platformSemconvMetrics(MeterRegistry meterRegistry) {
         return new space.br1440.platform.tracing.autoconfigure.metrics.MicrometerSemconvMetrics(meterRegistry);
     }
 

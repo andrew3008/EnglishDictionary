@@ -21,7 +21,7 @@ import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.otel.extension.processor.ClassificationSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.EnrichingSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.PlatformCompositeSpanProcessor;

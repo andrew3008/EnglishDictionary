@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.core.impl.DelegatingTracingImplementation;
+import space.br1440.platform.tracing.core.runtime.DelegatingTracingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
@@ -38,8 +38,8 @@ class MeteredSpanHandleDoubleCountTest {
     void recordException_viaSpiTwoArgPath_doesNotDoubleCount() {
         SpanHandle delegate = mock(SpanHandle.class);
         MeteredSpanHandle handle = new MeteredSpanHandle(delegate, metrics);
-        DelegatingTracingImplementation spiDelegate = mock(DelegatingTracingImplementation.class);
-        MeteredTracingImplementation implementation = new MeteredTracingImplementation(spiDelegate, metrics);
+        DelegatingTracingRuntime spiDelegate = mock(DelegatingTracingRuntime.class);
+        MeteredTracingRuntime implementation = new MeteredTracingRuntime(spiDelegate, metrics);
 
         handle.recordException(new RuntimeException("boom"));
         implementation.recordException(handle, new RuntimeException("boom-again"));
@@ -51,8 +51,8 @@ class MeteredSpanHandleDoubleCountTest {
     @Test
     void twoArgRecordExceptionWithPlainHandle_doesNotIncrement() {
         SpanHandle plainHandle = mock(SpanHandle.class);
-        DelegatingTracingImplementation spiDelegate = mock(DelegatingTracingImplementation.class);
-        MeteredTracingImplementation implementation = new MeteredTracingImplementation(spiDelegate, metrics);
+        DelegatingTracingRuntime spiDelegate = mock(DelegatingTracingRuntime.class);
+        MeteredTracingRuntime implementation = new MeteredTracingRuntime(spiDelegate, metrics);
 
         implementation.recordException(plainHandle, new RuntimeException("spi-only"));
 
@@ -64,8 +64,8 @@ class MeteredSpanHandleDoubleCountTest {
     @Test
     void twoArgRecordExceptionWithNullThrowable_doesNotIncrement() {
         SpanHandle plainHandle = mock(SpanHandle.class);
-        DelegatingTracingImplementation spiDelegate = mock(DelegatingTracingImplementation.class);
-        MeteredTracingImplementation implementation = new MeteredTracingImplementation(spiDelegate, metrics);
+        DelegatingTracingRuntime spiDelegate = mock(DelegatingTracingRuntime.class);
+        MeteredTracingRuntime implementation = new MeteredTracingRuntime(spiDelegate, metrics);
 
         implementation.recordException(plainHandle, null);
 

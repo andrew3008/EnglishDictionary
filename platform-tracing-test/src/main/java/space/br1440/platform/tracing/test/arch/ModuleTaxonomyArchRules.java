@@ -67,8 +67,7 @@ public final class ModuleTaxonomyArchRules {
             .that().resideInAnyPackage(
                     "space.br1440.platform.tracing.core.sampling..",
                     "space.br1440.platform.tracing.core.scrubbing..",
-                    "space.br1440.platform.tracing.core.validation..",
-                    "space.br1440.platform.tracing.core.enrichment..")
+                    "space.br1440.platform.tracing.core.validation..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "io.opentelemetry..",
                     "org.springframework..",
@@ -164,6 +163,18 @@ public final class ModuleTaxonomyArchRules {
             .because("api.config удалён; используйте api.runtime.state.VersionedState/VersionedStateHolder");
 
     /**
+     * Запрет возврата удалённого legacy-стека {@code api.span.builder.*} (PR-5, Fable_5 v1.2).
+     * <p>
+     * Пакет удалён вместе с {@code core.span.legacy}; typed builders для v3 живут в
+     * {@code api.manual.*}. Правило ловит как повторное копирование legacy-классов, так и
+     * восстановление пакета из старой ветки.
+     */
+    public static final ArchRule NO_LEGACY_SPAN_BUILDER_API = noClasses()
+            .that().resideOutsideOfPackage("..test..")
+            .should().dependOnClassesThat().resideInAPackage("..api.span.builder..")
+            .because("api.span.builder.* удалён в рефакторинге Fable_5 v1.2; используйте api.manual.*");
+
+    /**
      * Holder-managed snapshots остаются иммутабельными (все поля final).
      */
     public static final ArchRule SNAPSHOT_FIELDS_ARE_FINAL = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields()
@@ -205,4 +216,40 @@ public final class ModuleTaxonomyArchRules {
                     "..core.sampling.engine..")
             .because("ProductionSamplingPolicyChain public только ради cross-package компиляции движка; "
                     + "не является публичным extension API");
+
+    // -- PR-1: границы пакетов enrichment / naming / semconv.policy ------------------------------
+
+    /**
+     * {@code core.enrichment} не зависит от legacy builders и v3 manual transport.
+     */
+    public static final ArchRule CORE_ENRICHMENT_NO_MANUAL_OR_LEGACY = noClasses()
+            .that().resideInAPackage("..core.enrichment..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "..core.span.legacy..",
+                    "..core.manual..")
+            .allowEmptyShould(true)
+            .because("core.enrichment — agent-first обогащение; не зависит от manual/legacy builders");
+
+    /**
+     * {@code core.naming} — чистое именование span'ов: только OTel common, без trace/context.
+     */
+    public static final ArchRule CORE_NAMING_NO_OTEL_TRACE_CONTEXT = noClasses()
+            .that().resideInAPackage("..core.naming..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "io.opentelemetry.api.trace..",
+                    "io.opentelemetry.context..")
+            .allowEmptyShould(true)
+            .because("core.naming не импортирует OTel trace/context API");
+
+    /**
+     * {@code core.semconv.policy} — политика атрибутов: только OTel common, без trace/context/sdk.
+     */
+    public static final ArchRule CORE_SEMCONV_POLICY_OTEL_COMMON_ONLY = noClasses()
+            .that().resideInAPackage("..core.semconv.policy..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "io.opentelemetry.api.trace..",
+                    "io.opentelemetry.context..",
+                    "io.opentelemetry.sdk..")
+            .allowEmptyShould(true)
+            .because("core.semconv.policy допускает только io.opentelemetry.api.common");
 }

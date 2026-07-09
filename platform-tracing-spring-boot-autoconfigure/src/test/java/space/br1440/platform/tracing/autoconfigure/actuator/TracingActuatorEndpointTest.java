@@ -9,8 +9,8 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
-import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 
 import java.util.Map;
 import java.util.Optional;
@@ -41,7 +41,7 @@ class TracingActuatorEndpointTest {
                 NoOpPlatformTracing.INSTANCE,
                 properties,
                 jmxClient,
-                new ManualTracingDiagnostics(NoOpTracingImplementation.noop()));
+                new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));
     }
 
     @Test
@@ -340,7 +340,7 @@ class TracingActuatorEndpointTest {
                 jmxClient,
                 snapshot,
                 resourceSnapshot,
-                new ManualTracingDiagnostics(NoOpTracingImplementation.noop()));
+                new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));
 
         Map<String, Object> info = custom.tracing();
         assertThat(info).containsKey("otelEffective");

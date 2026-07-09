@@ -6,8 +6,8 @@ import space.br1440.platform.tracing.api.manual.HttpTracing;
 import space.br1440.platform.tracing.api.manual.KafkaTracing;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
 import space.br1440.platform.tracing.api.manual.TransportTracing;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
 
@@ -16,10 +16,10 @@ import java.util.Objects;
  */
 public final class DefaultTransportTracing implements TransportTracing {
 
-    private final TracingImplementation implementation;
+    private final TracingRuntime implementation;
     private final AttributePolicy policy;
 
-    public DefaultTransportTracing(@Nonnull TracingImplementation implementation,
+    public DefaultTransportTracing(@Nonnull TracingRuntime implementation,
                                    @Nonnull AttributePolicy policy) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");

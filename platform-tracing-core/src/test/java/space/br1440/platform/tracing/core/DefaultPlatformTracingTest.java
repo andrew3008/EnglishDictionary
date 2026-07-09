@@ -1,4 +1,5 @@
 package space.br1440.platform.tracing.core;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.OpenTelemetrySdk;

@@ -15,12 +15,12 @@ import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfigurati
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingImplementation;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
-import space.br1440.platform.tracing.core.impl.DefaultTracingImplementation;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.impl.TracingMode;
+import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 
 import java.util.Map;
 
@@ -42,8 +42,8 @@ class SpringBootContextMatrixTest {
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
                     assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
-                    assertThat(context.getBean(TracingImplementation.class))
-                            .isInstanceOf(DefaultTracingImplementation.class);
+                    assertThat(context.getBean(TracingRuntime.class))
+                            .isInstanceOf(OtelTracingRuntime.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }
@@ -54,7 +54,7 @@ class SpringBootContextMatrixTest {
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
-                    assertThat(context.getBean(TracingImplementation.class).state().mode())
+                    assertThat(context.getBean(TracingRuntime.class).state().mode())
                             .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
@@ -71,24 +71,24 @@ class SpringBootContextMatrixTest {
     }
 
     @Test
-    void micrometerPresent_wrapsTracingImplementationWithMeteredDecorator() {
+    void micrometerPresent_wrapsTracingRuntimeWithMeteredDecorator() {
         baseRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class, MeterRegistryConfiguration.class)
                 .run(context -> {
-                    assertThat(context.getBean(TracingImplementation.class))
-                            .isInstanceOf(MeteredTracingImplementation.class);
+                    assertThat(context.getBean(TracingRuntime.class))
+                            .isInstanceOf(MeteredTracingRuntime.class);
                     assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }
 
     @Test
-    void micrometerAbsent_keepsDefaultTracingImplementationWithoutMeteredWrap() {
+    void micrometerAbsent_keepsOtelTracingRuntimeWithoutMeteredWrap() {
         baseRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    assertThat(context.getBean(TracingImplementation.class))
-                            .isInstanceOf(DefaultTracingImplementation.class);
+                    assertThat(context.getBean(TracingRuntime.class))
+                            .isInstanceOf(OtelTracingRuntime.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }

@@ -13,10 +13,10 @@ import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.impl.TracingMode;
-import space.br1440.platform.tracing.core.impl.TracingState;
-import space.br1440.platform.tracing.core.manual.NoOpSpanHandle;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.runtime.state.TracingMode;
+import space.br1440.platform.tracing.core.runtime.state.TracingState;
+import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
 
 import java.util.Map;
 import java.util.Optional;
@@ -76,7 +76,7 @@ class DiagnosticsBoundaryTest {
 
     @Test
     void manualTracingDiagnostics_mapsInternalTestModeToUnknown() {
-        TracingImplementation testPrimary = new TracingImplementation() {
+        TracingRuntime testPrimary = new TracingRuntime() {
             private final TracingState state = new TracingState() {
                 @Override
                 public TracingMode mode() {

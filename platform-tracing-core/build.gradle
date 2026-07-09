@@ -23,7 +23,6 @@ dependencies {
     testImplementation 'io.opentelemetry:opentelemetry-sdk'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
     testImplementation project(':platform-tracing-test')
-    testImplementation project(':platform-tracing-spring-boot-autoconfigure')
     testImplementation 'io.micrometer:micrometer-core'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

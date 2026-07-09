@@ -1,0 +1,98 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam linetype ortho
+title platform-tracing-core — High-Level Architecture
+
+package "platform-tracing-api\n(внешняя зависимость,\nотдельная задача)" as API #LightGrey {
+}
+
+package "platform-tracing-core\n(скоуп этой задачи)" {
+
+  component "Facade" as FACADE
+
+  component "Propagation\n(context transfer)" as PROP
+
+  package "Manual Tracing Pipeline" as MANUAL {
+    component "HTTP / RPC / Kafka / DB /\nGeneric Span Builders" as BUILDERS
+  }
+
+  package "Naming & Semconv Policy" as POLICY {
+    component "Span Naming" as NAMING
+    component "Attribute Policy\n(safe/unsafe, validation)" as SEMCONV
+  }
+
+  component "Enrichment" as ENRICH
+
+  package "Runtime Port (hexagonal)" as PORT {
+    component "Tracing Runtime SPI" as RUNTIME
+    component "Runtime State" as STATE
+    component "Trace Context View" as CTXVIEW
+  }
+
+  package "OTel Adapter (hexagonal)" as ADAPTER {
+    component "OTel Tracing Runtime" as OTELRUNTIME
+    component "Span Scopes" as SCOPE
+    component "Context Marker" as MARKER
+  }
+
+  component "Exception Recording" as EXC
+
+  package "Cross-cutting Policies" as CROSS {
+    component "Sampling" as SAMPLING
+    component "Validation" as VALIDATION
+  }
+
+  component "Utils" as UTILS
+}
+
+package "OpenTelemetry SDK / API" as OTEL {
+}
+
+API <.. FACADE : implements (готовый контракт)
+API <.. BUILDERS : implements (готовый контракт)
+
+FACADE --> MANUAL
+FACADE --> RUNTIME
+FACADE --> PROP
+
+MANUAL --> RUNTIME
+MANUAL --> NAMING
+MANUAL --> SEMCONV
+MANUAL --> SAMPLING
+
+RUNTIME --> CTXVIEW
+RUNTIME <|.. OTELRUNTIME : реализует порт
+
+OTELRUNTIME --> SCOPE
+OTELRUNTIME --> MARKER
+OTELRUNTIME --> OTEL
+
+PROP --> OTEL
+
+EXC --> OTEL
+BUILDERS --> EXC
+
+ENRICH --> MARKER
+ENRICH --> SEMCONV
+ENRICH --> OTEL
+
+VALIDATION --> SAMPLING
+
+note right of PORT
+  Не зависит от OpenTelemetry.
+  Единственный порт trace-возможностей
+  для всего модуля.
+end note
+
+note right of ADAPTER
+  Единственный пакет с полным
+  доступом к trace/context API
+  конкретного SDK.
+end note
+
+note bottom of CROSS
+  Полностью изолированы от
+  трассировочного SDK.
+end note
+
+@enduml

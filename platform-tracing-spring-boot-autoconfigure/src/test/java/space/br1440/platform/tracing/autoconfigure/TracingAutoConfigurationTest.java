@@ -15,8 +15,8 @@ import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

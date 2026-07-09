@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.core.semconv.SemconvMetrics;
+import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
 
 /**
  * Micrometer-реализация {@link SemconvMetrics} (модуль core от Micrometer не зависит — реализация

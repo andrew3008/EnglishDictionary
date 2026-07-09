@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 import java.util.List;
 

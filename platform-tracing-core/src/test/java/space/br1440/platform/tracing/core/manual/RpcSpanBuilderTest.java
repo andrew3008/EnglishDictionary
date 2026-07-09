@@ -11,9 +11,9 @@ import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.Topology;
-import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
-import space.br1440.platform.tracing.core.semconv.SemconvMetrics;
+import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -23,12 +23,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class RpcSpanBuilderTest {
 
-    private RecordingTracingImplementation recording;
+    private RecordingTracingRuntime recording;
     private ManualTracing manual;
 
     @BeforeEach
     void setUp() {
-        recording = new RecordingTracingImplementation();
+        recording = new RecordingTracingRuntime();
         AttributePolicy strictPolicy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
         manual = new DefaultManualTracing(recording, strictPolicy);
     }
@@ -48,7 +48,7 @@ class RpcSpanBuilderTest {
     }
 
     @Test
-    void rpcServerStart_routesSpanSpecThroughTracingImplementation() {
+    void rpcServerStart_routesSpanSpecThroughTracingRuntime() {
         manual.transport().rpc().server()
                 .system("grpc")
                 .service("OrderService")
@@ -67,7 +67,7 @@ class RpcSpanBuilderTest {
     }
 
     @Test
-    void rpcClientStart_routesSpanSpecThroughTracingImplementation() {
+    void rpcClientStart_routesSpanSpecThroughTracingRuntime() {
         manual.transport().rpc().client()
                 .system("grpc")
                 .service("OrderService")

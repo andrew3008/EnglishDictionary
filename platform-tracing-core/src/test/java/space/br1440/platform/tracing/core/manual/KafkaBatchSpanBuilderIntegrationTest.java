@@ -12,8 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.RemoteContext;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.span.SpanKinds;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.otel.SpanKinds;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 
 import java.util.List;

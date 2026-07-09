@@ -11,8 +11,8 @@ import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

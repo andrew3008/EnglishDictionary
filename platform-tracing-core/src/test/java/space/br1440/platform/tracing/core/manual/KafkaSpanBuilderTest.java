@@ -11,9 +11,9 @@ import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.Topology;
-import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
-import space.br1440.platform.tracing.core.semconv.SemconvMetrics;
+import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -23,12 +23,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class KafkaSpanBuilderTest {
 
-    private RecordingTracingImplementation recording;
+    private RecordingTracingRuntime recording;
     private ManualTracing manual;
 
     @BeforeEach
     void setUp() {
-        recording = new RecordingTracingImplementation();
+        recording = new RecordingTracingRuntime();
         AttributePolicy strictPolicy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
         manual = new DefaultManualTracing(recording, strictPolicy);
     }
@@ -48,7 +48,7 @@ class KafkaSpanBuilderTest {
     }
 
     @Test
-    void kafkaProducerStart_routesSpanSpecThroughTracingImplementation() {
+    void kafkaProducerStart_routesSpanSpecThroughTracingRuntime() {
         manual.transport().kafka().producer()
                 .destination("orders")
                 .operation("publish")
@@ -66,7 +66,7 @@ class KafkaSpanBuilderTest {
     }
 
     @Test
-    void kafkaConsumerStart_routesSpanSpecThroughTracingImplementation() {
+    void kafkaConsumerStart_routesSpanSpecThroughTracingRuntime() {
         manual.transport().kafka().consumer()
                 .destination("orders")
                 .operation("receive")

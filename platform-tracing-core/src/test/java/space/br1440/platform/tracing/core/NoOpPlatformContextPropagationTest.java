@@ -1,4 +1,5 @@
 package space.br1440.platform.tracing.core;
+import space.br1440.platform.tracing.core.propagation.NoOpPlatformContextPropagation;
 
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;

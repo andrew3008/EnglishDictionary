@@ -18,7 +18,7 @@ final class MeteredSpanHandle implements SpanHandle {
 
     /**
      * Single source of truth for {@code exceptionsRecorded} metric increment.
-     * Do not duplicate this increment in {@link MeteredTracingImplementation#recordException}.
+     * Do not duplicate this increment in {@link MeteredTracingRuntime#recordException}.
      */
     @Override
     public void recordException(@Nullable Throwable throwable) {

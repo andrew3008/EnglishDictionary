@@ -21,8 +21,8 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
 import java.util.List;
 
@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 6 hard gate: metered {@link TracingImplementation} preserves topology and links.
+ * Slice 6 hard gate: metered {@link TracingRuntime} preserves topology and links.
  */
 class MeteredTopologyMatrixTest {
 
@@ -49,8 +49,8 @@ class MeteredTopologyMatrixTest {
     @Test
     void meteredChain_wrapsDefaultImplementation() {
         contextRunner.run(context -> {
-            assertThat(context.getBean(TracingImplementation.class))
-                    .isInstanceOf(MeteredTracingImplementation.class);
+            assertThat(context.getBean(TracingRuntime.class))
+                    .isInstanceOf(MeteredTracingRuntime.class);
             assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
         });
     }

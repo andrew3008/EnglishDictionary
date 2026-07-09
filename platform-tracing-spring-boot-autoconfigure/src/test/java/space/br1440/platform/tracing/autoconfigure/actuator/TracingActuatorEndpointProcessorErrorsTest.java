@@ -6,8 +6,8 @@ import org.mockito.Mockito;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
-import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -35,7 +35,7 @@ class TracingActuatorEndpointProcessorErrorsTest {
                 NoOpPlatformTracing.INSTANCE,
                 properties,
                 jmxClient,
-                new ManualTracingDiagnostics(NoOpTracingImplementation.noop()));
+                new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));
     }
 
     @Test

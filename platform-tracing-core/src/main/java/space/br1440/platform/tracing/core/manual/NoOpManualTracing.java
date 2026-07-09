@@ -8,6 +8,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpecifiedSpan;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
+import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
 
 import java.util.Objects;
 import java.util.function.Supplier;

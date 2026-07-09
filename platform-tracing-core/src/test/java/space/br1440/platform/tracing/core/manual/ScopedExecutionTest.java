@@ -10,8 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +27,7 @@ class ScopedExecutionTest {
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
     private DefaultPlatformTracing tracing;
-    private RecordingTracingImplementation recording;
+    private RecordingTracingRuntime recording;
 
     @BeforeEach
     void setUp() {
@@ -37,7 +37,7 @@ class ScopedExecutionTest {
                 .build();
         tracing = new DefaultPlatformTracing(
                 OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
-        recording = new RecordingTracingImplementation();
+        recording = new RecordingTracingRuntime();
     }
 
     @AfterEach
@@ -162,7 +162,7 @@ class ScopedExecutionTest {
     }
 
     @Test
-    void terminalMethods_routeThroughTracingImplementation() {
+    void terminalMethods_routeThroughTracingRuntime() {
         DefaultPlatformTracing recordingTracing = new DefaultPlatformTracing(recording);
         recordingTracing.manual().operation("routed").run(() -> {
         });

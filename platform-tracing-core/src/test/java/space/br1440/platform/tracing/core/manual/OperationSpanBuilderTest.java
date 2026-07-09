@@ -7,8 +7,8 @@ import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.Topology;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,17 +18,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class OperationSpanBuilderTest {
 
-    private RecordingTracingImplementation recording;
+    private RecordingTracingRuntime recording;
     private DefaultPlatformTracing tracing;
 
     @BeforeEach
     void setUp() {
-        recording = new RecordingTracingImplementation();
+        recording = new RecordingTracingRuntime();
         tracing = new DefaultPlatformTracing(recording);
     }
 
     @Test
-    void start_routesThroughTracingImplementation() {
+    void start_routesThroughTracingRuntime() {
         tracing.manual().operation("checkout").start().close();
         assertSingleInternalSpec("checkout", Topology.CHILD);
     }

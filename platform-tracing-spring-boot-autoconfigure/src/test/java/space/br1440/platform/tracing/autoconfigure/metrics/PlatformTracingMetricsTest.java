@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * До Slice 1B manual-tracing self-metrics собирал {@code MeteredPlatformTracing}; после Slice 1B
  * публичный фасадный декоратор удалён. Durable manual-tracing metrics вернутся через
- * {@code MeteredTracingImplementation} на границе {@code TracingImplementation} (Slice 2/6).
+ * {@code MeteredTracingRuntime} на границе {@code TracingRuntime} (Slice 2/6).
  */
 class PlatformTracingMetricsTest {
 

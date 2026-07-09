@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,7 +25,7 @@ class SpecifiedSpanTest {
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
     private DefaultPlatformTracing tracing;
-    private RecordingTracingImplementation recording;
+    private RecordingTracingRuntime recording;
 
     @BeforeEach
     void setUp() {
@@ -35,7 +35,7 @@ class SpecifiedSpanTest {
                 .build();
         tracing = new DefaultPlatformTracing(
                 OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
-        recording = new RecordingTracingImplementation();
+        recording = new RecordingTracingRuntime();
     }
 
     @AfterEach
@@ -88,7 +88,7 @@ class SpecifiedSpanTest {
     }
 
     @Test
-    void spanFromSpec_routesSameSpecThroughTracingImplementation() {
+    void spanFromSpec_routesSameSpecThroughTracingRuntime() {
         SpanSpec spec = governedSpec("from-spec");
         DefaultPlatformTracing recordingTracing = new DefaultPlatformTracing(recording);
         recordingTracing.manual().spanFromSpec(spec).run(() -> {

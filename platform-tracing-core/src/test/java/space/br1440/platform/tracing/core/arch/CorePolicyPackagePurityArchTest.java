@@ -6,6 +6,8 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 /**
  * PR-1 forward-looking guardrail for pure policy packages in core.
  * <p>
@@ -48,4 +50,32 @@ class CorePolicyPackagePurityArchTest {
     @ArchTest
     static final ArchRule samplingRuleImplsOnlyInPolicy =
             ModuleTaxonomyArchRules.SAMPLING_RULE_IMPLS_ONLY_IN_POLICY;
+
+    @ArchTest
+    static final ArchRule coreEnrichmentNoManualOrLegacy =
+            ModuleTaxonomyArchRules.CORE_ENRICHMENT_NO_MANUAL_OR_LEGACY;
+
+    @ArchTest
+    static final ArchRule coreNamingNoOtelTraceContext =
+            ModuleTaxonomyArchRules.CORE_NAMING_NO_OTEL_TRACE_CONTEXT;
+
+    @ArchTest
+    static final ArchRule coreSemconvPolicyOtelCommonOnly =
+            ModuleTaxonomyArchRules.CORE_SEMCONV_POLICY_OTEL_COMMON_ONLY;
+
+    @ArchTest
+    static final ArchRule noLegacySpanBuilderApi =
+            ModuleTaxonomyArchRules.NO_LEGACY_SPAN_BUILDER_API;
+
+    @ArchTest
+    static final ArchRule rootPackageMustBeEmpty =
+            noClasses()
+                    .should().resideInAPackage("space.br1440.platform.tracing.core")
+                    .because("root package space.br1440.platform.tracing.core должен быть пустым после PR-3");
+
+    @ArchTest
+    static final ArchRule noImplPackages =
+            noClasses()
+                    .should().resideInAnyPackage("..impl..")
+                    .because("пакет core.impl удалён");
 }

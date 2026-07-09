@@ -9,17 +9,17 @@ import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
 
 final class DefaultKafkaTracing implements KafkaTracing {
 
-    private final TracingImplementation implementation;
+    private final TracingRuntime implementation;
     private final AttributePolicy policy;
 
-    DefaultKafkaTracing(@Nonnull TracingImplementation implementation,
+    DefaultKafkaTracing(@Nonnull TracingRuntime implementation,
                           @Nonnull AttributePolicy policy) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
@@ -41,7 +41,7 @@ final class DefaultKafkaTracing implements KafkaTracing {
 abstract class AbstractKafkaSpanBuilder<B extends space.br1440.platform.tracing.api.manual.PlatformSpanBuilder<B>>
         extends AbstractSemanticSpanBuilder<B> {
 
-    AbstractKafkaSpanBuilder(@Nonnull TracingImplementation implementation,
+    AbstractKafkaSpanBuilder(@Nonnull TracingRuntime implementation,
                              @Nonnull AttributePolicy policy,
                              @Nonnull SpanCategory category,
                              @Nonnull String builderName) {
@@ -66,7 +66,7 @@ abstract class AbstractKafkaSpanBuilder<B extends space.br1440.platform.tracing.
 final class KafkaProducerSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaProducerSpanBuilder>
         implements KafkaProducerSpanBuilder {
 
-    KafkaProducerSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    KafkaProducerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                                  @Nonnull AttributePolicy policy) {
         super(implementation, policy, SpanCategory.KAFKA_PRODUCER, "KafkaProducerSpanBuilder");
     }
@@ -94,7 +94,7 @@ final class KafkaProducerSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaP
 final class KafkaConsumerSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaConsumerSpanBuilder>
         implements KafkaConsumerSpanBuilder {
 
-    KafkaConsumerSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    KafkaConsumerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                                  @Nonnull AttributePolicy policy) {
         super(implementation, policy, SpanCategory.KAFKA_CONSUMER, "KafkaConsumerSpanBuilder");
     }
@@ -132,7 +132,7 @@ final class KafkaConsumerSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaC
 final class KafkaBatchSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaBatchSpanBuilder>
         implements KafkaBatchSpanBuilder {
 
-    KafkaBatchSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    KafkaBatchSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                               @Nonnull AttributePolicy policy,
                               @Nonnull String destination) {
         super(implementation, policy, SpanCategory.KAFKA_CONSUMER, "KafkaBatchSpanBuilder");

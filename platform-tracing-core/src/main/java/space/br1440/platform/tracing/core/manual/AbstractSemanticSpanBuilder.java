@@ -11,10 +11,10 @@ import space.br1440.platform.tracing.api.span.spec.SpanOptions;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.Topology;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
-import space.br1440.platform.tracing.core.impl.OperationSpanSpecs;
-import space.br1440.platform.tracing.core.impl.SemanticSpanSpecs;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.manual.spec.OperationSpanSpecs;
+import space.br1440.platform.tracing.core.manual.spec.SemanticSpanSpecs;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,7 +25,7 @@ import java.util.function.Supplier;
 
 abstract class AbstractSemanticSpanBuilder<B extends PlatformSpanBuilder<B>> implements PlatformSpanBuilder<B> {
 
-    protected final TracingImplementation implementation;
+    protected final TracingRuntime implementation;
     protected final AttributePolicy policy;
     protected final SpanCategory category;
     protected final String explicitName;
@@ -35,7 +35,7 @@ abstract class AbstractSemanticSpanBuilder<B extends PlatformSpanBuilder<B>> imp
     protected final List<SpanLinkContext> links = new ArrayList<>();
     protected final Map<String, SpanAttributeValue> attributes = new LinkedHashMap<>();
 
-    AbstractSemanticSpanBuilder(@Nonnull TracingImplementation implementation,
+    AbstractSemanticSpanBuilder(@Nonnull TracingRuntime implementation,
                                 @Nonnull AttributePolicy policy,
                                 @Nonnull SpanCategory category,
                                 @Nonnull String explicitName,

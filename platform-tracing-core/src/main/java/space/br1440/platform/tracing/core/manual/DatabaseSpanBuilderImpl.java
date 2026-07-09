@@ -7,13 +7,13 @@ import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<DatabaseSpanBuilder>
         implements DatabaseTracing {
 
-    DatabaseSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    DatabaseSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                             @Nonnull AttributePolicy policy) {
         super(implementation, policy, SpanCategory.DATABASE, SpanCategory.DATABASE.value(),
                 "DatabaseSpanBuilder");

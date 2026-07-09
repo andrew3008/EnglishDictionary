@@ -22,10 +22,10 @@ import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingImplementation;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
+import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
 import java.util.List;
 import java.util.Set;
@@ -122,11 +122,11 @@ class ObservationCoexistenceTest {
     @Test
     void meteredImplementation_doesNotCreateSpansDirectly() {
         contextRunner.run(context -> {
-            TracingImplementation tracingImplementation = context.getBean(TracingImplementation.class);
+            TracingRuntime tracingImplementation = context.getBean(TracingRuntime.class);
             PlatformTracing tracing = context.getBean(PlatformTracing.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
-            assertThat(tracingImplementation).isInstanceOf(MeteredTracingImplementation.class);
+            assertThat(tracingImplementation).isInstanceOf(MeteredTracingRuntime.class);
             assertThat(tracing).isInstanceOf(DefaultPlatformTracing.class);
 
             tracing.manual().operation("metered-delegate").start().close();

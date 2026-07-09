@@ -5,7 +5,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
 
 /**
  * Health indicator платформенного модуля трассировки.
@@ -37,7 +37,7 @@ public class TracingHealthIndicator extends AbstractHealthIndicator {
             global = null;
         }
 
-        builder.withDetail("platformTracingImplementation", platformTracing.getClass().getName());
+        builder.withDetail("platformTracingRuntime", platformTracing.getClass().getName());
         builder.withDetail("globalOpenTelemetryInitialized", global != null);
 
         if (noop || global == null) {

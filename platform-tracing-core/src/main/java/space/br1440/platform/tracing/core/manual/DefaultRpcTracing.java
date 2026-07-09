@@ -8,17 +8,17 @@ import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
 
 final class DefaultRpcTracing implements RpcTracing {
 
-    private final TracingImplementation implementation;
+    private final TracingRuntime implementation;
     private final AttributePolicy policy;
 
-    DefaultRpcTracing(@Nonnull TracingImplementation implementation,
+    DefaultRpcTracing(@Nonnull TracingRuntime implementation,
                       @Nonnull AttributePolicy policy) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
@@ -40,7 +40,7 @@ final class DefaultRpcTracing implements RpcTracing {
 abstract class AbstractRpcSpanBuilder<B extends space.br1440.platform.tracing.api.manual.PlatformSpanBuilder<B>>
         extends AbstractSemanticSpanBuilder<B> {
 
-    AbstractRpcSpanBuilder(@Nonnull TracingImplementation implementation,
+    AbstractRpcSpanBuilder(@Nonnull TracingRuntime implementation,
                            @Nonnull AttributePolicy policy,
                            @Nonnull SpanCategory category,
                            @Nonnull String builderName) {
@@ -65,7 +65,7 @@ abstract class AbstractRpcSpanBuilder<B extends space.br1440.platform.tracing.ap
 final class RpcServerSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcServerSpanBuilder>
         implements RpcServerSpanBuilder {
 
-    RpcServerSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    RpcServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                              @Nonnull AttributePolicy policy) {
         super(implementation, policy, SpanCategory.RPC_SERVER, "RpcServerSpanBuilder");
     }
@@ -100,7 +100,7 @@ final class RpcServerSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcServerSpa
 final class RpcClientSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcClientSpanBuilder>
         implements RpcClientSpanBuilder {
 
-    RpcClientSpanBuilderImpl(@Nonnull TracingImplementation implementation,
+    RpcClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                              @Nonnull AttributePolicy policy) {
         super(implementation, policy, SpanCategory.RPC_CLIENT, "RpcClientSpanBuilder");
     }

@@ -9,9 +9,9 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
-import space.br1440.platform.tracing.core.semconv.SemconvMetrics;
+import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,18 +21,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class DatabaseSpanBuilderTest {
 
-    private RecordingTracingImplementation recording;
+    private RecordingTracingRuntime recording;
     private ManualTracing manual;
 
     @BeforeEach
     void setUp() {
-        recording = new RecordingTracingImplementation();
+        recording = new RecordingTracingRuntime();
         AttributePolicy strictPolicy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
         manual = new DefaultManualTracing(recording, strictPolicy);
     }
 
     @Test
-    void validBuilder_routesSpanSpecThroughTracingImplementation() {
+    void validBuilder_routesSpanSpecThroughTracingRuntime() {
         manual.transport().database()
                 .operation("SELECT")
                 .system("postgresql")

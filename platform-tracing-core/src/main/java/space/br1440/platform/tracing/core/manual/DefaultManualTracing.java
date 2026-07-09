@@ -6,17 +6,17 @@ import space.br1440.platform.tracing.api.manual.OperationSpanBuilder;
 import space.br1440.platform.tracing.api.manual.TransportTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpecifiedSpan;
-import space.br1440.platform.tracing.core.impl.TracingImplementation;
-import space.br1440.platform.tracing.core.semconv.AttributePolicy;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
 
 public final class DefaultManualTracing implements ManualTracing {
 
-    private final TracingImplementation implementation;
+    private final TracingRuntime implementation;
     private final AttributePolicy policy;
 
-    public DefaultManualTracing(@Nonnull TracingImplementation implementation,
+    public DefaultManualTracing(@Nonnull TracingRuntime implementation,
                                 @Nonnull AttributePolicy policy) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");

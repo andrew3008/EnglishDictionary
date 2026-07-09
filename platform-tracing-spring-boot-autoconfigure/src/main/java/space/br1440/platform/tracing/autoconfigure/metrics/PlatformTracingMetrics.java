@@ -63,8 +63,8 @@ public class PlatformTracingMetrics {
      * <p>
      * До Slice 1B счётчик инкрементировался декоратором {@code MeteredPlatformTracing} на каждый
      * вызов {@code startSpan}. После Slice 1B публичный фасадный декоратор удалён; durable
-     * manual-tracing metrics вернутся через {@code MeteredTracingImplementation} на границе
-     * {@code TracingImplementation} (Slice 2/6).
+     * manual-tracing metrics вернутся через {@code MeteredTracingRuntime} на границе
+     * {@code TracingRuntime} (Slice 2/6).
      */
     public void incrementSpansStarted(SpanCategory category) {
         Counter.builder(SPANS_STARTED)
