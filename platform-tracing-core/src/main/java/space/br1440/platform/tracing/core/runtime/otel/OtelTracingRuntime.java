@@ -25,7 +25,6 @@ import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
 import space.br1440.platform.tracing.core.runtime.SpanHandleImpl;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
-import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.runtime.otel.context.PlatformSpanContextKeys;
@@ -35,10 +34,13 @@ import space.br1440.platform.tracing.core.runtime.otel.SpanKinds;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Default {@link TracingRuntime} backed by OpenTelemetry SDK/API (Slice 2).
+ * <p>
+ * Kill-switch is NOT managed inside this class. Facade ({@code DefaultPlatformTracing}) controls
+ * enabled/disabled state by replacing the active runtime with {@link space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime}.
+ * This keeps OtelTracingRuntime stateless w.r.t. lifecycle and makes it a pure OTel adapter.
  */
 public final class OtelTracingRuntime implements TracingRuntime {
 
@@ -48,11 +50,10 @@ public final class OtelTracingRuntime implements TracingRuntime {
     private final AttributePolicy attributePolicy;
     private final ExceptionRecorder exceptionRecorder;
     private final TraceContextView traceContextView;
-    private final AtomicBoolean killSwitchEnabled = new AtomicBoolean(true);
 
     public OtelTracingRuntime(@Nonnull OpenTelemetry openTelemetry,
-                                        @Nonnull AttributePolicy policy,
-                                        @Nonnull ExceptionRecorder exceptionRecorder) {
+                              @Nonnull AttributePolicy policy,
+                              @Nonnull ExceptionRecorder exceptionRecorder) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(policy, "policy");
         this.attributePolicy = policy;
@@ -61,17 +62,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
         this.traceContextView = new DefaultTraceContextView(this::currentTraceId, this::currentSpanId);
     }
 
-    /**
-     * Runtime kill-switch preserved from Slice 1B {@code facadeEnabled} semantics.
-     */
-    public void setKillSwitchEnabled(boolean enabled) {
-        killSwitchEnabled.set(enabled);
-    }
-
-    public boolean isKillSwitchEnabled() {
-        return killSwitchEnabled.get();
-    }
-
+    @Override
     @Nonnull
     public AttributePolicy attributePolicy() {
         return attributePolicy;
@@ -82,9 +73,6 @@ public final class OtelTracingRuntime implements TracingRuntime {
     public SpanHandle startSpan(@Nonnull SpanSpec spec) {
         Objects.requireNonNull(spec, "spec");
         SpanOptions.validateTopologyLinks(spec.options().topology(), spec.options().links());
-        if (!killSwitchEnabled.get()) {
-            return NoOpSpanHandle.INSTANCE;
-        }
 
         Topology topology = spec.options().topology();
         SpanBuilder builder = tracer.spanBuilder(spec.name())
@@ -100,7 +88,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
         }
 
         var span = builder.startSpan();
-        // Маркер категории: parity с legacy builder'ами для marker-based enrich (PR-2b).
+        // Category marker: parity with legacy builders for marker-based enrich (PR-2b).
         Context ctx = Context.current()
                 .with(span)
                 .with(PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY, spec.category());
@@ -124,12 +112,6 @@ public final class OtelTracingRuntime implements TracingRuntime {
     @Override
     @Nonnull
     public TracingState state() {
-        if (!killSwitchEnabled.get()) {
-            return ImmutableTracingState.of(
-                    TracingMode.DISABLED_BY_CONFIGURATION,
-                    Optional.of("runtime.kill-switch"),
-                    Map.of("source", "setFacadeEnabled(false)"));
-        }
         return ImmutableTracingState.enabled();
     }
 
@@ -146,7 +128,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
     }
 
     private void applySpecAttributes(@Nonnull space.br1440.platform.tracing.api.span.SpanScope scope,
-                                       @Nonnull Map<String, SpanAttributeValue> attributes) {
+                                     @Nonnull Map<String, SpanAttributeValue> attributes) {
         for (Map.Entry<String, SpanAttributeValue> entry : attributes.entrySet()) {
             applyAttribute(scope, entry.getKey(), entry.getValue());
         }
@@ -168,7 +150,8 @@ public final class OtelTracingRuntime implements TracingRuntime {
     }
 
     @Nonnull
-    private static SpanContext toRemoteSpanContext(@Nonnull space.br1440.platform.tracing.api.span.SpanLinkContext link) {
+    private static SpanContext toRemoteSpanContext(
+            @Nonnull space.br1440.platform.tracing.api.span.SpanLinkContext link) {
         return SpanContext.createFromRemoteParent(
                 link.traceId(),
                 link.spanId(),
@@ -186,7 +169,8 @@ public final class OtelTracingRuntime implements TracingRuntime {
             String trimmed = entry.trim();
             int separator = trimmed.indexOf('=');
             if (separator > 0 && separator < trimmed.length() - 1) {
-                builder.put(trimmed.substring(0, separator).trim(), trimmed.substring(separator + 1).trim());
+                builder.put(trimmed.substring(0, separator).trim(),
+                        trimmed.substring(separator + 1).trim());
             }
         }
         return builder.build();
