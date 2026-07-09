@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.core;
 import space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 import io.opentelemetry.api.trace.Span;
@@ -36,8 +37,7 @@ class OtelPlatformContextPropagationTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(
-                OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
+        tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
         propagation = new OtelPlatformContextPropagation();
         executor = Executors.newSingleThreadExecutor();
     }

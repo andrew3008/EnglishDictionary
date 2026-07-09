@@ -8,6 +8,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,12 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     @Nonnull
     public TracingState state() {
         return state;
+    }
+
+    @Override
+    @Nonnull
+    public AttributePolicy attributePolicy() {
+        return new AttributePolicy();
     }
 
     public void setState(@Nonnull TracingState state) {

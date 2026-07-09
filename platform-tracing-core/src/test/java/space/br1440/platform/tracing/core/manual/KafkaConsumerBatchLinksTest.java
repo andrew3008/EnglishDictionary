@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.RemoteContext;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 import java.util.Arrays;
@@ -41,8 +42,7 @@ class KafkaConsumerBatchLinksTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(
-                OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
+        tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
     }
 
     @AfterEach

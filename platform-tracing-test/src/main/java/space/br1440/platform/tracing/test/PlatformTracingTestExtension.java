@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 
 public class PlatformTracingTestExtension implements BeforeEachCallback, ParameterResolver {
 
@@ -33,7 +34,7 @@ public class PlatformTracingTestExtension implements BeforeEachCallback, Paramet
         Store store = context.getStore(NAMESPACE);
         store.put(Key.SDK, (ExtensionContext.Store.CloseableResource) sdk::close);
         store.put(Key.EXPORTER, exporter);
-        store.put(PlatformTracing.class, new DefaultPlatformTracing(sdk));
+        store.put(PlatformTracing.class, new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk)));
         store.put(OpenTelemetrySdk.class, sdk);
     }
 

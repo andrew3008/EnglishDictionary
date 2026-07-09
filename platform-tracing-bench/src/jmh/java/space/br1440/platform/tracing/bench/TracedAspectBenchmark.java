@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
 import java.util.concurrent.TimeUnit;
@@ -34,7 +35,7 @@ public class TracedAspectBenchmark {
         sdk = OpenTelemetrySdk.builder()
                 .setTracerProvider(SdkTracerProvider.builder().build())
                 .build();
-        platformTracing = new DefaultPlatformTracing(sdk);
+        platformTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk));
     }
 
     @TearDown(Level.Trial)

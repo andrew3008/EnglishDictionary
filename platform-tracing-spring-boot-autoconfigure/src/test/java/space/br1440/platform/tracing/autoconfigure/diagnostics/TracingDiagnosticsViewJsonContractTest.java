@@ -110,5 +110,10 @@ class TracingDiagnosticsViewJsonContractTest {
                 }
             };
         }
+
+        @Override
+        public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy() {
+            return new space.br1440.platform.tracing.core.semconv.policy.AttributePolicy();
+        }
     }
 }

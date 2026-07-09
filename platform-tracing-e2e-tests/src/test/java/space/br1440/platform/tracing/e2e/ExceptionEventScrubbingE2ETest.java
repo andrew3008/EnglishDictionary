@@ -19,6 +19,7 @@ import org.testcontainers.utility.MountableFile;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanScope;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
@@ -107,10 +108,8 @@ class ExceptionEventScrubbingE2ETest {
                 .build();
 
         // Фасады поверх одного SDK: отличаются только ExceptionMessagePolicy.
-        secureTracing = new DefaultPlatformTracing(sdk, new AttributePolicy(),
-                new ExceptionRecorder(ExceptionMessagePolicy.secureDefault()));
-        verboseTracing = new DefaultPlatformTracing(sdk, new AttributePolicy(),
-                new ExceptionRecorder(new ExceptionMessagePolicy(true, false)));
+        secureTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, new AttributePolicy(), new ExceptionRecorder(ExceptionMessagePolicy.secureDefault())));
+        verboseTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, new AttributePolicy(), new ExceptionRecorder(new ExceptionMessagePolicy(true, false))));
     }
 
     @AfterAll

@@ -127,6 +127,11 @@ class DiagnosticsBoundaryTest {
             public TracingState state() {
                 return state;
             }
+
+            @Override
+            public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy() {
+                return new space.br1440.platform.tracing.core.semconv.policy.AttributePolicy();
+            }
         };
 
         ManualTracingDiagnostics diagnostics = new ManualTracingDiagnostics(testPrimary);

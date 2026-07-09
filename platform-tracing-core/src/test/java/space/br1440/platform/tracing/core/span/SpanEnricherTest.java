@@ -15,6 +15,7 @@ import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
@@ -67,7 +68,7 @@ class SpanEnricherTest {
 
     @Test
     void enrichCurrentSpanIfPlatformCategory_сV3Маркером_применяетAllowlistИОтбрасываетChужие() {
-        DefaultPlatformTracing tracing = new DefaultPlatformTracing(sdk);
+        DefaultPlatformTracing tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk));
         try (var ignored = tracing.manual().operation("op").start()) {
             enricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.INTERNAL, scope -> scope
                     .attribute(SemconvKeys.PLATFORM_REQUEST_ID, "r1")

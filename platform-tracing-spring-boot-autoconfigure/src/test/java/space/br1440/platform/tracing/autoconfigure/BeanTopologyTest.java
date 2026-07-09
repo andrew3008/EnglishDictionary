@@ -25,6 +25,7 @@ import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
 import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Map;
 import java.util.Objects;
@@ -60,7 +61,7 @@ class BeanTopologyTest {
                 .run(context -> {
                     DefaultPlatformTracing facade = context.getBean(DefaultPlatformTracing.class);
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
-                    assertThat(facade.tracingImplementation()).isSameAs(impl);
+                    assertThat(facade.tracingRuntime()).isSameAs(impl);
                 });
     }
 
@@ -166,6 +167,12 @@ class BeanTopologyTest {
         @Nonnull
         public TracingState state() {
             return STATE;
+        }
+
+        @Override
+        @Nonnull
+        public AttributePolicy attributePolicy() {
+            return new AttributePolicy();
         }
     }
 

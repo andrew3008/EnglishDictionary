@@ -13,6 +13,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
@@ -35,8 +36,8 @@ public class TypedBuilderBenchmark {
                 .build();
         AttributePolicy disabledPolicy = new AttributePolicy(ValidationMode.DISABLED, false, SemconvMetrics.NOOP);
         AttributePolicy warnPolicy = new AttributePolicy(ValidationMode.WARN, false, SemconvMetrics.NOOP);
-        disabledPolicyTracing = new DefaultPlatformTracing(sdk, disabledPolicy);
-        warnPolicyTracing = new DefaultPlatformTracing(sdk, warnPolicy);
+        disabledPolicyTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, disabledPolicy);
+        warnPolicyTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, warnPolicy)));
     }
 
     @TearDown(Level.Trial)

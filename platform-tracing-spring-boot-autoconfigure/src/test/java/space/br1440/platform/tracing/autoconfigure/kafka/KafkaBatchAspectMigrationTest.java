@@ -26,6 +26,7 @@ import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -57,7 +58,7 @@ class KafkaBatchAspectMigrationTest {
                 .setTracerProvider(tracerProvider)
                 .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
                 .build();
-        platformTracing = new DefaultPlatformTracing(openTelemetry);
+        platformTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(openTelemetry));
     }
 
     @AfterEach
@@ -111,7 +112,7 @@ class KafkaBatchAspectMigrationTest {
                 .setTracerProvider(tracerProvider)
                 .setPropagators(ContextPropagators.create(new CustomHeaderPropagator()))
                 .build();
-        platformTracing = new DefaultPlatformTracing(openTelemetry);
+        platformTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(openTelemetry));
 
         ConsumerRecord<String, String> record = new ConsumerRecord<>("orders", 0, 0L, "k", "v");
         record.headers().add("x-custom-trace", "1".getBytes(StandardCharsets.UTF_8));

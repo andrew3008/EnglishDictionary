@@ -13,6 +13,7 @@ import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.Topology;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
@@ -131,12 +132,11 @@ class TracingRuntimeRoutingTest {
         SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        DefaultPlatformTracing realTracing = new DefaultPlatformTracing(
-                OpenTelemetrySdk.builder().setTracerProvider(provider).build());
+        DefaultPlatformTracing realTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(provider).build()));
         realTracing.setFacadeEnabled(false);
         realTracing.manual().operation("disabled").start().close();
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
-        assertThat(realTracing.tracingImplementation().state().mode())
+        assertThat(realTracing.tracingRuntime().state().mode())
                 .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
     }
 
