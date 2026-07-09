@@ -21,6 +21,9 @@ import java.util.Optional;
  */
 public final class NoOpTracingRuntime implements TracingRuntime {
 
+    /** Permissive default policy shared across no-op instances; never mutated (no validation happens). */
+    private static final AttributePolicy PERMISSIVE = new AttributePolicy();
+
     private final TracingState state;
     private final TraceContextView traceContextView;
 
@@ -80,7 +83,7 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     @Override
     @Nonnull
     public AttributePolicy attributePolicy() {
-        return new AttributePolicy();
+        return PERMISSIVE;
     }
 
     @Nonnull

@@ -19,6 +19,8 @@ import java.util.Objects;
  */
 public final class RecordingTracingRuntime implements TracingRuntime {
 
+    private static final AttributePolicy PERMISSIVE = new AttributePolicy();
+
     private final List<SpanSpec> receivedSpecs = new ArrayList<>();
     private TracingState state = ImmutableTracingState.enabled();
 
@@ -49,7 +51,7 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     @Override
     @Nonnull
     public AttributePolicy attributePolicy() {
-        return new AttributePolicy();
+        return PERMISSIVE;
     }
 
     public void setState(@Nonnull TracingState state) {

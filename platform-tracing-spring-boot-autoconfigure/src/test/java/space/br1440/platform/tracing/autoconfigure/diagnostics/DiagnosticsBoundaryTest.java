@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
 import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Map;
 import java.util.Optional;
@@ -129,8 +130,8 @@ class DiagnosticsBoundaryTest {
             }
 
             @Override
-            public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy() {
-                return new space.br1440.platform.tracing.core.semconv.policy.AttributePolicy();
+            public AttributePolicy attributePolicy() {
+                return new AttributePolicy();
             }
         };
 

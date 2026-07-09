@@ -36,8 +36,10 @@ public class TypedBuilderBenchmark {
                 .build();
         AttributePolicy disabledPolicy = new AttributePolicy(ValidationMode.DISABLED, false, SemconvMetrics.NOOP);
         AttributePolicy warnPolicy = new AttributePolicy(ValidationMode.WARN, false, SemconvMetrics.NOOP);
-        disabledPolicyTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, disabledPolicy);
-        warnPolicyTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, warnPolicy)));
+        disabledPolicyTracing = new DefaultPlatformTracing(
+                OtelTracingRuntimeFactory.create(sdk, disabledPolicy));
+        warnPolicyTracing = new DefaultPlatformTracing(
+                OtelTracingRuntimeFactory.create(sdk, warnPolicy));
     }
 
     @TearDown(Level.Trial)

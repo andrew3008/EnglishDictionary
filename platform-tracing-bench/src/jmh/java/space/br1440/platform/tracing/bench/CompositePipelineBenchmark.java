@@ -92,7 +92,7 @@ public class CompositePipelineBenchmark {
                 new NoopSpanProcessor()
         );
         noopSdk = buildSdk(new PlatformCompositeSpanProcessor(noopDelegates));
-        noopPipeline = new DefaultPlatformTracing(noopSdk);
+        noopPipeline = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(noopSdk));
 
         // Реальный композит в production-порядке (см. PlatformSpanProcessorFactory):
         // Enriching -> Scrubbing -> Validating -> Classification. Watchdog/Metrics не включены:
@@ -112,7 +112,7 @@ public class CompositePipelineBenchmark {
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1))
         );
         realSdk = buildSdk(new PlatformCompositeSpanProcessor(realDelegates));
-        realPipeline = new DefaultPlatformTracing(realSdk);
+        realPipeline = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(realSdk));
 
         // Тот же реальный композит, но БЕЗ scrubbing'а. Enriching/Validating/Classification — это
         // как раз процессоры, вызывающие toSpanData() (status/resource), но с минимальной собственной
@@ -123,7 +123,7 @@ public class CompositePipelineBenchmark {
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1))
         );
         realNoScrubbingSdk = buildSdk(new PlatformCompositeSpanProcessor(realNoScrubbingDelegates));
-        realNoScrubbingPipeline = new DefaultPlatformTracing(realNoScrubbingSdk);
+        realNoScrubbingPipeline = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(realNoScrubbingSdk));
     }
 
     private static OpenTelemetrySdk buildSdk(SpanProcessor composite) {

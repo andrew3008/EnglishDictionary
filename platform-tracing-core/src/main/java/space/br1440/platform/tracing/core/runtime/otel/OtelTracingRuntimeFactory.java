@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.core.runtime.otel;
 import io.opentelemetry.api.OpenTelemetry;
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
@@ -32,7 +33,7 @@ public final class OtelTracingRuntimeFactory {
      * default {@link ExceptionRecorder}.
      */
     @Nonnull
-    public static OtelTracingRuntime create(@Nonnull OpenTelemetry openTelemetry) {
+    public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         return new OtelTracingRuntime(openTelemetry, new AttributePolicy(),
                 ExceptionRecorder.secureDefault());
@@ -43,8 +44,8 @@ public final class OtelTracingRuntimeFactory {
      * {@link ExceptionRecorder}.
      */
     @Nonnull
-    public static OtelTracingRuntime create(@Nonnull OpenTelemetry openTelemetry,
-                                            @Nonnull AttributePolicy policy) {
+    public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry,
+                                        @Nonnull AttributePolicy policy) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(policy, "policy");
         return new OtelTracingRuntime(openTelemetry, policy,
@@ -56,9 +57,9 @@ public final class OtelTracingRuntimeFactory {
      * {@link ExceptionRecorder}.
      */
     @Nonnull
-    public static OtelTracingRuntime create(@Nonnull OpenTelemetry openTelemetry,
-                                            @Nonnull AttributePolicy policy,
-                                            @Nonnull ExceptionRecorder exceptionRecorder) {
+    public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry,
+                                        @Nonnull AttributePolicy policy,
+                                        @Nonnull ExceptionRecorder exceptionRecorder) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(exceptionRecorder, "exceptionRecorder");
