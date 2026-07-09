@@ -29,8 +29,9 @@ public final class OtelTracingRuntimeFactory {
     }
 
     /**
-     * Creates a runtime with a permissive (default) {@link AttributePolicy} and the
-     * default {@link ExceptionRecorder}.
+     * Creates a {@link TracingRuntime} backed by the given {@link OpenTelemetry} instance,
+     * with a permissive (default) {@link AttributePolicy} and the default
+     * {@link ExceptionRecorder}.
      */
     @Nonnull
     public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry) {
@@ -40,8 +41,8 @@ public final class OtelTracingRuntimeFactory {
     }
 
     /**
-     * Creates a runtime with a custom {@link AttributePolicy} and the default
-     * {@link ExceptionRecorder}.
+     * Creates a {@link TracingRuntime} backed by the given {@link OpenTelemetry} instance,
+     * with a custom {@link AttributePolicy} and the default {@link ExceptionRecorder}.
      */
     @Nonnull
     public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry,
@@ -53,8 +54,25 @@ public final class OtelTracingRuntimeFactory {
     }
 
     /**
-     * Creates a runtime with a custom {@link AttributePolicy} and a custom
+     * Creates a {@link TracingRuntime} backed by the given {@link OpenTelemetry} instance,
+     * with a permissive (default) {@link AttributePolicy} and a custom
      * {@link ExceptionRecorder}.
+     *
+     * <p>Intended for autoconfigure and integration contexts where a non-default recorder
+     * (e.g. one that redacts PII from exception messages) must be supplied without
+     * having to repeat {@code new AttributePolicy()} at every call site.
+     */
+    @Nonnull
+    public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry,
+                                        @Nonnull ExceptionRecorder exceptionRecorder) {
+        Objects.requireNonNull(openTelemetry, "openTelemetry");
+        Objects.requireNonNull(exceptionRecorder, "exceptionRecorder");
+        return new OtelTracingRuntime(openTelemetry, new AttributePolicy(), exceptionRecorder);
+    }
+
+    /**
+     * Creates a {@link TracingRuntime} backed by the given {@link OpenTelemetry} instance,
+     * with a custom {@link AttributePolicy} and a custom {@link ExceptionRecorder}.
      */
     @Nonnull
     public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry,

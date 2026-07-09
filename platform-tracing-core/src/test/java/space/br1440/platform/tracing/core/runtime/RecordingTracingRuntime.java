@@ -19,6 +19,7 @@ import java.util.Objects;
  */
 public final class RecordingTracingRuntime implements TracingRuntime {
 
+    /** Permissive default policy shared across recording instances; never mutated (validation is bypassed in tests). */
     private static final AttributePolicy PERMISSIVE = new AttributePolicy();
 
     private final List<SpanSpec> receivedSpecs = new ArrayList<>();
