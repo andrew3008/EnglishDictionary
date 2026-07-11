@@ -21,7 +21,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfigurati
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Slice 6 hard gate: metered decorator increments bounded self-metrics without masking topology.
+ * Slice 6 hard gate: metered decorator increments bounded self-metrics without masking SpanRelationship.
  */
 class MeteredMetricsCountTest {
 

@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 
 import java.util.function.Supplier;
 
-public interface SpecifiedSpan {
+public interface SpanExecution {
 
     @Nonnull
     SpanHandle start();

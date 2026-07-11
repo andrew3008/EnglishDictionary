@@ -5,12 +5,12 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.manual.KafkaTracing;
 import space.br1440.platform.tracing.api.manual.ManualTracing;
 import space.br1440.platform.tracing.api.semconv.KafkaSemconvVersion;
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.Topology;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
@@ -29,7 +29,7 @@ class KafkaSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        AttributePolicy strictPolicy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        AttributePolicy strictPolicy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
         manual = new DefaultManualTracing(recording, strictPolicy);
     }
 
@@ -103,8 +103,8 @@ class KafkaSpanBuilderTest {
                 });
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
-        assertThat(spec.options().topology()).isEqualTo(Topology.ROOT);
-        assertThat(spec.options().links()).containsExactly(link);
+        assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.ROOT);
+        assertThat(spec.relationship().links()).containsExactly(link);
     }
 
     @Test
@@ -136,7 +136,7 @@ class KafkaSpanBuilderTest {
     }
 
     @Test
-    void rootTopology_works() {
+    void rootRelationship_works() {
         manual.transport().kafka().producer()
                 .destination("orders")
                 .operation("publish")
@@ -144,6 +144,6 @@ class KafkaSpanBuilderTest {
                 .start()
                 .close();
 
-        assertThat(recording.receivedSpecs().getFirst().options().topology()).isEqualTo(Topology.ROOT);
+        assertThat(recording.receivedSpecs().getFirst().relationship().kind()).isEqualTo(SpanRelationship.ROOT);
     }
 }

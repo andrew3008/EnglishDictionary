@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.manual.PlatformSpanBuilder;
+import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcClientSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
@@ -37,7 +37,7 @@ final class DefaultRpcTracing implements RpcTracing {
         return new RpcClientSpanBuilderImpl(implementation, policy);
     }
 
-    private static abstract class AbstractRpcSpanBuilder<B extends PlatformSpanBuilder<B>>
+    private static abstract class AbstractRpcSpanBuilder<B extends ManualSpanBuilder<B>>
             extends AbstractSemanticSpanBuilder<B> {
 
         AbstractRpcSpanBuilder(@Nonnull TracingRuntime implementation,

@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Slice 4 hard gate: {@code manual().spanFromSpec(...)} terminal lifecycle.
  */
-class SpecifiedSpanTest {
+class SpanExecutionTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;

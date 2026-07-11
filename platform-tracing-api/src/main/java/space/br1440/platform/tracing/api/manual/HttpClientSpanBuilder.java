@@ -5,7 +5,7 @@ import jakarta.annotation.Nonnull;
 /**
  * Семантический построитель HTTP client под {@link HttpTracing#client()}.
  */
-public interface HttpClientSpanBuilder extends PlatformSpanBuilder<HttpClientSpanBuilder> {
+public interface HttpClientSpanBuilder extends ManualSpanBuilder<HttpClientSpanBuilder> {
 
     @Nonnull
     HttpClientSpanBuilder method(@Nonnull String httpMethod);

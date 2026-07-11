@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Тесты {@link SemanticLayerAutoConfiguration}: дефолт WARN в проде, приоритет бина
- * {@link ValidationMode} (канал {@link SemconvStrictTestAutoConfiguration}) и явный DISABLED.
+ * {@link SemconvValidationMode} (канал {@link SemconvStrictTestAutoConfiguration}) и явный DISABLED.
  */
 class SemanticLayerAutoConfigurationTest {
 
@@ -27,7 +27,7 @@ class SemanticLayerAutoConfigurationTest {
             assertThat(context).hasSingleBean(AttributePolicy.class);
             assertThat(context).hasSingleBean(SpanEnricher.class);
             assertThat(context).hasSingleBean(ExceptionRecorder.class);
-            assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(ValidationMode.WARN);
+            assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(SemconvValidationMode.WARN);
         });
     }
 
@@ -36,18 +36,18 @@ class SemanticLayerAutoConfigurationTest {
         contextRunner
                 .withPropertyValues("platform.tracing.semantic.validation-mode=DISABLED")
                 .run(context ->
-                        assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(ValidationMode.DISABLED));
+                        assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(SemconvValidationMode.DISABLED));
     }
 
     @Test
     void бинValidationModeИмеетПриоритетНадProperty() {
-        // SemconvStrictTestAutoConfiguration публикует бин ValidationMode.STRICT,
+        // SemconvStrictTestAutoConfiguration публикует бин SemconvValidationMode.STRICT,
         // который обязан переопределить property WARN.
         contextRunner
                 .withUserConfiguration(SemconvStrictTestAutoConfiguration.class)
                 .withPropertyValues("platform.tracing.semantic.validation-mode=WARN")
                 .run(context ->
-                        assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(ValidationMode.STRICT));
+                        assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(SemconvValidationMode.STRICT));
     }
 
     @Test
@@ -56,6 +56,6 @@ class SemanticLayerAutoConfigurationTest {
                 .withUserConfiguration(SemconvStrictTestAutoConfiguration.class)
                 .withPropertyValues("platform.tracing.test.semconv-strict=false")
                 .run(context ->
-                        assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(ValidationMode.WARN));
+                        assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(SemconvValidationMode.WARN));
     }
 }

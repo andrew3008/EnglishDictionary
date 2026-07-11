@@ -52,7 +52,7 @@ public class TracingMetricsAutoConfiguration {
             TracingProperties properties) {
         return registry -> {
             boolean disabled = properties.getSemantic().getValidationMode()
-                    == space.br1440.platform.tracing.api.semconv.ValidationMode.DISABLED;
+                    == space.br1440.platform.tracing.api.semconv.SemconvValidationMode.DISABLED;
             registry.gauge("platform.tracing.semantic.validation.disabled", disabled ? 1 : 0);
         };
     }

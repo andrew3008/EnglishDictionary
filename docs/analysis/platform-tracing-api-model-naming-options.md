@@ -782,3 +782,11 @@ Get-Content platform-tracing-api/src/main/java/space/br1440/platform/tracing/api
 ```
 
 Gradle was not run because this task is analysis-only and no source code was modified.
+
+---
+
+## Batch A Accepted Update - 2026-07-11
+
+Batch A has been accepted and implemented. Current public API names are `SpanRelationship`, `SpanRelationshipSpec`, `SpanSpec.relationship()`, `ManualSpanBuilder`, `SpanExecution`, `SpanEnrichment`, `GenericSpanEnrichment`, `SemconvValidationMode`, and `DatabaseSpanBuilder`.
+
+Public `SpanScope` and `DatabaseTracing` are removed. Database semconv marker `@DatabaseSemconvVersion("1.28.0")` now belongs to `DatabaseSpanBuilder`.

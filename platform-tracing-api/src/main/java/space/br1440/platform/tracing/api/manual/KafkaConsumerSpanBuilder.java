@@ -5,7 +5,7 @@ import jakarta.annotation.Nonnull;
 /**
  * Семантический построитель Kafka consumer под {@link KafkaTracing#consumer()}.
  */
-public interface KafkaConsumerSpanBuilder extends PlatformSpanBuilder<KafkaConsumerSpanBuilder> {
+public interface KafkaConsumerSpanBuilder extends ManualSpanBuilder<KafkaConsumerSpanBuilder> {
 
     @Nonnull
     KafkaConsumerSpanBuilder destination(@Nonnull String topic);

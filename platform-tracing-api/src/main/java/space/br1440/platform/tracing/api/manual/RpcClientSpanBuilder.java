@@ -5,7 +5,7 @@ import jakarta.annotation.Nonnull;
 /**
  * Семантический построитель RPC client под {@link RpcTracing#client()}.
  */
-public interface RpcClientSpanBuilder extends PlatformSpanBuilder<RpcClientSpanBuilder> {
+public interface RpcClientSpanBuilder extends ManualSpanBuilder<RpcClientSpanBuilder> {
 
     @Nonnull
     RpcClientSpanBuilder system(@Nonnull String rpcSystem);

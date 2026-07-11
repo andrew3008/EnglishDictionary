@@ -10,7 +10,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
@@ -42,8 +42,8 @@ public class AttributePolicyBenchmark {
 
     @Setup(Level.Trial)
     public void setUp() {
-        warnPolicy = new AttributePolicy(ValidationMode.WARN, false, SemconvMetrics.NOOP);
-        disabledPolicy = new AttributePolicy(ValidationMode.DISABLED, false, SemconvMetrics.NOOP);
+        warnPolicy = new AttributePolicy(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
+        disabledPolicy = new AttributePolicy(SemconvValidationMode.DISABLED, false, SemconvMetrics.NOOP);
 
         validHttpServerAttributes = Attributes.builder()
                 .put("http.request.method", "GET")

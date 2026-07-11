@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 6 hard gate: metered {@link TracingRuntime} preserves topology and links.
+ * Slice 6 hard gate: metered {@link TracingRuntime} preserves SpanRelationship and links.
  */
 class MeteredTopologyMatrixTest {
 

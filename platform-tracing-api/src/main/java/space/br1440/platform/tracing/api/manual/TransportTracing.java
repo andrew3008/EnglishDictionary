@@ -11,7 +11,7 @@ public interface TransportTracing {
     HttpTracing http();
 
     @Nonnull
-    DatabaseTracing database();
+    DatabaseSpanBuilder database();
 
     @Nonnull
     RpcTracing rpc();

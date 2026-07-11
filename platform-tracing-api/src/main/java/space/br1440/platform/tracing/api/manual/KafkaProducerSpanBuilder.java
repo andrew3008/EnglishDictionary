@@ -5,7 +5,7 @@ import jakarta.annotation.Nonnull;
 /**
  * Семантический построитель Kafka producer под {@link KafkaTracing#producer()}.
  */
-public interface KafkaProducerSpanBuilder extends PlatformSpanBuilder<KafkaProducerSpanBuilder> {
+public interface KafkaProducerSpanBuilder extends ManualSpanBuilder<KafkaProducerSpanBuilder> {
 
     @Nonnull
     KafkaProducerSpanBuilder destination(@Nonnull String topic);

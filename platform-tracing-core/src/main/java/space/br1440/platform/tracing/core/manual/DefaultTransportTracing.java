@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.manual.DatabaseTracing;
+import space.br1440.platform.tracing.api.manual.DatabaseSpanBuilder;
 import space.br1440.platform.tracing.api.manual.HttpTracing;
 import space.br1440.platform.tracing.api.manual.KafkaTracing;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
@@ -30,7 +30,7 @@ public final class DefaultTransportTracing implements TransportTracing {
 
     @Override
     @Nonnull
-    public DatabaseTracing database() {
+    public DatabaseSpanBuilder database() {
         return new DatabaseSpanBuilderImpl(implementation, policy);
     }
 

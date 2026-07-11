@@ -124,7 +124,7 @@ public class TracingProperties {
     /**
      * Гранулярный toggle платформенного фасада ({@code PlatformTracing}/{@code DefaultPlatformTracing}).
      * <p>
-     * Runtime-mutable (Фаза 14): при {@code enabled=false} фасад отдаёт no-op SpanScope, не затрагивая
+     * Runtime-mutable (Фаза 14): при {@code enabled=false} фасад отдаёт no-op span handle, не затрагивая
      * auto-instrumentation OTel Agent. Wiring — PR-4.
      */
     @Getter
@@ -333,7 +333,7 @@ public class TracingProperties {
         /**
          * Гранулярный toggle экспорта (kill-switch). Runtime-mutable (Фаза 14): при {@code false}
          * span'ы создаются и пропагируются, но не экспортируются (export-gate, PR-4) — propagation
-         * не ломается. Не меняет topology (endpoint/queue остаются startup-only).
+         * не ломается. Не меняет SpanRelationship (endpoint/queue остаются startup-only).
          */
         private boolean enabled = true;
 
@@ -545,8 +545,8 @@ public class TracingProperties {
     public static class Semantic {
 
         /** Режим runtime-валидации semconv-контракта. Production default — {@code WARN}. */
-        private space.br1440.platform.tracing.api.semconv.ValidationMode validationMode =
-                space.br1440.platform.tracing.api.semconv.ValidationMode.WARN;
+        private space.br1440.platform.tracing.api.semconv.SemconvValidationMode validationMode =
+                space.br1440.platform.tracing.api.semconv.SemconvValidationMode.WARN;
 
         /**
          * Причина перевода в {@code DISABLED} (owner/причина/expiry). Для режима

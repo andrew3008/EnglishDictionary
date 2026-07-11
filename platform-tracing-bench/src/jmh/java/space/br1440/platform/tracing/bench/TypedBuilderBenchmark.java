@@ -12,7 +12,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
@@ -34,8 +34,8 @@ public class TypedBuilderBenchmark {
         sdk = OpenTelemetrySdk.builder()
                 .setTracerProvider(SdkTracerProvider.builder().build())
                 .build();
-        AttributePolicy disabledPolicy = new AttributePolicy(ValidationMode.DISABLED, false, SemconvMetrics.NOOP);
-        AttributePolicy warnPolicy = new AttributePolicy(ValidationMode.WARN, false, SemconvMetrics.NOOP);
+        AttributePolicy disabledPolicy = new AttributePolicy(SemconvValidationMode.DISABLED, false, SemconvMetrics.NOOP);
+        AttributePolicy warnPolicy = new AttributePolicy(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
         disabledPolicyTracing = new DefaultPlatformTracing(
                 OtelTracingRuntimeFactory.create(sdk, disabledPolicy));
         warnPolicyTracing = new DefaultPlatformTracing(

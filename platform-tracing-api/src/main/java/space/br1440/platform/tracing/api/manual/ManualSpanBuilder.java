@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 /**
  * Общий контракт выполнения в области видимости span'а для семантических построителей v3.
  */
-public interface PlatformSpanBuilder<B extends PlatformSpanBuilder<B>> {
+public interface ManualSpanBuilder<B extends ManualSpanBuilder<B>> {
 
     @Nonnull
     B child();

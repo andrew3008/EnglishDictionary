@@ -16,7 +16,7 @@ package space.br1440.platform.tracing.api.semconv;
  *       атрибуты передаются as-is, дефолты не подставляются, per-span логов/метрик нарушений нет.</li>
  * </ul>
  */
-public enum ValidationMode {
+public enum SemconvValidationMode {
 
     /** Fail-fast для CI/test: бросает {@link SemconvViolationException} до старта span'а. */
     STRICT,

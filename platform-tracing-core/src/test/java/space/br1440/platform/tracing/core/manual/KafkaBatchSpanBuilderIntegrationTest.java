@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Exporter-level integration test for Kafka batch builder semantics (H2 hardening).
  * <p>
  * Complements {@link KafkaConsumerBatchLinksTest} by asserting exported span kind,
- * messaging semconv attributes, and platform category — not only topology/links.
+ * messaging semconv attributes, and platform category — not only SpanRelationship/links.
  */
 class KafkaBatchSpanBuilderIntegrationTest {
 

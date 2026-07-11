@@ -1,9 +1,13 @@
 package space.br1440.platform.tracing.api.span.spec;
 
 /**
- * Топология (вид) связи нового span'а с уже активным span'ом в момент старта.
+ * Связь (relationship) нового span'а с текущим активным span'ом или родительским trace-контекстом
+ * в момент старта.
+ * <p>
+ * Это не OpenTelemetry {@code SpanKind}; протокольный client/server kind выводится отдельно
+ * из {@link space.br1440.platform.tracing.api.span.SpanCategory}.
  */
-public enum Topology {
+public enum SpanRelationship {
     /**
      * Новый span станет дочерним к текущему активному span'у.
      */

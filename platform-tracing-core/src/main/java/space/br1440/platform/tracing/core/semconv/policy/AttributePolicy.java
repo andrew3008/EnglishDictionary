@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.api.semconv.CategoryContracts;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.semconv.SemconvViolation;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 
 import java.util.ArrayList;
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * атрибутов (для имени span'а и для {@code SpanBuilder}). Вызывается до {@code startSpan()}
  * (sampler видит уже нормализованные creation-time атрибуты).
  * <p>
- * Поведение по {@link ValidationMode}:
+ * Поведение по {@link SemconvValidationMode}:
  * <ul>
  *   <li>{@code STRICT} — бросает {@link SemconvViolationException} на первом нарушении (fail-fast);</li>
  *   <li>{@code WARN} — safe-defaults (только для platform-required {@code platform.trace.type}),
@@ -50,13 +50,13 @@ public final class AttributePolicy {
      */
     private static final Set<String> KNOWN_KEYS = buildKnownKeys();
 
-    private final ValidationMode mode;
+    private final SemconvValidationMode mode;
     private final boolean allowUnsafeAttributes;
     private final SemconvMetrics metrics;
 
     private final Set<String> warnedOnce = ConcurrentHashMap.newKeySet();
 
-    public AttributePolicy(@Nonnull ValidationMode mode,
+    public AttributePolicy(@Nonnull SemconvValidationMode mode,
                            boolean allowUnsafeAttributes,
                            @Nonnull SemconvMetrics metrics) {
         this.mode = mode;
@@ -65,11 +65,11 @@ public final class AttributePolicy {
     }
 
     public AttributePolicy() {
-        this(ValidationMode.WARN, false, SemconvMetrics.NOOP);
+        this(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
     }
 
     @Nonnull
-    public ValidationMode mode() {
+    public SemconvValidationMode mode() {
         return mode;
     }
 
@@ -82,14 +82,14 @@ public final class AttributePolicy {
     public ValidatedAttributes validateAndNormalize(@Nonnull SpanCategory category,
                                                     @Nonnull Attributes accumulated,
                                                     @Nonnull String builderName) {
-        if (mode == ValidationMode.DISABLED) {
+        if (mode == SemconvValidationMode.DISABLED) {
             return new ValidatedAttributes(accumulated, List.of());
         }
 
         CategoryContract contract = CategoryContracts.of(category);
         List<SemconvViolation> violations = collectViolations(contract, accumulated, category, builderName);
 
-        if (mode == ValidationMode.STRICT && !violations.isEmpty()) {
+        if (mode == SemconvValidationMode.STRICT && !violations.isEmpty()) {
             throw new SemconvViolationException(violations.getFirst());
         }
 

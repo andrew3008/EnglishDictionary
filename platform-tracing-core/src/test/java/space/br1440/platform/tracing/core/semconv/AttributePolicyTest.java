@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
@@ -39,7 +39,7 @@ class AttributePolicyTest {
     @Test
     void warn_приОтсутствииRequired_неБросает_подставляетSafeDefault_иПишетМетрику() {
         CapturingMetrics metrics = new CapturingMetrics();
-        AttributePolicy policy = new AttributePolicy(ValidationMode.WARN, false, metrics);
+        AttributePolicy policy = new AttributePolicy(SemconvValidationMode.WARN, false, metrics);
 
         ValidatedAttributes result = policy.validateAndNormalize(
                 SpanCategory.INTERNAL, Attributes.empty(), "InternalSpanBuilder");
@@ -54,7 +54,7 @@ class AttributePolicyTest {
 
     @Test
     void strict_приОтсутствииRequired_бросаетSemconvViolationException() {
-        AttributePolicy policy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        AttributePolicy policy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
 
         assertThatExceptionOfType(SemconvViolationException.class)
                 .isThrownBy(() -> policy.validateAndNormalize(
@@ -64,7 +64,7 @@ class AttributePolicyTest {
     @Test
     void disabled_возвращаетАтрибутыAsIs_безДефолтовЛоговМетрик() {
         CapturingMetrics metrics = new CapturingMetrics();
-        AttributePolicy policy = new AttributePolicy(ValidationMode.DISABLED, false, metrics);
+        AttributePolicy policy = new AttributePolicy(SemconvValidationMode.DISABLED, false, metrics);
 
         ValidatedAttributes result = policy.validateAndNormalize(
                 SpanCategory.INTERNAL, Attributes.empty(), "InternalSpanBuilder");
@@ -77,7 +77,7 @@ class AttributePolicyTest {
     @Test
     void warn_приЗапрещённомАтрибуте_фиксируетForbiddenНарушение() {
         CapturingMetrics metrics = new CapturingMetrics();
-        AttributePolicy policy = new AttributePolicy(ValidationMode.WARN, false, metrics);
+        AttributePolicy policy = new AttributePolicy(SemconvValidationMode.WARN, false, metrics);
 
         Attributes attrs = Attributes.builder()
                 .put(SemconvKeys.PLATFORM_TYPE, "internal")
@@ -95,7 +95,7 @@ class AttributePolicyTest {
 
     @Test
     void warn_dbBezDbSystem_фиксируетRequiredAnyOf_аСНим_проходит() {
-        AttributePolicy policy = new AttributePolicy(ValidationMode.WARN, false, SemconvMetrics.NOOP);
+        AttributePolicy policy = new AttributePolicy(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
 
         Attributes without = Attributes.builder()
                 .put(SemconvKeys.PLATFORM_TYPE, "database")
@@ -121,13 +121,13 @@ class AttributePolicyTest {
     void unsafeAttribute_классифицируетKnownUnknownRejected_иПишетМетрику() {
         CapturingMetrics metrics = new CapturingMetrics();
 
-        AttributePolicy allowed = new AttributePolicy(ValidationMode.WARN, true, metrics);
+        AttributePolicy allowed = new AttributePolicy(SemconvValidationMode.WARN, true, metrics);
         assertThat(allowed.auditUnsafeAttribute("platform.trace.type"))
                 .isEqualTo(AttributePolicy.UnsafeKeyClass.KNOWN);
         assertThat(allowed.auditUnsafeAttribute("custom.vendor.flag"))
                 .isEqualTo(AttributePolicy.UnsafeKeyClass.UNKNOWN);
 
-        AttributePolicy forbidden = new AttributePolicy(ValidationMode.WARN, false, metrics);
+        AttributePolicy forbidden = new AttributePolicy(SemconvValidationMode.WARN, false, metrics);
         assertThat(forbidden.auditUnsafeAttribute("custom.vendor.flag"))
                 .isEqualTo(AttributePolicy.UnsafeKeyClass.REJECTED);
 
@@ -138,6 +138,6 @@ class AttributePolicyTest {
     void disabled_неОтключаетВыполнение_другихРежимов_конструкторПоУмолчаниюWarn() {
         assertThatNoException().isThrownBy(() -> new AttributePolicy().validateAndNormalize(
                 SpanCategory.INTERNAL, Attributes.empty(), "default"));
-        assertThat(new AttributePolicy().mode()).isEqualTo(ValidationMode.WARN);
+        assertThat(new AttributePolicy().mode()).isEqualTo(SemconvValidationMode.WARN);
     }
 }

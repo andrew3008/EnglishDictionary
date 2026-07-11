@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.manual.DatabaseSpanBuilder;
-import space.br1440.platform.tracing.api.manual.DatabaseTracing;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
@@ -10,7 +9,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
-final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<DatabaseSpanBuilder> implements DatabaseTracing {
+final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<DatabaseSpanBuilder> implements DatabaseSpanBuilder {
 
     DatabaseSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                             @Nonnull AttributePolicy policy) {

@@ -16,8 +16,8 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
     private final String name;
     private SpanCategory category;
-    private Topology topology = Topology.CHILD;
-    private boolean topologyExplicit;
+    private SpanRelationship relationship = SpanRelationship.CHILD;
+    private boolean relationshipExplicit;
     private final List<SpanLinkContext> links = new ArrayList<>();
     private final Map<String, SpanAttributeValue> attributes = new LinkedHashMap<>();
     private SpanSpecReason reason;
@@ -42,19 +42,19 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     @Override
     @Nonnull
     public SpanSpecBuilder child() {
-        return setTopology(Topology.CHILD);
+        return setRelationship(SpanRelationship.CHILD);
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder root() {
-        return setTopology(Topology.ROOT);
+        return setRelationship(SpanRelationship.ROOT);
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder detached() {
-        return setTopology(Topology.DETACHED);
+        return setRelationship(SpanRelationship.DETACHED);
     }
 
     @Override
@@ -165,18 +165,18 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
         if (reason == SpanSpecReason.TEMPORARY_WORKAROUND && reference == null) {
             throw new IllegalStateException("TEMPORARY_WORKAROUND requires reference(...)");
         }
-        SpanTopologySpec options = ImmutableSpanTopologySpec.of(topology, List.copyOf(links));
-        ImmutableSpanTopologySpec.validateTopologyLinks(topology, links);
-        return new SpanSpecImpl(name, category, options, attributes, reason, reference);
+        SpanRelationshipSpec relationshipSpec = ImmutableSpanRelationshipSpec.of(relationship, List.copyOf(links));
+        ImmutableSpanRelationshipSpec.validateRelationshipLinks(relationship, links);
+        return new SpanSpecImpl(name, category, relationshipSpec, attributes, reason, reference);
     }
 
-    private SpanSpecBuilder setTopology(@Nonnull Topology topology) {
-        Objects.requireNonNull(topology, "topology");
-        if (topologyExplicit) {
-            throw new IllegalStateException("topology already set; first topology setter wins");
+    private SpanSpecBuilder setRelationship(@Nonnull SpanRelationship relationship) {
+        Objects.requireNonNull(relationship, "relationship");
+        if (relationshipExplicit) {
+            throw new IllegalStateException("relationship already set; first relationship setter wins");
         }
-        this.topology = topology;
-        topologyExplicit = true;
+        this.relationship = relationship;
+        relationshipExplicit = true;
         return this;
     }
 

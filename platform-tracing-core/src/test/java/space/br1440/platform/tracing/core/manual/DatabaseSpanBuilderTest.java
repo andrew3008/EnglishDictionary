@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.manual.ManualTracing;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -27,7 +27,7 @@ class DatabaseSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        AttributePolicy strictPolicy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        AttributePolicy strictPolicy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
         manual = new DefaultManualTracing(recording, strictPolicy);
     }
 
@@ -84,7 +84,7 @@ class DatabaseSpanBuilderTest {
     }
 
     @Test
-    void rootTopology_works() {
+    void rootRelationship_works() {
         manual.transport().database()
                 .operation("INSERT")
                 .system("postgresql")
@@ -93,8 +93,8 @@ class DatabaseSpanBuilderTest {
                 .start()
                 .close();
 
-        assertThat(recording.receivedSpecs().getFirst().options().topology())
-                .isEqualTo(space.br1440.platform.tracing.api.span.spec.Topology.ROOT);
+        assertThat(recording.receivedSpecs().getFirst().relationship().kind())
+                .isEqualTo(space.br1440.platform.tracing.api.span.spec.SpanRelationship.ROOT);
     }
 
     @Test

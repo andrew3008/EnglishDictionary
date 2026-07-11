@@ -5,8 +5,8 @@ import io.opentelemetry.context.Context;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.enrich.EnrichScope;
-import space.br1440.platform.tracing.api.span.enrich.GenericEnrichScope;
+import space.br1440.platform.tracing.api.span.enrich.SpanEnrichment;
+import space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.runtime.otel.context.PlatformSpanContextKeys;
 
@@ -21,24 +21,24 @@ public final class SpanEnricher {
         this.policy = Objects.requireNonNull(policy, "policy");
     }
 
-    public void enrichCurrentSpan(@Nonnull Consumer<GenericEnrichScope> fn) {
+    public void enrichCurrentSpan(@Nonnull Consumer<GenericSpanEnrichment> fn) {
         Objects.requireNonNull(fn, "fn");
 
         Span span = Span.current();
         if (span.getSpanContext().isValid() && span.isRecording()) {
-            fn.accept(new DefaultGenericEnrichScope(span));
+            fn.accept(new DefaultGenericSpanEnrichment(span));
         }
     }
 
     public void enrichCurrentSpanIfPlatformCategory(@Nonnull SpanCategory expected,
-                                                    @Nonnull Consumer<EnrichScope> fn) {
+                                                    @Nonnull Consumer<SpanEnrichment> fn) {
         Objects.requireNonNull(expected, "expected");
         Objects.requireNonNull(fn, "fn");
 
         SpanCategory marker = Context.current().get(PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY);
         Span span = Span.current();
         if (marker == expected && span.getSpanContext().isValid() && span.isRecording()) {
-            fn.accept(new DefaultEnrichScope(span, policy, expected));
+            fn.accept(new DefaultSpanEnrichment(span, policy, expected));
         }
     }
 }

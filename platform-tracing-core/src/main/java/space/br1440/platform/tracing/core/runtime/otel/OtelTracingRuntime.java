@@ -55,18 +55,18 @@ public final class OtelTracingRuntime implements TracingRuntime {
     @Nonnull
     public SpanHandle startSpan(@Nonnull SpanSpec spec) {
         Objects.requireNonNull(spec, "spec");
-        SpanTopologySpec.validateTopologyLinks(spec.options().topology(), spec.options().links());
+        SpanRelationshipSpec.validateRelationshipLinks(spec.relationship().kind(), spec.relationship().links());
 
-        Topology topology = spec.options().topology();
+        SpanRelationship relationship = spec.relationship().kind();
         SpanBuilder builder = tracer.spanBuilder(spec.name())
                 .setSpanKind(SpanKinds.toSpanKind(spec.category()))
                 .setAttribute(PlatformAttributes.PLATFORM_TYPE, spec.category().value());
 
-        if (topology == Topology.ROOT || topology == Topology.DETACHED) {
+        if (relationship == SpanRelationship.ROOT || relationship == SpanRelationship.DETACHED) {
             builder.setParent(Context.root());
         }
 
-        for (SpanLinkContext link : spec.options().links()) {
+        for (SpanLinkContext link : spec.relationship().links()) {
             builder.addLink(toRemoteSpanContext(link));
         }
 
@@ -109,14 +109,14 @@ public final class OtelTracingRuntime implements TracingRuntime {
         return context.isValid() ? Optional.of(context.getSpanId()) : Optional.empty();
     }
 
-    private void applySpecAttributes(@Nonnull space.br1440.platform.tracing.api.span.SpanScope scope,
+    private void applySpecAttributes(@Nonnull OwningSpanScope scope,
                                      @Nonnull Map<String, SpanAttributeValue> attributes) {
         for (Map.Entry<String, SpanAttributeValue> entry : attributes.entrySet()) {
             applyAttribute(scope, entry.getKey(), entry.getValue());
         }
     }
 
-    private void applyAttribute(@Nonnull space.br1440.platform.tracing.api.span.SpanScope scope,
+    private void applyAttribute(@Nonnull OwningSpanScope scope,
                                 @Nonnull String key,
                                 @Nonnull SpanAttributeValue value) {
         switch (value) {

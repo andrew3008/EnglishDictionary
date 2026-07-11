@@ -88,7 +88,7 @@ class WireRoundTripInProcessTest {
     }
 
     @Test
-    @DisplayName("topology fields rejected for runtime apply")
+    @DisplayName("SpanRelationship fields rejected for runtime apply")
     void topologyFieldRejected() throws Exception {
         Map<String, Object> payload = minimalValidPayload();
         payload.put(TracingControlProtocolKeys.TOPOLOGY_EXPORTER_ENDPOINT, "http://collector:4318");

@@ -5,10 +5,10 @@ import jakarta.annotation.Nonnull;
 import java.io.Serial;
 
 /**
- * Нарушение платформенного semantic-контракта, обнаруженное в режиме {@link ValidationMode#STRICT}.
+ * Нарушение платформенного semantic-контракта, обнаруженное в режиме {@link SemconvValidationMode#STRICT}.
  * <p>
- * Бросается ТОЛЬКО в режиме {@link ValidationMode#STRICT} (CI/test).
- * В {@link ValidationMode#WARN} и {@link ValidationMode#DISABLED} нарушения не приводят к исключению.
+ * Бросается ТОЛЬКО в режиме {@link SemconvValidationMode#STRICT} (CI/test).
+ * В {@link SemconvValidationMode#WARN} и {@link SemconvValidationMode#DISABLED} нарушения не приводят к исключению.
  */
 public final class SemconvViolationException extends RuntimeException {
 

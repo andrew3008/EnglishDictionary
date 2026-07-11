@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.Topology;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 
@@ -30,21 +30,21 @@ class OperationSpanBuilderTest {
     @Test
     void start_routesThroughTracingRuntime() {
         tracing.manual().operation("checkout").start().close();
-        assertSingleInternalSpec("checkout", Topology.CHILD);
+        assertSingleInternalSpec("checkout", SpanRelationship.CHILD);
     }
 
     @Test
     void run_startsAndClosesSpan() {
         tracing.manual().operation("run-op").run(() -> {
         });
-        assertSingleInternalSpec("run-op", Topology.CHILD);
+        assertSingleInternalSpec("run-op", SpanRelationship.CHILD);
     }
 
     @Test
     void call_returnsValueAndClosesSpan() {
         String result = tracing.manual().operation("call-op").call(() -> "ok");
         assertThat(result).isEqualTo("ok");
-        assertSingleInternalSpec("call-op", Topology.CHILD);
+        assertSingleInternalSpec("call-op", SpanRelationship.CHILD);
     }
 
     @Test
@@ -55,7 +55,7 @@ class OperationSpanBuilderTest {
                 }))
                 .isInstanceOf(Exception.class)
                 .hasMessage("checked");
-        assertSingleInternalSpec("checked-op", Topology.CHILD);
+        assertSingleInternalSpec("checked-op", SpanRelationship.CHILD);
     }
 
     @Test
@@ -87,21 +87,21 @@ class OperationSpanBuilderTest {
     }
 
     @Test
-    void rootTopology_preservedInSpanSpecOptions() {
+    void rootRelationship_preservedInSpec() {
         tracing.manual().operation("root-op").root().start().close();
-        assertSingleInternalSpec("root-op", Topology.ROOT);
+        assertSingleInternalSpec("root-op", SpanRelationship.ROOT);
     }
 
     @Test
-    void childTopology_preservedInSpanSpecOptions() {
+    void childRelationship_preservedInSpec() {
         tracing.manual().operation("child-op").child().start().close();
-        assertSingleInternalSpec("child-op", Topology.CHILD);
+        assertSingleInternalSpec("child-op", SpanRelationship.CHILD);
     }
 
     @Test
-    void detachedTopology_preservedInSpanSpecOptions() {
+    void detachedRelationship_preservedInSpec() {
         tracing.manual().operation("detached-op").detached().start().close();
-        assertSingleInternalSpec("detached-op", Topology.DETACHED);
+        assertSingleInternalSpec("detached-op", SpanRelationship.DETACHED);
     }
 
     @Test
@@ -112,8 +112,8 @@ class OperationSpanBuilderTest {
         tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
-        assertThat(spec.options().topology()).isEqualTo(Topology.ROOT);
-        assertThat(spec.options().links()).containsExactly(link);
+        assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.ROOT);
+        assertThat(spec.relationship().links()).containsExactly(link);
     }
 
     @Test
@@ -138,11 +138,11 @@ class OperationSpanBuilderTest {
                 .hasMessageContaining("CHILD");
     }
 
-    private void assertSingleInternalSpec(String name, Topology topology) {
+    private void assertSingleInternalSpec(String name, SpanRelationship relationship) {
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.name()).isEqualTo(name);
         assertThat(spec.category()).isEqualTo(SpanCategory.INTERNAL);
-        assertThat(spec.options().topology()).isEqualTo(topology);
+        assertThat(spec.relationship().kind()).isEqualTo(relationship);
     }
 }

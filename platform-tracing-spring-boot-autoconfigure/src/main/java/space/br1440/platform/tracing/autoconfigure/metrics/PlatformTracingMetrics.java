@@ -27,7 +27,7 @@ public class PlatformTracingMetrics {
     public static final String EXCEPTIONS_RECORDED = "platform_tracing_exceptions_recorded_total";
 
     /**
-     * Счётчик корректных закрытий {@code SpanScope.close()} (включая идемпотентные повторные
+     * Счётчик корректных закрытий {@code span handle.close()} (включая идемпотентные повторные
      * закрытия, обработанные внутри scope). Соответствует количеству финализированных span'ов
      * по платформенному фасаду; полезен для соотнесения с {@link #SPANS_STARTED} —
      * расхождение указывает на утечки незакрытых scope'ов или прямую работу с OTel API в обход.
@@ -35,7 +35,7 @@ public class PlatformTracingMetrics {
     public static final String SCOPE_CLOSED_TOTAL = "platform_tracing_scope_closed_total";
 
     /**
-     * Счётчик повторных вызовов {@code SpanScope.close()} на уже закрытом scope. Подсветка
+     * Счётчик повторных вызовов {@code span handle.close()} на уже закрытом scope. Подсветка
      * программных ошибок: повторное закрытие не нарушает контракт ({@link AutoCloseable}
      * идемпотентен), но рост этой метрики указывает на двойное управление scope'ом
      * (например, manual close + try-with-resources) — типичный источник трудно-отлавливаемых
@@ -90,24 +90,24 @@ public class PlatformTracingMetrics {
     }
 
     /**
-     * Увеличивает счётчик корректных закрытий {@code SpanScope}. Вызывается из
+     * Увеличивает счётчик корректных закрытий {@code span handle}. Вызывается из
      * {@code OtelSpanScope.close()} при первом закрытии — повторные закрытия учитываются
      * в {@link #incrementScopeDoubleClose()}.
      */
     public void incrementScopeClosed() {
         Counter.builder(SCOPE_CLOSED_TOTAL)
-                .description("Количество корректно закрытых SpanScope (первый close)")
+                .description("Количество корректно закрытых span handle (первый close)")
                 .register(meterRegistry)
                 .increment();
     }
 
     /**
-     * Увеличивает счётчик повторных закрытий уже закрытого {@code SpanScope}. Вызывается
+     * Увеличивает счётчик повторных закрытий уже закрытого {@code span handle}. Вызывается
      * из {@code OtelSpanScope.close()} при попытке закрыть scope, у которого {@code closed=true}.
      */
     public void incrementScopeDoubleClose() {
         Counter.builder(SCOPE_DOUBLE_CLOSE_TOTAL)
-                .description("Количество повторных вызовов close() на уже закрытом SpanScope "
+                .description("Количество повторных вызовов close() на уже закрытом span handle "
                         + "(индикатор багов жизненного цикла)")
                 .register(meterRegistry)
                 .increment();

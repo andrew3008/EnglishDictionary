@@ -24,13 +24,13 @@ public final class SemanticSpanSpecs {
     @Nonnull
     public static SpanSpec build(@Nonnull SpanCategory category,
                                  @Nullable String explicitName,
-                                 @Nonnull Topology topology,
+                                 @Nonnull SpanRelationship relationship,
                                  @Nonnull List<SpanLinkContext> links,
                                  @Nonnull Map<String, SpanAttributeValue> attributes,
                                  @Nonnull AttributePolicy policy,
                                  @Nonnull String builderName) {
         Objects.requireNonNull(category, "category");
-        Objects.requireNonNull(topology, "topology");
+        Objects.requireNonNull(relationship, "relationship");
         Objects.requireNonNull(links, "links");
         Objects.requireNonNull(attributes, "attributes");
         Objects.requireNonNull(policy, "policy");
@@ -50,13 +50,13 @@ public final class SemanticSpanSpecs {
         SpanSpecBuilder builder = SpanSpec.builder(spanName)
                 .category(category)
                 .reason(SpanSpecReason.PLATFORM_EDGE_CASE);
-        applyTopology(builder, topology, links);
+        applyRelationship(builder, relationship, links);
         applyAttributes(builder, normalized);
         return builder.build();
     }
 
-    private static void applyTopology(SpanSpecBuilder builder, Topology topology, List<SpanLinkContext> links) {
-        switch (topology) {
+    private static void applyRelationship(SpanSpecBuilder builder, SpanRelationship relationship, List<SpanLinkContext> links) {
+        switch (relationship) {
             case CHILD -> builder.child();
             case ROOT -> {
                 builder.root();

@@ -5,7 +5,7 @@ import space.br1440.platform.tracing.api.manual.ManualTracing;
 import space.br1440.platform.tracing.api.manual.OperationSpanBuilder;
 import space.br1440.platform.tracing.api.manual.TransportTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpecifiedSpan;
+import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
@@ -37,7 +37,7 @@ public final class DefaultManualTracing implements ManualTracing {
 
     @Override
     @Nonnull
-    public SpecifiedSpan spanFromSpec(@Nonnull SpanSpec spec) {
-        return new SpecifiedSpanImpl(implementation, spec);
+    public SpanExecution spanFromSpec(@Nonnull SpanSpec spec) {
+        return new SpanExecutionImpl(implementation, spec);
     }
 }

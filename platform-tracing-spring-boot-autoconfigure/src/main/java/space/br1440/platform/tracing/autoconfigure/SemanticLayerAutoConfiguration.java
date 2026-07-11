@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
@@ -41,11 +41,11 @@ public class SemanticLayerAutoConfiguration {
     @ConditionalOnMissingBean
     public AttributePolicy platformAttributePolicy(TracingProperties properties,
                                                    ObjectProvider<SemconvMetrics> metricsProvider,
-                                                   ObjectProvider<ValidationMode> modeOverrideProvider) {
+                                                   ObjectProvider<SemconvValidationMode> modeOverrideProvider) {
         TracingProperties.Semantic semantic = properties.getSemantic();
-        // Бин ValidationMode (если есть) имеет приоритет над property — это канал для
+        // Бин SemconvValidationMode (если есть) имеет приоритет над property — это канал для
         // SemconvStrictTestAutoConfiguration (platform-tracing-test): STRICT в test/CI.
-        ValidationMode mode = modeOverrideProvider.getIfAvailable(semantic::getValidationMode);
+        SemconvValidationMode mode = modeOverrideProvider.getIfAvailable(semantic::getValidationMode);
         SemconvMetrics metrics = metricsProvider.getIfAvailable(() -> SemconvMetrics.NOOP);
 
         emitStartupSignals(mode, semantic.getDisabledReason());
@@ -74,7 +74,7 @@ public class SemanticLayerAutoConfiguration {
         return new ExceptionRecorder(messagePolicy);
     }
 
-    private void emitStartupSignals(ValidationMode mode, String disabledReason) {
+    private void emitStartupSignals(SemconvValidationMode mode, String disabledReason) {
         switch (mode) {
             case STRICT -> log.warn(
                     "platform.tracing.semantic.validation-mode=STRICT предназначен только для test/CI; "

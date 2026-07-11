@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.manual.PlatformSpanBuilder;
+import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
 import space.br1440.platform.tracing.api.span.RemoteContext;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
@@ -15,15 +15,15 @@ import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import java.util.*;
 import java.util.function.Supplier;
 
-abstract class AbstractSemanticSpanBuilder<B extends PlatformSpanBuilder<B>> implements PlatformSpanBuilder<B> {
+abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> implements ManualSpanBuilder<B> {
 
     protected final TracingRuntime implementation;
     protected final AttributePolicy policy;
     protected final SpanCategory category;
     protected final String explicitName;
     protected final String builderName;
-    private boolean topologyExplicit = false;
-    protected Topology topology = Topology.CHILD;
+    private boolean relationshipExplicit = false;
+    protected SpanRelationship relationship = SpanRelationship.CHILD;
     protected final List<SpanLinkContext> links = new ArrayList<>();
     protected final Map<String, SpanAttributeValue> attributes = new LinkedHashMap<>();
 
@@ -56,33 +56,33 @@ abstract class AbstractSemanticSpanBuilder<B extends PlatformSpanBuilder<B>> imp
     @Override
     @Nonnull
     public B child() {
-        setTopology(Topology.CHILD);
+        setRelationship(SpanRelationship.CHILD);
         return self();
     }
 
     @Override
     @Nonnull
     public B root() {
-        setTopology(Topology.ROOT);
+        setRelationship(SpanRelationship.ROOT);
         return self();
     }
 
     @Override
     @Nonnull
     public B detached() {
-        setTopology(Topology.DETACHED);
+        setRelationship(SpanRelationship.DETACHED);
         return self();
     }
 
-    private void setTopology(Topology requested) {
-        if (topologyExplicit) {
+    private void setRelationship(SpanRelationship requested) {
+        if (relationshipExplicit) {
             throw new IllegalStateException(
-                    "topology already set; first topology setter wins (current=" + topology + ", requested=" + requested + ")"
+                    "relationship already set; first relationship setter wins (current=" + relationship + ", requested=" + requested + ")"
             );
         }
 
-        this.topology = requested;
-        this.topologyExplicit = true;
+        this.relationship = requested;
+        this.relationshipExplicit = true;
     }
 
     @Override
@@ -134,16 +134,16 @@ abstract class AbstractSemanticSpanBuilder<B extends PlatformSpanBuilder<B>> imp
 
     @Nonnull
     protected SpanSpec toSpanSpec() {
-        SpanTopologySpec.validateTopologyLinks(topology, links);
+        SpanRelationshipSpec.validateRelationshipLinks(relationship, links);
 
         if (category == SpanCategory.INTERNAL) {
-            return OperationSpanSpecs.from(explicitName, category, topology, List.copyOf(links));
+            return OperationSpanSpecs.from(explicitName, category, relationship, List.copyOf(links));
         }
 
         return SemanticSpanSpecs.build(
                 category,
                 explicitName,
-                topology,
+                relationship,
                 List.copyOf(links),
                 attributes,
                 policy,

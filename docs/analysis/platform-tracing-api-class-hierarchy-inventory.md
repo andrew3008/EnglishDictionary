@@ -687,3 +687,11 @@ legacy/SpanOptions/Deprecated → only Javadoc + SemconvKeys legacy keys + SpanH
 ```
 
 Gradle tests **не запускались** в рамках инвентаризации (per instructions).
+
+---
+
+## Batch A Accepted Update - 2026-07-11
+
+Batch A has been accepted and implemented. Current public API names are `SpanRelationship`, `SpanRelationshipSpec`, `SpanSpec.relationship()`, `ManualSpanBuilder`, `SpanExecution`, `SpanEnrichment`, `GenericSpanEnrichment`, `SemconvValidationMode`, and `DatabaseSpanBuilder`.
+
+Public `SpanScope` and `DatabaseTracing` are removed. Database semconv marker `@DatabaseSemconvVersion("1.28.0")` now belongs to `DatabaseSpanBuilder`.

@@ -34,7 +34,7 @@ final class DefaultKafkaTracing implements KafkaTracing {
         return new KafkaConsumerSpanBuilderImpl(implementation, policy);
     }
 
-    private static abstract class AbstractKafkaSpanBuilder<B extends PlatformSpanBuilder<B>>
+    private static abstract class AbstractKafkaSpanBuilder<B extends ManualSpanBuilder<B>>
             extends AbstractSemanticSpanBuilder<B> {
 
         AbstractKafkaSpanBuilder(@Nonnull TracingRuntime implementation,

@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.manual.HttpTracing;
 import space.br1440.platform.tracing.api.manual.ManualTracing;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
@@ -27,7 +27,7 @@ class HttpSpanBuilderTest {
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        AttributePolicy strictPolicy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        AttributePolicy strictPolicy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
         manual = new DefaultManualTracing(recording, strictPolicy);
     }
 

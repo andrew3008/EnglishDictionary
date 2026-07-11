@@ -29,7 +29,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class V3ManualApiArchTest {
 
     private static final Set<String> ALLOWED_STATIC_FACTORY_TYPES = Set.of(
-            "SpanOptions",
+            "SpanRelationshipSpec",
             "SpanSpec",
             "SpanAttributeValue"
     );

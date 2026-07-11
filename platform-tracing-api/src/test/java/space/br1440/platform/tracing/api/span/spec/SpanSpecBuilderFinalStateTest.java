@@ -24,16 +24,16 @@ class SpanSpecBuilderFinalStateTest {
     void rootThenLinkedTo_isValid() {
         SpanSpec spec = base().root().linkedTo(LINK).build();
 
-        assertThat(spec.options().topology()).isEqualTo(Topology.ROOT);
-        assertThat(spec.options().links()).containsExactly(LINK);
+        assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.ROOT);
+        assertThat(spec.relationship().links()).containsExactly(LINK);
     }
 
     @Test
     void linkedToThenRoot_isValid() {
         SpanSpec spec = base().linkedTo(LINK).root().build();
 
-        assertThat(spec.options().topology()).isEqualTo(Topology.ROOT);
-        assertThat(spec.options().links()).containsExactly(LINK);
+        assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.ROOT);
+        assertThat(spec.relationship().links()).containsExactly(LINK);
     }
 
     @Test
@@ -68,14 +68,14 @@ class SpanSpecBuilderFinalStateTest {
     void childThenRoot_isInvalid() {
         assertThatThrownBy(() -> base().child().root().build())
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("topology already set");
+                .hasMessageContaining("relationship already set");
     }
 
     @Test
     void rootThenDetached_isInvalid() {
         assertThatThrownBy(() -> base().root().detached().build())
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("topology already set");
+                .hasMessageContaining("relationship already set");
     }
 
     @Test
@@ -115,7 +115,7 @@ class SpanSpecBuilderFinalStateTest {
 
         SpanSpec spec = base().root().linkedTo(LINK).linkedTo(second).build();
 
-        assertThat(spec.options().links()).containsExactly(LINK, second);
+        assertThat(spec.relationship().links()).containsExactly(LINK, second);
     }
 
     @Test
@@ -167,10 +167,10 @@ class SpanSpecBuilderFinalStateTest {
     }
 
     @Test
-    void defaultTopologyIsChildWithoutExplicitSetter() {
+    void defaultRelationshipIsChildWithoutExplicitSetter() {
         SpanSpec spec = base().build();
 
-        assertThat(spec.options().topology()).isEqualTo(Topology.CHILD);
-        assertThat(spec.options().links()).isEmpty();
+        assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.CHILD);
+        assertThat(spec.relationship().links()).isEmpty();
     }
 }

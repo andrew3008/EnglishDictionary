@@ -8,13 +8,12 @@ import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
-import space.br1440.platform.tracing.api.span.SpanScope;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public final class OwningSpanScope implements SpanScope {
+public final class OwningSpanScope implements AutoCloseable {
 
     private final Span span;
     private final Scope scope;
@@ -28,9 +27,8 @@ public final class OwningSpanScope implements SpanScope {
         this.exceptionRecorder = exceptionRecorder;
     }
 
-    @Override
     @Nonnull
-    public SpanScope setAttribute(@Nonnull String key, @Nullable String value) {
+    public OwningSpanScope setAttribute(@Nonnull String key, @Nullable String value) {
         if (value != null) {
             span.setAttribute(key, value);
         }
@@ -38,44 +36,38 @@ public final class OwningSpanScope implements SpanScope {
         return this;
     }
 
-    @Override
     @Nonnull
-    public SpanScope setAttribute(@Nonnull String key, long value) {
+    public OwningSpanScope setAttribute(@Nonnull String key, long value) {
         span.setAttribute(key, value);
         return this;
     }
 
-    @Override
     @Nonnull
-    public SpanScope setAttribute(@Nonnull String key, double value) {
+    public OwningSpanScope setAttribute(@Nonnull String key, double value) {
         span.setAttribute(key, value);
         return this;
     }
 
-    @Override
     @Nonnull
-    public SpanScope setAttribute(@Nonnull String key, boolean value) {
+    public OwningSpanScope setAttribute(@Nonnull String key, boolean value) {
         span.setAttribute(key, value);
         return this;
     }
 
-    @Override
     @Nonnull
-    public SpanScope addEvent(@Nonnull String name) {
+    public OwningSpanScope addEvent(@Nonnull String name) {
         span.addEvent(name);
         return this;
     }
 
-    @Override
     @Nonnull
-    public SpanScope setResult(@Nonnull SpanResult result) {
+    public OwningSpanScope setResult(@Nonnull SpanResult result) {
         applyResult(result);
         return this;
     }
 
-    @Override
     @Nonnull
-    public SpanScope recordException(@Nullable Throwable throwable) {
+    public OwningSpanScope recordException(@Nullable Throwable throwable) {
         exceptionRecorder.record(span, throwable);
         return this;
     }

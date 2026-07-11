@@ -13,20 +13,20 @@ final class SpanSpecImpl implements SpanSpec {
 
     private final String name;
     private final SpanCategory category;
-    private final SpanTopologySpec options;
+    private final SpanRelationshipSpec relationship;
     private final Map<String, SpanAttributeValue> attributes;
     private final SpanSpecReason reason;
     private final String reference;
 
     SpanSpecImpl(@Nonnull String name,
                  @Nonnull SpanCategory category,
-                 @Nonnull SpanTopologySpec options,
+                 @Nonnull SpanRelationshipSpec relationship,
                  @Nonnull Map<String, SpanAttributeValue> attributes,
                  @Nonnull SpanSpecReason reason,
                  @Nullable String reference) {
         this.name = Objects.requireNonNull(name, "name");
         this.category = Objects.requireNonNull(category, "category");
-        this.options = Objects.requireNonNull(options, "options");
+        this.relationship = Objects.requireNonNull(relationship, "relationship");
         this.attributes = Map.copyOf(attributes);
         this.reason = Objects.requireNonNull(reason, "reason");
         this.reference = reference;
@@ -46,8 +46,8 @@ final class SpanSpecImpl implements SpanSpec {
 
     @Override
     @Nonnull
-    public SpanTopologySpec options() {
-        return options;
+    public SpanRelationshipSpec relationship() {
+        return relationship;
     }
 
     @Override

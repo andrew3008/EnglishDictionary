@@ -24,7 +24,7 @@ public interface SpanSpec {
     SpanCategory category();
 
     @Nonnull
-    SpanTopologySpec options();
+    SpanRelationshipSpec relationship();
 
     @Nonnull
     Map<String, SpanAttributeValue> attributes();

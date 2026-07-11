@@ -4,15 +4,15 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import space.br1440.platform.tracing.api.semconv.ValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 
 /**
- * Test-конфигурация, переводящая семантическую валидацию в режим {@link ValidationMode#STRICT}
+ * Test-конфигурация, переводящая семантическую валидацию в режим {@link SemconvValidationMode#STRICT}
  * для интеграционных/слайс-тестов прикладного кода.
  * <p>
  * Принцип: в проде дефолт — {@code WARN} (нарушение семконвенций не должно ронять трафик),
  * а в test/CI — {@code STRICT} (нарушение обязано падать на сборке, чтобы semantic drift не доехал
- * до прода). Бин {@link ValidationMode} имеет приоритет над property и подхватывается
+ * до прода). Бин {@link SemconvValidationMode} имеет приоритет над property и подхватывается
  * {@code SemanticLayerAutoConfiguration}.
  * <p>
  * Включена по умолчанию ({@code matchIfMissing = true}); отключается флагом
@@ -32,7 +32,7 @@ public class SemconvStrictTestAutoConfiguration {
 
     /** Форсирует STRICT-режим семантической валидации в тестовом контексте. */
     @Bean
-    public ValidationMode platformTestSemconvValidationMode() {
-        return ValidationMode.STRICT;
+    public SemconvValidationMode platformTestSemconvValidationMode() {
+        return SemconvValidationMode.STRICT;
     }
 }

@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.SpanTopologySpec;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
@@ -23,9 +23,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 5A hard gate: {@link SpanTopologySpec} runtime topology.
+ * Slice 5A hard gate: {@link SpanRelationshipSpec} runtime relationship.
  */
-class SpanTopologySpecTopologyTest {
+class SpanRelationshipSpecTest {
 
     private static final String INVALID_SPAN_ID = "0000000000000000";
 
@@ -165,6 +165,17 @@ class SpanTopologySpecTopologyTest {
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
     }
 
+    @Test
+    void validateRelationshipLinks_rejectsChildLinks() {
+        SpanLinkContext link = SpanLinkContext.sampled(
+                "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
+
+        assertThatThrownBy(() -> SpanRelationshipSpec.validateRelationshipLinks(
+                space.br1440.platform.tracing.api.span.spec.SpanRelationship.CHILD,
+                List.of(link)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CHILD");
+    }
     private SpanData findSpan(String name) {
         List<SpanData> spans = exporter.getFinishedSpanItems();
         return spans.stream()

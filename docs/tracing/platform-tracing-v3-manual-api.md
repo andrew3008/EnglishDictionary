@@ -27,21 +27,21 @@ Read-only correlation view. Does **not** expose OpenTelemetry `Context`, `Span`,
 |--------|---------|-------------|
 | `operation(name)` | `OperationSpanBuilder` | Generic application-level span |
 | `transport()` | `TransportTracing` | HTTP / DB / RPC / Kafka semconv builders |
-| `spanFromSpec(spec)` | `SpecifiedSpan` | Governed escape hatch |
+| `spanFromSpec(spec)` | `SpanExecution` | Governed escape hatch |
 
-## `PlatformSpanBuilder` (common builder contract)
+## `ManualSpanBuilder` (common builder contract)
 
 Implemented by `OperationSpanBuilder`, transport builders, and `KafkaBatchSpanBuilder`.
 
-### Topology (explicit, single assignment)
+### Span relationship (explicit, single assignment)
 
 | Method | Effect |
 |--------|--------|
-| `child()` | CHILD topology — join active trace when context exists |
-| `root()` | ROOT topology — new trace, ignore active parent |
-| `detached()` | DETACHED topology — new trace, no parent, **no links** |
+| `child()` | `CHILD` — join active trace when context exists |
+| `root()` | `ROOT` — new trace, ignore active parent |
+| `detached()` | `DETACHED` — new trace, no parent, **no links** |
 
-Repeated explicit topology setter throws `IllegalStateException`.
+Repeated explicit relationship setter throws `IllegalStateException`.
 
 ### Links (pre-start only)
 
@@ -77,7 +77,7 @@ Groups protocol-specific builders under `manual().transport()`:
 | Method | Returns |
 |--------|---------|
 | `http()` | `HttpTracing` → `client()` / `server()` |
-| `database()` | `DatabaseTracing` (extends `DatabaseSpanBuilder`) |
+| `database()` | `DatabaseSpanBuilder` |
 | `rpc()` | `RpcTracing` → `client()` / `server()` |
 | `kafka()` | `KafkaTracing` → `producer()` / `consumer()` |
 
@@ -113,7 +113,7 @@ Immutable governed specification for `manual().spanFromSpec(spec)`.
 | Method | Notes |
 |--------|-------|
 | `category(SpanCategory)` | Required semantic category |
-| `child()` / `root()` / `detached()` | Topology |
+| `child()` / `root()` / `detached()` | Span relationship (`SpanRelationship`) |
 | `linkedTo(...)` / `fromRemoteContext(...)` | Pre-start links |
 | `attribute(key, typedValue)` | Typed scalar attributes only |
 | `stringListAttribute` / `longListAttribute` / … | Homogeneous lists |
@@ -135,9 +135,11 @@ There is **no** `attribute(String, Object)` — only typed overloads and list he
 
 Generic catch-all reasons (`OTHER`, `UNKNOWN`, …) are forbidden.
 
-### `SpanOptions`
+### `SpanRelationshipSpec`
 
-Immutable value model: `topology()` + `links()`. Returned by `SpanSpec.options()`. Prefer builder convenience methods (`.child()`, `.root()`, …) over constructing `SpanOptions` directly.
+Immutable value model: `kind()` + `links()`. Returned by `SpanSpec.relationship()`. Prefer builder convenience methods (`.child()`, `.root()`, …) over constructing `SpanRelationshipSpec` directly.
+
+`SpanRelationshipSpec.kind()` returns `SpanRelationship` — the new span's relationship to the current/parent trace context. This is **not** OpenTelemetry `SpanKind`; protocol/client-server kind is derived separately from `SpanCategory`.
 
 ### `SpanAttributeValue`
 
@@ -145,7 +147,7 @@ Whitelist sealed type for spec attributes: string, long, double, boolean, and ho
 
 ## Lifecycle types
 
-### `SpecifiedSpan`
+### `SpanExecution`
 
 Terminal surface from `spanFromSpec(spec)`: `start()`, `run()`, `call()`, `callChecked()`.
 

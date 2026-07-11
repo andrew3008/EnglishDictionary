@@ -12,7 +12,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.Topology;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
@@ -40,20 +40,20 @@ class TracingRuntimeRoutingTest {
     @Test
     void operationStart_routesThroughStartSpan() {
         tracing.manual().operation("x").start().close();
-        assertSingleSpecNamed("x", Topology.CHILD);
+        assertSingleSpecNamed("x", SpanRelationship.CHILD);
     }
 
     @Test
     void operationRun_routesThroughStartSpan() {
         tracing.manual().operation("x").run(() -> {
         });
-        assertSingleSpecNamed("x", Topology.CHILD);
+        assertSingleSpecNamed("x", SpanRelationship.CHILD);
     }
 
     @Test
     void operationCall_routesThroughStartSpan() {
         tracing.manual().operation("x").call(() -> "ok");
-        assertSingleSpecNamed("x", Topology.CHILD);
+        assertSingleSpecNamed("x", SpanRelationship.CHILD);
     }
 
     @Test
@@ -74,13 +74,13 @@ class TracingRuntimeRoutingTest {
     @Test
     void topologyRoot_preserved() {
         tracing.manual().operation("root-op").root().start().close();
-        assertSingleSpecNamed("root-op", Topology.ROOT);
+        assertSingleSpecNamed("root-op", SpanRelationship.ROOT);
     }
 
     @Test
     void topologyDetached_preserved() {
         tracing.manual().operation("detached-op").detached().start().close();
-        assertSingleSpecNamed("detached-op", Topology.DETACHED);
+        assertSingleSpecNamed("detached-op", SpanRelationship.DETACHED);
     }
 
     @Test
@@ -92,8 +92,8 @@ class TracingRuntimeRoutingTest {
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.name()).isEqualTo("linked-root");
-        assertThat(spec.options().topology()).isEqualTo(Topology.ROOT);
-        assertThat(spec.options().links()).containsExactly(link);
+        assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.ROOT);
+        assertThat(spec.relationship().links()).containsExactly(link);
     }
 
     @Test
@@ -140,11 +140,11 @@ class TracingRuntimeRoutingTest {
                 .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
     }
 
-    private void assertSingleSpecNamed(String name, Topology topology) {
+    private void assertSingleSpecNamed(String name, SpanRelationship relationship) {
         assertThat(recording.receivedSpecs()).hasSize(1);
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.name()).isEqualTo(name);
-        assertThat(spec.options().topology()).isEqualTo(topology);
+        assertThat(spec.relationship().kind()).isEqualTo(relationship);
         assertThat(spec.category()).isEqualTo(SpanCategory.INTERNAL);
     }
 
