@@ -1,0 +1,105 @@
+@startuml
+' HighLevelArchitecture_clean.puml
+' Цель: читаемая high-level диаграмма после арбитража Fable/Faber 5 v1.1.
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam nodesep 70
+skinparam ranksep 65
+skinparam wrapWidth 220
+
+skinparam component {
+  BorderColor #555555
+  FontColor #222222
+}
+
+skinparam package {
+  BorderColor #777777
+  FontColor #222222
+}
+
+left to right direction
+
+title platform-tracing-core — High-Level Architecture, clean view
+
+rectangle "platform-tracing-api\ncontracts" as API #EEEEEE
+rectangle "Spring Boot\nautoconfigure" as AUTO #EEEEEE
+rectangle "OTel extension\nagent side" as OX #EEEEEE
+rectangle "platform-tracing-bench\nuntil PR-4/5" as BENCH #EEEEEE
+rectangle "OpenTelemetry\nAPI / SDK" as OTEL #FFF0F0
+
+package "platform-tracing-core\nскоуп рефакторинга" as CORE #FFFFFF {
+
+  package "Основная магистраль\nчитать слева направо" as BACKBONE #FFFFFF {
+    component "Entry layer\n\nfacade\npropagation\ncontext\n\nDefaultPlatformTracing\nNoOpPlatformTracing\nPlatformContextPropagation impls\nTraceContextView impls" as ENTRY #E8F1FF
+
+    component "Manual tracing pipeline\nбез OTel trace API\n\nDefaultManualTracing\nmanual builders\nmanual.spec\nScopedExecution" as MANUAL #EAF7EA
+
+    component "Runtime port\nOTel-free\n\nTracingRuntime SPI\nSpanHandleImpl\nNoOpSpanHandle\nruntime.state" as RUNTIME #FFF4D8
+
+    component "OTel adapter boundary\nOTel trace/context allowed\n\nOtelTracingRuntime\nruntime.otel.scope\nruntime.otel.context\nSpanKinds\nAttribute converter" as ADAPTER #FFECEC
+  }
+
+  package "Боковые области ответственности\nне перегружают центр" as SIDE #FFFFFF {
+    component "Support policies\n\nnaming\nsemconv.policy\nexception" as SUPPORT #F4F0FF
+
+    component "Enrichment\nOTel-coupled by design\n\nSpanEnricher\nDefaultEnrichScope\nDefaultGenericEnrichScope" as ENRICH #FDEFFF
+
+    component "Pure policy packages\nno OTel / Spring / JMX\n\nsampling.*\nvalidation.*" as PURE #F0FFF7
+
+    component "Legacy quarantine\nremove in PR-5\n\nspan.legacy\napi.span.builder.* impls" as LEGACY #F5F5F5
+  }
+}
+
+' ------------------------------------------------------------------
+' Основной runtime path. Центр специально оставлен простым.
+' ------------------------------------------------------------------
+API -right-> ENTRY : public contracts
+ENTRY -right-> MANUAL : manual()
+MANUAL -right-> RUNTIME : startSpan(SpanSpec)
+RUNTIME <|.. ADAPTER : implements port
+ADAPTER -right-> OTEL : trace/context SDK
+
+' ------------------------------------------------------------------
+' Боковые связи. Они вынесены из центральной магистрали.
+' ------------------------------------------------------------------
+MANUAL -down-> SUPPORT : span names\nsemconv policy
+ADAPTER -down-> SUPPORT : exception recording
+ENRICH -up-> ADAPTER : current Span\n+ category marker
+ENTRY ..> OTEL : propagation\nContext API only
+OX -down-> PURE : sampling / validation\nsnapshots
+AUTO ..> ENTRY : wires beans
+AUTO ..> ADAPTER : wires runtime
+AUTO ..> ENRICH : wires enricher
+BENCH ..> LEGACY : legacy benchmark\nuntil migration
+LEGACY ..> ADAPTER : legacy OTel mechanics\nuntil deletion
+LEGACY ..> SUPPORT : old naming / semconv\nuntil deletion
+
+note top of RUNTIME
+  Runtime port intentionally stays OTel-free.
+  It must not depend on manual, facade,
+  or OpenTelemetry packages.
+end note
+
+note bottom of ADAPTER
+  No core.lifecycle package.
+  OTel-coupled mechanics live here:
+  scopes, Context marker, SpanKind mapping.
+end note
+
+note bottom of LEGACY
+  Temporary quarantine only.
+  Delete after characterization gates:
+  marker, anti-double, lazy/unsafe attrs,
+  forceNewSpan, bench migration.
+end note
+
+legend right
+  Solid arrows  = active runtime path
+  Dashed arrows = wiring, adjacent modules, or temporary legacy links
+endlegend
+
+@enduml
