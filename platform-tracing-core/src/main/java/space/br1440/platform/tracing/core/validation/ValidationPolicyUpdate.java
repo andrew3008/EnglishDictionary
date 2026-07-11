@@ -1,21 +1,19 @@
 package space.br1440.platform.tracing.core.validation;
 
+import lombok.experimental.UtilityClass;
+
 import java.time.Instant;
 
 /**
- * Validates and builds the next {@link ValidationSnapshot} for atomic runtime policy updates (PR-8A).
- * Side-effect-free; no domain validation beyond boolean flags (schema v1: {@code enabled}, {@code strict}).
+ * Формирует {@link ValidationSnapshot} для атомарного runtime-обновления политики.
  */
+@UtilityClass
 public final class ValidationPolicyUpdate {
 
-    private ValidationPolicyUpdate() {
-    }
-
-    public static ValidationSnapshot buildNext(
-            ValidationSnapshot previous,
-            boolean enabled,
-            boolean strict,
-            String source) {
+    public static ValidationSnapshot buildNext(ValidationSnapshot previous,
+                                               boolean enabled,
+                                               boolean strict,
+                                               String source) {
         return new ValidationSnapshot(
                 enabled,
                 strict,
@@ -28,6 +26,7 @@ public final class ValidationPolicyUpdate {
         if (source == null || source.isBlank()) {
             return "JMX";
         }
+
         return source.trim();
     }
 }

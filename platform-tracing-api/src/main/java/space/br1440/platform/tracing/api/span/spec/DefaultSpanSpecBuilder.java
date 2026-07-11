@@ -11,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
@@ -166,10 +165,9 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
         if (reason == SpanSpecReason.TEMPORARY_WORKAROUND && reference == null) {
             throw new IllegalStateException("TEMPORARY_WORKAROUND requires reference(...)");
         }
-        SpanOptions options = ImmutableSpanOptions.of(topology, List.copyOf(links));
-        ImmutableSpanOptions.validateTopologyLinks(topology, links);
-        return new SpanSpecImpl(name, category, options, attributes, reason,
-                Optional.ofNullable(reference));
+        SpanTopologySpec options = ImmutableSpanTopologySpec.of(topology, List.copyOf(links));
+        ImmutableSpanTopologySpec.validateTopologyLinks(topology, links);
+        return new SpanSpecImpl(name, category, options, attributes, reason, reference);
     }
 
     private SpanSpecBuilder setTopology(@Nonnull Topology topology) {

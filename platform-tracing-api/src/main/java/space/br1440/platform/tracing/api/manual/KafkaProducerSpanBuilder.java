@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.manual;
 import jakarta.annotation.Nonnull;
 
 /**
- * Kafka producer semantic builder under {@link KafkaTracing#producer()}.
+ * Семантический построитель Kafka producer под {@link KafkaTracing#producer()}.
  */
 public interface KafkaProducerSpanBuilder extends PlatformSpanBuilder<KafkaProducerSpanBuilder> {
 

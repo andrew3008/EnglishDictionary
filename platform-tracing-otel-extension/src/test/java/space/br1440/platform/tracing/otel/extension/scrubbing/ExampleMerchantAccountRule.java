@@ -36,8 +36,8 @@ public class ExampleMerchantAccountRule implements SensitiveDataRule {
      * Демонстрирует рекомендуемый паттерн — отсечь нерелевантные ключи до {@link #evaluate}.
      */
     @Override
-    public boolean supports(@Nonnull String key) {
-        return "merchant.account.id".equals(key);
+    public boolean isExcluded(@Nonnull String key) {
+        return !"merchant.account.id".equals(key);
     }
 
     @Nonnull

@@ -6,9 +6,6 @@ import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 
 import java.util.function.Supplier;
 
-/**
- * Immutable terminal surface returned by {@link space.br1440.platform.tracing.api.manual.ManualTracing#spanFromSpec(SpanSpec)}.
- */
 public interface SpecifiedSpan {
 
     @Nonnull

@@ -20,8 +20,8 @@ public class MyCustomE2eRule implements SensitiveDataRule {
     }
 
     @Override
-    public boolean supports(@Nonnull String key) {
-        return "e2e.custom.marker".equals(key);
+    public boolean isExcluded(@Nonnull String key) {
+        return !"e2e.custom.marker".equals(key);
     }
 
     @Nonnull

@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.core.enrichment;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.Nonnull;
+import lombok.extern.log4j.Log4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
@@ -13,15 +13,9 @@ import space.br1440.platform.tracing.api.span.enrich.EnrichScope;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Реализация {@link EnrichScope} для marker-based обогащения: допускает типизированные
- * {@code AttributeKey}, но пишет ТОЛЬКО ключи из allowlist контракта категории. Ключи вне
- * allowlist отбрасываются с WARN (once per key+category) — записать мимо {@code CategoryContract}
- * нельзя, governance сохраняется.
- */
 final class DefaultEnrichScope implements EnrichScope {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultEnrichScope.class);

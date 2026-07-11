@@ -18,7 +18,7 @@ final class TraceIdRatioDecision {
             return false;
         }
 
-        if (traceId == null || traceId.length() < TRACE_ID_LENGTH) {
+        if ((traceId == null) || (traceId.length() < TRACE_ID_LENGTH)) {
             return false;
         }
 

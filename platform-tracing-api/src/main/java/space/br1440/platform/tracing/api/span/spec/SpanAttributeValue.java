@@ -5,11 +5,6 @@ import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Whitelist attribute value for {@link SpanSpec}.
- * <p>
- * Supports only OpenTelemetry-compatible scalar and homogeneous list types.
- */
 public sealed interface SpanAttributeValue permits
         SpanAttributeValue.StringValue,
         SpanAttributeValue.LongValue,
@@ -126,33 +121,21 @@ public sealed interface SpanAttributeValue permits
 
     private static List<String> copyStringList(@Nonnull List<String> values) {
         Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().map(v -> {
-            Objects.requireNonNull(v, "list element");
-            return v;
-        }).toList());
+        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
     }
 
     private static List<Long> copyLongList(@Nonnull List<Long> values) {
         Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().map(v -> {
-            Objects.requireNonNull(v, "list element");
-            return v;
-        }).toList());
+        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
     }
 
     private static List<Double> copyDoubleList(@Nonnull List<Double> values) {
         Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().map(v -> {
-            Objects.requireNonNull(v, "list element");
-            return v;
-        }).toList());
+        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
     }
 
     private static List<Boolean> copyBooleanList(@Nonnull List<Boolean> values) {
         Objects.requireNonNull(values, "values");
-        return List.copyOf(values.stream().map(v -> {
-            Objects.requireNonNull(v, "list element");
-            return v;
-        }).toList());
+        return List.copyOf(values.stream().peek(v -> Objects.requireNonNull(v, "list element")).toList());
     }
 }

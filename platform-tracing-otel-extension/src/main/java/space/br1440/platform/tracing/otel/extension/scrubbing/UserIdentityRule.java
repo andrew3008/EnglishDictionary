@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
 
+import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
 /**
@@ -20,8 +21,9 @@ final class UserIdentityRule extends AbstractBuiltInRule {
         super(BuiltInSensitiveDataRules.USER_IDENTITY);
     }
 
+    @Nonnull
     @Override
-    public ScrubbingDecision evaluate(String key, Object value) {
+    public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
         String normalized = KeyMatcher.normalize(key);
         if (KeyMatcher.containsAny(normalized, DROP_TOKENS)) {
             return ScrubbingDecision.drop("user-identity-pii");

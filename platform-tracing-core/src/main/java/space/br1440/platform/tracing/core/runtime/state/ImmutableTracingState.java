@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.runtime.state;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 import java.util.Map;
 import java.util.Objects;
@@ -9,17 +10,18 @@ import java.util.Optional;
 public final class ImmutableTracingState implements TracingState {
 
     private static final TracingState ENABLED = new ImmutableTracingState(
-            TracingMode.ENABLED, Optional.empty(), Map.of());
+            TracingMode.ENABLED, null, Map.of()
+    );
 
     private final TracingMode mode;
-    private final Optional<String> reason;
+    private final String reason;
     private final Map<String, String> details;
 
     private ImmutableTracingState(@Nonnull TracingMode mode,
-                                  @Nonnull Optional<String> reason,
+                                  @Nullable String reason,
                                   @Nonnull Map<String, String> details) {
         this.mode = Objects.requireNonNull(mode, "mode");
-        this.reason = Objects.requireNonNull(reason, "reason");
+        this.reason = reason;
         this.details = Map.copyOf(details);
     }
 
@@ -28,8 +30,8 @@ public final class ImmutableTracingState implements TracingState {
     }
 
     public static TracingState of(@Nonnull TracingMode mode,
-                           @Nonnull Optional<String> reason,
-                           @Nonnull Map<String, String> details) {
+                                  @Nullable String reason,
+                                  @Nonnull Map<String, String> details) {
         return new ImmutableTracingState(mode, reason, details);
     }
 
@@ -42,7 +44,7 @@ public final class ImmutableTracingState implements TracingState {
     @Override
     @Nonnull
     public Optional<String> reason() {
-        return reason;
+        return Optional.ofNullable(reason);
     }
 
     @Override

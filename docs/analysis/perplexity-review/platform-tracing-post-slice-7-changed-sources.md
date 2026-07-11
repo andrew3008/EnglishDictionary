@@ -2142,7 +2142,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.api.span.spec.SpanOptions;
+import space.br1440.platform.tracing.api.span.spec.SpanTopologySpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.Topology;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
@@ -2877,7 +2877,7 @@ import space.br1440.platform.tracing.api.span.RemoteContext;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.api.span.spec.SpanOptions;
+import space.br1440.platform.tracing.api.span.spec.SpanTopologySpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.Topology;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
@@ -5788,7 +5788,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 5A hard gate: {@link space.br1440.platform.tracing.api.span.spec.SpanOptions} runtime topology.
+ * Slice 5A hard gate: {@link space.br1440.platform.tracing.api.span.spec.SpanTopologySpec} runtime topology.
  */
 class SpanOptionsTopologyTest {
 

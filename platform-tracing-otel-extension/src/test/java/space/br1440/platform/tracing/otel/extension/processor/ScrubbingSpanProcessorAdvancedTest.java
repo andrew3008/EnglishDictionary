@@ -4,6 +4,7 @@ package space.br1440.platform.tracing.otel.extension.processor;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
@@ -42,17 +43,21 @@ class ScrubbingSpanProcessorAdvancedTest {
         AtomicInteger maskInvocations = new AtomicInteger();
 
         SensitiveDataRule dropRule = new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return "drop-rule"; }
             @Override public int priority() { return 10; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 dropInvocations.incrementAndGet();
                 return ScrubbingDecision.drop("drop-rule");
             }
         };
         SensitiveDataRule maskRule = new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return "mask-rule"; }
             @Override public int priority() { return 100; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 maskInvocations.incrementAndGet();
                 return ScrubbingDecision.mask("mask-rule");
             }
@@ -76,9 +81,11 @@ class ScrubbingSpanProcessorAdvancedTest {
     @Test
     void нестроковый_DROP_перезаписывает_type_neutral_sentinel() {
         SensitiveDataRule dropDoubles = new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return "geo"; }
             @Override public int priority() { return 50; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 return key.contains("lat")
                         ? ScrubbingDecision.drop("geo")
                         : ScrubbingDecision.keep();
@@ -104,9 +111,11 @@ class ScrubbingSpanProcessorAdvancedTest {
         // в circuit breaker — он НЕ всплывает в PlatformCompositeSpanProcessor. Для custom-правила
         // (critical=false) поведение при сбое — skip: атрибут остаётся нетронутым, остальные целы.
         SensitiveDataRule faulty = new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return "boom"; }
             @Override public int priority() { return 900; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 if ("bad".equals(key)) {
                     throw new RuntimeException("simulated rule failure");
                 }

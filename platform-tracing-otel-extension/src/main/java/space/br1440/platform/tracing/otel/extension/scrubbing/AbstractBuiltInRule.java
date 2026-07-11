@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
+import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
 
 /**
@@ -16,6 +17,7 @@ abstract class AbstractBuiltInRule implements SensitiveDataRule {
         this.descriptor = descriptor;
     }
 
+    @Nonnull
     @Override
     public final String name() {
         return descriptor.configName();

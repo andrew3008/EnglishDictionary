@@ -3,31 +3,23 @@ package space.br1440.platform.tracing.core.manual.spec;
 import io.opentelemetry.api.common.Attributes;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
-import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.api.span.spec.Topology;
+import space.br1440.platform.tracing.api.span.spec.*;
+import space.br1440.platform.tracing.core.naming.PlatformSpanNameBuilder;
+import space.br1440.platform.tracing.core.runtime.otel.SpanAttributeValueConverter;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.semconv.policy.ValidatedAttributes;
-import space.br1440.platform.tracing.core.runtime.otel.SpanAttributeValueConverter;
-import space.br1440.platform.tracing.core.naming.PlatformSpanNameBuilder;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Validates semantic attributes and builds governed {@link SpanSpec} for manual transport builders.
- */
+@UtilityClass
 public final class SemanticSpanSpecs {
-
-    private SemanticSpanSpecs() {
-    }
 
     @Nonnull
     public static SpanSpec build(@Nonnull SpanCategory category,
@@ -53,8 +45,7 @@ public final class SemanticSpanSpecs {
         Attributes accumulated = SpanAttributeValueConverter.toAttributes(enriched);
         ValidatedAttributes validated = policy.validateAndNormalize(category, accumulated, builderName);
         String spanName = PlatformSpanNameBuilder.forCategory(category, validated.attributes(), explicitName);
-        Map<String, SpanAttributeValue> normalized =
-                SpanAttributeValueConverter.fromAttributes(validated.attributes());
+        Map<String, SpanAttributeValue> normalized = SpanAttributeValueConverter.fromAttributes(validated.attributes());
 
         SpanSpecBuilder builder = SpanSpec.builder(spanName)
                 .category(category)
@@ -87,10 +78,8 @@ public final class SemanticSpanSpecs {
                 case SpanAttributeValue.BooleanValue bv -> builder.attribute(entry.getKey(), bv.value());
                 case SpanAttributeValue.StringListValue slv -> builder.stringListAttribute(entry.getKey(), slv.values());
                 case SpanAttributeValue.LongListValue llv -> builder.longListAttribute(entry.getKey(), llv.values());
-                case SpanAttributeValue.DoubleListValue dlv ->
-                        builder.doubleListAttribute(entry.getKey(), dlv.values());
-                case SpanAttributeValue.BooleanListValue blv ->
-                        builder.booleanListAttribute(entry.getKey(), blv.values());
+                case SpanAttributeValue.DoubleListValue dlv -> builder.doubleListAttribute(entry.getKey(), dlv.values());
+                case SpanAttributeValue.BooleanListValue blv -> builder.booleanListAttribute(entry.getKey(), blv.values());
             }
         }
     }

@@ -12,8 +12,8 @@ final class OperationSpanBuilderImpl extends AbstractSemanticSpanBuilder<Operati
         implements OperationSpanBuilder {
 
     OperationSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                               @Nonnull AttributePolicy policy,
-                               @Nonnull String name) {
+                             @Nonnull AttributePolicy policy,
+                             @Nonnull String name) {
         super(implementation, policy, SpanCategory.INTERNAL, name, "OperationSpanBuilder");
     }
 

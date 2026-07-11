@@ -33,14 +33,17 @@ class AbstractSemanticSpanBuilderTopologyRepeatedCallTest {
     static Stream<PlatformSpanBuilder<?>> builders() {
         RecordingTracingRuntime impl = new RecordingTracingRuntime();
         AttributePolicy policy = new AttributePolicy(ValidationMode.STRICT, false, SemconvMetrics.NOOP);
+        DefaultManualTracing manual = new DefaultManualTracing(impl, policy);
+        DefaultTransportTracing transport = new DefaultTransportTracing(impl, policy);
+        DefaultRpcTracing rpc = new DefaultRpcTracing(impl, policy);
         return Stream.of(
-                new OperationSpanBuilderImpl(impl, policy, "op"),
-                new HttpServerSpanBuilderImpl(impl, policy).method("GET").route("/api"),
-                new DatabaseSpanBuilderImpl(impl, policy)
+                manual.operation("op"),
+                transport.http().server().method("GET").route("/api"),
+                transport.database()
                         .system("postgresql")
                         .operation("SELECT")
                         .collection("orders"),
-                new RpcServerSpanBuilderImpl(impl, policy)
+                rpc.server()
                         .system("grpc")
                         .service("OrderService")
                         .method("CreateOrder"));
@@ -87,7 +90,7 @@ class AbstractSemanticSpanBuilderTopologyRepeatedCallTest {
     @Test
     void linkedToThenRootThenStart_succeedsForOperationBuilder() {
         assertThatCode(() ->
-                new OperationSpanBuilderImpl(recording, policy, "op")
+                new DefaultManualTracing(recording, policy).operation("op")
                         .linkedTo(VALID_LINK)
                         .root()
                         .start()

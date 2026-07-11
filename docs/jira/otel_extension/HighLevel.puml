@@ -1,0 +1,113 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam linetype ortho
+title platform-tracing-otel-extension — High-Level Architecture
+
+package "platform-tracing-api / core\n(внешние зависимости,\nотдельные задачи)" as DEPS #LightGrey {
+}
+
+package "OpenTelemetry Java Agent\n(среда исполнения)" as AGENT #LightGrey {
+  component "Autoconfigure SDK" as AUTOCFG
+}
+
+package "platform-tracing-otel-extension\n(скоуп этой задачи)" {
+
+  package "SPI Entry Points" as SPI {
+    component "AutoConfigurationCustomizerProvider" as CUST
+    component "ResourceProvider" as RESPROV
+    component "ConfigurableSamplerProvider" as SAMPPROV
+    component "ConfigurablePropagatorProvider" as PROPPROV
+  }
+
+  component "ExtensionConfig\n(configuration layer)" as CONFIG
+
+  package "Sampler" as SMP {
+    component "CompositeSampler\n(X-Trace-On / X-QA-Trace + ratio)" as COMPOSITE
+    component "SamplingPolicyOtelAdapter" as ADAPTER
+    component "SafeSampler / Managed" as SAFESAMP
+  }
+
+  package "SpanProcessor Pipeline" as PIPE {
+    component "Enriching" as ENRICH
+    component "Scrubbing" as SCRUBP
+    component "Validating / Classification" as VALID
+    component "Watchdog / Metrics" as WATCH
+    component "DropOldest Export" as DROP
+  }
+
+  package "Scrubbing Domain" as SCRUB {
+    component "Built-in Rules + SPI Loader" as RULES
+    component "Engine (merge / circuit breaker)" as ENGINE
+  }
+
+  package "Resource" as RES {
+    component "Platform / Safe ResourceProvider" as PLATRES
+  }
+
+  package "Propagation" as PROP {
+    component "TraceControl / Baggage Propagator" as PROPAG
+  }
+
+  package "Reliability & Safety" as SAFETY {
+    component "SafeSpanExporter / DegradedMode" as SAFEEXP
+    component "CircuitBreaker / RateLimiter" as CB
+  }
+
+  package "JMX Control Bridge" as JMX {
+    component "Sampling / Scrubbing / Export MBeans" as MBEANS
+  }
+}
+
+package "OpenTelemetry SDK / Collector" as OTEL #LightGrey {
+}
+
+AUTOCFG ..> SPI : ServiceLoader (META-INF/services)
+CUST --> CONFIG
+CUST --> SMP
+CUST --> PIPE
+CUST --> PROP
+RESPROV --> RES
+SAMPPROV --> SMP
+PROPPROV --> PROP
+
+CONFIG --> SMP
+CONFIG --> PIPE
+CONFIG --> SCRUB
+
+COMPOSITE --> ADAPTER
+ADAPTER --> DEPS : core sampling policy
+COMPOSITE --> SAFESAMP
+
+SCRUBP --> SCRUB
+ENRICH --> DEPS : api enrichment contract
+PIPE --> SAFETY
+SMP --> SAFETY
+RES --> SAFETY
+PROP --> SAFETY
+
+MBEANS --> SMP
+MBEANS --> SCRUB
+MBEANS --> DROP
+
+PIPE --> OTEL
+DROP --> OTEL
+PROP --> OTEL
+
+note right of SPI
+  Регистрация через META-INF/services.
+  Агент грузит расширение изолированным
+  classloader'ом на один URL —
+  артефакт self-contained (api+core+slf4j).
+end note
+
+note bottom of SAFETY
+  Контракт non-blocking: сбой инфраструктуры
+  трассировки не достигает прикладного потока.
+end note
+
+note right of JMX
+  Единственный канал изменения runtime-политик
+  без рестарта JVM (из application classloader'а).
+end note
+
+@enduml

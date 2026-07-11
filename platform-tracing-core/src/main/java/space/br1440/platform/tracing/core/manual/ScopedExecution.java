@@ -1,23 +1,20 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
+import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 
 import java.util.Objects;
 import java.util.function.Supplier;
 
-/**
- * Internal helper for builder/SpecifiedSpan terminal methods (Slice 4).
- */
+@UtilityClass
 final class ScopedExecution {
-
-    private ScopedExecution() {
-    }
 
     static void run(@Nonnull Supplier<SpanHandle> handleSupplier, @Nonnull Runnable action) {
         Objects.requireNonNull(handleSupplier, "handleSupplier");
         Objects.requireNonNull(action, "action");
+
         try (SpanHandle handle = handleSupplier.get()) {
             try {
                 action.run();
@@ -32,6 +29,7 @@ final class ScopedExecution {
     static <T> T call(@Nonnull Supplier<SpanHandle> handleSupplier, @Nonnull Supplier<T> supplier) {
         Objects.requireNonNull(handleSupplier, "handleSupplier");
         Objects.requireNonNull(supplier, "supplier");
+
         try (SpanHandle handle = handleSupplier.get()) {
             try {
                 return supplier.get();
@@ -47,6 +45,7 @@ final class ScopedExecution {
                                @Nonnull ThrowingSupplier<T> supplier) throws Exception {
         Objects.requireNonNull(handleSupplier, "handleSupplier");
         Objects.requireNonNull(supplier, "supplier");
+
         try (SpanHandle handle = handleSupplier.get()) {
             try {
                 return supplier.get();

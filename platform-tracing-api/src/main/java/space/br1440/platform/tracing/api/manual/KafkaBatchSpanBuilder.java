@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.api.manual;
 
 /**
- * Kafka batch consumer span builder returned by {@link KafkaConsumerSpanBuilder#batch(String)}.
+ * Построитель span'а пакетного Kafka consumer, возвращаемый {@link KafkaConsumerSpanBuilder#batch(String)}.
  * <p>
- * Batch processing spans should use {@link #root()} with pre-start {@link #linkedTo} or
- * {@link #fromRemoteContext} links to referenced message contexts.
+ * Span'ы пакетной обработки должны использовать {@link #root()} со связями {@link #linkedTo} или
+ * {@link #fromRemoteContext}, заданными до {@code start()}, на контексты ссылочных сообщений.
  */
 public interface KafkaBatchSpanBuilder extends PlatformSpanBuilder<KafkaBatchSpanBuilder> {
 }

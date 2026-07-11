@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
@@ -89,6 +90,7 @@ class ScrubbingSnapshotTest {
             pattern = java.util.regex.Pattern.compile("([unclosed");
         }
 
+        @Nonnull
         @Override
         public String name() {
             return "bad-regex";
@@ -99,8 +101,9 @@ class ScrubbingSnapshotTest {
             return 500;
         }
 
+        @Nonnull
         @Override
-        public space.br1440.platform.tracing.api.spi.ScrubbingDecision evaluate(String key, Object value) {
+        public space.br1440.platform.tracing.api.spi.ScrubbingDecision evaluate(@Nonnull String key, Object value) {
             return pattern.matcher(String.valueOf(value)).find()
                     ? space.br1440.platform.tracing.api.spi.ScrubbingDecision.drop("bad-regex")
                     : space.br1440.platform.tracing.api.spi.ScrubbingDecision.keep();

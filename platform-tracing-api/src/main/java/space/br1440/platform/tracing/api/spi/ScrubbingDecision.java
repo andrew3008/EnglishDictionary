@@ -7,25 +7,23 @@ import jakarta.annotation.Nonnull;
  * <p>
  * Несёт <b>только</b> {@code action}, {@code reason} (для метрик/диагностики) и {@code maxLength}
  * (для {@link ScrubbingAction#TRUNCATE}). Конкретное новое значение атрибута вычисляет процессор
- * type-aware способом — решение намеренно не содержит {@code Object replacementValue}, чтобы не
- * тащить type-aware логику в каждое правило.
+ * type-aware способом — решение намеренно не содержит {@code Object replacementValue},
+ * чтобы не пропагировать type-aware логику в каждое правило.
  */
 public record ScrubbingDecision(@Nonnull ScrubbingAction action, @Nonnull String reason, int maxLength, boolean terminal) {
 
     /**
-     * Reason-маркер fail-closed: используется политикой PR-5, когда правило упало или его circuit
-     * breaker открыт. Процессор по этому reason применяет type-safe collapse значения вместо
-     * обычной маски. Наружу авторам правил не предназначен.
+     * Reason-маркер fail-closed, когда валидация по правилу не прошла.
+     * Процессор по этому reason применяет type-safe collapse значения вместо обычной маски.
      */
     public static final String SCRUBBING_FAILED_REASON = "<SCRUBBING_FAILED>";
 
     /**
-     * Кэшированное решение «оставить как есть» — самый горячий путь (большинство атрибутов
-     * безопасны). Возврат singleton'а исключает аллокацию на каждый не-матч.
+     * Кэшированное решение «оставить как есть» — самый горячий путь (большинство атрибутов безопасны).
      */
     private static final ScrubbingDecision KEEP = new ScrubbingDecision(ScrubbingAction.KEEP, "no-match", -1, false);
 
-    /** Singleton fail-closed решения (нетерминальный MASK с reason-маркером). */
+    /** Singleton fail-closed решения. */
     private static final ScrubbingDecision SCRUBBING_FAILED =
             new ScrubbingDecision(ScrubbingAction.MASK, SCRUBBING_FAILED_REASON, -1, false);
 
@@ -78,7 +76,7 @@ public record ScrubbingDecision(@Nonnull ScrubbingAction action, @Nonnull String
     }
 
     /**
-     * Fail-closed решение для политики PR-5 (правило упало / circuit breaker открыт).
+     * Fail-closed решение (валидация по правилу не прошла / circuit breaker открыт).
      * Нетерминальное: чтобы более строгое решение critical built-in могло его перекрыть в merge.
      */
     @Nonnull

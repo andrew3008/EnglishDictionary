@@ -56,10 +56,11 @@ public final class RuleExecutionWrapper {
 
     private ScrubbingDecision executeProbe(String key, Object value) {
         try {
-            if (!rule.supports(key)) {
-                breaker.recordSuccess(); // supports=false — валидный no-op, не сбой
+            if (rule.isExcluded(key)) {
+                breaker.recordSuccess();
                 return ScrubbingDecision.keep();
             }
+
             ScrubbingDecision result = rule.evaluate(key, value);
             requireNonNull(result);
             breaker.recordSuccess();
@@ -72,9 +73,10 @@ public final class RuleExecutionWrapper {
 
     private ScrubbingDecision executeNormal(String key, Object value) {
         try {
-            if (!rule.supports(key)) {
+            if (rule.isExcluded(key)) {
                 return ScrubbingDecision.keep();
             }
+
             ScrubbingDecision result = rule.evaluate(key, value);
             requireNonNull(result);
             return result;
@@ -86,9 +88,7 @@ public final class RuleExecutionWrapper {
 
     private void requireNonNull(ScrubbingDecision result) {
         if (result == null) {
-            // Контракт SPI: evaluate никогда не возвращает null. Нарушение — это сбой правила.
-            throw new IllegalStateException(
-                    "Правило " + rule.getClass().getName() + " вернуло null ScrubbingDecision");
+            throw new IllegalStateException("Правило " + rule.getClass().getName() + " вернуло null ScrubbingDecision");
         }
     }
 

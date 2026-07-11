@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.extension.scrubbing;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
@@ -224,6 +225,7 @@ class ScrubbingPolicyRuntimeUpdateJmxTest {
             pattern = Pattern.compile("([unclosed");
         }
 
+        @Nonnull
         @Override
         public String name() {
             return "invalid-regex";
@@ -234,8 +236,9 @@ class ScrubbingPolicyRuntimeUpdateJmxTest {
             return 500;
         }
 
+        @Nonnull
         @Override
-        public ScrubbingDecision evaluate(String key, Object value) {
+        public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
             return pattern.matcher(String.valueOf(value)).find()
                     ? ScrubbingDecision.drop("invalid-regex")
                     : ScrubbingDecision.keep();

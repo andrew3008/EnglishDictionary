@@ -26,8 +26,8 @@ class AttributePolicyTest {
         final List<String> unsafe = new ArrayList<>();
 
         @Override
-        public void violation(String ruleId, String builder) {
-            violations.add(ruleId + "|" + builder);
+        public void violation(String ruleId, String builderName) {
+            violations.add(ruleId + "|" + builderName);
         }
 
         @Override

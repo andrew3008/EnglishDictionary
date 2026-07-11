@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpecifiedSpan;
 
 /**
- * Entry point for platform-governed manual tracing ({@code PlatformTracing.manual()} in v3 cutover).
+ * Точка входа в управляемую платформой ручную трассировку ({@code PlatformTracing.manual()} в v3 cutover).
  */
 public interface ManualTracing {
 

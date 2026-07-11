@@ -5,9 +5,6 @@ import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Internal supportability state for {@link TracingRuntime} (Slice 2).
- */
 public interface TracingState {
 
     @Nonnull
@@ -18,4 +15,5 @@ public interface TracingState {
 
     @Nonnull
     Map<String, String> details();
+
 }

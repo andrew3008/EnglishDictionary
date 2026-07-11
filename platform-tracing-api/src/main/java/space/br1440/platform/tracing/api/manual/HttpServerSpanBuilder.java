@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.manual;
 import jakarta.annotation.Nonnull;
 
 /**
- * HTTP server semantic builder under {@link HttpTracing#server()}.
+ * Семантический построитель HTTP server под {@link HttpTracing#server()}.
  */
 public interface HttpServerSpanBuilder extends PlatformSpanBuilder<HttpServerSpanBuilder> {
 

@@ -5,9 +5,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.SpanScope;
@@ -15,19 +13,8 @@ import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * {@link SpanScope}, ВЛАДЕЮЩИЙ жизненным циклом span'а: {@link #close()} закрывает {@link Scope}
- * и завершает span ({@code span.end()}).
- * <p>
- * Используется v3 runtime и manual builder'ами при создании нового span'а.
- * <p>
- * {@code close()} идемпотентен и потоко-безопасен (Фаза 11): ровно один поток выполняет
- * завершение, повторные вызовы — no-op. Ошибки tracing-слоя при закрытии подавляются (логируются),
- * чтобы не маскировать бизнес-исключение в неявном finally try-with-resources.
- */
+@Slf4j
 public final class OwningSpanScope implements SpanScope {
-
-    private static final Logger log = LoggerFactory.getLogger(OwningSpanScope.class);
 
     private final Span span;
     private final Scope scope;
@@ -47,6 +34,7 @@ public final class OwningSpanScope implements SpanScope {
         if (value != null) {
             span.setAttribute(key, value);
         }
+
         return this;
     }
 
@@ -88,9 +76,6 @@ public final class OwningSpanScope implements SpanScope {
     @Override
     @Nonnull
     public SpanScope recordException(@Nullable Throwable throwable) {
-        // Через ExceptionRecorder: exception-event санитизируется (events не скрабятся
-        // ScrubbingSpanProcessor'ом). Recorder сам проставляет error.type, StatusCode.ERROR
-        // и platform.trace.result=failure.
         exceptionRecorder.record(span, throwable);
         return this;
     }
@@ -109,16 +94,17 @@ public final class OwningSpanScope implements SpanScope {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
-        // Порядок (scope.close -> span.end) соответствует идиоме OTel try-with-resources.
+
         try {
             scope.close();
         } catch (RuntimeException e) {
-            log.warn("Не удалось закрыть Scope для span '{}': {}", span, e.getMessage());
+            log.warn("Failed to close Scope for span '{}': {}", span, e.getMessage());
         }
+
         try {
             span.end();
         } catch (RuntimeException e) {
-            log.warn("Не удалось завершить span '{}': {}", span, e.getMessage());
+            log.warn("Failed to end span '{}': {}", span, e.getMessage());
         }
     }
 }

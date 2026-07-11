@@ -10,13 +10,11 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
-final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<DatabaseSpanBuilder>
-        implements DatabaseTracing {
+final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<DatabaseSpanBuilder> implements DatabaseTracing {
 
     DatabaseSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                             @Nonnull AttributePolicy policy) {
-        super(implementation, policy, SpanCategory.DATABASE, SpanCategory.DATABASE.value(),
-                "DatabaseSpanBuilder");
+        super(implementation, policy, SpanCategory.DATABASE, SpanCategory.DATABASE.value(),"DatabaseSpanBuilder");
     }
 
     @Override
@@ -45,6 +43,7 @@ final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<Database
         return this;
     }
 
+    @Nonnull
     @Override
     protected SpanSpec toSpanSpec() {
         requireAttribute(SemconvKeys.DB_OPERATION_NAME.getKey(), "operation");

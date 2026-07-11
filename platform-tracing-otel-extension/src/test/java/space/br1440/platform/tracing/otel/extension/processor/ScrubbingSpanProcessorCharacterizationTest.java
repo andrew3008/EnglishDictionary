@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.extension.processor;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
@@ -27,9 +28,11 @@ class ScrubbingSpanProcessorCharacterizationTest {
     @Test
     void custom_rule_hash_is_applied_on_processor_path() {
         SensitiveDataRule customHash = new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return "custom-hash"; }
             @Override public int priority() { return 200; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 return key.contains("secret")
                         ? ScrubbingDecision.hash("custom-hash")
                         : ScrubbingDecision.keep();

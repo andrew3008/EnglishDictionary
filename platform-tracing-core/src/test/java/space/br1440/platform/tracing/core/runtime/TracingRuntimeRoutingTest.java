@@ -118,7 +118,7 @@ class TracingRuntimeRoutingTest {
     void noOpFacade_routesThroughBoundary() {
         RecordingTracingRuntime recordingImpl = new RecordingTracingRuntime();
         recordingImpl.setState(ImmutableTracingState.of(
-                TracingMode.NOOP, java.util.Optional.empty(), java.util.Map.of()));
+                TracingMode.NOOP, null, java.util.Map.of()));
         NoOpPlatformTracing noop = NoOpPlatformTracing.backedBy(recordingImpl);
         noop.manual().operation("noop-op").run(() -> {
         });

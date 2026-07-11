@@ -4,21 +4,17 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 /**
- * Marker for {@link TracingRuntime} decorators that fully delegate behavior.
+ * Маркер для декораторов {@link TracingRuntime}, которые полностью делегируют поведение.
  * <p>
- * Default implementations delegate each new SPI method to {@link #delegate()} so that
- * existing decorator subclasses (e.g. {@code MeteredTracingRuntime}) do not require
- * boilerplate overrides for pass-through methods.
+ * Реализации по умолчанию делегируют каждый новый метод SPI в {@link #delegate()},
+ * чтобы существующим подклассам-декораторам (например, {@code MeteredTracingRuntime})
+ * не требовались шаблонные переопределения для сквозных (pass-through) методов.
  */
 public interface DelegatingTracingRuntime extends TracingRuntime {
 
     @Nonnull
     TracingRuntime delegate();
 
-    /**
-     * Delegates to the underlying runtime. Decorators that override attribute policy
-     * semantics must provide their own {@code @Override}.
-     */
     @Override
     @Nonnull
     default AttributePolicy attributePolicy() {

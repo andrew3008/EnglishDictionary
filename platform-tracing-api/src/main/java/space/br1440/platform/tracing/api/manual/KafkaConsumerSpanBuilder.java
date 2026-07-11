@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.manual;
 import jakarta.annotation.Nonnull;
 
 /**
- * Kafka consumer semantic builder under {@link KafkaTracing#consumer()}.
+ * Семантический построитель Kafka consumer под {@link KafkaTracing#consumer()}.
  */
 public interface KafkaConsumerSpanBuilder extends PlatformSpanBuilder<KafkaConsumerSpanBuilder> {
 
@@ -14,7 +14,7 @@ public interface KafkaConsumerSpanBuilder extends PlatformSpanBuilder<KafkaConsu
     KafkaConsumerSpanBuilder operation(@Nonnull String operation);
 
     /**
-     * Batch consumer entry point (ROOT+links semantics finalized in Slice 5B).
+     * Точка входа пакетного consumer'а (семантика ROOT+links финализирована в Slice 5B).
      */
     @Nonnull
     KafkaBatchSpanBuilder batch(@Nonnull String destination);

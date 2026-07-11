@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import java.util.function.Supplier;
 
 /**
- * Common scoped-execution contract for v3 manual semantic builders.
+ * Общий контракт выполнения в области видимости span'а для семантических построителей v3.
  */
 public interface PlatformSpanBuilder<B extends PlatformSpanBuilder<B>> {
 

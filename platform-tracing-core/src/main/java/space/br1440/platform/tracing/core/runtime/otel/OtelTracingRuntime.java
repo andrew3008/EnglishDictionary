@@ -1,47 +1,29 @@
 package space.br1440.platform.tracing.core.runtime.otel;
 
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.api.trace.SpanContext;
-import io.opentelemetry.api.trace.TraceFlags;
-import io.opentelemetry.api.trace.TraceState;
-import io.opentelemetry.api.trace.TraceStateBuilder;
-import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.*;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
-import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
-import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.api.span.spec.SpanOptions;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.Topology;
-import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.spec.*;
 import space.br1440.platform.tracing.core.context.DefaultTraceContextView;
-import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
+import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.runtime.SpanHandleImpl;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.runtime.otel.context.PlatformSpanContextKeys;
+import space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.core.runtime.otel.context.PlatformSpanContextKeys;
-import space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope;
-import space.br1440.platform.tracing.core.runtime.otel.SpanKinds;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * Default {@link TracingRuntime} backed by OpenTelemetry SDK/API (Slice 2).
- * <p>
- * Kill-switch is NOT managed inside this class. Facade ({@code DefaultPlatformTracing}) controls
- * enabled/disabled state by replacing the active runtime with {@link space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime}.
- * This keeps OtelTracingRuntime stateless w.r.t. lifecycle and makes it a pure OTel adapter.
- */
 public final class OtelTracingRuntime implements TracingRuntime {
 
     public static final String INSTRUMENTATION_NAME = "space.br1440.platform.tracing";
@@ -56,6 +38,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
                               @Nonnull ExceptionRecorder exceptionRecorder) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(policy, "policy");
+
         this.attributePolicy = policy;
         this.exceptionRecorder = Objects.requireNonNull(exceptionRecorder, "exceptionRecorder");
         this.tracer = openTelemetry.getTracer(INSTRUMENTATION_NAME);
@@ -72,7 +55,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
     @Nonnull
     public SpanHandle startSpan(@Nonnull SpanSpec spec) {
         Objects.requireNonNull(spec, "spec");
-        SpanOptions.validateTopologyLinks(spec.options().topology(), spec.options().links());
+        SpanTopologySpec.validateTopologyLinks(spec.options().topology(), spec.options().links());
 
         Topology topology = spec.options().topology();
         SpanBuilder builder = tracer.spanBuilder(spec.name())
@@ -83,17 +66,16 @@ public final class OtelTracingRuntime implements TracingRuntime {
             builder.setParent(Context.root());
         }
 
-        for (var link : spec.options().links()) {
+        for (SpanLinkContext link : spec.options().links()) {
             builder.addLink(toRemoteSpanContext(link));
         }
 
-        var span = builder.startSpan();
-        // Category marker: parity with legacy builders for marker-based enrich (PR-2b).
+        Span span = builder.startSpan();
         Context ctx = Context.current()
                 .with(span)
                 .with(PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY, spec.category());
         Scope scope = ctx.makeCurrent();
-        var spanScope = new OwningSpanScope(span, scope, exceptionRecorder);
+        OwningSpanScope spanScope = new OwningSpanScope(span, scope, exceptionRecorder);
         applySpecAttributes(spanScope, spec.attributes());
         return SpanHandleImpl.wrap(spanScope);
     }
@@ -150,8 +132,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
     }
 
     @Nonnull
-    private static SpanContext toRemoteSpanContext(
-            @Nonnull space.br1440.platform.tracing.api.span.SpanLinkContext link) {
+    private static SpanContext toRemoteSpanContext(@Nonnull SpanLinkContext link) {
         return SpanContext.createFromRemoteParent(
                 link.traceId(),
                 link.spanId(),
@@ -164,13 +145,13 @@ public final class OtelTracingRuntime implements TracingRuntime {
         if (raw == null || raw.isBlank()) {
             return TraceState.getDefault();
         }
+
         TraceStateBuilder builder = TraceState.builder();
         for (String entry : raw.split(",")) {
             String trimmed = entry.trim();
             int separator = trimmed.indexOf('=');
-            if (separator > 0 && separator < trimmed.length() - 1) {
-                builder.put(trimmed.substring(0, separator).trim(),
-                        trimmed.substring(separator + 1).trim());
+            if ((separator > 0) && (separator < trimmed.length() - 1)) {
+                builder.put(trimmed.substring(0, separator).trim(), trimmed.substring(separator + 1).trim());
             }
         }
         return builder.build();

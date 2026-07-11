@@ -16,13 +16,10 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanScope;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.e2e.support.JaegerTestContainerSupport;
 import space.br1440.platform.tracing.e2e.support.JaegerV3QueryClient;

@@ -16,12 +16,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * No-op {@link TracingRuntime} for disabled/unavailable tracing (Slice 2).
- */
 public final class NoOpTracingRuntime implements TracingRuntime {
 
-    /** Permissive default policy shared across no-op instances; never mutated (no validation happens). */
     private static final AttributePolicy PERMISSIVE = new AttributePolicy();
 
     private final TracingState state;
@@ -35,21 +31,21 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     public static NoOpTracingRuntime disabledByConfiguration(@Nonnull String reason) {
         return new NoOpTracingRuntime(ImmutableTracingState.of(
                 TracingMode.DISABLED_BY_CONFIGURATION,
-                Optional.of(reason),
+                reason,
                 Map.of()));
     }
 
     public static NoOpTracingRuntime unavailable(@Nonnull String reason) {
         return new NoOpTracingRuntime(ImmutableTracingState.of(
                 TracingMode.UNAVAILABLE,
-                Optional.of(reason),
+                reason,
                 Map.of()));
     }
 
     public static NoOpTracingRuntime noop() {
         return new NoOpTracingRuntime(ImmutableTracingState.of(
                 TracingMode.NOOP,
-                Optional.empty(),
+                null,
                 Map.of()));
     }
 
@@ -77,9 +73,6 @@ public final class NoOpTracingRuntime implements TracingRuntime {
         return state;
     }
 
-    /**
-     * No-op runtime has no semconv constraints: returns permissive default {@link AttributePolicy}.
-     */
     @Override
     @Nonnull
     public AttributePolicy attributePolicy() {

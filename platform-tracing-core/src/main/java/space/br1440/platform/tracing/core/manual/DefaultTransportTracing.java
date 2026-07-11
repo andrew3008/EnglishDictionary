@@ -11,9 +11,6 @@ import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
 
-/**
- * Slice 3A–3C transport grouping with semantic builders for HTTP, database, RPC, and Kafka.
- */
 public final class DefaultTransportTracing implements TransportTracing {
 
     private final TracingRuntime implementation;

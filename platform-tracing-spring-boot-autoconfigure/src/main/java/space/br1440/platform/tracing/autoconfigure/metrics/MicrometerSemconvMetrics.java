@@ -27,8 +27,8 @@ public final class MicrometerSemconvMetrics implements SemconvMetrics {
     }
 
     @Override
-    public void violation(String ruleId, String builder) {
-        registry.counter(VIOLATIONS, "rule", ruleId, "builder", builder).increment();
+    public void violation(String ruleId, String builderName) {
+        registry.counter(VIOLATIONS, "rule", ruleId, "builder", builderName).increment();
     }
 
     @Override

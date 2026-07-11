@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Immutable governed span specification for {@code manual().spanFromSpec(spec)}.
+ * Спецификация span'а для {@code manual().spanFromSpec(spec)}.
  */
 public interface SpanSpec {
 
@@ -24,7 +24,7 @@ public interface SpanSpec {
     SpanCategory category();
 
     @Nonnull
-    SpanOptions options();
+    SpanTopologySpec options();
 
     @Nonnull
     Map<String, SpanAttributeValue> attributes();
@@ -34,4 +34,5 @@ public interface SpanSpec {
 
     @Nonnull
     Optional<String> reference();
+
 }

@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.manual;
 import jakarta.annotation.Nonnull;
 
 /**
- * Database semantic builder under {@link TransportTracing#database()}.
+ * Семантический построитель Database под {@link TransportTracing#database()}.
  */
 public interface DatabaseSpanBuilder extends PlatformSpanBuilder<DatabaseSpanBuilder> {
 

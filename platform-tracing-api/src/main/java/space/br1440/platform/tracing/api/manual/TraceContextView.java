@@ -5,9 +5,7 @@ import jakarta.annotation.Nonnull;
 import java.util.Optional;
 
 /**
- * Read-only view of the active trace/span context for correlation, logging, and error models.
- * <p>
- * Does not expose OpenTelemetry {@code Context}, {@code Span}, or {@code SpanContext}.
+ * Представление активного trace/span-контекста только для чтения — для корреляции, логирования и моделей ошибок.
  */
 public interface TraceContextView {
 

@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.extension.processor;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
@@ -54,9 +55,11 @@ class ScrubbingCircuitBreakerCharacterizationTest {
     @Test
     void custom_rule_open_is_skipped_by_merge_engine() {
         SensitiveDataRule customFaulty = new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return "custom-open"; }
             @Override public int priority() { return 900; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 throw new RuntimeException("boom");
             }
         };
@@ -72,10 +75,12 @@ class ScrubbingCircuitBreakerCharacterizationTest {
 
     private static SensitiveDataRule criticalThrowingRule(String name) {
         return new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return name; }
             @Override public int priority() { return 10; }
             @Override public boolean critical() { return true; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 throw new RuntimeException("simulated critical failure");
             }
         };

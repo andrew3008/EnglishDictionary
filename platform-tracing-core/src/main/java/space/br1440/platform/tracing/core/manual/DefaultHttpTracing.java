@@ -19,7 +19,7 @@ final class DefaultHttpTracing implements HttpTracing {
     private final AttributePolicy policy;
 
     DefaultHttpTracing(@Nonnull TracingRuntime implementation,
-                         @Nonnull AttributePolicy policy) {
+                       @Nonnull AttributePolicy policy) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
     }
@@ -35,87 +35,86 @@ final class DefaultHttpTracing implements HttpTracing {
     public HttpClientSpanBuilder client() {
         return new HttpClientSpanBuilderImpl(implementation, policy);
     }
-}
 
-final class HttpServerSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpServerSpanBuilder>
-        implements HttpServerSpanBuilder {
+    private static final class HttpServerSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpServerSpanBuilder>
+            implements HttpServerSpanBuilder {
 
-    HttpServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                              @Nonnull AttributePolicy policy) {
-        super(implementation, policy, SpanCategory.HTTP_SERVER, SpanCategory.HTTP_SERVER.value(),
-                "HttpServerSpanBuilder");
-    }
-
-    @Override
-    protected HttpServerSpanBuilder self() {
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public HttpServerSpanBuilder method(@Nonnull String httpMethod) {
-        putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanAttributeValue.of(httpMethod));
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public HttpServerSpanBuilder route(@Nonnull String route) {
-        putAttribute(SemconvKeys.HTTP_ROUTE.getKey(), SpanAttributeValue.of(route));
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public HttpServerSpanBuilder statusCode(long statusCode) {
-        putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanAttributeValue.of(statusCode));
-        return this;
-    }
-}
-
-final class HttpClientSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpClientSpanBuilder>
-        implements HttpClientSpanBuilder {
-
-    HttpClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                              @Nonnull AttributePolicy policy) {
-        super(implementation, policy, SpanCategory.HTTP_CLIENT, SpanCategory.HTTP_CLIENT.value(),
-                "HttpClientSpanBuilder");
-    }
-
-    @Override
-    protected HttpClientSpanBuilder self() {
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public HttpClientSpanBuilder method(@Nonnull String httpMethod) {
-        putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanAttributeValue.of(httpMethod));
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public HttpClientSpanBuilder url(@Nonnull String rawUrl) {
-        String sanitized = UrlSanitizer.sanitize(rawUrl);
-        if (sanitized == null || sanitized.isBlank()) {
-            throw new IllegalArgumentException("url must not be blank");
+        HttpServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
+                                  @Nonnull AttributePolicy policy) {
+            super(implementation, policy, SpanCategory.HTTP_SERVER, SpanCategory.HTTP_SERVER.value(),"HttpServerSpanBuilder");
         }
-        putAttribute(SemconvKeys.URL_FULL.getKey(), SpanAttributeValue.of(sanitized));
-        return this;
+
+        @Override
+        protected HttpServerSpanBuilder self() {
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public HttpServerSpanBuilder method(@Nonnull String httpMethod) {
+            putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanAttributeValue.of(httpMethod));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public HttpServerSpanBuilder route(@Nonnull String route) {
+            putAttribute(SemconvKeys.HTTP_ROUTE.getKey(), SpanAttributeValue.of(route));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public HttpServerSpanBuilder statusCode(long statusCode) {
+            putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanAttributeValue.of(statusCode));
+            return this;
+        }
     }
 
-    @Override
-    @Nonnull
-    public HttpClientSpanBuilder statusCode(long statusCode) {
-        putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanAttributeValue.of(statusCode));
-        return this;
-    }
+    private static final class HttpClientSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpClientSpanBuilder>
+            implements HttpClientSpanBuilder {
 
-    @Override
-    @Nonnull
-    public HttpClientSpanBuilder serverAddress(@Nonnull String address) {
-        putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanAttributeValue.of(address));
-        return this;
+        HttpClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
+                                  @Nonnull AttributePolicy policy) {
+            super(implementation, policy, SpanCategory.HTTP_CLIENT, SpanCategory.HTTP_CLIENT.value(),"HttpClientSpanBuilder");
+        }
+
+        @Override
+        protected HttpClientSpanBuilder self() {
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public HttpClientSpanBuilder method(@Nonnull String httpMethod) {
+            putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanAttributeValue.of(httpMethod));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public HttpClientSpanBuilder url(@Nonnull String rawUrl) {
+            String sanitized = UrlSanitizer.sanitize(rawUrl);
+            if (sanitized == null || sanitized.isBlank()) {
+                throw new IllegalArgumentException("url must not be blank");
+            }
+
+            putAttribute(SemconvKeys.URL_FULL.getKey(), SpanAttributeValue.of(sanitized));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public HttpClientSpanBuilder statusCode(long statusCode) {
+            putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanAttributeValue.of(statusCode));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public HttpClientSpanBuilder serverAddress(@Nonnull String address) {
+            putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanAttributeValue.of(address));
+            return this;
+        }
     }
 }

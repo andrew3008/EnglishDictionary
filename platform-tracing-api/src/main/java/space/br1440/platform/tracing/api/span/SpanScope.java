@@ -4,14 +4,13 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 /**
- * Управляющий хэндл активного span'а.
+ * Управляющий хэндл активного span'а (v1/v2 API).
  * <p>
- * Возвращается типизированными методами {@link space.br1440.platform.tracing.api.PlatformTracing}
- * и должен использоваться в блоке try-with-resources, чтобы гарантировать корректное завершение
- * span'а вне зависимости от исключений.
+ * Должен использоваться в блоке try-with-resources, чтобы гарантировать
+ * корректное завершение span'а вне зависимости от исключений.
  *
  * <pre>{@code
- * try (SpanScope scope = platformTracing.startInternal("checkout")) {
+ * try (SpanScope scope = owningSpanScope) {
  *     scope.setAttribute("order.id", orderId);
  *     try {
  *         // бизнес-логика
@@ -25,8 +24,7 @@ import jakarta.annotation.Nullable;
  *
  * @apiNote Незакрытый {@link SpanScope} приводит к утечке ThreadLocal-контекста и порче
  *          последующих корреляций trace на этом потоке. Использование try-with-resources
- *          обязательно — не оборачивайте {@code startSpan(...)} в простую переменную без
- *          {@code try}-блока.
+ *          обязательно — не оборачивайте создание scope в простую переменную без {@code try}-блока.
  */
 public interface SpanScope extends AutoCloseable {
 
@@ -47,7 +45,6 @@ public interface SpanScope extends AutoCloseable {
 
     /**
      * Устанавливает финальный статус span'а.
-     * Метод можно вызывать многократно; учитывается последнее значение перед {@link #close()}.
      */
     @Nonnull
     SpanScope setResult(@Nonnull SpanResult result);

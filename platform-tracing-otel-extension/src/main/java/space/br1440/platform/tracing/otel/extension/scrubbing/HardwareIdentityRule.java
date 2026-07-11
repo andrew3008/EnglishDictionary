@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
 
+import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
 /**
@@ -17,8 +18,9 @@ final class HardwareIdentityRule extends AbstractBuiltInRule {
         super(BuiltInSensitiveDataRules.HARDWARE_IDENTITY);
     }
 
+    @Nonnull
     @Override
-    public ScrubbingDecision evaluate(String key, Object value) {
+    public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
         if (KeyMatcher.containsAny(KeyMatcher.normalize(key), TOKENS)) {
             return ScrubbingDecision.hash("hardware-identity");
         }

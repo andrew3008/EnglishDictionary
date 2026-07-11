@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.manual;
 import jakarta.annotation.Nonnull;
 
 /**
- * RPC client semantic builder under {@link RpcTracing#client()}.
+ * Семантический построитель RPC client под {@link RpcTracing#client()}.
  */
 public interface RpcClientSpanBuilder extends PlatformSpanBuilder<RpcClientSpanBuilder> {
 

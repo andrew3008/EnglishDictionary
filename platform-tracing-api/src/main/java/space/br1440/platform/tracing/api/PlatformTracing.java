@@ -6,11 +6,10 @@ import space.br1440.platform.tracing.api.manual.ManualTracing;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
 
 /**
- * Narrow public facade for platform manual tracing (v3 cutover, Slice 1B).
+ * Публичный фасад платформенной ручной трассировки.
  * <p>
- * Application code obtains read-only context via {@link #traceContext()} and creates governed
- * manual spans via {@link #manual()}. Implementation details live in {@code platform-tracing-core};
- * the bean is wired through {@code platform-tracing-spring-boot-autoconfigure}.
+ * Прикладной код получает контекст только для чтения через {@link #traceContext()} и
+ * создаёт span'ы через {@link #manual()}.
  */
 public interface PlatformTracing {
 

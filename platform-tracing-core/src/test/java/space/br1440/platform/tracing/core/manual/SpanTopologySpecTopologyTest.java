@@ -13,6 +13,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.api.span.spec.SpanTopologySpec;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 
@@ -22,9 +23,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 5A hard gate: {@link space.br1440.platform.tracing.api.span.spec.SpanOptions} runtime topology.
+ * Slice 5A hard gate: {@link SpanTopologySpec} runtime topology.
  */
-class SpanOptionsTopologyTest {
+class SpanTopologySpecTopologyTest {
 
     private static final String INVALID_SPAN_ID = "0000000000000000";
 

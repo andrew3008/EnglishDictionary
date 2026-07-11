@@ -36,9 +36,4 @@ public final class NoOpPlatformTracing implements PlatformTracing {
     public ManualTracing manual() {
         return manualTracing;
     }
-
-    @Nonnull
-    public TracingRuntime tracingImplementation() {
-        return implementation;
-    }
 }

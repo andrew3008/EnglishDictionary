@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.tracing.api.manual.PlatformSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcClientSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
@@ -35,106 +36,107 @@ final class DefaultRpcTracing implements RpcTracing {
     public RpcClientSpanBuilder client() {
         return new RpcClientSpanBuilderImpl(implementation, policy);
     }
-}
 
-abstract class AbstractRpcSpanBuilder<B extends space.br1440.platform.tracing.api.manual.PlatformSpanBuilder<B>>
-        extends AbstractSemanticSpanBuilder<B> {
+    private static abstract class AbstractRpcSpanBuilder<B extends PlatformSpanBuilder<B>>
+            extends AbstractSemanticSpanBuilder<B> {
 
-    AbstractRpcSpanBuilder(@Nonnull TracingRuntime implementation,
-                           @Nonnull AttributePolicy policy,
-                           @Nonnull SpanCategory category,
-                           @Nonnull String builderName) {
-        super(implementation, policy, category, category.value(), builderName);
-    }
+        AbstractRpcSpanBuilder(@Nonnull TracingRuntime implementation,
+                               @Nonnull AttributePolicy policy,
+                               @Nonnull SpanCategory category,
+                               @Nonnull String builderName) {
+            super(implementation, policy, category, category.value(), builderName);
+        }
 
-    @Override
-    protected SpanSpec toSpanSpec() {
-        requireAttribute(SemconvKeys.RPC_SYSTEM.getKey(), "system");
-        requireAttribute(SemconvKeys.RPC_SERVICE.getKey(), "service");
-        requireAttribute(SemconvKeys.RPC_METHOD.getKey(), "method");
-        return super.toSpanSpec();
-    }
+        @Nonnull
+        @Override
+        protected SpanSpec toSpanSpec() {
+            requireAttribute(SemconvKeys.RPC_SYSTEM.getKey(), "system");
+            requireAttribute(SemconvKeys.RPC_SERVICE.getKey(), "service");
+            requireAttribute(SemconvKeys.RPC_METHOD.getKey(), "method");
+            return super.toSpanSpec();
+        }
 
-    private void requireAttribute(@Nonnull String key, @Nonnull String label) {
-        if (!attributes.containsKey(key)) {
-            throw new IllegalArgumentException(label + " is required");
+        private void requireAttribute(@Nonnull String key, @Nonnull String label) {
+            if (!attributes.containsKey(key)) {
+                throw new IllegalArgumentException(label + " is required");
+            }
         }
     }
-}
 
-final class RpcServerSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcServerSpanBuilder>
-        implements RpcServerSpanBuilder {
+    private static final class RpcServerSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcServerSpanBuilder>
+            implements RpcServerSpanBuilder {
 
-    RpcServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                             @Nonnull AttributePolicy policy) {
-        super(implementation, policy, SpanCategory.RPC_SERVER, "RpcServerSpanBuilder");
+        RpcServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
+                                 @Nonnull AttributePolicy policy) {
+            super(implementation, policy, SpanCategory.RPC_SERVER, "RpcServerSpanBuilder");
+        }
+
+        @Override
+        protected RpcServerSpanBuilder self() {
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public RpcServerSpanBuilder system(@Nonnull String rpcSystem) {
+            putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanAttributeValue.of(rpcSystem));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public RpcServerSpanBuilder service(@Nonnull String service) {
+            putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanAttributeValue.of(service));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public RpcServerSpanBuilder method(@Nonnull String method) {
+            putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanAttributeValue.of(method));
+            return this;
+        }
     }
 
-    @Override
-    protected RpcServerSpanBuilder self() {
-        return this;
-    }
+    private static final class RpcClientSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcClientSpanBuilder>
+            implements RpcClientSpanBuilder {
 
-    @Override
-    @Nonnull
-    public RpcServerSpanBuilder system(@Nonnull String rpcSystem) {
-        putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanAttributeValue.of(rpcSystem));
-        return this;
-    }
+        RpcClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
+                                 @Nonnull AttributePolicy policy) {
+            super(implementation, policy, SpanCategory.RPC_CLIENT, "RpcClientSpanBuilder");
+        }
 
-    @Override
-    @Nonnull
-    public RpcServerSpanBuilder service(@Nonnull String service) {
-        putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanAttributeValue.of(service));
-        return this;
-    }
+        @Override
+        protected RpcClientSpanBuilder self() {
+            return this;
+        }
 
-    @Override
-    @Nonnull
-    public RpcServerSpanBuilder method(@Nonnull String method) {
-        putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanAttributeValue.of(method));
-        return this;
-    }
-}
+        @Override
+        @Nonnull
+        public RpcClientSpanBuilder system(@Nonnull String rpcSystem) {
+            putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanAttributeValue.of(rpcSystem));
+            return this;
+        }
 
-final class RpcClientSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcClientSpanBuilder>
-        implements RpcClientSpanBuilder {
+        @Override
+        @Nonnull
+        public RpcClientSpanBuilder service(@Nonnull String service) {
+            putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanAttributeValue.of(service));
+            return this;
+        }
 
-    RpcClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                             @Nonnull AttributePolicy policy) {
-        super(implementation, policy, SpanCategory.RPC_CLIENT, "RpcClientSpanBuilder");
-    }
+        @Override
+        @Nonnull
+        public RpcClientSpanBuilder method(@Nonnull String method) {
+            putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanAttributeValue.of(method));
+            return this;
+        }
 
-    @Override
-    protected RpcClientSpanBuilder self() {
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public RpcClientSpanBuilder system(@Nonnull String rpcSystem) {
-        putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanAttributeValue.of(rpcSystem));
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public RpcClientSpanBuilder service(@Nonnull String service) {
-        putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanAttributeValue.of(service));
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public RpcClientSpanBuilder method(@Nonnull String method) {
-        putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanAttributeValue.of(method));
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public RpcClientSpanBuilder serverAddress(@Nonnull String address) {
-        putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanAttributeValue.of(address));
-        return this;
+        @Override
+        @Nonnull
+        public RpcClientSpanBuilder serverAddress(@Nonnull String address) {
+            putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanAttributeValue.of(address));
+            return this;
+        }
     }
 }

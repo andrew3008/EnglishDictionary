@@ -1,12 +1,11 @@
 package space.br1440.platform.tracing.api.span.spec;
 
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 /**
- * Minimal lifecycle handle for a started manual span (v3 API).
+ * Минимальный lifecycle-handle запущенного ручного span'а.
  * <p>
- * Distinct from legacy {@link space.br1440.platform.tracing.api.span.SpanScope}.
+ * Отличается от legacy {@link space.br1440.platform.tracing.api.span.SpanScope}.
  */
 public interface SpanHandle extends AutoCloseable {
 

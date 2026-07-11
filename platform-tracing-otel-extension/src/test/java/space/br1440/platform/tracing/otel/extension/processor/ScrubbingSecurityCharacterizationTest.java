@@ -4,6 +4,7 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
@@ -74,9 +75,11 @@ class ScrubbingSecurityCharacterizationTest {
     @Test
     void malicious_regex_rule_failure_does_not_break_export() {
         SensitiveDataRule redosLike = new SensitiveDataRule() {
+            @Nonnull
             @Override public String name() { return "redos-like"; }
             @Override public int priority() { return 900; }
-            @Override public ScrubbingDecision evaluate(String key, Object value) {
+            @Nonnull
+            @Override public ScrubbingDecision evaluate(@Nonnull String key, Object value) {
                 if ("bad".equals(key)) {
                     throw new StackOverflowError("simulated");
                 }

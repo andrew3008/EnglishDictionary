@@ -7,9 +7,6 @@ import space.br1440.platform.tracing.api.span.SpanLinkContext;
 
 import java.util.List;
 
-/**
- * Fluent builder for immutable {@link SpanSpec} values.
- */
 public interface SpanSpecBuilder {
 
     @Nonnull
@@ -62,4 +59,5 @@ public interface SpanSpecBuilder {
 
     @Nonnull
     SpanSpec build();
+
 }
