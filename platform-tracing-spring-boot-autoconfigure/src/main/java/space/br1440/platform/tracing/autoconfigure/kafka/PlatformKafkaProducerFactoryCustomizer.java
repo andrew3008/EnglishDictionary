@@ -4,7 +4,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundInjector;
+import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,9 +23,9 @@ import java.util.Map;
 public final class PlatformKafkaProducerFactoryCustomizer implements DefaultKafkaProducerFactoryCustomizer {
 
     private final OutboundPropagationPolicy policy;
-    private final PlatformOutboundInjector injector;
+    private final TraceControlHeaderInjector injector;
 
-    public PlatformKafkaProducerFactoryCustomizer(OutboundPropagationPolicy policy, PlatformOutboundInjector injector) {
+    public PlatformKafkaProducerFactoryCustomizer(OutboundPropagationPolicy policy, TraceControlHeaderInjector injector) {
         this.policy = policy;
         this.injector = injector;
     }

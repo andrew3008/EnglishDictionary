@@ -25,7 +25,7 @@ public interface SpanSpecBuilder {
     SpanSpecBuilder linkedTo(@Nonnull SpanLinkContext... links);
 
     @Nonnull
-    SpanSpecBuilder fromRemoteContext(@Nonnull String... traceparents);
+    SpanSpecBuilder fromTraceparent(@Nonnull String... traceparents);
 
     @Nonnull
     SpanSpecBuilder attribute(@Nonnull String key, @Nonnull String value);

@@ -3,10 +3,10 @@ package space.br1440.platform.tracing.core.runtime;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.context.DefaultTraceContextView;
+import space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
@@ -21,11 +21,11 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     private static final AttributePolicy PERMISSIVE = new AttributePolicy();
 
     private final TracingState state;
-    private final TraceContextView traceContextView;
+    private final ActiveTraceContextView traceContextView;
 
     private NoOpTracingRuntime(@Nonnull TracingState state) {
         this.state = Objects.requireNonNull(state, "state");
-        this.traceContextView = new DefaultTraceContextView(this::currentTraceId, this::currentSpanId);
+        this.traceContextView = new DefaultActiveTraceContextView(this::currentTraceId, this::currentSpanId);
     }
 
     public static NoOpTracingRuntime disabledByConfiguration(@Nonnull String reason) {
@@ -58,7 +58,7 @@ public final class NoOpTracingRuntime implements TracingRuntime {
 
     @Override
     @Nonnull
-    public TraceContextView currentTraceContext() {
+    public ActiveTraceContextView currentTraceContext() {
         return traceContextView;
     }
 

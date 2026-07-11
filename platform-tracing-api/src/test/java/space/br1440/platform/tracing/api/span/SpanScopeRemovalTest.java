@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.api.span;
+package space.br1440.platform.tracing.api.propagation;
 
 import org.junit.jupiter.api.Test;
 

@@ -11,7 +11,7 @@ import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
@@ -23,13 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CompositeSamplerTest {
 
     private static Context withControl(boolean force, boolean qa) {
-        PlatformTraceControl control = new PlatformTraceControl(force, qa, null, force ? "x_trace_on" : (qa ? "qa_trace" : null), force ? "on" : null);
+        InboundTraceControl control = new InboundTraceControl(force, qa, null, force ? "x_trace_on" : (qa ? "qa_trace" : null), force ? "on" : null);
         return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }
     
     private static Context withControlRaw(String raw) {
         boolean force = "on".equalsIgnoreCase(raw);
-        PlatformTraceControl control = new PlatformTraceControl(force, false, null, force ? "x_trace_on" : null, raw);
+        InboundTraceControl control = new InboundTraceControl(force, false, null, force ? "x_trace_on" : null, raw);
         return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }
 

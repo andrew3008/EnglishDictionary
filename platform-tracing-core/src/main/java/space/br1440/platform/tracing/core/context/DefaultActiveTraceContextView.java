@@ -1,17 +1,17 @@
 package space.br1440.platform.tracing.core.context;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public final class DefaultTraceContextView implements TraceContextView {
+public final class DefaultActiveTraceContextView implements ActiveTraceContextView {
 
     private final Supplier<Optional<String>> traceIdSupplier;
     private final Supplier<Optional<String>> spanIdSupplier;
 
-    public DefaultTraceContextView(@Nonnull Supplier<Optional<String>> traceIdSupplier,
+    public DefaultActiveTraceContextView(@Nonnull Supplier<Optional<String>> traceIdSupplier,
                                    @Nonnull Supplier<Optional<String>> spanIdSupplier) {
         this.traceIdSupplier = traceIdSupplier;
         this.spanIdSupplier = spanIdSupplier;

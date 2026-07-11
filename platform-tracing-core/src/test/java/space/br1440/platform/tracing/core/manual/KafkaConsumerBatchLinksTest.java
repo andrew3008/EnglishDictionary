@@ -9,7 +9,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.RemoteContext;
+import space.br1440.platform.tracing.api.propagation.TraceparentParser;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
@@ -70,11 +70,11 @@ class KafkaConsumerBatchLinksTest {
     }
 
     @Test
-    void kafkaBatchRootWithFromRemoteContext_parsesTraceparentIntoLinks() {
+    void kafkaBatchRootWithFromTraceparentParser_parsesTraceparentIntoLinks() {
         tracing.manual().transport().kafka().consumer()
                 .batch("orders")
                 .root()
-                .fromRemoteContext(TRACEPARENT_A, TRACEPARENT_B)
+                .fromTraceparent(TRACEPARENT_A, TRACEPARENT_B)
                 .start()
                 .close();
 
@@ -94,7 +94,7 @@ class KafkaConsumerBatchLinksTest {
             tracing.manual().transport().kafka().consumer()
                     .batch("orders")
                     .root()
-                    .fromRemoteContext(TRACEPARENT_A)
+                    .fromTraceparent(TRACEPARENT_A)
                     .start()
                     .close();
         }
@@ -108,7 +108,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchChildWithLinks_rejectedBeforeStart() {
-        SpanLinkContext link = RemoteContext.requireTraceparent(TRACEPARENT_A);
+        SpanLinkContext link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.manual().transport().kafka().consumer()
                         .batch("orders")
@@ -122,7 +122,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchDetachedWithLinks_rejectedBeforeStart() {
-        SpanLinkContext link = RemoteContext.requireTraceparent(TRACEPARENT_A);
+        SpanLinkContext link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.manual().transport().kafka().consumer()
                         .batch("orders")

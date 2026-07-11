@@ -10,18 +10,18 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("PlatformOutboundInjector: secure-by-default + per-header inject")
-class PlatformOutboundInjectorTest {
+@DisplayName("TraceControlHeaderInjector: secure-by-default + per-header inject")
+class TraceControlHeaderInjectorTest {
 
     private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> carrier.put(key, value);
 
-    private final PlatformOutboundInjector injector =
-            new PlatformOutboundInjector("X-Trace-On", "X-QA-Trace", "X-Request-Id");
+    private final TraceControlHeaderInjector injector =
+            new TraceControlHeaderInjector("X-Trace-On", "X-QA-Trace", "X-Request-Id");
 
-    private static Context contextWith(PlatformPropagationDecision decision) {
+    private static Context contextWith(OutboundPropagationDecision decision) {
         Context ctx = Context.root()
                 .with(PlatformTraceContextKeys.TRACE_CONTROL,
-                        PlatformTraceControl.fromHeaders("on", "1", "req-123"));
+                        InboundTraceControl.fromHeaders("on", "1", "req-123"));
         if (decision != null) {
             ctx = ctx.with(PlatformTraceContextKeys.PROPAGATION_DECISION, decision);
         }
@@ -40,7 +40,7 @@ class PlatformOutboundInjectorTest {
     @DisplayName("DENY_ALL ничего не инжектит")
     void denyAllInjectsNothing() {
         Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(PlatformPropagationDecision.DENY_ALL), carrier, MAP_SETTER);
+        injector.inject(contextWith(OutboundPropagationDecision.DENY_ALL), carrier, MAP_SETTER);
         assertThat(carrier).isEmpty();
     }
 
@@ -48,7 +48,7 @@ class PlatformOutboundInjectorTest {
     @DisplayName("requestId-only: только X-Request-Id")
     void requestIdOnly() {
         Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(new PlatformPropagationDecision(false, false, true)), carrier, MAP_SETTER);
+        injector.inject(contextWith(new OutboundPropagationDecision(false, false, true)), carrier, MAP_SETTER);
         assertThat(carrier).containsOnlyKeys("X-Request-Id");
         assertThat(carrier.get("X-Request-Id")).isEqualTo("req-123");
     }
@@ -57,7 +57,7 @@ class PlatformOutboundInjectorTest {
     @DisplayName("force по умолчанию не пробрасывается (decision=false) даже при forceTrace в control")
     void forceSkippedWhenDecisionFalse() {
         Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(new PlatformPropagationDecision(false, false, false)), carrier, MAP_SETTER);
+        injector.inject(contextWith(new OutboundPropagationDecision(false, false, false)), carrier, MAP_SETTER);
         assertThat(carrier).doesNotContainKey("X-Trace-On");
     }
 
@@ -65,7 +65,7 @@ class PlatformOutboundInjectorTest {
     @DisplayName("ALLOW_ALL инжектит все три заголовка")
     void allowAllInjectsAll() {
         Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(PlatformPropagationDecision.ALLOW_ALL), carrier, MAP_SETTER);
+        injector.inject(contextWith(OutboundPropagationDecision.ALLOW_ALL), carrier, MAP_SETTER);
         assertThat(carrier).containsKeys("X-Trace-On", "X-QA-Trace", "X-Request-Id");
         assertThat(carrier.get("X-Trace-On")).isEqualTo("on");
     }

@@ -26,7 +26,7 @@ public final class PlatformPropagatorsDefaultsCustomizer
     static final String PROPAGATORS_KEY = "otel.propagators";
 
     /** Имя платформенного named-пропагатора. */
-    static final String PLATFORM_PROPAGATOR = PlatformTraceControlPropagatorProvider.NAME;
+    static final String PLATFORM_PROPAGATOR = InboundTraceControlPropagatorProvider.NAME;
 
     /** Признак полного отключения пропагации в OTel ({@code otel.propagators=none}). */
     static final String NONE = "none";

@@ -5,8 +5,8 @@ import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundInjector;
-import space.br1440.platform.tracing.api.propagation.control.PlatformPropagationDecision;
+import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 
 import java.util.Map;
@@ -21,7 +21,7 @@ import java.util.Map;
  * <h3>Контракт ProducerInterceptor</h3>
  * <ul>
  *   <li>Создаётся Kafka-клиентом по рефлексии (НЕ Spring-бин). Зависимости ({@link OutboundPropagationPolicy},
- *       {@link PlatformOutboundInjector}) передаются через producer-config map и читаются в
+ *       {@link TraceControlHeaderInjector}) передаются через producer-config map и читаются в
  *       {@link #configure(Map)}. Kafka логирует WARN об «unknown config» для кастомных ключей —
  *       это ожидаемо.</li>
  *   <li>{@code onSend()} вызывается на producer-потоке -> inject строго неблокирующий (без I/O).</li>
@@ -33,17 +33,17 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
 
     /** Ключ producer-config с объектом политики {@link OutboundPropagationPolicy}. */
     public static final String CONFIG_POLICY = "platform.tracing.kafka.outbound-policy";
-    /** Ключ producer-config с объектом инжектора {@link PlatformOutboundInjector}. */
+    /** Ключ producer-config с объектом инжектора {@link TraceControlHeaderInjector}. */
     public static final String CONFIG_INJECTOR = "platform.tracing.kafka.outbound-injector";
 
     private OutboundPropagationPolicy policy;
-    private PlatformOutboundInjector injector;
+    private TraceControlHeaderInjector injector;
 
     @Override
     public ProducerRecord<K, V> onSend(ProducerRecord<K, V> record) {
         try {
             if (policy != null && injector != null && record != null) {
-                PlatformPropagationDecision decision = policy.decide(record.topic());
+                OutboundPropagationDecision decision = policy.decide(record.topic());
                 Context decided = Context.current().with(PlatformTraceContextKeys.PROPAGATION_DECISION, decision);
                 injector.inject(decided, record.headers(), PlatformKafkaHeaderSetter.INSTANCE);
             }
@@ -70,7 +70,7 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
             this.policy = p;
         }
         Object injectorObj = configs.get(CONFIG_INJECTOR);
-        if (injectorObj instanceof PlatformOutboundInjector i) {
+        if (injectorObj instanceof TraceControlHeaderInjector i) {
             this.injector = i;
         }
         // Если зависимости не переданы (некорректная конфигурация) — интерсептор остаётся no-op.

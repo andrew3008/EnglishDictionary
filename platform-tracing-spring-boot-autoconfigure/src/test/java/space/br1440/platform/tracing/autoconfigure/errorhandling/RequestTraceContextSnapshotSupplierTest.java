@@ -14,13 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.slf4j.MDC;
-import space.br1440.platform.tracing.api.context.TracingRequestContext;
+import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Тесты {@link TracingRequestContextSupplier}.
+ * Тесты {@link RequestTraceContextSnapshotSupplier}.
  * <p>
  * Покрытие:
  * <ul>
@@ -34,14 +34,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * соответственно в try/finally и try-with-resources, чтобы исключить кросс-влияние тестов
  * при параллельном запуске Gradle Test Worker'ами.
  */
-class TracingRequestContextSupplierTest {
+class RequestTraceContextSnapshotSupplierTest {
 
-    private TracingRequestContextSupplier supplier;
+    private RequestTraceContextSnapshotSupplier supplier;
     private OpenTelemetrySdk sdk;
 
     @BeforeEach
     void setUp() {
-        supplier = new TracingRequestContextSupplier();
+        supplier = new RequestTraceContextSnapshotSupplier();
         // Полноценный SDK нужен только для теста с активным валидным span'ом.
         sdk = OpenTelemetrySdk.builder()
                 .setTracerProvider(SdkTracerProvider.builder().build())
@@ -64,7 +64,7 @@ class TracingRequestContextSupplierTest {
         try (Scope ignored = span.makeCurrent()) {
             MDC.put(TracingMdcKeys.CORRELATION_ID, "req-42");
 
-            TracingRequestContext ctx = supplier.get();
+            RequestTraceContextSnapshot ctx = supplier.get();
 
             assertThat(ctx.correlationId()).isEqualTo("req-42");
             assertThat(ctx.traceId()).isEqualTo(span.getSpanContext().getTraceId());
@@ -79,7 +79,7 @@ class TracingRequestContextSupplierTest {
         // Без активного scope'а Span.current() возвращает invalid span с пустыми идентификаторами.
         MDC.put(TracingMdcKeys.CORRELATION_ID, "req-without-span");
 
-        TracingRequestContext ctx = supplier.get();
+        RequestTraceContextSnapshot ctx = supplier.get();
 
         assertThat(ctx.correlationId()).isEqualTo("req-without-span");
         assertThat(ctx.traceId()).isNull();
@@ -88,7 +88,7 @@ class TracingRequestContextSupplierTest {
 
     @Test
     void correlationId_равен_null_если_MDC_пуст() {
-        TracingRequestContext ctx = supplier.get();
+        RequestTraceContextSnapshot ctx = supplier.get();
 
         assertThat(ctx.correlationId()).isNull();
         assertThat(ctx.traceId()).isNull();
@@ -105,7 +105,7 @@ class TracingRequestContextSupplierTest {
         try (MockedStatic<Span> mocked = Mockito.mockStatic(Span.class)) {
             mocked.when(Span::current).thenThrow(new IllegalStateException("simulated context storage failure"));
 
-            TracingRequestContext ctx = supplier.get();
+            RequestTraceContextSnapshot ctx = supplier.get();
 
             // Контракт: исключения из tracing никогда не пробрасываются — fallback на null/MDC.
             assertThat(ctx.correlationId()).isEqualTo("req-broken-storage");
@@ -129,7 +129,7 @@ class TracingRequestContextSupplierTest {
         try (MockedStatic<Span> mocked = Mockito.mockStatic(Span.class)) {
             mocked.when(Span::current).thenReturn(fakeSpan);
 
-            TracingRequestContext ctx = supplier.get();
+            RequestTraceContextSnapshot ctx = supplier.get();
 
             assertThat(ctx.traceId()).isNull();
             assertThat(ctx.spanId()).isNull();

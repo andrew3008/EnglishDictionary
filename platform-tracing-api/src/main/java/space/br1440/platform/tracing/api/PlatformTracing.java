@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.manual.ManualTracing;
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 
 /**
  * Публичный фасад платформенной ручной трассировки.
@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.api.manual.TraceContextView;
 public interface PlatformTracing {
 
     @Nonnull
-    TraceContextView traceContext();
+    ActiveTraceContextView traceContext();
 
     @Nonnull
     ManualTracing manual();

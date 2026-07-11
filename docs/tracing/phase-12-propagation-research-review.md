@@ -60,9 +60,9 @@ best practices 2025–2026. Большинство тезисов раздела
 
 | Контракт | Модуль | App-classloader видимость |
 |----------|--------|---------------------------|
-| `PlatformPropagationDecision` | `platform-tracing-api` | да |
+| `OutboundPropagationDecision` | `platform-tracing-api` | да |
 | `PlatformTraceContextKeys` | `platform-tracing-api` | да |
-| `PlatformTraceControl` | `platform-tracing-api` | да |
+| `InboundTraceControl` | `platform-tracing-api` | да |
 | `PlatformHeaders` | `platform-tracing-api` | да |
 | **`TrustedDestinationMatcher`** | **`platform-tracing-otel-extension`** | **нет (agent-only)** |
 
@@ -76,17 +76,17 @@ dual-channel из `ADR-dual-channel-properties-v0.1`).
 - PR-1 объявляет `OutboundPropagationPolicy` Spring-бином, который использует `TrustedDestinationMatcher`.
 - PR-2/PR-3 — HTTP-интерсепторы — Spring-бины в `-webmvc`/`-webflux` (app-classloader).
 - Эти модули не видят `TrustedDestinationMatcher` ни на compile, ни на runtime.
-- План в §10.1 уже верно вынес `PlatformOutboundInjector` в `platform-tracing-api` именно из-за
+- План в §10.1 уже верно вынес `TraceControlHeaderInjector` в `platform-tracing-api` именно из-за
   classloader-границы, **но не распространил тот же вывод на `TrustedDestinationMatcher` и не отметил,
   что matcher застрял в agent-модуле.** §1 плана перечисляет его среди «готовых контрактов» без оговорки.
 
 ### Рекомендация (в PR-0/PR-1, до написания интерсепторов)
 1. **Перенести `TrustedDestinationMatcher`** (и glob-компиляцию хостов) в `platform-tracing-api`
-   (пакет `...api.propagation.control` рядом с `PlatformPropagationDecision`). У класса нет
+   (пакет `...api.propagation.control` рядом с `OutboundPropagationDecision`). У класса нет
    OTel-SDK-зависимостей — перенос безопасен.
 2. **Разместить `OutboundPropagationPolicy`** в `platform-tracing-api` (чистый POJO) либо в
    автоконфигурации; бин создаётся в app-classloader из `TracingProperties`.
-3. Если `PlatformTraceControlPropagator.extract()` (agent-side) тоже использует matcher — оставить
+3. Если `InboundTraceControlPropagator.extract()` (agent-side) тоже использует matcher — оставить
    там import уже из `api` (агентный jar включает api-классы, см. `agentExtensionJar`), drift не возникает.
 4. Зафиксировать в `ADR-outbound-propagation`: **единственный источник истины outbound-типов —
    `platform-tracing-api`** (app + agent classloader видят один и тот же класс).

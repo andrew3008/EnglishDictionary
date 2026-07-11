@@ -7,8 +7,8 @@ import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import reactor.core.publisher.Mono;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundInjector;
-import space.br1440.platform.tracing.api.propagation.control.PlatformPropagationDecision;
+import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 
 /**
@@ -28,9 +28,9 @@ import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContex
 public final class PlatformOutboundExchangeFilterFunction implements ExchangeFilterFunction {
 
     private final OutboundPropagationPolicy policy;
-    private final PlatformOutboundInjector injector;
+    private final TraceControlHeaderInjector injector;
 
-    public PlatformOutboundExchangeFilterFunction(OutboundPropagationPolicy policy, PlatformOutboundInjector injector) {
+    public PlatformOutboundExchangeFilterFunction(OutboundPropagationPolicy policy, TraceControlHeaderInjector injector) {
         this.policy = policy;
         this.injector = injector;
     }
@@ -41,7 +41,7 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
             try {
                 Context otel = Context.current();
                 String host = request.url().getHost();
-                PlatformPropagationDecision decision = policy.decide(host);
+                OutboundPropagationDecision decision = policy.decide(host);
                 Context decided = otel.with(PlatformTraceContextKeys.PROPAGATION_DECISION, decision);
 
                 ClientRequest.Builder builder = ClientRequest.from(request);

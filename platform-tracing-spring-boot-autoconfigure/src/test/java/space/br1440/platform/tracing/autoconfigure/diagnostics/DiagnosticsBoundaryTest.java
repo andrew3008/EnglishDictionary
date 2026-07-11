@@ -10,7 +10,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
@@ -101,8 +101,8 @@ class DiagnosticsBoundaryTest {
             }
 
             @Override
-            public TraceContextView currentTraceContext() {
-                return new TraceContextView() {
+            public ActiveTraceContextView currentTraceContext() {
+                return new ActiveTraceContextView() {
                     @Override
                     public Optional<String> traceId() {
                         return Optional.empty();

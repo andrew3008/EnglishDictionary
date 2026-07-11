@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.span.spec;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.RemoteContext;
+import space.br1440.platform.tracing.api.propagation.TraceparentParser;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 
 import java.util.ArrayList;
@@ -70,10 +70,10 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
     @Override
     @Nonnull
-    public SpanSpecBuilder fromRemoteContext(@Nonnull String... traceparents) {
+    public SpanSpecBuilder fromTraceparent(@Nonnull String... traceparents) {
         Objects.requireNonNull(traceparents, "traceparents");
         for (String traceparent : traceparents) {
-            linkedTo(RemoteContext.requireTraceparent(Objects.requireNonNull(traceparent, "traceparent")));
+            linkedTo(TraceparentParser.requireTraceparent(Objects.requireNonNull(traceparent, "traceparent")));
         }
         return this;
     }

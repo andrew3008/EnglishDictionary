@@ -5,20 +5,20 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.control.PlatformPropagationDecision;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("PlatformTraceControlPropagator: extract в Context + inject через decision")
-class PlatformTraceControlPropagatorTest {
+@DisplayName("InboundTraceControlPropagator: extract в Context + inject через decision")
+class InboundTraceControlPropagatorTest {
 
-    private final PlatformTraceControlPropagator propagator =
-            new PlatformTraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id");
+    private final InboundTraceControlPropagator propagator =
+            new InboundTraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id");
 
     private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
         @Override
@@ -35,7 +35,7 @@ class PlatformTraceControlPropagatorTest {
     private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> carrier.put(key, value);
 
     @Test
-    @DisplayName("extract кладёт PlatformTraceControl в Context")
+    @DisplayName("extract кладёт InboundTraceControl в Context")
     void extractStoresControl() {
         Map<String, String> carrier = new HashMap<>();
         carrier.put("X-Trace-On", "on");
@@ -43,7 +43,7 @@ class PlatformTraceControlPropagatorTest {
 
         Context ctx = propagator.extract(Context.root(), carrier, MAP_GETTER);
 
-        PlatformTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
+        InboundTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
         assertThat(control).isNotNull();
         assertThat(control.forceTrace()).isTrue();
         assertThat(control.requestId()).isEqualTo("req-1");
@@ -64,7 +64,7 @@ class PlatformTraceControlPropagatorTest {
 
         Context ctx = propagator.extract(Context.root(), carrier, MAP_GETTER);
 
-        PlatformTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
+        InboundTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
         assertThat(control).isNotNull();
         assertThat(control.requestId()).isNull(); // reject-and-null, без мутации
     }
@@ -73,7 +73,7 @@ class PlatformTraceControlPropagatorTest {
     @DisplayName("inject без decision ничего не пишет (secure-by-default)")
     void injectWithoutDecisionWritesNothing() {
         Context ctx = Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL,
-                PlatformTraceControl.fromHeaders("on", null, "req-1"));
+                InboundTraceControl.fromHeaders("on", null, "req-1"));
         Map<String, String> carrier = new HashMap<>();
 
         propagator.inject(ctx, carrier, MAP_SETTER);
@@ -85,8 +85,8 @@ class PlatformTraceControlPropagatorTest {
     @DisplayName("inject с ALLOW_ALL пишет платформенные заголовки")
     void injectWithDecisionWrites() {
         Context ctx = Context.root()
-                .with(PlatformTraceContextKeys.TRACE_CONTROL, PlatformTraceControl.fromHeaders("on", null, "req-1"))
-                .with(PlatformTraceContextKeys.PROPAGATION_DECISION, PlatformPropagationDecision.ALLOW_ALL);
+                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControl.fromHeaders("on", null, "req-1"))
+                .with(PlatformTraceContextKeys.PROPAGATION_DECISION, OutboundPropagationDecision.ALLOW_ALL);
         Map<String, String> carrier = new HashMap<>();
 
         propagator.inject(ctx, carrier, MAP_SETTER);
@@ -100,8 +100,8 @@ class PlatformTraceControlPropagatorTest {
     void disabledGateMakesPropagationNoOp() {
         PlatformPropagationGate gate = new PlatformPropagationGate();
         gate.setEnabled(false);
-        PlatformTraceControlPropagator gated =
-                new PlatformTraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
+        InboundTraceControlPropagator gated =
+                new InboundTraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
 
         Map<String, String> inbound = new HashMap<>();
         inbound.put("X-Trace-On", "on");
@@ -111,8 +111,8 @@ class PlatformTraceControlPropagatorTest {
         assertThat(gate.getGatedExtracts()).isEqualTo(1);
 
         Context ctx = Context.root()
-                .with(PlatformTraceContextKeys.TRACE_CONTROL, PlatformTraceControl.fromHeaders("on", null, "req-1"))
-                .with(PlatformTraceContextKeys.PROPAGATION_DECISION, PlatformPropagationDecision.ALLOW_ALL);
+                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControl.fromHeaders("on", null, "req-1"))
+                .with(PlatformTraceContextKeys.PROPAGATION_DECISION, OutboundPropagationDecision.ALLOW_ALL);
         Map<String, String> outbound = new HashMap<>();
         gated.inject(ctx, outbound, MAP_SETTER);
         assertThat(outbound).isEmpty();

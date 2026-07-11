@@ -1,8 +1,9 @@
-package space.br1440.platform.tracing.api.span;
+package space.br1440.platform.tracing.api.propagation;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
+import space.br1440.platform.tracing.api.span.SpanLinkContext;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -13,10 +14,10 @@ import java.util.Optional;
  * <p>
  * Soft {@link #parseTraceparent(String)} предназначен для циклов пакетного извлечения, где
  * отсутствующие или некорректные заголовки пропускаются. Strict {@link #requireTraceparent(String)}
- * используется построителем {@code fromRemoteContext(...)} и завершается с ошибкой при невалидном вводе.
+ * используется построителем {@code fromTraceparent(...)} и завершается с ошибкой при невалидном вводе.
  */
 @UtilityClass
-public final class RemoteContext {
+public final class TraceparentParser {
 
     private static final String INVALID_ID = "0".repeat(32);
     private static final String INVALID_SPAN_ID = "0".repeat(16);

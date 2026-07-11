@@ -18,7 +18,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.otel.extension.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
 
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  * это самый горячий участок платформенного кода после самого SDK. Бенчмарк измеряет
  * три репрезентативные ветки цепочки правил (см. порядок в {@code CompositeSampler}):
  * <ul>
- *   <li><b>force-header</b> — {@code X-Trace-On: on} в {@code PlatformTraceControl}
+ *   <li><b>force-header</b> — {@code X-Trace-On: on} в {@code InboundTraceControl}
  *       (ранний выход через {@code ForceHeaderRule});</li>
  *   <li><b>parent-sampled</b> — решение наследуется от удалённого родителя
  *       ({@code ParentDecisionRule}, типичный путь внутреннего сервиса);</li>
@@ -74,7 +74,7 @@ public class CompositeSamplerBenchmark {
         // Ветка 1: форсированная запись через X-Trace-On (см. CompositeSamplerTest.withControl).
         forceHeaderContext = Context.root().with(
                 PlatformTraceContextKeys.TRACE_CONTROL,
-                new PlatformTraceControl(true, false, null, "x_trace_on", "on"));
+                new InboundTraceControl(true, false, null, "x_trace_on", "on"));
 
         // Ветка 2: удалённый sampled-родитель — ParentDecisionRule наследует решение.
         parentSampledContext = Context.root().with(

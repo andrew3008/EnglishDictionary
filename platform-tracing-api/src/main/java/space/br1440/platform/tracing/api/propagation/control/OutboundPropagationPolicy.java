@@ -14,11 +14,11 @@ public final class OutboundPropagationPolicy {
     private final boolean propagateQaTrace;
     private final boolean propagateRequestId;
 
-    public PlatformPropagationDecision decide(String destination) {
+    public OutboundPropagationDecision decide(String destination) {
         if (!enabled || trusted == null || !trusted.isTrusted(destination)) {
-            return PlatformPropagationDecision.DENY_ALL;
+            return OutboundPropagationDecision.DENY_ALL;
         }
 
-        return new PlatformPropagationDecision(propagateForceTrace, propagateQaTrace, propagateRequestId);
+        return new OutboundPropagationDecision(propagateForceTrace, propagateQaTrace, propagateRequestId);
     }
 }

@@ -26,7 +26,7 @@ public interface ManualSpanBuilder<B extends ManualSpanBuilder<B>> {
     B linkedTo(@Nonnull SpanLinkContext... links);
 
     @Nonnull
-    B fromRemoteContext(@Nonnull String... traceparents);
+    B fromTraceparent(@Nonnull String... traceparents);
 
     @Nonnull
     SpanHandle start();

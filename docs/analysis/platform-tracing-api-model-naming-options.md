@@ -19,10 +19,10 @@ Top 10 high-value naming changes:
 4. `PlatformSpanBuilder` -> **`ManualSpanBuilder`**.
 5. Remove public `SpanScope`; keep lifecycle mutation behind core/internal implementation or expose only `SpanHandle`.
 6. `EnrichScope` -> **`SpanEnrichment`** and `GenericEnrichScope` -> **`GenericSpanEnrichment`**.
-7. `TracingRequestContext` -> **`RequestTraceContextSnapshot`**.
+7. `RequestTraceContextSnapshot` -> **`RequestTraceContextSnapshot`**.
 8. Merge `DatabaseTracing` into `DatabaseSpanBuilder` by returning `DatabaseSpanBuilder` from `TransportTracing.database()`.
 9. `SensitiveDataRule` -> **`SpanAttributeScrubbingRule`**.
-10. `PlatformPropagationDecision` -> **`OutboundPropagationDecision`** and `PlatformTraceControl` -> **`InboundTraceControl`**.
+10. `OutboundPropagationDecision` -> **`OutboundPropagationDecision`** and `InboundTraceControl` -> **`InboundTraceControl`**.
 
 Production-readiness verdict: **not production-ready as-is**. The API shape is strong, but several public names still carry stale, generic, or legacy-contaminated vocabulary. Because this is pre-production, the clean final API should win over churn.
 
@@ -39,8 +39,8 @@ Production-readiness verdict: **not production-ready as-is**. The API shape is s
 - `SpanScope` is still public and documented as v1/v2 API in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/SpanScope.java`.
 - `SpanHandle` is the v3 minimal lifecycle handle in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanHandle.java`.
 - `DatabaseTracing extends DatabaseSpanBuilder` in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseTracing.java`.
-- `TracingRequestContext` is a nullable record used for error-handling integration in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/TracingRequestContext.java`.
-- `TraceContextView` is a read-only active context view in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TraceContextView.java`.
+- `RequestTraceContextSnapshot` is a nullable record used for error-handling integration in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/RequestTraceContextSnapshot.java`.
+- `ActiveTraceContextView` is a read-only active context view in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ActiveTraceContextView.java`.
 - `EnrichScope` and `GenericEnrichScope` are mutation DSLs, not lifecycle scopes, in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/enrich`.
 - `SensitiveDataRule` is the public scrubbing SPI implemented by the OTel extension in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/spi/SensitiveDataRule.java`.
 - `SpanOptions` no longer exists as a source file; stale references remain in docs/tests, including `platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/manual/arch/V3ManualApiArchTest.java`.
@@ -81,13 +81,13 @@ Strengths:
 
 Systemic weaknesses:
 
-- `Platform*` is overused for types that are not root platform facades (`PlatformSpanBuilder`, `PlatformPropagationDecision`, `PlatformOutboundInjector`).
+- `Platform*` is overused for types that are not root platform facades (`PlatformSpanBuilder`, `OutboundPropagationDecision`, `TraceControlHeaderInjector`).
 - `Scope` is overloaded: `SpanScope` is lifecycle/closeable, while `EnrichScope` is a mutation DSL.
 - `Topology` remains hard for non-developers and architects; the enum values are really a start-time parent selection mode.
 - `SpanSpec.options()` is stale after `SpanOptions` -> `SpanTopologySpec`.
 - `SpecifiedSpan` is an outlier adjective and hides that the type is an execution surface.
 - `DatabaseTracing` violates the transport navigator pattern by being both navigation node and builder.
-- `Context` appears in both `TraceContextView` and `TracingRequestContext` without making active-vs-snapshot explicit.
+- `Context` appears in both `ActiveTraceContextView` and `RequestTraceContextSnapshot` without making active-vs-snapshot explicit.
 
 Legacy contamination:
 
@@ -110,7 +110,7 @@ Generic vocabulary overuse:
 | `SuppressAgentInstrumentation` | `api.annotation` | 89 | KEEP_STRONG | Keep | 89 | 0 | Explicit and safer than short alternatives. |
 | `PlatformAttributes` | `api.attributes` | 88 | KEEP_STRONG | Keep | 88 | 0 | Constants registry; platform prefix is appropriate. |
 | `PlatformSamplingReasons` | `api.attributes` | 86 | KEEP_STRONG | Keep | 86 | 0 | Constants registry; domain clear. |
-| `TracingRequestContext` | `api.context` | 66 | RENAME_STRONGLY_RECOMMENDED | `RequestTraceContextSnapshot` | 91 | +25 | It is a nullable snapshot for request error handling, not active tracing context. |
+| `RequestTraceContextSnapshot` | `api.context` | 66 | RENAME_STRONGLY_RECOMMENDED | `RequestTraceContextSnapshot` | 91 | +25 | It is a nullable snapshot for request error handling, not active tracing context. |
 | `TracingControlProtocol` | `api.control.protocol` | 90 | KEEP_STRONG | Keep | 90 | 0 | Aggregate protocol entrypoint is clear. |
 | `TracingControlProtocolValidationResult` | `api.control.protocol.result` | 86 | KEEP_ACCEPTABLE | Keep | 86 | 0 | Verbose but exact in wire family. |
 | `TracingControlProtocolViolation` | `api.control.protocol.result` | 86 | KEEP_ACCEPTABLE | Keep | 86 | 0 | Consistent protocol violation model. |
@@ -139,7 +139,7 @@ Generic vocabulary overuse:
 | `KafkaBatchSpanBuilder` | `api.manual` | 86 | KEEP_ACCEPTABLE | Keep | 86 | 0 | Clear enough for batch consumer spans. |
 | `OperationSpanBuilder` | `api.manual` | 88 | KEEP_STRONG | Keep | 88 | 0 | Service developer friendly. |
 | `PlatformSpanBuilder` | `api.manual` | 64 | RENAME_STRONGLY_RECOMMENDED | `ManualSpanBuilder` | 91 | +27 | Common manual builder, not a platform root facade. |
-| `TraceContextView` | `api.manual` | 80 | RENAME_RECOMMENDED | `ActiveTraceContextView` | 91 | +11 | Active/read-only should be explicit due `TracingRequestContext`. |
+| `ActiveTraceContextView` | `api.manual` | 80 | RENAME_RECOMMENDED | `ActiveActiveTraceContextView` | 91 | +11 | Active/read-only should be explicit due `RequestTraceContextSnapshot`. |
 | `RemoteServiceContextReaders` | `api.mdc` | 78 | KEEP_ACCEPTABLE | Keep | 78 | 0 | Utility class; acceptable but not elegant. |
 | `RemoteServiceMdc` | `api.mdc` | 85 | KEEP_STRONG | Keep | 85 | 0 | Clear MDC bridge name. |
 | `RemoteServiceTraceMirror` | `api.mdc` | 70 | RENAME_RECOMMENDED | `RemoteTraceContextMdcMirror` | 86 | +16 | `Mirror` needs source/target context. |
@@ -148,10 +148,10 @@ Generic vocabulary overuse:
 | `PlatformHeaders` | `api.propagation` | 84 | KEEP_ACCEPTABLE | Keep | 84 | 0 | Constants registry; acceptable. |
 | `RequestIdSupport` | `api.propagation` | 82 | KEEP_ACCEPTABLE | Keep | 82 | 0 | Utility support class; acceptable. |
 | `OutboundPropagationPolicy` | `api.propagation.control` | 88 | KEEP_STRONG | Keep | 88 | 0 | Policy has behavior and decision logic. |
-| `PlatformOutboundInjector` | `api.propagation.control` | 67 | RENAME_RECOMMENDED | `TraceControlHeaderInjector` | 90 | +23 | It injects trace-control headers, not all platform outbound data. |
-| `PlatformPropagationDecision` | `api.propagation.control` | 69 | RENAME_RECOMMENDED | `OutboundPropagationDecision` | 91 | +22 | Decision is outbound-specific. |
+| `TraceControlHeaderInjector` | `api.propagation.control` | 67 | RENAME_RECOMMENDED | `TraceControlHeaderInjector` | 90 | +23 | It injects trace-control headers, not all platform outbound data. |
+| `OutboundPropagationDecision` | `api.propagation.control` | 69 | RENAME_RECOMMENDED | `OutboundPropagationDecision` | 91 | +22 | Decision is outbound-specific. |
 | `PlatformTraceContextKeys` | `api.propagation.control` | 76 | KEEP_ACCEPTABLE | Keep or `TraceControlContextKeys` | 84 | +8 | Platform prefix acceptable for OTel Context keys. |
-| `PlatformTraceControl` | `api.propagation.control` | 69 | RENAME_RECOMMENDED | `InboundTraceControl` | 91 | +22 | Extracted from incoming carrier/header values. |
+| `InboundTraceControl` | `api.propagation.control` | 69 | RENAME_RECOMMENDED | `InboundTraceControl` | 91 | +22 | Extracted from incoming carrier/header values. |
 | `TrustedDestinationMatcher` | `api.propagation.control` | 90 | KEEP_STRONG | Keep | 90 | 0 | Exact behavior name. |
 | `VersionedState` | `api.runtime.state` | 88 | KEEP_STRONG | Keep | 88 | 0 | Marker role is clear; prior review supports it. |
 | `VersionedStateHolder` | `api.runtime.state` | 86 | KEEP_STRONG | Keep | 86 | 0 | Holder role is clear. |
@@ -166,7 +166,7 @@ Generic vocabulary overuse:
 | `ValidationMode` | `api.semconv` | 69 | RENAME_RECOMMENDED | `SemconvValidationMode` | 90 | +21 | Generic outside imports; class name should carry context. |
 | `EnrichScope` | `api.span.enrich` | 60 | RENAME_STRONGLY_RECOMMENDED | `SpanEnrichment` | 91 | +31 | It is not a lifecycle scope. |
 | `GenericEnrichScope` | `api.span.enrich` | 59 | RENAME_STRONGLY_RECOMMENDED | `GenericSpanEnrichment` | 90 | +31 | Avoid overloaded `Scope`; make generic/platform-safe explicit. |
-| `RemoteContext` | `api.span` | 64 | RENAME_RECOMMENDED | `Traceparent` or `TraceparentParser` | 88 | +24 | Utility parses W3C traceparent, not arbitrary remote context. |
+| `TraceparentParser` | `api.span` | 64 | RENAME_RECOMMENDED | `Traceparent` or `TraceparentParser` | 88 | +24 | Utility parses W3C traceparent, not arbitrary remote context. |
 | `SqlSanitizer` | `api.span.sanitize` | 84 | KEEP_ACCEPTABLE | Keep | 84 | 0 | Utility name is direct. |
 | `UrlSanitizer` | `api.span.sanitize` | 84 | KEEP_ACCEPTABLE | Keep | 84 | 0 | Utility name is direct. |
 | `SpanCategory` | `api.span` | 90 | KEEP_STRONG | Keep | 90 | 0 | Avoid `SpanKind` collision with OTel. |
@@ -311,26 +311,26 @@ Generic vocabulary overuse:
 | `PlatformSafeSpanEnrichment` | 86 | Very explicit | Longer | Considered |
 | `GenericSpanAttributes` | 73 | Attribute-ish | Hides result/business methods | Reject |
 
-### TracingRequestContext -> RequestTraceContextSnapshot
+### RequestTraceContextSnapshot -> RequestTraceContextSnapshot
 
 | Field | Value |
 |---|---|
-| Current file | `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/TracingRequestContext.java` |
-| Current FQN | `space.br1440.platform.tracing.api.context.TracingRequestContext` |
+| Current file | `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/RequestTraceContextSnapshot.java` |
+| Current FQN | `space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot` |
 | Current role | Nullable request-context snapshot for error-handling integration. |
 | Current score | 66 |
 | Recommended score | 91 |
 | Delta | +25 |
-| Why current name fails | Too close to active `TraceContextView`; does not reveal snapshot/nullability role. |
+| Why current name fails | Too close to active `ActiveTraceContextView`; does not reveal snapshot/nullability role. |
 | Why recommended name wins | `RequestTraceContextSnapshot` says request-scoped, trace-related, captured value. |
 | Blast radius | Medium; autoconfigure error handling. |
 | Affected modules | API, spring-boot-autoconfigure tests. |
-| Tests likely affected | `TracingRequestContextSupplierTest`. |
+| Tests likely affected | `RequestTraceContextSnapshotSupplierTest`. |
 | Docs likely affected | error-handling integration docs. |
 
 | Option | Score | Pros | Cons | Verdict |
 |---|---:|---|---|---|
-| `TracingRequestContext` | 66 | Existing | Active-vs-snapshot ambiguity | Reject |
+| `RequestTraceContextSnapshot` | 66 | Existing | Active-vs-snapshot ambiguity | Reject |
 | `RequestTraceContextSnapshot` | 91 | Exact role | Longer | **Choose** |
 | `TraceRequestContext` | 78 | Shorter | Still not snapshot | Reject |
 | `ErrorTraceContextSnapshot` | 82 | Good for current use | Too tied to error handling | Considered |
@@ -403,29 +403,29 @@ Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/
 
 Options: `SpanLinkContext` (72), `RemoteSpanLink` (89, chosen), `SpanLink` (84), `RemoteSpanContext` (78, OTel collision).
 
-### RemoteContext -> Traceparent
+### TraceparentParser -> Traceparent
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/RemoteContext.java`. The utility parses W3C `traceparent` and produces `SpanLinkContext`. `RemoteContext` is too broad. Score: 64 -> 88.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/TraceparentParser.java`. The utility parses W3C `traceparent` and produces `SpanLinkContext`. `TraceparentParser` is too broad. Score: 64 -> 88.
 
-Options: `RemoteContext` (64), `Traceparent` (88, chosen), `TraceparentParser` (86), `RemoteTraceContext` (80).
+Options: `TraceparentParser` (64), `Traceparent` (88, chosen), `TraceparentParser` (86), `RemoteTraceContext` (80).
 
-### PlatformPropagationDecision -> OutboundPropagationDecision
+### OutboundPropagationDecision -> OutboundPropagationDecision
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/control/PlatformPropagationDecision.java`. The record answers what platform headers may be propagated on outbound calls. Score: 69 -> 91.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/control/OutboundPropagationDecision.java`. The record answers what platform headers may be propagated on outbound calls. Score: 69 -> 91.
 
-Options: `PlatformPropagationDecision` (69), `OutboundPropagationDecision` (91, chosen), `TraceHeaderPropagationDecision` (86), `PropagationDecision` (75).
+Options: `OutboundPropagationDecision` (69), `OutboundPropagationDecision` (91, chosen), `TraceHeaderPropagationDecision` (86), `PropagationDecision` (75).
 
-### PlatformTraceControl -> InboundTraceControl
+### InboundTraceControl -> InboundTraceControl
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/control/PlatformTraceControl.java`. The record is extracted from incoming headers/carriers. Score: 69 -> 91.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/control/InboundTraceControl.java`. The record is extracted from incoming headers/carriers. Score: 69 -> 91.
 
-Options: `PlatformTraceControl` (69), `InboundTraceControl` (91, chosen), `TraceControlHeaders` (82), `TraceControlRequest` (80).
+Options: `InboundTraceControl` (69), `InboundTraceControl` (91, chosen), `TraceControlHeaders` (82), `TraceControlRequest` (80).
 
-### PlatformOutboundInjector -> TraceControlHeaderInjector
+### TraceControlHeaderInjector -> TraceControlHeaderInjector
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/control/PlatformOutboundInjector.java`. It injects specific trace-control headers, not all outbound platform state. Score: 67 -> 90.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/control/TraceControlHeaderInjector.java`. It injects specific trace-control headers, not all outbound platform state. Score: 67 -> 90.
 
-Options: `PlatformOutboundInjector` (67), `TraceControlHeaderInjector` (90, chosen), `OutboundTraceHeaderInjector` (87), `PlatformHeaderInjector` (78).
+Options: `TraceControlHeaderInjector` (67), `TraceControlHeaderInjector` (90, chosen), `OutboundTraceHeaderInjector` (87), `PlatformHeaderInjector` (78).
 
 ### CategoryContract / CategoryContracts -> SpanCategoryContract / SpanCategoryContracts
 
@@ -449,9 +449,9 @@ Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/
 
 Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/mdc/RemoteServiceTraceMirror.java`. The current name leaves "mirror from what into what" unclear. Score: 70 -> 86.
 
-### TraceContextView -> ActiveTraceContextView
+### ActiveTraceContextView -> ActiveActiveTraceContextView
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TraceContextView.java`. The current name is acceptable, but `ActiveTraceContextView` better separates it from request snapshots. Score: 80 -> 91. Batch C unless `TracingRequestContext` is renamed in Batch A.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ActiveTraceContextView.java`. The current name is acceptable, but `ActiveActiveTraceContextView` better separates it from request snapshots. Score: 80 -> 91. Batch C unless `RequestTraceContextSnapshot` is renamed in Batch A.
 
 ## 8. Keep Decisions
 
@@ -538,7 +538,7 @@ Builder-chain map:
 
 ```text
 PlatformTracing
-  traceContext() -> TraceContextView
+  traceContext() -> ActiveTraceContextView
   manual() -> ManualTracing
     operation(name) -> OperationSpanBuilder -> ManualSpanBuilder terminals
     transport() -> TransportTracing
@@ -556,7 +556,7 @@ Terminal method review:
 - `start()` is strong for returning `SpanHandle`.
 - `run(Runnable)`, `call(Supplier)`, and `callChecked(ThrowingSupplier)` are clear and should remain.
 - `.child()`, `.root()`, `.detached()`, `.linkedTo()` are strong app-facing grammar and should remain even if `Topology` becomes `SpanStartMode`.
-- `fromRemoteContext(String... traceparents)` is acceptable, but if `RemoteContext` becomes `Traceparent`, a future method rename to `fromTraceparent(...)` would be clearer.
+- `fromTraceparent(String... traceparents)` is acceptable, but if `TraceparentParser` becomes `Traceparent`, a future method rename to `fromTraceparent(...)` would be clearer.
 
 | Builder Type | Current Role | Current Score | Recommended Action | Notes |
 |---|---|---:|---|---|
@@ -585,9 +585,9 @@ Terminal method review:
 | `SpanSpecReason` | governance enum values | 78 | Keep | Values are already reason-like; avoid heavier governance wording. |
 | `SpanTopologySpec` | `topology`, `links` | 83 | Keep or `SpanStartSpec` | Depends on Batch B vocabulary. |
 | `Topology` | `CHILD`, `ROOT`, `DETACHED` | 62 | `SpanStartMode` | Strongly recommended. |
-| `TracingRequestContext` | nullable IDs | 66 | `RequestTraceContextSnapshot` | Snapshot role. |
-| `PlatformTraceControl` | force/qa/request id/reason/raw | 69 | `InboundTraceControl` | Inbound carrier model. |
-| `PlatformPropagationDecision` | three outbound booleans | 69 | `OutboundPropagationDecision` | Outbound decision model. |
+| `RequestTraceContextSnapshot` | nullable IDs | 66 | `RequestTraceContextSnapshot` | Snapshot role. |
+| `InboundTraceControl` | force/qa/request id/reason/raw | 69 | `InboundTraceControl` | Inbound carrier model. |
+| `OutboundPropagationDecision` | three outbound booleans | 69 | `OutboundPropagationDecision` | Outbound decision model. |
 | `CategoryContract` | category/allowlist/required/forbidden | 74 | `SpanCategoryContract` | Domain qualification. |
 | `ValidationMode` | strict/warn/disabled | 69 | `SemconvValidationMode` | Avoid generic import. |
 | `ScrubbingDecision` | action/reason/maxLength/terminal | 90 | Keep | Excellent. |
@@ -621,7 +621,7 @@ Applied to current types:
 - `SpecifiedSpan` should become `SpanExecution`.
 - `Topology` should become `SpanStartMode`.
 - `SpanScope` should leave the public API.
-- `TracingRequestContext` should become `RequestTraceContextSnapshot`.
+- `RequestTraceContextSnapshot` should become `RequestTraceContextSnapshot`.
 - `EnrichScope`/`GenericEnrichScope` should become enrichment nouns.
 
 ## 13. Blast Radius Map
@@ -674,7 +674,7 @@ Included changes:
 - `Topology` -> `SpanStartMode`; decide whether `SpanTopologySpec` stays or becomes `SpanStartSpec`.
 - Remove public `SpanScope`; introduce internal core lifecycle scope if needed.
 - `EnrichScope` -> `SpanEnrichment`; `GenericEnrichScope` -> `GenericSpanEnrichment`.
-- Propagation model cleanup: `PlatformTraceControl` -> `InboundTraceControl`, `PlatformPropagationDecision` -> `OutboundPropagationDecision`, `PlatformOutboundInjector` -> `TraceControlHeaderInjector`.
+- Propagation model cleanup: `InboundTraceControl` -> `InboundTraceControl`, `OutboundPropagationDecision` -> `OutboundPropagationDecision`, `TraceControlHeaderInjector` -> `TraceControlHeaderInjector`.
 
 Prerequisite decisions:
 
@@ -697,14 +697,14 @@ Included changes:
 
 - `SpanAttributeValue` -> `SpanSpecAttributeValue`.
 - `SpanLinkContext` -> `RemoteSpanLink`.
-- `RemoteContext` -> `Traceparent`.
+- `TraceparentParser` -> `Traceparent`.
 - `CategoryContract(s)` -> `SpanCategoryContract(s)`.
 - `ValidationMode` -> `SemconvValidationMode`.
 - `SemconvKeys` -> `SemanticAttributeKeys`.
 - `SensitiveDataRule` -> `SpanAttributeScrubbingRule`.
 - `TracingControlProtocolTypes` -> `TracingControlProtocolFieldType`.
 - `RemoteServiceTraceMirror` -> `RemoteTraceContextMdcMirror`.
-- Possibly `TraceContextView` -> `ActiveTraceContextView`.
+- Possibly `ActiveTraceContextView` -> `ActiveActiveTraceContextView`.
 
 Whether to skip:
 
@@ -765,7 +765,7 @@ Get-Content docs\analysis\platform-tracing-api-class-hierarchy-inventory.md -Enc
 rg "^public (interface|record|enum|class)|^public final class|^public abstract class|^sealed interface|^non-sealed" platform-tracing-api/src/main/java
 rg --files platform-tracing-api/src/main/java
 rg "import space\.br1440\.platform\.tracing\.api" platform-tracing-core platform-tracing-spring-boot-autoconfigure platform-tracing-test platform-tracing-bench platform-tracing-e2e-tests
-rg "Deprecated|legacy|api\.span\.builder|PlatformSpanBuilder|SpanOptions|SpanTopologySpec|SpecifiedSpan|SpanScope|VersionedState|TracingRequestContext|TraceContextView" platform-tracing-api/src/main/java docs/analysis docs/tracing
+rg "Deprecated|legacy|api\.span\.builder|PlatformSpanBuilder|SpanOptions|SpanTopologySpec|SpecifiedSpan|SpanScope|VersionedState|RequestTraceContextSnapshot|ActiveTraceContextView" platform-tracing-api/src/main/java docs/analysis docs/tracing
 rg "SpanOptions|SpanTopologySpec|\.options\(\)|SpanSpec\.builder|spanFromSpec|SpecifiedSpan|SpanScope" platform-tracing-api platform-tracing-core platform-tracing-spring-boot-autoconfigure platform-tracing-test platform-tracing-bench platform-tracing-e2e-tests
 ```
 
@@ -790,3 +790,19 @@ Gradle was not run because this task is analysis-only and no source code was mod
 Batch A has been accepted and implemented. Current public API names are `SpanRelationship`, `SpanRelationshipSpec`, `SpanSpec.relationship()`, `ManualSpanBuilder`, `SpanExecution`, `SpanEnrichment`, `GenericSpanEnrichment`, `SemconvValidationMode`, and `DatabaseSpanBuilder`.
 
 Public `SpanScope` and `DatabaseTracing` are removed. Database semconv marker `@DatabaseSemconvVersion("1.28.0")` now belongs to `DatabaseSpanBuilder`.
+
+## PR-B1 Accepted Update - 2026-07-11
+
+PR-B1 has been accepted and implemented as a context/propagation naming slice. Current names are:
+
+| Area | Current API |
+| --- | --- |
+| Request context snapshot | `RequestTraceContextSnapshot` |
+| Active context view | `ActiveTraceContextView` |
+| Inbound trace-control carrier model | `InboundTraceControl` |
+| Outbound propagation policy result | `OutboundPropagationDecision` |
+| Trace-control header writer | `TraceControlHeaderInjector` |
+| W3C traceparent parser | `TraceparentParser` in `api.propagation` |
+| Builder strict traceparent links | `fromTraceparent(...)` |
+
+Semantic verdicts: the request context type is a captured nullable snapshot for error-handling, the active context view is a live read-only view over the active span, trace-control extraction is inbound, propagation decisions are outbound, the injector writes only trace-control headers, and `TraceparentParser` is parser behavior rather than a value object.

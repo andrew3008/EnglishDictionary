@@ -29,13 +29,13 @@ SpanLinkContext link = new SpanLinkContext(traceId, spanId, (byte) 1, traceState
 
 ### From W3C traceparent headers
 
-OTel propagator extraction remains legitimate for **reading** remote context from headers. Use builder `fromRemoteContext` when you have traceparent strings:
+OTel propagator extraction remains legitimate for **reading** remote context from headers. Use builder `fromTraceparent` when you have traceparent strings:
 
 ```java
-.fromRemoteContext(traceparent1, traceparent2)
+.fromTraceparent(traceparent1, traceparent2)
 ```
 
-For lenient extraction loops (skip malformed headers), parse with `RemoteContext.parseTraceparent(header)` and collect valid links before calling `linkedTo(...)`.
+For lenient extraction loops (skip malformed headers), parse with `TraceparentParser.parseTraceparent(header)` and collect valid links before calling `linkedTo(...)`.
 
 **Tracestate is preserved** when present on the extracted link context.
 

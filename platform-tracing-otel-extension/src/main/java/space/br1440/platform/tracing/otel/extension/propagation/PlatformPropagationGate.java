@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.LongAdder;
  * <p>
  * Гейт управляет ТОЛЬКО платформенными управляющими заголовками
  * ({@code X-Trace-On}/{@code X-QA}/{@code X-Request-Id}), которые обрабатывает
- * {@link PlatformTraceControlPropagator}. W3C {@code traceparent}/{@code tracestate} и
+ * {@link InboundTraceControlPropagator}. W3C {@code traceparent}/{@code tracestate} и
  * {@code baggage} — зона OTel Java Agent и этим гейтом НЕ управляются: при выключенной
  * платформенной пропагации trace-context продолжает ходить, ломки нет.
  *

@@ -6,9 +6,9 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.PlatformPropagationDecision;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundInjector;
+import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 
 import java.io.IOException;
 
@@ -24,9 +24,9 @@ import java.io.IOException;
 public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestInterceptor {
 
     private final OutboundPropagationPolicy policy;
-    private final PlatformOutboundInjector injector;
+    private final TraceControlHeaderInjector injector;
 
-    public PlatformOutboundHttpInterceptor(OutboundPropagationPolicy policy, PlatformOutboundInjector injector) {
+    public PlatformOutboundHttpInterceptor(OutboundPropagationPolicy policy, TraceControlHeaderInjector injector) {
         this.policy = policy;
         this.injector = injector;
     }
@@ -36,7 +36,7 @@ public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestI
             throws IOException {
         try {
             String host = request.getURI().getHost();
-            PlatformPropagationDecision decision = policy.decide(host);
+            OutboundPropagationDecision decision = policy.decide(host);
             Context decided = Context.current().with(PlatformTraceContextKeys.PROPAGATION_DECISION, decision);
             injector.inject(decided, request, PlatformHttpRequestSetter.INSTANCE);
         } catch (RuntimeException ignored) {

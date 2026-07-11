@@ -1,6 +1,6 @@
 description = 'Публичный API платформенного стартера трассировки. ' +
         'Содержит интерфейс PlatformTracing, аннотацию @Traced, перечисления SpanCategory и SpanResult, ' +
-        'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), снимок TracingRequestContext для error-handling, точки расширения SPI. ' +
+        'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), снимок RequestTraceContextSnapshot для error-handling, точки расширения SPI. ' +
         'Модуль не зависит от Spring и OpenTelemetry SDK, чтобы прикладной код мог писаться против стабильного контракта. ' +
         'Единственная runtime-зависимость — slf4j-api для MDC-моста RemoteServiceMdc.'
 
@@ -27,7 +27,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation project(':platform-tracing-test')
-    // OTel Context/API нужны для unit-тестов PlatformOutboundInjector (compileOnly в main).
+    // OTel Context/API нужны для unit-тестов TraceControlHeaderInjector (compileOnly в main).
     testImplementation 'io.opentelemetry:opentelemetry-api'
     testImplementation 'io.opentelemetry:opentelemetry-context'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

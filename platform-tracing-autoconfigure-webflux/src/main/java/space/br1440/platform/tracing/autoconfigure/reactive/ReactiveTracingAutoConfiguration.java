@@ -16,7 +16,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.WebFilter;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundInjector;
+import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
@@ -120,7 +120,7 @@ public class ReactiveTracingAutoConfiguration {
     @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".propagation.outbound", name = "enabled", havingValue = "true")
     public PlatformOutboundExchangeFilterFunction platformOutboundExchangeFilterFunction(
             @Qualifier("platformHttpOutboundPolicy") OutboundPropagationPolicy policy,
-            PlatformOutboundInjector injector) {
+            TraceControlHeaderInjector injector) {
         return new PlatformOutboundExchangeFilterFunction(policy, injector);
     }
 

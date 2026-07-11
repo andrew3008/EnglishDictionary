@@ -8,10 +8,10 @@ Reference for the v3 manual tracing surface. All span creation routes internally
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `traceContext()` | `TraceContextView` | Read-only active context |
+| `traceContext()` | `ActiveTraceContextView` | Read-only active context |
 | `manual()` | `ManualTracing` | Manual span creation |
 
-### `TraceContextView`
+### `ActiveTraceContextView`
 
 Read-only correlation view. Does **not** expose OpenTelemetry `Context`, `Span`, or `SpanContext`.
 
@@ -48,7 +48,7 @@ Repeated explicit relationship setter throws `IllegalStateException`.
 | Method | Effect |
 |--------|--------|
 | `linkedTo(SpanLinkContext... links)` | Add pre-start span links |
-| `fromRemoteContext(String... traceparents)` | Parse W3C traceparent into links (strict) |
+| `fromTraceparent(String... traceparents)` | Parse W3C traceparent into links (strict) |
 
 **Policy:**
 
@@ -114,7 +114,7 @@ Immutable governed specification for `manual().spanFromSpec(spec)`.
 |--------|-------|
 | `category(SpanCategory)` | Required semantic category |
 | `child()` / `root()` / `detached()` | Span relationship (`SpanRelationship`) |
-| `linkedTo(...)` / `fromRemoteContext(...)` | Pre-start links |
+| `linkedTo(...)` / `fromTraceparent(...)` | Pre-start links |
 | `attribute(key, typedValue)` | Typed scalar attributes only |
 | `stringListAttribute` / `longListAttribute` / … | Homogeneous lists |
 | `reason(SpanSpecReason)` | **Mandatory** |

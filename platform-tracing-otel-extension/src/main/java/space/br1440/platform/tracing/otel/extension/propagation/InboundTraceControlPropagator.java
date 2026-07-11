@@ -4,9 +4,9 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
-import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundInjector;
+import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.otel.extension.utils.Strings;
 
 import java.util.Collection;
@@ -15,10 +15,10 @@ import java.util.List;
 /**
  * Извлекает платформенные управляющие заголовки из carrier'а и сохраняет их в Context
  * для использования при принятии решения о сэмплировании.
- * На исходящих вызовах (inject) делегирует в {@link PlatformOutboundInjector}: заголовки
+ * На исходящих вызовах (inject) делегирует в {@link TraceControlHeaderInjector}: заголовки
  * передаются только при наличии решения о propagation в Context (secure-by-default).
  */
-public final class PlatformTraceControlPropagator implements TextMapPropagator {
+public final class InboundTraceControlPropagator implements TextMapPropagator {
 
     private final String forceTraceHeader;
     private final String qaTraceHeader;
@@ -27,22 +27,22 @@ public final class PlatformTraceControlPropagator implements TextMapPropagator {
     private final Collection<String> fields;
 
     // Единый источник истины для outbound-инжекции (общий с client-интерсепторами через platform-tracing-api).
-    private final PlatformOutboundInjector outboundInjector;
+    private final TraceControlHeaderInjector outboundInjector;
 
     // Runtime kill-switch платформенной пропагации (Фаза 14). По умолчанию — процессный shared-гейт.
     private final PlatformPropagationGate gate;
 
-    public PlatformTraceControlPropagator(String forceTraceHeader, String qaTraceHeader, String requestIdHeader) {
+    public InboundTraceControlPropagator(String forceTraceHeader, String qaTraceHeader, String requestIdHeader) {
         this(forceTraceHeader, qaTraceHeader, requestIdHeader, PlatformPropagationGate.shared());
     }
 
-    PlatformTraceControlPropagator(String forceTraceHeader, String qaTraceHeader, String requestIdHeader,
+    InboundTraceControlPropagator(String forceTraceHeader, String qaTraceHeader, String requestIdHeader,
                                    PlatformPropagationGate gate) {
         this.forceTraceHeader = forceTraceHeader;
         this.qaTraceHeader = qaTraceHeader;
         this.requestIdHeader = requestIdHeader;
         this.fields = List.of(forceTraceHeader, qaTraceHeader, requestIdHeader);
-        this.outboundInjector = new PlatformOutboundInjector(forceTraceHeader, qaTraceHeader, requestIdHeader);
+        this.outboundInjector = new TraceControlHeaderInjector(forceTraceHeader, qaTraceHeader, requestIdHeader);
         this.gate = gate;
     }
 
@@ -73,7 +73,7 @@ public final class PlatformTraceControlPropagator implements TextMapPropagator {
             return context;
         }
 
-        PlatformTraceControl control = PlatformTraceControl.fromHeaders(forceTraceVal, qaTraceVal, requestIdVal);
+        InboundTraceControl control = InboundTraceControl.fromHeaders(forceTraceVal, qaTraceVal, requestIdVal);
 
         return context.with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }

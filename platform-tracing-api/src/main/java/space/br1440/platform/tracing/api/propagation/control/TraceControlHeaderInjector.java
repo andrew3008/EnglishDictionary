@@ -7,13 +7,13 @@ import lombok.RequiredArgsConstructor;
 /**
  * Единый инжектор платформенных управляющих заголовков на исходящем вызове.
  * <p>
- * Источник истины для outbound-инжекции: и {@code PlatformTraceControlPropagator.inject()}
+ * Источник истины для outbound-инжекции: и {@code InboundTraceControlPropagator.inject()}
  * (agent-сторона), и client-интерсепторы (Spring-бины) используют именно этот класс, что
  * исключает дрейф логики между классами и classloader'ами.
  *
  * <h3>Контракт</h3>
  * <ul>
- *   <li><b>Secure-by-default:</b> если в {@link Context} нет {@link PlatformPropagationDecision}
+ *   <li><b>Secure-by-default:</b> если в {@link Context} нет {@link OutboundPropagationDecision}
  *       (выставляется client-интерсептором по trusted-решению), наружу НЕ уходит ничего.</li>
  *   <li>Инжектируются только три платформенных заголовка; W3C {@code traceparent}/{@code tracestate}
  *       и {@code baggage} — зона OTel Java Agent, здесь не трогаются (idempotent, без дублей).</li>
@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
  * </ul>
  */
 @RequiredArgsConstructor
-public final class PlatformOutboundInjector {
+public final class TraceControlHeaderInjector {
 
     private final String forceTraceHeader;
     private final String qaTraceHeader;
@@ -36,12 +36,12 @@ public final class PlatformOutboundInjector {
             return;
         }
 
-        PlatformPropagationDecision decision = context.get(PlatformTraceContextKeys.PROPAGATION_DECISION);
+        OutboundPropagationDecision decision = context.get(PlatformTraceContextKeys.PROPAGATION_DECISION);
         if (decision == null) {
             return;
         }
 
-        PlatformTraceControl control = context.get(PlatformTraceContextKeys.TRACE_CONTROL);
+        InboundTraceControl control = context.get(PlatformTraceContextKeys.TRACE_CONTROL);
         if (control == null) {
             return;
         }

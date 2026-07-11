@@ -6,13 +6,13 @@ import space.br1440.platform.tracing.api.propagation.RequestIdSupport;
 /**
  * Извлечение параметров управления распределённой трассировкой из carrier (например, HTTP-заголовков) при входящем запросе.
  */
-public record PlatformTraceControl(boolean forceTrace,
+public record InboundTraceControl(boolean forceTrace,
                                    boolean qaTrace,
                                    String requestId,
                                    String samplingReason,
                                    String rawForceTraceValue) {
 
-    public static PlatformTraceControl fromHeaders(String traceOn, String qaTrace, String requestId) {
+    public static InboundTraceControl fromHeaders(String traceOn, String qaTrace, String requestId) {
         boolean isForceTrace = "on".equalsIgnoreCase(traceOn);
         boolean isQaTrace = (qaTrace != null) && !qaTrace.isBlank();
 
@@ -24,6 +24,6 @@ public record PlatformTraceControl(boolean forceTrace,
         }
 
         String validRequestId = RequestIdSupport.sanitizeOrNull(requestId);
-        return new PlatformTraceControl(isForceTrace, isQaTrace, validRequestId, reason, traceOn);
+        return new InboundTraceControl(isForceTrace, isQaTrace, validRequestId, reason, traceOn);
     }
 }

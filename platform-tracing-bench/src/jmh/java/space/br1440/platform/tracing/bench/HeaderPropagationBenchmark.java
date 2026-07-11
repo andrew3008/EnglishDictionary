@@ -18,7 +18,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.otel.extension.propagation.PlatformTraceControlPropagator;
+import space.br1440.platform.tracing.otel.extension.propagation.InboundTraceControlPropagator;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,8 +31,8 @@ import java.util.concurrent.TimeUnit;
  * исходящем. Измеряются оба слоя пропагации платформы:
  * <ul>
  *   <li><b>w3cInject / w3cExtract</b> — стандартный W3C tracecontext (baseline OTel);</li>
- *   <li><b>platformExtract</b> — {@code PlatformTraceControlPropagator}: парсинг
- *       {@code X-Trace-On}/{@code X-QA-Trace}/{@code X-Request-Id} → {@code PlatformTraceControl}
+ *   <li><b>platformExtract</b> — {@code InboundTraceControlPropagator}: парсинг
+ *       {@code X-Trace-On}/{@code X-QA-Trace}/{@code X-Request-Id} → {@code InboundTraceControl}
  *       в Context (вход сэмплера, см. {@code ForceHeaderRule});</li>
  *   <li><b>platformExtractNoHeaders</b> — тот же extract без платформенных заголовков
  *       (типичный трафик: подавляющее большинство запросов без X-Trace-On);</li>
@@ -58,7 +58,7 @@ public class HeaderPropagationBenchmark {
     };
 
     private W3CTraceContextPropagator w3c;
-    private PlatformTraceControlPropagator platform;
+    private InboundTraceControlPropagator platform;
     private Context contextWithSpan;
     private Map<String, String> w3cCarrier;
     private Map<String, String> platformCarrier;
@@ -67,7 +67,7 @@ public class HeaderPropagationBenchmark {
     @Setup(Level.Trial)
     public void setUp() {
         w3c = W3CTraceContextPropagator.getInstance();
-        platform = new PlatformTraceControlPropagator(
+        platform = new InboundTraceControlPropagator(
                 PlatformHeaders.X_TRACE_ON, PlatformHeaders.X_QA_TRACE, PlatformHeaders.X_REQUEST_ID);
 
         contextWithSpan = Context.root().with(Span.wrap(SpanContext.create(
@@ -97,7 +97,7 @@ public class HeaderPropagationBenchmark {
         bh.consume(w3c.extract(Context.root(), w3cCarrier, GETTER));
     }
 
-    /** Входящий запрос с X-Trace-On: парсинг → PlatformTraceControl в Context. */
+    /** Входящий запрос с X-Trace-On: парсинг → InboundTraceControl в Context. */
     @Benchmark
     public void platformExtract(Blackhole bh) {
         bh.consume(platform.extract(Context.root(), platformCarrier, GETTER));

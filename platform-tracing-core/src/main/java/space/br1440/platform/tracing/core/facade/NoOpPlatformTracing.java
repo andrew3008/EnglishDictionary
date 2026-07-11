@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.core.facade;
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.manual.ManualTracing;
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.manual.DefaultManualTracing;
@@ -27,7 +27,7 @@ public final class NoOpPlatformTracing implements PlatformTracing {
 
     @Override
     @Nonnull
-    public TraceContextView traceContext() {
+    public ActiveTraceContextView traceContext() {
         return implementation.currentTraceContext();
     }
 

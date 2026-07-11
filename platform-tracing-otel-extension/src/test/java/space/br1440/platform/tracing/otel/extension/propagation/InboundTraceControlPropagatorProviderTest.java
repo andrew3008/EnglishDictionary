@@ -8,7 +8,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,8 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * PR-2 (Фаза 15): named {@code ConfigurablePropagatorProvider} ({@code platform-trace-control}).
  */
-@DisplayName("PlatformTraceControlPropagatorProvider (named platform-trace-control)")
-class PlatformTraceControlPropagatorProviderTest {
+@DisplayName("InboundTraceControlPropagatorProvider (named platform-trace-control)")
+class InboundTraceControlPropagatorProviderTest {
 
     private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
         @Override
@@ -40,7 +40,7 @@ class PlatformTraceControlPropagatorProviderTest {
     @Test
     @DisplayName("getName == platform-trace-control")
     void getName_is_platform_trace_control() {
-        assertThat(new PlatformTraceControlPropagatorProvider().getName())
+        assertThat(new InboundTraceControlPropagatorProvider().getName())
                 .isEqualTo("platform-trace-control");
     }
 
@@ -48,7 +48,7 @@ class PlatformTraceControlPropagatorProviderTest {
     @DisplayName("getPropagator извлекает X-Trace-On из carrier в Context")
     void getPropagator_extracts_X_Trace_On() {
         TextMapPropagator propagator =
-                new PlatformTraceControlPropagatorProvider().getPropagator(config(Map.of()));
+                new InboundTraceControlPropagatorProvider().getPropagator(config(Map.of()));
 
         // fields() публикует платформенные заголовки (дефолтные имена).
         assertThat(propagator.fields()).contains("X-Trace-On", "X-QA-Trace", "X-Request-Id");
@@ -59,7 +59,7 @@ class PlatformTraceControlPropagatorProviderTest {
 
         Context ctx = propagator.extract(Context.root(), carrier, MAP_GETTER);
 
-        PlatformTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
+        InboundTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
         assertThat(control).isNotNull();
         assertThat(control.forceTrace()).isTrue();
         assertThat(control.requestId()).isEqualTo("req-1");
@@ -68,7 +68,7 @@ class PlatformTraceControlPropagatorProviderTest {
     @Test
     @DisplayName("getPropagator учитывает кастомные имена заголовков из ConfigProperties")
     void getPropagator_honors_custom_header_names() {
-        TextMapPropagator propagator = new PlatformTraceControlPropagatorProvider()
+        TextMapPropagator propagator = new InboundTraceControlPropagatorProvider()
                 .getPropagator(config(Map.of(
                         "platform.tracing.propagation.platform-headers.force-trace-header", "X-Force")));
 

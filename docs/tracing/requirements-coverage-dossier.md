@@ -56,12 +56,12 @@ Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links 
 
 | Аспект | Реализация | ADR |
 |--------|-----------|-----|
-| W3C TraceContext extract/inject | OTel Agent (default) + named SPI propagator `platform-trace-control`: `platform-tracing-otel-extension/.../propagation/PlatformTraceControlPropagatorProvider.java` | [ADR-context-first-propagation.md](../decisions/ADR-context-first-propagation.md), [ADR-named-spi-sampler-propagator.md](../decisions/ADR-named-spi-sampler-propagator.md) |
+| W3C TraceContext extract/inject | OTel Agent (default) + named SPI propagator `platform-trace-control`: `platform-tracing-otel-extension/.../propagation/InboundTraceControlPropagatorProvider.java` | [ADR-context-first-propagation.md](../decisions/ADR-context-first-propagation.md), [ADR-named-spi-sampler-propagator.md](../decisions/ADR-named-spi-sampler-propagator.md) |
 | Уровень сэмплирования на сервис | `SamplerState.defaultRatio` (default 0.1), per-route ratios | [ADR-sampler-compose.md](../decisions/ADR-sampler-compose.md) |
 | `X-Trace-On` → запись трейса | `ForceHeaderRule` в `CompositeSampler` → `platform.sampling.reason=force_header` | [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md) |
-| Outbound-инъекция платформенных заголовков (secure-by-default DENY) | `platform-tracing-api/.../api/propagation/control/OutboundPropagationPolicy.java`, `PlatformOutboundInjector.java` | [ADR-outbound-propagation.md](../decisions/ADR-outbound-propagation.md) |
+| Outbound-инъекция платформенных заголовков (secure-by-default DENY) | `platform-tracing-api/.../api/propagation/control/OutboundPropagationPolicy.java`, `TraceControlHeaderInjector.java` | [ADR-outbound-propagation.md](../decisions/ADR-outbound-propagation.md) |
 
-Проверка: `CompositeSamplerTest`, `PlatformTraceControlPropagatorProviderTest`, e2e `ForceSamplingAgentSmokeTest`, `RuntimeSamplingControlSmokeTest`.
+Проверка: `CompositeSamplerTest`, `InboundTraceControlPropagatorProviderTest`, e2e `ForceSamplingAgentSmokeTest`, `RuntimeSamplingControlSmokeTest`.
 
 ---
 

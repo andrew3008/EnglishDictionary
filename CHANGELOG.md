@@ -5,6 +5,13 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), версии — [Semantic Versioning](https://semver.org/lang/ru/).
 
 ## [Unreleased] — Wave R1+ (dual-channel alignment)
+### Changed (PR-B1 - API context/propagation naming)
+
+- Pre-production API rename slice: `TracingRequestContext` -> `RequestTraceContextSnapshot`,
+  `TraceContextView` -> `ActiveTraceContextView`, `PlatformTraceControl` -> `InboundTraceControl`,
+  `PlatformPropagationDecision` -> `OutboundPropagationDecision`, `PlatformOutboundInjector` ->
+  `TraceControlHeaderInjector`, `RemoteContext` -> `TraceparentParser`, and builder
+  `fromRemoteContext(...)` -> `fromTraceparent(...)`. No compatibility aliases were added.
 
 ### Fixed (Wave A — Scrubbing/PII boundary)
 
@@ -98,7 +105,7 @@
   из `ConfigProperties`, runtime-ratio через тот же `SamplerStateHolder`/JMX). Дефолтом **не** ставится —
   compose-over-existing остаётся default (`ADR-sampler-compose`); named — явный opt-in.
 - **Named propagator SPI `platform-trace-control`** (`ConfigurablePropagatorProvider`):
-  `otel.propagators=...,platform-trace-control` делает `PlatformTraceControlPropagator` discoverable.
+  `otel.propagators=...,platform-trace-control` делает `InboundTraceControlPropagator` discoverable.
   Дефолт дописывается **ENV-aware** через `addPropertiesCustomizer` (не `addPropertiesSupplier`) — корректно
   при задании `otel.propagators` через ENV. Always-append из `addPropagatorCustomizer` удалён.
 - **Idempotency-guard sampler** через маркер `PlatformManagedSampler` (`SafeSampler`/`CompositeSampler`):
@@ -106,7 +113,7 @@
   переиспользует `CompositeSampler`/`SamplerStateHolder` для JMX. Маркер stateless — корректен при
   многократной autoconfigure-сборке в одном JVM (без статического флага).
 - **Reusable builders** (framework-agnostic, единый источник истины inline ↔ named SPI):
-  `PlatformSamplerBuilder`, `PlatformTraceControlPropagatorBuilder`.
+  `PlatformSamplerBuilder`, `InboundTraceControlPropagatorBuilder`.
 - **SDK mode detection** (`platform.tracing.sdk.mode`: `AUTO|AGENT|STARTER|EXTERNAL|DISABLED`):
   `SdkModeResolver` + `SdkModeDiagnostics`, лог на старте, секция `sdk` в `/actuator/tracing`. Диагностика и
   явность — **не** создание SDK (agent-first). `NoOpPlatformTracing` — только для `DISABLED`; в остальных
@@ -205,8 +212,8 @@
   Secure-by-default: `platform.tracing.propagation.outbound.enabled=false`.
 - **Единый источник истины outbound-контрактов в `platform-tracing-api`**: `TrustedDestinationMatcher`
   (перенесён из agent-модуля; hardening — host canonicalization, label-aware glob, запрет IP-литералов),
-  `OutboundPropagationPolicy`, `PlatformOutboundInjector`, `RequestIdSupport`.
-  `PlatformTraceControlPropagator.inject()` делегирует в `PlatformOutboundInjector`.
+  `OutboundPropagationPolicy`, `TraceControlHeaderInjector`, `RequestIdSupport`.
+  `InboundTraceControlPropagator.inject()` делегирует в `TraceControlHeaderInjector`.
 - **HTTP outbound**: `PlatformOutboundHttpInterceptor` (RestTemplate/RestClient, Servlet-стек),
   `PlatformOutboundExchangeFilterFunction` (WebClient, Reactive-стек, Reactor Context bridge).
 - **Kafka outbound**: `PlatformKafkaProducerInterceptor` + `PlatformKafkaHeaderSetter`,
@@ -272,7 +279,7 @@
   [docs/tracing/otel-compatibility-matrix.md](docs/tracing/otel-compatibility-matrix.md), секция «1.62.0 impact assessment».
 
 ### Added (Context-First Propagation & v1.0 Compliance)
-- **`PlatformTraceControlPropagator`**: Извлечение платформенных управляющих заголовков (`X-Trace-On`, `X-QA-Trace`, `X-Request-Id`) перенесено из анти-паттерна "HTTP Attributes" в OTel Context API.
+- **`InboundTraceControlPropagator`**: Извлечение платформенных управляющих заголовков (`X-Trace-On`, `X-QA-Trace`, `X-Request-Id`) перенесено из анти-паттерна "HTTP Attributes" в OTel Context API.
 - **`FilteringBaggagePropagator`**: Защита от утечки PII (пароли, токены) через механизм `Baggage` при исходящих запросах (outbound isolation).
 - **`KafkaBatchLinksAspect`**: (Opt-in) Создание корректных связей (span links) для каждого сообщения при `batch`-обработке Kafka. Включается через `platform.tracing.kafka.batch-links-enabled=true`.
 - **MDC Correlation ID**: Автоматическое сохранение `X-Request-Id` во входящий MDC (`correlation_id`).

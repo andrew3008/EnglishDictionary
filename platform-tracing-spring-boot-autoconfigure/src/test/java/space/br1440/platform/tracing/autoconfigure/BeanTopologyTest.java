@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
@@ -154,7 +154,7 @@ class BeanTopologyTest {
 
         @Override
         @Nonnull
-        public TraceContextView currentTraceContext() {
+        public ActiveTraceContextView currentTraceContext() {
             return NoOpTracingRuntime.noop().currentTraceContext();
         }
 

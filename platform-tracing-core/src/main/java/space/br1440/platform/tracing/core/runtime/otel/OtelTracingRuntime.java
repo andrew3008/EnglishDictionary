@@ -7,10 +7,10 @@ import io.opentelemetry.context.Scope;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.*;
-import space.br1440.platform.tracing.core.context.DefaultTraceContextView;
+import space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.runtime.SpanHandleImpl;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
@@ -31,7 +31,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
     private final Tracer tracer;
     private final AttributePolicy attributePolicy;
     private final ExceptionRecorder exceptionRecorder;
-    private final TraceContextView traceContextView;
+    private final ActiveTraceContextView traceContextView;
 
     public OtelTracingRuntime(@Nonnull OpenTelemetry openTelemetry,
                               @Nonnull AttributePolicy policy,
@@ -42,7 +42,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
         this.attributePolicy = policy;
         this.exceptionRecorder = Objects.requireNonNull(exceptionRecorder, "exceptionRecorder");
         this.tracer = openTelemetry.getTracer(INSTRUMENTATION_NAME);
-        this.traceContextView = new DefaultTraceContextView(this::currentTraceId, this::currentSpanId);
+        this.traceContextView = new DefaultActiveTraceContextView(this::currentTraceId, this::currentSpanId);
     }
 
     @Override
@@ -82,7 +82,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
 
     @Override
     @Nonnull
-    public TraceContextView currentTraceContext() {
+    public ActiveTraceContextView currentTraceContext() {
         return traceContextView;
     }
 

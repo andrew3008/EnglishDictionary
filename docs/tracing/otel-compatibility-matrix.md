@@ -99,7 +99,7 @@ Platform policy:
 | `AutoConfigurationCustomizerProvider` | `PlatformAutoConfigurationCustomizer` | всегда (customize-канал) | **stable** | — (базовый путь) |
 | `ResourceProvider` (`ConditionalResourceProvider`) | `SafeResourceProvider`/`PlatformResourceProvider` | всегда | `ConditionalResourceProvider` — **internal/unstable** | деградирует до обычного `ResourceProvider` (per-key omit) |
 | `ConfigurableSamplerProvider` | `PlatformSamplerProvider` (`platform`) | `otel.traces.sampler=platform` (явный opt-in) | **stable** | inline `addSamplerCustomizer` (compose-over-existing) — работает без named |
-| `ConfigurablePropagatorProvider` | `PlatformTraceControlPropagatorProvider` (`platform-trace-control`) | `otel.propagators=...,platform-trace-control` (дефолт дописывается ENV-aware) | **stable** | дефолт-customizer + baggage-wrapper в inline-канале |
+| `ConfigurablePropagatorProvider` | `InboundTraceControlPropagatorProvider` (`platform-trace-control`) | `otel.propagators=...,platform-trace-control` (дефолт дописывается ENV-aware) | **stable** | дефолт-customizer + baggage-wrapper в inline-канале |
 
 Примечания:
 

@@ -4,7 +4,7 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 /**
- * Единый framework-agnostic builder платформенного {@link PlatformTraceControlPropagator}
+ * Единый framework-agnostic builder платформенного {@link InboundTraceControlPropagator}
  * (Фаза 15, PR-0).
  * <p>
  * Вынесен, чтобы named SPI {@code ConfigurablePropagatorProvider}
@@ -15,15 +15,15 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
  * Возвращаемый пропагатор обёрнут в {@link SafeTextMapPropagator} (Фаза 11, safe boundary): сбой
  * extract/inject платформенного слоя не должен ломать W3C/baggage-цепочку Агента.
  */
-public final class PlatformTraceControlPropagatorBuilder {
+public final class InboundTraceControlPropagatorBuilder {
 
-    private PlatformTraceControlPropagatorBuilder() {
+    private InboundTraceControlPropagatorBuilder() {
         // utility-класс
     }
 
-    /** Строит safe-обёрнутый {@link PlatformTraceControlPropagator} из {@link ConfigProperties}. */
+    /** Строит safe-обёрнутый {@link InboundTraceControlPropagator} из {@link ConfigProperties}. */
     public static TextMapPropagator build(ConfigProperties config) {
-        PlatformTraceControlPropagator control = new PlatformTraceControlPropagator(
+        InboundTraceControlPropagator control = new InboundTraceControlPropagator(
                 PropagationDefaults.getForceTraceHeader(config),
                 PropagationDefaults.getQaTraceHeader(config),
                 PropagationDefaults.getRequestIdHeader(config)

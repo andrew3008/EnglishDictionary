@@ -144,8 +144,8 @@ class PlatformAutoConfigurationCustomizerTest {
         Sampler produced = recorder.samplerCustomizer
                 .apply(Sampler.alwaysOff(), new MapConfigProperties(Map.of()));
 
-        space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl control = 
-                new space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl(true, false, null, "x_trace_on", "on");
+        space.br1440.platform.tracing.api.propagation.control.InboundTraceControl control = 
+                new space.br1440.platform.tracing.api.propagation.control.InboundTraceControl(true, false, null, "x_trace_on", "on");
         io.opentelemetry.context.Context parentContext = io.opentelemetry.context.Context.root()
                 .with(space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys.TRACE_CONTROL, control);
 

@@ -6,7 +6,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider;
 
 /**
  * Named SPI платформенного управляющего пропагатора (Фаза 15, PR-2): делает
- * {@link PlatformTraceControlPropagator} discoverable через
+ * {@link InboundTraceControlPropagator} discoverable через
  * {@code otel.propagators=...,platform-trace-control} в agent/SDK autoconfigure-режиме.
  * <p>
  * Регистрируется в
@@ -18,14 +18,14 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider;
  * Пропагатор строго <b>дополняет</b> W3C {@code tracecontext}/{@code baggage} (зона Агента), а не
  * заменяет их ({@code ADR-context-first-propagation}).
  */
-public final class PlatformTraceControlPropagatorProvider implements ConfigurablePropagatorProvider {
+public final class InboundTraceControlPropagatorProvider implements ConfigurablePropagatorProvider {
 
     /** Имя пропагатора для {@code otel.propagators}. */
     public static final String NAME = "platform-trace-control";
 
     @Override
     public TextMapPropagator getPropagator(ConfigProperties config) {
-        return PlatformTraceControlPropagatorBuilder.build(config);
+        return InboundTraceControlPropagatorBuilder.build(config);
     }
 
     @Override

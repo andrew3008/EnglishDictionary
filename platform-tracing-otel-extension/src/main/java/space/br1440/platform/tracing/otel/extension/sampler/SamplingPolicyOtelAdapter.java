@@ -12,7 +12,7 @@ import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.core.sampling.model.ParentContextState;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType;
@@ -68,7 +68,7 @@ final class SamplingPolicyOtelAdapter {
             io.opentelemetry.api.common.Attributes attributes,
             List<LinkData> parentLinks) {
         String urlPath = attributes.get(URL_PATH_KEY);
-        PlatformTraceControl control = parentContext.get(PlatformTraceContextKeys.TRACE_CONTROL);
+        InboundTraceControl control = parentContext.get(PlatformTraceContextKeys.TRACE_CONTROL);
         String forceValue = control == null ? null : control.rawForceTraceValue();
         boolean qaTrace = control != null && control.qaTrace();
         ParentContextState parentState = resolveParentState(parentContext);

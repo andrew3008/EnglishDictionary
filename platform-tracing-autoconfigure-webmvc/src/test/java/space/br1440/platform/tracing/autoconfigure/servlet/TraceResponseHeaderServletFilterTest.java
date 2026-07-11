@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.api.manual.TraceContextView;
+import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 class TraceResponseHeaderServletFilterTest {
 
     private PlatformTracing platformTracing;
-    private TraceContextView traceContextView;
+    private ActiveTraceContextView traceContextView;
     private TracingProperties properties;
     private HttpServletRequest request;
     private HttpServletResponse response;
@@ -45,7 +45,7 @@ class TraceResponseHeaderServletFilterTest {
     void setUp() {
         MDC.clear();
         platformTracing = mock(PlatformTracing.class);
-        traceContextView = mock(TraceContextView.class);
+        traceContextView = mock(ActiveTraceContextView.class);
         when(platformTracing.traceContext()).thenReturn(traceContextView);
         properties = new TracingProperties();
         request = mock(HttpServletRequest.class);

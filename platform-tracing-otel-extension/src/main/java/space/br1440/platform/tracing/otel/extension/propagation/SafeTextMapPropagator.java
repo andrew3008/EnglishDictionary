@@ -18,7 +18,7 @@ import java.util.Objects;
  * <p>
  * {@code extract}/{@code inject} вызываются на hot-path входящих/исходящих запросов
  * (HTTP, Kafka) на application thread. Падение платформенного propagator'а (например,
- * {@link PlatformTraceControlPropagator} на кривом carrier'е или {@link FilteringBaggagePropagator}
+ * {@link InboundTraceControlPropagator} на кривом carrier'е или {@link FilteringBaggagePropagator}
  * на некорректном baggage) не должно прерывать бизнес-вызов и не должно ломать сквозную
  * передачу W3C trace context.
  *

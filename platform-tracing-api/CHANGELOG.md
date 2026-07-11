@@ -18,3 +18,17 @@
 | public `SpanScope` | removed |
 
 No compatibility aliases or deprecated bridges are provided.
+
+## Breaking Changes - PR-B1 Context and Propagation Naming
+
+| Old | New |
+| --- | --- |
+| `TracingRequestContext` | `RequestTraceContextSnapshot` |
+| `TraceContextView` | `ActiveTraceContextView` |
+| `PlatformTraceControl` | `InboundTraceControl` |
+| `PlatformPropagationDecision` | `OutboundPropagationDecision` |
+| `PlatformOutboundInjector` | `TraceControlHeaderInjector` |
+| `RemoteContext` | moved to `api.propagation` and renamed `TraceparentParser` |
+| `fromRemoteContext(...)` | `fromTraceparent(...)` |
+
+No compatibility aliases or deprecated bridges are provided.

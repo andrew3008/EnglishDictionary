@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.samples;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.api.span.RemoteContext;
+import space.br1440.platform.tracing.api.propagation.TraceparentParser;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -121,7 +121,7 @@ public final class PlatformTracingV3Samples {
                 .consumer()
                 .batch("orders")
                 .root()
-                .fromRemoteContext(traceparents.toArray(String[]::new))
+                .fromTraceparent(traceparents.toArray(String[]::new))
                 .run(() -> processor.processBatch(records));
     }
 
@@ -157,7 +157,7 @@ public final class PlatformTracingV3Samples {
     /** Example of lenient traceparent parsing for batch header extraction loops. */
     public List<SpanLinkContext> extractLinksFromHeaders(List<String> traceparentHeaders) {
         return traceparentHeaders.stream()
-                .map(RemoteContext::parseTraceparent)
+                .map(TraceparentParser::parseTraceparent)
                 .flatMap(java.util.Optional::stream)
                 .toList();
     }

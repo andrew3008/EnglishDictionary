@@ -82,7 +82,7 @@ class TracingDiagnosticsViewJsonContractTest {
         }
 
         @Override
-        public space.br1440.platform.tracing.api.manual.TraceContextView currentTraceContext() {
+        public space.br1440.platform.tracing.api.manual.ActiveTraceContextView currentTraceContext() {
             return NoOpTracingRuntime.noop().currentTraceContext();
         }
 

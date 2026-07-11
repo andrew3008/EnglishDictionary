@@ -119,7 +119,7 @@ tasks.register('verifyExtensionSpiRegistration') {
                     'io.opentelemetry.sdk.autoconfigure.spi.traces.ConfigurableSamplerProvider'
                             : 'space.br1440.platform.tracing.otel.extension.sampler.PlatformSamplerProvider',
                     'io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider'
-                            : 'space.br1440.platform.tracing.otel.extension.propagation.PlatformTraceControlPropagatorProvider',
+                            : 'space.br1440.platform.tracing.otel.extension.propagation.InboundTraceControlPropagatorProvider',
             ]
             expected.each { spi, impl ->
                 def serviceEntry = jar.getJarEntry("META-INF/services/${spi}")

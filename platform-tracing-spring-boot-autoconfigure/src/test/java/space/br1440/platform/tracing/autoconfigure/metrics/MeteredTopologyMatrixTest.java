@@ -111,7 +111,7 @@ class MeteredTopologyMatrixTest {
             tracing.manual().transport().kafka().consumer()
                     .batch("orders")
                     .root()
-                    .fromRemoteContext(TRACEPARENT)
+                    .fromTraceparent(TRACEPARENT)
                     .start()
                     .close();
 

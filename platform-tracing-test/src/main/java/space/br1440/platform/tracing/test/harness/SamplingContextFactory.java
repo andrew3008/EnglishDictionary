@@ -6,7 +6,7 @@ import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 
 import java.util.Locale;
 
@@ -28,7 +28,7 @@ public final class SamplingContextFactory {
     public static Context withForceHeader(String rawForceValue) {
         boolean force = rawForceValue != null
                 && "on".equalsIgnoreCase(rawForceValue.trim());
-        PlatformTraceControl control = new PlatformTraceControl(
+        InboundTraceControl control = new InboundTraceControl(
                 force,
                 false,
                 null,
@@ -38,7 +38,7 @@ public final class SamplingContextFactory {
     }
 
     public static Context withQaTrace() {
-        PlatformTraceControl control = new PlatformTraceControl(
+        InboundTraceControl control = new InboundTraceControl(
                 false,
                 true,
                 null,
@@ -50,7 +50,7 @@ public final class SamplingContextFactory {
     public static Context withForceAndQa(String rawForceValue) {
         boolean force = rawForceValue != null
                 && "on".equalsIgnoreCase(rawForceValue.trim());
-        PlatformTraceControl control = new PlatformTraceControl(
+        InboundTraceControl control = new InboundTraceControl(
                 force,
                 true,
                 null,

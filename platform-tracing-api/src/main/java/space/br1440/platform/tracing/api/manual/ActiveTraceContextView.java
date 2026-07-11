@@ -7,7 +7,7 @@ import java.util.Optional;
 /**
  * Представление активного trace/span-контекста только для чтения — для корреляции, логирования и моделей ошибок.
  */
-public interface TraceContextView {
+public interface ActiveTraceContextView {
 
     @Nonnull
     Optional<String> traceId();

@@ -10,7 +10,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.RemoteContext;
+import space.br1440.platform.tracing.api.propagation.TraceparentParser;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
@@ -80,14 +80,14 @@ class KafkaBatchSpanBuilderIntegrationTest {
     }
 
     @Test
-    void batchRootWithRemoteContext_preservesLink() {
+    void batchRootWithTraceparentParser_preservesLink() {
         platformTracing.manual()
                 .transport()
                 .kafka()
                 .consumer()
                 .batch("orders")
                 .root()
-                .fromRemoteContext(TRACEPARENT)
+                .fromTraceparent(TRACEPARENT)
                 .run(() -> { });
 
         SpanData span = findSpan("orders process");
@@ -101,7 +101,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void batchInsideActiveParent_rootDoesNotBecomeChild() {
-        SpanLinkContext link = RemoteContext.requireTraceparent(TRACEPARENT);
+        SpanLinkContext link = TraceparentParser.requireTraceparent(TRACEPARENT);
 
         try (var parent = platformTracing.manual().operation("parent").start()) {
             platformTracing.manual()
