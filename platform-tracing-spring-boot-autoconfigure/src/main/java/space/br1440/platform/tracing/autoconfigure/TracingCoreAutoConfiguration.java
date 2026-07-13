@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
@@ -169,8 +169,8 @@ public class TracingCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ManualTracingDiagnostics manualTracingDiagnostics(TracingRuntime tracingImplementation) {
-        return new ManualTracingDiagnostics(tracingImplementation);
+    public SpanFactoryDiagnostics spanFactoryDiagnostics(TracingRuntime tracingImplementation) {
+        return new SpanFactoryDiagnostics(tracingImplementation);
     }
 
     @Bean

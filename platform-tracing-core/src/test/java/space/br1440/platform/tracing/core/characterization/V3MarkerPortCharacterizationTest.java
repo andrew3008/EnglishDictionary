@@ -44,7 +44,7 @@ class V3MarkerPortCharacterizationTest {
 
     @Test
     void v3ManualSpan_триггеритTypedEnrichment_дляСовпадающейКатегории() {
-        try (var ignored = tracing.manual().operation("v3-op").start()) {
+        try (var ignored = tracing.spans().operation("v3-op").start()) {
             enricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.INTERNAL, scope -> scope
                     .attribute(SemconvKeys.PLATFORM_REQUEST_ID, "r-v3"));
         }
@@ -55,7 +55,7 @@ class V3MarkerPortCharacterizationTest {
 
     @Test
     void v3ManualSpan_неОбогащает_приНесовпадающейКатегории() {
-        try (var ignored = tracing.manual().operation("v3-op").start()) {
+        try (var ignored = tracing.spans().operation("v3-op").start()) {
             enricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.HTTP_SERVER, scope -> scope
                     .attribute(SemconvKeys.HTTP_ROUTE, "/secret"));
         }
@@ -66,7 +66,7 @@ class V3MarkerPortCharacterizationTest {
 
     @Test
     void v3RootSpan_сохраняетTopology_иМаркерДляEnrich() {
-        try (var ignored = tracing.manual().operation("root-op").root().start()) {
+        try (var ignored = tracing.spans().operation("root-op").root().start()) {
             enricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.INTERNAL, scope -> scope
                     .attribute(SemconvKeys.PLATFORM_REQUEST_ID, "root-req"));
         }

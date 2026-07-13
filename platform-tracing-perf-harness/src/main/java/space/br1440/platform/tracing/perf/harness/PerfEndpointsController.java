@@ -37,7 +37,7 @@ public class PerfEndpointsController {
         if (tracing == null) {
             return Map.of("path", "fast", "checksum", checksum);
         }
-        try (SpanHandle scope = tracing.manual().operation("perf-fast").start()) {
+        try (SpanHandle scope = tracing.spans().operation("perf-fast").start()) {
             Span.current().setAttribute("platform.perf.path", "fast");
             Span.current().setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
             Span.current().setStatus(StatusCode.OK);
@@ -52,7 +52,7 @@ public class PerfEndpointsController {
         if (tracing == null) {
             return Map.of("path", "work", "checksum", checksum);
         }
-        try (SpanHandle scope = tracing.manual().operation("perf-work").start()) {
+        try (SpanHandle scope = tracing.spans().operation("perf-work").start()) {
             Span.current().setAttribute("platform.perf.path", "work");
             Span.current().setAttribute("platform.perf.iterations", (long) WORK_ITERATIONS);
             Span.current().setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
@@ -68,7 +68,7 @@ public class PerfEndpointsController {
         if (tracing == null) {
             return Map.of("path", "validation-valid", "checksum", checksum);
         }
-        try (SpanHandle scope = tracing.manual().operation("perf-validation-valid").start()) {
+        try (SpanHandle scope = tracing.spans().operation("perf-validation-valid").start()) {
             Span.current().setAttribute("platform.perf.path", "validation-valid");
             Span.current().setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
             Span.current().setStatus(StatusCode.OK);
@@ -83,7 +83,7 @@ public class PerfEndpointsController {
         if (tracing == null) {
             return Map.of("path", "validation-missing", "checksum", checksum);
         }
-        try (SpanHandle scope = tracing.manual().operation("perf-validation-missing").start()) {
+        try (SpanHandle scope = tracing.spans().operation("perf-validation-missing").start()) {
             Span.current().setAttribute("platform.perf.path", "validation-missing");
             return Map.of("path", "validation-missing", "checksum", checksum);
         }

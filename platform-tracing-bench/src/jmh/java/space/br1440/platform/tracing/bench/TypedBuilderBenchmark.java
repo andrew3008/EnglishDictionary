@@ -49,14 +49,14 @@ public class TypedBuilderBenchmark {
 
     @Benchmark
     public void facadeStartSpan(Blackhole bh) {
-        try (var scope = disabledPolicyTracing.manual().operation("GET /users/{id}").start()) {
+        try (var scope = disabledPolicyTracing.spans().operation("GET /users/{id}").start()) {
             bh.consume(scope);
         }
     }
 
     @Benchmark
     public void typedHttpServerDisabled(Blackhole bh) {
-        try (var scope = disabledPolicyTracing.manual().transport().http().server()
+        try (var scope = disabledPolicyTracing.spans().transport().http().server()
                 .method("GET").route("/users/{id}").start()) {
             bh.consume(scope);
         }
@@ -64,7 +64,7 @@ public class TypedBuilderBenchmark {
 
     @Benchmark
     public void typedHttpServerWarn(Blackhole bh) {
-        try (var scope = warnPolicyTracing.manual().transport().http().server()
+        try (var scope = warnPolicyTracing.spans().transport().http().server()
                 .method("GET").route("/users/{id}").start()) {
             bh.consume(scope);
         }

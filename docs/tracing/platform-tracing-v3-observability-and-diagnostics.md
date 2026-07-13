@@ -8,9 +8,9 @@ How platform manual tracing coexists with Micrometer Observation, how metering w
 |------|-------|---------------|
 | OpenTelemetry Java Agent | Agent bytecode instrumentation | HTTP, JDBC, gRPC, Kafka (production default) |
 | Spring / Micrometer Observation | Framework conventions, `@Observed` | HTTP server/client observations |
-| TraceOperations `manual()` | `TracingImplementation` SPI | Governed manual and semantic transport spans |
+| TraceOperations `spans()` | `TracingImplementation` SPI | Governed manual and semantic transport spans |
 
-TraceOperations does **not** replace Agent or Observation auto-instrumentation. Call `manual()` only for gaps. See [ADR — Micrometer Observation Boundary](../decisions/ADR-platform-tracing-micrometer-observation-boundary.md) (Option C hybrid model, **Accepted**).
+TraceOperations does **not** replace Agent or Observation auto-instrumentation. Call `spans()` only for gaps. See [ADR — Micrometer Observation Boundary](../decisions/ADR-platform-tracing-micrometer-observation-boundary.md) (Option C hybrid model, **Accepted**).
 
 ## Metering boundary (R01 fix)
 
@@ -29,8 +29,8 @@ When Micrometer Observation is on the classpath:
 - Platform customizes conventions (`Platform*ObservationConvention`).
 - Opt-in `platform.tracing.suppression.suppress-micrometer-tracing` prevents duplicate HTTP spans when the Agent is present ([ADR-suppress-micrometer-tracing](../decisions/ADR-suppress-micrometer-tracing.md)).
 - **`ObservationCoexistenceTest`** proves one HTTP request / application operation does not produce two unsynchronized root spans.
-- Manual `manual().operation(...)` inside an auto-observed request may create a **child** span sharing the active trace id.
-- Intentional `manual().root()` creates a separate trace when explicitly requested.
+- Manual `spans().operation(...)` inside an auto-observed request may create a **child** span sharing the active trace id.
+- Intentional `spans().root()` creates a separate trace when explicitly requested.
 
 **Do not** combine `@Traced` and `@Observed` on the same method (ArchUnit rule `NO_TRACED_AND_OBSERVED_ON_SAME_METHOD`).
 

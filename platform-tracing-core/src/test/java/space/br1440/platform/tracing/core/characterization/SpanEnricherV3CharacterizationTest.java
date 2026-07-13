@@ -18,7 +18,7 @@ import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * PR-0: параллельные тесты {@link SpanEnricher} через v3 {@code traceOperations.manual()},
+ * PR-0: параллельные тесты {@link SpanEnricher} через v3 {@code traceOperations.spans()},
  * без прямой зависимости от {@code InternalSpanBuilderImpl}.
  */
 class SpanEnricherV3CharacterizationTest {
@@ -45,7 +45,7 @@ class SpanEnricherV3CharacterizationTest {
 
     @Test
     void enrichCurrentSpan_наV3ManualSpan_пишетPlatformSafeАтрибуты() {
-        try (var ignored = tracing.manual().operation("checkout").start()) {
+        try (var ignored = tracing.spans().operation("checkout").start()) {
             enricher.enrichCurrentSpan(scope -> scope
                     .requestId("req-v3")
                     .userHash("hash-v3")

@@ -118,7 +118,7 @@ Non-refactor `@Deprecated` occurrences exist in unrelated extension/bench code, 
 
 Current user-facing manual API docs, architecture inventory, support matrix, semantic-convention mapping, traceability matrix, and changelogs are current:
 
-- `docs/tracing/platform-tracing-v3-manual-api.md` uses new manual/context/link/spec names.
+- `docs/tracing/platform-tracing-v3-span-factory-api.md` uses new manual/context/link/spec names.
 - `docs/tracing/platform-tracing-v3-kafka-batch-links.md` uses `RemoteSpanLink`.
 - `docs/tracing/otel-compatibility-matrix.md` and `docs/tracing/requirements-coverage-dossier.md` use `InboundTraceControlPropagatorProvider`.
 - `docs/tracing/traceability.md` now uses `SpanRelationship`, `SpanHandle.close()`, `TraceControlHeaderInjector`, `InboundTraceControl.fromHeaders`, `InboundTraceControlPropagatorProvider`, `InboundTraceControlPropagatorBuilder`, and `InboundTraceControlPropagatorProviderTest`.

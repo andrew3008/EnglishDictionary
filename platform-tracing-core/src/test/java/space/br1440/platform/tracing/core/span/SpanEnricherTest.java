@@ -69,7 +69,7 @@ class SpanEnricherTest {
     @Test
     void enrichCurrentSpanIfPlatformCategory_сV3Маркером_применяетAllowlistИОтбрасываетChужие() {
         DefaultTraceOperations tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(sdk));
-        try (var ignored = tracing.manual().operation("op").start()) {
+        try (var ignored = tracing.spans().operation("op").start()) {
             enricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.INTERNAL, scope -> scope
                     .attribute(SemconvKeys.PLATFORM_REQUEST_ID, "r1")
                     .attribute(SemconvKeys.HTTP_ROUTE, "/secret/path"));

@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import java.util.function.Supplier;
 
 /**
- * Общий контракт выполнения в области видимости span'а для семантических построителей v3.
+ * Общий контракт выполнения в области видимости span'а для семантических построителей.
  */
 public interface ManualSpanBuilder<B extends ManualSpanBuilder<B>> {
 

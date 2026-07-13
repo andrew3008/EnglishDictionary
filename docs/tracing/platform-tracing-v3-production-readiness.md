@@ -58,7 +58,7 @@ Search for `SpanSpecReason.TEMPORARY_WORKAROUND` usages and verify each has a tr
 
 ## Scope confirmation (v3 refactoring)
 
-- Public API: `traceContext()` + `manual()` only
+- Public API: `traceContext()` + `spans()` only
 - No v1 API restored
 - No compatibility shim
 - No `MeteredPlatformTracing` public decorator

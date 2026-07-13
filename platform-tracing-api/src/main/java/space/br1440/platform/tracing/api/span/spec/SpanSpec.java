@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Спецификация span'а для {@code manual().spanFromSpec(spec)}.
+ * Спецификация span'а для {@code spans().fromSpec(spec)}.
  */
 public interface SpanSpec {
 

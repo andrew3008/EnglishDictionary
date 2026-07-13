@@ -10,23 +10,23 @@ Facade decorators (`MeteredPlatformTracing`, `Facade*SpanBuilder`) were removed 
 |---|---|
 | `currentTraceId()` | `traceContext().traceId()` |
 | `currentSpanId()` | `traceContext().spanId()` |
-| `startSpan(name, category)` | `manual().operation(name).start()` / `.run()` / `.call()` |
-| `startRootSpan(...)` | `manual().operation(name).root().start()` |
-| `startDetachedSpan(...)` | `manual().operation(name).detached().start()` |
+| `startSpan(name, category)` | `spans().operation(name).start()` / `.run()` / `.call()` |
+| `startRootSpan(...)` | `spans().operation(name).root().start()` |
+| `startDetachedSpan(...)` | `spans().operation(name).detached().start()` |
 | `startSpanWithLinks(...)` | `.root().linkedTo(...).start()` |
 | `addLink(...)` | pre-start `.linkedTo(...)`; **no post-start replacement** |
 | `inSpan(...)` | `.run()` / `.call()` / `.callChecked()` |
 | `SpanRelation` | `Topology` through `.child()` / `.root()` / `.detached()` |
-| `internalSpan()` / `businessSpan()` | `manual().operation(name)` |
-| transport factory methods on `TraceOperations` | `manual().transport().http()/database()/rpc()/kafka()` |
+| `internalSpan()` / `businessSpan()` | `spans().operation(name)` |
+| transport factory methods on `TraceOperations` | `spans().transport().http()/database()/rpc()/kafka()` |
 
 ## Breaking change policy
 
 - **No compatibility shim.** v1 methods are not available on `TraceOperations`.
 - **No `MeteredPlatformTracing` public decorator.** Metering is internal on `TracingImplementation` ([ADR — Metering SPI Boundary](../decisions/ADR-platform-tracing-metering-spi-boundary.md)).
-- **No `Facade*SpanBuilder`.** Semantic builders live under `manual().transport()`.
+- **No `Facade*SpanBuilder`.** Semantic builders live under `spans().transport()`.
 - **Links are pre-start only.** There is no v3 equivalent of post-start `addLink(...)`.
-- **Governed escape hatch:** `manual().spanFromSpec(spec)` requires `SpanSpecReason` and, for `TEMPORARY_WORKAROUND`, a `reference`.
+- **Governed escape hatch:** `spans().fromSpec(spec)` requires `SpanSpecReason` and, for `TEMPORARY_WORKAROUND`, a `reference`.
 
 ## Common migration patterns
 
@@ -47,7 +47,7 @@ String id = traceOperations.traceContext().traceId().orElse("unknown");
 traceOperations.inSpan("process-order", SpanCategory.INTERNAL, () -> service.process(orderId));
 
 // v3
-traceOperations.manual()
+traceOperations.spans()
         .operation("process-order")
         .run(() -> service.process(orderId));
 ```
@@ -59,7 +59,7 @@ traceOperations.manual()
 traceOperations.startSpanWithLinks("batch", SpanCategory.INTERNAL, links);
 
 // v3
-traceOperations.manual()
+traceOperations.spans()
         .transport()
         .kafka()
         .consumer()
@@ -78,7 +78,7 @@ See [Kafka batch links](./platform-tracing-v3-kafka-batch-links.md).
 traceOperations.databaseSpan().system("postgresql").operation("SELECT").start();
 
 // v3
-traceOperations.manual()
+traceOperations.spans()
         .transport()
         .database()
         .system("postgresql")
@@ -100,7 +100,7 @@ Links policy: **ROOT + links allowed**; **DETACHED + links forbidden**; **CHILD 
 
 ## Advanced / raw span escape hatches
 
-v1 `advanced()`, `rawSpan()`, and similar wide APIs are replaced by governed `spanFromSpec`:
+v1 `advanced()`, `rawSpan()`, and similar wide APIs are replaced by governed `fromSpec`:
 
 ```java
 SpanSpec spec = SpanSpec.builder("vendor-integration")
@@ -110,7 +110,7 @@ SpanSpec spec = SpanSpec.builder("vendor-integration")
         .reference("PLATFORM-1234")
         .build();
 
-traceOperations.manual().spanFromSpec(spec).run(action);
+traceOperations.spans().fromSpec(spec).run(action);
 ```
 
 See [ADR — SpanSpec Governance](../decisions/ADR-platform-tracing-span-spec-governance.md).
@@ -124,5 +124,5 @@ See [ADR — SpanSpec Governance](../decisions/ADR-platform-tracing-span-spec-go
 ## Related documents
 
 - [Getting started](./platform-tracing-v3-getting-started.md)
-- [Manual API reference](./platform-tracing-v3-manual-api.md)
+- [SpanFactory API reference](./platform-tracing-v3-span-factory-api.md)
 - [ADR — v3 Public API](../decisions/ADR-platform-tracing-v3-public-api.md)

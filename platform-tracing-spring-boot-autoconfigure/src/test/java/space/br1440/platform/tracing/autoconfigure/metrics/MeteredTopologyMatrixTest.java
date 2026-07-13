@@ -62,7 +62,7 @@ class MeteredTopologyMatrixTest {
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
-            tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
+            tracing.spans().operation("linked-root").root().linkedTo(link).start().close();
 
             SpanData span = findSpan(exporter, "linked-root");
             assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
@@ -76,8 +76,8 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            try (var parent = tracing.manual().operation("parent").start()) {
-                tracing.manual().operation("orphan").detached().start().close();
+            try (var parent = tracing.spans().operation("parent").start()) {
+                tracing.spans().operation("orphan").detached().start().close();
             }
 
             SpanData detached = findSpan(exporter, "orphan");
@@ -96,7 +96,7 @@ class MeteredTopologyMatrixTest {
             RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
             assertThatThrownBy(() ->
-                    tracing.manual().operation("bad-detached").detached().linkedTo(link).start())
+                    tracing.spans().operation("bad-detached").detached().linkedTo(link).start())
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("DETACHED");
             assertThat(exporter.getFinishedSpanItems()).isEmpty();
@@ -108,7 +108,7 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            tracing.manual().transport().kafka().consumer()
+            tracing.spans().transport().kafka().consumer()
                     .batch("orders")
                     .root()
                     .fromTraceparent(TRACEPARENT)
@@ -126,7 +126,7 @@ class MeteredTopologyMatrixTest {
     }
 
     @Test
-    void spanFromSpec_rootWithLinks_worksPerPolicy() {
+    void fromSpec_rootWithLinks_worksPerPolicy() {
         contextRunner.run(context -> {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
@@ -138,7 +138,7 @@ class MeteredTopologyMatrixTest {
                     .root()
                     .linkedTo(link)
                     .build();
-            tracing.manual().spanFromSpec(spec).start().close();
+            tracing.spans().fromSpec(spec).start().close();
 
             SpanData span = findSpan(exporter, "spec-root");
             assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
@@ -147,7 +147,7 @@ class MeteredTopologyMatrixTest {
     }
 
     @Test
-    void spanFromSpec_detachedWithoutLinks_worksPerPolicy() {
+    void fromSpec_detachedWithoutLinks_worksPerPolicy() {
         contextRunner.run(context -> {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
@@ -156,7 +156,7 @@ class MeteredTopologyMatrixTest {
                     .reason(SpanSpecReason.PLATFORM_EDGE_CASE)
                     .detached()
                     .build();
-            tracing.manual().spanFromSpec(spec).start().close();
+            tracing.spans().fromSpec(spec).start().close();
 
             SpanData span = findSpan(exporter, "spec-detached");
             assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
@@ -165,7 +165,7 @@ class MeteredTopologyMatrixTest {
     }
 
     @Test
-    void spanFromSpec_detachedWithLinks_failsFastAtBuild() {
+    void fromSpec_detachedWithLinks_failsFastAtBuild() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() -> SpanSpec.builder("bad-spec")

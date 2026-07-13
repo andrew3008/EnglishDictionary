@@ -5,7 +5,7 @@ Kafka batch consumer processing uses **ROOT + pre-start links** to correlate a s
 ## Recommended pattern
 
 ```java
-traceOperations.manual()
+traceOperations.spans()
         .transport()
         .kafka()
         .consumer()
@@ -78,12 +78,12 @@ v3 batch spans differ from the old raw OTel aspect spans:
 
 - **Removed:** raw OTel `Tracer` / `SpanBuilder` span creation in `KafkaBatchLinksAspect`.
 - **Kept:** OTel propagator extraction from record headers to build remote link contexts.
-- **Added:** routing through `manual().transport().kafka().consumer().batch(...).root().linkedTo(...)`.
+- **Added:** routing through `spans().transport().kafka().consumer().batch(...).root().linkedTo(...)`.
 
 Proof: `KafkaBatchAspectMigrationTest`, `KafkaBatchSpanBuilderIntegrationTest`.
 
 ## Related documents
 
-- [Manual API reference](./platform-tracing-v3-manual-api.md)
+- [SpanFactory API reference](./platform-tracing-v3-span-factory-api.md)
 - [ADR — Kafka Batch Links](../decisions/ADR-platform-tracing-kafka-batch-links.md)
 - [Production readiness](./platform-tracing-v3-production-readiness.md)

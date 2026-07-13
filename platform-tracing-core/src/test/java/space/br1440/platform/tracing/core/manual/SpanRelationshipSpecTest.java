@@ -51,8 +51,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void childInsideActiveParent_inheritsParentSpanIdAndTraceId() {
-        try (var parent = tracing.manual().operation("parent").start()) {
-            try (var child = tracing.manual().operation("child").child().start()) {
+        try (var parent = tracing.spans().operation("parent").start()) {
+            try (var child = tracing.spans().operation("child").child().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -65,8 +65,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void rootInsideActiveParent_hasInvalidParentAndIndependentTraceId() {
-        try (var parent = tracing.manual().operation("parent").start()) {
-            try (var root = tracing.manual().operation("job").root().start()) {
+        try (var parent = tracing.spans().operation("parent").start()) {
+            try (var root = tracing.spans().operation("job").root().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -79,8 +79,8 @@ class SpanRelationshipSpecTest {
 
     @Test
     void detachedInsideActiveParent_hasInvalidParentIndependentTraceIdAndNoLinks() {
-        try (var parent = tracing.manual().operation("parent").start()) {
-            try (var detached = tracing.manual().operation("orphan").detached().start()) {
+        try (var parent = tracing.spans().operation("parent").start()) {
+            try (var detached = tracing.spans().operation("orphan").detached().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
             }
         }
@@ -96,7 +96,7 @@ class SpanRelationshipSpecTest {
     void rootWithLinks_producesRootSpanWithRemoteLinks() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0000000000000000000000000000000a", "0000000000000001");
-        tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
+        tracing.spans().operation("linked-root").root().linkedTo(link).start().close();
 
         SpanData span = findSpan("linked-root");
         assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
@@ -109,7 +109,7 @@ class SpanRelationshipSpecTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() ->
-                tracing.manual().operation("bad-detached").detached().linkedTo(link).start())
+                tracing.spans().operation("bad-detached").detached().linkedTo(link).start())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DETACHED");
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
@@ -120,7 +120,7 @@ class SpanRelationshipSpecTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() ->
-                tracing.manual().operation("bad-child").child().linkedTo(link).start())
+                tracing.spans().operation("bad-child").child().linkedTo(link).start())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHILD");
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
@@ -130,7 +130,7 @@ class SpanRelationshipSpecTest {
     void linkedToThenRoot_isValid() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
-        tracing.manual().operation("order-root").linkedTo(link).root().start().close();
+        tracing.spans().operation("order-root").linkedTo(link).root().start().close();
 
         SpanData span = findSpan("order-root");
         assertThat(span.getLinks()).hasSize(1);
@@ -145,7 +145,7 @@ class SpanRelationshipSpecTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() ->
-                tracing.manual().operation("bad-order").linkedTo(link).detached().start())
+                tracing.spans().operation("bad-order").linkedTo(link).detached().start())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DETACHED");
     }

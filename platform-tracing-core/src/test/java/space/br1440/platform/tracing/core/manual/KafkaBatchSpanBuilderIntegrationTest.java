@@ -59,7 +59,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
-        traceOperations.manual()
+        traceOperations.spans()
                 .transport()
                 .kafka()
                 .consumer()
@@ -81,7 +81,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void batchRootWithTraceparentParser_preservesLink() {
-        traceOperations.manual()
+        traceOperations.spans()
                 .transport()
                 .kafka()
                 .consumer()
@@ -103,8 +103,8 @@ class KafkaBatchSpanBuilderIntegrationTest {
     void batchInsideActiveParent_rootDoesNotBecomeChild() {
         RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT);
 
-        try (var parent = traceOperations.manual().operation("parent").start()) {
-            traceOperations.manual()
+        try (var parent = traceOperations.spans().operation("parent").start()) {
+            traceOperations.spans()
                     .transport()
                     .kafka()
                     .consumer()
@@ -128,7 +128,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         assertThatThrownBy(() ->
-                traceOperations.manual()
+                traceOperations.spans()
                         .transport()
                         .kafka()
                         .consumer()
@@ -148,7 +148,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         assertThatThrownBy(() ->
-                traceOperations.manual()
+                traceOperations.spans()
                         .transport()
                         .kafka()
                         .consumer()

@@ -143,14 +143,14 @@ public class CompositePipelineBenchmark {
 
     @Benchmark
     public void compositeObvyazka(Blackhole bh) {
-        try (SpanHandle scope = noopPipeline.manual().operation("bench-pipeline").start()) {
+        try (SpanHandle scope = noopPipeline.spans().operation("bench-pipeline").start()) {
             bh.consume(scope);
         }
     }
 
     @Benchmark
     public void prodLikeSpanNoopPipeline(Blackhole bh) {
-        try (SpanHandle scope = noopPipeline.manual().operation("bench-pipeline").start()) {
+        try (SpanHandle scope = noopPipeline.spans().operation("bench-pipeline").start()) {
             populateProdLikeAttributes();
             bh.consume(scope);
         }
@@ -158,7 +158,7 @@ public class CompositePipelineBenchmark {
 
     @Benchmark
     public void prodLikeSpanRealPipeline(Blackhole bh) {
-        try (SpanHandle scope = realPipeline.manual().operation("bench-pipeline").start()) {
+        try (SpanHandle scope = realPipeline.spans().operation("bench-pipeline").start()) {
             populateProdLikeAttributes();
             bh.consume(scope);
         }
@@ -166,7 +166,7 @@ public class CompositePipelineBenchmark {
 
     @Benchmark
     public void prodLikeSpanRealPipelineNoScrubbing(Blackhole bh) {
-        try (SpanHandle scope = realNoScrubbingPipeline.manual().operation("bench-pipeline").start()) {
+        try (SpanHandle scope = realNoScrubbingPipeline.spans().operation("bench-pipeline").start()) {
             populateProdLikeAttributes();
             bh.consume(scope);
         }

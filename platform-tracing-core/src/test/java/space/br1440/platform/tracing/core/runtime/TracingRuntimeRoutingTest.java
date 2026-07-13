@@ -39,47 +39,47 @@ class TracingRuntimeRoutingTest {
 
     @Test
     void operationStart_routesThroughStartSpan() {
-        tracing.manual().operation("x").start().close();
+        tracing.spans().operation("x").start().close();
         assertSingleSpecNamed("x", SpanRelationship.CHILD);
     }
 
     @Test
     void operationRun_routesThroughStartSpan() {
-        tracing.manual().operation("x").run(() -> {
+        tracing.spans().operation("x").run(() -> {
         });
         assertSingleSpecNamed("x", SpanRelationship.CHILD);
     }
 
     @Test
     void operationCall_routesThroughStartSpan() {
-        tracing.manual().operation("x").call(() -> "ok");
+        tracing.spans().operation("x").call(() -> "ok");
         assertSingleSpecNamed("x", SpanRelationship.CHILD);
     }
 
     @Test
-    void spanFromSpecStart_routesSameSpec() {
+    void fromSpecStart_routesSameSpec() {
         SpanSpec spec = governedSpec("from-spec");
-        tracing.manual().spanFromSpec(spec).start().close();
+        tracing.spans().fromSpec(spec).start().close();
         assertThat(recording.receivedSpecs()).containsExactly(spec);
     }
 
     @Test
-    void spanFromSpecRun_routesSameSpec() {
+    void fromSpecRun_routesSameSpec() {
         SpanSpec spec = governedSpec("from-spec-run");
-        tracing.manual().spanFromSpec(spec).run(() -> {
+        tracing.spans().fromSpec(spec).run(() -> {
         });
         assertThat(recording.receivedSpecs()).containsExactly(spec);
     }
 
     @Test
     void topologyRoot_preserved() {
-        tracing.manual().operation("root-op").root().start().close();
+        tracing.spans().operation("root-op").root().start().close();
         assertSingleSpecNamed("root-op", SpanRelationship.ROOT);
     }
 
     @Test
     void topologyDetached_preserved() {
-        tracing.manual().operation("detached-op").detached().start().close();
+        tracing.spans().operation("detached-op").detached().start().close();
         assertSingleSpecNamed("detached-op", SpanRelationship.DETACHED);
     }
 
@@ -88,7 +88,7 @@ class TracingRuntimeRoutingTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
-        tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
+        tracing.spans().operation("linked-root").root().linkedTo(link).start().close();
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.name()).isEqualTo("linked-root");
@@ -105,7 +105,7 @@ class TracingRuntimeRoutingTest {
                 .reason(SpanSpecReason.LEGACY_INTEGRATION)
                 .reference("ticket-42")
                 .build();
-        tracing.manual().spanFromSpec(spec).start().close();
+        tracing.spans().fromSpec(spec).start().close();
         SpanSpec received = recording.receivedSpecs().getFirst();
         assertThat(received.category()).isEqualTo(SpanCategory.DATABASE);
         assertThat(received.attributes()).containsEntry("db.system",
@@ -120,7 +120,7 @@ class TracingRuntimeRoutingTest {
         recordingImpl.setState(ImmutableTracingState.of(
                 TracingMode.NOOP, null, java.util.Map.of()));
         NoopTraceOperations noop = NoopTraceOperations.backedBy(recordingImpl);
-        noop.manual().operation("noop-op").run(() -> {
+        noop.spans().operation("noop-op").run(() -> {
         });
         assertThat(recordingImpl.receivedSpecs()).hasSize(1);
         assertThat(recordingImpl.receivedSpecs().getFirst().name()).isEqualTo("noop-op");
@@ -134,7 +134,7 @@ class TracingRuntimeRoutingTest {
                 .build();
         DefaultTraceOperations realTracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(provider).build()));
         realTracing.setFacadeEnabled(false);
-        realTracing.manual().operation("disabled").start().close();
+        realTracing.spans().operation("disabled").start().close();
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
         assertThat(realTracing.tracingRuntime().state().mode())
                 .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);

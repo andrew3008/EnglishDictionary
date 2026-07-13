@@ -107,7 +107,7 @@ public class TracedAspect {
         }
 
         // CHILD_SPAN или отсутствие активного контекста: создаём отдельный span штатным путём.
-        try (SpanHandle handle = traceOperations.manual().operation(spanName).start()) {
+        try (SpanHandle handle = traceOperations.spans().operation(spanName).start()) {
             applyParameterAttributesToSpan(Span.current(), method, joinPoint.getArgs());
             try {
                 Object result = joinPoint.proceed();

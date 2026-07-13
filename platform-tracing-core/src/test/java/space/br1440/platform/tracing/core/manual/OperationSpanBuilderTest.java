@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 3A hard gate: {@code manual().operation(...)} builder behavior.
+ * Slice 3A hard gate: {@code spans().operation(...)} builder behavior.
  */
 class OperationSpanBuilderTest {
 
@@ -29,20 +29,20 @@ class OperationSpanBuilderTest {
 
     @Test
     void start_routesThroughTracingRuntime() {
-        tracing.manual().operation("checkout").start().close();
+        tracing.spans().operation("checkout").start().close();
         assertSingleInternalSpec("checkout", SpanRelationship.CHILD);
     }
 
     @Test
     void run_startsAndClosesSpan() {
-        tracing.manual().operation("run-op").run(() -> {
+        tracing.spans().operation("run-op").run(() -> {
         });
         assertSingleInternalSpec("run-op", SpanRelationship.CHILD);
     }
 
     @Test
     void call_returnsValueAndClosesSpan() {
-        String result = tracing.manual().operation("call-op").call(() -> "ok");
+        String result = tracing.spans().operation("call-op").call(() -> "ok");
         assertThat(result).isEqualTo("ok");
         assertSingleInternalSpec("call-op", SpanRelationship.CHILD);
     }
@@ -50,7 +50,7 @@ class OperationSpanBuilderTest {
     @Test
     void callChecked_propagatesCheckedExceptionAndClosesSpan() throws Exception {
         assertThatThrownBy(() ->
-                tracing.manual().operation("checked-op").callChecked(() -> {
+                tracing.spans().operation("checked-op").callChecked(() -> {
                     throw new Exception("checked");
                 }))
                 .isInstanceOf(Exception.class)
@@ -60,27 +60,27 @@ class OperationSpanBuilderTest {
 
     @Test
     void nullName_rejected() {
-        assertThatThrownBy(() -> tracing.manual().operation(null))
+        assertThatThrownBy(() -> tracing.spans().operation(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("name");
     }
 
     @Test
     void blankName_rejected() {
-        assertThatThrownBy(() -> tracing.manual().operation("   "))
+        assertThatThrownBy(() -> tracing.spans().operation("   "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("blank");
     }
 
     @Test
     void operationName_appearsInSpanSpec() {
-        tracing.manual().operation("my-operation").start().close();
+        tracing.spans().operation("my-operation").start().close();
         assertThat(recording.receivedSpecs().getFirst().name()).isEqualTo("my-operation");
     }
 
     @Test
     void category_isInternalWithReason() {
-        tracing.manual().operation("internal-op").start().close();
+        tracing.spans().operation("internal-op").start().close();
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.category()).isEqualTo(SpanCategory.INTERNAL);
         assertThat(spec.reason()).isEqualTo(SpanSpecReason.PLATFORM_EDGE_CASE);
@@ -88,19 +88,19 @@ class OperationSpanBuilderTest {
 
     @Test
     void rootRelationship_preservedInSpec() {
-        tracing.manual().operation("root-op").root().start().close();
+        tracing.spans().operation("root-op").root().start().close();
         assertSingleInternalSpec("root-op", SpanRelationship.ROOT);
     }
 
     @Test
     void childRelationship_preservedInSpec() {
-        tracing.manual().operation("child-op").child().start().close();
+        tracing.spans().operation("child-op").child().start().close();
         assertSingleInternalSpec("child-op", SpanRelationship.CHILD);
     }
 
     @Test
     void detachedRelationship_preservedInSpec() {
-        tracing.manual().operation("detached-op").detached().start().close();
+        tracing.spans().operation("detached-op").detached().start().close();
         assertSingleInternalSpec("detached-op", SpanRelationship.DETACHED);
     }
 
@@ -109,7 +109,7 @@ class OperationSpanBuilderTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
-        tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
+        tracing.spans().operation("linked-root").root().linkedTo(link).start().close();
 
         SpanSpec spec = recording.receivedSpecs().getFirst();
         assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.ROOT);
@@ -122,7 +122,7 @@ class OperationSpanBuilderTest {
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
         assertThatThrownBy(() ->
-                tracing.manual().operation("bad-detached").detached().linkedTo(link).start())
+                tracing.spans().operation("bad-detached").detached().linkedTo(link).start())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DETACHED");
     }
@@ -133,7 +133,7 @@ class OperationSpanBuilderTest {
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
         assertThatThrownBy(() ->
-                tracing.manual().operation("bad-child").child().linkedTo(link).start())
+                tracing.spans().operation("bad-child").child().linkedTo(link).start())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHILD");
     }

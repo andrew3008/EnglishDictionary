@@ -45,7 +45,7 @@ public class TracedAspectBenchmark {
 
     @Benchmark
     public void startAttributesResultClose(Blackhole bh) {
-        try (SpanHandle scope = traceOperations.manual().operation("bench-method").start()) {
+        try (SpanHandle scope = traceOperations.spans().operation("bench-method").start()) {
             Span.current().setAttribute("code.namespace", "space.br1440.bench");
             Span.current().setAttribute("code.function", "startAttributesResultClose");
             Span.current().setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());

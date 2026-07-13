@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 4 hard gate: {@code manual().spanFromSpec(...)} terminal lifecycle.
+ * Slice 4 hard gate: {@code spans().fromSpec(...)} terminal lifecycle.
  */
 class SpanExecutionTest {
 
@@ -46,7 +46,7 @@ class SpanExecutionTest {
     @Test
     void run_closesSpanOnSuccess() {
         SpanSpec spec = governedSpec("spec-run");
-        tracing.manual().spanFromSpec(spec).run(() -> {
+        tracing.spans().fromSpec(spec).run(() -> {
         });
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
         assertThat(exporter.getFinishedSpanItems().getFirst().getName()).isEqualTo("spec-run");
@@ -57,7 +57,7 @@ class SpanExecutionTest {
         SpanSpec spec = governedSpec("spec-fail");
         IllegalStateException error = new IllegalStateException("spec-boom");
         assertThatThrownBy(() ->
-                tracing.manual().spanFromSpec(spec).run(() -> {
+                tracing.spans().fromSpec(spec).run(() -> {
                     throw error;
                 }))
                 .isSameAs(error);
@@ -69,7 +69,7 @@ class SpanExecutionTest {
     @Test
     void call_returnsValueAndClosesSpan() {
         SpanSpec spec = governedSpec("spec-call");
-        String value = tracing.manual().spanFromSpec(spec).call(() -> "value");
+        String value = tracing.spans().fromSpec(spec).call(() -> "value");
         assertThat(value).isEqualTo("value");
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
     }
@@ -79,7 +79,7 @@ class SpanExecutionTest {
         SpanSpec spec = governedSpec("spec-checked");
         Exception error = new Exception("checked-spec");
         assertThatThrownBy(() ->
-                tracing.manual().spanFromSpec(spec).callChecked(() -> {
+                tracing.spans().fromSpec(spec).callChecked(() -> {
                     throw error;
                 }))
                 .isSameAs(error);
@@ -88,10 +88,10 @@ class SpanExecutionTest {
     }
 
     @Test
-    void spanFromSpec_routesSameSpecThroughTracingRuntime() {
+    void fromSpec_routesSameSpecThroughTracingRuntime() {
         SpanSpec spec = governedSpec("from-spec");
         DefaultTraceOperations recordingTracing = new DefaultTraceOperations(recording);
-        recordingTracing.manual().spanFromSpec(spec).run(() -> {
+        recordingTracing.spans().fromSpec(spec).run(() -> {
         });
         assertThat(recording.receivedSpecs()).containsExactly(spec);
     }

@@ -6,7 +6,7 @@ import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
@@ -41,7 +41,7 @@ class TracingActuatorEndpointTest {
                 NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
-                new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));
+                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()));
     }
 
     @Test
@@ -340,7 +340,7 @@ class TracingActuatorEndpointTest {
                 jmxClient,
                 snapshot,
                 resourceSnapshot,
-                new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));
+                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()));
 
         Map<String, Object> info = custom.tracing();
         assertThat(info).containsKey("otelEffective");

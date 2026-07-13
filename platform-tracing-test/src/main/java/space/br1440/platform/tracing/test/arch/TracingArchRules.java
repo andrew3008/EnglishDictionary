@@ -27,7 +27,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  * <p>
  * Slice 1B: правило {@code ESCAPE_HATCH_BUILDERS_REQUIRE_SUPPRESSION} для удалённых v1
  * {@code Facade*SpanBuilder} factory-методов снято; transport governance вернётся с
- * {@code manual().transport()} (Slice 3).
+ * {@code spans().transport()} (Slice 3).
  *
  * <h2>Ограничения, осознанно вне scope</h2>
  * Rule «{@code span handle} обязан использоваться через try-with-resources» (Step 4.3 плана)

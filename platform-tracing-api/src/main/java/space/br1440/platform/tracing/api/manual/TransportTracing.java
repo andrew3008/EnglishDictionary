@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.manual;
 import jakarta.annotation.Nonnull;
 
 /**
- * Семантические построители транспортов/протоколов, сгруппированные под {@link ManualTracing#transport()}.
+ * Семантические построители транспортов/протоколов, сгруппированные под {@link space.br1440.platform.tracing.api.span.SpanFactory#transport()}.
  */
 public interface TransportTracing {
 

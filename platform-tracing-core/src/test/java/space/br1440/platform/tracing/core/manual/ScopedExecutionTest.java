@@ -47,7 +47,7 @@ class ScopedExecutionTest {
 
     @Test
     void run_closesSpanOnSuccess() {
-        tracing.manual().operation("success").run(() -> {
+        tracing.spans().operation("success").run(() -> {
         });
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
         assertThat(exporter.getFinishedSpanItems().getFirst().getName()).isEqualTo("success");
@@ -57,7 +57,7 @@ class ScopedExecutionTest {
     void run_recordsExceptionExactlyOnceAndRethrows() {
         IllegalStateException error = new IllegalStateException("boom");
         assertThatThrownBy(() ->
-                tracing.manual().operation("failed").run(() -> {
+                tracing.spans().operation("failed").run(() -> {
                     throw error;
                 }))
                 .isSameAs(error);
@@ -69,7 +69,7 @@ class ScopedExecutionTest {
 
     @Test
     void call_returnsValueAndClosesSpan() {
-        String value = tracing.manual().operation("call-op").call(() -> "ok");
+        String value = tracing.spans().operation("call-op").call(() -> "ok");
         assertThat(value).isEqualTo("ok");
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
     }
@@ -78,7 +78,7 @@ class ScopedExecutionTest {
     void call_recordsRuntimeExceptionExactlyOnceAndRethrows() {
         RuntimeException error = new RuntimeException("call-fail");
         assertThatThrownBy(() ->
-                tracing.manual().operation("call-fail").call(() -> {
+                tracing.spans().operation("call-fail").call(() -> {
                     throw error;
                 }))
                 .isSameAs(error);
@@ -90,7 +90,7 @@ class ScopedExecutionTest {
     void callChecked_propagatesCheckedExceptionAndRecordsExactlyOnce() throws Exception {
         Exception error = new Exception("checked");
         assertThatThrownBy(() ->
-                tracing.manual().operation("checked").callChecked(() -> {
+                tracing.spans().operation("checked").callChecked(() -> {
                     throw error;
                 }))
                 .isSameAs(error);
@@ -101,7 +101,7 @@ class ScopedExecutionTest {
     @Test
     void explicitRecordException_isAllowed() {
         IllegalArgumentException error = new IllegalArgumentException("explicit");
-        try (SpanHandle handle = tracing.manual().operation("explicit").start()) {
+        try (SpanHandle handle = tracing.spans().operation("explicit").start()) {
             handle.recordException(error);
         }
 
@@ -111,7 +111,7 @@ class ScopedExecutionTest {
     @Test
     void duplicateSameThrowable_notDoubleRecorded() {
         IllegalStateException error = new IllegalStateException("dup");
-        try (SpanHandle handle = tracing.manual().operation("dup").start()) {
+        try (SpanHandle handle = tracing.spans().operation("dup").start()) {
             handle.recordException(error);
             handle.recordException(error);
         }
@@ -125,7 +125,7 @@ class ScopedExecutionTest {
         SpanHandle[] holder = new SpanHandle[1];
         assertThatThrownBy(() ->
                 ScopedExecution.run(() -> {
-                    SpanHandle handle = tracing.manual().operation("scoped-dup").start();
+                    SpanHandle handle = tracing.spans().operation("scoped-dup").start();
                     holder[0] = handle;
                     return handle;
                 }, () -> {
@@ -141,7 +141,7 @@ class ScopedExecutionTest {
     void twoDifferentThrowables_bothRecorded() {
         RuntimeException first = new RuntimeException("first");
         IllegalStateException second = new IllegalStateException("second");
-        try (SpanHandle handle = tracing.manual().operation("two-errors").start()) {
+        try (SpanHandle handle = tracing.spans().operation("two-errors").start()) {
             handle.recordException(first);
             handle.recordException(second);
         }
@@ -151,8 +151,8 @@ class ScopedExecutionTest {
 
     @Test
     void nestedSpans_closeInLifoOrder() {
-        tracing.manual().operation("outer").run(() ->
-                tracing.manual().operation("inner").run(() -> {
+        tracing.spans().operation("outer").run(() ->
+                tracing.spans().operation("inner").run(() -> {
                 }));
 
         List<SpanData> spans = exporter.getFinishedSpanItems();
@@ -164,7 +164,7 @@ class ScopedExecutionTest {
     @Test
     void terminalMethods_routeThroughTracingRuntime() {
         DefaultTraceOperations recordingTracing = new DefaultTraceOperations(recording);
-        recordingTracing.manual().operation("routed").run(() -> {
+        recordingTracing.spans().operation("routed").run(() -> {
         });
         assertThat(recording.receivedSpecs()).hasSize(1);
         assertThat(recording.receivedSpecs().getFirst().name()).isEqualTo("routed");

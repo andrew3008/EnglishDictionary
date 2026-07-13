@@ -42,7 +42,7 @@ class DiagnosticsBoundaryTest {
             .withConfiguration(AutoConfigurations.of(TracingCoreAutoConfiguration.class));
 
     @Test
-    void actuatorEndpoint_exposesStableManualTracingSection() {
+    void actuatorEndpoint_exposesStablespanFactorySection() {
         contextRunner
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
@@ -50,33 +50,33 @@ class DiagnosticsBoundaryTest {
                             context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
-                            context.getBean(ManualTracingDiagnostics.class));
+                            context.getBean(SpanFactoryDiagnostics.class));
                     Map<String, Object> payload = endpoint.tracing();
 
-                    assertThat(payload).containsKey("manualTracing");
+                    assertThat(payload).containsKey("spanFactory");
                     @SuppressWarnings("unchecked")
-                    Map<String, Object> manualTracing = (Map<String, Object>) payload.get("manualTracing");
+                    Map<String, Object> spanFactory = (Map<String, Object>) payload.get("spanFactory");
 
-                    assertThat(manualTracing.keySet()).containsExactlyInAnyOrder("mode", "reason", "details");
-                    assertThat(manualTracing.get("mode")).isEqualTo("DISABLED_BY_CONFIGURATION");
-                    assertThat(manualTracing.get("reason")).isInstanceOf(String.class);
-                    assertThat(manualTracing.get("details")).isInstanceOf(Map.class);
+                    assertThat(spanFactory.keySet()).containsExactlyInAnyOrder("mode", "reason", "details");
+                    assertThat(spanFactory.get("mode")).isEqualTo("DISABLED_BY_CONFIGURATION");
+                    assertThat(spanFactory.get("reason")).isInstanceOf(String.class);
+                    assertThat(spanFactory.get("details")).isInstanceOf(Map.class);
 
                     String json;
                     try {
-                        json = OBJECT_MAPPER.writeValueAsString(manualTracing);
+                        json = OBJECT_MAPPER.writeValueAsString(spanFactory);
                     } catch (Exception e) {
                         throw new AssertionError(e);
                     }
                     assertThat(json).doesNotContain("TracingState");
                     assertThat(json).doesNotContain("TracingMode");
                     assertThat(json.toLowerCase()).doesNotContain("opentelemetry");
-                    assertThat(APPROVED_MODES).contains((String) manualTracing.get("mode"));
+                    assertThat(APPROVED_MODES).contains((String) spanFactory.get("mode"));
                 });
     }
 
     @Test
-    void manualTracingDiagnostics_mapsInternalTestModeToUnknown() {
+    void SpanFactoryDiagnostics_mapsInternalTestModeToUnknown() {
         TracingRuntime testPrimary = new TracingRuntime() {
             private final TracingState state = new TracingState() {
                 @Override
@@ -135,7 +135,7 @@ class DiagnosticsBoundaryTest {
             }
         };
 
-        ManualTracingDiagnostics diagnostics = new ManualTracingDiagnostics(testPrimary);
+        SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(testPrimary);
         TracingDiagnosticsView view = diagnostics.view();
 
         assertThat(view.mode()).isEqualTo("UNKNOWN");
@@ -147,7 +147,7 @@ class DiagnosticsBoundaryTest {
     @Test
     void unavailableState_exposesReasonAndApprovedMode() {
         contextRunner.run(context -> {
-            ManualTracingDiagnostics diagnostics = context.getBean(ManualTracingDiagnostics.class);
+            SpanFactoryDiagnostics diagnostics = context.getBean(SpanFactoryDiagnostics.class);
             TracingDiagnosticsView view = diagnostics.view();
 
             assertThat(view.mode()).isIn("UNAVAILABLE", "NOOP");

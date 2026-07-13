@@ -33,7 +33,7 @@ class AbstractSemanticSpanBuilderRelationshipRepeatedCallTest {
     static Stream<ManualSpanBuilder<?>> builders() {
         RecordingTracingRuntime impl = new RecordingTracingRuntime();
         AttributePolicy policy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
-        DefaultManualTracing manual = new DefaultManualTracing(impl, policy);
+        DefaultSpanFactory manual = new DefaultSpanFactory(impl, policy);
         DefaultTransportTracing transport = new DefaultTransportTracing(impl, policy);
         DefaultRpcTracing rpc = new DefaultRpcTracing(impl, policy);
         return Stream.of(
@@ -90,7 +90,7 @@ class AbstractSemanticSpanBuilderRelationshipRepeatedCallTest {
     @Test
     void linkedToThenRootThenStart_succeedsForOperationBuilder() {
         assertThatCode(() ->
-                new DefaultManualTracing(recording, policy).operation("op")
+                new DefaultSpanFactory(recording, policy).operation("op")
                         .linkedTo(VALID_LINK)
                         .root()
                         .start()

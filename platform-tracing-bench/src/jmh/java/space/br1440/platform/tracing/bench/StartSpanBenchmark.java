@@ -42,7 +42,7 @@ public class StartSpanBenchmark {
 
     @Benchmark
     public void startAndCloseSpan(Blackhole bh) {
-        try (SpanHandle scope = traceOperations.manual().operation("bench-op").start()) {
+        try (SpanHandle scope = traceOperations.spans().operation("bench-op").start()) {
             bh.consume(scope);
         }
     }

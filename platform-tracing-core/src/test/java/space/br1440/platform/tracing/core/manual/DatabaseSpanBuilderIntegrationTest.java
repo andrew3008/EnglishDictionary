@@ -42,10 +42,10 @@ class DatabaseSpanBuilderIntegrationTest {
 
     @Test
     void databaseChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (var parent = tracing.manual().operation("parent").start()) {
+        try (var parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
-            tracing.manual().transport().database()
+            tracing.spans().transport().database()
                     .system("postgresql")
                     .operation("SELECT")
                     .collection("orders")
@@ -64,7 +64,7 @@ class DatabaseSpanBuilderIntegrationTest {
 
     @Test
     void databaseRoot_isRootWithSemconvAttributes() {
-        tracing.manual().transport().database()
+        tracing.spans().transport().database()
                 .system("postgresql")
                 .operation("SELECT")
                 .collection("orders")

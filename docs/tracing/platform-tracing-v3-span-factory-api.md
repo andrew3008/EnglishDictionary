@@ -9,7 +9,7 @@ Reference for the v3 manual tracing surface. All span creation routes internally
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `traceContext()` | `ActiveTraceContextView` | Read-only active context |
-| `manual()` | `ManualTracing` | Manual span creation |
+| `spans()` | `SpanFactory` | Manual span creation |
 
 ### `ActiveTraceContextView`
 
@@ -21,13 +21,13 @@ Read-only correlation view. Does **not** expose OpenTelemetry `Context`, `Span`,
 | `spanId()` | `Optional<String>` — hex span id |
 | `correlationId()` | `Optional<String>` — platform correlation id when present |
 
-### `ManualTracing`
+### `SpanFactory`
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `operation(name)` | `OperationSpanBuilder` | Generic application-level span |
 | `transport()` | `TransportTracing` | HTTP / DB / RPC / Kafka semconv builders |
-| `spanFromSpec(spec)` | `SpanExecution` | Governed escape hatch |
+| `fromSpec(spec)` | `SpanExecution` | Governed escape hatch |
 
 ## `ManualSpanBuilder` (common builder contract)
 
@@ -68,11 +68,11 @@ Repeated explicit relationship setter throws `IllegalStateException`.
 
 ## `OperationSpanBuilder`
 
-`manual().operation(name)` — generic internal/business operations. Category defaults to `INTERNAL` at implementation layer unless overridden via `spanFromSpec`.
+`spans().operation(name)` — generic internal/business operations. Category defaults to `INTERNAL` at implementation layer unless overridden via `fromSpec`.
 
 ## `TransportTracing`
 
-Groups protocol-specific builders under `manual().transport()`:
+Groups protocol-specific builders under `spans().transport()`:
 
 | Method | Returns |
 |--------|---------|
@@ -106,7 +106,7 @@ Batch entry: `consumer().batch("orders")` returns `KafkaBatchSpanBuilder` for RO
 
 ## `SpanSpec` and governance
 
-Immutable governed specification for `manual().spanFromSpec(spec)`.
+Immutable governed specification for `spans().fromSpec(spec)`.
 
 ### `SpanSpecBuilder`
 
@@ -149,7 +149,7 @@ Whitelist sealed type for spec attributes: string, long, double, boolean, and ho
 
 ### `SpanExecution`
 
-Terminal surface from `spanFromSpec(spec)`: `start()`, `run()`, `call()`, `callChecked()`.
+Terminal surface from `fromSpec(spec)`: `start()`, `run()`, `call()`, `callChecked()`.
 
 ### `SpanHandle`
 

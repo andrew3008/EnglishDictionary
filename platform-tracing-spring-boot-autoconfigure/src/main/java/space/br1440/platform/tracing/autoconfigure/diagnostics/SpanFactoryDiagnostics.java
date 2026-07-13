@@ -12,11 +12,11 @@ import java.util.Objects;
  * Distinct from {@code platform-tracing-otel-extension} safety counters named
  * {@code TracingDiagnostics}.
  */
-public final class ManualTracingDiagnostics {
+public final class SpanFactoryDiagnostics {
 
     private final TracingRuntime tracingImplementation;
 
-    public ManualTracingDiagnostics(@Nonnull TracingRuntime tracingImplementation) {
+    public SpanFactoryDiagnostics(@Nonnull TracingRuntime tracingImplementation) {
         this.tracingImplementation = Objects.requireNonNull(tracingImplementation, "tracingImplementation");
     }
 

@@ -1,5 +1,14 @@
 # platform-tracing-api Changelog
 
+## Breaking Changes - SpanFactory API Shape
+
+- `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.
+- `TraceOperations.manual()` renamed to `TraceOperations.spans()`.
+- `ManualTracing.spanFromSpec(SpanSpec)` renamed to `SpanFactory.fromSpec(SpanSpec)`.
+- `ManualTracing.operation(String)` is retained as `SpanFactory.operation(String)` inside the `spans()` namespace.
+
+No compatibility aliases or deprecated bridges are provided.
+
 ## Breaking Changes - TraceOperations Root API Rename
 
 - `PlatformTracing` renamed to `TraceOperations`.

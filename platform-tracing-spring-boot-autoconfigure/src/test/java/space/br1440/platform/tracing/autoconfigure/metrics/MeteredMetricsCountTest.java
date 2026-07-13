@@ -40,9 +40,9 @@ class MeteredMetricsCountTest {
             TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
-            tracing.manual().operation("op-a").start().close();
-            tracing.manual().operation("op-b").root().start().close();
-            tracing.manual().transport().kafka().consumer()
+            tracing.spans().operation("op-a").start().close();
+            tracing.spans().operation("op-b").root().start().close();
+            tracing.spans().transport().kafka().consumer()
                     .batch("orders")
                     .root()
                     .linkedTo(RemoteSpanLink.sampled(
@@ -68,7 +68,7 @@ class MeteredMetricsCountTest {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
             TraceOperations tracing = context.getBean(TraceOperations.class);
 
-            var handle = tracing.manual().operation("failing-op").start();
+            var handle = tracing.spans().operation("failing-op").start();
             handle.recordException(new IllegalStateException("boom"));
             handle.close();
 
@@ -88,7 +88,7 @@ class MeteredMetricsCountTest {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
             TraceOperations tracing = context.getBean(TraceOperations.class);
 
-            tracing.manual().operation("dynamic-name-" + System.nanoTime()).start().close();
+            tracing.spans().operation("dynamic-name-" + System.nanoTime()).start().close();
 
             var counters = registry.find(PlatformTracingMetrics.SPANS_STARTED).counters();
             assertThat(counters).isNotEmpty();

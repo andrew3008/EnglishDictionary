@@ -42,10 +42,10 @@ class HttpSpanBuilderIntegrationTest {
 
     @Test
     void httpServerChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (var parent = tracing.manual().operation("parent").start()) {
+        try (var parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
-            tracing.manual().transport().http().server()
+            tracing.spans().transport().http().server()
                     .method("GET")
                     .route("/api/items")
                     .start()
@@ -62,7 +62,7 @@ class HttpSpanBuilderIntegrationTest {
 
     @Test
     void httpClientRoot_isRootWithSemconvAttributes() {
-        tracing.manual().transport().http().client()
+        tracing.spans().transport().http().client()
                 .method("POST")
                 .url("https://example.com/api")
                 .serverAddress("example.com")

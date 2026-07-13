@@ -42,10 +42,10 @@ class RpcSpanBuilderIntegrationTest {
 
     @Test
     void rpcServerChild_insideActiveParent_isChildWithSemconvAttributes() {
-        try (var parent = tracing.manual().operation("parent").start()) {
+        try (var parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             String parentSpanId = tracing.traceContext().spanId().orElseThrow();
-            tracing.manual().transport().rpc().server()
+            tracing.spans().transport().rpc().server()
                     .system("grpc")
                     .service("OrderService")
                     .method("CreateOrder")
@@ -64,7 +64,7 @@ class RpcSpanBuilderIntegrationTest {
 
     @Test
     void rpcClientRoot_isRootWithSemconvAttributes() {
-        tracing.manual().transport().rpc().client()
+        tracing.spans().transport().rpc().client()
                 .system("grpc")
                 .service("OrderService")
                 .method("CreateOrder")

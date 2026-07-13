@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.actuator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
@@ -35,7 +35,7 @@ class TracingActuatorEndpointProcessorErrorsTest {
                 NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
-                new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));
+                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()));
     }
 
     @Test

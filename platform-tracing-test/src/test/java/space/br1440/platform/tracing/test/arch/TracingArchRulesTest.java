@@ -4,7 +4,10 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import io.micrometer.observation.annotation.Observed;
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.annotation.Traced;
+import space.br1440.platform.tracing.api.span.SpanFactory;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -13,6 +16,7 @@ import java.lang.annotation.Target;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
  * Self-test для {@link TracingArchRules}: правило сначала валится на синтетических нарушителях
@@ -54,6 +58,51 @@ class TracingArchRulesTest {
 
         assertThatThrownBy(() -> TracingArchRules.NO_TRACED_AND_OBSERVED_ON_SAME_METHOD.check(classes))
                 .hasMessageContaining("@Traced");
+    }
+
+    @Test
+    void traceOperationsAndSpanFactoryKeepApprovedApiShape() throws NoSuchMethodException {
+        JavaClasses classes = new ClassFileImporter()
+                .importPackages("space.br1440.platform.tracing");
+
+        noClasses()
+                .that().resideInAPackage("space.br1440.platform.tracing..")
+                .should().haveSimpleName("Manual" + "Tracing")
+                .check(classes);
+
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.manual." + "Manual" + "Tracing")).isFalse();
+
+        assertThat(TraceOperations.class.getMethod("spans").getReturnType()).isEqualTo(SpanFactory.class);
+        assertThat(hasNoArgMethod(TraceOperations.class, "manual")).isFalse();
+
+        assertThat(SpanFactory.class.getMethod("operation", String.class).getReturnType().getSimpleName())
+                .isEqualTo("OperationSpanBuilder");
+        assertThat(hasMethod(SpanFactory.class, "operation" + "Span", String.class)).isFalse();
+        assertThat(SpanFactory.class.getMethod("fromSpec", SpanSpec.class).getReturnType().getSimpleName())
+                .isEqualTo("SpanExecution");
+        assertThat(hasMethod(SpanFactory.class, "span" + "FromSpec", SpanSpec.class)).isFalse();
+    }
+
+    private static boolean classCanBeLoaded(String className) {
+        try {
+            Class.forName(className);
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    private static boolean hasNoArgMethod(Class<?> type, String name) {
+        return hasMethod(type, name);
+    }
+
+    private static boolean hasMethod(Class<?> type, String name, Class<?>... parameterTypes) {
+        try {
+            type.getMethod(name, parameterTypes);
+            return true;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     @SuppressWarnings("unused")

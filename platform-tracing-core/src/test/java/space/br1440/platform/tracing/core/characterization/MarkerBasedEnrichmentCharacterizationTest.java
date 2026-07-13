@@ -45,7 +45,7 @@ class MarkerBasedEnrichmentCharacterizationTest {
     @Test
     void v3ManualSpan_сМаркером_триггеритTypedEnrichment() {
         DefaultTraceOperations tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(sdk));
-        try (var ignored = tracing.manual().operation("v3-op").start()) {
+        try (var ignored = tracing.spans().operation("v3-op").start()) {
             enricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.INTERNAL, scope -> scope
                     .attribute(SemconvKeys.PLATFORM_REQUEST_ID, "r-v3"));
         }

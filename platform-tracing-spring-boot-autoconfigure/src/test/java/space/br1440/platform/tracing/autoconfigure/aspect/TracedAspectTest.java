@@ -93,7 +93,7 @@ class TracedAspectTest {
     @Test
     void enrichCurrentModeDoesNotCreateChildSpanWhenParentActive(InMemorySpanExporter exporter) {
         // given: внешний parent-span (имитируем серверный span от Agent / Filter).
-        try (SpanHandle parent = tracing.manual().operation("parent.span").start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent.span").start()) {
             // when: вызов @Traced-метода в режиме ENRICH_CURRENT (по умолчанию).
             service.process(7L);
         }
@@ -130,7 +130,7 @@ class TracedAspectTest {
         SampleService child = factory.getProxy();
 
         // when: вызов @Traced-метода под активным parent-span'ом.
-        try (SpanHandle parent = tracing.manual().operation("parent.span").start()) {
+        try (SpanHandle parent = tracing.spans().operation("parent.span").start()) {
             child.process(99L);
         }
 

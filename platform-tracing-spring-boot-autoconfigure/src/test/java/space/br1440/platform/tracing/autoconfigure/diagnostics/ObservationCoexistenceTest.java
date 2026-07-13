@@ -60,7 +60,7 @@ class ObservationCoexistenceTest {
             Observation observation = Observation.createNotStarted("app.request", observationRegistry)
                     .start();
             try (Observation.Scope scope = observation.openScope()) {
-                tracing.manual().operation("business-logic").start().close();
+                tracing.spans().operation("business-logic").start().close();
             } finally {
                 observation.stop();
             }
@@ -86,7 +86,7 @@ class ObservationCoexistenceTest {
             Observation observation = Observation.createNotStarted("app.request", observationRegistry)
                     .start();
             try (Observation.Scope scope = observation.openScope()) {
-                tracing.manual().operation("intentional-root").root().start().close();
+                tracing.spans().operation("intentional-root").root().start().close();
             } finally {
                 observation.stop();
             }
@@ -99,7 +99,7 @@ class ObservationCoexistenceTest {
     }
 
     @Test
-    void disabledPlatformManualTracing_doesNotDisableSpringObservation() {
+    void disabledPlatformspanFactory_doesNotDisableSpringObservation() {
         contextRunner
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
@@ -108,7 +108,7 @@ class ObservationCoexistenceTest {
                     InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
                     assertThat(tracing).isInstanceOf(NoopTraceOperations.class);
-                    assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode())
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
 
                     Observation observation = Observation.createNotStarted("observation-only", observationRegistry)
@@ -129,7 +129,7 @@ class ObservationCoexistenceTest {
             assertThat(tracingImplementation).isInstanceOf(MeteredTracingRuntime.class);
             assertThat(tracing).isInstanceOf(DefaultTraceOperations.class);
 
-            tracing.manual().operation("metered-delegate").start().close();
+            tracing.spans().operation("metered-delegate").start().close();
 
             assertThat(exporter.getFinishedSpanItems())
                     .extracting(SpanData::getName)

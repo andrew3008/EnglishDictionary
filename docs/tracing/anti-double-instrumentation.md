@@ -44,7 +44,7 @@ messaging span'ы создаёт **OTel Java Agent** автоматически 
 > вместе с legacy `core.span.legacy` / `api.span.builder.*` — см.
 > [ADR-legacy-span-builder-stack-removal.md](../decisions/ADR-legacy-span-builder-stack-removal.md).
 > V3 `TracingRuntime`/`OtelTracingRuntime` **всегда** создаёт новый span при явном вызове
-> `manual().*()` — топология явная (`child()` / `root()` / `detached()`), автоматической
+> `spans().*()` — топология явная (`child()` / `root()` / `detached()`), автоматической
 > деградации в enrich при повторном входе платформы больше нет.
 
 Вместо runtime-guard'а `OtelTracingRuntime.startSpan()` проставляет в OTel `Context` internal-маркер
@@ -55,7 +55,7 @@ enrichCurrentSpanIfPlatformCategory`, см. §«Предпочтительная
 типизированными атрибутами. Агентский span маркера не несёт, поэтому такое обогащение — no-op на
 чистых Агентских span'ах.
 
-Если нужно избежать двойной инструментации при повторном вызове `manual().*()` в рамках одной
+Если нужно избежать двойной инструментации при повторном вызове `spans().*()` в рамках одной
 операции — контролируйте это на уровне вызывающего кода (не вызывайте builder повторно) или
 используйте enrichment вместо создания нового span'а.
 
@@ -63,7 +63,7 @@ enrichCurrentSpanIfPlatformCategory`, см. §«Предпочтительная
 
 > **Slice 1B:** правило `TracingArchRules.ESCAPE_HATCH_BUILDERS_REQUIRE_SUPPRESSION` удалено вместе
 > с v1 `Facade*SpanBuilder` factory-методами на `TraceOperations`. Transport governance для
-> `manual().transport()` вернётся в Slice 3. Primary guard остаётся agent-флаг (§1); §2 описывает
+> `spans().transport()` вернётся в Slice 3. Primary guard остаётся agent-флаг (§1); §2 описывает
 > текущий marker-based enrichment механизм (runtime anti-double guard модели B удалён, см. выше).
 
 Ранее (до Slice 1B) правило запрещало вызовы escape-hatch builder'ов без явной аннотации

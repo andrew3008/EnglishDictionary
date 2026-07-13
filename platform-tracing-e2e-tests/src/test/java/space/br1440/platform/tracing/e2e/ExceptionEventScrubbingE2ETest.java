@@ -120,7 +120,7 @@ class ExceptionEventScrubbingE2ETest {
         String operationName = "exc-manual-secure-" + UUID.randomUUID();
 
         // Manual span path: startSpan -> recordException -> close (OwningSpanScope).
-        try (var scope = secureTracing.manual().operation(operationName).start()) {
+        try (var scope = secureTracing.spans().operation(operationName).start()) {
             scope.recordException(new IllegalStateException(SECRET_MESSAGE));
         }
 
@@ -153,7 +153,7 @@ class ExceptionEventScrubbingE2ETest {
 
         // App inSpan path: при RuntimeException фасад сам вызывает scope.recordException и пробрасывает.
         try {
-            secureTracing.manual().operation(operationName).run(() -> {
+            secureTracing.spans().operation(operationName).run(() -> {
                 throw new IllegalArgumentException(SECRET_MESSAGE);
             });
         } catch (IllegalArgumentException expected) {
@@ -178,7 +178,7 @@ class ExceptionEventScrubbingE2ETest {
         String operationName = "exc-manual-verbose-" + UUID.randomUUID();
         String visibleMessage = "boom-visible-" + UUID.randomUUID();
 
-        try (var scope = verboseTracing.manual().operation(operationName).start()) {
+        try (var scope = verboseTracing.spans().operation(operationName).start()) {
             scope.recordException(new IllegalStateException(visibleMessage));
         }
 

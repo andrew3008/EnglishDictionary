@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.beans.factory.ObjectProvider;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
@@ -44,8 +44,8 @@ public class TracingActuatorAutoConfiguration {
                                                             TracingProperties properties,
                                                             PlatformTracingJmxClient platformTracingJmxClient,
                                                             ObjectProvider<SdkModeDiagnostics> sdkModeDiagnostics,
-                                                            ManualTracingDiagnostics manualTracingDiagnostics) {
+                                                            SpanFactoryDiagnostics spanFactoryDiagnostics) {
         return new TracingActuatorEndpoint(traceOperations, properties, platformTracingJmxClient,
-                sdkModeDiagnostics.getIfAvailable(), manualTracingDiagnostics);
+                sdkModeDiagnostics.getIfAvailable(), spanFactoryDiagnostics);
     }
 }

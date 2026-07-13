@@ -70,7 +70,7 @@ public class KafkaBatchLinksAspect {
 
         String destination = resolveDestination(records, kafkaListener, pjp);
 
-        KafkaBatchSpanBuilder builder = traceOperations.manual()
+        KafkaBatchSpanBuilder builder = traceOperations.spans()
                 .transport()
                 .kafka()
                 .consumer()

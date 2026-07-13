@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.core.manual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.manual.HttpTracing;
-import space.br1440.platform.tracing.api.manual.ManualTracing;
+import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
@@ -17,18 +17,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 3A hard gate: {@code manual().transport().http()} builder foundation.
+ * Slice 3A hard gate: {@code spans().transport().http()} builder foundation.
  */
 class HttpSpanBuilderTest {
 
     private RecordingTracingRuntime recording;
-    private ManualTracing manual;
+    private SpanFactory manual;
 
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
         AttributePolicy strictPolicy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
-        manual = new DefaultManualTracing(recording, strictPolicy);
+        manual = new DefaultSpanFactory(recording, strictPolicy);
     }
 
     @Test

@@ -5,6 +5,12 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), версии — [Semantic Versioning](https://semver.org/lang/ru/).
 
 ## [Unreleased] — Wave R1+ (dual-channel alignment)
+### Breaking Changes
+
+- `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.
+- `TraceOperations.manual()` renamed to `TraceOperations.spans()`.
+- `ManualTracing.spanFromSpec(SpanSpec)` renamed to `SpanFactory.fromSpec(SpanSpec)`.
+- `ManualTracing.operation(String)` is retained as `SpanFactory.operation(String)` inside the `spans()` namespace.
 ### Changed (Batch C - optional API naming cleanup)
 
 - Pre-production API rename cleanup: `SpanLinkContext` -> `RemoteSpanLink`,

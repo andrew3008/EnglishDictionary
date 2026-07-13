@@ -1,6 +1,6 @@
 # TraceOperations v3 — Getting Started
 
-TraceOperations v3 is the public manual-tracing API for Spring Boot services on the platform tracing stack. Auto-instrumentation (OpenTelemetry Java Agent, Spring/Micrometer Observation conventions, `@Traced`) is the **default**. Use `traceOperations.manual()` **only** when automatic instrumentation does not cover your use case.
+TraceOperations v3 is the public span-factory API for Spring Boot services on the platform tracing stack. Auto-instrumentation (OpenTelemetry Java Agent, Spring/Micrometer Observation conventions, `@Traced`) is the **default**. Use `traceOperations.spans()` **only** when automatic instrumentation does not cover your use case.
 
 ## Dependencies
 
@@ -19,7 +19,7 @@ v3 exposes exactly two entry points on `TraceOperations`:
 | Method | Purpose |
 |--------|---------|
 | `traceContext()` | Read-only correlation IDs for logging and error models |
-| `manual()` | Governed manual span creation |
+| `spans()` | Governed span creation |
 
 There is no v1 wide facade (`startSpan`, `inSpan`, `SpanRelation`, transport factory methods on the root interface). See the [migration guide](./platform-tracing-v3-migration-guide.md).
 
@@ -40,7 +40,7 @@ Optional fields: `spanId()`, `correlationId()`.
 ### Run a void action
 
 ```java
-traceOperations.manual()
+traceOperations.spans()
         .operation("recalculate-pricing")
         .run(() -> pricingService.recalculate(orderId));
 ```
@@ -48,7 +48,7 @@ traceOperations.manual()
 ### Return a value
 
 ```java
-Price price = traceOperations.manual()
+Price price = traceOperations.spans()
         .operation("calculate-price")
         .call(() -> pricingService.calculate(orderId));
 ```
@@ -56,19 +56,19 @@ Price price = traceOperations.manual()
 ### Checked exceptions
 
 ```java
-Order order = traceOperations.manual()
+Order order = traceOperations.spans()
         .operation("load-order")
         .callChecked(() -> repository.load(orderId));
 ```
 
-Default topology is **CHILD** when an active trace context exists; otherwise the platform creates an appropriate root. Use `.root()` or `.detached()` explicitly when governance requires it — see [Manual API reference](./platform-tracing-v3-manual-api.md).
+Default topology is **CHILD** when an active trace context exists; otherwise the platform creates an appropriate root. Use `.root()` or `.detached()` explicitly when governance requires it — see [SpanFactory API reference](./platform-tracing-v3-span-factory-api.md).
 
 ## Transport semantic builders
 
 When you need semconv-aligned HTTP, database, RPC, or Kafka spans, use transport builders instead of generic `operation(name)`:
 
 ```java
-traceOperations.manual()
+traceOperations.spans()
         .transport()
         .database()
         .system("postgresql")
@@ -77,13 +77,13 @@ traceOperations.manual()
         .run(() -> repository.findAll());
 ```
 
-See [Manual API reference](./platform-tracing-v3-manual-api.md) for HTTP, RPC, and Kafka builders.
+See [SpanFactory API reference](./platform-tracing-v3-span-factory-api.md) for HTTP, RPC, and Kafka builders.
 
-## When **not** to call `manual()`
+## When **not** to call `spans()`
 
 - Incoming HTTP handled by the OTel Agent or Spring Observation — do not create a duplicate server span.
 - Database/RPC/Kafka already instrumented by the Agent — prefer agent spans unless you need platform semconv attributes the agent does not emit.
-- Method already annotated with `@Traced` — the aspect routes through `manual().operation(...)`; do not double-wrap.
+- Method already annotated with `@Traced` — the aspect routes through `spans().operation(...)`; do not double-wrap.
 
 See [Observability and diagnostics](./platform-tracing-v3-observability-and-diagnostics.md) and [ADR — Micrometer Observation Boundary](../decisions/ADR-platform-tracing-micrometer-observation-boundary.md).
 
@@ -102,6 +102,6 @@ Verify compilation:
 ## Related documents
 
 - [Migration guide](./platform-tracing-v3-migration-guide.md)
-- [Manual API reference](./platform-tracing-v3-manual-api.md)
+- [SpanFactory API reference](./platform-tracing-v3-span-factory-api.md)
 - [Kafka batch links](./platform-tracing-v3-kafka-batch-links.md)
 - [Production readiness](./platform-tracing-v3-production-readiness.md)

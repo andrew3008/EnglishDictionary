@@ -56,7 +56,7 @@ class KafkaConsumerBatchLinksTest {
     void kafkaBatchRootWithLinkedTo_createsRootSpanWithRemoteLinks() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
-        tracing.manual().transport().kafka().consumer()
+        tracing.spans().transport().kafka().consumer()
                 .batch("orders")
                 .root()
                 .linkedTo(link)
@@ -71,7 +71,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchRootWithFromTraceparentParser_parsesTraceparentIntoLinks() {
-        tracing.manual().transport().kafka().consumer()
+        tracing.spans().transport().kafka().consumer()
                 .batch("orders")
                 .root()
                 .fromTraceparent(TRACEPARENT_A, TRACEPARENT_B)
@@ -90,8 +90,8 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchRootInsideActiveParent_isNotChildSpan() {
-        try (var parent = tracing.manual().operation("parent").start()) {
-            tracing.manual().transport().kafka().consumer()
+        try (var parent = tracing.spans().operation("parent").start()) {
+            tracing.spans().transport().kafka().consumer()
                     .batch("orders")
                     .root()
                     .fromTraceparent(TRACEPARENT_A)
@@ -110,7 +110,7 @@ class KafkaConsumerBatchLinksTest {
     void kafkaBatchChildWithLinks_rejectedBeforeStart() {
         RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
         assertThatThrownBy(() ->
-                tracing.manual().transport().kafka().consumer()
+                tracing.spans().transport().kafka().consumer()
                         .batch("orders")
                         .child()
                         .linkedTo(link)
@@ -124,7 +124,7 @@ class KafkaConsumerBatchLinksTest {
     void kafkaBatchDetachedWithLinks_rejectedBeforeStart() {
         RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
         assertThatThrownBy(() ->
-                tracing.manual().transport().kafka().consumer()
+                tracing.spans().transport().kafka().consumer()
                         .batch("orders")
                         .detached()
                         .linkedTo(link)

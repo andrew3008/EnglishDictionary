@@ -33,7 +33,7 @@ public class OrdersController {
         if (tracing == null) {
             return buildOrder(id);
         }
-        try (SpanHandle scope = tracing.manual().operation("load-order").start()) {
+        try (SpanHandle scope = tracing.spans().operation("load-order").start()) {
             populateProdLikeAttributes(id);
             Map<String, Object> order = buildOrder(id);
             Span.current().setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());
@@ -49,7 +49,7 @@ public class OrdersController {
         if (tracing == null) {
             return buildOrder(id);
         }
-        try (SpanHandle scope = tracing.manual().operation("create-order").start()) {
+        try (SpanHandle scope = tracing.spans().operation("create-order").start()) {
             populateProdLikeAttributes(id);
             Span.current().setAttribute("platform.perf.request.size", (long) request.size());
             Map<String, Object> order = buildOrder(id);

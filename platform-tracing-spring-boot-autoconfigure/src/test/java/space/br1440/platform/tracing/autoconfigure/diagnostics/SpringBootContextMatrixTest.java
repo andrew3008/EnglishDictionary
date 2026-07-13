@@ -37,14 +37,14 @@ class SpringBootContextMatrixTest {
                     TracingMetricsAutoConfiguration.class));
 
     @Test
-    void enabledWithOpenTelemetry_exposesEnabledManualTracingDiagnostics() {
+    void enabledWithOpenTelemetry_exposesEnabledSpanFactoryDiagnostics() {
         baseRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
-                    assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }
 
@@ -56,7 +56,7 @@ class SpringBootContextMatrixTest {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class).state().mode())
                             .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
-                    assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode())
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
                 });
     }
@@ -65,7 +65,7 @@ class SpringBootContextMatrixTest {
     void unavailableOpenTelemetry_exposesUnavailableOrNoopDiagnostics() {
         baseRunner.run(context -> {
             assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
-            assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
+            assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode())
                     .isIn("UNAVAILABLE", "NOOP");
         });
     }
@@ -78,7 +78,7 @@ class SpringBootContextMatrixTest {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(MeteredTracingRuntime.class);
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
-                    assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }
 
@@ -89,12 +89,12 @@ class SpringBootContextMatrixTest {
                 .run(context -> {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
-                    assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }
 
     @Test
-    void actuatorEndpoint_includesManualTracingSectionInAllMatrixPaths() {
+    void actuatorEndpoint_includesspanFactorySectionInAllMatrixPaths() {
         baseRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
@@ -102,11 +102,11 @@ class SpringBootContextMatrixTest {
                             context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
-                            context.getBean(ManualTracingDiagnostics.class));
+                            context.getBean(SpanFactoryDiagnostics.class));
                     @SuppressWarnings("unchecked")
-                    Map<String, Object> manualTracing = (Map<String, Object>) endpoint.tracing()
-                            .get("manualTracing");
-                    assertThat(manualTracing).containsKeys("mode", "details");
+                    Map<String, Object> spanFactory = (Map<String, Object>) endpoint.tracing()
+                            .get("spanFactory");
+                    assertThat(spanFactory).containsKeys("mode", "details");
                 });
     }
 
