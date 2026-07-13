@@ -13,7 +13,7 @@ final class LocationRule extends AbstractBuiltInRule {
     private static final String[] TOKENS = {"latitude", "longitude", "altitude", "elevation"};
 
     LocationRule() {
-        super(BuiltInSensitiveDataRules.LOCATION);
+        super(BuiltInSpanAttributeScrubbingRules.LOCATION);
     }
 
     @Nonnull

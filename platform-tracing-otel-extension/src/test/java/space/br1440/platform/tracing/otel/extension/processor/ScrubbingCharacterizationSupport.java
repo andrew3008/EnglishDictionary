@@ -3,8 +3,8 @@ package space.br1440.platform.tracing.otel.extension.processor;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.assertions.ScrubbingAssertions;
 import space.br1440.platform.tracing.test.harness.ScrubbingDecisionCase;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -22,7 +22,7 @@ final class ScrubbingCharacterizationSupport {
     }
 
     static void assertScrubbingCase(ScrubbingDecisionCase c) {
-        List<SensitiveDataRule> rules = resolveRules(c.ruleNames());
+        List<SpanAttributeScrubbingRule> rules = resolveRules(c.ruleNames());
         ScrubbingSpanProcessor processor = c.hmacKey() == null
                 ? new ScrubbingSpanProcessor(rules)
                 : new ScrubbingSpanProcessor(rules, c.hmacKey(), false);
@@ -70,10 +70,10 @@ final class ScrubbingCharacterizationSupport {
         );
     }
 
-    static List<SensitiveDataRule> resolveRules(List<String> names) {
-        List<SensitiveDataRule> rules = new ArrayList<>();
+    static List<SpanAttributeScrubbingRule> resolveRules(List<String> names) {
+        List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
         for (String name : names) {
-            SensitiveDataRule rule = BuiltInSensitiveDataRules.resolve(name);
+            SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve(name);
             if (rule != null) {
                 rules.add(rule);
             }

@@ -11,11 +11,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
@@ -32,7 +33,7 @@ import static org.awaitility.Awaitility.await;
  * Доказывает, что Micrometer Observation корректно маппит 5xx в StatusCode.ERROR.
  */
 @SpringBootTest(
-        classes = {MicrometerStatusMappingE2ETest.App.class, MicrometerStatusMappingE2ETest.TestController.class},
+        classes = MicrometerStatusMappingE2ETest.App.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "platform.tracing.suppression.suppress-micrometer-tracing=false",
@@ -61,14 +62,16 @@ class MicrometerStatusMappingE2ETest {
         await().untilAsserted(() -> {
             List<SpanData> spans = exporter.getFinishedSpanItems();
             assertThat(spans).isNotEmpty();
-            
-            // Нам интересен SERVER span (http.server.requests)
+
             SpanData serverSpan = spans.stream()
                     .filter(s -> s.getKind().name().equals("SERVER"))
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("SERVER span not found"));
-                    
-            assertThat(serverSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+
+            // Micrometer observation in this stack records HTTP status as "status" (string), not semconv key.
+            assertThat(serverSpan.getAttributes().asMap())
+                    .containsEntry(io.opentelemetry.api.common.AttributeKey.stringKey("status"), "500")
+                    .containsEntry(io.opentelemetry.api.common.AttributeKey.stringKey("outcome"), "SERVER_ERROR");
         });
     }
 
@@ -90,7 +93,9 @@ class MicrometerStatusMappingE2ETest {
         });
     }
 
-    @SpringBootApplication
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @Import(MicrometerStatusMappingE2ETest.TestController.class)
     static class App {
         public static void main(String[] args) {
             SpringApplication.run(App.class, args);

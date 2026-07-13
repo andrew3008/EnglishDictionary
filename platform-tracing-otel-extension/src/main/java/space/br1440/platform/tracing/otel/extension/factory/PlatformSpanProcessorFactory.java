@@ -4,7 +4,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import lombok.extern.slf4j.Slf4j;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.extension.configuration.ValidationMode;
 import space.br1440.platform.tracing.otel.extension.configuration.ValidationModeResolver;
@@ -21,7 +21,7 @@ import space.br1440.platform.tracing.otel.extension.processor.PlatformCompositeS
 import space.br1440.platform.tracing.otel.extension.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingRulesLoader;
 import space.br1440.platform.tracing.otel.extension.scrubbing.diagnostics.StartupDiagnostics;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.PriorityHardening;
@@ -65,7 +65,7 @@ public final class PlatformSpanProcessorFactory {
             }
 
             if (extConfig.scrubbing().enabled()) {
-                List<SensitiveDataRule> rules = collectScrubbingRules(extConfig.scrubbing(), config);
+                List<SpanAttributeScrubbingRule> rules = collectScrubbingRules(extConfig.scrubbing(), config);
                 if (!rules.isEmpty()) {
                     String hmacKey = extConfig.scrubbing().hmacKey();
                     String missingKeyPolicy = extConfig.scrubbing().missingKeyPolicy();
@@ -127,7 +127,7 @@ public final class PlatformSpanProcessorFactory {
         }
     }
 
-    private List<SensitiveDataRule> collectScrubbingRules(ScrubbingExtensionConfig scrubbing,
+    private List<SpanAttributeScrubbingRule> collectScrubbingRules(ScrubbingExtensionConfig scrubbing,
                                                           ConfigProperties config) {
         List<String> primaryNames = scrubbing.builtInRules();
         List<String> additionalNames = ScrubbingRulesLoader.load(scrubbing.rulesConfig(), ScrubbingRulesLoader.class.getClassLoader());
@@ -135,9 +135,9 @@ public final class PlatformSpanProcessorFactory {
         Set<String> dedupNames = new LinkedHashSet<>(primaryNames);
         dedupNames.addAll(additionalNames);
 
-        List<SensitiveDataRule> builtIn = new ArrayList<>();
+        List<SpanAttributeScrubbingRule> builtIn = new ArrayList<>();
         for (String name : dedupNames) {
-            SensitiveDataRule rule = BuiltInSensitiveDataRules.resolve(name);
+            SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve(name);
             if (rule != null) {
                 builtIn.add(rule);
             } else {
@@ -145,8 +145,8 @@ public final class PlatformSpanProcessorFactory {
             }
         }
 
-        List<SensitiveDataRule> bundledSpi = new ArrayList<>();
-        ServiceLoader.load(SensitiveDataRule.class, PlatformSpanProcessorFactory.class.getClassLoader())
+        List<SpanAttributeScrubbingRule> bundledSpi = new ArrayList<>();
+        ServiceLoader.load(SpanAttributeScrubbingRule.class, PlatformSpanProcessorFactory.class.getClassLoader())
                 .forEach(bundledSpi::add);
 
         ExtensionRuleLoader.ValidationMode validationMode = resolveValidationMode(scrubbing);
@@ -154,15 +154,15 @@ public final class PlatformSpanProcessorFactory {
 
         ExtensionRuleLoader extensionRuleLoader = new ExtensionRuleLoader(validationMode, otelExtensionPaths);
         String extensionsProperty = scrubbing.rulesExtensions();
-        List<SensitiveDataRule> custom = extensionRuleLoader.load(extensionsProperty);
+        List<SpanAttributeScrubbingRule> custom = extensionRuleLoader.load(extensionsProperty);
 
         emitStartupDiagnostics(builtIn, bundledSpi, custom, extensionsProperty, extensionRuleLoader);
         return mergeRules(builtIn, bundledSpi, custom);
     }
 
-    private static void emitStartupDiagnostics(List<SensitiveDataRule> builtInRules,
-                                               List<SensitiveDataRule> bundledSpiRules,
-                                               List<SensitiveDataRule> customRules,
+    private static void emitStartupDiagnostics(List<SpanAttributeScrubbingRule> builtInRules,
+                                               List<SpanAttributeScrubbingRule> bundledSpiRules,
+                                               List<SpanAttributeScrubbingRule> customRules,
                                                String rulesExtensionsProperty,
                                                ExtensionRuleLoader extensionRuleLoader) {
         long clamped = customRules.stream()
@@ -178,27 +178,27 @@ public final class PlatformSpanProcessorFactory {
         );
     }
 
-    private static List<SensitiveDataRule> mergeRules(List<SensitiveDataRule> builtIn,
-                                                      List<SensitiveDataRule> bundledSpi,
-                                                      List<SensitiveDataRule> custom) {
+    private static List<SpanAttributeScrubbingRule> mergeRules(List<SpanAttributeScrubbingRule> builtIn,
+                                                      List<SpanAttributeScrubbingRule> bundledSpi,
+                                                      List<SpanAttributeScrubbingRule> custom) {
         Set<String> seenNames = new LinkedHashSet<>();
-        List<SensitiveDataRule> rules = new ArrayList<>();
-        for (SensitiveDataRule rule : builtIn) {
+        List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
+        for (SpanAttributeScrubbingRule rule : builtIn) {
             addRuleIfNew(rules, seenNames, rule);
         }
 
-        for (SensitiveDataRule rule : bundledSpi) {
+        for (SpanAttributeScrubbingRule rule : bundledSpi) {
             addRuleIfNew(rules, seenNames, rule);
         }
 
-        for (SensitiveDataRule rule : custom) {
+        for (SpanAttributeScrubbingRule rule : custom) {
             addRuleIfNew(rules, seenNames, rule);
         }
 
         return rules;
     }
 
-    private static void addRuleIfNew(List<SensitiveDataRule> rules, Set<String> seenNames, SensitiveDataRule rule) {
+    private static void addRuleIfNew(List<SpanAttributeScrubbingRule> rules, Set<String> seenNames, SpanAttributeScrubbingRule rule) {
         if (seenNames.add(rule.name())) {
             rules.add(rule);
         }

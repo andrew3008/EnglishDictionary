@@ -65,7 +65,7 @@ package "entry + config" {
     - buildSampler(config) : Sampler
     - registerSpanProcessors(builder, config) : SdkTracerProviderBuilder
     - tryRegisterMBean()
-    - collectScrubbingRules(config) : List<SensitiveDataRule>
+    - collectScrubbingRules(config) : List<SpanAttributeScrubbingRule>
   }
 
   class ExtensionPropertyNames <<utility>> {
@@ -178,8 +178,8 @@ PlatformResourceProvider ..> PlatformAttributes : api
 PlatformResourceProvider ..> ConfigProperties : otel.service.name, platform.tracing.service.*
 
 package "scrubbing" {
-  class BuiltInSensitiveDataRules <<utility>> {
-    {static} resolve(name) : SensitiveDataRule
+  class BuiltInSpanAttributeScrubbingRules <<utility>> {
+    {static} resolve(name) : SpanAttributeScrubbingRule
     EMAIL, JWT, PASSWORD_KEY, PAN, PHONE, IBAN, INN, SNILS
   }
 
@@ -193,19 +193,19 @@ package "scrubbing" {
   class SnilsRule
 }
 
-BuiltInSensitiveDataRules ..> SensitiveDataRule : implements (api)
-EmailRule ..|> SensitiveDataRule
-JwtRule ..|> SensitiveDataRule
-PasswordKeyRule ..|> SensitiveDataRule
-PanRule ..|> SensitiveDataRule
-PhoneRule ..|> SensitiveDataRule
-IbanRule ..|> SensitiveDataRule
-InnRule ..|> SensitiveDataRule
-SnilsRule ..|> SensitiveDataRule
+BuiltInSpanAttributeScrubbingRules ..> SpanAttributeScrubbingRule : implements (api)
+EmailRule ..|> SpanAttributeScrubbingRule
+JwtRule ..|> SpanAttributeScrubbingRule
+PasswordKeyRule ..|> SpanAttributeScrubbingRule
+PanRule ..|> SpanAttributeScrubbingRule
+PhoneRule ..|> SpanAttributeScrubbingRule
+IbanRule ..|> SpanAttributeScrubbingRule
+InnRule ..|> SpanAttributeScrubbingRule
+SnilsRule ..|> SpanAttributeScrubbingRule
 
-ScrubbingSpanProcessor o-- "rules : List<SensitiveDataRule>"
-PlatformAutoConfigurationCustomizer ..> BuiltInSensitiveDataRules : built-in по имени
-PlatformAutoConfigurationCustomizer ..> ServiceLoader : SPI SensitiveDataRule\n(тот же CL, что и extension)
+ScrubbingSpanProcessor o-- "rules : List<SpanAttributeScrubbingRule>"
+PlatformAutoConfigurationCustomizer ..> BuiltInSpanAttributeScrubbingRules : built-in по имени
+PlatformAutoConfigurationCustomizer ..> ServiceLoader : SPI SpanAttributeScrubbingRule\n(тот же CL, что и extension)
 
 note right of PlatformAutoConfigurationCustomizer
   **Порядок addSpanProcessor** (если фичи включены):

@@ -18,7 +18,7 @@ import java.util.List;
  * Custom-правило с приоритетом ниже {@value #CUSTOM_PRIORITY_FLOOR} принудительно поднимается
  * (clamp) до {@value #CUSTOM_PRIORITY_FLOOR} с WARN-логом — чтобы оно не могло встать выше
  * платформенных правил. Critical-признак определяется <b>только</b> методом
- * {@code SensitiveDataRule.critical()}, а не диапазоном приоритета.
+ * {@code SpanAttributeScrubbingRule.critical()}, а не диапазоном приоритета.
  * <p>
  * Сортировка детерминированна: по возрастанию {@code effectivePriority}, затем по имени класса.
  */

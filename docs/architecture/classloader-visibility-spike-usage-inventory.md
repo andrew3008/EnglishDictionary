@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-**Что такое spike:** `ClassLoaderVisibilitySpikeProbe` — утилитарный final-класс в `src/main` модуля `platform-tracing-otel-extension`, который при явной активации через system property печатает машиночитаемые маркеры `SPIKE_CLASSLOADER:...` в `System.err`. Класс реализует два независимых gated-контракта: (a) `emitExtensionLoadResultIfEnabled` — сводка загрузки custom scrubbing rules из production-пути фабрики; (b) `runIfEnabled` — полный probe видимости `SensitiveDataRule` через `ServiceLoader` в четырёх вариантах classloader.
+**Что такое spike:** `ClassLoaderVisibilitySpikeProbe` — утилитарный final-класс в `src/main` модуля `platform-tracing-otel-extension`, который при явной активации через system property печатает машиночитаемые маркеры `SPIKE_CLASSLOADER:...` в `System.err`. Класс реализует два независимых gated-контракта: (a) `emitExtensionLoadResultIfEnabled` — сводка загрузки custom scrubbing rules из production-пути фабрики; (b) `runIfEnabled` — полный probe видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в четырёх вариантах classloader.
 
 **Где расположен:** `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/spike/ClassLoaderVisibilitySpikeProbe.java`.
 
@@ -44,7 +44,7 @@ rg "emitExtensionLoadResultIfEnabled" .
 rg "ClassLoaderVisibilitySpikeE2ETest|classloader visibility|classloader-visibility|visibility spike" .
 rg "System\.err|stderr|error stream|process output|SPIKE_CLASSLOADER" .
 rg "otel\.javaagent\.extensions|OTEL_JAVAAGENT_EXTENSIONS|javaagent.extensions" platform-tracing-otel-extension/src platform-tracing-e2e-tests/src docs
-rg "ExtensionRuleLoader|ScrubbingRulesLoader|SensitiveDataRule|customRules|loadingMode" platform-tracing-otel-extension/src platform-tracing-e2e-tests/src docs
+rg "ExtensionRuleLoader|ScrubbingRulesLoader|SpanAttributeScrubbingRule|customRules|loadingMode" platform-tracing-otel-extension/src platform-tracing-e2e-tests/src docs
 ```
 
 ### Git
@@ -66,7 +66,7 @@ Git unavailable; used rg-based repository search.
 
 | Class | Package | Source Root | Visibility | Public API | Purpose From Code | Risk |
 |-------|---------|-------------|------------|------------|-------------------|------|
-| `ClassLoaderVisibilitySpikeProbe` | `space.br1440.platform.tracing.otel.extension.factory.spike` | `platform-tracing-otel-extension/src/main/java` | `public final` | `ENABLE_PROPERTY`, `LINE_PREFIX`, `TARGET_RULE_NAME`, `TARGET_RULE_CLASS`, `emitExtensionLoadResultIfEnabled(int, String)`, `runIfEnabled()` | Gated stderr-диагностика видимости `SensitiveDataRule` через `ServiceLoader` в OTel Java Agent runtime; маркеры для E2E-парсинга; «не влияет на production-поведение» (Javadoc класса) | Production factory импортирует `factory.spike`; `System.err` при enable; имя «Spike»; hardcoded E2E rule id `custom-e2e-rule` |
+| `ClassLoaderVisibilitySpikeProbe` | `space.br1440.platform.tracing.otel.extension.factory.spike` | `platform-tracing-otel-extension/src/main/java` | `public final` | `ENABLE_PROPERTY`, `LINE_PREFIX`, `TARGET_RULE_NAME`, `TARGET_RULE_CLASS`, `emitExtensionLoadResultIfEnabled(int, String)`, `runIfEnabled()` | Gated stderr-диагностика видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в OTel Java Agent runtime; маркеры для E2E-парсинга; «не влияет на production-поведение» (Javadoc класса) | Production factory импортирует `factory.spike`; `System.err` при enable; имя «Spike»; hardcoded E2E rule id `custom-e2e-rule` |
 
 **Дополнительные spike-классы в `factory/spike`:** NOT FOUND IN REPOSITORY (единственный файл в каталоге).
 
@@ -140,7 +140,7 @@ Agent bootstrap → PlatformSpanProcessorFactory.registerSpanProcessors(...)
 | `SPIKE_CLASSLOADER:extensions=...` | property=true | `System.getProperty("otel.javaagent.extensions")` | E2E parser (косвенно) |
 | `SPIKE_CLASSLOADER:tccl=...` | property=true | `Thread.currentThread().getContextClassLoader()` | E2E parser |
 | `SPIKE_CLASSLOADER:factoryCl=...` | property=true | `PlatformSpanProcessorFactory.class.getClassLoader()` | E2E parser |
-| `SPIKE_CLASSLOADER:apiCl=...` | property=true | `SensitiveDataRule.class.getClassLoader()` | E2E parser |
+| `SPIKE_CLASSLOADER:apiCl=...` | property=true | `SpanAttributeScrubbingRule.class.getClassLoader()` | E2E parser |
 | `SPIKE_CLASSLOADER:variant=...` | property=true | `default`, `tccl`, `factory`, `api` | `parseSpikeVariants` |
 | `SPIKE_CLASSLOADER:loader=...` | property=true | effective classloader per variant | E2E parser |
 | `SPIKE_CLASSLOADER:foundRules=...` | property=true | имена rules из `ServiceLoader` iteration | E2E parser |
@@ -184,7 +184,7 @@ Agent bootstrap → PlatformSpanProcessorFactory.registerSpanProcessors(...)
 
 - Вызывается из `ClassLoaderVisibilitySpikeMain.main` после полной инициализации agent.
 - Печатает BEGIN → metadata → 4 variant blocks → END.
-- Каждый variant итерирует `ServiceLoader<SensitiveDataRule>` с разным classloader; ищет `TARGET_RULE_NAME` / `TARGET_RULE_CLASS`.
+- Каждый variant итерирует `ServiceLoader<SpanAttributeScrubbingRule>` с разным classloader; ищет `TARGET_RULE_NAME` / `TARGET_RULE_CLASS`.
 
 **E2E порядок (inferred из agent lifecycle + кода):** сначала маркеры `customRules`/`loadingMode` (factory, agent init), затем BEGIN/variants/END (main).
 
@@ -247,11 +247,11 @@ Agent bootstrap → PlatformSpanProcessorFactory.registerSpanProcessors(...)
 |--------|-----------|
 | OTel Java Agent classloader isolation | Probe должен выполняться в том же CL-контексте, что и `PlatformSpanProcessorFactory` (`ExtensionClassLoader`), что недостижимо из test-only classpath без agent |
 | ServiceLoader / extension JAR visibility | `runIfEnabled` проверяет 4 CL-варианта; доказательство F1 требует реального agent runtime |
-| Custom `SensitiveDataRule` loading | `emitExtensionLoadResultIfEnabled` подтверждает, что `ExtensionRuleLoader` загрузил rules через dedicated property (F3) |
+| Custom `SpanAttributeScrubbingRule` loading | `emitExtensionLoadResultIfEnabled` подтверждает, что `ExtensionRuleLoader` загрузил rules через dedicated property (F3) |
 | Test-scope-only difficulty | `ClassLoaderVisibilitySpikeMain` в test, но factory-path marker **обязан** жить в agent extension main code, т.к. factory вызывается до `main` |
 | Documented vs implied | ADR и migration docs — explicit; отдельного `package-info` в `factory/spike` — NOT FOUND |
 
-**Связь spike с доменом:** spike **привязан и к scrubbing custom rule loading** (factory call), **и к broader agent classloader concern** (ServiceLoader variants в `runIfEnabled`). Это не общий OTel probe — он специфичен для `SensitiveDataRule` и platform extension factory.
+**Связь spike с доменом:** spike **привязан и к scrubbing custom rule loading** (factory call), **и к broader agent classloader concern** (ServiceLoader variants в `runIfEnabled`). Это не общий OTel probe — он специфичен для `SpanAttributeScrubbingRule` и platform extension factory.
 
 ---
 

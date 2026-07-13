@@ -5,7 +5,7 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import java.util.List;
@@ -17,7 +17,7 @@ class ScrubbingSpanProcessorTest {
     @Test
     void drop_по_имени_password_ключа_перезаписывает_пустой_строкой() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("password")
+                BuiltInSpanAttributeScrubbingRules.resolve("password")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -34,7 +34,7 @@ class ScrubbingSpanProcessorTest {
     @Test
     void jwt_значение_полностью_удаляется() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("jwt")
+                BuiltInSpanAttributeScrubbingRules.resolve("jwt")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -49,7 +49,7 @@ class ScrubbingSpanProcessorTest {
     @Test
     void email_хэшируется_когда_задан_hmac_ключ() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("email")
+                BuiltInSpanAttributeScrubbingRules.resolve("email")
         ), "secret-key", false))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -68,7 +68,7 @@ class ScrubbingSpanProcessorTest {
     @Test
     void email_деградирует_до_маски_без_hmac_ключа() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("email")
+                BuiltInSpanAttributeScrubbingRules.resolve("email")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -85,7 +85,7 @@ class ScrubbingSpanProcessorTest {
     @Test
     void oauth_authorization_заголовок_удаляется() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();

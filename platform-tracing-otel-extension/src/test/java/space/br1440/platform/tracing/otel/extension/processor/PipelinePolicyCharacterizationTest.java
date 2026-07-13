@@ -6,7 +6,7 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.assertions.EnrichmentAssertions;
 import space.br1440.platform.tracing.test.assertions.ScrubbingAssertions;
 import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
@@ -53,7 +53,7 @@ class PipelinePolicyCharacterizationTest {
     void enriching_runs_before_scrubbing_in_composite_onEnding() {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 new EnrichingSpanProcessor(),
-                new ScrubbingSpanProcessor(List.of(BuiltInSensitiveDataRules.resolve("oauth-header")))));
+                new ScrubbingSpanProcessor(List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")))));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
             Tracer tracer = h.tracer("t");
@@ -71,7 +71,7 @@ class PipelinePolicyCharacterizationTest {
     void scrubbing_runs_before_validation_in_composite_onEnding() {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 new EnrichingSpanProcessor(),
-                new ScrubbingSpanProcessor(List.of(BuiltInSensitiveDataRules.resolve("oauth-header"))),
+                new ScrubbingSpanProcessor(List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"))),
                 new ValidatingSpanProcessor(false)));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite, Resource.empty())) {

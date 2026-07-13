@@ -21,7 +21,7 @@ final class PasswordKeyRule extends AbstractBuiltInRule {
     };
 
     PasswordKeyRule() {
-        super(BuiltInSensitiveDataRules.PASSWORD_KEY);
+        super(BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY);
     }
 
     @Nonnull

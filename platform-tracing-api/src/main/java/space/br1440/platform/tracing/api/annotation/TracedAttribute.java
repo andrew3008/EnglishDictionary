@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  * {@code <key> = String.valueOf(parameter)}.
  * <p>
  * Чувствительные данные не должны помечаться этой аннотацией. Подробности — в платформенных правилах
- * скраббинга атрибутов и в SPI {@code SensitiveDataRule}.
+ * скраббинга атрибутов и в SPI {@code SpanAttributeScrubbingRule}.
  */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)

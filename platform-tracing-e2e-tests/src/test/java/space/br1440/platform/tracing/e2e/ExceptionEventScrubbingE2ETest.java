@@ -12,10 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
 import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
@@ -23,6 +20,7 @@ import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.e2e.support.JaegerTestContainerSupport;
 import space.br1440.platform.tracing.e2e.support.JaegerV3QueryClient;
+import space.br1440.platform.tracing.e2e.support.OtelCollectorTestContainerSupport;
 
 import java.time.Duration;
 import java.util.List;
@@ -74,18 +72,10 @@ class ExceptionEventScrubbingE2ETest {
         jaeger = JaegerTestContainerSupport.newJaeger(network);
         jaeger.start();
 
-        collector = new GenericContainer<>(DockerImageName.parse("otel/opentelemetry-collector-contrib:0.154.0"))
-                .withNetwork(network)
-                .withNetworkAliases("otel-collector")
-                .withCopyFileToContainer(
-                        MountableFile.forClasspathResource("e2e/otel-collector-e2e.yaml"),
-                        "/etc/otelcol-contrib/config.yaml")
-                .withExposedPorts(4318, 13133)
-                .waitingFor(Wait.forHttp("/").forPort(13133).withStartupTimeout(Duration.ofMinutes(2)))
-                .dependsOn(jaeger);
+        collector = OtelCollectorTestContainerSupport.newE2eCollector(network, jaeger);
         collector.start();
 
-        String collectorEndpoint = "http://" + collector.getHost() + ":" + collector.getMappedPort(4318) + "/v1/traces";
+        String collectorEndpoint = OtelCollectorTestContainerSupport.otlpHttpTracesEndpointFromHost(collector);
         jaegerClient = new JaegerV3QueryClient(JaegerTestContainerSupport.queryBaseUrl(jaeger));
 
         sdk = OpenTelemetrySdk.builder()

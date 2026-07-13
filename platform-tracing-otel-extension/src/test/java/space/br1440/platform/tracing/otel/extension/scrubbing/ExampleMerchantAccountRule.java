@@ -5,19 +5,19 @@ import com.google.auto.service.AutoService;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
 /**
  * Пример кастомного правила маскирования PII для микросервисов (test fixture).
  * <p>
- * Иллюстрирует паттерн расширения: правило реализует {@link SensitiveDataRule} и регистрируется
+ * Иллюстрирует паттерн расширения: правило реализует {@link SpanAttributeScrubbingRule} и регистрируется
  * через {@link AutoService} в файле {@code META-INF/services/...} автоматически (compile-time).
  * <p>
  * Потребители могут копировать этот шаблон, добавлять его в отдельный JAR (зависящий от
  * {@code platform-tracing-api} как {@code compileOnly}) и подключать к OTel Agent.
  */
-@AutoService(SensitiveDataRule.class)
-public class ExampleMerchantAccountRule implements SensitiveDataRule {
+@AutoService(SpanAttributeScrubbingRule.class)
+public class ExampleMerchantAccountRule implements SpanAttributeScrubbingRule {
 
     @Nonnull
     @Override

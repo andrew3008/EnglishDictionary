@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing.policy;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -85,9 +85,9 @@ class ScrubbingRuleResolutionTest {
 
     @Test
     void lookup_matches_resolve_registry() {
-        assertThat(BuiltInSensitiveDataRules.lookup("EMAIL")).isEqualTo(BuiltInSensitiveDataRules.EMAIL);
-        assertThat(BuiltInSensitiveDataRules.lookup("unknown")).isNull();
-        assertThat(BuiltInSensitiveDataRules.lookup(null)).isNull();
+        assertThat(BuiltInSpanAttributeScrubbingRules.lookup("EMAIL")).isEqualTo(BuiltInSpanAttributeScrubbingRules.EMAIL);
+        assertThat(BuiltInSpanAttributeScrubbingRules.lookup("unknown")).isNull();
+        assertThat(BuiltInSpanAttributeScrubbingRules.lookup(null)).isNull();
     }
 
     @Test

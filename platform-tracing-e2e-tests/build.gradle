@@ -159,7 +159,7 @@ tasks.named('processCustomRuleResources') {
 // Test-only extension JAR, содержащий ClassLoaderVisibilityTestProbe.
 // Загружается через otel.javaagent.extensions; OTel Agent создаёт отдельный ExtensionClassLoader
 // для каждого JAR в директории extensions, поэтому platform-tracing-api должен быть embedded,
-// чтобы SensitiveDataRule был доступен в этом CL — аналогично agentExtensionJar.
+// чтобы SpanAttributeScrubbingRule был доступен в этом CL — аналогично agentExtensionJar.
 tasks.register('testClassLoaderProbeJar', Jar) {
     archiveClassifier.set('cl-probe')
     dependsOn project(':platform-tracing-api').tasks.named('jar')

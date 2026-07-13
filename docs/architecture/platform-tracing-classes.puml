@@ -16,7 +16,7 @@ title Межмодульные связи (implements / uses / Gradle api)
 package "platform-tracing-api" as M_API #FFF8E1 {
   interface PlatformTracing
   interface SpanScope
-  interface SensitiveDataRule <<SPI>>
+  interface SpanAttributeScrubbingRule <<SPI>>
 }
 
 package "platform-tracing-core" as M_CORE #FFE0B2 {
@@ -49,7 +49,7 @@ PlatformTracing <|.. MeteredPlatformTracing
 SpanScope <|.. "DefaultPlatformTracing\n.OtelSpanScope"
 SpanScope <|.. "NoOpPlatformTracing\n.NoOpSpanScope"
 
-SensitiveDataRule <|.. "EmailRule\nJwtRule\nPanRule\n..."
+SpanAttributeScrubbingRule <|.. "EmailRule\nJwtRule\nPanRule\n..."
 
 M_STARTER ..> M_AUTO : api
 M_AUTO ..> M_CORE : api
@@ -65,7 +65,7 @@ TracingCoreAutoConfiguration ..> TracingProperties : @EnableConfigurationPropert
 
 PlatformAutoConfigurationCustomizer ..> CompositeSampler : buildSampler()
 PlatformAutoConfigurationCustomizer ..> EnrichingSpanProcessor : registerSpanProcessors()
-PlatformAutoConfigurationCustomizer ..> SensitiveDataRule : ServiceLoader
+PlatformAutoConfigurationCustomizer ..> SpanAttributeScrubbingRule : ServiceLoader
 
 TracedAspect ..> PlatformTracing : uses
 TracedAspect ..> SpanScope : startSpan / close
@@ -144,7 +144,7 @@ package "space.br1440.platform.tracing.api.spi" {
   interface SpanEnricher <<SPI>> {
     +enrich(spanScope: SpanScope): void
   }
-  interface SensitiveDataRule <<SPI>> {
+  interface SpanAttributeScrubbingRule <<SPI>> {
     +name(): String
     +priority(): int
     +matches(key, value): boolean
@@ -376,7 +376,7 @@ package "processor" {
     +onEnding(...): void
   }
   class ScrubbingSpanProcessor {
-    -rules: List<SensitiveDataRule>
+    -rules: List<SpanAttributeScrubbingRule>
     +onEnding(...): void
   }
   class ValidatingSpanProcessor {
@@ -398,9 +398,9 @@ package "processor" {
 }
 
 package "scrubbing" {
-  class BuiltInSensitiveDataRules <<utility>> {
+  class BuiltInSpanAttributeScrubbingRules <<utility>> {
     {static} +PASSWORD_KEY, JWT, EMAIL, ...
-    {static} +resolve(name): SensitiveDataRule
+    {static} +resolve(name): SpanAttributeScrubbingRule
   }
   class EmailRule
   class JwtRule
@@ -488,7 +488,7 @@ package "«external OTel SDK SPI»" as SPI {
 }
 
 package "«api»" as API {
-  interface SensitiveDataRule
+  interface SpanAttributeScrubbingRule
   class PlatformAttributes
   class PlatformHeaders
   enum SpanCategory
@@ -504,14 +504,14 @@ ExtendedSpanProcessor <|.. ScrubbingSpanProcessor
 ExtendedSpanProcessor <|.. ValidatingSpanProcessor
 ExtendedSpanProcessor <|.. SpanWatchdogProcessor
 ExtendedSpanProcessor <|.. SafeSpanProcessor
-SensitiveDataRule <|.. EmailRule
-SensitiveDataRule <|.. JwtRule
-SensitiveDataRule <|.. PasswordKeyRule
-SensitiveDataRule <|.. PanRule
-SensitiveDataRule <|.. PhoneRule
-SensitiveDataRule <|.. IbanRule
-SensitiveDataRule <|.. InnRule
-SensitiveDataRule <|.. SnilsRule
+SpanAttributeScrubbingRule <|.. EmailRule
+SpanAttributeScrubbingRule <|.. JwtRule
+SpanAttributeScrubbingRule <|.. PasswordKeyRule
+SpanAttributeScrubbingRule <|.. PanRule
+SpanAttributeScrubbingRule <|.. PhoneRule
+SpanAttributeScrubbingRule <|.. IbanRule
+SpanAttributeScrubbingRule <|.. InnRule
+SpanAttributeScrubbingRule <|.. SnilsRule
 
 PlatformAutoConfigurationCustomizer --> CompositeSampler : buildSampler
 PlatformAutoConfigurationCustomizer --> MutableRatioSampler : creates
@@ -521,9 +521,9 @@ PlatformAutoConfigurationCustomizer --> ScrubbingSpanProcessor
 PlatformAutoConfigurationCustomizer --> ValidatingSpanProcessor
 PlatformAutoConfigurationCustomizer --> SpanWatchdogProcessor
 SafeSpanProcessor o-- ExtendedSpanProcessor : delegate
-ScrubbingSpanProcessor o-- SensitiveDataRule : rules
-PlatformAutoConfigurationCustomizer ..> BuiltInSensitiveDataRules : resolve
-PlatformAutoConfigurationCustomizer ..> SensitiveDataRule : ServiceLoader
+ScrubbingSpanProcessor o-- SpanAttributeScrubbingRule : rules
+PlatformAutoConfigurationCustomizer ..> BuiltInSpanAttributeScrubbingRules : resolve
+PlatformAutoConfigurationCustomizer ..> SpanAttributeScrubbingRule : ServiceLoader
 PlatformAutoConfigurationCustomizer --> PlatformTracingJmxRegistrar : tryRegisterMBeans()
 PlatformSamplingControl --> MutableRatioSampler
 PlatformSamplingControl --> SamplerStateHolder : configHolder

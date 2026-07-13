@@ -151,7 +151,7 @@ DR-02, DR-03.
 ### 4.4 ScrubbingSpanProcessor
 
 #### Responsibility
-Apply `SensitiveDataRule` list on all span attribute types at `onEnding`; MASK/DROP/HASH/TRUNCATE; runtime policy via `ScrubbingPolicyHolder`.
+Apply `SpanAttributeScrubbingRule` list on all span attribute types at `onEnding`; MASK/DROP/HASH/TRUNCATE; runtime policy via `ScrubbingPolicyHolder`.
 
 #### Runtime Lifecycle
 - Iterates all attributes on span at onEnding

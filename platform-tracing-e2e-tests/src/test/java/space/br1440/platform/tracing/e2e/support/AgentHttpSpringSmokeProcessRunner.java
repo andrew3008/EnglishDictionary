@@ -127,9 +127,13 @@ public final class AgentHttpSpringSmokeProcessRunner {
         }
         builder.redirectErrorStream(true);
 
+        StringBuilder output = new StringBuilder();
+        output.append("SMOKE_JVM_PROPERTIES=").append(jvmProperties).append(System.lineSeparator());
+        output.append("SMOKE_REQUEST_ROUTE=").append(requestRoute).append(System.lineSeparator());
+        output.append("SMOKE_REQUEST_HEADERS=").append(requestHeaders).append(System.lineSeparator());
+
         Process process = builder.start();
 
-        StringBuilder output = new StringBuilder();
         Thread reader = new Thread(() -> {
             try (BufferedReader in = new BufferedReader(
                     new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {

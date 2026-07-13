@@ -1,7 +1,8 @@
 # Минимальная конфигурация OpenTelemetry Collector для e2e-тестов модуля platform-tracing-e2e-tests.
 #
 # В отличие от production-конфига `platform-tracing-collector-config/.../otel-collector-config.yaml`:
-#   - jaeger зовётся `jaeger:4317` (network alias тестового контейнера, не `jaeger-collector`);
+#   - jaeger endpoint задаётся через env JAEGER_OTLP_GRPC_ENDPOINT (IP:4317 на Gentoo;
+#     fallback `jaeger:4317` — network alias, не `jaeger-collector`);
 #   - decision_wait уменьшен до 5s, чтобы тесты завершались быстрее;
 #   - num_traces уменьшен до 1000 — достаточно для двух тестов;
 #   - оставлены только critical-policies из production-набора:
@@ -61,7 +62,7 @@ processors:
 
 exporters:
   otlp/jaeger:
-    endpoint: jaeger:4317
+    endpoint: ${env:JAEGER_OTLP_GRPC_ENDPOINT:-jaeger:4317}
     tls:
       insecure: true
 

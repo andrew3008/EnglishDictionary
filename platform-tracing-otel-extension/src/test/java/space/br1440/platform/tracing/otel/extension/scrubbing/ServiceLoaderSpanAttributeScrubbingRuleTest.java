@@ -5,7 +5,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,12 +17,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Unit-тест для верификации SPI-расширяемости и детерминированности приоритетов правил.
  */
-class ServiceLoaderSensitiveDataRuleTest {
+class ServiceLoaderSpanAttributeScrubbingRuleTest {
 
     @Test
     void serviceLoader_находит_правило_с_test_classpath_через_autoservice() {
-        List<SensitiveDataRule> rules = new ArrayList<>();
-        ServiceLoader.load(SensitiveDataRule.class, getClass().getClassLoader())
+        List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
+        ServiceLoader.load(SpanAttributeScrubbingRule.class, getClass().getClassLoader())
                 .forEach(rules::add);
 
         boolean foundExample = rules.stream()
@@ -36,18 +36,18 @@ class ServiceLoaderSensitiveDataRuleTest {
 
     @Test
     void правила_корректно_сортируются_по_приоритету_независимо_от_порядка_загрузки() {
-        SensitiveDataRule highPriorityRule = new TestRule("high-priority", 5);
-        SensitiveDataRule mediumPriorityRule = new TestRule("medium-priority", 50);
-        SensitiveDataRule lowPriorityRule = new ExampleMerchantAccountRule(); // priority = 2000
+        SpanAttributeScrubbingRule highPriorityRule = new TestRule("high-priority", 5);
+        SpanAttributeScrubbingRule mediumPriorityRule = new TestRule("medium-priority", 50);
+        SpanAttributeScrubbingRule lowPriorityRule = new ExampleMerchantAccountRule(); // priority = 2000
 
-        List<SensitiveDataRule> unorderedList = new ArrayList<>(List.of(
+        List<SpanAttributeScrubbingRule> unorderedList = new ArrayList<>(List.of(
                 lowPriorityRule,
                 highPriorityRule,
                 mediumPriorityRule
         ));
 
         // ScrubbingSpanProcessor производит именно такую сортировку в конструкторе
-        unorderedList.sort(Comparator.comparingInt(SensitiveDataRule::priority));
+        unorderedList.sort(Comparator.comparingInt(SpanAttributeScrubbingRule::priority));
 
         assertThat(unorderedList).containsExactly(
                 highPriorityRule,
@@ -56,7 +56,7 @@ class ServiceLoaderSensitiveDataRuleTest {
         );
     }
 
-    private record TestRule(String name, int priority) implements SensitiveDataRule {
+    private record TestRule(String name, int priority) implements SpanAttributeScrubbingRule {
         @Nonnull
         @Override
         public ScrubbingDecision evaluate(@Nonnull String key, @Nullable Object value) {

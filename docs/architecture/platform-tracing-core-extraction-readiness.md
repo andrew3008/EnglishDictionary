@@ -32,10 +32,10 @@ Behavior changes: none
 ```text
 PR-9D_STATUS=COMPLETED_SCRUBBING_EXTRACTION_PREP
 Pure helper extracted (agent-side, core-ready): ScrubbingRuleResolution, ScrubbingRuleResolutionResult
-BuiltInSensitiveDataRules.lookup() added (name → enum, no rule instantiation)
+BuiltInSpanAttributeScrubbingRules.lookup() added (name → enum, no rule instantiation)
 ScrubbingPolicyUpdate delegates rule-name validation/selection to pure helper
 Stayed agent-side: ScrubbingSnapshot, RuleExecutionWrapper, ScrubbingPolicyHolder, ScrubbingSpanProcessor
-core.scrubbing move: deferred (registry still coupled to BuiltInSensitiveDataRules enum + rule classes)
+core.scrubbing move: deferred (registry still coupled to BuiltInSpanAttributeScrubbingRules enum + rule classes)
 Behavior changes: none
 ```
 
@@ -122,7 +122,7 @@ No blocking violations requiring immediate refactor.
 |-------|----------|-------|
 | `ScrubbingRuleResolution` | `otel-extension.scrubbing.policy` | Pure name validate/select; core-ready |
 | `ScrubbingRuleResolutionResult` | `otel-extension.scrubbing.policy` | Resolution result value object |
-| `BuiltInSensitiveDataRules.lookup()` | otel-extension | Pure enum lookup without `create()` |
+| `BuiltInSpanAttributeScrubbingRules.lookup()` | otel-extension | Pure enum lookup without `create()` |
 
 **Intentionally agent-side:** `ScrubbingSnapshot`, `RuleExecutionWrapper`, holders, processors, JMX bridge.
 

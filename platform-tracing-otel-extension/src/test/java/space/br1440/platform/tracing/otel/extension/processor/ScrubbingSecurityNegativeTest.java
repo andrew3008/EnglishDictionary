@@ -6,7 +6,7 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import java.util.List;
@@ -24,8 +24,8 @@ class ScrubbingSecurityNegativeTest {
         // authorization матчит и OAuthHeaderRule (DROP, priority 10), и EmailRule по значению
         // (HASH, priority 130). Должен победить DROP независимо от порядка регистрации.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("email"),
-                BuiltInSensitiveDataRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.resolve("email"),
+                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         ), "key", false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -41,7 +41,7 @@ class ScrubbingSecurityNegativeTest {
     @Test
     void drop_integration_секрет_отсутствует_в_экспортированной_SpanData() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -67,7 +67,7 @@ class ScrubbingSecurityNegativeTest {
     @Test
     void fail_fast_без_ключа_бросает_на_старте() {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> new ScrubbingSpanProcessor(List.of(BuiltInSensitiveDataRules.resolve("email")), null, true));
+                () -> new ScrubbingSpanProcessor(List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), null, true));
     }
 
     @Test
@@ -75,7 +75,7 @@ class ScrubbingSecurityNegativeTest {
         // Документируем честную границу: ScrubbingSpanProcessor мутирует только span attributes.
         // Атрибуты событий через ReadWriteSpan не модифицируются — это safety net Collector'а.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("oauth-header")
+                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -91,7 +91,7 @@ class ScrubbingSecurityNegativeTest {
 
     private static String hashEmail(String key) {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
-                BuiltInSensitiveDataRules.resolve("email")
+                BuiltInSpanAttributeScrubbingRules.resolve("email")
         ), key, false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();

@@ -98,7 +98,7 @@ Module: platform-tracing-api
 Public-facing: yes
 Intended consumers: application code needing PlatformTracing facade contracts, semconv, propagation, SPI scrubbing rules
 Should application teams depend on it directly: yes (optional — only when explicit API needed; normally via starter)
-Current role: public contracts — PlatformTracing, @Traced, span builders (interfaces), semconv keys, propagation, DomainConfigHolder, SensitiveDataRule SPI
+Current role: public contracts — PlatformTracing, @Traced, span builders (interfaces), semconv keys, propagation, DomainConfigHolder, SpanAttributeScrubbingRule SPI
 Target role: platform-tracing-api — contracts, semconv, propagation, wire schema
 Migration sensitivity: HIGH (backward compatibility)
 Notes: has compileOnly OTel context/api — MIGRATION_RISK vs target "JDK only"
@@ -440,7 +440,7 @@ starters -> autoconfigure + web*                    CURRENT: yes
 | `...api.config` | api | 2 | DomainConfigHolder, Versioned | yes | no | yes | yes | API | atomic config holder |
 | `...api.propagation.control` | api | 6 | Outbound propagation policy | yes | partial | yes | yes | API | |
 | `...api.span.builder` | api | 18 | Typed builder interfaces/facades | partial | no | yes | partial | API | |
-| `...api.spi` | api | 3 | SensitiveDataRule SPI | yes | no | yes | yes | API | |
+| `...api.spi` | api | 3 | SpanAttributeScrubbingRule SPI | yes | no | yes | yes | API | |
 | `...core.span` | core | 19 | Span builder implementations | partial | yes (OTel) | yes | yes | CORE + SPLIT | OTel Span types |
 | `...core.semconv` | core | 4 | AttributePolicy, ValidatedAttributes | yes | partial | yes | yes | CORE | |
 | `...otel.extension.sampler` | otel-ext | 18 | CompositeSampler, rules, state | yes | yes | **yes** | **yes** | SPLIT_CORE_AND_ADAPTER | primary sampling |
@@ -525,12 +525,12 @@ Migration recommendation: DUPLICATE_BEFORE_MOVE — copy rule chain tests to cor
 ### 9.2. Scrubbing
 
 ```text
-Current classes: ScrubbingSpanProcessor, ScrubbingPolicyHolder, ScrubbingSnapshot, scrubbing.engine.*, scrubbing.loader.*, BuiltInRules, SensitiveDataRule (api SPI)
-Rule model: SPI SensitiveDataRule + built-in rules + YAML/ServiceLoader loaders + merge engine + per-rule circuit breaker
+Current classes: ScrubbingSpanProcessor, ScrubbingPolicyHolder, ScrubbingSnapshot, scrubbing.engine.*, scrubbing.loader.*, BuiltInRules, SpanAttributeScrubbingRule (api SPI)
+Rule model: SPI SpanAttributeScrubbingRule + built-in rules + YAML/ServiceLoader loaders + merge engine + per-rule circuit breaker
 Sensitive data handling: attribute key/value scrubbing, exception events, IP truncation, SQL/URL sanitizers in api
 Fail-open/fail-closed: processor catches errors — span export continues (non-blocking); rule circuit breaker disables hot rules
 Regex/ReDoS risks: RuleCircuitBreaker, ScrubbingSecurityNegativeTest, KeyMatcher tests
-Tests: ScrubbingSpanProcessorTest, AdvancedTest, SecurityNegativeTest, BuiltInRulesTest, MergeEngineTest, ServiceLoaderSensitiveDataRuleTest, ExceptionEventScrubbingE2ETest
+Tests: ScrubbingSpanProcessorTest, AdvancedTest, SecurityNegativeTest, BuiltInRulesTest, MergeEngineTest, ServiceLoaderSpanAttributeScrubbingRuleTest, ExceptionEventScrubbingE2ETest
 Benchmarks: ScrubbingEngineBenchmark, ScrubbingPerRuleBenchmark, ScrubbingFixtures (contract test)
 Target split: rule evaluation engine → core; OTel SpanProcessor callback → extension
 Preservation risk: CRITICAL (mandatory baseline pipeline)
@@ -658,7 +658,7 @@ Preservation risk: HIGH
 ```text
 Constants: SemconvKeys, PlatformAttributes, PlatformSamplingReasons, PlatformHeaders, TracingMdcKeys
 Typed builders: api.span.builder.* interfaces + Facade* wrappers; core *Impl classes
-Public interfaces: PlatformTracing, SpanScope, SensitiveDataRule SPI, PlatformContextPropagation
+Public interfaces: PlatformTracing, SpanScope, SpanAttributeScrubbingRule SPI, PlatformContextPropagation
 Propagation contracts: PlatformTraceControl, PlatformOutboundInjector, OutboundPropagationPolicy, TrustedDestinationMatcher
 Backward compatibility sensitivity: HIGH — app code compiles against api
 Tests: CategoryContractsTest, SanitizerTest, propagation tests, RemoteServiceMdcTest
@@ -722,7 +722,7 @@ Preservation risk: CRITICAL
 | `CompositeSamplerPolicyBranchesBenchmark` | bench | JMH | rule branch costs | *Rule classes | yes | yes | yes | yes | HIGH |
 | `CompositeSamplerConcurrentUpdateBenchmark` | bench | JMH | concurrent update | SamplerStateHolder | yes | yes | yes | yes | HIGH |
 | `ScrubbingEngineBenchmark` | bench | JMH | scrubbing engine | scrubbing.engine | yes | yes | yes | yes | HIGH |
-| `ScrubbingPerRuleBenchmark` | bench | JMH | per-rule cost | SensitiveDataRule | yes | yes | yes | yes | HIGH |
+| `ScrubbingPerRuleBenchmark` | bench | JMH | per-rule cost | SpanAttributeScrubbingRule | yes | yes | yes | yes | HIGH |
 | `QueueOfferBenchmark` | bench | JMH | BSP vs drop-oldest offer path | PlatformDropOldestExportSpanProcessor | yes | yes | yes | yes | HIGH |
 | `CompositePipelineBenchmark` | bench | JMH | full processor pipeline | processor chain | yes | yes | partial | yes | HIGH |
 | `AttributePolicyBenchmark` | bench | JMH | attribute policy eval | AttributePolicy | yes | yes | yes | yes | MEDIUM |
@@ -1101,7 +1101,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.span.sanitize / UrlSanitizer
     platform-tracing-api / space.br1440.platform.tracing.api.spi / ScrubbingAction
     platform-tracing-api / space.br1440.platform.tracing.api.spi / ScrubbingDecision
-    platform-tracing-api / space.br1440.platform.tracing.api.spi / SensitiveDataRule
+    platform-tracing-api / space.br1440.platform.tracing.api.spi / SpanAttributeScrubbingRule
     platform-tracing-api / space.br1440.platform.tracing.api.util / ThrowingSupplier
     platform-tracing-autoconfigure-webflux / space.br1440.platform.tracing.autoconfigure.reactive / PlatformClientRequestBuilderSetter
     platform-tracing-autoconfigure-webflux / space.br1440.platform.tracing.autoconfigure.reactive / PlatformOutboundExchangeFilterFunction
@@ -1225,7 +1225,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplingRequest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplingRule
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / AbstractBuiltInRule
-    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / BuiltInSensitiveDataRules
+    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / BuiltInSpanAttributeScrubbingRules
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / EmailRule
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / HardwareIdentityRule
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / InfraCredentialRule
@@ -1484,7 +1484,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / IpPrefixTruncatorTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / KeyMatcherTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ScrubbingRulesLoaderTest
-    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ServiceLoaderSensitiveDataRuleTest
+    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ServiceLoaderSpanAttributeScrubbingRuleTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker / RuleCircuitBreakerTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing.engine / MergeEngineTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.scrubbing.loader / ExtensionRuleLoaderTest

@@ -16,7 +16,7 @@ final class InfraCredentialRule extends AbstractBuiltInRule {
     };
 
     InfraCredentialRule() {
-        super(BuiltInSensitiveDataRules.INFRA_CREDENTIAL);
+        super(BuiltInSpanAttributeScrubbingRules.INFRA_CREDENTIAL);
     }
 
     @Nonnull

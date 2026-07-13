@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
 import space.br1440.platform.tracing.api.runtime.state.VersionedState;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.PriorityHardening;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
@@ -47,14 +47,14 @@ public final class ScrubbingSnapshot implements VersionedState {
      * entries (startup fail-fast, same as invalid rule construction).
      */
     public static ScrubbingSnapshot fromRules(boolean enabled,
-                                              List<SensitiveDataRule> rules,
+                                              List<SpanAttributeScrubbingRule> rules,
                                               long version,
                                               Instant updatedAt,
                                               String source) {
         if (rules == null) {
             throw new NullPointerException("rules");
         }
-        for (SensitiveDataRule rule : rules) {
+        for (SpanAttributeScrubbingRule rule : rules) {
             if (rule == null) {
                 throw new NullPointerException("rules must not contain null entries");
             }
@@ -63,13 +63,13 @@ public final class ScrubbingSnapshot implements VersionedState {
     }
 
     /**
-     * Компилирует обёртки правил из набора {@link SensitiveDataRule}: каждое правило получает свой
+     * Компилирует обёртки правил из набора {@link SpanAttributeScrubbingRule}: каждое правило получает свой
      * {@link RuleCircuitBreaker}, список clamp'ится и детерминированно сортируется. Side-effect-free
      * (создаёт новые объекты), пригодна для CAS-цикла {@code tryUpdate}.
      */
-    public static List<RuleExecutionWrapper> compileWrappers(List<SensitiveDataRule> rules) {
+    public static List<RuleExecutionWrapper> compileWrappers(List<SpanAttributeScrubbingRule> rules) {
         List<RuleExecutionWrapper> raw = new ArrayList<>(rules.size());
-        for (SensitiveDataRule rule : rules) {
+        for (SpanAttributeScrubbingRule rule : rules) {
             raw.add(new RuleExecutionWrapper(rule, new RuleCircuitBreaker(rule.name())));
         }
         return PriorityHardening.sortAndClamp(raw);

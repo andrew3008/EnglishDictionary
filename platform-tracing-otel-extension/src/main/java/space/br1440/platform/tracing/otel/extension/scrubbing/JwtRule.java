@@ -20,7 +20,7 @@ final class JwtRule extends AbstractBuiltInRule {
             "eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*");
 
     JwtRule() {
-        super(BuiltInSensitiveDataRules.JWT);
+        super(BuiltInSpanAttributeScrubbingRules.JWT);
     }
 
     @Nonnull

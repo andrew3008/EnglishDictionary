@@ -169,7 +169,7 @@ public class TracingActuatorEndpoint {
         scrubbingInfo.put("liveRuleCount", scrubbingMetrics.isEmpty() ? null : scrubbingMetrics.get("rules.loaded"));
         scrubbingInfo.put("customRulesSource", "otel-agent-spi");
         scrubbingInfo.put("customRulesVisible", false);
-        scrubbingInfo.put("note", "SPI-реализации SensitiveDataRule грузятся classloader'ом OTel Agent и в actuator не видны");
+        scrubbingInfo.put("note", "SPI-реализации SpanAttributeScrubbingRule грузятся classloader'ом OTel Agent и в actuator не видны");
         scrubbingInfo.put("rulesConfig", nullSafe(properties.getScrubbing().getRulesConfig()));
         info.put("scrubbing", scrubbingInfo);
 

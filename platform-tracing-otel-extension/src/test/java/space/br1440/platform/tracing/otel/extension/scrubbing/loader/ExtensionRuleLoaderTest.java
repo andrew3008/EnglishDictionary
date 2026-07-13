@@ -50,7 +50,7 @@ class ExtensionRuleLoaderTest {
         Path jar = dir.resolve("dirty.jar");
         writeJar(jar, Map.of(
                 "io/opentelemetry/Foo.class", "x",
-                "space/br1440/platform/tracing/api/spi/SensitiveDataRule.class", "y"));
+                "space/br1440/platform/tracing/api/spi/SpanAttributeScrubbingRule.class", "y"));
 
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load(jar.toString())).isEmpty();
@@ -82,7 +82,7 @@ class ExtensionRuleLoaderTest {
         // META-INF/services ссылается на несуществующий класс — JAR не должен валить старт.
         Path jar = dir.resolve("broken.jar");
         writeJar(jar, Map.of(
-                "META-INF/services/space.br1440.platform.tracing.api.spi.SensitiveDataRule",
+                "META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule",
                 "com.example.DoesNotExist"));
 
         try (ExtensionRuleLoader loader = loader()) {

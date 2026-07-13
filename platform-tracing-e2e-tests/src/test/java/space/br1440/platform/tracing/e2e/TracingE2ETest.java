@@ -17,16 +17,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.e2e.support.JaegerTestContainerSupport;
 import space.br1440.platform.tracing.e2e.support.JaegerV3QueryClient;
+import space.br1440.platform.tracing.e2e.support.OtelCollectorTestContainerSupport;
 import space.br1440.platform.tracing.otel.extension.processor.ScrubbingSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 
 import java.time.Duration;
 import java.util.List;
@@ -108,20 +106,11 @@ class TracingE2ETest {
         jaeger.start();
 
         // Collector контейнер: монтируем минимальный YAML, маршрутизирующий OTLP в Jaeger.
-        // Полный platform-tracing/collector/otel-collector-config.yaml не используется напрямую,
-        // потому что в нём jaeger-collector:4317 — production-имя; в e2e Jaeger зовётся `jaeger:4317`.
-        collector = new GenericContainer<>(DockerImageName.parse("otel/opentelemetry-collector-contrib:0.154.0"))
-                .withNetwork(network)
-                .withNetworkAliases("otel-collector")
-                .withCopyFileToContainer(
-                        MountableFile.forClasspathResource("e2e/otel-collector-e2e.yaml"),
-                        "/etc/otelcol-contrib/config.yaml")
-                .withExposedPorts(4318, 13133)
-                .waitingFor(Wait.forHttp("/").forPort(13133).withStartupTimeout(Duration.ofMinutes(2)))
-                .dependsOn(jaeger);
+        // Jaeger endpoint — IP контейнера (Gentoo: внутренний Docker DNS ненадёжен).
+        collector = OtelCollectorTestContainerSupport.newE2eCollector(network, jaeger);
         collector.start();
 
-        String collectorEndpoint = "http://" + collector.getHost() + ":" + collector.getMappedPort(4318) + "/v1/traces";
+        String collectorEndpoint = OtelCollectorTestContainerSupport.otlpHttpTracesEndpointFromHost(collector);
         jaegerClient = new JaegerV3QueryClient(JaegerTestContainerSupport.queryBaseUrl(jaeger));
 
         // Платформенный ScrubbingSpanProcessor с правилом маскирования секретных ключей.
@@ -129,7 +118,7 @@ class TracingE2ETest {
         // ExtendedSpanProcessor.onEnding(), который вызывается ровно перед onEnd() и таким
         // образом успевает переписать значения атрибутов до того, как BSP заберёт snapshot
         // span'а в очередь на экспорт. Тем самым в Jaeger уже приходят маскированные значения.
-        SensitiveDataRule passwordRule = BuiltInSensitiveDataRules.PASSWORD_KEY.create();
+        SpanAttributeScrubbingRule passwordRule = BuiltInSpanAttributeScrubbingRules.PASSWORD_KEY.create();
         ScrubbingSpanProcessor scrubbing = new ScrubbingSpanProcessor(List.of(passwordRule));
 
         sdk = OpenTelemetrySdk.builder()

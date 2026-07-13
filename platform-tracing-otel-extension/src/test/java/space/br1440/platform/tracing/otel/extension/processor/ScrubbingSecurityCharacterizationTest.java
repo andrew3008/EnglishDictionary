@@ -7,8 +7,8 @@ import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
 import space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker.RuleCircuitBreaker;
@@ -27,10 +27,10 @@ class ScrubbingSecurityCharacterizationTest {
     @Test
     void merge_precedence_drop_beats_hash_on_authorization_key() {
         var drop = new RuleExecutionWrapper(
-                BuiltInSensitiveDataRules.resolve("oauth-header"),
+                BuiltInSpanAttributeScrubbingRules.resolve("oauth-header"),
                 new RuleCircuitBreaker("oauth-header"));
         var hash = new RuleExecutionWrapper(
-                BuiltInSensitiveDataRules.resolve("email"),
+                BuiltInSpanAttributeScrubbingRules.resolve("email"),
                 new RuleCircuitBreaker("email"));
 
         var decision = MergeEngine.evaluate(
@@ -74,7 +74,7 @@ class ScrubbingSecurityCharacterizationTest {
 
     @Test
     void malicious_regex_rule_failure_does_not_break_export() {
-        SensitiveDataRule redosLike = new SensitiveDataRule() {
+        SpanAttributeScrubbingRule redosLike = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "redos-like"; }
             @Override public int priority() { return 900; }

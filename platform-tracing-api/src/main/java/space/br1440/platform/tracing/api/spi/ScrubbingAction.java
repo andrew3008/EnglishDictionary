@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.api.spi;
 
 /**
  * Действие, которое {@code ScrubbingSpanProcessor} применяет к значению атрибута,
- * когда сработало {@link SensitiveDataRule}.
+ * когда сработало {@link SpanAttributeScrubbingRule}.
  */
 public enum ScrubbingAction {
 

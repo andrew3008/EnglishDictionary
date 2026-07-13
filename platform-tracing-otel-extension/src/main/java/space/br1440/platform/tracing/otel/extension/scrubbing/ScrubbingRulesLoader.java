@@ -38,14 +38,14 @@ import java.util.Set;
  * <h3>Поддерживаемые ключи</h3>
  * <ul>
  *   <li>{@code additional-built-in-rules=name1,name2,...} — список дополнительных встроенных
- *       правил (имена резолвятся через {@link BuiltInSensitiveDataRules#resolve(String)});
+ *       правил (имена резолвятся через {@link BuiltInSpanAttributeScrubbingRules#resolve(String)});
  *       неизвестные имена логируются как WARN и пропускаются.</li>
  * </ul>
  * <p>
  * Любая ошибка чтения (IO, parse) логируется на WARN и приводит к возврату пустого списка —
  * сбой загрузчика не должен ломать pipeline, идущий поверх. Кастомные регулярные выражения
  * не поддерживаются в v1; для них используйте {@code ServiceLoader}-расширение интерфейса
- * {@code SensitiveDataRule}.
+ * {@code SpanAttributeScrubbingRule}.
  */
 @Slf4j
 public final class ScrubbingRulesLoader {

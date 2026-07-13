@@ -6,7 +6,7 @@ import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.jmx.scrubbing.PlatformScrubbingControl;
 import space.br1440.platform.tracing.otel.extension.processor.ScrubbingSpanProcessor;
 
@@ -135,7 +135,7 @@ class ScrubbingPolicyRuntimeUpdateJmxTest {
     @Test
     void invalidRegexRule_keepsLkg_onCompileFailure() {
         ScrubbingPolicyHolder holder = new ScrubbingPolicyHolder(
-                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSensitiveDataRules.resolve("password")),
+                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                         1, java.time.Instant.now(), "startup"));
         long v0 = holder.version();
 
@@ -202,9 +202,9 @@ class ScrubbingPolicyRuntimeUpdateJmxTest {
     }
 
     private static ScrubbingSpanProcessor processorWith(String... ruleNames) {
-        java.util.ArrayList<SensitiveDataRule> rules = new java.util.ArrayList<>();
+        java.util.ArrayList<SpanAttributeScrubbingRule> rules = new java.util.ArrayList<>();
         for (String name : ruleNames) {
-            rules.add(BuiltInSensitiveDataRules.resolve(name));
+            rules.add(BuiltInSpanAttributeScrubbingRules.resolve(name));
         }
         return new ScrubbingSpanProcessor(rules);
     }
@@ -218,7 +218,7 @@ class ScrubbingPolicyRuntimeUpdateJmxTest {
         }
     }
 
-    private static final class InvalidRegexBuiltInRule implements SensitiveDataRule {
+    private static final class InvalidRegexBuiltInRule implements SpanAttributeScrubbingRule {
         private final Pattern pattern;
 
         InvalidRegexBuiltInRule() {

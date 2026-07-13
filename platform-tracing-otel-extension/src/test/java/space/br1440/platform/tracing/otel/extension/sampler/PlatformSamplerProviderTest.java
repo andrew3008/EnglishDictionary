@@ -1,11 +1,19 @@
 package space.br1440.platform.tracing.otel.extension.sampler;
 
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
+import io.opentelemetry.sdk.trace.data.LinkData;
+import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.extension.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.extension.factory.PlatformSamplerFactory;
@@ -15,6 +23,7 @@ import space.br1440.platform.tracing.otel.extension.jmx.PlatformTracingObjectNam
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,6 +98,24 @@ class PlatformSamplerProviderTest {
 
         // Idempotency-guard: возвращается тот же экземпляр без повторной SafeSampler-обёртки.
         assertThat(result).isSameAs(platform);
+    }
+
+    @Test
+    @DisplayName("absent force-record-values keeps default ['on'] for named platform sampler")
+    void absent_force_record_values_uses_default_on() {
+        Sampler sampler = new PlatformSamplerProvider().createSampler(
+                config(Map.of("platform.tracing.sampling.ratio", "0")));
+        Context forceContext = Context.root().with(
+                PlatformTraceContextKeys.TRACE_CONTROL,
+                InboundTraceControl.fromHeaders("on", null, null));
+
+        var result = sampler.shouldSample(
+                forceContext, "00000000000000000000000000000001", "GET", SpanKind.SERVER,
+                Attributes.empty(), List.<LinkData>of());
+
+        assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
+        assertThat(result.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey(
+                "platform.sampling.reason"))).isEqualTo(PlatformSamplingReasons.FORCE_HEADER);
     }
 
     @Test

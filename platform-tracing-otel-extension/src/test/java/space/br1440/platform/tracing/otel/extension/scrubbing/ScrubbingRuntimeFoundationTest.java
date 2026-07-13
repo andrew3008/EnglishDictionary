@@ -26,7 +26,7 @@ class ScrubbingRuntimeFoundationTest {
     @Test
     void processor_uses_updated_snapshot_without_reconstruct() {
         ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(
-                List.of(BuiltInSensitiveDataRules.resolve("password")));
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")));
         assertThat(processor.getPolicyVersion()).isEqualTo(1);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor)) {
@@ -67,7 +67,7 @@ class ScrubbingRuntimeFoundationTest {
     @Test
     void concurrent_updateScrubbingPolicy_and_onEnding_never_throws() throws Exception {
         ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(
-                List.of(BuiltInSensitiveDataRules.resolve("password")));
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")));
 
         int threads = 6;
         ExecutorService pool = Executors.newFixedThreadPool(threads);

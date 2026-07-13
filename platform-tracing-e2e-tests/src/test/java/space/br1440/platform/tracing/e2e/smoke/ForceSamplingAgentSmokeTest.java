@@ -88,6 +88,8 @@ class ForceSamplingAgentSmokeTest {
                 Map.of("X-Trace-On", "on"),
                 Map.of(),
                 List.of(
+                        "otel.traces.sampler=platform",
+                        "otel.propagators=tracecontext,baggage,platform-trace-control",
                         "platform.tracing.sampling.ratio=0",
                         "platform.tracing.suppression.suppress-micrometer-tracing=true",
                         "otel.bsp.schedule.delay=200"),

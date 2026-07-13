@@ -745,7 +745,7 @@ Requires manual review
 
 - Новые тесты в `platform-tracing-core/src/test/java`:
     - `SamplingRuleChainCharacterizationTest` — тестирует `KillSwitchRule`, `ForceHeaderRule`, `QaTraceRule`, `RouteRatioRule`, `DefaultRatioRule`, `HardDropRule`, `ParentDecisionRule` через pure Java inputs (без OTel SDK)
-    - `ScrubbingEngineCharacterizationTest` — тестирует scrubbing rule engine через `SensitiveDataRule` SPI
+    - `ScrubbingEngineCharacterizationTest` — тестирует scrubbing rule engine через `SpanAttributeScrubbingRule` SPI
     - `ValidationPolicyCharacterizationTest` — тестирует validation policy через `CategoryContracts`, `ValidationMode`
 - `SamplerHarness` в `platform-tracing-test` — новые assertion helpers для rule chain
 
@@ -853,7 +853,7 @@ Requires manual review
 
 **Цель:** Перенести scrubbing engine (`scrubbing.engine.*`, `scrubbing.loader.*`, `BuiltInRules`, `ScrubbingPolicyHolder`, `ScrubbingSnapshot`) в `platform-tracing-core`. `ScrubbingSpanProcessor` остаётся в `platform-tracing-otel-extension` как OTel SpanProcessor adapter.
 
-**Почему этот PR существует:** Scrubbing engine — policy logic, не зависящая от OTel SpanProcessor callback. `SensitiveDataRule` SPI уже в `platform-tracing-api`. Engine может тестироваться pure Java.
+**Почему этот PR существует:** Scrubbing engine — policy logic, не зависящая от OTel SpanProcessor callback. `SpanAttributeScrubbingRule` SPI уже в `platform-tracing-api`. Engine может тестироваться pure Java.
 
 **Модули:**
 
@@ -873,7 +873,7 @@ Requires manual review
 **Существующие тесты для сохранения:**
 
 - `ScrubbingSpanProcessorTest`, `ScrubbingSpanProcessorAdvancedTest`, `ScrubbingSecurityNegativeTest` — MUST_KEEP в otel-extension
-- `MergeEngineTest`, `RuleCircuitBreakerTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSensitiveDataRuleTest` — MOVE копии в core, оригиналы остаются
+- `MergeEngineTest`, `RuleCircuitBreakerTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSpanAttributeScrubbingRuleTest` — MOVE копии в core, оригиналы остаются
 
 **Тесты для дублирования до переноса кода:**
 
@@ -1217,7 +1217,7 @@ Requires manual review
 | `DomainConfigHolder` | api | Versioned atomic holder | api (уже на месте) | KEEP_AS_IS | `DomainConfigHolderTest` | нет | LOW | — |
 | `ScrubbingSpanProcessor` | otel-extension | OTel SpanProcessor callback | otel-extension (adapter) | KEEP_IN_OTEL_EXTENSION_ADAPTER | `ScrubbingSpanProcessorTest` MUST_KEEP | `ScrubbingEngineBenchmark` | CRITICAL | PR-7 |
 | `scrubbing.engine.*` | otel-extension | Scrubbing rule evaluation | platform-tracing-core | MOVE_TO_CORE | `ScrubbingEngineCharacterizationTest` (PR-5) | `ScrubbingEngineBenchmark`, `ScrubbingPerRuleBenchmark` | CRITICAL | PR-7 |
-| `scrubbing.loader.*` | otel-extension | YAML/ServiceLoader rule loading | platform-tracing-core | MOVE_TO_CORE | `ExtensionRuleLoaderTest`, `ServiceLoaderSensitiveDataRuleTest` | нет | HIGH | PR-7 |
+| `scrubbing.loader.*` | otel-extension | YAML/ServiceLoader rule loading | platform-tracing-core | MOVE_TO_CORE | `ExtensionRuleLoaderTest`, `ServiceLoaderSpanAttributeScrubbingRuleTest` | нет | HIGH | PR-7 |
 | `BuiltInRules` | otel-extension | Built-in scrubbing rules | platform-tracing-core | MOVE_TO_CORE | `BuiltInRulesTest` | нет | HIGH | PR-7 |
 | `ScrubbingPolicyHolder`, `ScrubbingSnapshot` | otel-extension | Scrubbing config state | platform-tracing-core | MOVE_TO_CORE | `MergeEngineTest` | нет | HIGH | PR-7 |
 | `RuleCircuitBreaker` | otel-extension | Per-rule safety | platform-tracing-core | MOVE_TO_CORE | `RuleCircuitBreakerTest` | нет | HIGH | PR-7 |
@@ -1253,7 +1253,7 @@ Requires manual review
 | `InMemorySpanExporter`, `SamplerHarness`, `SpanProcessorHarness`, ArchUnit rules | test | Test support | test | KEEP_IN_TEST_SUPPORT | — | — | MEDIUM | — |
 | `PerfAdminController` | perf-tests | /perf/admin → JMX for M10 | perf-tests | KEEP_IN_PERF_TESTS | — | M10 scenarios | MEDIUM | — |
 | `CategoryContracts`, `SemconvKeys`, `PlatformAttributes`, `PlatformSamplingReasons` | api | Public semconv | api | KEEP_AS_IS | `CategoryContractsTest` | нет | LOW | — |
-| `SensitiveDataRule` SPI | api | Scrubbing SPI | api | KEEP_AS_IS | `ServiceLoaderSensitiveDataRuleTest` | нет | LOW | — |
+| `SpanAttributeScrubbingRule` SPI | api | Scrubbing SPI | api | KEEP_AS_IS | `ServiceLoaderSpanAttributeScrubbingRuleTest` | нет | LOW | — |
 | `DegradedModeController`, `CircuitBreaker`, `TokenBucketRateLimiter` | otel-extension | Safety infrastructure | otel-extension | KEEP_IN_OTEL_EXTENSION_ADAPTER | `DegradedModeControllerTest` | нет | HIGH | — |
 | `ExtensionPropertyNames` / `ExtensionDefaults` / `PlatformTracingDefaultsProvider` | otel-extension | Agent-side configuration | otel-extension | KEEP_IN_OTEL_EXTENSION_ADAPTER | `ExtensionConfigTest`, `PlatformTracingDefaultsProviderTest`, `SharedDefaultsAlignmentTest` | нет | HIGH | DONE |
 | `ClassLoaderVisibilitySpikeProbe` | otel-extension | CL spike | otel-extension (spike) | DEFER | `ClassLoaderVisibilitySpikeE2ETest` | нет | LOW | PR-3 |
@@ -1265,7 +1265,7 @@ Requires manual review
 
 ### `platform-tracing-api`
 
-**Current role:** Публичные контракты — `PlatformTracing` interface, typed span builders, semconv keys, propagation, `DomainConfigHolder`, `SensitiveDataRule` SPI. 59 main классов.
+**Current role:** Публичные контракты — `PlatformTracing` interface, typed span builders, semconv keys, propagation, `DomainConfigHolder`, `SpanAttributeScrubbingRule` SPI. 59 main классов.
 
 **Target role:** Без изменений плюс добавление wire schema (PR-2).
 
@@ -1545,7 +1545,7 @@ Requires manual review
 **Existing tests to keep:**
 
 - `ScrubbingSpanProcessorTest`, `ScrubbingSpanProcessorAdvancedTest`, `ScrubbingSecurityNegativeTest` — MUST_KEEP
-- `MergeEngineTest`, `RuleCircuitBreakerTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSensitiveDataRuleTest` — MUST_KEEP
+- `MergeEngineTest`, `RuleCircuitBreakerTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSpanAttributeScrubbingRuleTest` — MUST_KEEP
 - `BuiltInRulesTest`, `KeyMatcherTest` — MUST_KEEP
 
 **Tests to duplicate before moving behavior (PR-5):**

@@ -20,7 +20,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.otel.extension.processor.ClassificationSpanProcessor;
@@ -28,7 +28,7 @@ import space.br1440.platform.tracing.otel.extension.processor.EnrichingSpanProce
 import space.br1440.platform.tracing.otel.extension.processor.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -97,9 +97,9 @@ public class CompositePipelineBenchmark {
         // Реальный композит в production-порядке (см. PlatformSpanProcessorFactory):
         // Enriching -> Scrubbing -> Validating -> Classification. Watchdog/Metrics не включены:
         // они не читают toSpanData() на per-span onEnding (watchdog — таймерный, metrics — onEnd).
-        List<SensitiveDataRule> rules = new ArrayList<>();
-        for (String name : BuiltInSensitiveDataRules.defaultConfigNames()) {
-            SensitiveDataRule rule = BuiltInSensitiveDataRules.resolve(name);
+        List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
+        for (String name : BuiltInSpanAttributeScrubbingRules.defaultConfigNames()) {
+            SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve(name);
             if (rule != null) {
                 rules.add(rule);
             }

@@ -41,7 +41,7 @@ h1. Scope
 * контракт интеграции с {{web-error-model}} ({{Supplier<RequestContext>}}, {{InvalidRequestException}}, {{RuntimeConfigurationException}}),
 * sampling-контракт ({{X-Trace-On}}, {{X-QA-Trace}}, parent_based ratio) и его соответствие OpenTelemetry Semantic Conventions 1.27+,
 * TTL-стратегию ретеншна на уровне OTel Collector (errors дольше, success короче),
-* перечень публичных SPI ({{SensitiveDataRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}}) и procedure расширения.
+* перечень публичных SPI ({{SpanAttributeScrubbingRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}}) и procedure расширения.
 
 h1. Deliverables
 
@@ -121,7 +121,7 @@ h2. Контекст
 
 * {*}Architecture Board{*} — owner стандарта именования атрибутов, публичных SPI, classloader-границ.
 * {*}SRE / Observability{*} — owner OTel Collector конфигурации, retention-политики Jaeger, sampling-настроек под профили нагрузки.
-* {*}Security{*} — review встроенных правил {{SensitiveDataRule}} и процедуры расширения PII-scrubbing.
+* {*}Security{*} — review встроенных правил {{SpanAttributeScrubbingRule}} и процедуры расширения PII-scrubbing.
 * {*}Platform Team (исполнитель){*} — представление драфта дизайна и ответы на review-комментарии.
 
 Драфт прошёл две итерации перед финальным утверждением:
@@ -260,7 +260,7 @@ h2. Внешние интерфейсы — финальный список
 | MDC keys | {{trace_id}}, {{span_id}}, {{trace_flags}}, {{X-Request-Id}} |
 | Property prefix | {{platform.tracing.*}} |
 | Actuator endpoints | {{GET /actuator/tracing}}, {{POST /actuator/tracing/\{property\}/\{value\}}} |
-| Public SPI | {{SensitiveDataRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}} |
+| Public SPI | {{SpanAttributeScrubbingRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}} |
 
 h2. Open follow-ups (post-v0.1.0)
 

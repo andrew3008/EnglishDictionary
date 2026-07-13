@@ -8,7 +8,7 @@ import java.util.List;
  * <p>
  * Порядок элементов — порядок {@link java.util.List} (дефолт {@code ArrayList} в
  * {@link space.br1440.platform.tracing.autoconfigure.TracingProperties.Scrubbing#builtInRules}).
- * Unknown names не фильтруются на Spring-стороне (Option A): agent {@code BuiltInSensitiveDataRules.resolve}
+ * Unknown names не фильтруются на Spring-стороне (Option A): agent {@code BuiltInSpanAttributeScrubbingRules.resolve}
  * пропускает неизвестные имена — startup/JMX parity (PR-7B).
  */
 final class ScrubbingRuleNamesWire {

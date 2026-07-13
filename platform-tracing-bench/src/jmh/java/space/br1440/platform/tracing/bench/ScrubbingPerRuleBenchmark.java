@@ -10,8 +10,8 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingSnapshot;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 public class ScrubbingPerRuleBenchmark {
 
     /**
-     * Полный реестр built-in правил (configName из {@code BuiltInSensitiveDataRules}).
+     * Полный реестр built-in правил (configName из {@code BuiltInSpanAttributeScrubbingRules}).
      * Литералы обязаны совпадать с enum'ом — расхождение упадёт в {@code setUp} fail-fast.
      */
     @Param({
@@ -55,7 +55,7 @@ public class ScrubbingPerRuleBenchmark {
 
     @Setup(Level.Trial)
     public void setUp() {
-        SensitiveDataRule rule = BuiltInSensitiveDataRules.resolve(ruleName);
+        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve(ruleName);
         if (rule == null) {
             throw new IllegalStateException("Неизвестное имя правила в @Param: " + ruleName);
         }

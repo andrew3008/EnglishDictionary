@@ -93,7 +93,7 @@ h2. Module: `platform-tracing-api`
 * Аннотации {{@Traced}} (поля {{name}}, {{category}}, {{recordException}}, SpEL-выражения для атрибутов) и {{@TracedAttribute}} (для параметров метода).
 * Константы {{PlatformAttributes}} — соответствие OpenTelemetry Semantic Conventions 1.27+ + платформенные расширения ({{platform.type}}, {{platform.c_group}}, {{platform.id}}, {{platform.host}}, {{platform.result}}, {{platform.timeout}}).
 * Константы {{PlatformHeaders}} — {{X-Trace-On}}, {{X-QA-Trace}}, {{X-Request-Id}}, {{X-Trace-Id}} (стандартный W3C {{traceparent}} обрабатывается OTel propagator'ами и в платформенных константах не дублируется).
-* SPI: {{SensitiveDataRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}} — каждая помечена Javadoc-аннотацией {{@apiNote SPI extension point}}.
+* SPI: {{SpanAttributeScrubbingRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}} — каждая помечена Javadoc-аннотацией {{@apiNote SPI extension point}}.
 
 h2. Module: `platform-tracing-core`
 
@@ -112,7 +112,7 @@ h2. Acceptance criteria
 h2. Constraints
 
 * OpenTelemetry Semantic Conventions версии 1.27+; отклонения от стандарта документируются в Javadoc с обоснованием.
-* Контракт SPI ({{SensitiveDataRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}}) считается публичным API — изменения сигнатур после freeze требуют major-bump.
+* Контракт SPI ({{SpanAttributeScrubbingRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}}) считается публичным API — изменения сигнатур после freeze требуют major-bump.
 
 h2. Dependencies
 
@@ -183,7 +183,7 @@ h2. Components
 ** {{platform.type}} — derived из {{SpanKind}} (mapping в {{PlatformAttributes}})
 ** {{platform.host}} — из {{Resource}} либо {{InetAddress.getLocalHost()}}
 ** {{platform.result}} — derived из {{StatusCode}} ({{UNSET}}/{{OK}} → {{SUCCESS}}, {{ERROR}} → {{SERVER_ERROR}})
-* {{ScrubbingSpanProcessor implements ExtendedSpanProcessor}} + {{BuiltInSensitiveDataRules}}:
+* {{ScrubbingSpanProcessor implements ExtendedSpanProcessor}} + {{BuiltInSpanAttributeScrubbingRules}}:
 ** Email (RFC 5322 simplified pattern)
 ** JWT (3-part base64-pattern)
 ** Password keys (attribute-name match: {{password}}, {{passwd}}, {{pwd}}, {{secret}}, {{token}})
@@ -200,7 +200,7 @@ h2. Acceptance criteria
 # Unit-тесты для каждого процессора и sampler'а с использованием {{opentelemetry-sdk-testing}} и {{InMemorySpanExporter}}.
 # {{SafeSpanProcessor}}: тесты на корректное делегирование {{onEnding}} если delegate реализует {{ExtendedSpanProcessor}}, и no-op при стандартном {{SpanProcessor}}.
 # {{CompositeSampler}}: 6 кейсов — force-record true/false, QA, child span с наследованием родительского решения, ratio = 0.0, ratio = 1.0.
-# {{BuiltInSensitiveDataRules}}: каждое правило покрыто positive- и negative-тестами; PAN-Luhn покрыт edge-кейсом числа корректной длины, не проходящего Luhn.
+# {{BuiltInSpanAttributeScrubbingRules}}: каждое правило покрыто positive- и negative-тестами; PAN-Luhn покрыт edge-кейсом числа корректной длины, не проходящего Luhn.
 # Constraint check (CI): {{gradlew :platform-tracing-otel-extension:dependencies --configuration runtimeClasspath}} *НЕ* содержит {{org.springframework.*}} и {{space.br1440:web-error-model}} (grep-проверка).
 # Smoke: extension JAR подключается к OTel Java Agent через {{-Dotel.javaagent.extensions=...}}, span'ы пилотного сервиса экспортируются в локальный Collector с платформенными атрибутами.
 
@@ -384,12 +384,12 @@ h2. Page structure
 # *Span attributes* — обязательные / опциональные платформенные атрибуты, маппинг в OpenTelemetry Semantic Conventions 1.27+.
 # *Annotations* — {{@Traced}}, {{@TracedAttribute}} с примерами и SpEL-конструкциями.
 # *Sampling* — {{X-Trace-On}}, {{X-QA-Trace}}, динамическое изменение через {{POST /actuator/tracing/samplingRatio/<value>}}, рекомендации по {{samplingRatio}} для production / load-test / dev.
-# *PII / scrubbing* — встроенные правила, расширение через {{SensitiveDataRule}} SPI, процедура согласования новых правил с Security.
+# *PII / scrubbing* — встроенные правила, расширение через {{SpanAttributeScrubbingRule}} SPI, процедура согласования новых правил с Security.
 # *Reliability* — watchdog / drop-oldest / prioritizing; контракт §37.
 # *Errorhandling integration* — {{Supplier<RequestContext>}} для {{@ControllerAdvice}}, матрица «место выброса → класс из web-error-model → reason → HTTP», явное упоминание always-on контракта.
 # *Actuator endpoint* — read и write операции, схема JSON, аудит-логирование изменений.
 # *Operational* — конфигурации Collector (стандарт + TTL-tiers), tail_sampling политики, рекомендации SRE по {{decision_wait}}, {{num_traces}}.
-# *SPI / extensibility* — {{SensitiveDataRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}} с примерами реализации.
+# *SPI / extensibility* — {{SpanAttributeScrubbingRule}}, {{SpanEnricher}}, {{SamplingDecisionContributor}} с примерами реализации.
 # *Migration / Troubleshooting* — частые проблемы (потерянный MDC в WebFlux, утечка span'а, отказ Collector, конфликт версий OTel SDK).
 # *Architecture* — три PlantUML-диаграммы из sub-task 0 в виде SVG.
 

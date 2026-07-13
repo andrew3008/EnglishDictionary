@@ -43,8 +43,11 @@ public final class ResourceIdentityAgentSmokeProcessRunner {
         jvmProperties.add("otel.javaagent.extensions=" + extensionPath.toString().replace('\\', '/'));
         jvmProperties.add("otel.traces.exporter=otlp");
         jvmProperties.add("otel.exporter.otlp.endpoint=" + otlpEndpoint);
+        jvmProperties.add("otel.exporter.otlp.traces.endpoint="
+                + JaegerTestContainerSupport.resolveOtlpHttpTracesEndpoint(otlpEndpoint));
         jvmProperties.add("otel.exporter.otlp.protocol=http/protobuf");
         jvmProperties.add("otel.traces.sampler=always_on");
+        jvmProperties.add("platform.tracing.sampling.ratio=1.0");
         jvmProperties.add("otel.metrics.exporter=none");
         jvmProperties.add("otel.logs.exporter=none");
         jvmProperties.add("platform.tracing.queue.overflow-policy=UPSTREAM");

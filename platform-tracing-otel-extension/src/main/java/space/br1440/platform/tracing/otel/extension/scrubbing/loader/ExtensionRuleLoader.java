@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing.loader;
 
 import lombok.extern.slf4j.Slf4j;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.diagnostics.FailedProviderReason;
 import space.br1440.platform.tracing.otel.extension.utils.Strings;
 
@@ -22,7 +22,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 /**
- * Загрузчик внешних кастомных правил {@link SensitiveDataRule} из свойства
+ * Загрузчик внешних кастомных правил {@link SpanAttributeScrubbingRule} из свойства
  * {@code platform.tracing.scrubbing.rules.extensions} — comma-separated списка JAR-файлов или
  * директорий.
  * <p>
@@ -86,7 +86,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
      * @param rawProperty значение {@code platform.tracing.scrubbing.rules.extensions}
      * @return неизменяемый список загруженных экземпляров правил
      */
-    public List<SensitiveDataRule> load(String rawProperty) {
+    public List<SpanAttributeScrubbingRule> load(String rawProperty) {
         if (Strings.isBlank(rawProperty)) {
             log.debug("[scrubbing] platform.tracing.scrubbing.rules.extensions не задано — кастомные правила не грузятся");
             return List.of();
@@ -97,20 +97,20 @@ public final class ExtensionRuleLoader implements AutoCloseable {
             return List.of();
         }
 
-        // parent = ClassLoader API, чтобы кастомные правила видели SensitiveDataRule из платформы.
+        // parent = ClassLoader API, чтобы кастомные правила видели SpanAttributeScrubbingRule из платформы.
         // Все отвалидированные JAR собираются в один URLClassLoader (поддержка helper-JAR рядом).
-        urlClassLoader = new URLClassLoader(urls.toArray(URL[]::new), SensitiveDataRule.class.getClassLoader());
+        urlClassLoader = new URLClassLoader(urls.toArray(URL[]::new), SpanAttributeScrubbingRule.class.getClassLoader());
 
-        List<SensitiveDataRule> rules = new ArrayList<>();
-        ServiceLoader<SensitiveDataRule> loader = ServiceLoader.load(SensitiveDataRule.class, urlClassLoader);
+        List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
+        ServiceLoader<SpanAttributeScrubbingRule> loader = ServiceLoader.load(SpanAttributeScrubbingRule.class, urlClassLoader);
 
         // Резолв провайдеров ленивый: ошибка может прилететь уже на hasNext()/next() (битый
         // META-INF/services, отсутствующий/несовместимый класс). Перехватываем ограниченным
         // multi-catch на обеих фазах, чтобы битый JAR не валил старт агента. Stack trace и
         // exception message НЕ логируем — кастомное правило могло положить туда секрет.
-        Iterator<ServiceLoader.Provider<SensitiveDataRule>> iterator = loader.stream().iterator();
+        Iterator<ServiceLoader.Provider<SpanAttributeScrubbingRule>> iterator = loader.stream().iterator();
         while (true) {
-            ServiceLoader.Provider<SensitiveDataRule> provider;
+            ServiceLoader.Provider<SpanAttributeScrubbingRule> provider;
             try {
                 if (!iterator.hasNext()) {
                     break;

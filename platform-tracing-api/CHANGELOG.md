@@ -19,6 +19,17 @@
 
 No compatibility aliases or deprecated bridges are provided.
 
+## Breaking Changes - PR-B2 Scrubbing SPI Rename
+
+| Old | New |
+| --- | --- |
+| `SensitiveDataRule` | `SpanAttributeScrubbingRule` |
+| `META-INF/services/space.br1440.platform.tracing.api.spi.SensitiveDataRule` | `META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule` |
+
+The SPI still evaluates span attribute key/value pairs only. Built-in and custom implementation
+class names are unchanged. External custom rule JARs must be rebuilt against the new SPI and ship
+the new ServiceLoader descriptor path.
+
 ## Breaking Changes - PR-B1 Context and Propagation Naming
 
 | Old | New |

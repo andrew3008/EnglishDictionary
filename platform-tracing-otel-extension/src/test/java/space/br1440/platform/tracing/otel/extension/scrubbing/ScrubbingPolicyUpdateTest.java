@@ -17,7 +17,7 @@ class ScrubbingPolicyUpdateTest {
     void buildNext_nullRuleNames_keepsCompiledWrappers() {
         ScrubbingSnapshot previous = ScrubbingSnapshot.fromRules(
                 true,
-                List.of(BuiltInSensitiveDataRules.resolve("password")),
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                 3,
                 Instant.EPOCH,
                 "startup");
@@ -35,7 +35,7 @@ class ScrubbingPolicyUpdateTest {
     void buildNext_emptyRuleNames_producesEmptyWrappers() {
         ScrubbingSnapshot previous = ScrubbingSnapshot.fromRules(
                 true,
-                List.of(BuiltInSensitiveDataRules.resolve("password")),
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                 1,
                 Instant.now(),
                 "startup");
@@ -50,7 +50,7 @@ class ScrubbingPolicyUpdateTest {
     void buildNext_unknownNames_skipped() {
         ScrubbingSnapshot previous = ScrubbingSnapshot.fromRules(
                 true,
-                List.of(BuiltInSensitiveDataRules.resolve("password")),
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                 1,
                 Instant.now(),
                 "startup");
@@ -63,7 +63,7 @@ class ScrubbingPolicyUpdateTest {
 
     @Test
     void resolveRules_matches_direct_builtin_resolution() {
-        List<space.br1440.platform.tracing.api.spi.SensitiveDataRule> resolved =
+        List<space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule> resolved =
                 ScrubbingPolicyUpdate.resolveRules(new String[]{"password", "jwt", "unknown"});
 
         assertThat(resolved).hasSize(2);

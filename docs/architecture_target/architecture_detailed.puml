@@ -54,7 +54,7 @@ cloud "OpenTelemetry Collector\nOTLP endpoint\nTail sampling / export routing" a
 
 package "Public Consumption Layer" as PublicLayer {
 component "platform-tracing-bom\nVersion alignment" as BOM
-component "platform-tracing-api\nPublic contracts\nSemconv keys\nDomainConfigHolder\nSensitiveDataRule SPI\nTracingControlWire v1" as API
+component "platform-tracing-api\nPublic contracts\nSemconv keys\nDomainConfigHolder\nSpanAttributeScrubbingRule SPI\nTracingControlWire v1" as API
 component "platform-tracing-spring-boot-starter-servlet\nPublic Servlet starter" as StarterServlet
 component "platform-tracing-spring-boot-starter-reactive\nPublic WebFlux starter" as StarterReactive
 }
@@ -151,7 +151,7 @@ component "Sampling rules\nKillSwitch\nHardDrop\nForceHeader\nQaTrace\nParentDec
 package "core.scrubbing\nTarget after PR-7" as CoreScrubbing {
 component "Scrubbing engine\nRule evaluation\nMergeEngine\nBuiltInRules\nCircuit breaker" as ScrubbingEngine
 component "ScrubbingPolicySnapshot\nMandatory policy state" as ScrubbingSnapshot
-component "SensitiveDataRule SPI use\nAPI-defined extension point" as SensitiveRuleUse
+component "SpanAttributeScrubbingRule SPI use\nAPI-defined extension point" as SensitiveRuleUse
 }
 
 package "core.validation / core.enrichment\nTarget after PR-8" as CoreValidation {
@@ -285,7 +285,7 @@ SamplingPolicyEngine --> SamplingSnapshot
 ScrubbingProcessor --> ScrubbingEngine : delegates after PR-7
 ScrubbingEngine --> ScrubbingSnapshot
 ScrubbingEngine --> SensitiveRuleUse
-SensitiveRuleUse ..> API : SensitiveDataRule SPI
+SensitiveRuleUse ..> API : SpanAttributeScrubbingRule SPI
 
 ValidationProcessor --> ValidationPolicy : delegates after PR-8
 EnrichmentProcessor --> EnrichmentPolicy : delegates after PR-8

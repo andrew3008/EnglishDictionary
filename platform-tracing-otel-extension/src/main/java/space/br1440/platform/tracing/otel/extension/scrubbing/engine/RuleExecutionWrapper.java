@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing.engine;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker.RuleCircuitBreaker;
 
 /**
- * Обёртка над {@link SensitiveDataRule}: связывает правило с его {@link RuleCircuitBreaker} и
+ * Обёртка над {@link SpanAttributeScrubbingRule}: связывает правило с его {@link RuleCircuitBreaker} и
  * effective-приоритетом (с учётом clamp в {@link PriorityHardening}).
  * <p>
  * Circuit breaker намеренно вынесен <b>наружу</b> правила — SPI-контракт остаётся чистым и
@@ -25,15 +25,15 @@ import space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker.Rul
  */
 public final class RuleExecutionWrapper {
 
-    private final SensitiveDataRule rule;
+    private final SpanAttributeScrubbingRule rule;
     private final RuleCircuitBreaker breaker;
     private final int effectivePriority;
 
-    public RuleExecutionWrapper(SensitiveDataRule rule, RuleCircuitBreaker breaker) {
+    public RuleExecutionWrapper(SpanAttributeScrubbingRule rule, RuleCircuitBreaker breaker) {
         this(rule, breaker, rule.priority());
     }
 
-    private RuleExecutionWrapper(SensitiveDataRule rule, RuleCircuitBreaker breaker, int effectivePriority) {
+    private RuleExecutionWrapper(SpanAttributeScrubbingRule rule, RuleCircuitBreaker breaker, int effectivePriority) {
         this.rule = rule;
         this.breaker = breaker;
         this.effectivePriority = effectivePriority;

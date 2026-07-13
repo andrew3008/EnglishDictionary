@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing.policy;
 
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.List;
  * Pure scrubbing rule-name validation and built-in resolution (PR-9D preparation).
  * <p>
  * Separates policy selection (input names → known built-in identifiers) from agent-side
- * execution ({@code SensitiveDataRule} instantiation, {@code RuleExecutionWrapper} compile).
+ * execution ({@code SpanAttributeScrubbingRule} instantiation, {@code RuleExecutionWrapper} compile).
  * Intended for future move to {@code core.scrubbing} with a JDK-only built-in name registry.
  * <p>
  * No OTel, Spring, JMX, or logging dependencies.
@@ -51,7 +51,7 @@ public final class ScrubbingRuleResolution {
             if (name == null) {
                 throw new IllegalArgumentException("Rule name must not be null");
             }
-            BuiltInSensitiveDataRules descriptor = BuiltInSensitiveDataRules.lookup(name);
+            BuiltInSpanAttributeScrubbingRules descriptor = BuiltInSpanAttributeScrubbingRules.lookup(name);
             if (descriptor != null) {
                 resolved.add(descriptor.configName());
             } else {

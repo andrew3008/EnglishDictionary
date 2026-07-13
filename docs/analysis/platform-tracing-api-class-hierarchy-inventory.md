@@ -74,13 +74,13 @@
 | `api` | `jakarta.annotation-api` | `@Nonnull`/`@Nullable` |
 | `implementation` | `slf4j-api` | MDC bridge (`RemoteServiceMdc`) |
 | `compileOnly` | `opentelemetry-context` | `PlatformTraceContextKeys` |
-| `compileOnly` | `opentelemetry-api` | `SensitiveDataRule`, `SemconvKeys`, `CategoryContract`, `EnrichScope` signatures |
+| `compileOnly` | `opentelemetry-api` | `SpanAttributeScrubbingRule`, `SemconvKeys`, `CategoryContract`, `EnrichScope` signatures |
 | `compileOnly` | `lombok` | `@UtilityClass` и др. |
 | `testImplementation` | `platform-tracing-test`, JUnit, AssertJ, OTel API/Context | Unit/Arch tests |
 
 ### Утечка OTel в публичный API
 
-- **Сигнатуры** с OTel типами: `SemconvKeys` (`AttributeKey`), `CategoryContract` (`AttributeKey`), `SensitiveDataRule.evaluate`, `EnrichScope.attribute(AttributeKey)`.
+- **Сигнатуры** с OTel типами: `SemconvKeys` (`AttributeKey`), `CategoryContract` (`AttributeKey`), `SpanAttributeScrubbingRule.evaluate`, `EnrichScope.attribute(AttributeKey)`.
 - **Runtime classpath** API-модуля OTel **не содержит** (compileOnly).
 - **ArchUnit guard**: `V3ManualApiArchTest` запрещает зависимости на OTel в пакетах `manual` и `span.spec`, но **не** в `semconv`, `span.enrich`, `spi`.
 
@@ -128,7 +128,7 @@ space.br1440.platform.tracing.api
 │   ├── enrich/                     EnrichScope, GenericEnrichScope
 │   ├── sanitize/                   SqlSanitizer, UrlSanitizer
 │   └── spec/                       SpanSpec ecosystem (v3 value models + builders)
-├── spi/                            SensitiveDataRule, ScrubbingDecision, ScrubbingAction
+├── spi/                            SpanAttributeScrubbingRule, ScrubbingDecision, ScrubbingAction
 └── util/                           ThrowingSupplier
 ```
 
@@ -219,7 +219,7 @@ graph LR
         PTC[InboundTraceControl]
     end
     subgraph spi
-        SDR[SensitiveDataRule]
+        SDR[SpanAttributeScrubbingRule]
     end
     subgraph annotations
         TR[@Traced]
@@ -367,7 +367,7 @@ graph LR
 
 | Type | Kind | Package | Responsibility | Key Members | Related Types | Implementation/Consumers | Naming Notes |
 |---|---|---|---|---|---|---|---|
-| `SensitiveDataRule` | interface | `spi` | Scrubbing rule SPI | `name()`, `priority()`, `evaluate()` | `ScrubbingDecision` | otel-extension rules | OK |
+| `SpanAttributeScrubbingRule` | interface | `spi` | Scrubbing rule SPI | `name()`, `priority()`, `evaluate()` | `ScrubbingDecision` | otel-extension rules | OK |
 | `ScrubbingDecision` | record | `spi` | Rule outcome | `action`, `reason`, `maxLength`, `terminal`; factories | `ScrubbingAction` | processor | OK |
 | `ScrubbingAction` | enum | `spi` | KEEP/MASK/DROP/HASH/TRUNCATE | 5 values | `ScrubbingDecision` | processor | OK |
 
@@ -494,7 +494,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | `ActiveTraceContextView` | 3 methods | core, autoconfigure | Medium | No | |
 | `SpanCategory` | 8 enum + `value()` | everywhere | **High** | No | Wire format |
 | `CategoryContracts` | 1 main method | core, lint | Medium | No | Registry |
-| `SensitiveDataRule` | 5 methods (incl defaults) | otel-extension (~20 rules) | Medium | No | SPI |
+| `SpanAttributeScrubbingRule` | 5 methods (incl defaults) | otel-extension (~20 rules) | Medium | No | SPI |
 | `TracingControlProtocol` | ~6 static + fields | otel-extension JMX | Medium | No | Wire contract |
 | `PlatformContextPropagation` | 4 methods | autoconfigure, core | Medium | No | |
 | `EnrichScope` / `GenericEnrichScope` | 2-4 methods each | core enricher | Low-Medium | No | |
@@ -535,7 +535,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | `SpanScope` | core (`OwningSpanScope`, `SpanHandleImpl`) | internal lifecycle | Public but not app-facing |
 | `ActiveTraceContextView` | core, autoconfigure | read context | ~41 refs |
 | `CategoryContracts` | core (`AttributePolicy`), api tests | semconv registry | ~15 refs |
-| `SensitiveDataRule` | otel-extension (20+ rule classes) | SPI implementation | ~150 refs |
+| `SpanAttributeScrubbingRule` | otel-extension (20+ rule classes) | SPI implementation | ~150 refs |
 | `TracingControlProtocol` | otel-extension JMX wire | validation entry | embedded in agent JAR |
 | `PlatformContextPropagation` | autoconfigure, core | bean/async wrapping | ~15 refs |
 | `EnrichScope` | core (`SpanEnricher`, `DefaultEnrichScope`) | enrichment callback | ~9 refs |
@@ -564,7 +564,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | `SpanHandle` / `SpanScope` lifecycle | core `SpanOptionsTopologyTest`, builder tests | Strong indirect | API module не тестирует `SpanScope` |
 | `SpecifiedSpan` | core routing tests | Medium indirect | No dedicated api test |
 | `EnrichScope` / `GenericEnrichScope` | core `SpanEnricherTest` (assumed) | Medium | Not in api module |
-| `SensitiveDataRule` SPI | otel-extension rule tests | Strong in extension | Not in api module |
+| `SpanAttributeScrubbingRule` SPI | otel-extension rule tests | Strong in extension | Not in api module |
 | Transport builders (HTTP/DB/RPC/Kafka) | core `*SpanBuilderTest` | **Strong** | api module — only ArchUnit |
 
 ---
@@ -595,7 +595,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 - `SpanHandle` — widespread v3 terminal type.
 - `PlatformSpanBuilder` — all builders extend it.
 - `CategoryContracts` / `SemconvKeys` — semconv registry, lint, core policy.
-- `SensitiveDataRule` SPI — extension rules implement by name.
+- `SpanAttributeScrubbingRule` SPI — extension rules implement by name.
 - `TracingControlProtocol*` family — wire/JMX compatibility within platform.
 
 ### 14.4 Legacy Names to Remove or Avoid
@@ -701,3 +701,11 @@ Public `SpanScope` and `DatabaseTracing` are removed. Database semconv marker `@
 PR-B1 has been accepted and implemented. Current context and propagation API names are `RequestTraceContextSnapshot`, `ActiveTraceContextView`, `InboundTraceControl`, `OutboundPropagationDecision`, `TraceControlHeaderInjector`, and `TraceparentParser`.
 
 `TraceparentParser` lives in `space.br1440.platform.tracing.api.propagation`. Builder methods that strictly parse W3C `traceparent` values are now named `fromTraceparent(...)` on `ManualSpanBuilder` and `SpanSpecBuilder`.
+
+## PR-B2 Accepted Update - 2026-07-11
+
+PR-B2 has been accepted and implemented. The public scrubbing SPI is now `SpanAttributeScrubbingRule`.
+
+The SPI still applies only to span attribute key/value pairs. ServiceLoader descriptors must use
+`META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule`; the former
+`...SensitiveDataRule` descriptor is intentionally unsupported.

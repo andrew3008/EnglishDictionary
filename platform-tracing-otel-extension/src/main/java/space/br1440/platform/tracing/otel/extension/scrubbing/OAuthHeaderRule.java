@@ -18,7 +18,7 @@ final class OAuthHeaderRule extends AbstractBuiltInRule {
     };
 
     OAuthHeaderRule() {
-        super(BuiltInSensitiveDataRules.OAUTH_HEADER);
+        super(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER);
     }
 
     @Nonnull

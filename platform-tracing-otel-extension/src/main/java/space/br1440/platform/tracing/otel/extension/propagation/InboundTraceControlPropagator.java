@@ -67,7 +67,6 @@ public final class InboundTraceControlPropagator implements TextMapPropagator {
         String forceTraceVal = getter.get(carrier, forceTraceHeader);
         String qaTraceVal = getter.get(carrier, qaTraceHeader);
         String requestIdVal = getter.get(carrier, requestIdHeader);
-
         // Если ни один из заголовков не передан, не меняем контекст
         if (isEmpty(forceTraceVal) && isEmpty(qaTraceVal) && isEmpty(requestIdVal)) {
             return context;

@@ -13,7 +13,7 @@ final class SshCredentialRule extends AbstractBuiltInRule {
     private static final String[] TOKENS = {"passphrase", "privatekey", "sendercert"};
 
     SshCredentialRule() {
-        super(BuiltInSensitiveDataRules.SSH_CREDENTIAL);
+        super(BuiltInSpanAttributeScrubbingRules.SSH_CREDENTIAL);
     }
 
     @Nonnull

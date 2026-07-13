@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
 import java.util.Arrays;
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.Locale;
  * <p>
  * SPI-расширения через {@link java.util.ServiceLoader} в этот enum не входят.
  */
-public enum BuiltInSensitiveDataRules {
+public enum BuiltInSpanAttributeScrubbingRules {
 
     OAUTH_HEADER("oauth-header", 10, true),
     X_AUTH_HEADER("x-auth-header", 15, true),
@@ -34,7 +34,7 @@ public enum BuiltInSensitiveDataRules {
     private final int priority;
     private final boolean critical;
 
-    BuiltInSensitiveDataRules(String configName, int priority, boolean critical) {
+    BuiltInSpanAttributeScrubbingRules(String configName, int priority, boolean critical) {
         this.configName = configName;
         this.priority = priority;
         this.critical = critical;
@@ -63,7 +63,7 @@ public enum BuiltInSensitiveDataRules {
      * Создаёт новый экземпляр реализации правила. Резолвер вызывает на каждый resolve —
      * экземпляры stateless, повторное создание безопасно.
      */
-    public SensitiveDataRule create() {
+    public SpanAttributeScrubbingRule create() {
         return switch (this) {
             case OAUTH_HEADER -> new OAuthHeaderRule();
             case X_AUTH_HEADER -> new XAuthHeaderRule();
@@ -84,12 +84,12 @@ public enum BuiltInSensitiveDataRules {
      * Возвращает дескриптор встроенного правила по имени конфигурации или {@code null},
      * если имя не распознано. Сравнение без учёта регистра. Не создаёт экземпляр правила.
      */
-    public static BuiltInSensitiveDataRules lookup(String name) {
+    public static BuiltInSpanAttributeScrubbingRules lookup(String name) {
         if (name == null) {
             return null;
         }
         String normalized = name.toLowerCase(Locale.ROOT);
-        for (BuiltInSensitiveDataRules rule : values()) {
+        for (BuiltInSpanAttributeScrubbingRules rule : values()) {
             if (rule.configName.equals(normalized)) {
                 return rule;
             }
@@ -101,8 +101,8 @@ public enum BuiltInSensitiveDataRules {
      * Возвращает реализацию встроенного правила по имени конфигурации или {@code null},
      * если имя не распознано. Сравнение без учёта регистра.
      */
-    public static SensitiveDataRule resolve(String name) {
-        BuiltInSensitiveDataRules descriptor = lookup(name);
+    public static SpanAttributeScrubbingRule resolve(String name) {
+        BuiltInSpanAttributeScrubbingRules descriptor = lookup(name);
         return descriptor == null ? null : descriptor.create();
     }
 
@@ -133,7 +133,7 @@ public enum BuiltInSensitiveDataRules {
      */
     public static List<String> allConfigNames() {
         return Arrays.stream(values())
-                .map(BuiltInSensitiveDataRules::configName)
+                .map(BuiltInSpanAttributeScrubbingRules::configName)
                 .toList();
     }
 }

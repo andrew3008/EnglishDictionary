@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.otel.extension.processor;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 
 import java.util.Collections;
 import java.util.List;
@@ -16,9 +16,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ScrubbingPolicyRuntimeTest {
 
     private static ScrubbingSpanProcessor processorWith(String... ruleNames) {
-        List<SensitiveDataRule> rules = new java.util.ArrayList<>();
+        List<SpanAttributeScrubbingRule> rules = new java.util.ArrayList<>();
         for (String name : ruleNames) {
-            rules.add(BuiltInSensitiveDataRules.resolve(name));
+            rules.add(BuiltInSpanAttributeScrubbingRules.resolve(name));
         }
         return new ScrubbingSpanProcessor(rules);
     }

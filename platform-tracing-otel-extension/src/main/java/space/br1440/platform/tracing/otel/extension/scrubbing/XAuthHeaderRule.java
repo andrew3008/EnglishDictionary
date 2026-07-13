@@ -16,7 +16,7 @@ final class XAuthHeaderRule extends AbstractBuiltInRule {
     private static final String[] TOKENS = {"xauthheader"};
 
     XAuthHeaderRule() {
-        super(BuiltInSensitiveDataRules.X_AUTH_HEADER);
+        super(BuiltInSpanAttributeScrubbingRules.X_AUTH_HEADER);
     }
 
     @Nonnull

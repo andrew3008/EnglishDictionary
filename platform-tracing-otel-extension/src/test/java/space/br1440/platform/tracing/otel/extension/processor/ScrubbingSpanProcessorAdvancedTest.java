@@ -7,7 +7,7 @@ import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import java.util.List;
@@ -42,7 +42,7 @@ class ScrubbingSpanProcessorAdvancedTest {
         AtomicInteger dropInvocations = new AtomicInteger();
         AtomicInteger maskInvocations = new AtomicInteger();
 
-        SensitiveDataRule dropRule = new SensitiveDataRule() {
+        SpanAttributeScrubbingRule dropRule = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "drop-rule"; }
             @Override public int priority() { return 10; }
@@ -52,7 +52,7 @@ class ScrubbingSpanProcessorAdvancedTest {
                 return ScrubbingDecision.drop("drop-rule");
             }
         };
-        SensitiveDataRule maskRule = new SensitiveDataRule() {
+        SpanAttributeScrubbingRule maskRule = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "mask-rule"; }
             @Override public int priority() { return 100; }
@@ -80,7 +80,7 @@ class ScrubbingSpanProcessorAdvancedTest {
 
     @Test
     void нестроковый_DROP_перезаписывает_type_neutral_sentinel() {
-        SensitiveDataRule dropDoubles = new SensitiveDataRule() {
+        SpanAttributeScrubbingRule dropDoubles = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "geo"; }
             @Override public int priority() { return 50; }
@@ -110,7 +110,7 @@ class ScrubbingSpanProcessorAdvancedTest {
         // PR-4/PR-5: сбой custom-правила теперь перехватывается в RuleExecutionWrapper и считается
         // в circuit breaker — он НЕ всплывает в PlatformCompositeSpanProcessor. Для custom-правила
         // (critical=false) поведение при сбое — skip: атрибут остаётся нетронутым, остальные целы.
-        SensitiveDataRule faulty = new SensitiveDataRule() {
+        SpanAttributeScrubbingRule faulty = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "boom"; }
             @Override public int priority() { return 900; }

@@ -90,7 +90,7 @@ Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links 
 | 2.1 | Лимит атрибутов | 50 | OK | `platform-tracing-spring-boot-autoconfigure/.../TracingProperties.java` `Limits.maxAttributes` → `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT` | `SpanLimitsBenchmark` |
 | 2.2 | Лимит длины значения | 1000 | OK | `TracingProperties.Limits.maxAttributeValueLength` → `OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT` | — |
 | 2.3 | Лимит событий | 10 | OK | `TracingProperties.Limits.maxEvents` → `OTEL_SPAN_EVENT_COUNT_LIMIT` | — |
-| 2.4 | Маскирование PII (логины/пароли/email/токены/ПДн), расширяемые правила | enabled | OK (2 линии) | 1-я: `platform-tracing-otel-extension/.../processor/ScrubbingSpanProcessor.java` + `.../scrubbing/BuiltInSensitiveDataRules.java` (password/jwt/email/pan/phone) + SPI; 2-я: `redaction/platform-second-line` в gateway YAML | [ADR-scrubbing-cost.md](../decisions/ADR-scrubbing-cost.md); `ScrubbingEngineBenchmark`, `ScrubbingPerRuleBenchmark` |
+| 2.4 | Маскирование PII (логины/пароли/email/токены/ПДн), расширяемые правила | enabled | OK (2 линии) | 1-я: `platform-tracing-otel-extension/.../processor/ScrubbingSpanProcessor.java` + `.../scrubbing/BuiltInSpanAttributeScrubbingRules.java` (password/jwt/email/pan/phone) + SPI; 2-я: `redaction/platform-second-line` в gateway YAML | [ADR-scrubbing-cost.md](../decisions/ADR-scrubbing-cost.md); `ScrubbingEngineBenchmark`, `ScrubbingPerRuleBenchmark` |
 | 2.5.1 | Span timeout 30s → status error + флаг timeout | 30s | OK | `platform-tracing-otel-extension/.../processor/SpanWatchdogProcessor.java` → `platform.trace.result=timeout` | `SpanWatchdogProcessorTest` |
 | 2.5.2 | Trace timeout 60s → пометка аномального | 60s | OK | `SpanWatchdogProcessor.java` (traceTimeout) | `SpanWatchdogProcessorTest` |
 

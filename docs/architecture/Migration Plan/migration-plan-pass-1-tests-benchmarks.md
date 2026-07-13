@@ -41,7 +41,7 @@
 
 | Критерий | Содержимое |
 |----------|-----------|
-| **Существующие тесты (сохранить)** | `ScrubbingSpanProcessorTest`, `ScrubbingSpanProcessorAdvancedTest` (инвентарь: `AdvancedTest` в scrubbing package), `ScrubbingSecurityNegativeTest`, `MergeEngineTest`, `RuleCircuitBreakerTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSensitiveDataRuleTest`, `ExceptionEventScrubbingE2ETest`, `BuiltInRulesTest` |
+| **Существующие тесты (сохранить)** | `ScrubbingSpanProcessorTest`, `ScrubbingSpanProcessorAdvancedTest` (инвентарь: `AdvancedTest` в scrubbing package), `ScrubbingSecurityNegativeTest`, `MergeEngineTest`, `RuleCircuitBreakerTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSpanAttributeScrubbingRuleTest`, `ExceptionEventScrubbingE2ETest`, `BuiltInRulesTest` |
 | **Продублировать до переноса** | Rule engine unit tests (`MergeEngineTest`, `RuleCircuitBreakerTest`, `BuiltInRulesTest`) → дублировать в `platform-tracing-core` test source до PR-7; `ScrubbingSecurityNegativeTest` → обязательно, критический security тест ReDoS/injection |
 | **Адаптировать после split** | `ScrubbingSpanProcessorTest` — адаптировать: processor остаётся в otel-extension, но делегирует engine из core; `ExtensionRuleLoaderTest` — адаптировать: loader может быть в extension, engine в core |
 | **Новые тесты** | Тест граничного поведения fail-open: engine exception → span export продолжается (не только на уровне processor, но и на уровне core engine); тест на отсутствие OTel-зависимостей в core scrubbing policy |
@@ -296,7 +296,7 @@
 | `CompositeSamplerPolicyBranchesBenchmark` | Стоимость каждой ветки rule chain (KillSwitch, ForceHeader, RouteRatio и т.д.) | `*Rule` классы | **HIGH** | PR-6 |
 | `CompositeSamplerConcurrentUpdateBenchmark` | Latency + throughput при concurrent reads и periodic atomic state update | `SamplerStateHolder`, `DomainConfigHolder` | **HIGH** | PR-6 (state holder split риск) |
 | `ScrubbingEngineBenchmark` | Throughput rule evaluation engine для типичного span | `scrubbing.engine.*`, `MergeEngine` | **CRITICAL** | PR-7 (scrubbing extraction) |
-| `ScrubbingPerRuleBenchmark` | Стоимость каждого `SensitiveDataRule` при обработке span attribute | `BuiltInSensitiveDataRules`, regex rules | **HIGH** | PR-7 |
+| `ScrubbingPerRuleBenchmark` | Стоимость каждого `SpanAttributeScrubbingRule` при обработке span attribute | `BuiltInSpanAttributeScrubbingRules`, regex rules | **HIGH** | PR-7 |
 | `QueueOfferBenchmark` | Offer throughput: `PlatformDropOldestExportSpanProcessor` vs standard BSP | `PlatformDropOldestExportSpanProcessor` | **HIGH** | PR-0 (export safety baseline) |
 | `CompositePipelineBenchmark` | Полная цепочка: scrub → validate → enrich → export; latency per span | `PlatformCompositeSpanProcessor` + chain | **HIGH** | PR-8 (pipeline defaults) |
 | `AttributePolicyBenchmark` | Стоимость attribute allow/deny/eager policy eval | `AttributePolicy` | **MEDIUM** | PR-6/PR-8 (core split) |

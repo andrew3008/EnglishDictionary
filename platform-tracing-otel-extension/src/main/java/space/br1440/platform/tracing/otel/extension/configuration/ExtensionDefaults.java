@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.extension.configuration;
 
 import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 
 import java.time.Duration;
 import java.util.List;
@@ -24,7 +24,7 @@ public final class ExtensionDefaults {
 
     public static final String DEFAULT_SCRUBBING_MISSING_KEY_POLICY = "mask";
     public static final String DEFAULT_SCRUBBING_VALIDATION_MODE = "LENIENT";
-    public static final List<String> DEFAULT_BUILT_IN_RULES = BuiltInSensitiveDataRules.defaultConfigNames();
+    public static final List<String> DEFAULT_BUILT_IN_RULES = BuiltInSpanAttributeScrubbingRules.defaultConfigNames();
 
     public static final boolean DEFAULT_VALIDATION_STRICT = false;
     public static final boolean DEFAULT_VALIDATION_STRICT_RUNTIME_ALLOWED = false;

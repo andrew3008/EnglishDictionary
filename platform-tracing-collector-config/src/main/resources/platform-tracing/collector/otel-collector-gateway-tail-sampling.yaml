@@ -60,7 +60,7 @@ processors:
           - delete_key(attributes, "url.full") where kind == SPAN_KIND_SERVER
 
   # Вторая линия защиты sensitive data (Фаза 16, Spike S2 GO на contrib 0.154.0).
-  # Первая линия — SDK ScrubbingSpanProcessor (BuiltInSensitiveDataRules + SPI).
+  # Первая линия — SDK ScrubbingSpanProcessor (BuiltInSpanAttributeScrubbingRules + SPI).
   # Сознательно НЕ используем allowed_keys: allowlist уже реализован на SDK
   # (CategoryContracts/AttributePolicy); режим allowlist на Collector'е имел бы
   # blast radius на весь трафик кластера. Здесь — только маскирование значений

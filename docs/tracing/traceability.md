@@ -48,7 +48,7 @@
 | 2.1 | Лимит атрибутов на span | 50 | OK | `TracingProperties.Limits.maxAttributes=50` → `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT` (через PR-1.A `platformDefaults`) |
 | 2.2 | Лимит длины значения атрибута | 1000 | OK | `TracingProperties.Limits.maxAttributeValueLength=1000` → `OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT` |
 | 2.3 | Лимит количества событий | 10 | OK | `TracingProperties.Limits.maxEvents=10` → `OTEL_SPAN_EVENT_COUNT_LIMIT` |
-| 2.4 | Автомаскирование чувствительных данных (логины, пароли, email, токены, PII) | enabled | OK | 1-я линия: `platform-tracing-otel-extension/.../processor/ScrubbingSpanProcessor.java` + `BuiltInSensitiveDataRules` (`password`, `jwt`, `email`, `pan`, `phone`); 2-я линия (Фаза 16): `redaction/platform-second-line` в gateway YAML (blocked_values: JWT/Bearer/e-mail/PAN, `summary: info`) |
+| 2.4 | Автомаскирование чувствительных данных (логины, пароли, email, токены, PII) | enabled | OK | 1-я линия: `platform-tracing-otel-extension/.../processor/ScrubbingSpanProcessor.java` + `BuiltInSpanAttributeScrubbingRules` (`password`, `jwt`, `email`, `pan`, `phone`); 2-я линия (Фаза 16): `redaction/platform-second-line` в gateway YAML (blocked_values: JWT/Bearer/e-mail/PAN, `summary: info`) |
 | 2.5.1 | Span timeout 30s | 30s | OK | `TracingProperties.Limits.spanTimeout=PT30S` → `SpanWatchdogProcessor` |
 | 2.5.2 | Trace timeout 60s | 60s | OK | `TracingProperties.Limits.traceTimeout=PT60S` → `SpanWatchdogProcessor` |
 

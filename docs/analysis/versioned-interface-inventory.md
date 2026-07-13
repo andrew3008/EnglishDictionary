@@ -91,7 +91,7 @@ public final class DomainConfigHolder<T extends Versioned> {
 | `api` | `PlatformTracing`, span builders | публичный SDK |
 | `api.control.wire` | `TracingControlWireSchema`, `TracingControlWireValidator` | **wire-контракт** JMX/control-plane (JDK-only, без I/O) |
 | `api.config` | `Versioned`, `DomainConfigHolder` | **runtime CAS primitive** (не wire, не Spring properties) |
-| `api.spi` | `SensitiveDataRule` | extension SPI |
+| `api.spi` | `SpanAttributeScrubbingRule` | extension SPI |
 | `api.attributes` | `PlatformSamplingReasons` | semconv/platform attrs |
 
 **Конфликт имён:** `api.config` ≠ Spring `@ConfigurationProperties` / `TracingProperties` (они в autoconfigure).  

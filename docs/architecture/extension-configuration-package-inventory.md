@@ -381,7 +381,7 @@ git ls-files "platform-tracing-otel-extension/src/main/java/space/br1440/platfor
 - **Uses ExtensionPropertyNames:** No
 - **Uses ExtensionDefaults:** N/A
 - **Used by:** Domain configs, `PlatformTracingDefaultsProvider`, `resource.*`, `PlatformDropOldestExportSpanProcessor`, tests, parity tests
-- **Uses:** `PlatformHeaders`, `BuiltInSensitiveDataRules`
+- **Uses:** `PlatformHeaders`, `BuiltInSpanAttributeScrubbingRules`
 - **Test coverage:** Parity characterization, resource tests, scrubbing adoption tests
 - **Package move risk:** **HIGH** — cross-package imports from `resource` and `processor`
 - **Notes:** `DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT` used outside domain config surface
@@ -551,7 +551,7 @@ JavaAgentExtensionPaths
   -> ExtensionEnvironmentVariables
   -> ConfigProperties
 
-ExtensionDefaults -> PlatformHeaders, BuiltInSensitiveDataRules (external packages)
+ExtensionDefaults -> PlatformHeaders, BuiltInSpanAttributeScrubbingRules (external packages)
 ExtensionPropertyNames -> (no in-package deps)
 ExtensionEnums -> (no in-package deps)
 AutoConfigurationCustomizerOrdering -> (no deps)

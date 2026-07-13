@@ -86,6 +86,7 @@ class ReactorContextPropagationAgentE2ETest {
                 extensionJar,
                 Map.of(),
                 List.of(
+                        "platform.tracing.sampling.ratio=1.0",
                         "platform.tracing.suppression.suppress-micrometer-tracing=true",
                         "spring.reactor.context-propagation=AUTO",
                         "otel.bsp.schedule.delay=200"),

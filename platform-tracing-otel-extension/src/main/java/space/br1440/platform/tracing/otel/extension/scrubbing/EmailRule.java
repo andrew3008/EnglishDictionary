@@ -19,7 +19,7 @@ final class EmailRule extends AbstractBuiltInRule {
             "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
 
     EmailRule() {
-        super(BuiltInSensitiveDataRules.EMAIL);
+        super(BuiltInSpanAttributeScrubbingRules.EMAIL);
     }
 
     @Nonnull

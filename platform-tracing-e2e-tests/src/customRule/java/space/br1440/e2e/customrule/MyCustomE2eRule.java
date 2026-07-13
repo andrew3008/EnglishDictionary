@@ -4,9 +4,9 @@ package space.br1440.e2e.customrule;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
-public class MyCustomE2eRule implements SensitiveDataRule {
+public class MyCustomE2eRule implements SpanAttributeScrubbingRule {
 
     @Nonnull
     @Override

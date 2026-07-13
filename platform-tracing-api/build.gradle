@@ -16,7 +16,7 @@ dependencies {
     // Для PlatformTraceContextKeys (io.opentelemetry.context.ContextKey)
     compileOnly 'io.opentelemetry:opentelemetry-context'
 
-    // Для SensitiveDataRule.evaluate(AttributeKey<?>, Object): тип/имя атрибута.
+    // Для SpanAttributeScrubbingRule.evaluate(AttributeKey<?>, Object): тип/имя атрибута.
     // compileOnly — runtime предоставляется OTel Agent/SDK в потребляющем модуле.
     compileOnly 'io.opentelemetry:opentelemetry-api'
 

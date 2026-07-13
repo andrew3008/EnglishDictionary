@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.spi;
 import jakarta.annotation.Nonnull;
 
 /**
- * Результат вычисления {@link SensitiveDataRule#evaluate}: какое действие применить к значению атрибута и почему.
+ * Результат вычисления {@link SpanAttributeScrubbingRule#evaluate}: какое действие применить к значению атрибута и почему.
  * <p>
  * Несёт <b>только</b> {@code action}, {@code reason} (для метрик/диагностики) и {@code maxLength}
  * (для {@link ScrubbingAction#TRUNCATE}). Конкретное новое значение атрибута вычисляет процессор

@@ -11,7 +11,7 @@ import jakarta.annotation.Nullable;
  * «накопить и свести» (accumulate-and-merge): расширение OpenTelemetry обходит все применимые правила и сводит их
  * решения по строгости (KEEP &lt; TRUNCATE &lt; HASH &lt; MASK &lt; DROP).
  */
-public interface SensitiveDataRule {
+public interface SpanAttributeScrubbingRule {
 
     /**
      * Уникальное имя правила, отображаемое в метриках и логах при срабатывании.

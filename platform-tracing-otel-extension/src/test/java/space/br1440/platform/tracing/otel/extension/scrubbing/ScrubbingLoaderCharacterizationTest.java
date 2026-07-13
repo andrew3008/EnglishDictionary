@@ -35,7 +35,7 @@ class ScrubbingLoaderCharacterizationTest {
     @Test
     void updateScrubbingPolicy_disabled_preserves_sensitive_values() {
         ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(
-                List.of(BuiltInSensitiveDataRules.resolve("password")));
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")));
         assertThat(processor.isEnabled()).isTrue();
 
         boolean applied = processor.updateScrubbingPolicy(false, List.of("password"));

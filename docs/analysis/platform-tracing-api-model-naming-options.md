@@ -42,7 +42,7 @@ Production-readiness verdict: **not production-ready as-is**. The API shape is s
 - `RequestTraceContextSnapshot` is a nullable record used for error-handling integration in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/RequestTraceContextSnapshot.java`.
 - `ActiveTraceContextView` is a read-only active context view in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ActiveTraceContextView.java`.
 - `EnrichScope` and `GenericEnrichScope` are mutation DSLs, not lifecycle scopes, in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/enrich`.
-- `SensitiveDataRule` is the public scrubbing SPI implemented by the OTel extension in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/spi/SensitiveDataRule.java`.
+- `SpanAttributeScrubbingRule` is the public scrubbing SPI implemented by the OTel extension in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/spi/SpanAttributeScrubbingRule.java`.
 - `SpanOptions` no longer exists as a source file; stale references remain in docs/tests, including `platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/manual/arch/V3ManualApiArchTest.java`.
 - Verification command over source found **81** top-level public API types: 6 annotations, 23 classes, 10 enums, 31 interfaces, and 11 records.
 
@@ -339,8 +339,8 @@ Generic vocabulary overuse:
 
 | Field | Value |
 |---|---|
-| Current file | `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/spi/SensitiveDataRule.java` |
-| Current FQN | `space.br1440.platform.tracing.api.spi.SensitiveDataRule` |
+| Current file | `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/spi/SpanAttributeScrubbingRule.java` |
+| Current FQN | `space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule` |
 | Current role | SPI rule evaluating span attribute key/value pairs and returning `ScrubbingDecision`. |
 | Current score | 66 |
 | Recommended score | 92 |
@@ -612,7 +612,7 @@ Terminal method review:
 | Decision | `*Decision` | Result of policy | Generic platform decision without direction |
 | Contract | `*Contract` | Rules/constraints by domain | Unqualified `CategoryContract` |
 | Constants | `*Keys`, `*Attributes`, `*Reasons` | Static registries | Singular model names |
-| SPI rule | `*Rule` qualified by target/action | Extension point implementing behavior | Vague `SensitiveDataRule` |
+| SPI rule | `*Rule` qualified by target/action | Extension point implementing behavior | Vague `SpanAttributeScrubbingRule` |
 | Protocol wire model | Long `TracingControlProtocol*` family | Public wire/JMX protocol | Short names that collide outside package |
 
 Applied to current types:
@@ -806,3 +806,10 @@ PR-B1 has been accepted and implemented as a context/propagation naming slice. C
 | Builder strict traceparent links | `fromTraceparent(...)` |
 
 Semantic verdicts: the request context type is a captured nullable snapshot for error-handling, the active context view is a live read-only view over the active span, trace-control extraction is inbound, propagation decisions are outbound, the injector writes only trace-control headers, and `TraceparentParser` is parser behavior rather than a value object.
+
+## PR-B2 Accepted Update - 2026-07-11
+
+PR-B2 has been accepted and implemented. `SensitiveDataRule` is now `SpanAttributeScrubbingRule`.
+The SPI remains span-attribute-only, and ServiceLoader providers must use
+`META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule`.
+Implementation class names and `BuiltInSpanAttributeScrubbingRules` remain unchanged by design.

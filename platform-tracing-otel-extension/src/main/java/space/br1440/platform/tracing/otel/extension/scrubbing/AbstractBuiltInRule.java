@@ -1,19 +1,19 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
 /**
  * Базовый класс встроенных правил scrubbing'а: {@link #name()} и {@link #priority()}
- * делегируются enum-дескриптору {@link BuiltInSensitiveDataRules}, чтобы имя конфигурации
+ * делегируются enum-дескриптору {@link BuiltInSpanAttributeScrubbingRules}, чтобы имя конфигурации
  * и приоритет first-match хранились в одном месте. Подклассы реализуют только
  * {@link #evaluate}.
  */
-abstract class AbstractBuiltInRule implements SensitiveDataRule {
+abstract class AbstractBuiltInRule implements SpanAttributeScrubbingRule {
 
-    private final BuiltInSensitiveDataRules descriptor;
+    private final BuiltInSpanAttributeScrubbingRules descriptor;
 
-    protected AbstractBuiltInRule(BuiltInSensitiveDataRules descriptor) {
+    protected AbstractBuiltInRule(BuiltInSpanAttributeScrubbingRules descriptor) {
         this.descriptor = descriptor;
     }
 

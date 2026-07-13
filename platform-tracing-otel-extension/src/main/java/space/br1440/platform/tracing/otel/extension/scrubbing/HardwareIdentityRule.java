@@ -15,7 +15,7 @@ final class HardwareIdentityRule extends AbstractBuiltInRule {
     };
 
     HardwareIdentityRule() {
-        super(BuiltInSensitiveDataRules.HARDWARE_IDENTITY);
+        super(BuiltInSpanAttributeScrubbingRules.HARDWARE_IDENTITY);
     }
 
     @Nonnull

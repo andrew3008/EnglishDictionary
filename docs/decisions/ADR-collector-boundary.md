@@ -54,7 +54,7 @@
 | SDK | Forced recording (`X-Trace-On`/`X-QA-Trace`) | `ForceHeaderRule`/`QaTraceRule` в `CompositeSampler` |
 | SDK | Head sampling (ratio/route/drop-paths) | `CompositeSampler` + `SamplerStateHolder` (runtime JMX) |
 | SDK | Span limits | `TracingProperties.Limits` → `OTEL_SPAN_*` |
-| SDK | Masking, 1-я линия | `ScrubbingSpanProcessor` + `BuiltInSensitiveDataRules` + SPI |
+| SDK | Masking, 1-я линия | `ScrubbingSpanProcessor` + `BuiltInSpanAttributeScrubbingRules` + SPI |
 | SDK | Resource service identity | `PlatformResourceProvider` |
 | SDK | App overhead protection | bounded drop-oldest очередь, export timeout, no-op fallback |
 | SDK | Enrichment | `EnrichingSpanProcessor`/`ClassificationSpanProcessor` |

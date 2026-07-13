@@ -13,7 +13,7 @@ final class WebhookTokenRule extends AbstractBuiltInRule {
     private static final String[] TOKENS = {"webhooktoken", "harborwebhook"};
 
     WebhookTokenRule() {
-        super(BuiltInSensitiveDataRules.WEBHOOK_TOKEN);
+        super(BuiltInSpanAttributeScrubbingRules.WEBHOOK_TOKEN);
     }
 
     @Nonnull

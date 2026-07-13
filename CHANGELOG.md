@@ -5,6 +5,12 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), версии — [Semantic Versioning](https://semver.org/lang/ru/).
 
 ## [Unreleased] — Wave R1+ (dual-channel alignment)
+### Changed (PR-B2 - scrubbing SPI naming)
+
+- Pre-production SPI rename: `SensitiveDataRule` -> `SpanAttributeScrubbingRule`.
+  Custom rule JARs must implement the new SPI and use
+  `META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule`.
+  No compatibility alias or duplicate service descriptor is provided.
 ### Changed (PR-B1 - API context/propagation naming)
 
 - Pre-production API rename slice: `TracingRequestContext` -> `RequestTraceContextSnapshot`,

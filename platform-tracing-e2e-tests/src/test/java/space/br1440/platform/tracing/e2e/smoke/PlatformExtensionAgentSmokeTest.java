@@ -86,6 +86,8 @@ class PlatformExtensionAgentSmokeTest {
 
     private static String otlpEndpoint;
 
+    private static String jaegerQueryBaseUrl;
+
     private static String testRuntimeClasspath;
 
     private static String otelAgentJar;
@@ -146,7 +148,9 @@ class PlatformExtensionAgentSmokeTest {
 
         otlpEndpoint = JaegerTestContainerSupport.otlpHttpEndpoint(jaeger);
 
-        jaegerClient = new JaegerV3QueryClient(JaegerTestContainerSupport.queryBaseUrl(jaeger));
+        jaegerQueryBaseUrl = JaegerTestContainerSupport.queryBaseUrl(jaeger);
+
+        jaegerClient = new JaegerV3QueryClient(jaegerQueryBaseUrl);
 
     }
 
@@ -188,7 +192,7 @@ class PlatformExtensionAgentSmokeTest {
 
     void agent_with_extension_выставляет_platform_type_database() throws Exception {
 
-        AgentJdbcSmokeProcessRunner.run(
+        String agentOutput = AgentJdbcSmokeProcessRunner.run(
 
                 otelAgentJar,
 
@@ -208,7 +212,9 @@ class PlatformExtensionAgentSmokeTest {
 
                 Map.of("OTEL_TRACES_SAMPLER", "always_on"),
 
-                List.of("otel.bsp.schedule.delay=200"),
+                List.of(
+                        "otel.bsp.schedule.delay=200",
+                        "platform.tracing.sampling.ratio=1.0"),
 
                 AGENT_PROCESS_TIMEOUT,
 
@@ -228,9 +234,15 @@ class PlatformExtensionAgentSmokeTest {
 
                             attrs -> attrs.containsKey("db.system") || attrs.containsKey("db.system.name"));
 
+                    List<String> spanNames = jaegerClient.listSpanNames(SERVICE_NAME);
+
                     assertThat(jdbcSpan)
 
                             .as("JDBC span от Agent с extension должен появиться в Jaeger")
+
+                            .as("JDBC span from Agent with extension must appear in Jaeger; "
+                                            + "otlpEndpoint=%s; jaegerQuery=%s; extensionJar=%s; spanNames=%s; agentOutput:%n%s",
+                                    otlpEndpoint, jaegerQueryBaseUrl, extensionJar, spanNames, agentOutput)
 
                             .isPresent();
 
@@ -247,5 +259,3 @@ class PlatformExtensionAgentSmokeTest {
     }
 
 }
-
-

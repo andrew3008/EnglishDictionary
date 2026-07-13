@@ -6,7 +6,7 @@ import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
@@ -24,7 +24,7 @@ class ScrubbingCircuitBreakerCharacterizationTest {
 
     @Test
     void critical_rule_open_returns_scrubbing_failed_in_merge_engine() {
-        SensitiveDataRule criticalFaulty = criticalThrowingRule("critical-open");
+        SpanAttributeScrubbingRule criticalFaulty = criticalThrowingRule("critical-open");
         var wrapper = new RuleExecutionWrapper(
                 criticalFaulty,
                 new RuleCircuitBreaker("critical-open", 1, 0L, 0L));
@@ -38,7 +38,7 @@ class ScrubbingCircuitBreakerCharacterizationTest {
 
     @Test
     void critical_rule_failure_masks_attribute_with_scrubbing_failed() {
-        SensitiveDataRule criticalFaulty = criticalThrowingRule("critical-boom");
+        SpanAttributeScrubbingRule criticalFaulty = criticalThrowingRule("critical-boom");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(criticalFaulty)))) {
             Tracer tracer = h.tracer("t");
@@ -54,7 +54,7 @@ class ScrubbingCircuitBreakerCharacterizationTest {
 
     @Test
     void custom_rule_open_is_skipped_by_merge_engine() {
-        SensitiveDataRule customFaulty = new SensitiveDataRule() {
+        SpanAttributeScrubbingRule customFaulty = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "custom-open"; }
             @Override public int priority() { return 900; }
@@ -73,8 +73,8 @@ class ScrubbingCircuitBreakerCharacterizationTest {
         assertThat(MergeEngine.evaluate(List.of(wrapper), "k", "v").action().name()).isEqualTo("KEEP");
     }
 
-    private static SensitiveDataRule criticalThrowingRule(String name) {
-        return new SensitiveDataRule() {
+    private static SpanAttributeScrubbingRule criticalThrowingRule(String name) {
+        return new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return name; }
             @Override public int priority() { return 10; }

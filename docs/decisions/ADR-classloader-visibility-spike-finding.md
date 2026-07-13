@@ -1,4 +1,4 @@
-# ADR: ClassLoader Visibility Spike — custom SensitiveDataRule loading
+# ADR: ClassLoader Visibility Spike — custom SpanAttributeScrubbingRule loading
 
 | Поле | Значение |
 |------|----------|
@@ -10,7 +10,7 @@
 
 ## Проблема
 
-`PlatformSpanProcessorFactory.appendSpiRulesFromExtensions()` использует `URLClassLoader` поверх путей из `otel.javaagent.extensions`, чтобы найти `SensitiveDataRule` в sibling extension JAR. Это решает видимость, но может приводить к **двойной загрузке** JAR, уже загруженных OTel Agent как extensions.
+`PlatformSpanProcessorFactory.appendSpiRulesFromExtensions()` использует `URLClassLoader` поверх путей из `otel.javaagent.extensions`, чтобы найти `SpanAttributeScrubbingRule` в sibling extension JAR. Это решает видимость, но может приводить к **двойной загрузке** JAR, уже загруженных OTel Agent как extensions.
 
 ## Метод spike
 
@@ -25,10 +25,10 @@ java -javaagent:opentelemetry-javaagent.jar
 
 Probe в `PlatformSpanProcessorFactory` (только при spike-флаге) проверяет 4 варианта `ServiceLoader`:
 
-1. `ServiceLoader.load(SensitiveDataRule.class)` — effective TCCL
+1. `ServiceLoader.load(SpanAttributeScrubbingRule.class)` — effective TCCL
 2. `ServiceLoader.load(..., Thread.currentThread().getContextClassLoader())`
 3. `ServiceLoader.load(..., PlatformSpanProcessorFactory.class.getClassLoader())`
-4. `ServiceLoader.load(..., SensitiveDataRule.class.getClassLoader())`
+4. `ServiceLoader.load(..., SpanAttributeScrubbingRule.class.getClassLoader())`
 
 Baseline: текущий `URLClassLoader` workaround в `appendSpiRulesFromExtensions`.
 
@@ -43,7 +43,7 @@ Baseline: текущий `URLClassLoader` workaround в `appendSpiRulesFromExten
 | factory | `ExtensionClassLoader` | **нет** |
 | api | `ExtensionClassLoader` | **нет** |
 
-`PlatformSpanProcessorFactory` и `SensitiveDataRule` API живут в **одном** `io.opentelemetry.javaagent.tooling.ExtensionClassLoader` (platform extension JAR). Custom-rules JAR в той же директории `otel.javaagent.extensions` через нативный `ServiceLoader` **не обнаруживается**.
+`PlatformSpanProcessorFactory` и `SpanAttributeScrubbingRule` API живут в **одном** `io.opentelemetry.javaagent.tooling.ExtensionClassLoader` (platform extension JAR). Custom-rules JAR в той же директории `otel.javaagent.extensions` через нативный `ServiceLoader` **не обнаруживается**.
 
 **Вывод:** утверждение «достаточно TCCL / factory ClassLoader» — **опровергнуто** spike'ом.
 

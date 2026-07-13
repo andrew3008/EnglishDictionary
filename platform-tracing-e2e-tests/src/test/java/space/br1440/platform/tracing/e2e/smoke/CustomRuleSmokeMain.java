@@ -1,13 +1,11 @@
 package space.br1440.platform.tracing.e2e.smoke;
 
-import io.opentelemetry.api.trace.Span;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.context.annotation.Import;
 import space.br1440.platform.tracing.e2e.support.AgentHttpSpringSmokeProcessRunner;
 
 import java.util.concurrent.CountDownLatch;
@@ -18,6 +16,7 @@ import java.util.concurrent.TimeUnit;
         "space.br1440.platform.logging.configuration.LoggingAutoConfiguration",
         "space.br1440.platform.logging.configuration.GrpcLoggingConfiguration"
 })
+@Import(CustomRuleSmokeController.class)
 public class CustomRuleSmokeMain {
 
     public static void main(String[] args) throws Exception {
@@ -53,21 +52,5 @@ public class CustomRuleSmokeMain {
     @Bean
     CountDownLatch servedLatch() {
         return new CountDownLatch(1);
-    }
-
-    @RestController
-    static class Controller {
-        private final CountDownLatch servedLatch;
-
-        Controller(CountDownLatch servedLatch) {
-            this.servedLatch = servedLatch;
-        }
-
-        @GetMapping("/probe")
-        String probe() {
-            Span.current().setAttribute("e2e.custom.marker", "my-super-secret-value");
-            servedLatch.countDown();
-            return "ok";
-        }
     }
 }

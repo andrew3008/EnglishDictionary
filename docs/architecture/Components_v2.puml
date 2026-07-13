@@ -142,7 +142,7 @@ rectangle "L2 — Framework Adapter" as L2 #BBDEFB {
 rectangle "L3 — Application Port" as L3 #FFE0B2 {
   card "PlatformTracing\n(interface)" as pt
   card "@Traced / SpanScope\nSpanCategory / SpanResult" as ann
-  card "SPI:\nSpanEnricher\nSensitiveDataRule\nSamplingDecisionContributor" as spi
+  card "SPI:\nSpanEnricher\nSpanAttributeScrubbingRule\nSamplingDecisionContributor" as spi
   card "TracingRequestContext\nTracingMdcKeys\nPlatformHeaders" as cross
 }
 
@@ -264,7 +264,7 @@ package "spi" as spi_pkg #FFECB3 {
   interface SpanEnricher <<SPI>> {
     +enrich(SpanScope)
   }
-  interface SensitiveDataRule <<SPI>> {
+  interface SpanAttributeScrubbingRule <<SPI>> {
     +name()
     +priority()
     +matches(key, value)
@@ -291,7 +291,7 @@ end note
 note right of spi_pkg
   **SPI без ServiceLoader в api**
   Реализации подключаются:
-  • otel-extension: ServiceLoader<SensitiveDataRule>
+  • otel-extension: ServiceLoader<SpanAttributeScrubbingRule>
   • SamplingDecisionContributor — задекларирован,\n  но в CompositeSampler пока не wired
   **→ кандидат на рефакторинг SPI-реестра**
 end note
@@ -378,7 +378,7 @@ package "configuration" as cfg {
     -platformDefaults(): Map
     -buildSampler(): CompositeSampler
     -registerSpanProcessors(): SdkTracerProviderBuilder
-    -collectScrubbingRules(): List<SensitiveDataRule>
+    -collectScrubbingRules(): List<SpanAttributeScrubbingRule>
     -tryRegisterMBean()
   }
   class ExtensionPropertyNames <<constants>>
@@ -408,7 +408,7 @@ package "processor" as proc {
 }
 
 package "scrubbing.rules" as rules {
-  class BuiltInSensitiveDataRules
+  class BuiltInSpanAttributeScrubbingRules
   class EmailRule
   class JwtRule
   class PasswordKeyRule
@@ -436,9 +436,9 @@ PlatformAutoConfigurationCustomizer --> ValidatingSpanProcessor
 PlatformAutoConfigurationCustomizer --> SpanWatchdogProcessor
 SafeSpanProcessor ..> proc : wraps\n(isolates failures)
 
-ScrubbingSpanProcessor --> SensitiveDataRule
-BuiltInSensitiveDataRules --> rules
-PlatformAutoConfigurationCustomizer ..> "ServiceLoader\n<SensitiveDataRule>" : custom rules
+ScrubbingSpanProcessor --> SpanAttributeScrubbingRule
+BuiltInSpanAttributeScrubbingRules --> rules
+PlatformAutoConfigurationCustomizer ..> "ServiceLoader\n<SpanAttributeScrubbingRule>" : custom rules
 
 MutableRatioSampler --> PlatformTracingControl : registered via JMX
 PlatformTracingControl ..> PlatformTracingControlMBean

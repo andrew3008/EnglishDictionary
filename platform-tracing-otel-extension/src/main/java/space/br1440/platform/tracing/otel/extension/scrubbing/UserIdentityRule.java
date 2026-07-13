@@ -18,7 +18,7 @@ final class UserIdentityRule extends AbstractBuiltInRule {
     };
 
     UserIdentityRule() {
-        super(BuiltInSensitiveDataRules.USER_IDENTITY);
+        super(BuiltInSpanAttributeScrubbingRules.USER_IDENTITY);
     }
 
     @Nonnull

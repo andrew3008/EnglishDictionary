@@ -134,6 +134,8 @@ public final class AgentWebFluxProcessRunner {
         jvmProperties.add("otel.service.name=" + serviceName);
         jvmProperties.add("otel.traces.exporter=otlp");
         jvmProperties.add("otel.exporter.otlp.endpoint=" + otlpEndpoint);
+        jvmProperties.add("otel.exporter.otlp.traces.endpoint="
+                + JaegerTestContainerSupport.resolveOtlpHttpTracesEndpoint(otlpEndpoint));
         jvmProperties.add("otel.exporter.otlp.protocol=http/protobuf");
         jvmProperties.add("platform.tracing.queue.overflow-policy=UPSTREAM");
         jvmProperties.add("otel.metrics.exporter=none");

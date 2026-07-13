@@ -15,7 +15,7 @@ class ScrubbingPolicyHolderTest {
     @Test
     void current_returns_initial_snapshot() {
         ScrubbingSnapshot initial = ScrubbingSnapshot.fromRules(
-                true, List.of(BuiltInSensitiveDataRules.resolve("password")), 1, Instant.now(), "startup");
+                true, List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")), 1, Instant.now(), "startup");
         ScrubbingPolicyHolder holder = new ScrubbingPolicyHolder(initial);
 
         assertThat(holder.current()).isSameAs(initial);
@@ -25,7 +25,7 @@ class ScrubbingPolicyHolderTest {
     @Test
     void tryUpdate_applies_valid_snapshot_and_bumps_version() {
         ScrubbingPolicyHolder holder = new ScrubbingPolicyHolder(
-                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSensitiveDataRules.resolve("password")),
+                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                         1, Instant.now(), "startup"));
 
         boolean applied = holder.tryApplyPolicyUpdate(
@@ -43,7 +43,7 @@ class ScrubbingPolicyHolderTest {
     @Test
     void tryUpdate_rejects_invalid_and_keeps_last_known_good() {
         ScrubbingPolicyHolder holder = new ScrubbingPolicyHolder(
-                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSensitiveDataRules.resolve("password")),
+                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                         3, Instant.now(), "startup"));
         ScrubbingSnapshot before = holder.current();
 
@@ -59,7 +59,7 @@ class ScrubbingPolicyHolderTest {
     @Test
     void tryApplyPolicyUpdate_nullRuleNames_togglesEnabledOnly() {
         ScrubbingPolicyHolder holder = new ScrubbingPolicyHolder(
-                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSensitiveDataRules.resolve("password")),
+                ScrubbingSnapshot.fromRules(true, List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                         5, Instant.now(), "startup"));
         List<space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper> wrappersBefore =
                 holder.current().wrappers();

@@ -307,7 +307,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         void builtInRules_default_non_empty() {
             ExtensionConfig cfg = configWithListProperty("unused.key", null);
             assertThat(cfg.scrubbing().builtInRules())
-                    .as("builtInRules default is non-empty (from BuiltInSensitiveDataRules.defaultConfigNames())")
+                    .as("builtInRules default is non-empty (from BuiltInSpanAttributeScrubbingRules.defaultConfigNames())")
                     .isNotEmpty()
                     .containsAll(List.of("password", "jwt", "email"));
         }

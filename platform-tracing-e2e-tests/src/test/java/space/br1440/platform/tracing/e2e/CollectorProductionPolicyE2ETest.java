@@ -25,6 +25,7 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.e2e.support.JaegerTestContainerSupport;
 import space.br1440.platform.tracing.e2e.support.JaegerV3QueryClient;
+import space.br1440.platform.tracing.e2e.support.OtelCollectorTestContainerSupport;
 
 import java.time.Duration;
 import java.util.Map;
@@ -107,7 +108,8 @@ class CollectorProductionPolicyE2ETest {
                         "--feature-gates=+processor.tailsamplingprocessor.recordpolicy",
                         "--config=/etc/otelcol-contrib/config.yaml")
                 .withEnv(Map.of(
-                        "OTEL_EXPORTER_OTLP_ENDPOINT", "jaeger:4317",
+                        "OTEL_EXPORTER_OTLP_ENDPOINT",
+                        JaegerTestContainerSupport.jaegerOtlpGrpcEndpointOnNetwork(jaeger),
                         "TAIL_SAMPLING_DECISION_WAIT", DECISION_WAIT.toSeconds() + "s",
                         // Детерминизм: только «положительные» политики, без шума probabilistic.
                         "TAIL_SAMPLING_SUCCESS_BASELINE_PERCENT", "0"))
@@ -116,8 +118,7 @@ class CollectorProductionPolicyE2ETest {
                 .dependsOn(jaeger);
         collector.start();
 
-        String collectorEndpoint =
-                "http://" + collector.getHost() + ":" + collector.getMappedPort(4318) + "/v1/traces";
+        String collectorEndpoint = OtelCollectorTestContainerSupport.otlpHttpTracesEndpointFromHost(collector);
         jaegerClient = new JaegerV3QueryClient(JaegerTestContainerSupport.queryBaseUrl(jaeger));
 
         sdk = OpenTelemetrySdk.builder()

@@ -5,8 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingSnapshot;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
@@ -37,7 +37,7 @@ class ScrubbingBenchmarkFixtureContractTest {
             "user-identity", "email", "ip-address"
     })
     void fixture_каждого_правила_даёт_hit_а_не_keep(String ruleName) {
-        SensitiveDataRule rule = BuiltInSensitiveDataRules.resolve(ruleName);
+        SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve(ruleName);
         assertThat(rule).as("правило %s должно резолвиться", ruleName).isNotNull();
 
         HitFixture fixture = hitFixtureFor(ruleName);
@@ -54,9 +54,9 @@ class ScrubbingBenchmarkFixtureContractTest {
 
     @Test
     void clean_fixture_не_матчится_ни_одним_default_правилом() {
-        List<SensitiveDataRule> defaults = new ArrayList<>();
-        for (String name : BuiltInSensitiveDataRules.defaultConfigNames()) {
-            SensitiveDataRule r = BuiltInSensitiveDataRules.resolve(name);
+        List<SpanAttributeScrubbingRule> defaults = new ArrayList<>();
+        for (String name : BuiltInSpanAttributeScrubbingRules.defaultConfigNames()) {
+            SpanAttributeScrubbingRule r = BuiltInSpanAttributeScrubbingRules.resolve(name);
             if (r != null) {
                 defaults.add(r);
             }

@@ -17,6 +17,7 @@ public final class JaegerTestContainerSupport {
 
     public static final String IMAGE = "jaegertracing/all-in-one:1.62.0";
     public static final int QUERY_PORT = 16686;
+    public static final int OTLP_GRPC_PORT = 4317;
     public static final int OTLP_HTTP_PORT = 4318;
 
     private JaegerTestContainerSupport() {
@@ -59,5 +60,31 @@ public final class JaegerTestContainerSupport {
         return otlpBaseOrTracesEndpoint.endsWith("/v1/traces")
                 ? otlpBaseOrTracesEndpoint
                 : otlpBaseOrTracesEndpoint + "/v1/traces";
+    }
+
+    /**
+     * IP контейнера в docker-сети Testcontainers.
+     * <p>
+     * На Gentoo (remote Docker) внутренний DNS между контейнерами ненадёжен из-за дефекта
+     * в kernel — для межконтейнерного OTLP используйте IP, а не network alias.
+     */
+    public static String containerNetworkIp(GenericContainer<?> container) {
+        return container.getContainerInfo()
+                .getNetworkSettings()
+                .getNetworks()
+                .values()
+                .stream()
+                .findFirst()
+                .map(network -> network.getIpAddress())
+                .filter(ip -> ip != null && !ip.isBlank())
+                .orElseThrow(() -> new IllegalStateException(
+                        "No network IP for container " + container.getContainerId()));
+    }
+
+    /**
+     * OTLP/gRPC endpoint Jaeger для экспорта из другого контейнера в той же сети ({@code ip:4317}).
+     */
+    public static String jaegerOtlpGrpcEndpointOnNetwork(GenericContainer<?> jaeger) {
+        return containerNetworkIp(jaeger) + ":" + OTLP_GRPC_PORT;
     }
 }

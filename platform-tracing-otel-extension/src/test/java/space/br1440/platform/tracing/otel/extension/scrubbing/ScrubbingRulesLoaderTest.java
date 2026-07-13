@@ -26,7 +26,7 @@ class ScrubbingRulesLoaderTest {
         // Дедупликация и сохранение порядка проверяется через комбинацию built-in + additional
         // на уровне PlatformAutoConfigurationCustomizer; здесь проверяем сам loader на
         // нормализацию whitespace и устойчивость к неизвестным именам (loader сам их не валидирует —
-        // resolution делает BuiltInSensitiveDataRules.resolve, неизвестные станут warning'ом выше).
+        // resolution делает BuiltInSpanAttributeScrubbingRules.resolve, неизвестные станут warning'ом выше).
         List<String> rules = ScrubbingRulesLoader.load("classpath:tracing/scrubbing-rules-with-unknown.properties", cl);
 
         assertThat(rules).containsExactly("iban", "unknown-rule", "snils");

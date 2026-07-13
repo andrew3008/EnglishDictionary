@@ -9,6 +9,9 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import space.br1440.platform.tracing.e2e.support.AgentHttpSpringSmokeProcessRunner;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import java.lang.management.ManagementFactory;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -35,10 +38,13 @@ public class AgentSpringForceSamplingSmokeMain {
 
         SpringApplication application = new SpringApplication(AgentSpringForceSamplingSmokeMain.class);
         application.setRegisterShutdownHook(false);
+        String suppressMicrometerTracing = System.getProperty(
+                "platform.tracing.suppression.suppress-micrometer-tracing", "true");
         ConfigurableApplicationContext context = application.run(
                 "--server.port=" + port,
                 "--spring.main.banner-mode=off",
-                "--platform.tracing.suppression.suppress-micrometer-tracing=true",
+                "--platform.tracing.suppression.suppress-micrometer-tracing=" + suppressMicrometerTracing,
+                "--management.tracing.enabled=true",
                 "--logging.level.root=WARN");
 
         CountDownLatch served = context.getBean(CountDownLatch.class);
@@ -51,6 +57,7 @@ public class AgentSpringForceSamplingSmokeMain {
                 throw new IllegalStateException("Внешний HTTP-запрос к /probe не получен за 60 с");
             }
             Thread.sleep(flushDelayMs);
+            printSamplerDiagnostics();
         } finally {
             context.close();
         }
@@ -59,5 +66,26 @@ public class AgentSpringForceSamplingSmokeMain {
     @Bean
     CountDownLatch servedLatch() {
         return new CountDownLatch(1);
+    }
+
+    private static void printSamplerDiagnostics() {
+        try {
+            MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+            ObjectName name = new ObjectName(
+                    "space.br1440.platform.tracing:type=SamplingControl,name=PlatformSamplingControl");
+            System.out.println("SMOKE_PROPAGATORS=" + System.getProperty("otel.propagators"));
+            System.out.println("SMOKE_SAMPLER=" + System.getProperty("otel.traces.sampler"));
+            System.out.println("SMOKE_CAPTURE_HEADERS="
+                    + System.getProperty("otel.instrumentation.http.server.capture-request-headers"));
+            System.out.println("SMOKE_SAMPLING_RATIO=" + System.getProperty("platform.tracing.sampling.ratio"));
+            System.out.println("SMOKE_SAMPLING_MBEAN_REGISTERED=" + server.isRegistered(name));
+            if (server.isRegistered(name)) {
+                System.out.println("SMOKE_SAMPLER_DECISIONS="
+                        + server.getAttribute(name, "SamplerDecisionCounts"));
+            }
+        } catch (Exception e) {
+            System.out.println("SMOKE_SAMPLER_DIAGNOSTICS_FAILED=" + e);
+        }
+        System.out.flush();
     }
 }

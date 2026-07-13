@@ -5,8 +5,8 @@ import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSensitiveDataRules;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import java.util.List;
@@ -27,7 +27,7 @@ class ScrubbingSpanProcessorCharacterizationTest {
 
     @Test
     void custom_rule_hash_is_applied_on_processor_path() {
-        SensitiveDataRule customHash = new SensitiveDataRule() {
+        SpanAttributeScrubbingRule customHash = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "custom-hash"; }
             @Override public int priority() { return 200; }
@@ -57,7 +57,7 @@ class ScrubbingSpanProcessorCharacterizationTest {
         String first;
         String second;
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(
-                List.of(BuiltInSensitiveDataRules.resolve("email")), "secret-key", false))) {
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), "secret-key", false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan@example.com");
@@ -66,7 +66,7 @@ class ScrubbingSpanProcessorCharacterizationTest {
                     .get(io.opentelemetry.api.common.AttributeKey.stringKey("user.email"));
         }
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(
-                List.of(BuiltInSensitiveDataRules.resolve("email")), "secret-key", false))) {
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), "secret-key", false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan@example.com");

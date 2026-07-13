@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.extension.scrubbing;
 
 import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
 
 import java.time.Instant;
@@ -21,7 +21,7 @@ class ScrubbingSnapshotTest {
     void fromRules_compiles_wrappers_at_build_time() {
         ScrubbingSnapshot snapshot = ScrubbingSnapshot.fromRules(
                 true,
-                List.of(BuiltInSensitiveDataRules.resolve("password")),
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                 1,
                 Instant.now(),
                 "test");
@@ -35,7 +35,7 @@ class ScrubbingSnapshotTest {
     void enabled_false_passthrough_snapshot() {
         ScrubbingSnapshot snapshot = ScrubbingSnapshot.fromRules(
                 false,
-                List.of(BuiltInSensitiveDataRules.resolve("password")),
+                List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")),
                 2,
                 Instant.now(),
                 "test");
@@ -47,7 +47,7 @@ class ScrubbingSnapshotTest {
     @Test
     void wrappers_list_is_immutable_copy() {
         List<RuleExecutionWrapper> mutable = new ArrayList<>(
-                ScrubbingSnapshot.compileWrappers(List.of(BuiltInSensitiveDataRules.resolve("jwt"))));
+                ScrubbingSnapshot.compileWrappers(List.of(BuiltInSpanAttributeScrubbingRules.resolve("jwt"))));
         ScrubbingSnapshot snapshot = new ScrubbingSnapshot(true, mutable, 1, Instant.now(), "test");
 
         assertThat(snapshot.wrappers()).isNotSameAs(mutable);
@@ -58,7 +58,7 @@ class ScrubbingSnapshotTest {
     @Test
     void mutating_source_wrapper_list_does_not_affect_snapshot() {
         List<RuleExecutionWrapper> mutable = new ArrayList<>(
-                ScrubbingSnapshot.compileWrappers(List.of(BuiltInSensitiveDataRules.resolve("email"))));
+                ScrubbingSnapshot.compileWrappers(List.of(BuiltInSpanAttributeScrubbingRules.resolve("email"))));
         ScrubbingSnapshot snapshot = new ScrubbingSnapshot(true, mutable, 1, Instant.now(), "test");
         mutable.clear();
 
@@ -67,8 +67,8 @@ class ScrubbingSnapshotTest {
 
     @Test
     void fromRules_rejects_null_rule_entries() {
-        List<SensitiveDataRule> rules = new ArrayList<>();
-        rules.add(BuiltInSensitiveDataRules.resolve("password"));
+        List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
+        rules.add(BuiltInSpanAttributeScrubbingRules.resolve("password"));
         rules.add(null);
 
         assertThatThrownBy(() -> ScrubbingSnapshot.fromRules(true, rules, 1, Instant.now(), "test"))
@@ -83,7 +83,7 @@ class ScrubbingSnapshotTest {
                 .isInstanceOf(java.util.regex.PatternSyntaxException.class);
     }
 
-    private static final class InvalidRegexRule implements SensitiveDataRule {
+    private static final class InvalidRegexRule implements SpanAttributeScrubbingRule {
         private final java.util.regex.Pattern pattern;
 
         InvalidRegexRule() {
@@ -112,8 +112,8 @@ class ScrubbingSnapshotTest {
 
     @Test
     void compileWrappers_preserves_rule_order_after_priority_sort() {
-        SensitiveDataRule high = BuiltInSensitiveDataRules.resolve("password");
-        SensitiveDataRule low = BuiltInSensitiveDataRules.resolve("email");
+        SpanAttributeScrubbingRule high = BuiltInSpanAttributeScrubbingRules.resolve("password");
+        SpanAttributeScrubbingRule low = BuiltInSpanAttributeScrubbingRules.resolve("email");
         List<RuleExecutionWrapper> wrappers = ScrubbingSnapshot.compileWrappers(List.of(low, high));
 
         assertThat(wrappers.get(0).getRuleName()).isEqualTo("password");

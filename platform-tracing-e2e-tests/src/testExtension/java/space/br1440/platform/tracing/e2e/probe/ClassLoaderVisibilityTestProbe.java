@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.e2e.probe;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
 import java.io.File;
 import java.net.URL;
@@ -36,7 +36,7 @@ public final class ClassLoaderVisibilityTestProbe implements AutoConfigurationCu
     /** System-property для пути к custom-rules JAR. */
     static final String RULES_EXTENSIONS_PROPERTY = "platform.tracing.scrubbing.rules.extensions";
 
-    /** Имя целевого кастомного E2E правила — ожидаемое значение {@link SensitiveDataRule#name()}. */
+    /** Имя целевого кастомного E2E правила — ожидаемое значение {@link SpanAttributeScrubbingRule#name()}. */
     static final String TARGET_RULE_NAME = "custom-e2e-rule";
 
     @Override
@@ -67,7 +67,7 @@ public final class ClassLoaderVisibilityTestProbe implements AutoConfigurationCu
         probeVariant("default", null);
         probeVariant("tccl", Thread.currentThread().getContextClassLoader());
         probeVariant("factory", ClassLoaderVisibilityTestProbe.class.getClassLoader());
-        probeVariant("api", SensitiveDataRule.class.getClassLoader());
+        probeVariant("api", SpanAttributeScrubbingRule.class.getClassLoader());
     }
 
     private static void probeVariant(String variant, ClassLoader loader) {
@@ -78,19 +78,19 @@ public final class ClassLoaderVisibilityTestProbe implements AutoConfigurationCu
         emit("loader=" + classLoaderName(effectiveLoader));
 
         try {
-            ServiceLoader<SensitiveDataRule> serviceLoader = (loader == null)
-                    ? ServiceLoader.load(SensitiveDataRule.class)
-                    : ServiceLoader.load(SensitiveDataRule.class, loader);
+            ServiceLoader<SpanAttributeScrubbingRule> serviceLoader = (loader == null)
+                    ? ServiceLoader.load(SpanAttributeScrubbingRule.class)
+                    : ServiceLoader.load(SpanAttributeScrubbingRule.class, loader);
 
             List<String> ruleNames = new ArrayList<>();
             boolean targetFound = false;
-            Iterator<SensitiveDataRule> iterator = serviceLoader.iterator();
+            Iterator<SpanAttributeScrubbingRule> iterator = serviceLoader.iterator();
             while (true) {
                 try {
                     if (!iterator.hasNext()) {
                         break;
                     }
-                    SensitiveDataRule rule = iterator.next();
+                    SpanAttributeScrubbingRule rule = iterator.next();
                     ruleNames.add(rule.name());
                     if (TARGET_RULE_NAME.equals(rule.name())) {
                         targetFound = true;
@@ -147,13 +147,13 @@ public final class ClassLoaderVisibilityTestProbe implements AutoConfigurationCu
         ClassLoader parent = ClassLoaderVisibilityTestProbe.class.getClassLoader();
         try (URLClassLoader urlCL = new URLClassLoader(urls.toArray(new URL[0]), parent)) {
             emit("mechanismUrlClassLoader=" + classLoaderName(urlCL));
-            ServiceLoader<SensitiveDataRule> sl = ServiceLoader.load(SensitiveDataRule.class, urlCL);
+            ServiceLoader<SpanAttributeScrubbingRule> sl = ServiceLoader.load(SpanAttributeScrubbingRule.class, urlCL);
 
             List<String> ruleNames = new ArrayList<>();
-            Iterator<SensitiveDataRule> iter = sl.iterator();
+            Iterator<SpanAttributeScrubbingRule> iter = sl.iterator();
             while (iter.hasNext()) {
                 try {
-                    SensitiveDataRule rule = iter.next();
+                    SpanAttributeScrubbingRule rule = iter.next();
                     ruleNames.add(rule.name());
                 } catch (ServiceConfigurationError e) {
                     emit("mechanismServiceError=" + e.getClass().getName());

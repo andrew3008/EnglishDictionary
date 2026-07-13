@@ -12,7 +12,7 @@ import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.extension.scrubbing.IpAddressRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingPolicyHolder;
@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.LongAdder;
  * <p>
  * Работает на этапе {@code onEnding} (когда {@link ReadWriteSpan} ещё допускает перезапись
  * атрибутов, в т.ч. добавленных обогатителями). Для каждого атрибута применяется первое
- * сработавшее правило в порядке возрастания {@link SensitiveDataRule#priority()} — поэтому при
+ * сработавшее правило в порядке возрастания {@link SpanAttributeScrubbingRule#priority()} — поэтому при
  * конфликте побеждает правило с меньшим приоритетом (как правило, DROP).
  * <p>
  * <b>Type-aware.</b> Обходятся атрибуты всех типов (STRING, массивы, LONG/DOUBLE/BOOLEAN), иначе
@@ -92,7 +92,7 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
      * Конструктор без HMAC-ключа: HASH деградирует до MASK (политика {@code mask}).
      * Удобен для тестов и окружений, где корреляция по хэшу не нужна.
      */
-    public ScrubbingSpanProcessor(List<SensitiveDataRule> rules) {
+    public ScrubbingSpanProcessor(List<SpanAttributeScrubbingRule> rules) {
         this(rules, null, false);
     }
 
@@ -101,7 +101,7 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
      * @param hmacKey    секретный ключ HMAC-SHA256 (UTF-8 строка); {@code null}/blank — ключа нет
      * @param failFast   если {@code true} и ключ отсутствует — отказ на старте (политика {@code fail-fast})
      */
-    public ScrubbingSpanProcessor(List<SensitiveDataRule> rules, String hmacKey, boolean failFast) {
+    public ScrubbingSpanProcessor(List<SpanAttributeScrubbingRule> rules, String hmacKey, boolean failFast) {
         // Каждое правило оборачивается собственным circuit breaker'ом (изоляция ошибок, PR-4),
         // затем список clamp'ится и детерминированно сортируется (PR-3). Стартовый снимок
         // (enabled=true) — startup-init из agent ConfigProperties (фабрика создаёт процессор только

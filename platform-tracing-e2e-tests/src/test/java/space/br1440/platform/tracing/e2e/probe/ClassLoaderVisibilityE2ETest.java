@@ -58,7 +58,7 @@ class ClassLoaderVisibilityE2ETest {
 
         // Оба JAR расширений помещаем в один temp-каталог, передаваемый через otel.javaagent.extensions.
         // OTel Agent 2.28.x создаёт отдельный ExtensionClassLoader для каждого JAR в директории;
-        // probe JAR встраивает platform-tracing-api, чтобы SensitiveDataRule был доступен в его CL.
+        // probe JAR встраивает platform-tracing-api, чтобы SpanAttributeScrubbingRule был доступен в его CL.
         Path extDir = Files.createTempDirectory("cl-visibility-ext");
         Files.copy(Path.of(extensionJar), extDir.resolve("extension.jar"));
         Files.copy(Path.of(probeJar),      extDir.resolve("cl-probe.jar"));

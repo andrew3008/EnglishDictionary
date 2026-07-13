@@ -24,7 +24,7 @@ Freeze **current** scrubbing, validation, and enrichment processor behavior befo
 |------|-------------------|
 | Execution point | `ScrubbingSpanProcessor.onEnding` (after enrichers add attributes) |
 | Mandatory | Enabled by default; `updateScrubbingPolicy(false, …)` passthrough |
-| Built-in rules | Key/value evaluation via `SensitiveDataRule.evaluate`; DROP/MASK/HASH/TRUNCATE |
+| Built-in rules | Key/value evaluation via `SpanAttributeScrubbingRule.evaluate`; DROP/MASK/HASH/TRUNCATE |
 | Merge | `MergeEngine`: KEEP never weakens; critical DROP terminal; custom terminal ignored |
 | Circuit breaker | Per-rule; critical OPEN → `<SCRUBBING_FAILED>` fail-closed; custom OPEN → skip |
 | Events | Span **attributes** scrubbed; **event attributes not scrubbed** (documented boundary) |
@@ -132,7 +132,7 @@ All pre-PR-5B tests remain unchanged and green:
 
 - `ScrubbingSpanProcessorTest`, `ScrubbingSpanProcessorAdvancedTest`, `ScrubbingSecurityNegativeTest`
 - `MergeEngineTest`, `RuleCircuitBreakerTest`, `BuiltInRulesTest`
-- `ScrubbingRulesLoaderTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSensitiveDataRuleTest`
+- `ScrubbingRulesLoaderTest`, `ExtensionRuleLoaderTest`, `ServiceLoaderSpanAttributeScrubbingRuleTest`
 - `ValidatingSpanProcessorTest`, `ValidationPolicyRuntimeTest`
 - `EnrichingSpanProcessorTest`, `EnrichingSpanProcessorAdvancedTest`
 - `CategoryContractsTest` (api), `SpanEnricherTest` (core)
@@ -182,7 +182,7 @@ New tests: `ScrubbingPolicyRuntimeUpdateJmxTest`.
 |-----------|------|
 | `ScrubbingRuleResolution` | Pure validate/select: null reject, unknown skip, order/duplicates preserved, `MAX_RULES=200` |
 | `ScrubbingRuleResolutionResult` | Resolved canonical config names + skipped unknown names |
-| `BuiltInSensitiveDataRules.lookup()` | Enum lookup without rule instantiation |
+| `BuiltInSpanAttributeScrubbingRules.lookup()` | Enum lookup without rule instantiation |
 | `ScrubbingPolicyUpdate` | Delegates domain validation/selection; agent-side compile unchanged |
 
 - **Stays agent-side:** `ScrubbingSnapshot`, `RuleExecutionWrapper`, `ScrubbingPolicyHolder`, `ScrubbingSpanProcessor`.

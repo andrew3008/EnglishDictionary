@@ -19,7 +19,7 @@ public final class IpAddressRule extends AbstractBuiltInRule {
     };
 
     IpAddressRule() {
-        super(BuiltInSensitiveDataRules.IP_ADDRESS);
+        super(BuiltInSpanAttributeScrubbingRules.IP_ADDRESS);
     }
 
     @Nonnull

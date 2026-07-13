@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
-import space.br1440.platform.tracing.api.spi.SensitiveDataRule;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.policy.ScrubbingRuleResolution;
 import space.br1440.platform.tracing.otel.extension.scrubbing.policy.ScrubbingRuleResolutionResult;
 import space.br1440.platform.tracing.otel.extension.utils.Strings;
@@ -42,7 +42,7 @@ final class ScrubbingPolicyUpdate {
         if (ruleNames.length > MAX_RULES) {
             throw new IllegalArgumentException("Too many scrubbing rules: " + ruleNames.length);
         }
-        List<SensitiveDataRule> rules = resolveRules(ruleNames);
+        List<SpanAttributeScrubbingRule> rules = resolveRules(ruleNames);
         return ScrubbingSnapshot.fromRules(
                 enabled, rules, previous.version() + 1, Instant.now(), normalizeSource(source));
     }
@@ -57,11 +57,11 @@ final class ScrubbingPolicyUpdate {
     /**
      * Resolves built-in rule names. Unknown names are skipped (startup/JMX parity, PR-7A).
      */
-    static List<SensitiveDataRule> resolveRules(String[] ruleNames) {
+    static List<SpanAttributeScrubbingRule> resolveRules(String[] ruleNames) {
         ScrubbingRuleResolutionResult resolution = ScrubbingRuleResolution.resolveRuleNames(ruleNames);
-        List<SensitiveDataRule> rules = new ArrayList<>(resolution.resolvedConfigNames().size());
+        List<SpanAttributeScrubbingRule> rules = new ArrayList<>(resolution.resolvedConfigNames().size());
         for (String configName : resolution.resolvedConfigNames()) {
-            SensitiveDataRule rule = BuiltInSensitiveDataRules.resolve(configName);
+            SpanAttributeScrubbingRule rule = BuiltInSpanAttributeScrubbingRules.resolve(configName);
             if (rule != null) {
                 rules.add(rule);
             }
