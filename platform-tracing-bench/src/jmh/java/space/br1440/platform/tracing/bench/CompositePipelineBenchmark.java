@@ -18,11 +18,11 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.extension.processor.ClassificationSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.EnrichingSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.PlatformCompositeSpanProcessor;
@@ -77,9 +77,9 @@ public class CompositePipelineBenchmark {
     private OpenTelemetrySdk noopSdk;
     private OpenTelemetrySdk realSdk;
     private OpenTelemetrySdk realNoScrubbingSdk;
-    private PlatformTracing noopPipeline;
-    private PlatformTracing realPipeline;
-    private PlatformTracing realNoScrubbingPipeline;
+    private TraceOperations noopPipeline;
+    private TraceOperations realPipeline;
+    private TraceOperations realNoScrubbingPipeline;
 
     @Setup(Level.Trial)
     public void setUp() {
@@ -92,7 +92,7 @@ public class CompositePipelineBenchmark {
                 new NoopSpanProcessor()
         );
         noopSdk = buildSdk(new PlatformCompositeSpanProcessor(noopDelegates));
-        noopPipeline = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(noopSdk));
+        noopPipeline = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(noopSdk));
 
         // Реальный композит в production-порядке (см. PlatformSpanProcessorFactory):
         // Enriching -> Scrubbing -> Validating -> Classification. Watchdog/Metrics не включены:
@@ -112,7 +112,7 @@ public class CompositePipelineBenchmark {
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1))
         );
         realSdk = buildSdk(new PlatformCompositeSpanProcessor(realDelegates));
-        realPipeline = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(realSdk));
+        realPipeline = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(realSdk));
 
         // Тот же реальный композит, но БЕЗ scrubbing'а. Enriching/Validating/Classification — это
         // как раз процессоры, вызывающие toSpanData() (status/resource), но с минимальной собственной
@@ -123,7 +123,7 @@ public class CompositePipelineBenchmark {
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1))
         );
         realNoScrubbingSdk = buildSdk(new PlatformCompositeSpanProcessor(realNoScrubbingDelegates));
-        realNoScrubbingPipeline = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(realNoScrubbingSdk));
+        realNoScrubbingPipeline = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(realNoScrubbingSdk));
     }
 
     private static OpenTelemetrySdk buildSdk(SpanProcessor composite) {

@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.annotation.AnnotationUtils;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.annotation.Traced;
 import space.br1440.platform.tracing.api.annotation.TracedAttribute;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
@@ -41,7 +41,7 @@ public class TracedAspect {
 
     private static final Logger log = LoggerFactory.getLogger(TracedAspect.class);
 
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
     private final TracingProperties.Aop.Mode mode;
     private final ExceptionRecorder exceptionRecorder;
 
@@ -55,18 +55,18 @@ public class TracedAspect {
     /**
      * Совместимый конструктор с поведением по умолчанию ({@link TracingProperties.Aop.Mode#ENRICH_CURRENT}).
      */
-    public TracedAspect(PlatformTracing platformTracing) {
-        this(platformTracing, TracingProperties.Aop.Mode.ENRICH_CURRENT, ExceptionRecorder.secureDefault());
+    public TracedAspect(TraceOperations traceOperations) {
+        this(traceOperations, TracingProperties.Aop.Mode.ENRICH_CURRENT, ExceptionRecorder.secureDefault());
     }
 
-    public TracedAspect(PlatformTracing platformTracing, TracingProperties.Aop.Mode mode) {
-        this(platformTracing, mode, ExceptionRecorder.secureDefault());
+    public TracedAspect(TraceOperations traceOperations, TracingProperties.Aop.Mode mode) {
+        this(traceOperations, mode, ExceptionRecorder.secureDefault());
     }
 
-    public TracedAspect(PlatformTracing platformTracing,
+    public TracedAspect(TraceOperations traceOperations,
                         TracingProperties.Aop.Mode mode,
                         ExceptionRecorder exceptionRecorder) {
-        this.platformTracing = platformTracing;
+        this.traceOperations = traceOperations;
         this.mode = mode == null ? TracingProperties.Aop.Mode.ENRICH_CURRENT : mode;
         this.exceptionRecorder = exceptionRecorder == null ? ExceptionRecorder.secureDefault() : exceptionRecorder;
     }
@@ -107,7 +107,7 @@ public class TracedAspect {
         }
 
         // CHILD_SPAN или отсутствие активного контекста: создаём отдельный span штатным путём.
-        try (SpanHandle handle = platformTracing.manual().operation(spanName).start()) {
+        try (SpanHandle handle = traceOperations.manual().operation(spanName).start()) {
             applyParameterAttributesToSpan(Span.current(), method, joinPoint.getArgs());
             try {
                 Object result = joinPoint.proceed();

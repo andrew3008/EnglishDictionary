@@ -4,30 +4,30 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
-import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 
 /**
  * Health indicator платформенного модуля трассировки.
  * <p>
- * Возвращает статус {@code UP} при наличии полноценной реализации {@link PlatformTracing} и
+ * Возвращает статус {@code UP} при наличии полноценной реализации {@link TraceOperations} и
  * инициализированного {@link OpenTelemetry}; статус {@code OUT_OF_SERVICE} при использовании
- * безоперационной заглушки {@link NoOpPlatformTracing}, что обычно означает отсутствие подключённого
+ * безоперационной заглушки {@link NoopTraceOperations}, что обычно означает отсутствие подключённого
  * Java Agent'а или ошибку инициализации.
  * <p>
  * Health indicator не отправляет данные в Collector и не влияет на производительность приложения.
  */
 public class TracingHealthIndicator extends AbstractHealthIndicator {
 
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
 
-    public TracingHealthIndicator(PlatformTracing platformTracing) {
-        this.platformTracing = platformTracing;
+    public TracingHealthIndicator(TraceOperations traceOperations) {
+        this.traceOperations = traceOperations;
     }
 
     @Override
     protected void doHealthCheck(Health.Builder builder) {
-        boolean noop = platformTracing instanceof NoOpPlatformTracing;
+        boolean noop = traceOperations instanceof NoopTraceOperations;
         OpenTelemetry global;
         try {
             global = GlobalOpenTelemetry.get();
@@ -37,13 +37,13 @@ public class TracingHealthIndicator extends AbstractHealthIndicator {
             global = null;
         }
 
-        builder.withDetail("platformTracingRuntime", platformTracing.getClass().getName());
+        builder.withDetail("platformTracingRuntime", traceOperations.getClass().getName());
         builder.withDetail("globalOpenTelemetryInitialized", global != null);
 
         if (noop || global == null) {
             builder.outOfService();
             builder.withDetail("reason", noop
-                    ? "Платформенный фасад работает в безоперационном режиме (NoOpPlatformTracing)"
+                    ? "Платформенный фасад работает в безоперационном режиме (NoopTraceOperations)"
                     : "GlobalOpenTelemetry не инициализирован");
             return;
         }

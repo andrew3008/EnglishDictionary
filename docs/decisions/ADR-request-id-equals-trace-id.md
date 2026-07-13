@@ -26,7 +26,7 @@
 Дополнительно всегда выставляется `X-Trace-Id` с тем же значением для обратной совместимости
 (см. [ADR-response-headers.md](./ADR-response-headers.md)).
 
-Источник значения: `PlatformTracing.currentTraceId()` — capture-before-chain в Servlet,
+Источник значения: `TraceOperations.currentTraceId()` — capture-before-chain в Servlet,
 `beforeCommit` в WebFlux.
 
 ### Что это не означает

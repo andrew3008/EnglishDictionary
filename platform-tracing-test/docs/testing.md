@@ -8,8 +8,8 @@
 - **`OtelSdkExtension`** — JUnit 5 extension над минимальным `OpenTelemetrySdk` с
   `InMemorySpanExporter`. Три режима жизненного цикла: `METHOD`, `CLASS`, `SHARED_NESTED`.
   Параметр-резолвер для `OpenTelemetrySdk`, `InMemorySpanExporter`, `Sampler`.
-- **`PlatformTracingTestExtension`** — тонкий фасад поверх `OtelSdkExtension` для прикладных
-  тестов; добавляет резолвер `PlatformTracing` и `OpenTelemetry`.
+- **`TraceOperationsTestExtension`** — тонкий фасад поверх `OtelSdkExtension` для прикладных
+  тестов; добавляет резолвер `TraceOperations` и `OpenTelemetry`.
 - **`SamplerHarness`** — fluent harness для прямого тестирования `Sampler` без поднятия SDK.
 - **`SpanProcessorHarness`** — `AutoCloseable` harness для прямого тестирования `SpanProcessor`.
 - **`SpanAssertions`**, **`SamplerDecisionAssert`** — статические/AssertJ-style помощники.
@@ -17,13 +17,13 @@
 
 ## Примеры
 
-### 1. Тест прикладного сервиса через `PlatformTracingTestExtension`
+### 1. Тест прикладного сервиса через `TraceOperationsTestExtension`
 
 ```java
-@ExtendWith(PlatformTracingTestExtension.class)
+@ExtendWith(TraceOperationsTestExtension.class)
 class OrderServiceTest {
     @Test
-    void createOrder_создаётSpan(PlatformTracing tracing, InMemorySpanExporter exporter) {
+    void createOrder_создаётSpan(TraceOperations tracing, InMemorySpanExporter exporter) {
         OrderService service = new OrderService(tracing);
 
         service.create(new OrderRequest("u-1", 100));
@@ -149,6 +149,6 @@ ArchUnit публикуется как `api`-зависимость `platform-tr
 | Юнит-тест Sampler'а                               | `SamplerHarness` + `SamplerDecisionAssert` |
 | Юнит-тест SpanProcessor'а с разной конфигурацией  | `SpanProcessorHarness` (try-with-resources) |
 | Юнит-тест SpanProcessor'а с общей конфигурацией   | `OtelSdkExtension.builder().addSpanProcessor()` |
-| Интеграционный тест прикладного сервиса           | `PlatformTracingTestExtension` (через `@ExtendWith`) |
+| Интеграционный тест прикладного сервиса           | `TraceOperationsTestExtension` (через `@ExtendWith`) |
 | Тест с `@Nested`-блоками и общим SDK              | `OtelSdkExtension.classScope()`         |
 | Сага/многошаговый сценарий                        | `OtelSdkExtension.sharedAcrossNested()` + `@TestMethodOrder` |

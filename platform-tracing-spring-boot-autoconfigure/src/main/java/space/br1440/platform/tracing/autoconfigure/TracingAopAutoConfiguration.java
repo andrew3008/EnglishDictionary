@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 
@@ -35,11 +35,11 @@ public class TracingAopAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public TracedAspect platformTracedAspect(PlatformTracing platformTracing,
+    public TracedAspect platformTracedAspect(TraceOperations traceOperations,
                                                TracingProperties properties,
                                                org.springframework.beans.factory.ObjectProvider<ExceptionRecorder> exceptionRecorderProvider) {
         ExceptionRecorder recorder = exceptionRecorderProvider.getIfAvailable(ExceptionRecorder::secureDefault);
-        return new TracedAspect(platformTracing, properties.getAop().getMode(), recorder);
+        return new TracedAspect(traceOperations, properties.getAop().getMode(), recorder);
     }
 
     /**

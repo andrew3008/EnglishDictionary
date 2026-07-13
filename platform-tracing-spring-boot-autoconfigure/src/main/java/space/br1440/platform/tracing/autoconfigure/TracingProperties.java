@@ -69,7 +69,7 @@ public class TracingProperties {
         /**
          * Режим: {@code AUTO} (детект), {@code AGENT}, {@code STARTER}, {@code EXTERNAL},
          * {@code DISABLED}. По умолчанию {@code AUTO}. {@code DISABLED} — единственный режим,
-         * в котором фасад становится {@code NoOpPlatformTracing}.
+         * в котором фасад становится {@code NoopTraceOperations}.
          * <p>
          * Дублируется в agent-канал ({@code platform.tracing.sdk.mode} в {@code ConfigProperties})
          * только для диагностики на стороне расширения (см. {@code ADR-dual-channel-properties}).
@@ -122,7 +122,7 @@ public class TracingProperties {
     }
 
     /**
-     * Гранулярный toggle платформенного фасада ({@code PlatformTracing}/{@code DefaultPlatformTracing}).
+     * Гранулярный toggle платформенного фасада ({@code TraceOperations}/{@code DefaultTraceOperations}).
      * <p>
      * Runtime-mutable (Фаза 14): при {@code enabled=false} фасад отдаёт no-op span handle, не затрагивая
      * auto-instrumentation OTel Agent. Wiring — PR-4.

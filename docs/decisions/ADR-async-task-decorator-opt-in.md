@@ -50,7 +50,7 @@ worker-thread:
 
 ### Mode
 
-В v0.1.0 поддерживается единственный режим `propagate-current-context`: переносится только OTel Context + MDC (через `ContextSnapshotFactory.captureAll()`), span автоматически не создаётся. Создание span'а — задача прикладного кода через `@Traced` или `PlatformTracing.inSpan`.
+В v0.1.0 поддерживается единственный режим `propagate-current-context`: переносится только OTel Context + MDC (через `ContextSnapshotFactory.captureAll()`), span автоматически не создаётся. Создание span'а — задача прикладного кода через `@Traced` или `TraceOperations.inSpan`.
 
 Свойство `mode` объявлено как открытый enum (String): неизвестные значения логируются как WARN и fallback'ятся на `propagate-current-context` — это обеспечивает forward-compatibility для будущих режимов в v1.1 (например, `propagate-and-create-span`).
 

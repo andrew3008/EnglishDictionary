@@ -168,8 +168,8 @@ Resolution engine (`PropagatorConfiguration.configurePropagators`): читает
 - **Назначение — диагностика и guard, НЕ создание SDK:**
   - Логируется один раз на старте (mode + признак: agent/global/bean).
   - В `agent`/`external` режиме starter гарантированно НЕ создаёт `OpenTelemetry` SDK (усиление `@ConditionalOnMissingBean(OpenTelemetry.class)` + WARN, если кто-то попытался).
-  - **`NoOpPlatformTracing` — только для `disabled`** (правка по ревью архитектора, принято). В `agent`/`external` starter НЕ уходит в NoOp: он поднимает **фасадные бины** `PlatformTracing`, делегирующие в `GlobalOpenTelemetry.get()` / пользовательский `OpenTelemetry` bean. Так бизнес-код приложения сохраняет рабочий `PlatformTracing` поверх агентского SDK.
-  - **Примечание:** проект уже делает это в `TracingCoreAutoConfiguration` — `platformTracing(...)` возвращает `DefaultPlatformTracing(openTelemetry, policy)` поверх consume-нутого `OpenTelemetry`/`GlobalOpenTelemetry`, а `NoOpPlatformTracing` отдаётся лишь при отсутствии функционального SDK. PR-3 лишь делает это **явным через режимы** (mode→facade vs mode→noop) и закрывает edge-case (`disabled`). Платформа не обязана отдавать «сырые» OTel `Tracer`/`Meter` бины — за них в agent-first отвечает агент/micrometer-bridge, потребляющие global.
+  - **`NoopTraceOperations` — только для `disabled`** (правка по ревью архитектора, принято). В `agent`/`external` starter НЕ уходит в NoOp: он поднимает **фасадные бины** `TraceOperations`, делегирующие в `GlobalOpenTelemetry.get()` / пользовательский `OpenTelemetry` bean. Так бизнес-код приложения сохраняет рабочий `TraceOperations` поверх агентского SDK.
+  - **Примечание:** проект уже делает это в `TracingCoreAutoConfiguration` — `traceOperations(...)` возвращает `DefaultTraceOperations(openTelemetry, policy)` поверх consume-нутого `OpenTelemetry`/`GlobalOpenTelemetry`, а `NoopTraceOperations` отдаётся лишь при отсутствии функционального SDK. PR-3 лишь делает это **явным через режимы** (mode→facade vs mode→noop) и закрывает edge-case (`disabled`). Платформа не обязана отдавать «сырые» OTel `Tracer`/`Meter` бины — за них в agent-first отвечает агент/micrometer-bridge, потребляющие global.
 - Свойство читается **двумя каналами**: Spring `TracingProperties.sdk.mode` (UX) и extension `ConfigProperties` `platform.tracing.sdk.mode` (диагностика на стороне Agent). Согласовано с `ADR-dual-channel-properties`.
 
 ### 5.4. ConfigProperties-only в extension (инвариант)
@@ -196,7 +196,7 @@ SDK autoconfigure│   AutoConfigurationCustomizerProvider → PlatformAutoConfi
                  └─────────────────────────────────────────────────────────────────────────────────────────┘
                               ▲ один и тот же core: CompositeSampler, rules, PlatformTraceControl
                               ▼
- Spring Boot starter (consume-mode): TracingCoreAutoConfiguration → DefaultPlatformTracing(OpenTelemetry|Global)
+ Spring Boot starter (consume-mode): TracingCoreAutoConfiguration → DefaultTraceOperations(OpenTelemetry|Global)
                                      + sdk.mode diagnostics + @ConditionalOnMissingBean(OpenTelemetry) guard
 ```
 
@@ -259,12 +259,12 @@ public final class PlatformSamplerProvider implements ConfigurableSamplerProvide
 - `TracingProperties`: добавить `Sdk { Mode mode = AUTO }` (`AUTO|AGENT|STARTER|EXTERNAL|DISABLED`), ключ `platform.tracing.sdk.mode`.
 - `extension`: `ExtensionPropertyNames` + diagnostics — прочитать `platform.tracing.sdk.mode` из `ConfigProperties` для лог-строки на старте Agent-режима.
 - Starter: `support/SdkModeResolver` — резолв режима (см. §5.3); `TracingCoreAutoConfiguration` логирует mode один раз; усилить guard `@ConditionalOnMissingBean(OpenTelemetry.class)` + WARN при попытке создать SDK в `agent`/`external`.
-- **Фасад vs NoOp (явное разграничение):** `agent`/`external` → starter поднимает `PlatformTracing`-фасад (`DefaultPlatformTracing`), делегирующий в `GlobalOpenTelemetry.get()` / пользовательский `OpenTelemetry` bean (как уже сейчас); `disabled` → `NoOpPlatformTracing`. NoOp **только** для `disabled`.
+- **Фасад vs NoOp (явное разграничение):** `agent`/`external` → starter поднимает `TraceOperations`-фасад (`DefaultTraceOperations`), делегирующий в `GlobalOpenTelemetry.get()` / пользовательский `OpenTelemetry` bean (как уже сейчас); `disabled` → `NoopTraceOperations`. NoOp **только** для `disabled`.
 - Actuator: добавить `sdkMode` + `agentDetected` в `/actuator/tracing` (через `OtelEnvHintsBuilder`/diagnostics).
 - **Тесты:**
   - unit `resolver_agent_when_global_set`, `resolver_external_when_user_bean`, `resolver_starter_when_none`, `disabled_yields_noop`.
   - slice `agent_mode_does_not_create_sdk` (контекст с mock global → нет второго `OpenTelemetry` bean).
-  - slice `agent_mode_provides_facade_not_noop` — в режиме `agent` `PlatformTracing` делегирует в global, а не `NoOpPlatformTracing`.
+  - slice `agent_mode_provides_facade_not_noop` — в режиме `agent` `TraceOperations` делегирует в global, а не `NoopTraceOperations`.
 - **Риск:** низкий (диагностика; SDK и так не создаётся).
 
 ### PR-4. Resource precedence — единый контракт (документация + проверки) ✅
@@ -344,7 +344,7 @@ public final class PlatformSamplerProvider implements ConfigurableSamplerProvide
 | Двойная регистрация propagator | дефолт-логика «add if absent» + удаление always-append (§5.2, PR-2) |
 | Named SPI не виден Агенту из ExtensionClassLoader | подтверждение e2e `PlatformSpiAgentSmokeTest` (fail-fast) + inline-customizer как fallback (PR-6); для Agent 2.x штатно поддерживается |
 | Classloader-видимость SPI в self-contained jar | `verifyExtensionSpiRegistration` + e2e (PR-6); ср. `ADR-classloader-visibility-spike-finding` |
-| AGENT-режим ошибочно уходит в NoOp | фасад `DefaultPlatformTracing`→`GlobalOpenTelemetry` в agent/external; NoOp только для `disabled` + slice-тест (§5.3, PR-3) |
+| AGENT-режим ошибочно уходит в NoOp | фасад `DefaultTraceOperations`→`GlobalOpenTelemetry` в agent/external; NoOp только для `disabled` + slice-тест (§5.3, PR-3) |
 | `ConditionalResourceProvider` — internal SPI | уже под контролем (`ADR-resource-merge-precedence`): pinned BOM + degrade-fallback |
 | Регресс рантайма у существующих деплоев | named SPI — opt-in; дефолты не меняют sampler; только propagators-дефолт расширяется (с guard) |
 | Несовместимость версий agent/SPI | compatibility matrix (PR-5) + `verifyOtelBomAlignment` |
@@ -374,7 +374,7 @@ public final class PlatformSamplerProvider implements ConfigurableSamplerProvide
 
 ## 13. Отчёт о реализации (2026-06-09)
 
-Фаза 15 выполнена полностью (PR-0 … PR-8). Реализация учитывала ревью архитектора: `addPropertiesCustomizer` вместо `addPropertiesSupplier` для propagator defaults; маркер `PlatformManagedSampler` вместо статического `AtomicBoolean`; `NoOpPlatformTracing` только для `DISABLED`.
+Фаза 15 выполнена полностью (PR-0 … PR-8). Реализация учитывала ревью архитектора: `addPropertiesCustomizer` вместо `addPropertiesSupplier` для propagator defaults; маркер `PlatformManagedSampler` вместо статического `AtomicBoolean`; `NoopTraceOperations` только для `DISABLED`.
 
 ### PR-0 — Reusable builders + ArchUnit
 

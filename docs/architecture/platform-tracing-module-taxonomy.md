@@ -46,7 +46,7 @@ Not for direct application dependency:
 
 | Module | Role |
 |--------|------|
-| `platform-tracing-core` | PlatformTracing facade over OTel API (current state: OTel-coupled) |
+| `platform-tracing-core` | TraceOperations facade over OTel API (current state: OTel-coupled) |
 | `platform-tracing-otel-extension` | OTel Java Agent extension (Sampler, SpanProcessor, scrubbing runtime) |
 | `platform-tracing-spring-boot-autoconfigure` | Spring Boot autoconfigure (properties, actuator, MDC, core wiring) |
 | `platform-tracing-autoconfigure-webmvc` | Servlet-specific autoconfigure |
@@ -182,7 +182,7 @@ Documented; **not** fixed in PR-1. Forward guardrails prevent **new** violations
 |-----------|----------|-------------|
 | `platform-tracing-core` has `api opentelemetry-api` | `platform-tracing-core/build.gradle` | Documented; extraction deferred to PR-6+ |
 | `platform-tracing-api` may have `compileOnly` OTel | `platform-tracing-api` | Documented; not enforced globally yet |
-| Core facade is OTel-coupled, not pure policy | `DefaultPlatformTracing`, span builders | Documented; `CorePolicyPackagePurityArchTest` applies only to **new** policy packages |
+| Core facade is OTel-coupled, not pure policy | `DefaultTraceOperations`, span builders | Documented; `CorePolicyPackagePurityArchTest` applies only to **new** policy packages |
 | Actuator MUTATION without prod guard | `TracingActuatorEndpoint` | Documented; PR-11 |
 | `TracingConfigReconciler` not in codebase | target-only | PR-10 |
 

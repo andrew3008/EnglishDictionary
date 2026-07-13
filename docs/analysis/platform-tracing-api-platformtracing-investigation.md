@@ -1,28 +1,28 @@
-# PlatformTracing Investigation Report
+# TraceOperations Investigation Report
 
-> **Scope:** read-only source investigation of `space.br1440.platform.tracing.api.PlatformTracing` and directly adjacent code.  
-> **Purpose:** standalone context for Perplexity / multi-LLM architecture review and future refactoring design.  
-> **Date:** 2026-07-04  
+> **Scope:** read-only source investigation of `space.br1440.platform.tracing.api.TraceOperations` and directly adjacent code.
+> **Purpose:** standalone context for Perplexity / multi-LLM architecture review and future refactoring design.
+> **Date:** 2026-07-04
 > **Repository:** `E:\Platform_Traces`
 
 ---
 
 ## 1. Executive Summary
 
-`PlatformTracing` is the **single public entry point** for application developers who want to manually create and enrich spans. It lives in the **`platform-tracing-api`** module as a Java interface with a small abstract core (4 methods) and a large default-method surface (convenience APIs, typed builders, `inSpan` lifecycle helpers). Production behavior is provided by **`DefaultPlatformTracing`** (`platform-tracing-core`) on top of OpenTelemetry `Tracer` + `Context`. Spring Boot wiring is in **`TracingCoreAutoConfiguration`**, optionally wrapped by **`MeteredPlatformTracing`** when Micrometer `MeterRegistry` is present.
+`TraceOperations` is the **single public entry point** for application developers who want to manually create and enrich spans. It lives in the **`platform-tracing-api`** module as a Java interface with a small abstract core (4 methods) and a large default-method surface (convenience APIs, typed builders, `inSpan` lifecycle helpers). Production behavior is provided by **`DefaultTraceOperations`** (`platform-tracing-core`) on top of OpenTelemetry `Tracer` + `Context`. Spring Boot wiring is in **`TracingCoreAutoConfiguration`**, optionally wrapped by **`MeteredPlatformTracing`** when Micrometer `MeterRegistry` is present.
 
 ### What is confirmed
 
-- **Confirmed:** `PlatformTracing` is an interface; only `currentTraceId()`, `currentSpanId()`, `startSpan(String, SpanCategory)`, and `recordException(Throwable)` are abstract (`PlatformTracing.java:34–60`, `253`).
-- **Confirmed:** All relation-aware span creation (`SpanRelation`, links) is implemented in `DefaultPlatformTracing` (`DefaultPlatformTracing.java:159–184`, `207–231`), **not** in interface defaults — defaults explicitly degrade to `startSpan(name, category)` and ignore relation/links (`PlatformTracing.java:69–77`, `108–115`, `118–122`).
-- **Confirmed:** Typed builder escape-hatches have **facade fallbacks** in API (`Facade*SpanBuilder`) and **policy-backed implementations** in core (`*SpanBuilderImpl`); `DefaultPlatformTracing` overrides all builder factory methods (`DefaultPlatformTracing.java:87–137`).
-- **Confirmed:** `inSpan(...)` is entirely default-method based; Javadoc forbids overriding it in decorators to avoid double metric counting (`PlatformTracing.java:256–268`).
-- **Confirmed:** Comprehensive unit tests exist for `DefaultPlatformTracing` span relations, links, and `inSpan` lifecycle in `platform-tracing-core`; Spring auto-configuration tests cover bean selection and `MeteredPlatformTracing` decoration.
+- **Confirmed:** `TraceOperations` is an interface; only `currentTraceId()`, `currentSpanId()`, `startSpan(String, SpanCategory)`, and `recordException(Throwable)` are abstract (`TraceOperations.java:34–60`, `253`).
+- **Confirmed:** All relation-aware span creation (`SpanRelation`, links) is implemented in `DefaultTraceOperations` (`DefaultTraceOperations.java:159–184`, `207–231`), **not** in interface defaults — defaults explicitly degrade to `startSpan(name, category)` and ignore relation/links (`TraceOperations.java:69–77`, `108–115`, `118–122`).
+- **Confirmed:** Typed builder escape-hatches have **facade fallbacks** in API (`Facade*SpanBuilder`) and **policy-backed implementations** in core (`*SpanBuilderImpl`); `DefaultTraceOperations` overrides all builder factory methods (`DefaultTraceOperations.java:87–137`).
+- **Confirmed:** `inSpan(...)` is entirely default-method based; Javadoc forbids overriding it in decorators to avoid double metric counting (`TraceOperations.java:256–268`).
+- **Confirmed:** Comprehensive unit tests exist for `DefaultTraceOperations` span relations, links, and `inSpan` lifecycle in `platform-tracing-core`; Spring auto-configuration tests cover bean selection and `MeteredPlatformTracing` decoration.
 - **Confirmed (critical):** When `MeteredPlatformTracing` is the injected `@Primary` bean, **interface default methods for `SpanRelation` and links resolve on the decorator**, which does **not** override `startSpan(name, category, relation)`, `startSpanWithLinks`, or `addLink`. This causes relation/links semantics to silently degrade to `CHILD` / no links in production apps with Micrometer — see §7 and Risk R-01.
 
 ### What is uncertain
 
-- **Requires runtime verification:** Whether any production service currently relies on `startRootSpan` / `startSpanWithLinks` / `addLink` through Spring-injected `PlatformTracing` with Micrometer enabled (would be broken if so).
+- **Requires runtime verification:** Whether any production service currently relies on `startRootSpan` / `startSpanWithLinks` / `addLink` through Spring-injected `TraceOperations` with Micrometer enabled (would be broken if so).
 - **Requires architecture decision:** Whether `MeteredPlatformTracing` should delegate all default-method entry points, or whether relation/link methods should be promoted from default to abstract/overridden.
 - **Missing test:** No test combines `MeteredPlatformTracing` + `SpanRelation.ROOT` / links (gap confirmed by source inspection).
 
@@ -47,19 +47,19 @@
 
 | Property | Value |
 |----------|-------|
-| **File** | `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/PlatformTracing.java` |
+| **File** | `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/TraceOperations.java` |
 | **Package** | `space.br1440.platform.tracing.api` |
 | **Module** | `platform-tracing-api` |
-| **Type** | `public interface PlatformTracing` |
+| **Type** | `public interface TraceOperations` |
 | **Lines** | 359 (as inspected) |
 
 ### Stated intent (Javadoc summary)
 
-- Single public facade for manual span creation/enrichment (`PlatformTracing.java:16–28`).
+- Single public facade for manual span creation/enrichment (`TraceOperations.java:16–28`).
 - Implementation lives in `platform-tracing-core`; Spring bean from `platform-tracing-spring-boot-autoconfigure`.
 - Typed methods map to platform-required categories: HTTP server/client, database, RPC, internal, Kafka producer/consumer.
 - `currentTraceId()` / `currentSpanId()` for MDC, response headers, error models.
-- `SpanScope` **must** be closed (try-with-resources); unclosed scopes leak OTel ThreadLocal context (`PlatformTracing.java:49–57`).
+- `SpanScope` **must** be closed (try-with-resources); unclosed scopes leak OTel ThreadLocal context (`TraceOperations.java:49–57`).
 
 ### Public methods grouped by category
 
@@ -76,9 +76,9 @@
 ### API stability observations
 
 - **4 abstract methods** — binary-compatible evolution requires keeping these stable.
-- **~30 default methods** — new defaults can be added without breaking implementors; changing existing default bodies changes behavior for any implementation that does not override them (`NoOpPlatformTracing`, `MeteredPlatformTracing`).
-- **Nullability:** Jakarta `@Nonnull` / `@Nullable` on parameters and returns; `inSpan` uses `Objects.requireNonNull` on actions/suppliers (`PlatformTracing.java:284`, `311`, `331`, `349`).
-- **No checked exceptions** on interface except `inSpan(..., ThrowingSupplier)` declares `throws Exception` (`PlatformTracing.java:308–310`).
+- **~30 default methods** — new defaults can be added without breaking implementors; changing existing default bodies changes behavior for any implementation that does not override them (`NoopTraceOperations`, `MeteredPlatformTracing`).
+- **Nullability:** Jakarta `@Nonnull` / `@Nullable` on parameters and returns; `inSpan` uses `Objects.requireNonNull` on actions/suppliers (`TraceOperations.java:284`, `311`, `331`, `349`).
+- **No checked exceptions** on interface except `inSpan(..., ThrowingSupplier)` declares `throws Exception` (`TraceOperations.java:308–310`).
 - **Dependencies:** API module uses `compileOnly` OTel API/context (`platform-tracing-api/build.gradle:16–21`); runtime OTel supplied by agent/starter/core.
 
 ---
@@ -120,11 +120,11 @@
 
 ### Generic methods
 
-- `inSpan(..., ThrowingSupplier<? extends T> supplier)` — only generic method (`PlatformTracing.java:308–319`).
+- `inSpan(..., ThrowingSupplier<? extends T> supplier)` — only generic method (`TraceOperations.java:308–319`).
 
 ### Lambda overload ambiguity
 
-- `inSpan(name, category, ThrowingSupplier)` vs Runnable: if lambda throws no checked exceptions, both are applicable; `ThrowingSupplier` is the value-returning overload. Javadoc documents Callable method-reference pattern (`PlatformTracing.java:304–306`).
+- `inSpan(name, category, ThrowingSupplier)` vs Runnable: if lambda throws no checked exceptions, both are applicable; `ThrowingSupplier` is the value-returning overload. Javadoc documents Callable method-reference pattern (`TraceOperations.java:304–306`).
 - No `Callable` overload exists — by design (uses `ThrowingSupplier` from API module, Spring-independent: `ThrowingSupplier.java:1–18`).
 
 ---
@@ -137,7 +137,7 @@
 
 ```text
 startSpan(name, category)
-  → [DefaultPlatformTracing] startSpan(name, category, CHILD)
+  → [DefaultTraceOperations] startSpan(name, category, CHILD)
   → startSpanInternal(name, category, relation, links=[])
   → if !facadeEnabled → NoOpSpanScope.INSTANCE
   → tracer.spanBuilder(name).setSpanKind(...).setAttribute(platform.trace.type, ...)
@@ -147,7 +147,7 @@ startSpan(name, category)
   → return OwningSpanScope(span, scope, exceptionRecorder)
 ```
 
-Evidence: `DefaultPlatformTracing.java:155–231`, `OwningSpanScope.java:39–44`.
+Evidence: `DefaultTraceOperations.java:155–231`, `OwningSpanScope.java:39–44`.
 
 **Path B — builder (`internalSpan().…start()`):**
 
@@ -174,7 +174,7 @@ Evidence: `AbstractFacadeTypedSpanBuilder.java:91–97`.
 
 ### Becoming current
 
-- Procedural path: `span.makeCurrent()` (OTel `Scope`) — `DefaultPlatformTracing.java:228–229`.
+- Procedural path: `span.makeCurrent()` (OTel `Scope`) — `DefaultTraceOperations.java:228–229`.
 - Builder path: explicit `Context.current().with(span).with(category marker)` — `AbstractPlatformSpanBuilder.java:132–135`.
 
 ### Closing
@@ -192,10 +192,10 @@ Evidence: `OwningSpanScope.java:109–125`, `SpanScope.java:61–65`.
 
 | Entry point | Behavior |
 |-------------|----------|
-| `PlatformTracing.recordException(t)` | `ExceptionRecorder.record(Span.current(), t)` — no-op if no valid span (`DefaultPlatformTracing.java:186–191`, `ExceptionRecorder.java:40–43`) |
+| `TraceOperations.recordException(t)` | `ExceptionRecorder.record(Span.current(), t)` — no-op if no valid span (`DefaultTraceOperations.java:186–191`, `ExceptionRecorder.java:40–43`) |
 | `SpanScope.recordException(t)` | Same via `ExceptionRecorder` on owned span (`OwningSpanScope.java:91–97`) |
-| `inSpan` on RuntimeException | `scope.recordException(e); throw e` (`PlatformTracing.java:288–290`) |
-| `inSpan` on checked Exception | `scope.recordException(e); throw e` (`PlatformTracing.java:315–317`) |
+| `inSpan` on RuntimeException | `scope.recordException(e); throw e` (`TraceOperations.java:288–290`) |
+| `inSpan` on checked Exception | `scope.recordException(e); throw e` (`TraceOperations.java:315–317`) |
 
 `ExceptionRecorder` sets `error.type`, `platform.trace.result=failure`, sanitized `exception` event, `StatusCode.ERROR` (`ExceptionRecorder.java:45+`).
 
@@ -214,15 +214,15 @@ Evidence: `OwningSpanScope.java:109–125`, `SpanScope.java:61–65`.
 
 ### No-op by default
 
-- `addLink` — interface default empty body (`PlatformTracing.java:120–122`).
-- `NoOpPlatformTracing` / `NoOpSpanScope` — all mutations no-op (`NoOpPlatformTracing.java:38–52`, `NoOpSpanScope.java:29–74`).
-- `recordException` on `NoOpPlatformTracing` — empty (`NoOpPlatformTracing.java:38–40`).
-- Facade kill-switch: `DefaultPlatformTracing.setFacadeEnabled(false)` → `NoOpSpanScope` (`DefaultPlatformTracing.java:212–215`).
+- `addLink` — interface default empty body (`TraceOperations.java:120–122`).
+- `NoopTraceOperations` / `NoOpSpanScope` — all mutations no-op (`NoopTraceOperations.java:38–52`, `NoOpSpanScope.java:29–74`).
+- `recordException` on `NoopTraceOperations` — empty (`NoopTraceOperations.java:38–40`).
+- Facade kill-switch: `DefaultTraceOperations.setFacadeEnabled(false)` → `NoOpSpanScope` (`DefaultTraceOperations.java:212–215`).
 
 ### Context leak risks
 
-- **Unclosed `SpanScope`:** Javadoc warns ThreadLocal leak (`PlatformTracing.java:56–57`, `SpanScope.java:26–28`).
-- **Reactive misuse:** closing span before subscription (`PlatformTracing.java:266–268`, ADR-reactor).
+- **Unclosed `SpanScope`:** Javadoc warns ThreadLocal leak (`TraceOperations.java:56–57`, `SpanScope.java:26–28`).
+- **Reactive misuse:** closing span before subscription (`TraceOperations.java:266–268`, ADR-reactor).
 - **`NonOwningSpanScope`:** `close()` is no-op by design — must not be mistaken for owning scope (`NonOwningSpanScope.java:17–26`).
 
 ### Sequence pseudocode — `inSpan` Runnable
@@ -245,34 +245,34 @@ inSpan(name, category, action):
 
 ### `SpanRelation` enum
 
-| Value | Documented semantics | `DefaultPlatformTracing` behavior |
+| Value | Documented semantics | `DefaultTraceOperations` behavior |
 |-------|---------------------|-----------------------------------|
-| `CHILD` | Child of active context; new root if none (`SpanRelation.java:11–15`) | Default for 2-arg `startSpan`; uses current context as parent (`DefaultPlatformTracing.java:155–157`, `220–222` skips root) |
-| `ROOT` | New trace, no parent (`SpanRelation.java:17–21`) | `setParent(Context.root())` (`DefaultPlatformTracing.java:220–222`) |
+| `CHILD` | Child of active context; new root if none (`SpanRelation.java:11–15`) | Default for 2-arg `startSpan`; uses current context as parent (`DefaultTraceOperations.java:155–157`, `220–222` skips root) |
+| `ROOT` | New trace, no parent (`SpanRelation.java:17–21`) | `setParent(Context.root())` (`DefaultTraceOperations.java:220–222`) |
 | `DETACHED` | No parent; links not auto-added (`SpanRelation.java:23–27`) | Same parent as ROOT; links only via `startSpanWithLinks`/`addLink` |
 
 ### Links
 
 - **`SpanLinkContext`:** record with `traceId`, `spanId`, `traceFlags`, optional `traceState` (`SpanLinkContext.java:11–18`); factory `sampled(traceId, spanId)`.
-- **`startSpanWithLinks`:** `DefaultPlatformTracing` uses `SpanRelation.CHILD` + copies links (`DefaultPlatformTracing.java:170–175`, `224–226`).
-- **`addLink`:** adds to `Span.current()` if valid (`DefaultPlatformTracing.java:177–184`).
+- **`startSpanWithLinks`:** `DefaultTraceOperations` uses `SpanRelation.CHILD` + copies links (`DefaultTraceOperations.java:170–175`, `224–226`).
+- **`addLink`:** adds to `Span.current()` if valid (`DefaultTraceOperations.java:177–184`).
 
 ### Fallback / default interface behavior
 
-| API | Interface default | `DefaultPlatformTracing` | `NoOpPlatformTracing` | `MeteredPlatformTracing` (injected) |
+| API | Interface default | `DefaultTraceOperations` | `NoopTraceOperations` | `MeteredPlatformTracing` (injected) |
 |-----|-------------------|--------------------------|----------------------|-------------------------------------|
 | `startSpan(..., relation)` | Ignores relation | **Implemented** | Uses default → no-op span | Uses interface default → **relation lost** |
 | `startSpanWithLinks` | Ignores links | **Implemented** | Uses default | Uses interface default → **links lost** |
 | `addLink` | no-op | **Implemented** | no-op (default) | **no-op (default, not delegated)** |
 
-**Fact:** Interface Javadoc explicitly states relation is ignored in default implementation (`PlatformTracing.java:69–70`) and links ignored (`PlatformTracing.java:108–109`).
+**Fact:** Interface Javadoc explicitly states relation is ignored in default implementation (`TraceOperations.java:69–70`) and links ignored (`TraceOperations.java:108–109`).
 
-**Fact:** Links are **fully implemented** in `DefaultPlatformTracing` but **silently ignored** when calling through interface defaults on non-overriding implementations.
+**Fact:** Links are **fully implemented** in `DefaultTraceOperations` but **silently ignored** when calling through interface defaults on non-overriding implementations.
 
 ### Active span / trace id
 
-- `currentTraceId()` / `currentSpanId()` read `Span.current().getSpanContext()` if valid (`DefaultPlatformTracing.java:141–151`).
-- `NoOpPlatformTracing` always returns empty (`NoOpPlatformTracing.java:22–30`).
+- `currentTraceId()` / `currentSpanId()` read `Span.current().getSpanContext()` if valid (`DefaultTraceOperations.java:141–151`).
+- `NoopTraceOperations` always returns empty (`NoopTraceOperations.java:22–30`).
 
 ---
 
@@ -297,9 +297,9 @@ Core pattern: `AbstractPlatformSpanBuilder` → OTel `Tracer` directly + anti-do
 
 ### Escape-hatch vs primary path
 
-- **Documented:** escape-hatch builders for operations **not** covered by OTel Java Agent (`PlatformTracing.java:187–192`, `docs/tracing/anti-double-instrumentation.md`).
-- **`internalSpan()` / `startInternal`:** recommended for business operations (`PlatformTracing.java:164–173`).
-- **`SpanEnricher`:** agent-first enrichment path (bean in `SemanticLayerAutoConfiguration.java:55–59`) — separate from `PlatformTracing` but adjacent.
+- **Documented:** escape-hatch builders for operations **not** covered by OTel Java Agent (`TraceOperations.java:187–192`, `docs/tracing/anti-double-instrumentation.md`).
+- **`internalSpan()` / `startInternal`:** recommended for business operations (`TraceOperations.java:164–173`).
+- **`SpanEnricher`:** agent-first enrichment path (bean in `SemanticLayerAutoConfiguration.java:55–59`) — separate from `TraceOperations` but adjacent.
 
 ### Double instrumentation guards
 
@@ -310,8 +310,8 @@ Core pattern: `AbstractPlatformSpanBuilder` → OTel `Tracer` directly + anti-do
 
 ### API / implementation alignment
 
-- **Aligned:** `DefaultPlatformTracing` overrides all builder factories to return `*Impl`.
-- **Misaligned:** Interface defaults return `Facade*` — any third-party or `NoOpPlatformTracing` implementation lacks semconv validation and anti-double guard.
+- **Aligned:** `DefaultTraceOperations` overrides all builder factories to return `*Impl`.
+- **Misaligned:** Interface defaults return `Facade*` — any third-party or `NoopTraceOperations` implementation lacks semconv validation and anti-double guard.
 - **Metrics gap:** `MeteredPlatformTracing` documents that builder path does not increment `spans_started` (`MeteredPlatformTracing.java:57–59`).
 
 ---
@@ -320,9 +320,9 @@ Core pattern: `AbstractPlatformSpanBuilder` → OTel `Tracer` directly + anti-do
 
 | Class | Module | Role | Overrides default methods? | OpenTelemetry? | Micrometer? | Risk |
 |-------|--------|------|----------------------------|----------------|-------------|------|
-| `PlatformTracing` (interface) | api | Contract + defaults | N/A (defines defaults) | compileOnly in api | No | Medium |
-| `DefaultPlatformTracing` | core | Production OTel facade | Overrides relation, links, builders | **Yes** (`Tracer`) | No (SemconvMetrics optional) | Low |
-| `NoOpPlatformTracing` | core | Degraded / disabled mode | Minimal (2 abstract only) | No | No | Low |
+| `TraceOperations` (interface) | api | Contract + defaults | N/A (defines defaults) | compileOnly in api | No | Medium |
+| `DefaultTraceOperations` | core | Production OTel facade | Overrides relation, links, builders | **Yes** (`Tracer`) | No (SemconvMetrics optional) | Low |
+| `NoopTraceOperations` | core | Degraded / disabled mode | Minimal (2 abstract only) | No | No | Low |
 | `MeteredPlatformTracing` | autoconfigure | Metrics decorator | **Partial** — only 2-arg `startSpan`, builders, `recordException` | Delegates | **Yes** (counters) | **Critical** |
 | `Facade*SpanBuilder` | api | Fallback builders | N/A | No | No | Medium |
 | `*SpanBuilderImpl` | core | Policy builders | N/A | **Yes** | No | Low |
@@ -334,16 +334,16 @@ Core pattern: `AbstractPlatformSpanBuilder` → OTel `Tracer` directly + anti-do
 
 Java resolves interface default methods on the **runtime class** of `this`.
 
-When application code holds `PlatformTracing` injected as `MeteredPlatformTracing`:
+When application code holds `TraceOperations` injected as `MeteredPlatformTracing`:
 
 ```text
 startRootSpan("job", INTERNAL)
-  → PlatformTracing.startRootSpan (default)
-  → PlatformTracing.startSpan(name, category, ROOT) (default)
+  → TraceOperations.startRootSpan (default)
+  → TraceOperations.startSpan(name, category, ROOT) (default)
   → this.startSpan(name, category)   // THIS = MeteredPlatformTracing
   → MeteredPlatformTracing.startSpan (override)
   → delegate.startSpan(name, category)
-  → DefaultPlatformTracing.startSpan → CHILD, not ROOT
+  → DefaultTraceOperations.startSpan → CHILD, not ROOT
 ```
 
 Same for `startSpanWithLinks` and `inSpan(..., ROOT, ...)`.
@@ -352,11 +352,11 @@ Same for `startSpanWithLinks` and `inSpan(..., ROOT, ...)`.
 
 **Confirmed by source:** `MeteredPlatformTracing.java` ends at line 118; no overrides for relation/links/`inSpan`.
 
-**Comment verification:** Javadoc states decorators get correct side effects because wrapped `startSpan` is called via `this`, and **forbids** overriding `inSpan` (`PlatformTracing.java:261–264`). The comment assumes relation methods are overridden or not used through defaults — currently **not true** for `MeteredPlatformTracing`.
+**Comment verification:** Javadoc states decorators get correct side effects because wrapped `startSpan` is called via `this`, and **forbids** overriding `inSpan` (`TraceOperations.java:261–264`). The comment assumes relation methods are overridden or not used through defaults — currently **not true** for `MeteredPlatformTracing`.
 
-### No other `PlatformTracing` implementations found
+### No other `TraceOperations` implementations found
 
-Grep for `implements PlatformTracing` found exactly three classes: `DefaultPlatformTracing`, `NoOpPlatformTracing`, `MeteredPlatformTracing`.
+Grep for `implements TraceOperations` found exactly three classes: `DefaultTraceOperations`, `NoopTraceOperations`, `MeteredPlatformTracing`.
 
 ---
 
@@ -367,15 +367,15 @@ Grep for `implements PlatformTracing` found exactly three classes: `DefaultPlatf
 | Bean | Lines | Conditions | Implementation |
 |------|-------|------------|----------------|
 | `SdkModeDiagnostics` | 50–68 | `@ConditionalOnMissingBean` | Diagnostics only |
-| `PlatformTracing platformTracing` | 80–126 | `@ConditionalOnClass(OpenTelemetry)`, `platform.tracing.enabled=true` (default), `@ConditionalOnMissingBean` | `NoOpPlatformTracing` if DISABLED or non-functional OTel; else `DefaultPlatformTracing` |
+| `TraceOperations traceOperations` | 80–126 | `@ConditionalOnClass(OpenTelemetry)`, `platform.tracing.enabled=true` (default), `@ConditionalOnMissingBean` | `NoopTraceOperations` if DISABLED or non-functional OTel; else `DefaultTraceOperations` |
 | `PlatformTracingJmxClient` | 164–168 | always (missing bean) | JMX client |
-| `PlatformContextPropagation` | 180–189 | missing bean | NoOp if `NoOpPlatformTracing`, else OTel |
+| `PlatformContextPropagation` | 180–189 | missing bean | NoOp if `NoopTraceOperations`, else OTel |
 
 File: `platform-tracing-spring-boot-autoconfigure/.../TracingCoreAutoConfiguration.java`.
 
 **OpenTelemetry resolution order:** user bean → `GlobalOpenTelemetry` → functional probe → NoOp (`TracingCoreAutoConfiguration.java:105–125`).
 
-**Dependencies injected into `DefaultPlatformTracing`:** `AttributePolicy`, `ExceptionRecorder` (with secure defaults if beans absent — `TracingCoreAutoConfiguration.java:89–97`).
+**Dependencies injected into `DefaultTraceOperations`:** `AttributePolicy`, `ExceptionRecorder` (with secure defaults if beans absent — `TracingCoreAutoConfiguration.java:89–97`).
 
 ### Decoration chain — `TracingMetricsAutoConfiguration`
 
@@ -392,7 +392,7 @@ File: `TracingMetricsAutoConfiguration.java`.
 ### Semantic layer — `SemanticLayerAutoConfiguration`
 
 - `AttributePolicy`, `SpanEnricher`, `ExceptionMessagePolicy`, `ExceptionRecorder` beans (`SemanticLayerAutoConfiguration.java:40–75`).
-- Wired into `DefaultPlatformTracing` via `ObjectProvider` in core auto-config.
+- Wired into `DefaultTraceOperations` via `ObjectProvider` in core auto-config.
 
 ### Property gates
 
@@ -402,16 +402,16 @@ File: `TracingMetricsAutoConfiguration.java`.
 
 ### Failure modes
 
-- No OTel + no agent → `NoOpPlatformTracing` (safe degraded).
+- No OTel + no agent → `NoopTraceOperations` (safe degraded).
 - `GlobalOpenTelemetry.get()` throws → NoOp + warn log (`TracingCoreAutoConfiguration.java:111–116`).
-- Missing `MeterRegistry` → no `MeteredPlatformTracing`; raw `DefaultPlatformTracing` or NoOp injected.
+- Missing `MeterRegistry` → no `MeteredPlatformTracing`; raw `DefaultTraceOperations` or NoOp injected.
 
 ### Module ownership
 
 | Module | Owns |
 |--------|------|
-| `platform-tracing-api` | `PlatformTracing`, `SpanScope`, `SpanRelation`, `SpanLinkContext`, builder interfaces, `Facade*` |
-| `platform-tracing-core` | `DefaultPlatformTracing`, `*Impl` builders, scopes, `ExceptionRecorder` |
+| `platform-tracing-api` | `TraceOperations`, `SpanScope`, `SpanRelation`, `SpanLinkContext`, builder interfaces, `Facade*` |
+| `platform-tracing-core` | `DefaultTraceOperations`, `*Impl` builders, scopes, `ExceptionRecorder` |
 | `platform-tracing-spring-boot-autoconfigure` | Bean wiring, `MeteredPlatformTracing`, properties |
 | Starters (`platform-tracing-spring-boot-starter-servlet/reactive`) | Aggregate dependencies (per module taxonomy doc) |
 
@@ -425,22 +425,22 @@ API dependency direction: api → slf4j + jakarta.annotation; OTel compileOnly (
 
 | Test class | Module | Behavior covered | Strength | Missing assertions |
 |------------|--------|------------------|----------|------------------|
-| `DefaultPlatformTracingTest` | core | CHILD parent trace, ROOT new trace, DETACHED no parent, links, addLink, facade kill-switch | **Strong** (InMemorySpanExporter) | No Micrometer decorator |
-| `DefaultPlatformTracingInSpanTest` | core | inSpan create/close, RuntimeException, checked Exception, nesting, ROOT relation, LIFO restore | **Strong** | Uses raw `DefaultPlatformTracing`, not Spring bean |
+| `DefaultTraceOperationsTest` | core | CHILD parent trace, ROOT new trace, DETACHED no parent, links, addLink, facade kill-switch | **Strong** (InMemorySpanExporter) | No Micrometer decorator |
+| `DefaultTraceOperationsInSpanTest` | core | inSpan create/close, RuntimeException, checked Exception, nesting, ROOT relation, LIFO restore | **Strong** | Uses raw `DefaultTraceOperations`, not Spring bean |
 | `EscapeHatchSpanBuilderTest` | core | HTTP/DB/RPC/Kafka builders, kind, naming, sanitization, STRICT violations | **Strong** | No agent double-instrumentation e2e |
 | `InternalSpanBuilderImplTest` | core | Internal builder specifics | Medium | — |
 | `SpanEnricherTest` | core | Enrich path (adjacent) | Medium | — |
 | `TracingAutoConfigurationTest` | autoconfigure | NoOp vs Default bean, disable property, MeteredPlatformTracing @Primary | **Strong** for wiring | No relation/links through decorator |
 | `PlatformTracingMetricsTest` | autoconfigure | Counter increments on metrics class | Medium | Does not assert decorator + span creation integration |
-| `TracedAspectTest` | autoconfigure | `@Traced` AOP uses `PlatformTracing` | Medium | — |
-| `PlatformTracingTestExtensionTest` | test | JUnit extension injects `DefaultPlatformTracing` | Medium | — |
+| `TracedAspectTest` | autoconfigure | `@Traced` AOP uses `TraceOperations` | Medium | — |
+| `TraceOperationsTestExtensionTest` | test | JUnit extension injects `DefaultTraceOperations` | Medium | — |
 | `TracingArchRules` (consumers) | test | Escape-hatch ArchUnit, @Traced+@Observed | Defense-in-depth | try-with-resources rule explicitly **not** implemented |
 | `ExceptionEventScrubbingE2ETest` | e2e | inSpan + exception scrubbing | E2E | — |
 | JMH benches (`StartSpanBenchmark`, `TypedBuilderBenchmark`, etc.) | bench | Performance baselines | Perf only | Not behavioral |
 
 ### Behavior protected by tests (summary)
 
-- ✅ Child/root/detached span relations on `DefaultPlatformTracing`
+- ✅ Child/root/detached span relations on `DefaultTraceOperations`
 - ✅ Links creation and `addLink`
 - ✅ `inSpan` exception recording and nesting
 - ✅ Builder semconv (core impl)
@@ -450,8 +450,8 @@ API dependency direction: api → slf4j + jakarta.annotation; OTel compileOnly (
 ### Weak / missing coverage
 
 - ❌ `MeteredPlatformTracing` + `SpanRelation.ROOT` / links / `addLink`
-- ❌ `NoOpPlatformTracing` + relation convenience methods (low risk — all no-op)
-- ❌ Facade fallback builders under custom `PlatformTracing` impl
+- ❌ `NoopTraceOperations` + relation convenience methods (low risk — all no-op)
+- ❌ Facade fallback builders under custom `TraceOperations` impl
 - ❌ Reactive misuse detection (documented only)
 - ❌ try-with-resources enforcement (ArchUnit backlog)
 
@@ -461,7 +461,7 @@ API dependency direction: api → slf4j + jakarta.annotation; OTel compileOnly (
 
 ```powershell
 Set-Location E:\Platform_Traces
-.\gradlew.bat :platform-tracing-core:test --tests "space.br1440.platform.tracing.core.DefaultPlatformTracing*"
+.\gradlew.bat :platform-tracing-core:test --tests "space.br1440.platform.tracing.core.DefaultTraceOperations*"
 .\gradlew.bat :platform-tracing-core:test --tests "space.br1440.platform.tracing.core.span.EscapeHatchSpanBuilderTest"
 .\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --tests "space.br1440.platform.tracing.autoconfigure.TracingAutoConfigurationTest"
 .\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --tests "space.br1440.platform.tracing.autoconfigure.aspect.TracedAspectTest"
@@ -480,12 +480,12 @@ Suggested **new** tests (not present):
 
 | Document | Claim | Code evidence | Status |
 |----------|-------|---------------|--------|
-| `PlatformTracing.java` Javadoc | Default `startSpan(..., relation)` ignores relation | Default body delegates to 2-arg; `DefaultPlatformTracing` overrides | **Partially confirmed** (true for default; false for production impl when not decorated) |
-| `PlatformTracing.java` Javadoc | Default `startSpanWithLinks` ignores links | Default → 2-arg; `DefaultPlatformTracing` overrides | **Partially confirmed** |
-| `PlatformTracing.java` Javadoc | Do not override `inSpan` in decorators | `MeteredPlatformTracing` complies | **Confirmed** |
-| `PlatformTracing.java` Javadoc | No `inSpan(Mono/Flux)` | No such methods on interface | **Confirmed** |
+| `TraceOperations.java` Javadoc | Default `startSpan(..., relation)` ignores relation | Default body delegates to 2-arg; `DefaultTraceOperations` overrides | **Partially confirmed** (true for default; false for production impl when not decorated) |
+| `TraceOperations.java` Javadoc | Default `startSpanWithLinks` ignores links | Default → 2-arg; `DefaultTraceOperations` overrides | **Partially confirmed** |
+| `TraceOperations.java` Javadoc | Do not override `inSpan` in decorators | `MeteredPlatformTracing` complies | **Confirmed** |
+| `TraceOperations.java` Javadoc | No `inSpan(Mono/Flux)` | No such methods on interface | **Confirmed** |
 | `ADR-reactor-no-inspan-v0.1.0.md` | Reactive assembly must not use sync SpanScope | No reactive API on facade | **Confirmed** |
-| `docs/tracing/links-kafka.md` | `startSpanWithLinks`, `addLink`, `startRootSpan` for batch Kafka | Implemented in `DefaultPlatformTracing` | **Partially confirmed** — broken through `MeteredPlatformTracing` defaults |
+| `docs/tracing/links-kafka.md` | `startSpanWithLinks`, `addLink`, `startRootSpan` for batch Kafka | Implemented in `DefaultTraceOperations` | **Partially confirmed** — broken through `MeteredPlatformTracing` defaults |
 | `docs/tracing/anti-double-instrumentation.md` | Escape-hatch + 3 guard lines | ArchUnit + `AbstractPlatformSpanBuilder` guard | **Confirmed** |
 | `ADR-typed-span-api-semantic-layer.md` | Internal builder safe; escape-hatch guarded | `InternalSpanBuilderImpl`, `AttributePolicy` | **Confirmed** |
 | `platform-tracing-module-taxonomy.md` | api = public contract; core = OTel-coupled impl | Gradle deps | **Confirmed** |
@@ -497,18 +497,18 @@ Suggested **new** tests (not present):
 
 | ID | Risk | Area | Severity | Evidence | Mitigation before refactoring |
 |----|------|------|----------|----------|-------------------------------|
-| R-01 | `MeteredPlatformTracing` breaks `SpanRelation` and links via interface defaults | Decorator | **Critical** | §7; `MeteredPlatformTracing.java:44–51` vs `PlatformTracing.java:73–77,110–122` | Add failing test; override/delegate 3-arg `startSpan`, `startSpanWithLinks`, `addLink` |
-| R-02 | Facade fallback silently drops links and semconv validation | API defaults | **High** | `PlatformTracing.java:108–115`; `AbstractFacadeTypedSpanBuilder.java:91–97` | Document; consider making relation methods abstract |
-| R-03 | Public default-method behavior change affects all partial implementors | API evolution | **High** | `NoOpPlatformTracing`, `MeteredPlatformTracing` | Characterization tests per implementation |
-| R-04 | Unclosed `SpanScope` → ThreadLocal leak | Runtime | **High** | Javadoc `PlatformTracing.java:56–57` | PMD/SpotBugs rule (ArchUnit explicitly deferred) |
-| R-05 | Reactive sync wrapper misuse | Runtime | **High** | `PlatformTracing.java:266–268`; ADR-reactor | Lint/docs; no API until v1.1 |
+| R-01 | `MeteredPlatformTracing` breaks `SpanRelation` and links via interface defaults | Decorator | **Critical** | §7; `MeteredPlatformTracing.java:44–51` vs `TraceOperations.java:73–77,110–122` | Add failing test; override/delegate 3-arg `startSpan`, `startSpanWithLinks`, `addLink` |
+| R-02 | Facade fallback silently drops links and semconv validation | API defaults | **High** | `TraceOperations.java:108–115`; `AbstractFacadeTypedSpanBuilder.java:91–97` | Document; consider making relation methods abstract |
+| R-03 | Public default-method behavior change affects all partial implementors | API evolution | **High** | `NoopTraceOperations`, `MeteredPlatformTracing` | Characterization tests per implementation |
+| R-04 | Unclosed `SpanScope` → ThreadLocal leak | Runtime | **High** | Javadoc `TraceOperations.java:56–57` | PMD/SpotBugs rule (ArchUnit explicitly deferred) |
+| R-05 | Reactive sync wrapper misuse | Runtime | **High** | `TraceOperations.java:266–268`; ADR-reactor | Lint/docs; no API until v1.1 |
 | R-06 | Escape-hatch double instrumentation with Agent | Runtime | **High** | anti-double doc; `AbstractPlatformSpanBuilder.java:113–119` | Keep ArchUnit in consumer services |
-| R-07 | `inSpan` override in decorator → double `spans_started` | Metrics | **High** | `PlatformTracing.java:261–264` | ArchUnit rule on decorators |
+| R-07 | `inSpan` override in decorator → double `spans_started` | Metrics | **High** | `TraceOperations.java:261–264` | ArchUnit rule on decorators |
 | R-08 | Builder path skips `spans_started` metric | Observability | **Medium** | `MeteredPlatformTracing.java:57–59` | Accept or add builder hooks |
-| R-09 | Checked exception overload only on `ThrowingSupplier` | API ergonomics | **Medium** | `PlatformTracing.java:308–319` | Document; avoid adding conflicting overloads |
+| R-09 | Checked exception overload only on `ThrowingSupplier` | API ergonomics | **Medium** | `TraceOperations.java:308–319` | Document; avoid adding conflicting overloads |
 | R-10 | `NonOwningSpanScope.close()` no-op — caller may think span ended | Lifecycle | **Medium** | `NonOwningSpanScope.java:17–26` | Tests + Javadoc in consumer guides |
-| R-11 | Kill-switch mid-flight — open scopes unaffected | Runtime | **Medium** | `DefaultPlatformTracing.java:198–204` | Document operational behavior |
-| R-12 | Spring `@Primary` hides raw `DefaultPlatformTracing` bean | Wiring | **Low** | `TracingMetricsAutoConfiguration.java:106–112` | `@Qualifier` if internal access needed |
+| R-11 | Kill-switch mid-flight — open scopes unaffected | Runtime | **Medium** | `DefaultTraceOperations.java:198–204` | Document operational behavior |
+| R-12 | Spring `@Primary` hides raw `DefaultTraceOperations` bean | Wiring | **Low** | `TracingMetricsAutoConfiguration.java:106–112` | `@Qualifier` if internal access needed |
 | R-13 | Semconv validation mode STRICT in prod | Config | **Medium** | `SemanticLayerAutoConfiguration.java:78–81` | Startup WARN already present |
 
 ---
@@ -529,17 +529,17 @@ Suggested **new** tests (not present):
 
 ## 13. Suggested Perplexity Deep Research Questions
 
-1. **Decorator + interface default methods:** When a Java decorator implements an interface with default methods that call `this.startSpan(...)`, which overrides are required to preserve semantics of other default methods (`startRootSpan`, `startSpanWithLinks`)? *Relevant:* `PlatformTracing.java`, `MeteredPlatformTracing.java`. *Expected:* Java language spec + best practices for decorator correctness. *Basis:* Java API design.
+1. **Decorator + interface default methods:** When a Java decorator implements an interface with default methods that call `this.startSpan(...)`, which overrides are required to preserve semantics of other default methods (`startRootSpan`, `startSpanWithLinks`)? *Relevant:* `TraceOperations.java`, `MeteredPlatformTracing.java`. *Expected:* Java language spec + best practices for decorator correctness. *Basis:* Java API design.
 
-2. **Should relation-aware span methods be abstract rather than default** in a tracing facade where multiple implementations exist (production, no-op, metrics decorator)? *Relevant:* `PlatformTracing`, `DefaultPlatformTracing`, `MeteredPlatformTracing`. *Expected:* trade-off analysis (API stability vs correctness). *Basis:* Java interface evolution best practices.
+2. **Should relation-aware span methods be abstract rather than default** in a tracing facade where multiple implementations exist (production, no-op, metrics decorator)? *Relevant:* `TraceOperations`, `DefaultTraceOperations`, `MeteredPlatformTracing`. *Expected:* trade-off analysis (API stability vs correctness). *Basis:* Java interface evolution best practices.
 
-3. **OpenTelemetry span links for Kafka batch consumers:** Is one CONSUMER span with N links the recommended pattern vs DETACHED + links vs ROOT + links? *Relevant:* `docs/tracing/links-kafka.md`, `DefaultPlatformTracing.startSpanWithLinks`. *Expected:* OTel semconv + Java instrumentation precedent. *Basis:* OpenTelemetry docs.
+3. **OpenTelemetry span links for Kafka batch consumers:** Is one CONSUMER span with N links the recommended pattern vs DETACHED + links vs ROOT + links? *Relevant:* `docs/tracing/links-kafka.md`, `DefaultTraceOperations.startSpanWithLinks`. *Expected:* OTel semconv + Java instrumentation precedent. *Basis:* OpenTelemetry docs.
 
-4. **Span parent `Context.root()` vs explicit new trace** for scheduled jobs — any sampler/propagation differences? *Relevant:* `DefaultPlatformTracing.java:220–222`, `SpanRelation.ROOT`. *Expected:* OTel Context behavior. *Basis:* OpenTelemetry docs.
+4. **Span parent `Context.root()` vs explicit new trace** for scheduled jobs — any sampler/propagation differences? *Relevant:* `DefaultTraceOperations.java:220–222`, `SpanRelation.ROOT`. *Expected:* OTel Context behavior. *Basis:* OpenTelemetry docs.
 
 5. **Anti-double instrumentation:** How does `otel.instrumentation.experimental.span-suppression-strategy=semconv` interact with manually created CLIENT/SERVER spans from application classloader? *Relevant:* `docs/tracing/anti-double-instrumentation.md`. *Expected:* Agent behavior limits. *Basis:* OTel Java Agent docs.
 
-6. **Micrometer Observation vs manual OTel spans:** When should platform code use `@Observed` vs `PlatformTracing.inSpan` vs Agent-only? *Relevant:* `TracedAspect`, `TracingArchRules.NO_TRACED_AND_OBSERVED`. *Expected:* integration patterns. *Basis:* Micrometer Observation docs.
+6. **Micrometer Observation vs manual OTel spans:** When should platform code use `@Observed` vs `TraceOperations.inSpan` vs Agent-only? *Relevant:* `TracedAspect`, `TracingArchRules.NO_TRACED_AND_OBSERVED`. *Expected:* integration patterns. *Basis:* Micrometer Observation docs.
 
 7. **Exception recording:** Should tracing facades use `Span.recordException` or custom sanitized events (this codebase uses `ExceptionRecorder`)? *Relevant:* `ExceptionRecorder.java`, scrubbing ADRs. *Expected:* security + OTel event model guidance. *Basis:* OTel + security best practices.
 
@@ -553,17 +553,17 @@ Suggested **new** tests (not present):
 
 12. **Spring `@Primary` decorator bean:** Is wrapping core beans with `@Primary` decorators an anti-pattern for interfaces with default methods? *Relevant:* `TracingMetricsAutoConfiguration.java:106–112`. *Expected:* Spring Boot wiring alternatives (BeanPostProcessor, ObservationRegistry). *Basis:* Spring Boot auto-configuration practices.
 
-13. **Testing strategy for facade refactoring:** Characterization tests via InMemorySpanExporter vs OpenTelemetry `@WithSpan` — minimum viable gate? *Relevant:* `DefaultPlatformTracingTest`, `PlatformTracingTestExtension`. *Expected:* test pyramid recommendation. *Basis:* OTel testing docs.
+13. **Testing strategy for facade refactoring:** Characterization tests via InMemorySpanExporter vs OpenTelemetry `@WithSpan` — minimum viable gate? *Relevant:* `DefaultTraceOperationsTest`, `TraceOperationsTestExtension`. *Expected:* test pyramid recommendation. *Basis:* OTel testing docs.
 
 14. **ContextKey category marker for anti-double guard:** Is storing `SpanCategory` in OTel Context considered stable public API or internal implementation detail? *Relevant:* `AbstractPlatformSpanBuilder.java:115`, `PlatformSpanContextKeys`. *Expected:* encapsulation guidance. *Basis:* OTel Context API design.
 
-15. **Kill-switch facade without disabling Agent:** Operational patterns for `setFacadeEnabled(false)` during incidents? *Relevant:* `DefaultPlatformTracing.java:198–204`. *Expected:* SRE runbook patterns. *Basis:* platform engineering best practices.
+15. **Kill-switch facade without disabling Agent:** Operational patterns for `setFacadeEnabled(false)` during incidents? *Relevant:* `DefaultTraceOperations.java:198–204`. *Expected:* SRE runbook patterns. *Basis:* platform engineering best practices.
 
 16. **ThrowingSupplier vs Callable in public API:** Pros/cons for checked exception propagation in Java 17+ tracing facades? *Relevant:* `ThrowingSupplier.java`, `inSpan` overloads. *Expected:* API ergonomics comparison. *Basis:* Java API design.
 
-17. **Span link traceState parsing:** Correctness of manual `traceState` comma-split parsing vs W3C tracestate spec? *Relevant:* `DefaultPlatformTracing.resolveTraceState` (`DefaultPlatformTracing.java:242–256`). *Expected:* spec compliance review. *Basis:* W3C trace-context spec.
+17. **Span link traceState parsing:** Correctness of manual `traceState` comma-split parsing vs W3C tracestate spec? *Relevant:* `DefaultTraceOperations.resolveTraceState` (`DefaultTraceOperations.java:242–256`). *Expected:* spec compliance review. *Basis:* W3C trace-context spec.
 
-18. **Future `PlatformTracing` v2:** Should typed builders return a separate `SpanBuilder` type decoupled from `PlatformTracing` to simplify decoration? *Relevant:* entire builder map §6. *Expected:* architectural options. *Basis:* facade best practices + OpenTelemetry patterns.
+18. **Future `TraceOperations` v2:** Should typed builders return a separate `SpanBuilder` type decoupled from `TraceOperations` to simplify decoration? *Relevant:* entire builder map §6. *Expected:* architectural options. *Basis:* facade best practices + OpenTelemetry patterns.
 
 ---
 
@@ -571,7 +571,7 @@ Suggested **new** tests (not present):
 
 | File | Class/interface | Why relevant |
 |------|-----------------|--------------|
-| `platform-tracing-api/.../PlatformTracing.java` | `PlatformTracing` | Primary investigation target |
+| `platform-tracing-api/.../TraceOperations.java` | `TraceOperations` | Primary investigation target |
 | `platform-tracing-api/.../span/SpanScope.java` | `SpanScope` | Lifecycle handle |
 | `platform-tracing-api/.../span/SpanRelation.java` | `SpanRelation` | Parent/root/detached semantics |
 | `platform-tracing-api/.../span/SpanLinkContext.java` | `SpanLinkContext` | Link DTO |
@@ -596,8 +596,8 @@ Suggested **new** tests (not present):
 | `platform-tracing-api/.../span/builder/FacadeRpcClientSpanBuilder.java` | `FacadeRpcClientSpanBuilder` | RPC CLIENT facade |
 | `platform-tracing-api/.../span/builder/FacadeKafkaProducerSpanBuilder.java` | `FacadeKafkaProducerSpanBuilder` | Kafka producer facade |
 | `platform-tracing-api/.../span/builder/FacadeKafkaConsumerSpanBuilder.java` | `FacadeKafkaConsumerSpanBuilder` | Kafka consumer facade |
-| `platform-tracing-core/.../DefaultPlatformTracing.java` | `DefaultPlatformTracing` | Primary OTel implementation |
-| `platform-tracing-core/.../NoOpPlatformTracing.java` | `NoOpPlatformTracing` | No-op implementation |
+| `platform-tracing-core/.../DefaultTraceOperations.java` | `DefaultTraceOperations` | Primary OTel implementation |
+| `platform-tracing-core/.../NoopTraceOperations.java` | `NoopTraceOperations` | No-op implementation |
 | `platform-tracing-core/.../span/OwningSpanScope.java` | `OwningSpanScope` | Owning scope |
 | `platform-tracing-core/.../span/NonOwningSpanScope.java` | `NonOwningSpanScope` | Enrich-only scope |
 | `platform-tracing-core/.../span/NoOpSpanScope.java` | `NoOpSpanScope` | Kill-switch scope |
@@ -620,10 +620,10 @@ Suggested **new** tests (not present):
 | `platform-tracing-spring-boot-autoconfigure/.../metrics/MeteredPlatformTracing.java` | `MeteredPlatformTracing` | Metrics decorator |
 | `platform-tracing-spring-boot-autoconfigure/.../metrics/PlatformTracingMetrics.java` | `PlatformTracingMetrics` | Metric names/API |
 | `platform-tracing-spring-boot-autoconfigure/.../aspect/TracedAspect.java` | `TracedAspect` | @Traced AOP consumer |
-| `platform-tracing-test/.../PlatformTracingTestExtension.java` | `PlatformTracingTestExtension` | JUnit 5 test support |
+| `platform-tracing-test/.../TraceOperationsTestExtension.java` | `TraceOperationsTestExtension` | JUnit 5 test support |
 | `platform-tracing-test/.../arch/TracingArchRules.java` | `TracingArchRules` | ArchUnit rules |
-| `platform-tracing-core/src/test/.../DefaultPlatformTracingTest.java` | test | Relation/links coverage |
-| `platform-tracing-core/src/test/.../DefaultPlatformTracingInSpanTest.java` | test | inSpan coverage |
+| `platform-tracing-core/src/test/.../DefaultTraceOperationsTest.java` | test | Relation/links coverage |
+| `platform-tracing-core/src/test/.../DefaultTraceOperationsInSpanTest.java` | test | inSpan coverage |
 | `platform-tracing-core/src/test/.../EscapeHatchSpanBuilderTest.java` | test | Builder coverage |
 | `platform-tracing-spring-boot-autoconfigure/src/test/.../TracingAutoConfigurationTest.java` | test | Spring wiring |
 | `docs/tracing/anti-double-instrumentation.md` | doc | Double instrumentation guide |

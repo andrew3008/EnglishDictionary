@@ -6,7 +6,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
@@ -19,9 +19,9 @@ public class PerfEndpointsController {
 
     private static final int WORK_ITERATIONS = 2_000;
 
-    private final ObjectProvider<PlatformTracing> tracingProvider;
+    private final ObjectProvider<TraceOperations> tracingProvider;
 
-    public PerfEndpointsController(ObjectProvider<PlatformTracing> tracingProvider) {
+    public PerfEndpointsController(ObjectProvider<TraceOperations> tracingProvider) {
         this.tracingProvider = tracingProvider;
     }
 
@@ -33,7 +33,7 @@ public class PerfEndpointsController {
     @GetMapping("/fast")
     public Map<String, Object> fast() {
         long checksum = PerfWork.deterministicChecksum(1L, 256);
-        PlatformTracing tracing = tracingProvider.getIfAvailable();
+        TraceOperations tracing = tracingProvider.getIfAvailable();
         if (tracing == null) {
             return Map.of("path", "fast", "checksum", checksum);
         }
@@ -48,7 +48,7 @@ public class PerfEndpointsController {
     @GetMapping("/work")
     public Map<String, Object> work() {
         long checksum = PerfWork.deterministicChecksum(42L, WORK_ITERATIONS);
-        PlatformTracing tracing = tracingProvider.getIfAvailable();
+        TraceOperations tracing = tracingProvider.getIfAvailable();
         if (tracing == null) {
             return Map.of("path", "work", "checksum", checksum);
         }
@@ -64,7 +64,7 @@ public class PerfEndpointsController {
     @GetMapping("/validation/valid")
     public Map<String, Object> validationValid() {
         long checksum = PerfWork.deterministicChecksum(100L, WORK_ITERATIONS);
-        PlatformTracing tracing = tracingProvider.getIfAvailable();
+        TraceOperations tracing = tracingProvider.getIfAvailable();
         if (tracing == null) {
             return Map.of("path", "validation-valid", "checksum", checksum);
         }
@@ -79,7 +79,7 @@ public class PerfEndpointsController {
     @GetMapping("/validation/missing")
     public Map<String, Object> validationMissing() {
         long checksum = PerfWork.deterministicChecksum(200L, WORK_ITERATIONS);
-        PlatformTracing tracing = tracingProvider.getIfAvailable();
+        TraceOperations tracing = tracingProvider.getIfAvailable();
         if (tracing == null) {
             return Map.of("path", "validation-missing", "checksum", checksum);
         }

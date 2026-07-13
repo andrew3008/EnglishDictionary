@@ -28,7 +28,7 @@ dependencies {
     // OpenTelemetry API для извлечения текущего span'а внутри фильтров.
     api 'io.opentelemetry:opentelemetry-api'
 
-    // Платформенный API/Core используются в фильтрах через PlatformTracing.
+    // Платформенный API/Core используются в фильтрах через TraceOperations.
     api project(':platform-tracing-api')
 
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'

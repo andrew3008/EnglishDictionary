@@ -15,7 +15,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.e2e.support.JaegerTestContainerSupport;
@@ -32,7 +32,7 @@ import static org.awaitility.Awaitility.await;
 /**
  * End-to-end проверка скрабинга exception-event'ов на app-side пути (Wave A3).
  * <p>
- * Закрывает gap H2: фасад {@code PlatformTracing} раньше вызывал raw {@code Span.recordException},
+ * Закрывает gap H2: фасад {@code TraceOperations} раньше вызывал raw {@code Span.recordException},
  * который пишет НЕскрабленный exception-event ({@code exception.message}/{@code exception.stacktrace}
  * мимо {@code ScrubbingSpanProcessor} — events не скрабятся). После wiring через
  * {@link ExceptionRecorder} при секьюр-дефолте в экспортированном event'е остаётся только
@@ -61,9 +61,9 @@ class ExceptionEventScrubbingE2ETest {
     private static JaegerV3QueryClient jaegerClient;
 
     /** Секьюр-дефолт: message/stacktrace off (как в production по умолчанию). */
-    private static DefaultPlatformTracing secureTracing;
+    private static DefaultTraceOperations secureTracing;
     /** Verbose-режим: message включён осознанно — негативный контроль. */
-    private static DefaultPlatformTracing verboseTracing;
+    private static DefaultTraceOperations verboseTracing;
 
     @BeforeAll
     static void setUpStack() {
@@ -95,8 +95,8 @@ class ExceptionEventScrubbingE2ETest {
                 .build();
 
         // Фасады поверх одного SDK: отличаются только ExceptionMessagePolicy.
-        secureTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, new AttributePolicy(), new ExceptionRecorder(ExceptionMessagePolicy.secureDefault())));
-        verboseTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk, new AttributePolicy(), new ExceptionRecorder(new ExceptionMessagePolicy(true, false))));
+        secureTracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(sdk, new AttributePolicy(), new ExceptionRecorder(ExceptionMessagePolicy.secureDefault())));
+        verboseTracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(sdk, new AttributePolicy(), new ExceptionRecorder(new ExceptionMessagePolicy(true, false))));
     }
 
     @AfterAll

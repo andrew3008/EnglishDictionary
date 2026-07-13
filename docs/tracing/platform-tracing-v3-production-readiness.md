@@ -1,11 +1,11 @@
-# PlatformTracing v3 — Production Readiness
+# TraceOperations v3 — Production Readiness
 
 Checklist for production sign-off after the v3 refactoring (Slices 0A–7, remediation B01–B10, post-Perplexity hardening). **Do not mark unchecked items as done** unless verified in your environment.
 
 ## Production readiness checklist
 
 - [x] `.\gradlew.bat build` GREEN
-- [x] targeted PlatformTracing tests GREEN
+- [x] targeted TraceOperations tests GREEN
 - [x] grep gates clean (no v1 API in active docs/code paths)
 - [ ] `-PrunE2e` run in Docker/Testcontainers environment
 - [ ] Kafka batch listener container e2e passed

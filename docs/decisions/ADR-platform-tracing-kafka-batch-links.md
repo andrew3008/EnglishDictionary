@@ -1,10 +1,10 @@
-# ADR — PlatformTracing Kafka Batch Links
+# ADR — TraceOperations Kafka Batch Links
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
@@ -15,7 +15,7 @@ Kafka batch listeners process many records that may originate from different pro
 Kafka batch processing uses:
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .kafka()
         .consumer()
@@ -40,7 +40,7 @@ platformTracing.manual()
 ## Aspect migration (B03)
 
 - **Removed:** raw OTel `Tracer` / `SpanBuilder` creation in `KafkaBatchLinksAspect`.
-- **Added:** injection of `PlatformTracing`; batch spans via v3 batch builder API.
+- **Added:** injection of `TraceOperations`; batch spans via v3 batch builder API.
 - `TracedAspect` already used `manual().operation(...).start()` — unchanged.
 
 ## Destination naming

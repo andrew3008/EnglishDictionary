@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.slf4j.MDC;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
 
 class TraceResponseHeaderServletFilterTest {
 
-    private PlatformTracing platformTracing;
+    private TraceOperations traceOperations;
     private ActiveTraceContextView traceContextView;
     private TracingProperties properties;
     private HttpServletRequest request;
@@ -44,14 +44,14 @@ class TraceResponseHeaderServletFilterTest {
     @BeforeEach
     void setUp() {
         MDC.clear();
-        platformTracing = mock(PlatformTracing.class);
+        traceOperations = mock(TraceOperations.class);
         traceContextView = mock(ActiveTraceContextView.class);
-        when(platformTracing.traceContext()).thenReturn(traceContextView);
+        when(traceOperations.traceContext()).thenReturn(traceContextView);
         properties = new TracingProperties();
         request = mock(HttpServletRequest.class);
         response = mock(HttpServletResponse.class);
         chain = mock(FilterChain.class);
-        filter = new TraceResponseHeaderServletFilter(platformTracing, properties);
+        filter = new TraceResponseHeaderServletFilter(traceOperations, properties);
     }
 
     @AfterEach

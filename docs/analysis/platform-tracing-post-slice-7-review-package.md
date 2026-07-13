@@ -1,4 +1,4 @@
-# PlatformTracing Post-Slice 7 Review Package
+# TraceOperations Post-Slice 7 Review Package
 
 **Generated:** 2026-07-07  
 **Scope:** Slices 3A through 7 (after prior completion of Slices 0A/0B/1A/1B/2)  
@@ -9,10 +9,10 @@
 
 ## 1. Executive summary
 
-PlatformTracing v3 manual-tracing refactor (Slices 3A–7) is **implementation-complete** for the planned
+TraceOperations v3 manual-tracing refactor (Slices 3A–7) is **implementation-complete** for the planned
 pre-production architecture:
 
-- **Public API** is narrowed to `PlatformTracing.traceContext()` + `PlatformTracing.manual()` only.
+- **Public API** is narrowed to `traceOperations.traceContext()` + `traceOperations.manual()` only.
 - **Single span-creation boundary:** all manual spans route through `TracingImplementation.startSpan(SpanSpec)`.
 - **Typed builders** cover operation, HTTP, database, RPC, and Kafka consumer/producer paths.
 - **Topology governance** enforces CHILD / ROOT / DETACHED semantics; ROOT+links allowed; DETACHED+links and
@@ -143,7 +143,7 @@ Prior slices (not re-reviewed here but assumed complete): 0A, 0B, 1A, 1B, 2.
 
 **Deferred:** none for aspect boundary — `KafkaBatchLinksAspect` migrated in Slice 7 remediation B03.
 
-**TracedAspect:** confirmed compliant — production code uses `platformTracing.manual().operation(...).start()`; no change required.
+**TracedAspect:** confirmed compliant — production code uses `traceOperations.manual().operation(...).start()`; no change required.
 
 ### Slice 6 — MeteredTracingImplementation
 
@@ -193,7 +193,7 @@ Prior slices (not re-reviewed here but assumed complete): 0A, 0B, 1A, 1B, 2.
 
 | Invariant | Proof |
 |-----------|-------|
-| Public facade is `traceContext()` + `manual()` only | `PlatformTracing.java`; `V3ManualApiArchTest`; no v1 `startSpan` on public API |
+| Public facade is `traceContext()` + `manual()` only | `TraceOperations.java`; `V3ManualApiArchTest`; no v1 `startSpan` on public API |
 | Single creation boundary: `TracingImplementation.startSpan(SpanSpec)` | `TracingImplementationRoutingTest`; `TracingImplementationArchTest` |
 | Public builders do not call OTel `Tracer` directly | ArchUnit in core; builder tests route through SPI |
 | CHILD default under active context | `SpanOptionsTopologyTest`, `OperationSpanBuilderTest` |
@@ -281,7 +281,7 @@ Captured 2026-07-07 on Windows (`E:\Platform_Traces`).
 ### Structurally fixed
 
 1. **Public-facade decorator removed** — `MeteredPlatformTracing` deleted in Slice 1B; not restored.
-2. **Narrow facade** — no behavioral interface defaults on span creation (`PlatformTracing` = 2 methods).
+2. **Narrow facade** — no behavioral interface defaults on span creation (`TraceOperations` = 2 methods).
 3. **SPI metering** — `MeteredTracingImplementation` fully delegates `startSpan`, `state`, `recordException`.
 4. **Topology preserved through metered chain** — ROOT, DETACHED, ROOT+links proven in `MeteredTopologyMatrixTest`.
 5. **Observation coexistence** — no competing unsynchronized roots (`ObservationCoexistenceTest`).
@@ -314,7 +314,7 @@ Run against production `src/main/**/*.java` unless noted.
 | No `MeteredPlatformTracing` class restored | `rg 'class MeteredPlatformTracing' --glob '**/src/main/**'` | **PASS** (0 matches) |
 | No `SpanRelation` enum | `rg 'enum SpanRelation\|SpanRelation\.' --glob '**/src/main/**'` | **PASS** (0 matches) |
 | No `Facade*` / `AbstractFacadeTypedSpanBuilder` | `rg 'Facade\w*SpanBuilder\|AbstractFacadeTypedSpanBuilder' --glob '**/src/main/**'` | **PASS** (0 matches) |
-| No v1 public `PlatformTracing.startSpan` | `PlatformTracing.java` has only `traceContext()` + `manual()` | **PASS** |
+| No v1 public `TraceOperations.startSpan` | `TraceOperations.java` has only `traceContext()` + `manual()` | **PASS** |
 | Diagnostics: no raw `TracingState` in Actuator JSON | `TracingActuatorEndpoint` uses `ManualTracingDiagnostics.toActuatorMap()` | **PASS** |
 | Diagnostics mapper internal-only | `TracingDiagnosticsMapper` maps to `TracingDiagnosticsView`; TEST→UNKNOWN | **PASS** |
 | Public OTel SDK leak (manual API) | `platform-tracing-api` uses `AttributeKey` only (pre-existing semconv); no `Tracer`/`Span` in manual builders | **PASS** (note: legacy semconv keys remain — pre-Slice-3) |
@@ -329,7 +329,7 @@ Run against production `src/main/**/*.java` unless noted.
 2. **TracedAspect / KafkaBatchLinksAspect:** Are deferred aspect migrations acceptable for pre-production, or blocking?
 3. **Diagnostics DTO evolution:** Is closed set `{ENABLED, DISABLED_BY_CONFIGURATION, UNAVAILABLE, NOOP, UNKNOWN}` sufficient for SRE tooling?
 4. **AttributeKey in public API:** Pre-existing OTel `AttributeKey` in transport builders — acceptable or should Slice 8 remove/replace?
-5. **False-green risk:** Do any v1 characterization tests (`DefaultPlatformTracingBaselineTest`, etc.) still give misleading GREEN signal post-cutover?
+5. **False-green risk:** Do any v1 characterization tests (`DefaultTraceOperationsBaselineTest`, etc.) still give misleading GREEN signal post-cutover?
 6. **Slice 8 priority:** Which ADR topics from plan §Slice 8 are merge-blocking vs nice-to-have?
 
 ---

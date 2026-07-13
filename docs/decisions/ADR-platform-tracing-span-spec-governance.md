@@ -1,10 +1,10 @@
-# ADR — PlatformTracing SpanSpec Governance
+# ADR — TraceOperations SpanSpec Governance
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 

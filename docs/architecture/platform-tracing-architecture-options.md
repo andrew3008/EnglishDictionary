@@ -67,7 +67,7 @@
 
 ### 3.1. Описание
 
-Agent-first модель: `platform-tracing-otel-extension` в Agent CL настраивает OTel SDK через SPI; `platform-tracing-spring-boot-autoconfigure` в Application CL предоставляет `TracingProperties`, фасад `PlatformTracing`, JMX client и Actuator endpoint. Runtime policy (sampling, scrubbing, validation toggles) мутирует через JMX atomic domain updates в `SamplerStateHolder` и sibling holders. Topology (exporter endpoint, BSP queue, processor chain composition) — startup-only.
+Agent-first модель: `platform-tracing-otel-extension` в Agent CL настраивает OTel SDK через SPI; `platform-tracing-spring-boot-autoconfigure` в Application CL предоставляет `TracingProperties`, фасад `TraceOperations`, JMX client и Actuator endpoint. Runtime policy (sampling, scrubbing, validation toggles) мутирует через JMX atomic domain updates в `SamplerStateHolder` и sibling holders. Topology (exporter endpoint, BSP queue, processor chain composition) — startup-only.
 
 ### 3.2. Диаграмма
 
@@ -215,7 +215,7 @@ flowchart TB
   Agent["extension: sampler/processors/export/JMX"]
   App["Spring app — no tracing autoconfigure"]
   Agent -->|"JMX direct / k8s sidecar"| Ops["Operators"]
-  App -.->|"manual PlatformTracing API"| api["platform-tracing-api"]
+  App -.->|"manual TraceOperations API"| api["platform-tracing-api"]
 ```
 
 **4–5. Module/dependencies:** Extension + api only for platform logic; apps use raw OTel API or thin api facade.

@@ -11,7 +11,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * Enforces that {@code core.facade} is free of OpenTelemetry dependencies.
  *
  * <p>Motivation: after the {@code fix/tracing-runtime-spi-completeness} refactoring,
- * {@code DefaultPlatformTracing} no longer holds OTel-constructors or instanceof-checks.
+ * {@code DefaultTraceOperations} no longer holds OTel-constructors or instanceof-checks.
  * All OTel wiring is done by {@code OtelTracingRuntimeFactory} and autoconfigure.
  * These rules prevent regression.
  *

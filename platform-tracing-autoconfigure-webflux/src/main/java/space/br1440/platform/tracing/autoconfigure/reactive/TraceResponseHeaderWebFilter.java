@@ -5,7 +5,7 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceMdc;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.RequestIdSupport;
@@ -23,11 +23,11 @@ import java.util.Optional;
  */
 public class TraceResponseHeaderWebFilter implements WebFilter {
 
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
     private final TracingProperties properties;
 
-    public TraceResponseHeaderWebFilter(PlatformTracing platformTracing, TracingProperties properties) {
-        this.platformTracing = platformTracing;
+    public TraceResponseHeaderWebFilter(TraceOperations traceOperations, TracingProperties properties) {
+        this.traceOperations = traceOperations;
         this.properties = properties;
     }
 
@@ -48,7 +48,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
                     response.getHeaders().set(properties.getResponse().getHeaderName(), correlationId);
                 }
                 // X-Trace-Id = trace-id, только для валидного span context.
-                platformTracing.traceContext().traceId()
+                traceOperations.traceContext().traceId()
                         .ifPresent(traceId -> response.getHeaders().set(PlatformHeaders.X_TRACE_ID, traceId));
             } catch (RuntimeException ignored) {
                 // Любые ошибки трассировки не должны влиять на обработку запроса.
@@ -60,7 +60,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
 
     private Optional<String> safeCurrentTraceId() {
         try {
-            return platformTracing.traceContext().traceId();
+            return traceOperations.traceContext().traceId();
         } catch (RuntimeException ignored) {
             return Optional.empty();
         }

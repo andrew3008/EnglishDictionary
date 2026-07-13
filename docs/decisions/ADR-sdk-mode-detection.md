@@ -29,7 +29,7 @@
 | `AGENT` | обнаружен OTel Java Agent / функциональный `GlobalOpenTelemetry`; фасад поверх global |
 | `EXTERNAL` | в контексте есть пользовательский `OpenTelemetry` bean; фасад поверх него |
 | `STARTER` | нет ни агента, ни bean (consume-mode, SDK **не** создаётся) |
-| `DISABLED` | фасад отключён → `NoOpPlatformTracing` (**единственный** режим с NoOp) |
+| `DISABLED` | фасад отключён → `NoopTraceOperations` (**единственный** режим с NoOp) |
 
 ### Резолвер (`SdkModeResolver`)
 
@@ -42,12 +42,12 @@ user-bean → `EXTERNAL`; иначе → `STARTER`.
 
 ### Фасад vs NoOp (правка по ревью архитектора, принято)
 
-В `AGENT`/`EXTERNAL`/`STARTER` starter поднимает **фасад** `PlatformTracing` (`DefaultPlatformTracing`),
-делегирующий в `GlobalOpenTelemetry.get()` / пользовательский bean. `NoOpPlatformTracing` — **только** для
-`DISABLED`. Бизнес-код приложения сохраняет рабочий `PlatformTracing` поверх агентского SDK; «сырые» OTel
+В `AGENT`/`EXTERNAL`/`STARTER` starter поднимает **фасад** `TraceOperations` (`DefaultTraceOperations`),
+делегирующий в `GlobalOpenTelemetry.get()` / пользовательский bean. `NoopTraceOperations` — **только** для
+`DISABLED`. Бизнес-код приложения сохраняет рабочий `TraceOperations` поверх агентского SDK; «сырые» OTel
 `Tracer`/`Meter` бины предоставляет агент/micrometer-bridge, не platform-starter.
 
-> Примечание: проект и до Фазы 15 возвращал `DefaultPlatformTracing` поверх consume-нутого SDK, а NoOp — лишь
+> Примечание: проект и до Фазы 15 возвращал `DefaultTraceOperations` поверх consume-нутого SDK, а NoOp — лишь
 > при отсутствии функционального SDK. PR-3 делает это **явным через режимы** и закрывает edge-case `DISABLED`.
 
 ### Double-SDK guard

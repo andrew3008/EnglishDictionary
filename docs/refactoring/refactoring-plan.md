@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | `platform-tracing-bom` | BOM (Spring Boot, OTel, Spring Cloud, web-error-model) | OK |
 | `platform-tracing-api` | Интерфейсы, аннотации, константы, SPI | OK |
-| `platform-tracing-core` | `DefaultPlatformTracing` + `NoOpPlatformTracing` + 1 исключение | OK |
+| `platform-tracing-core` | `DefaultTraceOperations` + `NoopTraceOperations` + 1 исключение | OK |
 | `platform-tracing-spring-boot-autoconfigure` | 11 авто-конфигураций, 8 фильтров/AOP/observation, 2 параллельных провайдера контекста ошибок | **рефакторинг** |
 | `platform-tracing-spring-boot-starter` | агрегатор | OK |
 | `platform-tracing-otel-extension` | агентное расширение: 8 `SpanProcessor`'ов + 1 `Sampler` + `ResourceProvider` | **частичная зачистка** |
@@ -29,10 +29,10 @@
 
 В `autoconfigure` параллельно живут **два класса с одной задачей** — поставить `traceId/spanId/correlationId` во внешний errorhandling-стартер:
 
-- `errorhandling/PlatformTraceContextProvider` (свой DTO `PlatformTraceContext`) — регистрируется в `ErrorhandlingTracingAutoConfiguration`, требует `PlatformTracing`.
-- `errorhandling/TracingRequestContextSupplier implements Supplier<RequestContext>` — регистрируется в `RequestContextSupplierAutoConfiguration`, не требует `PlatformTracing`.
+- `errorhandling/PlatformTraceContextProvider` (свой DTO `PlatformTraceContext`) — регистрируется в `ErrorhandlingTracingAutoConfiguration`, требует `TraceOperations`.
+- `errorhandling/TracingRequestContextSupplier implements Supplier<RequestContext>` — регистрируется в `RequestContextSupplierAutoConfiguration`, не требует `TraceOperations`.
 
-Оба читают одни и те же источники (`Span.current()`, `MDC`), отличаются только типом DTO и наличием `PlatformTracing` в зависимостях. У `PlatformTraceContextProvider` нет ни одного потребителя в репозитории — это «теоретический API», добавленный «на всякий случай».
+Оба читают одни и те же источники (`Span.current()`, `MDC`), отличаются только типом DTO и наличием `TraceOperations` в зависимостях. У `PlatformTraceContextProvider` нет ни одного потребителя в репозитории — это «теоретический API», добавленный «на всякий случай».
 
 **Решение.** Оставить **только** `TracingRequestContextSupplier` + `RequestContextSupplierAutoConfiguration` (хорошо документированный, всегда-on, прошёл несколько раундов архитектурного ревью). Удалить `PlatformTraceContext`, `PlatformTraceContextProvider`, `PlatformTraceContextProviderTest`, `ErrorhandlingTracingAutoConfiguration`. Снять её из `AutoConfiguration.imports`.
 
@@ -117,11 +117,11 @@
 
 `platform-tracing-core/build.gradle`:
 
-> «Содержит DefaultPlatformTracing, NoOp-реализацию … **типизированные ObservationConvention и доменные исключения**.»
+> «Содержит DefaultTraceOperations, NoOp-реализацию … **типизированные ObservationConvention и доменные исключения**.»
 
 ObservationConvention'ы лежат в `autoconfigure/observation`. «Доменные исключения» в description не соответствовали коду: `PlatformTracingException` был dead code и удалён; фактически используется `ExceptionRecorder`.
 
-**Решение.** Переписать description: «Реализация публичного API платформенной трассировки поверх OpenTelemetry API. Содержит `DefaultPlatformTracing`, `NoOpPlatformTracing` и `ExceptionRecorder` для безопасной записи ошибок в span.»
+**Решение.** Переписать description: «Реализация публичного API платформенной трассировки поверх OpenTelemetry API. Содержит `DefaultTraceOperations`, `NoopTraceOperations` и `ExceptionRecorder` для безопасной записи ошибок в span.»
 
 ---
 
@@ -135,11 +135,11 @@ Servlet-цепочка задаёт порядок (`HIGHEST_PRECEDENCE + 40` д
 
 ### 1.10 `MeteredPlatformTracing` декорирует только два метода (LOW)
 
-В фасаде `PlatformTracing` шесть методов; декоратор покрывает `startSpan` и `recordException`, но `currentTraceId/currentSpanId/start*` (типизированные) идут через `default` в интерфейсе и **не считаются**. Цифры метрики занижены.
+В фасаде `TraceOperations` шесть методов; декоратор покрывает `startSpan` и `recordException`, но `currentTraceId/currentSpanId/start*` (типизированные) идут через `default` в интерфейсе и **не считаются**. Цифры метрики занижены.
 
 Типизированные методы (`startHttpServer`, `startInternal` и т.д.) делегируют в `startSpan(name, category)` через `default`, поэтому метрика «через декоратор» считает их корректно. Но если потребитель вызовет `delegate.startInternal(...)` — попадёт мимо декоратора. На практике все потребители получают `MeteredPlatformTracing` как `@Primary` бин, всё ок.
 
-**Решение.** Не трогать. Поведение корректное при штатной DI. Зафиксировать в Javadoc `MeteredPlatformTracing`: «декорирует контракт `PlatformTracing`; типизированные методы покрываются через `default startSpan`».
+**Решение.** Не трогать. Поведение корректное при штатной DI. Зафиксировать в Javadoc `MeteredPlatformTracing`: «декорирует контракт `TraceOperations`; типизированные методы покрываются через `default startSpan`».
 
 ---
 
@@ -150,7 +150,7 @@ Servlet-цепочка задаёт порядок (`HIGHEST_PRECEDENCE + 40` д
 | 2.1 | `PlatformReactiveServerRequestObservationConvention.resolveResult` | три ветки `is4xx`/`is5xx`/error дублируют логику | Свести к одной: `if (statusCode != null && statusCode.value() >= 400) return FAILURE` (как в Servlet-варианте) |
 | 2.2 | `TracingProperties.Sampling.forceRecordHeaderValues` | `new ArrayList<>(Arrays.asList(...))` | Заменить на `new ArrayList<>(List.of(...))` (текстовая чистка) |
 | 2.3 | `TracingHealthIndicator` | `try { ... } catch (Exception e) {}` ловит `Exception`, а должен ловить `RuntimeException` (как в `TracingCoreAutoConfiguration`) | Сузить до `RuntimeException` |
-| 2.4 | `DefaultPlatformTracing` имеет два конструктора (`OpenTelemetry`, `Tracer`) | Конструктор `Tracer` нигде не используется в репо | Удалить, оставить один |
+| 2.4 | `DefaultTraceOperations` имеет два конструктора (`OpenTelemetry`, `Tracer`) | Конструктор `Tracer` нигде не используется в репо | Удалить, оставить один |
 | 2.5 | `PlatformAttributes` | константы OTel semconv продублированы из SDK | Оставить как есть (это сознательное решение, чтобы api-модуль не зависел от SDK) — но добавить комментарий об источнике версии semconv в Javadoc |
 | 2.6 | `TracingProperties.Scrubbing.builtInRules` (autoconfigure) и `PROP_SCRUBBING_RULES` (otel-extension) | два независимых списка, изменения в одном не синхронизируются с другим | Документировать в Javadoc обоих: autoconfigure-список — только для самонаблюдательных целей (показать на actuator-эндпоинте), реально работают правила в otel-extension. Альтернатива — объединить — overengineering, classloader разный. |
 
@@ -178,7 +178,7 @@ Servlet-цепочка задаёт порядок (`HIGHEST_PRECEDENCE + 40` д
 
 Чтобы зафиксировать границы рефакторинга:
 
-- **Не** переписываем фасад `PlatformTracing`. Контракт стабилен, потребители не появились, ломать нечего и незачем.
+- **Не** переписываем фасад `TraceOperations`. Контракт стабилен, потребители не появились, ломать нечего и незачем.
 - **Не** вводим новые абстракции (`SamplingService`, `MdcSynchronizer`, `ContextProvider`). Один класс — один владелец.
 - **Не** добавляем JMX/JFR/`@RefreshScope`-распространение sampling в Java Agent. Эта задача требует дизайна на отдельный спринт; решается при появлении явного запроса от SRE.
 - **Не** трогаем OTel Collector конфигурации. Они валидируются отдельным процессом SRE.

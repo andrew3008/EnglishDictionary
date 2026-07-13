@@ -19,12 +19,12 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
 import java.util.List;
@@ -54,7 +54,7 @@ class ObservationCoexistenceTest {
     void manualOperationInsideObservation_isChildOfObservedRoot_notCompetingRoot() {
         contextRunner.run(context -> {
             ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             Observation observation = Observation.createNotStarted("app.request", observationRegistry)
@@ -80,7 +80,7 @@ class ObservationCoexistenceTest {
     void intentionalManualRoot_insideObservation_createsSeparateTrace() {
         contextRunner.run(context -> {
             ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             Observation observation = Observation.createNotStarted("app.request", observationRegistry)
@@ -104,10 +104,10 @@ class ObservationCoexistenceTest {
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
-                    PlatformTracing tracing = context.getBean(PlatformTracing.class);
+                    TraceOperations tracing = context.getBean(TraceOperations.class);
                     InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
-                    assertThat(tracing).isInstanceOf(NoOpPlatformTracing.class);
+                    assertThat(tracing).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
 
@@ -123,11 +123,11 @@ class ObservationCoexistenceTest {
     void meteredImplementation_doesNotCreateSpansDirectly() {
         contextRunner.run(context -> {
             TracingRuntime tracingImplementation = context.getBean(TracingRuntime.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             assertThat(tracingImplementation).isInstanceOf(MeteredTracingRuntime.class);
-            assertThat(tracing).isInstanceOf(DefaultPlatformTracing.class);
+            assertThat(tracing).isInstanceOf(DefaultTraceOperations.class);
 
             tracing.manual().operation("metered-delegate").start().close();
 

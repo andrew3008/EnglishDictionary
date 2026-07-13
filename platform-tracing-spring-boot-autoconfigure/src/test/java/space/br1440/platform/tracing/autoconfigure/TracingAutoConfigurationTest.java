@@ -11,12 +11,12 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,23 +37,23 @@ class TracingAutoConfigurationTest {
             ));
 
     @Test
-    void регистрируетPlatformTracingПриОтсутствииOpenTelemetry() {
+    void регистрируетTraceOperationsПриОтсутствииOpenTelemetry() {
         contextRunner.run(context -> {
-            assertThat(context).hasSingleBean(PlatformTracing.class);
+            assertThat(context).hasSingleBean(TraceOperations.class);
             // Без OpenTelemetry-бина и Java Agent'а активна безоперационная заглушка.
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
         });
     }
 
     @Test
-    void регистрируетDefaultPlatformTracingПриНаличииOpenTelemetry() {
+    void регистрируетDefaultTraceOperationsПриНаличииOpenTelemetry() {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasSingleBean(OpenTelemetry.class);
-                    PlatformTracing platformTracing = context.getBean(PlatformTracing.class);
-                    assertThat(platformTracing).isNotNull();
-                    assertThat(platformTracing).isNotInstanceOf(NoOpPlatformTracing.class);
+                    TraceOperations traceOperations = context.getBean(TraceOperations.class);
+                    assertThat(traceOperations).isNotNull();
+                    assertThat(traceOperations).isNotInstanceOf(NoopTraceOperations.class);
                 });
     }
 
@@ -62,7 +62,7 @@ class TracingAutoConfigurationTest {
         contextRunner
                 .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
-                    assertThat(context).doesNotHaveBean(PlatformTracing.class);
+                    assertThat(context).doesNotHaveBean(TraceOperations.class);
                     assertThat(context).doesNotHaveBean(TracedAspect.class);
                 });
     }
@@ -73,9 +73,9 @@ class TracingAutoConfigurationTest {
                 .withUserConfiguration(MeterRegistryConfiguration.class, OpenTelemetryConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasSingleBean(PlatformTracingMetrics.class);
-                    assertThat(context).doesNotHaveBean("meteredPlatformTracing");
-                    PlatformTracing primary = context.getBean(PlatformTracing.class);
-                    assertThat(primary).isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context).doesNotHaveBean("meteredTraceOperations");
+                    TraceOperations primary = context.getBean(TraceOperations.class);
+                    assertThat(primary).isInstanceOf(DefaultTraceOperations.class);
                 });
     }
 

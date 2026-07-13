@@ -9,15 +9,15 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
@@ -41,7 +41,7 @@ class SpringBootContextMatrixTest {
         baseRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
@@ -53,7 +53,7 @@ class SpringBootContextMatrixTest {
         baseRunner
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class).state().mode())
                             .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
@@ -64,7 +64,7 @@ class SpringBootContextMatrixTest {
     @Test
     void unavailableOpenTelemetry_exposesUnavailableOrNoopDiagnostics() {
         baseRunner.run(context -> {
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
             assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
                     .isIn("UNAVAILABLE", "NOOP");
         });
@@ -77,7 +77,7 @@ class SpringBootContextMatrixTest {
                 .run(context -> {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(MeteredTracingRuntime.class);
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }
@@ -99,7 +99,7 @@ class SpringBootContextMatrixTest {
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
                     TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
-                            context.getBean(PlatformTracing.class),
+                            context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
                             context.getBean(ManualTracingDiagnostics.class));

@@ -14,7 +14,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.WebFilter;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
@@ -64,9 +64,9 @@ public class ReactiveTracingAutoConfiguration {
     @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".response", name = "expose-request-id-header",
             havingValue = "true", matchIfMissing = true)
     @Order(Ordered.HIGHEST_PRECEDENCE + 50)
-    public TraceResponseHeaderWebFilter platformTraceResponseHeaderWebFilter(PlatformTracing platformTracing,
+    public TraceResponseHeaderWebFilter platformTraceResponseHeaderWebFilter(TraceOperations traceOperations,
                                                                              TracingProperties properties) {
-        return new TraceResponseHeaderWebFilter(platformTracing, properties);
+        return new TraceResponseHeaderWebFilter(traceOperations, properties);
     }
 
     /**

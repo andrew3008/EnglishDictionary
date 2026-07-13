@@ -1,5 +1,14 @@
 # platform-tracing-api Changelog
 
+## Breaking Changes - TraceOperations Root API Rename
+
+- `PlatformTracing` renamed to `TraceOperations`.
+- `DefaultPlatformTracing` renamed to `DefaultTraceOperations`.
+- `NoOpPlatformTracing` renamed to `NoopTraceOperations`.
+- Spring bean name changed from `platformTracing` to `traceOperations`.
+
+No compatibility aliases or deprecated bridges are provided.
+
 ## Breaking Changes - Pre-Production Rename
 
 | Old | New |

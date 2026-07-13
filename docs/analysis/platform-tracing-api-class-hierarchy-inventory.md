@@ -13,14 +13,14 @@
 ## 1. Executive Summary
 
 - `platform-tracing-api` — публичный контракт платформенной трассировки: интерфейсы, value-модели, SPI, аннотации, semconv-реестр, control protocol, propagation/MDC utilities. Источник: `platform-tracing-api/build.gradle:1-5`, `settings.gradle:27-28`.
-- Корневая точка входа v3: `space.br1440.platform.tracing.api.PlatformTracing` с двумя ветками: `traceContext()` и `manual()`. Источник: `PlatformTracing.java:14-21`.
+- Корневая точка входа v3: `space.br1440.platform.tracing.api.TraceOperations` с двумя ветками: `traceContext()` и `manual()`. Источник: `TraceOperations.java:14-21`.
 - В модуле **21 пакет** (включая корневой `api`) и **87 Java-файлов** в `src/main/java`, из них **80 публичных типов** и **7 package-private** реализаций/валидаторов.
-- Главные ветки иерархии от `PlatformTracing`: **manual tracing** (`ManualTracing` → builders → `SpanHandle`), **trace context view** (`ActiveTraceContextView`), плюс **параллельные** (не достижимые напрямую из `PlatformTracing`) подсистемы: semconv, enrichment, propagation, control protocol, SPI scrubbing, runtime state, annotations, MDC.
+- Главные ветки иерархии от `TraceOperations`: **manual tracing** (`ManualTracing` → builders → `SpanHandle`), **trace context view** (`ActiveTraceContextView`), плюс **параллельные** (не достижимые напрямую из `TraceOperations`) подсистемы: semconv, enrichment, propagation, control protocol, SPI scrubbing, runtime state, annotations, MDC.
 - Основные категории моделей: span specification (`SpanSpec`, `SpanTopologySpec`), span lifecycle (`SpanHandle`, legacy `SpanScope`), topology (`Topology`, `RemoteSpanLink`), attributes (`SpanSpecAttributeValue`, `PlatformAttributes`, `SemconvKeys`), semconv policy (`CategoryContract`, `ValidationMode`), enrichment scopes, propagation control, runtime versioning.
 - Критический naming hotspot: тип переименован `SpanOptions` → `SpanTopologySpec`, но accessor `SpanSpec.options()` **не переименован** — рассинхрон type/method. Источник: `SpanSpec.java:27`, `SpanTopologySpec.java:9`; `SpanOptions.java` **отсутствует** (`Test-Path` → `False`).
 - `SpanScope` остаётся публичным legacy lifecycle-интерфейсом (v1/v2), реализуется только в core (`OwningSpanScope`), v3 application path использует `SpanHandle`. Источник: `SpanScope.java:7-9`, `SpanHandle.java:8`, `OwningSpanScope.java:17`.
 - Пакет `api.span.builder` **удалён** (`Test-Path` → `False`); старый direct builder stack отсутствует в API-модуле.
-- `PlatformSpanBuilder` — базовый v3 builder contract (не legacy), несмотря на сходство имени с удалённым v1 `PlatformTracing.start*()` stack.
+- `PlatformSpanBuilder` — базовый v3 builder contract (не legacy), несмотря на сходство имени с удалённым v1 `TraceOperations.start*()` stack.
 - `DatabaseTracing extends DatabaseSpanBuilder` — необычный mixin: navigation interface одновременно является builder contract.
 - `V3ManualApiArchTest` содержит устаревшую ссылку `"SpanOptions"` в allowlist static factories; актуальный тип — `SpanTopologySpec`. Источник: `V3ManualApiArchTest.java:31-35`.
 - `EnrichScope` публично экспонирует `io.opentelemetry.api.common.AttributeKey` в сигнатуре метода при `compileOnly` OTel в main. Источник: `EnrichScope.java:25`, `build.gradle:19-21`.
@@ -36,7 +36,7 @@
 
 | # | Утверждение | Доказательство |
 |---|---|---|
-| F1 | `PlatformTracing` имеет ровно 2 метода: `traceContext()`, `manual()` | `PlatformTracing.java:16-20` |
+| F1 | `TraceOperations` имеет ровно 2 метода: `traceContext()`, `manual()` | `TraceOperations.java:16-20` |
 | F2 | `ManualTracing` имеет 3 метода: `operation()`, `transport()`, `spanFromSpec()` | `ManualTracing.java:13-20` |
 | F3 | Все semantic builders наследуют `PlatformSpanBuilder` с topology + execution | `PlatformSpanBuilder.java:16-40` |
 | F4 | `SpanSpec` — immutable spec с полями name, category, options→`SpanTopologySpec`, attributes, reason, reference | `SpanSpec.java:20-36` |
@@ -44,7 +44,7 @@
 | F6 | Package-private: `DefaultSpanSpecBuilder`, `SpanSpecImpl`, `ImmutableSpanTopologySpec` | модификаторы в исходниках |
 | F7 | `SpanScope` публичен; Javadoc помечает v1/v2 legacy | `SpanScope.java:7-9,29` |
 | F8 | `SpanHandle` — v3 terminal handle; Javadoc ссылается на legacy `SpanScope` | `SpanHandle.java:8-15` |
-| F9 | Core implementations: `DefaultPlatformTracing`, `DefaultManualTracing`, `AbstractSemanticSpanBuilder`, `OwningSpanScope`, `SpanHandleImpl` | grep `implements` в `platform-tracing-core` |
+| F9 | Core implementations: `DefaultTraceOperations`, `DefaultManualTracing`, `AbstractSemanticSpanBuilder`, `OwningSpanScope`, `SpanHandleImpl` | grep `implements` в `platform-tracing-core` |
 | F10 | `api.span.builder` package отсутствует | `Test-Path` → `False` |
 | F11 | `SpanOptions.java` отсутствует; тип — `SpanTopologySpec` | file listing + `SpanSpec.java:27` |
 | F12 | ArchUnit allowlist содержит `"SpanOptions"`, не `"SpanTopologySpec"` | `V3ManualApiArchTest.java:31-35` |
@@ -109,7 +109,7 @@
 
 ```
 space.br1440.platform.tracing.api
-├── (root)                          PlatformTracing
+├── (root)                          TraceOperations
 ├── annotation/                     @Traced, @TracedAttribute, @SuppressAgentInstrumentation
 ├── attributes/                     PlatformAttributes, PlatformSamplingReasons
 ├── context/                        RequestTraceContextSnapshot
@@ -148,13 +148,13 @@ space.br1440.platform.tracing.api
 
 ---
 
-## 5. PlatformTracing Root Hierarchy
+## 5. TraceOperations Root Hierarchy
 
 ### Mermaid — достижимость от корня
 
 ```mermaid
 graph TD
-    PT[PlatformTracing]
+    PT[TraceOperations]
     PT --> TCV[ActiveTraceContextView]
     PT --> MT[ManualTracing]
 
@@ -205,7 +205,7 @@ graph TD
     SH -.legacy contrast.-> SSC[SpanScope]
 ```
 
-### Параллельные ветки (не от PlatformTracing)
+### Параллельные ветки (не от TraceOperations)
 
 ```mermaid
 graph LR
@@ -240,9 +240,9 @@ graph LR
 
 | Type | Kind | Package | Responsibility | Key Members | Related Types | Implementation/Consumers | Naming Notes |
 |---|---|---|---|---|---|---|---|
-| `PlatformTracing` | interface | `api` | Корневой v3 фасад | `traceContext()`, `manual()` | `ActiveTraceContextView`, `ManualTracing` | `DefaultPlatformTracing`, `NoOpPlatformTracing`; autoconfigure bean | OK; узкий фасад |
+| `TraceOperations` | interface | `api` | Корневой v3 фасад | `traceContext()`, `manual()` | `ActiveTraceContextView`, `ManualTracing` | `DefaultTraceOperations`, `NoopTraceOperations`; autoconfigure bean | OK; узкий фасад |
 | `ManualTracing` | interface | `manual` | Entry manual tracing | `operation()`, `transport()`, `spanFromSpec()` | `OperationSpanBuilder`, `TransportTracing`, `SpanSpec` | `DefaultManualTracing` | OK |
-| `ActiveTraceContextView` | interface | `manual` | Read-only trace/span/correlation | `traceId()`, `spanId()`, `correlationId()` | `PlatformTracing` | `DefaultActiveTraceContextView` | OK; не путать с `RequestTraceContextSnapshot` |
+| `ActiveTraceContextView` | interface | `manual` | Read-only trace/span/correlation | `traceId()`, `spanId()`, `correlationId()` | `TraceOperations` | `DefaultActiveTraceContextView` | OK; не путать с `RequestTraceContextSnapshot` |
 | `PlatformSpanBuilder<B>` | interface | `manual` | Общий builder: topology + execution | `child/root/detached`, `linkedTo`, `fromTraceparent`, `start/run/call` | `SpanHandle`, `RemoteSpanLink` | `AbstractSemanticSpanBuilder` hierarchy | Имя «Platform» + «SpanBuilder» может ассоциироваться с удалённым v1 stack |
 | `OperationSpanBuilder` | interface | `manual` | Internal operation spans | extends `PlatformSpanBuilder` | `ManualTracing.operation()` | `OperationSpanBuilderImpl` | OK |
 | `TransportTracing` | interface | `manual` | Transport navigator | `http/database/rpc/kafka()` | `ManualTracing` | `DefaultTransportTracing` | OK |
@@ -390,7 +390,7 @@ graph LR
 | `SpanHandle` | span lifecycle | v3 minimal closeable handle | Отличается от `SpanScope` | Минимальный — неочевидно что нет setAttribute | `PlatformSpanBuilder.start()` | **High** |
 | `SpanScope` | span lifecycle (legacy) | Full mutable scope | Исторически понятно | Публичен, но не app entry; Javadoc v1/v2 | `OwningSpanScope`, `SpanHandleImpl` | **High** |
 | `SpecifiedSpan` | span lifecycle terminal | Execution surface for built spec | Уникальное имя | Не follow `*Builder/*Handle` pattern | `ManualTracing.spanFromSpec` | **High** |
-| `ActiveTraceContextView` | trace context | Read-only active context | «View» pattern | Overlap с `RequestTraceContextSnapshot` | `PlatformTracing` | Medium |
+| `ActiveTraceContextView` | trace context | Read-only active context | «View» pattern | Overlap с `RequestTraceContextSnapshot` | `TraceOperations` | Medium |
 | `RequestTraceContextSnapshot` | trace context | Snapshot for error handling | «Request» scope ясен | Два context типа без чёткой иерархии | autoconfigure | Medium |
 | `SpanCategory` | enum model | Platform span kind | Stable domain enum | — | everywhere | Low |
 | `SpanResult` | enum model | Operation outcome | Maps to `platform.trace.result` | — | scopes, enricher | Low |
@@ -409,7 +409,7 @@ graph LR
 ### 8.1 Builder-chain map (фактический)
 
 ```text
-PlatformTracing
+TraceOperations
   ├─ traceContext() → ActiveTraceContextView (read-only)
   └─ manual() → ManualTracing
        ├─ operation(name) → OperationSpanBuilder
@@ -468,7 +468,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | Finding | Status | Evidence |
 |---|---|---|
 | Пакет `api.span.builder` | **Удалён** | `Test-Path` → `False`; нет в file listing |
-| `PlatformTracing.startInternal/startHttp*` methods | **Удалены** | `PlatformTracing.java` — только 2 метода |
+| `TraceOperations.startInternal/startHttp*` methods | **Удалены** | `TraceOperations.java` — только 2 метода |
 | `SpanOptions` type | **Переименован** в `SpanTopologySpec` | `SpanOptions.java` отсутствует; `SpanTopologySpec.java` существует |
 | `SpanSpec.options()` accessor | **Stale name** (возвращает `SpanTopologySpec`) | `SpanSpec.java:27` |
 | `SpanScope` | **Legacy, но публичен** | `SpanScope.java:7-9`; core `OwningSpanScope` |
@@ -486,7 +486,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 
 | Type | Public Surface Size | Consumers | Rename Impact | Delete/Merge/Split Candidate? | Notes |
 |---|---|---|---|---|---|
-| `PlatformTracing` | 2 methods | autoconfigure, e2e, core, tests | **High** | No | Spring bean type |
+| `TraceOperations` | 2 methods | autoconfigure, e2e, core, tests | **High** | No | Spring bean type |
 | `ManualTracing` | 3 methods | core, tests | High | No | v3 entry |
 | `PlatformSpanBuilder` | 10 methods | all builders, core | **High** | No | Base contract |
 | `SpanSpec` | 7 accessors + 1 factory | core runtime, tests | **High** | No | Central value model |
@@ -514,7 +514,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | `*Scope` vs `*Handle` | `SpanScope`, `SpanHandle`, `EnrichScope`, `GenericEnrichScope` | «Scope» overloaded (lifecycle vs enrich DSL) | **High** | **Yes** |
 | `*Tracing` as navigator vs builder | `HttpTracing`, `DatabaseTracing`, `ManualTracing` | `DatabaseTracing` = builder; others = navigator | Medium | Yes |
 | `*Builder` suffix | 10+ builder interfaces | Consistent within manual package | Low | Optional |
-| `Platform*` prefix | `PlatformTracing`, `PlatformSpanBuilder`, `PlatformAttributes`, `PlatformHeaders`, ... | Heavy prefixing; some «Platform» on models not facades | Medium | Yes |
+| `Platform*` prefix | `TraceOperations`, `PlatformSpanBuilder`, `PlatformAttributes`, `PlatformHeaders`, ... | Heavy prefixing; some «Platform» on models not facades | Medium | Yes |
 | `Specified*` | `SpecifiedSpan` | Outlier vs `SpanHandle`/`SpanSpec` | Medium | Yes |
 | `Tracing*Context` vs `Trace*View` | `RequestTraceContextSnapshot`, `ActiveTraceContextView` | Similar concepts, different packages | Medium | Yes |
 | `*Contract` vs `*Contracts` | `CategoryContract`, `CategoryContracts` | Singular/plural registry — OK but review pairs | Low | Optional |
@@ -530,7 +530,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 
 | API Type | Used In | Usage Kind | Notes |
 |---|---|---|---|
-| `PlatformTracing` | core (`DefaultPlatformTracing`), autoconfigure (bean), e2e tests | DI bean, direct construction | ~208 refs repo-wide |
+| `TraceOperations` | core (`DefaultTraceOperations`), autoconfigure (bean), e2e tests | DI bean, direct construction | ~208 refs repo-wide |
 | `ManualTracing` | core (`DefaultManualTracing`) | implementation | Entry for all manual spans |
 | `PlatformSpanBuilder` | core (`AbstractSemanticSpanBuilder`) | implementation | All typed builders |
 | `SpanSpec` | core (`OtelTracingRuntime`, `SemanticSpanSpecs`) | runtime input model | ~98 refs |
@@ -564,7 +564,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | Runtime state | `VersionedStateHolderTest`, `RuntimeStateArchTest` | Medium | `VersionedState` itself thin |
 | MDC | `RemoteServiceMdcTest` | Medium | mirrors/readers partial |
 | Sanitizers | `SanitizerTest` | Medium | — |
-| `PlatformTracing` / `ManualTracing` behavior | core tests (20+ builder/topology tests) | **Strong** indirect | No direct `PlatformTracing` test in api module |
+| `TraceOperations` / `ManualTracing` behavior | core tests (20+ builder/topology tests) | **Strong** indirect | No direct `TraceOperations` test in api module |
 | `SpanHandle` / `SpanScope` lifecycle | core `SpanOptionsTopologyTest`, builder tests | Strong indirect | API module не тестирует `SpanScope` |
 | `SpecifiedSpan` | core routing tests | Medium indirect | No dedicated api test |
 | `EnrichScope` / `GenericEnrichScope` | core `SpanEnricherTest` (assumed) | Medium | Not in api module |
@@ -594,7 +594,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 
 ### 14.3 Risky Rename Candidates
 
-- `PlatformTracing` — Spring bean identity.
+- `TraceOperations` — Spring bean identity.
 - `SpanCategory` — wire values (`http_server`, etc.).
 - `SpanHandle` — widespread v3 terminal type.
 - `PlatformSpanBuilder` — all builders extend it.
@@ -607,19 +607,19 @@ SpanSpec.builder(name) → SpanSpecBuilder
 - `SpanOptions` (type — already removed; purge from tests/docs/arch).
 - `SpanScope` as **public** application API (consider hiding; keep internal in core).
 - `api.span.builder` package (already gone — do not reintroduce).
-- v1 method names: `startInternal`, `startHttpServer`, `inSpan` on `PlatformTracing` (already gone).
+- v1 method names: `startInternal`, `startHttpServer`, `inSpan` on `TraceOperations` (already gone).
 
 ### 14.5 Files Codex Must Inspect
 
 **API contracts:**
-- `platform-tracing-api/.../PlatformTracing.java`
+- `platform-tracing-api/.../TraceOperations.java`
 - `platform-tracing-api/.../manual/*.java`
 - `platform-tracing-api/.../span/spec/*.java`
 - `platform-tracing-api/.../span/SpanScope.java`
 - `platform-tracing-api/.../span/SpanCategory.java`
 
 **Implementation/consumers:**
-- `platform-tracing-core/.../facade/DefaultPlatformTracing.java`
+- `platform-tracing-core/.../facade/DefaultTraceOperations.java`
 - `platform-tracing-core/.../manual/AbstractSemanticSpanBuilder.java`
 - `platform-tracing-core/.../runtime/otel/OtelTracingRuntime.java`
 - `platform-tracing-core/.../runtime/SpanHandleImpl.java`
@@ -684,7 +684,7 @@ Test-Path platform-tracing-api/.../SpanOptions.java  # → False
 Test-Path platform-tracing-api/.../span/builder       # → False
 
 # Usage counts (repo-wide, excluding build/)
-PlatformTracing: 208 | SpanSpec: 98 | SpanHandle: 83 | SpanScope: 37 | SpanTopologySpec: 18
+TraceOperations: 208 | SpanSpec: 98 | SpanHandle: 83 | SpanScope: 37 | SpanTopologySpec: 18
 
 # Legacy grep in API sources
 legacy/SpanOptions/Deprecated → only Javadoc + SemconvKeys legacy keys + SpanHandle legacy ref

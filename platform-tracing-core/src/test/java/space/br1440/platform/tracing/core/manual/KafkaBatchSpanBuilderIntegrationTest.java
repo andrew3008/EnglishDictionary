@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.TraceparentParser;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.SpanKinds;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 
@@ -36,7 +36,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing platformTracing;
+    private DefaultTraceOperations traceOperations;
 
     @BeforeEach
     void setUp() {
@@ -44,14 +44,14 @@ class KafkaBatchSpanBuilderIntegrationTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        platformTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
+        traceOperations = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
     }
 
     @AfterEach
     void tearDown() {
         tracerProvider.shutdown();
-        assertThat(platformTracing.traceContext().traceId()).isEmpty();
-        assertThat(platformTracing.traceContext().spanId()).isEmpty();
+        assertThat(traceOperations.traceContext().traceId()).isEmpty();
+        assertThat(traceOperations.traceContext().spanId()).isEmpty();
     }
 
     @Test
@@ -59,7 +59,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
-        platformTracing.manual()
+        traceOperations.manual()
                 .transport()
                 .kafka()
                 .consumer()
@@ -81,7 +81,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void batchRootWithTraceparentParser_preservesLink() {
-        platformTracing.manual()
+        traceOperations.manual()
                 .transport()
                 .kafka()
                 .consumer()
@@ -103,8 +103,8 @@ class KafkaBatchSpanBuilderIntegrationTest {
     void batchInsideActiveParent_rootDoesNotBecomeChild() {
         RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT);
 
-        try (var parent = platformTracing.manual().operation("parent").start()) {
-            platformTracing.manual()
+        try (var parent = traceOperations.manual().operation("parent").start()) {
+            traceOperations.manual()
                     .transport()
                     .kafka()
                     .consumer()
@@ -128,7 +128,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         assertThatThrownBy(() ->
-                platformTracing.manual()
+                traceOperations.manual()
                         .transport()
                         .kafka()
                         .consumer()
@@ -148,7 +148,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         assertThatThrownBy(() ->
-                platformTracing.manual()
+                traceOperations.manual()
                         .transport()
                         .kafka()
                         .consumer()

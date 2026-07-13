@@ -1,4 +1,4 @@
-description = 'Compilable PlatformTracing v3 API usage examples for documentation (Slice 8). ' +
+description = 'Compilable TraceOperations v3 API usage examples for documentation (Slice 8). ' +
         'Not published to Nexus; no external services or Docker required.'
 
 dependencies {

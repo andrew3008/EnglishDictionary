@@ -1,7 +1,7 @@
-# PlatformTracing — финальное архитектурное ревью плана v3.3.1 (expensive final pass)
+# TraceOperations — финальное архитектурное ревью плана v3.3.1 (expensive final pass)
 
 > Ревьюируемый артефакт: `docs/analysis/platform-tracing-refactoring-plan.md` (v3.3.1).
-> Входные данные: план v3.3.1, investigation-документ, исходники (`PlatformTracing.java`, `MeteredPlatformTracing.java`, `TracingMetricsAutoConfiguration.java`, builder package), шесть предыдущих model-проходов (Deep Research, Gemini, Sonnet, GPT-5.4, Kimi, Nemotron) из `Research_2/Analyzes`.
+> Входные данные: план v3.3.1, investigation-документ, исходники (`TraceOperations.java`, `MeteredPlatformTracing.java`, `TracingMetricsAutoConfiguration.java`, builder package), шесть предыдущих model-проходов (Deep Research, Gemini, Sonnet, GPT-5.4, Kimi, Nemotron) из `Research_2/Analyzes`.
 > Режим: adversarial final pass. Без backward compatibility, без deprecate-first, без косметики.
 
 ---
@@ -20,7 +20,7 @@
 
 **Для архитектурного комитета.**
 
-План v3.3.1 предлагает: узкий фасад `PlatformTracing = traceContext() + manual()`, ноль behavioral default methods, полностью абстрактный внутренний SPI `TracingImplementation` как единственную точку создания span'ов, декорирование/метрики только на этой границе, строгую топологию (`CHILD/ROOT/DETACHED` + links matrix), типизированные атрибуты (`SpanAttributeValue` whitelist, без `attribute(String, Object)`), governed escape hatch (`spanFromSpec` + mandatory `SpanSpecReason`), внутренний `TracingState` вместо boolean, STRICT-валидацию как production default.
+План v3.3.1 предлагает: узкий фасад `traceOperations = traceContext() + manual()`, ноль behavioral default methods, полностью абстрактный внутренний SPI `TracingImplementation` как единственную точку создания span'ов, декорирование/метрики только на этой границе, строгую топологию (`CHILD/ROOT/DETACHED` + links matrix), типизированные атрибуты (`SpanAttributeValue` whitelist, без `attribute(String, Object)`), governed escape hatch (`spanFromSpec` + mandatory `SpanSpecReason`), внутренний `TracingState` вместо boolean, STRICT-валидацию как production default.
 
 Это правильный ответ на R01. Java default-dispatch делает частичные декораторы структурно небезопасными: `MeteredPlatformTracing` переопределяет 2-арговый `startSpan`, а `ROOT`/`DETACHED`/links молча деградируют через default-методы интерфейса. Патч декоратора не устраняет класс дефекта — устранение behavioral defaults и перенос декорирования на абстрактную границу устраняет.
 
@@ -153,7 +153,7 @@ R01 родился из `@Primary` + частичный декоратор. Пл
 4. Возвращает post-start `addLink(...)`.
 5. Возвращает `SpanRelation` в любом виде.
 6. Вводит public top-level `execute()` / `TracingExecutor`.
-7. Ставит `http()/db()/rpc()/kafka()` на `PlatformTracing` top-level.
+7. Ставит `http()/db()/rpc()/kafka()` на `TraceOperations` top-level.
 8. Вводит `rawSpan`/`advanced`/`escapeHatch`/`customSpan` или иные имена из §3.11.
 9. Добавляет `OTHER`/`UNKNOWN`/`CUSTOM`/`MISC` в `SpanSpecReason`.
 10. Экспонирует OTel SDK-типы в public API или Actuator-контракте.

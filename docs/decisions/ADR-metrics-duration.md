@@ -26,7 +26,7 @@
 |----------|----------|-------------|
 | **OTel backend** (Jaeger/Tempo/Grafana) | Все spans: Agent HTTP + facade + DB | Backend-managed |
 | **OTel Agent metrics** | HTTP server/client (semconv opt-in) | Bounded semconv attrs |
-| **Micrometer Timer на facade** | Только `PlatformTracing.startSpan*` | Риск high-cardinality при неправильных tags |
+| **Micrometer Timer на facade** | Только `TraceOperations.startSpan*` | Риск high-cardinality при неправильных tags |
 
 ### Риски Timer в v1.0
 

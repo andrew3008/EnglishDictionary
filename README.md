@@ -7,8 +7,8 @@
 | Модуль | Назначение |
 |---|---|
 | `platform-tracing-bom` | BOM (Spring Boot 3.5.5, OTel SDK 1.62.0, Instrumentation 2.28.1). |
-| `platform-tracing-api` | Публичный API: `PlatformTracing`, `@Traced`, SPI, MDC-константы (`TracingMdcKeys`). |
-| `platform-tracing-core` | `DefaultPlatformTracing`, `NoOpPlatformTracing`. |
+| `platform-tracing-api` | Публичный API: `TraceOperations`, `@Traced`, SPI, MDC-константы (`TracingMdcKeys`). |
+| `platform-tracing-core` | `DefaultTraceOperations`, `NoopTraceOperations`. |
 | `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, авто-конфигурации, фильтры, observation conventions. |
 | `platform-tracing-autoconfigure-webmvc` / `-webflux` | Servlet / WebFlux adapters. |
 | `platform-tracing-spring-boot-starter-servlet` / `-reactive` | Точки подключения для сервисов. |

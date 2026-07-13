@@ -24,7 +24,7 @@
 
 | File | Было | Стало |
 |------|------|-------|
-| `DefaultPlatformTracing.java` | `new ExceptionRecorder()` | `ExceptionRecorder.secureDefault()` |
+| `DefaultTraceOperations.java` | `new ExceptionRecorder()` | `ExceptionRecorder.secureDefault()` |
 | `TracingCoreAutoConfiguration.java` | `ExceptionRecorder::new` | `ExceptionRecorder::secureDefault` |
 | `PlatformKafkaAutoConfiguration.java` | `ExceptionRecorder::new` | `ExceptionRecorder::secureDefault` |
 | `ExceptionRecorderTest.java` (×5) | `new ExceptionRecorder()` | `ExceptionRecorder.secureDefault()` |
@@ -40,11 +40,11 @@
 | Факт | Detail |
 |------|--------|
 | **Реализация no-arg ctor** | Делегирует в `this(ExceptionMessagePolicy.secureDefault())` — семантически эквивалентен `new ExceptionMessagePolicy(false, false)` |
-| **Прямых вызовов `new ExceptionRecorder()` в production `.java`** | **1** (`DefaultPlatformTracing`) |
+| **Прямых вызовов `new ExceptionRecorder()` в production `.java`** | **1** (`DefaultTraceOperations`) |
 | **Method reference `ExceptionRecorder::new` в production `.java`** | **2** (Spring fallback в autoconfigure) |
 | **Явный путь `new ExceptionRecorder(messagePolicy)` в production** | **1** (`SemanticLayerAutoConfiguration` — основной Spring Boot путь) |
 | **Полный Spring Boot starter (оба auto-config)** | Runtime использует **explicit policy bean**, no-arg ctor **не вызывается**, если бин `ExceptionRecorder` уже зарегистрирован |
-| **SDK-only / partial Spring / benchmarks / tests** | No-arg ctor **используется** напрямую или через `DefaultPlatformTracing(otel[, policy])` |
+| **SDK-only / partial Spring / benchmarks / tests** | No-arg ctor **используется** напрямую или через `DefaultTraceOperations(otel[, policy])` |
 
 **Вывод для review:** no-arg конструктор — не dead code, но и **не единственный** production-path. В типичном Spring Boot приложении с полным autoconfigure политика задаётся явно через `ExceptionMessagePolicy` + properties; no-arg ctor остаётся **fallback** и **SDK convenience**.
 
@@ -89,7 +89,7 @@
 | Категория | Описание |
 |-----------|----------|
 | **PROD-DIRECT** | Прямой `new ExceptionRecorder()` или `ExceptionRecorder::new` в `src/main` |
-| **PROD-INDIRECT** | Через `DefaultPlatformTracing(otel)` / `(otel, policy)` → внутренний `new ExceptionRecorder()` |
+| **PROD-INDIRECT** | Через `DefaultTraceOperations(otel)` / `(otel, policy)` → внутренний `new ExceptionRecorder()` |
 | **PROD-EXPLICIT** | `new ExceptionRecorder(messagePolicy)` — policy видна на call site |
 | **NON-PROD** | test / bench / test-support |
 
@@ -97,7 +97,7 @@
 
 | # | File | Line | Form | Role |
 |---|------|------|------|------|
-| P1 | `core/DefaultPlatformTracing.java` | 71 | `new ExceptionRecorder()` | 2-arg ctor `(OpenTelemetry, AttributePolicy)` делегирует сюда |
+| P1 | `core/DefaultTraceOperations.java` | 71 | `new ExceptionRecorder()` | 2-arg ctor `(OpenTelemetry, AttributePolicy)` делегирует сюда |
 | P2 | `autoconfigure/TracingCoreAutoConfiguration.java` | 97 | `ExceptionRecorder::new` | Fallback, если бин `ExceptionRecorder` отсутствует в контексте |
 | P3 | `autoconfigure/kafka/PlatformKafkaAutoConfiguration.java` | 28 | `ExceptionRecorder::new` | Fallback для `KafkaBatchLinksAspect`, если бин отсутствует |
 
@@ -117,13 +117,13 @@
 TracingProperties.semantic.exception.{includeMessage, includeStacktrace}
     → platformExceptionMessagePolicy (bean)
     → platformExceptionRecorder (bean)
-    → inject в DefaultPlatformTracing через TracingCoreAutoConfiguration
+    → inject в DefaultTraceOperations через TracingCoreAutoConfiguration
     → inject в KafkaBatchLinksAspect (если kafka batch-links enabled)
 ```
 
-### 3. Production — indirect через DefaultPlatformTracing (2-arg / 1-arg ctor)
+### 3. Production — indirect через DefaultTraceOperations (2-arg / 1-arg ctor)
 
-`DefaultPlatformTracing` constructor chain:
+`DefaultTraceOperations` constructor chain:
 
 | Ctor | ExceptionRecorder source |
 |------|-------------------------|
@@ -131,21 +131,21 @@ TracingProperties.semantic.exception.{includeMessage, includeStacktrace}
 | `(OpenTelemetry, AttributePolicy)` | → **`new ExceptionRecorder()`** |
 | `(OpenTelemetry, AttributePolicy, ExceptionRecorder)` | injected — **no-arg не используется** |
 
-**Production `DefaultPlatformTracing` call sites (src/main only):**
+**Production `DefaultTraceOperations` call sites (src/main only):**
 
 | File | Ctor used | ExceptionRecorder path |
 |------|-----------|------------------------|
 | `TracingCoreAutoConfiguration.java:108,125` | 3-arg | Injected bean (explicit policy path или fallback `::new`) |
 
-**Вывод:** в `src/main` нет других `new DefaultPlatformTracing(...)` кроме autoconfigure 3-arg. SDK-only путь `DefaultPlatformTracing(otel)` в **production main** не вызывается.
+**Вывод:** в `src/main` нет других `new DefaultTraceOperations(...)` кроме autoconfigure 3-arg. SDK-only путь `DefaultTraceOperations(otel)` в **production main** не вызывается.
 
-### 4. Non-production — indirect SDK path (DefaultPlatformTracing 1–2 arg)
+### 4. Non-production — indirect SDK path (DefaultTraceOperations 1–2 arg)
 
 | Module | Files | Count |
 |--------|-------|-------|
 | `platform-tracing-bench` (JMH) | `CompositePipelineBenchmark`, `StartSpanBenchmark`, `TracedAspectBenchmark`, `TypedBuilderBenchmark` | 4+ |
-| `platform-tracing-test` | `PlatformTracingTestExtension` | 1 |
-| `platform-tracing-core` (test) | `DefaultPlatformTracingTest`, `EscapeHatchSpanBuilderTest`, `SpanEnricherTest`, … | many |
+| `platform-tracing-test` | `TraceOperationsTestExtension` | 1 |
+| `platform-tracing-core` (test) | `DefaultTraceOperationsTest`, `EscapeHatchSpanBuilderTest`, `SpanEnricherTest`, … | many |
 | `platform-tracing-e2e-tests` | `ExceptionEventScrubbingE2ETest` | 0 indirect — uses **explicit** `new ExceptionRecorder(ExceptionMessagePolicy.secureDefault())` |
 
 ### 5. Non-production — direct `new ExceptionRecorder()`
@@ -172,7 +172,7 @@ flowchart TD
     C -->|Yes| D[Bean platformExceptionMessagePolicy from TracingProperties]
     D --> E["new ExceptionRecorder(messagePolicy) — EXPLICIT"]
     C -->|No| F["getIfAvailable(ExceptionRecorder::new) — NO-ARG"]
-    B -->|SDK / test / bench| G{DefaultPlatformTracing ctor?}
+    B -->|SDK / test / bench| G{DefaultTraceOperations ctor?}
     G -->|1-arg or 2-arg| H["new ExceptionRecorder() — NO-ARG"]
     G -->|3-arg| I[Injected recorder]
     B -->|Direct| J["new ExceptionRecorder() or explicit policy"]
@@ -184,8 +184,8 @@ flowchart TD
 
 1. `SemanticLayerAutoConfiguration.platformExceptionMessagePolicy()` → defaults `false/false`
 2. `SemanticLayerAutoConfiguration.platformExceptionRecorder(messagePolicy)` → **`new ExceptionRecorder(messagePolicy)`**
-3. `TracingCoreAutoConfiguration.platformTracing(..., exceptionRecorderProvider, ...)` → `getIfAvailable(...)` **возвращает bean** → **no-arg ctor не вызывается**
-4. `DefaultPlatformTracing(otel, policy, exceptionRecorder)` — 3-arg
+3. `TracingCoreAutoConfiguration.traceOperations(..., exceptionRecorderProvider, ...)` → `getIfAvailable(...)` **возвращает bean** → **no-arg ctor не вызывается**
+4. `DefaultTraceOperations(otel, policy, exceptionRecorder)` — 3-arg
 
 **Policy на runtime:** из properties (по умолчанию = secureDefault).
 
@@ -208,7 +208,7 @@ flowchart TD
 
 ### Path D — SDK-only / benchmarks / unit tests
 
-`new DefaultPlatformTracing(sdk)` или `(sdk, policy)` → always **`new ExceptionRecorder()`** inside 2-arg ctor.
+`new DefaultTraceOperations(sdk)` или `(sdk, policy)` → always **`new ExceptionRecorder()`** inside 2-arg ctor.
 
 ---
 
@@ -235,14 +235,14 @@ ExceptionRecorder **не вызывается снаружи напрямую** 
 
 | Component | Module | Injection |
 |-----------|--------|-----------|
-| `DefaultPlatformTracing` | core | field; `recordException()`, span builders |
+| `DefaultTraceOperations` | core | field; `recordException()`, span builders |
 | `AbstractPlatformSpanBuilder` + typed builders | core | constructor param |
 | `OwningSpanScope`, `NonOwningSpanScope` | core | close-on-exception path |
 | `KafkaBatchLinksAspect` | autoconfigure | constructor param |
 
-Все span builder'ы получают **тот же экземпляр**, что и фасад (per `DefaultPlatformTracing` instance / Spring singleton bean).
+Все span builder'ы получают **тот же экземпляр**, что и фасад (per `DefaultTraceOperations` instance / Spring singleton bean).
 
-**NoOpPlatformTracing** не использует `ExceptionRecorder`.
+**NoopTraceOperations** не использует `ExceptionRecorder`.
 
 ---
 
@@ -281,7 +281,7 @@ Verified by: `ExceptionRecorderTest.record_секьюрДефолт_...`, `Excep
 
 - Javadoc `ExceptionMessagePolicy.secureDefault()`
 - Javadoc `TracingProperties.Semantic.Exception` (secure-by-default rationale)
-- Comments in `TracingCoreAutoConfiguration`, `PlatformKafkaAutoConfiguration`, `DefaultPlatformTracing` 2-arg ctor
+- Comments in `TracingCoreAutoConfiguration`, `PlatformKafkaAutoConfiguration`, `DefaultTraceOperations` 2-arg ctor
 - **No Javadoc on `ExceptionRecorder()` itself** in current source (only delegation in body)
 
 ### Аналоги в кодовой базе
@@ -289,7 +289,7 @@ Verified by: `ExceptionRecorderTest.record_секьюрДефолт_...`, `Excep
 | Pattern | Similar? |
 |---------|----------|
 | `AttributePolicy::new` fallback in `TracingCoreAutoConfiguration:91` | yes — hides WARN defaults |
-| `DefaultPlatformTracing(otel)` → default `AttributePolicy()` | yes — two hidden defaults chained |
+| `DefaultTraceOperations(otel)` → default `AttributePolicy()` | yes — two hidden defaults chained |
 
 No-arg `ExceptionRecorder` — часть broader «convenience ctor» pattern в core, не изолированный случай.
 
@@ -300,16 +300,16 @@ No-arg `ExceptionRecorder` — часть broader «convenience ctor» pattern �
 | Area | Files to change | Risk |
 |------|-----------------|------|
 | `ExceptionRecorder.java` | remove ctor | compile break until call sites fixed |
-| `DefaultPlatformTracing.java:71` | `new ExceptionRecorder(ExceptionMessagePolicy.secureDefault())` | low — behavior identical |
+| `DefaultTraceOperations.java:71` | `new ExceptionRecorder(ExceptionMessagePolicy.secureDefault())` | low — behavior identical |
 | `TracingCoreAutoConfiguration.java:97` | `() -> new ExceptionRecorder(ExceptionMessagePolicy.secureDefault())` | low |
 | `PlatformKafkaAutoConfiguration.java:28` | same | low |
 | `ExceptionRecorderTest.java` | 5 call sites → explicit secureDefault | low — tests become clearer |
-| JMH / test `DefaultPlatformTracing(otel*)` | optional: migrate to 3-arg explicit | low — or keep if 2-arg ctor updated internally |
+| JMH / test `DefaultTraceOperations(otel*)` | optional: migrate to 3-arg explicit | low — or keep if 2-arg ctor updated internally |
 | Public API surface | **breaking** for external callers of no-arg ctor | NEEDS_VERIFICATION — grep shows no external module usage today |
 
 **Behavior regression risk:** **none**, если все замены используют `secureDefault()` или equivalent `(false, false)`.
 
-**Review readability gain:** **high** на fallback call sites; **medium** если оставить делегирование только в `DefaultPlatformTracing` 2-arg ctor с явным `secureDefault()` в одном месте.
+**Review readability gain:** **high** на fallback call sites; **medium** если оставить делегирование только в `DefaultTraceOperations` 2-arg ctor с явным `secureDefault()` в одном месте.
 
 ---
 
@@ -342,7 +342,7 @@ No-arg `ExceptionRecorder` — часть broader «convenience ctor» pattern �
 | Location | Category |
 |----------|----------|
 | `ExceptionRecorder.java:24` | definition |
-| `DefaultPlatformTracing.java:71` | PROD-DIRECT |
+| `DefaultTraceOperations.java:71` | PROD-DIRECT |
 | `ExceptionRecorderTest.java` (×5) | test |
 
 ### `ExceptionRecorder::new`
@@ -374,6 +374,6 @@ No-arg `ExceptionRecorder` — часть broader «convenience ctor» pattern �
 
 | Item | Result |
 |------|--------|
-| Source read | `ExceptionRecorder`, `ExceptionMessagePolicy`, `DefaultPlatformTracing`, autoconfigure wiring |
+| Source read | `ExceptionRecorder`, `ExceptionMessagePolicy`, `DefaultTraceOperations`, autoconfigure wiring |
 | Grep scope | all `*.java` in workspace |
 | Tests run | not required for inventory document |

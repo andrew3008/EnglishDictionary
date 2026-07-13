@@ -1,6 +1,6 @@
-# PlatformTracing v3 — Migration Guide
+# TraceOperations v3 — Migration Guide
 
-This guide maps the **removed v1 public API** to the v3 replacement. PlatformTracing v3 is a **breaking, intentional** redesign. The project was **pre-production** when the cutover happened; there is **no compatibility shim** and no deprecate-first migration path.
+This guide maps the **removed v1 public API** to the v3 replacement. TraceOperations v3 is a **breaking, intentional** redesign. The project was **pre-production** when the cutover happened; there is **no compatibility shim** and no deprecate-first migration path.
 
 Facade decorators (`MeteredPlatformTracing`, `Facade*SpanBuilder`) were removed to prevent [R01](../known-issues/R01.md)-class bugs where partial decorators silently dropped ROOT/DETACHED/links semantics.
 
@@ -18,11 +18,11 @@ Facade decorators (`MeteredPlatformTracing`, `Facade*SpanBuilder`) were removed 
 | `inSpan(...)` | `.run()` / `.call()` / `.callChecked()` |
 | `SpanRelation` | `Topology` through `.child()` / `.root()` / `.detached()` |
 | `internalSpan()` / `businessSpan()` | `manual().operation(name)` |
-| transport factory methods on `PlatformTracing` | `manual().transport().http()/database()/rpc()/kafka()` |
+| transport factory methods on `TraceOperations` | `manual().transport().http()/database()/rpc()/kafka()` |
 
 ## Breaking change policy
 
-- **No compatibility shim.** v1 methods are not available on `PlatformTracing`.
+- **No compatibility shim.** v1 methods are not available on `TraceOperations`.
 - **No `MeteredPlatformTracing` public decorator.** Metering is internal on `TracingImplementation` ([ADR — Metering SPI Boundary](../decisions/ADR-platform-tracing-metering-spi-boundary.md)).
 - **No `Facade*SpanBuilder`.** Semantic builders live under `manual().transport()`.
 - **Links are pre-start only.** There is no v3 equivalent of post-start `addLink(...)`.
@@ -34,20 +34,20 @@ Facade decorators (`MeteredPlatformTracing`, `Facade*SpanBuilder`) were removed 
 
 ```java
 // v1
-String id = platformTracing.currentTraceId();
+String id = traceOperations.currentTraceId();
 
 // v3
-String id = platformTracing.traceContext().traceId().orElse("unknown");
+String id = traceOperations.traceContext().traceId().orElse("unknown");
 ```
 
 ### Scoped business logic
 
 ```java
 // v1
-platformTracing.inSpan("process-order", SpanCategory.INTERNAL, () -> service.process(orderId));
+traceOperations.inSpan("process-order", SpanCategory.INTERNAL, () -> service.process(orderId));
 
 // v3
-platformTracing.manual()
+traceOperations.manual()
         .operation("process-order")
         .run(() -> service.process(orderId));
 ```
@@ -56,10 +56,10 @@ platformTracing.manual()
 
 ```java
 // v1 (removed)
-platformTracing.startSpanWithLinks("batch", SpanCategory.INTERNAL, links);
+traceOperations.startSpanWithLinks("batch", SpanCategory.INTERNAL, links);
 
 // v3
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .kafka()
         .consumer()
@@ -75,10 +75,10 @@ See [Kafka batch links](./platform-tracing-v3-kafka-batch-links.md).
 
 ```java
 // v1
-platformTracing.databaseSpan().system("postgresql").operation("SELECT").start();
+traceOperations.databaseSpan().system("postgresql").operation("SELECT").start();
 
 // v3
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .database()
         .system("postgresql")
@@ -110,7 +110,7 @@ SpanSpec spec = SpanSpec.builder("vendor-integration")
         .reference("PLATFORM-1234")
         .build();
 
-platformTracing.manual().spanFromSpec(spec).run(action);
+traceOperations.manual().spanFromSpec(spec).run(action);
 ```
 
 See [ADR — SpanSpec Governance](../decisions/ADR-platform-tracing-span-spec-governance.md).

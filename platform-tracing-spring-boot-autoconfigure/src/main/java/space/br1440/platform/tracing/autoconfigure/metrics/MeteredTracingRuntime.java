@@ -15,7 +15,7 @@ import java.util.Objects;
  * Slice 6: Micrometer decorator for {@link TracingRuntime}.
  * <p>
  * Delegates all span creation to the wrapped implementation and increments self-metrics only.
- * Must not create spans directly or decorate the public {@code PlatformTracing} facade.
+ * Must not create spans directly or decorate the public {@code TraceOperations} facade.
  */
 public final class MeteredTracingRuntime implements DelegatingTracingRuntime {
 

@@ -13,12 +13,12 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 
 import java.util.concurrent.TimeUnit;
 
@@ -28,14 +28,14 @@ import java.util.concurrent.TimeUnit;
 public class TracedAspectBenchmark {
 
     private OpenTelemetrySdk sdk;
-    private PlatformTracing platformTracing;
+    private TraceOperations traceOperations;
 
     @Setup(Level.Trial)
     public void setUp() {
         sdk = OpenTelemetrySdk.builder()
                 .setTracerProvider(SdkTracerProvider.builder().build())
                 .build();
-        platformTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk));
+        traceOperations = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(sdk));
     }
 
     @TearDown(Level.Trial)
@@ -45,7 +45,7 @@ public class TracedAspectBenchmark {
 
     @Benchmark
     public void startAttributesResultClose(Blackhole bh) {
-        try (SpanHandle scope = platformTracing.manual().operation("bench-method").start()) {
+        try (SpanHandle scope = traceOperations.manual().operation("bench-method").start()) {
             Span.current().setAttribute("code.namespace", "space.br1440.bench");
             Span.current().setAttribute("code.function", "startAttributesResultClose");
             Span.current().setAttribute(PlatformAttributes.PLATFORM_RESULT, SpanResult.SUCCESS.value());

@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.core;
 import space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
@@ -12,7 +12,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;
 
 import java.util.concurrent.CompletableFuture;
@@ -27,7 +27,7 @@ class OtelPlatformContextPropagationTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private PlatformTracing tracing;
+    private TraceOperations tracing;
     private PlatformContextPropagation propagation;
     private ExecutorService executor;
 
@@ -37,7 +37,7 @@ class OtelPlatformContextPropagationTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
+        tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
         propagation = new OtelPlatformContextPropagation();
         executor = Executors.newSingleThreadExecutor();
     }

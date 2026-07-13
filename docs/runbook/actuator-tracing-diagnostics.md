@@ -38,7 +38,7 @@ GET /actuator/tracing
 | `agentDetected` | обнаружен ли OTel Java Agent в JVM |
 
 **Назначение — диагностика, не создание SDK** (agent-first): starter не создаёт собственный SDK ни в одном
-режиме. `NoOpPlatformTracing` активен только при `mode=DISABLED`; в остальных режимах фасад `PlatformTracing`
+режиме. `NoopTraceOperations` активен только при `mode=DISABLED`; в остальных режимах фасад `TraceOperations`
 делегирует в `GlobalOpenTelemetry`/пользовательский `OpenTelemetry` bean. Подробности —
 [ADR-sdk-mode-detection.md](../decisions/ADR-sdk-mode-detection.md).
 
@@ -46,7 +46,7 @@ GET /actuator/tracing
 
 - `mode=STARTER` + ждали `AGENT` → агент не подключён (`-javaagent` отсутствует или `GlobalOpenTelemetry`
   в no-op) → span'ы не пишутся, фасад no-op. Проверить запуск JVM.
-- `mode=DISABLED` → выставлен `platform.tracing.sdk.mode=DISABLED`; это единственный режим с `NoOpPlatformTracing`.
+- `mode=DISABLED` → выставлен `platform.tracing.sdk.mode=DISABLED`; это единственный режим с `NoopTraceOperations`.
 - `agentDetected=false` при ожидаемом агенте → проверить путь `-javaagent` и `otel.javaagent.extensions`.
 
 ## Иерархия приоритетов (`otelEffective.source`)

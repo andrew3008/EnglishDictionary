@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
@@ -44,7 +44,7 @@ class MarkerBasedEnrichmentCharacterizationTest {
 
     @Test
     void v3ManualSpan_сМаркером_триггеритTypedEnrichment() {
-        DefaultPlatformTracing tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk));
+        DefaultTraceOperations tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(sdk));
         try (var ignored = tracing.manual().operation("v3-op").start()) {
             enricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.INTERNAL, scope -> scope
                     .attribute(SemconvKeys.PLATFORM_REQUEST_ID, "r-v3"));

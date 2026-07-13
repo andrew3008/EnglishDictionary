@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 
 import java.util.Map;
@@ -38,7 +38,7 @@ class TracingActuatorEndpointTest {
         when(jmxClient.isAvailable()).thenReturn(true);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.of(0.1d));
         endpoint = new TracingActuatorEndpoint(
-                NoOpPlatformTracing.INSTANCE,
+                NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
                 new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));
@@ -335,7 +335,7 @@ class TracingActuatorEndpointTest {
         ResourceEffectiveSnapshot resourceSnapshot = new ResourceEffectiveSnapshot(
                 sysProps::get, envVars::get);
         TracingActuatorEndpoint custom = new TracingActuatorEndpoint(
-                NoOpPlatformTracing.INSTANCE,
+                NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
                 snapshot,

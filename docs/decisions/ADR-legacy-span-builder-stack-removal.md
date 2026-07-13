@@ -9,7 +9,7 @@
 До рефакторинга платформа имела два пути создания span'ов:
 
 1. **Legacy** — прямые OTel builder'ы в `core.span.legacy` + `api.span.builder.*`
-2. **V3** — `PlatformTracing.manual()` → `TracingRuntime` / `OtelTracingRuntime`
+2. **V3** — `traceOperations.manual()` → `TracingRuntime` / `OtelTracingRuntime`
 
 После PR-2b v3 runtime проставляет `PLATFORM_SPAN_CATEGORY`, и typed enrichment работает без legacy.
 

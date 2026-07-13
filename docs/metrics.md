@@ -5,7 +5,7 @@
 
 ## Scope
 
-Метрики покрывают **только facade spans** — вызовы через `MeteredPlatformTracing` / `PlatformTracing.startSpan*`.
+Метрики покрывают **только facade spans** — вызовы через `MeteredPlatformTracing` / `TraceOperations.startSpan*`.
 **Не** включают:
 
 - HTTP spans от OpenTelemetry Java Agent
@@ -40,7 +40,7 @@ Duration и latency — из **OTel trace backend**, не из Micrometer Timer 
 |------|----------|
 | Тип | Counter |
 | Tags | **нет** (намеренно — каждый increment = failure) |
-| Описание | Исключения, зафиксированные через `PlatformTracing.recordException()` |
+| Описание | Исключения, зафиксированные через `TraceOperations.recordException()` |
 
 Декомпозиция по типу исключения — на уровне span attributes / trace backend, не метрики.
 

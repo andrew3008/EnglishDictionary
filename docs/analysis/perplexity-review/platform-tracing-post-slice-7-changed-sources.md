@@ -1,8 +1,8 @@
-﻿# PlatformTracing Post-Slice 7 Changed Sources
+# TraceOperations Post-Slice 7 Changed Sources
 
 ## How to read this file
 
-This file contains full source code for Java classes/interfaces/enums/records changed or created during PlatformTracing refactoring through Slice 7.
+This file contains full source code for Java classes/interfaces/enums/records changed or created during TraceOperations refactoring through Slice 7.
 
 **Bundle type:** best-effort source bundle without git diff (git metadata unavailable in workspace).
 
@@ -12,7 +12,7 @@ Use together with:
 - ../platform-tracing-refactoring-plan.md
 - ../../decisions/ADR-platform-tracing-micrometer-observation-boundary.md
 
-Patch file platform-tracing-post-slice-7.patch was **not generated** — see file index for instructions.
+Patch file platform-tracing-post-slice-7.patch was **not generated** � see file index for instructions.
 
 ## Metadata
 
@@ -24,106 +24,106 @@ Patch file platform-tracing-post-slice-7.patch was **not generated** — see fil
 
 ## Table of contents
 
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualdatabasespanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualdatabasetracingjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpClientSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualhttpclientspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpServerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualhttpserverspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualhttptracingjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaBatchSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkabatchspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaConsumerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkaconsumerspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaProducerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkaproducerspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkatracingjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ManualTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualmanualtracingjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/OperationSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualoperationspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/PlatformSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualplatformspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcClientSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualrpcclientspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcServerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualrpcserverspanbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualrpctracingjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TraceContextView.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualtracecontextviewjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TransportTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualtransporttracingjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/PlatformTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapiplatformtracingjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/RemoteContext.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanremotecontextjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/DefaultSpanSpecBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecdefaultspanspecbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/ImmutableSpanOptions.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecimmutablespanoptionsjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanAttributeValue.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanattributevaluejava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanHandle.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanhandlejava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanOptions.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanoptionsjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpec.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecbuilderjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecImpl.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecimpljava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecReason.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecreasonjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpecifiedSpan.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspecifiedspanjava)
-- [platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/Topology.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspectopologyjava)
-- [platform-tracing-api — platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/manual/arch/V3ManualApiArchTest.java](#platformtracingapi--platform-tracing-apisrctestjavaspacebr1440platformtracingapimanualarchv3manualapiarchtestjava)
-- [platform-tracing-api — platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/RemoteContextTest.java](#platformtracingapi--platform-tracing-apisrctestjavaspacebr1440platformtracingapispanremotecontexttestjava)
-- [platform-tracing-api — platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilderFinalStateTest.java](#platformtracingapi--platform-tracing-apisrctestjavaspacebr1440platformtracingapispanspecspanspecbuilderfinalstatetestjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultPlatformTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoredefaultplatformtracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DefaultTracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpldefaulttracingimplementationjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DelegatingTracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpldelegatingtracingimplementationjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/ImmutableTracingState.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplimmutabletracingstatejava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/NoOpTracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplnooptracingimplementationjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/OperationSpanSpecs.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimploperationspanspecsjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SemanticSpanSpecs.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplsemanticspanspecsjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SpanAttributeValueConverter.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplspanattributevalueconverterjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpltracingimplementationjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingMode.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpltracingmodejava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingState.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpltracingstatejava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/AbstractSemanticSpanBuilder.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualabstractsemanticspanbuilderjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdatabasespanbuilderimpljava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultHttpTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaulthttptracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultKafkaTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaultkafkatracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultManualTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaultmanualtracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultRpcTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaultrpctracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTraceContextView.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaulttracecontextviewjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTransportTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaulttransporttracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpManualTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualnoopmanualtracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpSpanHandle.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualnoopspanhandlejava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpTraceContextView.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualnooptracecontextviewjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualoperationspanbuilderimpljava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/ScopedExecution.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualscopedexecutionjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpanHandleImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualspanhandleimpljava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualspecifiedspanimpljava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/StubTransportTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualstubtransporttracingjava)
-- [platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/NoOpPlatformTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcorenoopplatformtracingjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/arch/TracingImplementationArchTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcorearchtracingimplementationarchtestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/impl/TracingImplementationRoutingTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoreimpltracingimplementationroutingtestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualdatabasespanbuildertestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/HttpSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualhttpspanbuildertestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaConsumerBatchLinksTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualkafkaconsumerbatchlinkstestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualkafkaspanbuildertestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualoperationspanbuildertestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/RpcSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualrpcspanbuildertestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/ScopedExecutionTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualscopedexecutiontestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpanOptionsTopologyTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualspanoptionstopologytestjava)
-- [platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualspecifiedspantestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpoint.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigureactuatortracingactuatorendpointjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ManualTracingDiagnostics.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigurediagnosticsmanualtracingdiagnosticsjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsMapper.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigurediagnosticstracingdiagnosticsmapperjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsView.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigurediagnosticstracingdiagnosticsviewjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredSpanHandle.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguremetricsmeteredspanhandlejava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTracingImplementation.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguremetricsmeteredtracingimplementationjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingActuatorAutoConfiguration.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguretracingactuatorautoconfigurationjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingCoreAutoConfiguration.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguretracingcoreautoconfigurationjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingMetricsAutoConfiguration.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguretracingmetricsautoconfigurationjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointProcessorErrorsTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigureactuatortracingactuatorendpointprocessorerrorstestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigureactuatortracingactuatorendpointtestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/BeanTopologyTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurebeantopologytestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/DiagnosticsBoundaryTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticsdiagnosticsboundarytestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ObservationCoexistenceTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticsobservationcoexistencetestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/SpringBootContextMatrixTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticsspringbootcontextmatrixtestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsViewJsonContractTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticstracingdiagnosticsviewjsoncontracttestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredMetricsCountTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfiguremetricsmeteredmetricscounttestjava)
-- [platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTopologyMatrixTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfiguremetricsmeteredtopologymatrixtestjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualdatabasespanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualdatabasetracingjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpClientSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualhttpclientspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpServerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualhttpserverspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualhttptracingjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaBatchSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkabatchspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaConsumerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkaconsumerspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaProducerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkaproducerspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualkafkatracingjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ManualTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualmanualtracingjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/OperationSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualoperationspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/PlatformSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualplatformspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcClientSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualrpcclientspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcServerSpanBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualrpcserverspanbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualrpctracingjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TraceContextView.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualtracecontextviewjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TransportTracing.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapimanualtransporttracingjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/TraceOperations.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapiplatformtracingjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/RemoteContext.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanremotecontextjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/DefaultSpanSpecBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecdefaultspanspecbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/ImmutableSpanOptions.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecimmutablespanoptionsjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanAttributeValue.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanattributevaluejava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanHandle.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanhandlejava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanOptions.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanoptionsjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpec.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilder.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecbuilderjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecImpl.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecimpljava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecReason.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspanspecreasonjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpecifiedSpan.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspecspecifiedspanjava)
+- [platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/Topology.java](#platformtracingapi--platform-tracing-apisrcmainjavaspacebr1440platformtracingapispanspectopologyjava)
+- [platform-tracing-api � platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/manual/arch/V3ManualApiArchTest.java](#platformtracingapi--platform-tracing-apisrctestjavaspacebr1440platformtracingapimanualarchv3manualapiarchtestjava)
+- [platform-tracing-api � platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/RemoteContextTest.java](#platformtracingapi--platform-tracing-apisrctestjavaspacebr1440platformtracingapispanremotecontexttestjava)
+- [platform-tracing-api � platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilderFinalStateTest.java](#platformtracingapi--platform-tracing-apisrctestjavaspacebr1440platformtracingapispanspecspanspecbuilderfinalstatetestjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultTraceOperations.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoredefaultplatformtracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DefaultTracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpldefaulttracingimplementationjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DelegatingTracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpldelegatingtracingimplementationjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/ImmutableTracingState.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplimmutabletracingstatejava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/NoOpTracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplnooptracingimplementationjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/OperationSpanSpecs.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimploperationspanspecsjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SemanticSpanSpecs.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplsemanticspanspecsjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SpanAttributeValueConverter.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimplspanattributevalueconverterjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingImplementation.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpltracingimplementationjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingMode.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpltracingmodejava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingState.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoreimpltracingstatejava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/AbstractSemanticSpanBuilder.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualabstractsemanticspanbuilderjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdatabasespanbuilderimpljava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultHttpTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaulthttptracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultKafkaTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaultkafkatracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultManualTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaultmanualtracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultRpcTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaultrpctracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTraceContextView.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaulttracecontextviewjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTransportTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualdefaulttransporttracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpManualTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualnoopmanualtracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpSpanHandle.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualnoopspanhandlejava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpTraceContextView.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualnooptracecontextviewjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualoperationspanbuilderimpljava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/ScopedExecution.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualscopedexecutionjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpanHandleImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualspanhandleimpljava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanImpl.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualspecifiedspanimpljava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/StubTransportTracing.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcoremanualstubtransporttracingjava)
+- [platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/NoopTraceOperations.java](#platformtracingcore--platform-tracing-coresrcmainjavaspacebr1440platformtracingcorenoopplatformtracingjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/arch/TracingImplementationArchTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcorearchtracingimplementationarchtestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/impl/TracingImplementationRoutingTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoreimpltracingimplementationroutingtestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualdatabasespanbuildertestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/HttpSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualhttpspanbuildertestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaConsumerBatchLinksTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualkafkaconsumerbatchlinkstestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualkafkaspanbuildertestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualoperationspanbuildertestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/RpcSpanBuilderTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualrpcspanbuildertestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/ScopedExecutionTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualscopedexecutiontestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpanOptionsTopologyTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualspanoptionstopologytestjava)
+- [platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanTest.java](#platformtracingcore--platform-tracing-coresrctestjavaspacebr1440platformtracingcoremanualspecifiedspantestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpoint.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigureactuatortracingactuatorendpointjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ManualTracingDiagnostics.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigurediagnosticsmanualtracingdiagnosticsjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsMapper.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigurediagnosticstracingdiagnosticsmapperjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsView.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfigurediagnosticstracingdiagnosticsviewjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredSpanHandle.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguremetricsmeteredspanhandlejava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTracingImplementation.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguremetricsmeteredtracingimplementationjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingActuatorAutoConfiguration.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguretracingactuatorautoconfigurationjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingCoreAutoConfiguration.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguretracingcoreautoconfigurationjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingMetricsAutoConfiguration.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrcmainjavaspacebr1440platformtracingautoconfiguretracingmetricsautoconfigurationjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointProcessorErrorsTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigureactuatortracingactuatorendpointprocessorerrorstestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigureactuatortracingactuatorendpointtestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/BeanTopologyTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurebeantopologytestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/DiagnosticsBoundaryTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticsdiagnosticsboundarytestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ObservationCoexistenceTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticsobservationcoexistencetestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/SpringBootContextMatrixTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticsspringbootcontextmatrixtestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsViewJsonContractTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfigurediagnosticstracingdiagnosticsviewjsoncontracttestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredMetricsCountTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfiguremetricsmeteredmetricscounttestjava)
+- [platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTopologyMatrixTest.java](#platformtracingspringbootautoconfigure--platform-tracing-spring-boot-autoconfiguresrctestjavaspacebr1440platformtracingautoconfiguremetricsmeteredtopologymatrixtestjava)
 
 ## Sources by module: platform-tracing-api
 
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `DatabaseSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Database builder API  
+**Status:** ADDED
+**Main type:** `DatabaseSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Database builder API
 **Lines:** 18
 
 ```java
@@ -147,12 +147,12 @@ public interface DatabaseSpanBuilder extends PlatformSpanBuilder<DatabaseSpanBui
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseTracing.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/DatabaseTracing.java
 
-**Status:** ADDED  
-**Main type:** `DatabaseTracing`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Database transport API  
+**Status:** ADDED
+**Main type:** `DatabaseTracing`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Database transport API
 **Lines:** 7
 
 ```java
@@ -165,12 +165,12 @@ public interface DatabaseTracing extends DatabaseSpanBuilder {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpClientSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpClientSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `HttpClientSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** HTTP client builder  
+**Status:** ADDED
+**Main type:** `HttpClientSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** HTTP client builder
 **Lines:** 21
 
 ```java
@@ -197,12 +197,12 @@ public interface HttpClientSpanBuilder extends PlatformSpanBuilder<HttpClientSpa
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpServerSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpServerSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `HttpServerSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** HTTP server builder  
+**Status:** ADDED
+**Main type:** `HttpServerSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** HTTP server builder
 **Lines:** 18
 
 ```java
@@ -226,12 +226,12 @@ public interface HttpServerSpanBuilder extends PlatformSpanBuilder<HttpServerSpa
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpTracing.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/HttpTracing.java
 
-**Status:** ADDED  
-**Main type:** `HttpTracing`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** HTTP transport API  
+**Status:** ADDED
+**Main type:** `HttpTracing`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** HTTP transport API
 **Lines:** 15
 
 ```java
@@ -252,12 +252,12 @@ public interface HttpTracing {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaBatchSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaBatchSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `KafkaBatchSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Kafka batch builder  
+**Status:** ADDED
+**Main type:** `KafkaBatchSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Kafka batch builder
 **Lines:** 10
 
 ```java
@@ -273,12 +273,12 @@ public interface KafkaBatchSpanBuilder extends PlatformSpanBuilder<KafkaBatchSpa
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaConsumerSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaConsumerSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `KafkaConsumerSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Kafka consumer builder  
+**Status:** ADDED
+**Main type:** `KafkaConsumerSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Kafka consumer builder
 **Lines:** 21
 
 ```java
@@ -305,12 +305,12 @@ public interface KafkaConsumerSpanBuilder extends PlatformSpanBuilder<KafkaConsu
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaProducerSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaProducerSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `KafkaProducerSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Kafka producer builder  
+**Status:** ADDED
+**Main type:** `KafkaProducerSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Kafka producer builder
 **Lines:** 15
 
 ```java
@@ -331,12 +331,12 @@ public interface KafkaProducerSpanBuilder extends PlatformSpanBuilder<KafkaProdu
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaTracing.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/KafkaTracing.java
 
-**Status:** ADDED  
-**Main type:** `KafkaTracing`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Kafka transport API  
+**Status:** ADDED
+**Main type:** `KafkaTracing`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Kafka transport API
 **Lines:** 17
 
 ```java
@@ -359,12 +359,12 @@ public interface KafkaTracing {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ManualTracing.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ManualTracing.java
 
-**Status:** ADDED  
-**Main type:** `ManualTracing`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Public manual entry  
+**Status:** ADDED
+**Main type:** `ManualTracing`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Public manual entry
 **Lines:** 22
 
 ```java
@@ -376,7 +376,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpecifiedSpan;
 
 /**
- * Entry point for platform-governed manual tracing ({@code PlatformTracing.manual()} in v3 cutover).
+ * Entry point for platform-governed manual tracing ({@code traceOperations.manual()} in v3 cutover).
  */
 public interface ManualTracing {
 
@@ -392,12 +392,12 @@ public interface ManualTracing {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/OperationSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/OperationSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `OperationSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Operation builder API  
+**Status:** ADDED
+**Main type:** `OperationSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Operation builder API
 **Lines:** 7
 
 ```java
@@ -410,12 +410,12 @@ public interface OperationSpanBuilder extends PlatformSpanBuilder<OperationSpanB
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/PlatformSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/PlatformSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `PlatformSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** SpanFromSpec entry  
+**Status:** ADDED
+**Main type:** `PlatformSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** SpanFromSpec entry
 **Lines:** 45
 
 ```java
@@ -466,12 +466,12 @@ public interface PlatformSpanBuilder<B extends PlatformSpanBuilder<B>> {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcClientSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcClientSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `RpcClientSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** RPC client builder  
+**Status:** ADDED
+**Main type:** `RpcClientSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** RPC client builder
 **Lines:** 21
 
 ```java
@@ -498,12 +498,12 @@ public interface RpcClientSpanBuilder extends PlatformSpanBuilder<RpcClientSpanB
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcServerSpanBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcServerSpanBuilder.java
 
-**Status:** ADDED  
-**Main type:** `RpcServerSpanBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** RPC server builder  
+**Status:** ADDED
+**Main type:** `RpcServerSpanBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** RPC server builder
 **Lines:** 18
 
 ```java
@@ -527,12 +527,12 @@ public interface RpcServerSpanBuilder extends PlatformSpanBuilder<RpcServerSpanB
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcTracing.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/RpcTracing.java
 
-**Status:** ADDED  
-**Main type:** `RpcTracing`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** RPC transport API  
+**Status:** ADDED
+**Main type:** `RpcTracing`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** RPC transport API
 **Lines:** 17
 
 ```java
@@ -555,12 +555,12 @@ public interface RpcTracing {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TraceContextView.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TraceContextView.java
 
-**Status:** ADDED  
-**Main type:** `TraceContextView`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Read-only context view  
+**Status:** ADDED
+**Main type:** `TraceContextView`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Read-only context view
 **Lines:** 22
 
 ```java
@@ -588,12 +588,12 @@ public interface TraceContextView {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TransportTracing.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/TransportTracing.java
 
-**Status:** ADDED  
-**Main type:** `TransportTracing`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Transport grouping  
+**Status:** ADDED
+**Main type:** `TransportTracing`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Transport grouping
 **Lines:** 22
 
 ```java
@@ -621,12 +621,12 @@ public interface TransportTracing {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/PlatformTracing.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/TraceOperations.java
 
-**Status:** MODIFIED  
-**Main type:** `PlatformTracing`  
-**Slice / area:** Slice 1B cutover  
-**Why it matters for review:** Narrow v3 facade  
+**Status:** MODIFIED
+**Main type:** `TraceOperations`
+**Slice / area:** Slice 1B cutover
+**Why it matters for review:** Narrow v3 facade
 **Lines:** 23
 
 ```java
@@ -644,7 +644,7 @@ import space.br1440.platform.tracing.api.manual.TraceContextView;
  * manual spans via {@link #manual()}. Implementation details live in {@code platform-tracing-core};
  * the bean is wired through {@code platform-tracing-spring-boot-autoconfigure}.
  */
-public interface PlatformTracing {
+public interface TraceOperations {
 
     @Nonnull
     TraceContextView traceContext();
@@ -655,12 +655,12 @@ public interface PlatformTracing {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/RemoteContext.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/RemoteContext.java
 
-**Status:** ADDED  
-**Main type:** `RemoteContext`  
-**Slice / area:** Slice 5B Links/Kafka batch  
-**Why it matters for review:** Traceparent parsing  
+**Status:** ADDED
+**Main type:** `RemoteContext`
+**Slice / area:** Slice 5B Links/Kafka batch
+**Why it matters for review:** Traceparent parsing
 **Lines:** 78
 
 ```java
@@ -744,12 +744,12 @@ public final class RemoteContext {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/DefaultSpanSpecBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/DefaultSpanSpecBuilder.java
 
-**Status:** ADDED  
-**Main type:** `DefaultSpanSpecBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** SpanSpec builder impl  
+**Status:** ADDED
+**Main type:** `DefaultSpanSpecBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** SpanSpec builder impl
 **Lines:** 197
 
 ```java
@@ -952,12 +952,12 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/ImmutableSpanOptions.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/ImmutableSpanOptions.java
 
-**Status:** ADDED  
-**Main type:** `ImmutableSpanOptions`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Immutable options  
+**Status:** ADDED
+**Main type:** `ImmutableSpanOptions`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Immutable options
 **Lines:** 58
 
 ```java
@@ -1021,12 +1021,12 @@ final class ImmutableSpanOptions implements SpanOptions {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanAttributeValue.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanAttributeValue.java
 
-**Status:** ADDED  
-**Main type:** `SpanAttributeValue`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Typed attribute values  
+**Status:** ADDED
+**Main type:** `SpanAttributeValue`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Typed attribute values
 **Lines:** 158
 
 ```java
@@ -1190,12 +1190,12 @@ public sealed interface SpanAttributeValue permits
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanHandle.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanHandle.java
 
-**Status:** ADDED  
-**Main type:** `SpanHandle`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Span handle API  
+**Status:** ADDED
+**Main type:** `SpanHandle`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Span handle API
 **Lines:** 18
 
 ```java
@@ -1219,12 +1219,12 @@ public interface SpanHandle extends AutoCloseable {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanOptions.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanOptions.java
 
-**Status:** MODIFIED  
-**Main type:** `SpanOptions`  
-**Slice / area:** Slice 5A Topology  
-**Why it matters for review:** Topology+links validation  
+**Status:** MODIFIED
+**Main type:** `SpanOptions`
+**Slice / area:** Slice 5A Topology
+**Why it matters for review:** Topology+links validation
 **Lines:** 43
 
 ```java
@@ -1273,12 +1273,12 @@ public interface SpanOptions {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpec.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpec.java
 
-**Status:** ADDED  
-**Main type:** `SpanSpec`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Span specification model  
+**Status:** ADDED
+**Main type:** `SpanSpec`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Span specification model
 **Lines:** 37
 
 ```java
@@ -1321,12 +1321,12 @@ public interface SpanSpec {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilder.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilder.java
 
-**Status:** ADDED  
-**Main type:** `SpanSpecBuilder`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** SpanSpec builder API  
+**Status:** ADDED
+**Main type:** `SpanSpecBuilder`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** SpanSpec builder API
 **Lines:** 65
 
 ```java
@@ -1397,12 +1397,12 @@ public interface SpanSpecBuilder {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecImpl.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecImpl.java
 
-**Status:** ADDED  
-**Main type:** `SpanSpecImpl`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** SpanSpec impl  
+**Status:** ADDED
+**Main type:** `SpanSpecImpl`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** SpanSpec impl
 **Lines:** 72
 
 ```java
@@ -1480,12 +1480,12 @@ final class SpanSpecImpl implements SpanSpec {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecReason.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecReason.java
 
-**Status:** ADDED  
-**Main type:** `SpanSpecReason`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Governance reason enum  
+**Status:** ADDED
+**Main type:** `SpanSpecReason`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Governance reason enum
 **Lines:** 14
 
 ```java
@@ -1505,12 +1505,12 @@ public enum SpanSpecReason {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpecifiedSpan.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpecifiedSpan.java
 
-**Status:** ADDED  
-**Main type:** `SpecifiedSpan`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Scoped span API  
+**Status:** ADDED
+**Main type:** `SpecifiedSpan`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Scoped span API
 **Lines:** 25
 
 ```java
@@ -1541,12 +1541,12 @@ public interface SpecifiedSpan {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/Topology.java
+## platform-tracing-api � platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/Topology.java
 
-**Status:** ADDED  
-**Main type:** `Topology`  
-**Slice / area:** Slice 1A API skeleton  
-**Why it matters for review:** Replaces SpanRelation  
+**Status:** ADDED
+**Main type:** `Topology`
+**Slice / area:** Slice 1A API skeleton
+**Why it matters for review:** Replaces SpanRelation
 **Lines:** 10
 
 ```java
@@ -1562,12 +1562,12 @@ public enum Topology {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/manual/arch/V3ManualApiArchTest.java
+## platform-tracing-api � platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/manual/arch/V3ManualApiArchTest.java
 
-**Status:** ADDED  
-**Main type:** `V3ManualApiArchTest`  
-**Slice / area:** Tests  
-**Why it matters for review:** Public API arch gate  
+**Status:** ADDED
+**Main type:** `V3ManualApiArchTest`
+**Slice / area:** Tests
+**Why it matters for review:** Public API arch gate
 **Lines:** 184
 
 ```java
@@ -1757,12 +1757,12 @@ class V3ManualApiArchTest {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/RemoteContextTest.java
+## platform-tracing-api � platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/RemoteContextTest.java
 
-**Status:** ADDED  
-**Main type:** `RemoteContextTest`  
-**Slice / area:** Slice 5B Links/Kafka batch  
-**Why it matters for review:** Traceparent parsing tests  
+**Status:** ADDED
+**Main type:** `RemoteContextTest`
+**Slice / area:** Slice 5B Links/Kafka batch
+**Why it matters for review:** Traceparent parsing tests
 **Lines:** 60
 
 ```java
@@ -1828,12 +1828,12 @@ class RemoteContextTest {
 }
 ```
 
-## platform-tracing-api — platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilderFinalStateTest.java
+## platform-tracing-api � platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilderFinalStateTest.java
 
-**Status:** ADDED  
-**Main type:** `SpanSpecBuilderFinalStateTest`  
-**Slice / area:** Tests  
-**Why it matters for review:** Builder final-state gate  
+**Status:** ADDED
+**Main type:** `SpanSpecBuilderFinalStateTest`
+**Slice / area:** Tests
+**Why it matters for review:** Builder final-state gate
 **Lines:** 176
 
 ```java
@@ -2018,19 +2018,19 @@ class SpanSpecBuilderFinalStateTest {
 ## Sources by module: platform-tracing-core
 
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultPlatformTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultTraceOperations.java
 
-**Status:** MODIFIED  
-**Main type:** `DefaultPlatformTracing`  
-**Slice / area:** Slice 1B cutover  
-**Why it matters for review:** Thin facade over SPI  
+**Status:** MODIFIED
+**Main type:** `DefaultTraceOperations`
+**Slice / area:** Slice 1B cutover
+**Why it matters for review:** Thin facade over SPI
 **Lines:** 86
 
 ```java
 package space.br1440.platform.tracing.core;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.ManualTracing;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
@@ -2043,12 +2043,12 @@ import space.br1440.platform.tracing.core.semconv.AttributePolicy;
 
 import io.opentelemetry.api.OpenTelemetry;
 
-public class DefaultPlatformTracing implements PlatformTracing {
+public class DefaultTraceOperations implements TraceOperations {
 
     private final TracingImplementation implementation;
     private final ManualTracing manualTracing;
 
-    public DefaultPlatformTracing(@Nonnull TracingImplementation implementation) {
+    public DefaultTraceOperations(@Nonnull TracingImplementation implementation) {
         this.implementation = implementation;
         this.manualTracing = new DefaultManualTracing(implementation, attributePolicyFor(implementation));
     }
@@ -2070,16 +2070,16 @@ public class DefaultPlatformTracing implements PlatformTracing {
         return implementation;
     }
 
-    public DefaultPlatformTracing(@Nonnull OpenTelemetry openTelemetry) {
+    public DefaultTraceOperations(@Nonnull OpenTelemetry openTelemetry) {
         this(openTelemetry, new AttributePolicy());
     }
 
-    public DefaultPlatformTracing(@Nonnull OpenTelemetry openTelemetry,
+    public DefaultTraceOperations(@Nonnull OpenTelemetry openTelemetry,
                                   @Nonnull AttributePolicy policy) {
         this(openTelemetry, policy, ExceptionRecorder.secureDefault());
     }
 
-    public DefaultPlatformTracing(@Nonnull OpenTelemetry openTelemetry,
+    public DefaultTraceOperations(@Nonnull OpenTelemetry openTelemetry,
                                   @Nonnull AttributePolicy policy,
                                   @Nonnull ExceptionRecorder exceptionRecorder) {
         this(new DefaultTracingImplementation(openTelemetry, policy, exceptionRecorder));
@@ -2115,12 +2115,12 @@ public class DefaultPlatformTracing implements PlatformTracing {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DefaultTracingImplementation.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DefaultTracingImplementation.java
 
-**Status:** ADDED  
-**Main type:** `DefaultTracingImplementation`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** OTel-backed SPI  
+**Status:** ADDED
+**Main type:** `DefaultTracingImplementation`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** OTel-backed SPI
 **Lines:** 185
 
 ```java
@@ -2311,12 +2311,12 @@ public final class DefaultTracingImplementation implements TracingImplementation
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DelegatingTracingImplementation.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/DelegatingTracingImplementation.java
 
-**Status:** ADDED  
-**Main type:** `DelegatingTracingImplementation`  
-**Slice / area:** Slice 6 Metering  
-**Why it matters for review:** Decorator marker  
+**Status:** ADDED
+**Main type:** `DelegatingTracingImplementation`
+**Slice / area:** Slice 6 Metering
+**Why it matters for review:** Decorator marker
 **Lines:** 12
 
 ```java
@@ -2334,12 +2334,12 @@ public interface DelegatingTracingImplementation extends TracingImplementation {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/ImmutableTracingState.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/ImmutableTracingState.java
 
-**Status:** ADDED  
-**Main type:** `ImmutableTracingState`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** TracingState impl  
+**Status:** ADDED
+**Main type:** `ImmutableTracingState`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** TracingState impl
 **Lines:** 53
 
 ```java
@@ -2398,12 +2398,12 @@ final class ImmutableTracingState implements TracingState {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/NoOpTracingImplementation.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/NoOpTracingImplementation.java
 
-**Status:** ADDED  
-**Main type:** `NoOpTracingImplementation`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** Disabled/unavailable SPI  
+**Status:** ADDED
+**Main type:** `NoOpTracingImplementation`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** Disabled/unavailable SPI
 **Lines:** 83
 
 ```java
@@ -2492,12 +2492,12 @@ public final class NoOpTracingImplementation implements TracingImplementation {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/OperationSpanSpecs.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/OperationSpanSpecs.java
 
-**Status:** ADDED  
-**Main type:** `OperationSpanSpecs`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** Operation spec helpers  
+**Status:** ADDED
+**Main type:** `OperationSpanSpecs`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** Operation spec helpers
 **Lines:** 51
 
 ```java
@@ -2554,12 +2554,12 @@ public final class OperationSpanSpecs {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SemanticSpanSpecs.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SemanticSpanSpecs.java
 
-**Status:** ADDED  
-**Main type:** `SemanticSpanSpecs`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** Semantic spec helpers  
+**Status:** ADDED
+**Main type:** `SemanticSpanSpecs`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** Semantic spec helpers
 **Lines:** 96
 
 ```java
@@ -2661,12 +2661,12 @@ public final class SemanticSpanSpecs {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SpanAttributeValueConverter.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/SpanAttributeValueConverter.java
 
-**Status:** ADDED  
-**Main type:** `SpanAttributeValueConverter`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** Attribute conversion  
+**Status:** ADDED
+**Main type:** `SpanAttributeValueConverter`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** Attribute conversion
 **Lines:** 94
 
 ```java
@@ -2766,12 +2766,12 @@ final class SpanAttributeValueConverter {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingImplementation.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingImplementation.java
 
-**Status:** ADDED  
-**Main type:** `TracingImplementation`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** Internal SPI boundary  
+**Status:** ADDED
+**Main type:** `TracingImplementation`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** Internal SPI boundary
 **Lines:** 27
 
 ```java
@@ -2804,12 +2804,12 @@ public interface TracingImplementation {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingMode.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingMode.java
 
-**Status:** ADDED  
-**Main type:** `TracingMode`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** Internal mode enum  
+**Status:** ADDED
+**Main type:** `TracingMode`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** Internal mode enum
 **Lines:** 12
 
 ```java
@@ -2827,12 +2827,12 @@ public enum TracingMode {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingState.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/impl/TracingState.java
 
-**Status:** ADDED  
-**Main type:** `TracingState`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** Internal supportability state  
+**Status:** ADDED
+**Main type:** `TracingState`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** Internal supportability state
 **Lines:** 21
 
 ```java
@@ -2859,12 +2859,12 @@ public interface TracingState {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/AbstractSemanticSpanBuilder.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/AbstractSemanticSpanBuilder.java
 
-**Status:** MODIFIED  
-**Main type:** `AbstractSemanticSpanBuilder`  
-**Slice / area:** Slice 5A Topology  
-**Why it matters for review:** Builder base + topology  
+**Status:** MODIFIED
+**Main type:** `AbstractSemanticSpanBuilder`
+**Slice / area:** Slice 5A Topology
+**Why it matters for review:** Builder base + topology
 **Lines:** 145
 
 ```java
@@ -3015,12 +3015,12 @@ abstract class AbstractSemanticSpanBuilder<B extends PlatformSpanBuilder<B>> imp
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderImpl.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderImpl.java
 
-**Status:** ADDED  
-**Main type:** `DatabaseSpanBuilderImpl`  
-**Slice / area:** Slice 3B Database  
-**Why it matters for review:** Database builder impl  
+**Status:** ADDED
+**Main type:** `DatabaseSpanBuilderImpl`
+**Slice / area:** Slice 3B Database
+**Why it matters for review:** Database builder impl
 **Lines:** 68
 
 ```java
@@ -3094,12 +3094,12 @@ final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<Database
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultHttpTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultHttpTracing.java
 
-**Status:** ADDED  
-**Main type:** `DefaultHttpTracing`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** HTTP tracing impl  
+**Status:** ADDED
+**Main type:** `DefaultHttpTracing`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** HTTP tracing impl
 **Lines:** 121
 
 ```java
@@ -3226,12 +3226,12 @@ final class HttpClientSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpCl
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultKafkaTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultKafkaTracing.java
 
-**Status:** ADDED  
-**Main type:** `DefaultKafkaTracing`  
-**Slice / area:** Slice 3C Kafka  
-**Why it matters for review:** Kafka tracing impl  
+**Status:** ADDED
+**Main type:** `DefaultKafkaTracing`
+**Slice / area:** Slice 3C Kafka
+**Why it matters for review:** Kafka tracing impl
 **Lines:** 152
 
 ```java
@@ -3389,12 +3389,12 @@ final class KafkaBatchSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaBatc
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultManualTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultManualTracing.java
 
-**Status:** ADDED  
-**Main type:** `DefaultManualTracing`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** ManualTracing impl  
+**Status:** ADDED
+**Main type:** `DefaultManualTracing`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** ManualTracing impl
 **Lines:** 43
 
 ```java
@@ -3443,12 +3443,12 @@ public final class DefaultManualTracing implements ManualTracing {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultRpcTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultRpcTracing.java
 
-**Status:** ADDED  
-**Main type:** `DefaultRpcTracing`  
-**Slice / area:** Slice 3C RPC  
-**Why it matters for review:** RPC tracing impl  
+**Status:** ADDED
+**Main type:** `DefaultRpcTracing`
+**Slice / area:** Slice 3C RPC
+**Why it matters for review:** RPC tracing impl
 **Lines:** 140
 
 ```java
@@ -3594,12 +3594,12 @@ final class RpcClientSpanBuilderImpl extends AbstractRpcSpanBuilder<RpcClientSpa
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTraceContextView.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTraceContextView.java
 
-**Status:** ADDED  
-**Main type:** `DefaultTraceContextView`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** TraceContextView impl  
+**Status:** ADDED
+**Main type:** `DefaultTraceContextView`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** TraceContextView impl
 **Lines:** 37
 
 ```java
@@ -3642,12 +3642,12 @@ public final class DefaultTraceContextView implements TraceContextView {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTransportTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/DefaultTransportTracing.java
 
-**Status:** ADDED  
-**Main type:** `DefaultTransportTracing`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** Transport entry  
+**Status:** ADDED
+**Main type:** `DefaultTransportTracing`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** Transport entry
 **Lines:** 51
 
 ```java
@@ -3665,7 +3665,7 @@ import space.br1440.platform.tracing.core.semconv.AttributePolicy;
 import java.util.Objects;
 
 /**
- * Slice 3Aâ€“3C transport grouping with semantic builders for HTTP, database, RPC, and Kafka.
+ * Slice 3A–3C transport grouping with semantic builders for HTTP, database, RPC, and Kafka.
  */
 public final class DefaultTransportTracing implements TransportTracing {
 
@@ -3704,12 +3704,12 @@ public final class DefaultTransportTracing implements TransportTracing {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpManualTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpManualTracing.java
 
-**Status:** ADDED  
-**Main type:** `NoOpManualTracing`  
-**Slice / area:** Slice 1B cutover  
-**Why it matters for review:** No-op manual tracing  
+**Status:** ADDED
+**Main type:** `NoOpManualTracing`
+**Slice / area:** Slice 1B cutover
+**Why it matters for review:** No-op manual tracing
 **Lines:** 132
 
 ```java
@@ -3847,12 +3847,12 @@ final class NoOpSpecifiedSpan implements SpecifiedSpan {
 
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpSpanHandle.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpSpanHandle.java
 
-**Status:** ADDED  
-**Main type:** `NoOpSpanHandle`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** No-op span handle  
+**Status:** ADDED
+**Main type:** `NoOpSpanHandle`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** No-op span handle
 **Lines:** 20
 
 ```java
@@ -3878,12 +3878,12 @@ public final class NoOpSpanHandle implements SpanHandle {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpTraceContextView.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/NoOpTraceContextView.java
 
-**Status:** ADDED  
-**Main type:** `NoOpTraceContextView`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** No-op context view  
+**Status:** ADDED
+**Main type:** `NoOpTraceContextView`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** No-op context view
 **Lines:** 32
 
 ```java
@@ -3921,12 +3921,12 @@ public final class NoOpTraceContextView implements TraceContextView {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderImpl.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderImpl.java
 
-**Status:** ADDED  
-**Main type:** `OperationSpanBuilderImpl`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** Operation builder impl  
+**Status:** ADDED
+**Main type:** `OperationSpanBuilderImpl`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** Operation builder impl
 **Lines:** 24
 
 ```java
@@ -3956,12 +3956,12 @@ final class OperationSpanBuilderImpl extends AbstractSemanticSpanBuilder<Operati
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/ScopedExecution.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/ScopedExecution.java
 
-**Status:** ADDED  
-**Main type:** `ScopedExecution`  
-**Slice / area:** Slice 4 Scoped execution  
-**Why it matters for review:** Exactly-once exception policy  
+**Status:** ADDED
+**Main type:** `ScopedExecution`
+**Slice / area:** Slice 4 Scoped execution
+**Why it matters for review:** Exactly-once exception policy
 **Lines:** 59
 
 ```java
@@ -4026,12 +4026,12 @@ final class ScopedExecution {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpanHandleImpl.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpanHandleImpl.java
 
-**Status:** ADDED  
-**Main type:** `SpanHandleImpl`  
-**Slice / area:** Slice 4 Scoped execution  
-**Why it matters for review:** SpanHandle wrapper  
+**Status:** ADDED
+**Main type:** `SpanHandleImpl`
+**Slice / area:** Slice 4 Scoped execution
+**Why it matters for review:** SpanHandle wrapper
 **Lines:** 46
 
 ```java
@@ -4083,12 +4083,12 @@ public final class SpanHandleImpl implements SpanHandle {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanImpl.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanImpl.java
 
-**Status:** ADDED  
-**Main type:** `SpecifiedSpanImpl`  
-**Slice / area:** Slice 4 Scoped execution  
-**Why it matters for review:** SpecifiedSpan impl  
+**Status:** ADDED
+**Main type:** `SpecifiedSpanImpl`
+**Slice / area:** Slice 4 Scoped execution
+**Why it matters for review:** SpecifiedSpan impl
 **Lines:** 45
 
 ```java
@@ -4139,12 +4139,12 @@ final class SpecifiedSpanImpl implements SpecifiedSpan {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/StubTransportTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/manual/StubTransportTracing.java
 
-**Status:** ADDED  
-**Main type:** `StubTransportTracing`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** Transport stub  
+**Status:** ADDED
+**Main type:** `StubTransportTracing`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** Transport stub
 **Lines:** 190
 
 ```java
@@ -4165,7 +4165,7 @@ import space.br1440.platform.tracing.api.manual.RpcTracing;
 import space.br1440.platform.tracing.api.manual.TransportTracing;
 
 /**
- * Slice 1A/1B skeleton transport grouping; semantic builders arrive in Slice 3Aâ€“3C.
+ * Slice 1A/1B skeleton transport grouping; semantic builders arrive in Slice 3A–3C.
  */
 final class StubTransportTracing implements TransportTracing {
 
@@ -4340,19 +4340,19 @@ final class StubKafkaTracing implements KafkaTracing {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/NoOpPlatformTracing.java
+## platform-tracing-core � platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/NoopTraceOperations.java
 
-**Status:** MODIFIED  
-**Main type:** `NoOpPlatformTracing`  
-**Slice / area:** Slice 1B cutover  
-**Why it matters for review:** No-op facade  
+**Status:** MODIFIED
+**Main type:** `NoopTraceOperations`
+**Slice / area:** Slice 1B cutover
+**Why it matters for review:** No-op facade
 **Lines:** 44
 
 ```java
 package space.br1440.platform.tracing.core;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.ManualTracing;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
 import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
@@ -4360,20 +4360,20 @@ import space.br1440.platform.tracing.core.impl.TracingImplementation;
 import space.br1440.platform.tracing.core.manual.DefaultManualTracing;
 import space.br1440.platform.tracing.core.semconv.AttributePolicy;
 
-public final class NoOpPlatformTracing implements PlatformTracing {
+public final class NoopTraceOperations implements TraceOperations {
 
-    public static final NoOpPlatformTracing INSTANCE = new NoOpPlatformTracing(NoOpTracingImplementation.noop());
+    public static final NoopTraceOperations INSTANCE = new NoopTraceOperations(NoOpTracingImplementation.noop());
 
     private final TracingImplementation implementation;
     private final ManualTracing manualTracing;
 
-    private NoOpPlatformTracing(@Nonnull TracingImplementation implementation) {
+    private NoopTraceOperations(@Nonnull TracingImplementation implementation) {
         this.implementation = implementation;
         this.manualTracing = new DefaultManualTracing(implementation, new AttributePolicy());
     }
 
-    public static NoOpPlatformTracing backedBy(@Nonnull TracingImplementation implementation) {
-        return new NoOpPlatformTracing(implementation);
+    public static NoopTraceOperations backedBy(@Nonnull TracingImplementation implementation) {
+        return new NoopTraceOperations(implementation);
     }
 
     @Override
@@ -4395,12 +4395,12 @@ public final class NoOpPlatformTracing implements PlatformTracing {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/arch/TracingImplementationArchTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/arch/TracingImplementationArchTest.java
 
-**Status:** ADDED  
-**Main type:** `TracingImplementationArchTest`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** ArchUnit SPI gate  
+**Status:** ADDED
+**Main type:** `TracingImplementationArchTest`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** ArchUnit SPI gate
 **Lines:** 109
 
 ```java
@@ -4458,12 +4458,12 @@ class TracingImplementationArchTest {
 
     @ArchTest
     static final ArchRule platformTracingFacadeDoesNotUseOtelSpanApi =
-            noClasses().that().haveSimpleName("DefaultPlatformTracing")
+            noClasses().that().haveSimpleName("DefaultTraceOperations")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "io.opentelemetry.api.trace..",
                             "io.opentelemetry.context..",
                             "io.opentelemetry.sdk..")
-                    .because("PlatformTracing facade must not use OTel span API directly");
+                    .because("TraceOperations facade must not use OTel span API directly");
 
     private static ArchCondition<JavaClass> notHaveDefaultMethods() {
         return new ArchCondition<>("not declare default methods") {
@@ -4515,12 +4515,12 @@ class TracingImplementationArchTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/impl/TracingImplementationRoutingTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/impl/TracingImplementationRoutingTest.java
 
-**Status:** ADDED  
-**Main type:** `TracingImplementationRoutingTest`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** Single creation boundary  
+**Status:** ADDED
+**Main type:** `TracingImplementationRoutingTest`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** Single creation boundary
 **Lines:** 156
 
 ```java
@@ -4539,8 +4539,8 @@ import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.Topology;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.NoopTraceOperations;
 
 import java.util.List;
 
@@ -4552,12 +4552,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TracingImplementationRoutingTest {
 
     private RecordingTracingImplementation recording;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
 
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingImplementation();
-        tracing = new DefaultPlatformTracing(recording);
+        tracing = new DefaultTraceOperations(recording);
     }
 
     @Test
@@ -4642,7 +4642,7 @@ class TracingImplementationRoutingTest {
         RecordingTracingImplementation recordingImpl = new RecordingTracingImplementation();
         recordingImpl.setState(ImmutableTracingState.of(
                 TracingMode.NOOP, java.util.Optional.empty(), java.util.Map.of()));
-        NoOpPlatformTracing noop = NoOpPlatformTracing.backedBy(recordingImpl);
+        NoopTraceOperations noop = NoopTraceOperations.backedBy(recordingImpl);
         noop.manual().operation("noop-op").run(() -> {
         });
         assertThat(recordingImpl.receivedSpecs()).hasSize(1);
@@ -4655,7 +4655,7 @@ class TracingImplementationRoutingTest {
         SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        DefaultPlatformTracing realTracing = new DefaultPlatformTracing(
+        DefaultTraceOperations realTracing = new DefaultTraceOperations(
                 OpenTelemetrySdk.builder().setTracerProvider(provider).build());
         realTracing.setFacadeEnabled(false);
         realTracing.manual().operation("disabled").start().close();
@@ -4682,12 +4682,12 @@ class TracingImplementationRoutingTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/DatabaseSpanBuilderTest.java
 
-**Status:** ADDED  
-**Main type:** `DatabaseSpanBuilderTest`  
-**Slice / area:** Slice 3B Database  
-**Why it matters for review:** Database builder tests  
+**Status:** ADDED
+**Main type:** `DatabaseSpanBuilderTest`
+**Slice / area:** Slice 3B Database
+**Why it matters for review:** Database builder tests
 **Lines:** 127
 
 ```java
@@ -4820,12 +4820,12 @@ class DatabaseSpanBuilderTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/HttpSpanBuilderTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/HttpSpanBuilderTest.java
 
-**Status:** ADDED  
-**Main type:** `HttpSpanBuilderTest`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** HTTP builder tests  
+**Status:** ADDED
+**Main type:** `HttpSpanBuilderTest`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** HTTP builder tests
 **Lines:** 96
 
 ```java
@@ -4927,12 +4927,12 @@ class HttpSpanBuilderTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaConsumerBatchLinksTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaConsumerBatchLinksTest.java
 
-**Status:** ADDED  
-**Main type:** `KafkaConsumerBatchLinksTest`  
-**Slice / area:** Slice 5B Links/Kafka batch  
-**Why it matters for review:** Kafka batch ROOT+links  
+**Status:** ADDED
+**Main type:** `KafkaConsumerBatchLinksTest`
+**Slice / area:** Slice 5B Links/Kafka batch
+**Why it matters for review:** Kafka batch ROOT+links
 **Lines:** 151
 
 ```java
@@ -4950,7 +4950,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.RemoteContext;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
 
 import java.util.Arrays;
 import java.util.List;
@@ -4971,7 +4971,7 @@ class KafkaConsumerBatchLinksTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
 
     @BeforeEach
     void setUp() {
@@ -4979,7 +4979,7 @@ class KafkaConsumerBatchLinksTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(
+        tracing = new DefaultTraceOperations(
                 OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
     }
 
@@ -5089,12 +5089,12 @@ class KafkaConsumerBatchLinksTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaSpanBuilderTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/KafkaSpanBuilderTest.java
 
-**Status:** ADDED  
-**Main type:** `KafkaSpanBuilderTest`  
-**Slice / area:** Slice 3C Kafka  
-**Why it matters for review:** Kafka builder tests  
+**Status:** ADDED
+**Main type:** `KafkaSpanBuilderTest`
+**Slice / area:** Slice 3C Kafka
+**Why it matters for review:** Kafka builder tests
 **Lines:** 149
 
 ```java
@@ -5249,12 +5249,12 @@ class KafkaSpanBuilderTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/OperationSpanBuilderTest.java
 
-**Status:** ADDED  
-**Main type:** `OperationSpanBuilderTest`  
-**Slice / area:** Slice 3A Operation/HTTP  
-**Why it matters for review:** Operation builder tests  
+**Status:** ADDED
+**Main type:** `OperationSpanBuilderTest`
+**Slice / area:** Slice 3A Operation/HTTP
+**Why it matters for review:** Operation builder tests
 **Lines:** 148
 
 ```java
@@ -5267,7 +5267,7 @@ import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.Topology;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -5279,12 +5279,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OperationSpanBuilderTest {
 
     private RecordingTracingImplementation recording;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
 
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingImplementation();
-        tracing = new DefaultPlatformTracing(recording);
+        tracing = new DefaultTraceOperations(recording);
     }
 
     @Test
@@ -5408,12 +5408,12 @@ class OperationSpanBuilderTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/RpcSpanBuilderTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/RpcSpanBuilderTest.java
 
-**Status:** ADDED  
-**Main type:** `RpcSpanBuilderTest`  
-**Slice / area:** Slice 3C RPC  
-**Why it matters for review:** RPC builder tests  
+**Status:** ADDED
+**Main type:** `RpcSpanBuilderTest`
+**Slice / area:** Slice 3C RPC
+**Why it matters for review:** RPC builder tests
 **Lines:** 146
 
 ```java
@@ -5565,12 +5565,12 @@ class RpcSpanBuilderTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/ScopedExecutionTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/ScopedExecutionTest.java
 
-**Status:** ADDED  
-**Main type:** `ScopedExecutionTest`  
-**Slice / area:** Slice 4 Scoped execution  
-**Why it matters for review:** Exception policy tests  
+**Status:** ADDED
+**Main type:** `ScopedExecutionTest`
+**Slice / area:** Slice 4 Scoped execution
+**Why it matters for review:** Exception policy tests
 **Lines:** 180
 
 ```java
@@ -5584,9 +5584,9 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
 
 import java.util.Arrays;
@@ -5602,7 +5602,7 @@ class ScopedExecutionTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
     private RecordingTracingImplementation recording;
 
     @BeforeEach
@@ -5611,7 +5611,7 @@ class ScopedExecutionTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(
+        tracing = new DefaultTraceOperations(
                 OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
         recording = new RecordingTracingImplementation();
     }
@@ -5739,7 +5739,7 @@ class ScopedExecutionTest {
 
     @Test
     void terminalMethods_routeThroughTracingImplementation() {
-        DefaultPlatformTracing recordingTracing = new DefaultPlatformTracing(recording);
+        DefaultTraceOperations recordingTracing = new DefaultTraceOperations(recording);
         recordingTracing.manual().operation("routed").run(() -> {
         });
         assertThat(recording.receivedSpecs()).hasSize(1);
@@ -5748,7 +5748,7 @@ class ScopedExecutionTest {
 
     @Test
     void platformTracing_hasNoPublicExecuteMethod() {
-        assertThat(Arrays.stream(PlatformTracing.class.getMethods())
+        assertThat(Arrays.stream(TraceOperations.class.getMethods())
                 .map(java.lang.reflect.Method::getName)
                 .noneMatch("execute"::equals))
                 .isTrue();
@@ -5756,12 +5756,12 @@ class ScopedExecutionTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpanOptionsTopologyTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpanOptionsTopologyTest.java
 
-**Status:** ADDED  
-**Main type:** `SpanOptionsTopologyTest`  
-**Slice / area:** Slice 5A Topology  
-**Why it matters for review:** Topology matrix tests  
+**Status:** ADDED
+**Main type:** `SpanOptionsTopologyTest`
+**Slice / area:** Slice 5A Topology
+**Why it matters for review:** Topology matrix tests
 **Lines:** 174
 
 ```java
@@ -5780,7 +5780,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
 
 import java.util.List;
 
@@ -5796,7 +5796,7 @@ class SpanOptionsTopologyTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
 
     @BeforeEach
     void setUp() {
@@ -5804,7 +5804,7 @@ class SpanOptionsTopologyTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(
+        tracing = new DefaultTraceOperations(
                 OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
     }
 
@@ -5941,12 +5941,12 @@ class SpanOptionsTopologyTest {
 }
 ```
 
-## platform-tracing-core — platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanTest.java
+## platform-tracing-core � platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/manual/SpecifiedSpanTest.java
 
-**Status:** ADDED  
-**Main type:** `SpecifiedSpanTest`  
-**Slice / area:** Slice 4 Scoped execution  
-**Why it matters for review:** SpecifiedSpan tests  
+**Status:** ADDED
+**Main type:** `SpecifiedSpanTest`
+**Slice / area:** Slice 4 Scoped execution
+**Why it matters for review:** SpecifiedSpan tests
 **Lines:** 106
 
 ```java
@@ -5963,7 +5963,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.impl.RecordingTracingImplementation;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -5976,7 +5976,7 @@ class SpecifiedSpanTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
     private RecordingTracingImplementation recording;
 
     @BeforeEach
@@ -5985,7 +5985,7 @@ class SpecifiedSpanTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(
+        tracing = new DefaultTraceOperations(
                 OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
         recording = new RecordingTracingImplementation();
     }
@@ -6042,7 +6042,7 @@ class SpecifiedSpanTest {
     @Test
     void spanFromSpec_routesSameSpecThroughTracingImplementation() {
         SpanSpec spec = governedSpec("from-spec");
-        DefaultPlatformTracing recordingTracing = new DefaultPlatformTracing(recording);
+        DefaultTraceOperations recordingTracing = new DefaultTraceOperations(recording);
         recordingTracing.manual().spanFromSpec(spec).run(() -> {
         });
         assertThat(recording.receivedSpecs()).containsExactly(spec);
@@ -6061,12 +6061,12 @@ class SpecifiedSpanTest {
 ## Sources by module: platform-tracing-spring-boot-autoconfigure
 
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpoint.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpoint.java
 
-**Status:** MODIFIED  
-**Main type:** `TracingActuatorEndpoint`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** manualTracing diagnostics section  
+**Status:** MODIFIED
+**Main type:** `TracingActuatorEndpoint`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** manualTracing diagnostics section
 **Lines:** 341
 
 ```java
@@ -6080,7 +6080,7 @@ import org.springframework.boot.actuate.endpoint.annotation.Selector;
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
@@ -6092,10 +6092,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Actuator-ÑÐ½Ð´Ð¿Ð¾Ð¸Ð½Ñ‚ {@code /actuator/tracing}.
+ * Actuator-эндпоинт {@code /actuator/tracing}.
  * <p>
- * ÐŸÑ€ÐµÐ´Ð¾ÑÑ‚Ð°Ð²Ð»ÑÐµÑ‚ Ð´Ð¸Ð°Ð³Ð½Ð¾ÑÑ‚Ð¸Ñ‡ÐµÑÐºÐ¸Ð¹ ÑÑ€ÐµÐ· Ñ‚ÐµÐºÑƒÑ‰ÐµÐ³Ð¾ ÑÐ¾ÑÑ‚Ð¾ÑÐ½Ð¸Ñ Ð¿Ð»Ð°Ñ‚Ñ„Ð¾Ñ€Ð¼ÐµÐ½Ð½Ð¾Ð¹ Ñ‚Ñ€Ð°ÑÑÐ¸Ñ€Ð¾Ð²ÐºÐ¸
- * ({@link #tracing()}, {@code GET /actuator/tracing}) Ð¸ Ð´Ð¸Ð½Ð°Ð¼Ð¸Ñ‡ÐµÑÐºÐ¾Ðµ ÑƒÐ¿Ñ€Ð°Ð²Ð»ÐµÐ½Ð¸Ðµ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ð°Ð¼Ð¸
+ * Предоставляет диагностический срез текущего состояния платформенной трассировки
+ * ({@link #tracing()}, {@code GET /actuator/tracing}) и динамическое управление параметрами
  * ({@code POST /actuator/tracing/{property}/{value}}).
  */
 @Endpoint(id = "tracing")
@@ -6103,7 +6103,7 @@ public class TracingActuatorEndpoint {
 
     private static final Logger log = LoggerFactory.getLogger(TracingActuatorEndpoint.class);
 
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
     private final TracingProperties properties;
     private final PlatformTracingJmxClient jmxClient;
     private final ManualTracingDiagnostics manualTracingDiagnostics;
@@ -6112,41 +6112,41 @@ public class TracingActuatorEndpoint {
 
     private SdkModeDiagnostics sdkModeDiagnostics;
 
-    public TracingActuatorEndpoint(PlatformTracing platformTracing,
+    public TracingActuatorEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
                                    ManualTracingDiagnostics manualTracingDiagnostics) {
-        this(platformTracing, properties, jmxClient, null, manualTracingDiagnostics,
+        this(traceOperations, properties, jmxClient, null, manualTracingDiagnostics,
                 new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot());
     }
 
-    public TracingActuatorEndpoint(PlatformTracing platformTracing,
+    public TracingActuatorEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
                                    SdkModeDiagnostics sdkModeDiagnostics,
                                    ManualTracingDiagnostics manualTracingDiagnostics) {
-        this(platformTracing, properties, jmxClient, sdkModeDiagnostics, manualTracingDiagnostics,
+        this(traceOperations, properties, jmxClient, sdkModeDiagnostics, manualTracingDiagnostics,
                 new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot());
     }
 
-    TracingActuatorEndpoint(PlatformTracing platformTracing,
+    TracingActuatorEndpoint(TraceOperations traceOperations,
                             TracingProperties properties,
                             PlatformTracingJmxClient jmxClient,
                             OtelEffectiveConfigSnapshot otelEffectiveSnapshot,
                             ResourceEffectiveSnapshot resourceEffectiveSnapshot,
                             ManualTracingDiagnostics manualTracingDiagnostics) {
-        this(platformTracing, properties, jmxClient, null, manualTracingDiagnostics,
+        this(traceOperations, properties, jmxClient, null, manualTracingDiagnostics,
                 otelEffectiveSnapshot, resourceEffectiveSnapshot);
     }
 
-    TracingActuatorEndpoint(PlatformTracing platformTracing,
+    TracingActuatorEndpoint(TraceOperations traceOperations,
                             TracingProperties properties,
                             PlatformTracingJmxClient jmxClient,
                             SdkModeDiagnostics sdkModeDiagnostics,
                             ManualTracingDiagnostics manualTracingDiagnostics,
                             OtelEffectiveConfigSnapshot otelEffectiveSnapshot,
                             ResourceEffectiveSnapshot resourceEffectiveSnapshot) {
-        this.platformTracing = platformTracing;
+        this.traceOperations = traceOperations;
         this.properties = properties;
         this.jmxClient = jmxClient;
         this.manualTracingDiagnostics = manualTracingDiagnostics;
@@ -6159,7 +6159,7 @@ public class TracingActuatorEndpoint {
     public Map<String, Object> tracing() {
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("enabled", properties.isEnabled());
-        info.put("implementation", platformTracing.getClass().getName());
+        info.put("implementation", traceOperations.getClass().getName());
         info.put("manualTracing", manualTracingDiagnostics.toActuatorMap());
 
         Map<String, Object> sdkInfo = new LinkedHashMap<>();
@@ -6171,8 +6171,8 @@ public class TracingActuatorEndpoint {
                 ? sdkModeDiagnostics.agentDetected()
                 : OtelAgentDetector.isAgentPresent());
         info.put("sdk", sdkInfo);
-        info.put("currentTraceId", platformTracing.traceContext().traceId().orElse(null));
-        info.put("currentSpanId", platformTracing.traceContext().spanId().orElse(null));
+        info.put("currentTraceId", traceOperations.traceContext().traceId().orElse(null));
+        info.put("currentSpanId", traceOperations.traceContext().spanId().orElse(null));
         info.put("service", Map.of(
                 "name", nullSafe(properties.getService().getName()),
                 "version", nullSafe(properties.getService().getVersion()),
@@ -6241,7 +6241,7 @@ public class TracingActuatorEndpoint {
         scrubbingInfo.put("liveRuleCount", scrubbingMetrics.isEmpty() ? null : scrubbingMetrics.get("rules.loaded"));
         scrubbingInfo.put("customRulesSource", "otel-agent-spi");
         scrubbingInfo.put("customRulesVisible", false);
-        scrubbingInfo.put("note", "SPI-Ñ€ÐµÐ°Ð»Ð¸Ð·Ð°Ñ†Ð¸Ð¸ SensitiveDataRule Ð³Ñ€ÑƒÐ·ÑÑ‚ÑÑ classloader'Ð¾Ð¼ OTel Agent Ð¸ Ð² actuator Ð½Ðµ Ð²Ð¸Ð´Ð½Ñ‹");
+        scrubbingInfo.put("note", "SPI-реализации SensitiveDataRule грузятся classloader'ом OTel Agent и в actuator не видны");
         scrubbingInfo.put("rulesConfig", nullSafe(properties.getScrubbing().getRulesConfig()));
         info.put("scrubbing", scrubbingInfo);
 
@@ -6312,7 +6312,7 @@ public class TracingActuatorEndpoint {
                 boolean enabled = Boolean.parseBoolean(value);
                 boolean previous = properties.isEnabled();
                 properties.setEnabled(enabled);
-                log.info("ÐŸÐ»Ð°Ñ‚Ñ„Ð¾Ñ€Ð¼ÐµÐ½Ð½Ð°Ñ Ñ‚Ñ€Ð°ÑÑÐ¸Ñ€Ð¾Ð²ÐºÐ° {} -> {} Ñ‡ÐµÑ€ÐµÐ· actuator endpoint", previous, enabled);
+                log.info("Платформенная трассировка {} -> {} через actuator endpoint", previous, enabled);
                 result.put("previousValue", previous);
                 result.put("appliedValue", enabled);
             }
@@ -6349,7 +6349,7 @@ public class TracingActuatorEndpoint {
                 }
                 double previousProperties = properties.getSampling().getRatio();
                 properties.getSampling().setRatio(ratio);
-                log.info("samplingRatio {} -> {} Ñ‡ÐµÑ€ÐµÐ· actuator endpoint (JMX)",
+                log.info("samplingRatio {} -> {} через actuator endpoint (JMX)",
                         previousLive != null ? previousLive : previousProperties, ratio);
                 result.put("previousLiveValue", previousLive);
                 result.put("previousConfiguredValue", previousProperties);
@@ -6363,7 +6363,7 @@ public class TracingActuatorEndpoint {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
                 }
                 properties.getExporter().setEnabled(enabled);
-                log.info("Export-gate -> {} Ñ‡ÐµÑ€ÐµÐ· actuator endpoint (JMX)", enabled);
+                log.info("Export-gate -> {} через actuator endpoint (JMX)", enabled);
                 result.put("status", "updated");
                 result.put("appliedValue", enabled);
             }
@@ -6375,7 +6375,7 @@ public class TracingActuatorEndpoint {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
                 }
                 properties.getPropagation().setEnabled(enabled);
-                log.info("Platform propagation -> {} Ñ‡ÐµÑ€ÐµÐ· actuator endpoint (JMX)", enabled);
+                log.info("Platform propagation -> {} через actuator endpoint (JMX)", enabled);
                 result.put("status", "updated");
                 result.put("appliedValue", enabled);
             }
@@ -6386,7 +6386,7 @@ public class TracingActuatorEndpoint {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
                 }
                 properties.getDiagnostics().setLogLevel(value);
-                log.info("Platform log level -> {} Ñ‡ÐµÑ€ÐµÐ· actuator endpoint (JMX)", value);
+                log.info("Platform log level -> {} через actuator endpoint (JMX)", value);
                 result.put("status", "updated");
                 result.put("appliedValue", value);
             }
@@ -6413,12 +6413,12 @@ public class TracingActuatorEndpoint {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ManualTracingDiagnostics.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ManualTracingDiagnostics.java
 
-**Status:** ADDED  
-**Main type:** `ManualTracingDiagnostics`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Actuator diagnostics service  
+**Status:** ADDED
+**Main type:** `ManualTracingDiagnostics`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Actuator diagnostics service
 **Lines:** 32
 
 ```java
@@ -6456,12 +6456,12 @@ public final class ManualTracingDiagnostics {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsMapper.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsMapper.java
 
-**Status:** ADDED  
-**Main type:** `TracingDiagnosticsMapper`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** State to DTO mapper  
+**Status:** ADDED
+**Main type:** `TracingDiagnosticsMapper`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** State to DTO mapper
 **Lines:** 36
 
 ```java
@@ -6503,12 +6503,12 @@ public final class TracingDiagnosticsMapper {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsView.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsView.java
 
-**Status:** ADDED  
-**Main type:** `TracingDiagnosticsView`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Stable diagnostics DTO  
+**Status:** ADDED
+**Main type:** `TracingDiagnosticsView`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Stable diagnostics DTO
 **Lines:** 39
 
 ```java
@@ -6553,12 +6553,12 @@ public record TracingDiagnosticsView(
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredSpanHandle.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredSpanHandle.java
 
-**Status:** ADDED  
-**Main type:** `MeteredSpanHandle`  
-**Slice / area:** Slice 6 Metering  
-**Why it matters for review:** Metered span handle wrap  
+**Status:** ADDED
+**Main type:** `MeteredSpanHandle`
+**Slice / area:** Slice 6 Metering
+**Why it matters for review:** Metered span handle wrap
 **Lines:** 31
 
 ```java
@@ -6595,12 +6595,12 @@ final class MeteredSpanHandle implements SpanHandle {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTracingImplementation.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTracingImplementation.java
 
-**Status:** ADDED  
-**Main type:** `MeteredTracingImplementation`  
-**Slice / area:** Slice 6 Metering  
-**Why it matters for review:** SPI metering decorator  
+**Status:** ADDED
+**Main type:** `MeteredTracingImplementation`
+**Slice / area:** Slice 6 Metering
+**Why it matters for review:** SPI metering decorator
 **Lines:** 63
 
 ```java
@@ -6621,7 +6621,7 @@ import java.util.Objects;
  * Slice 6: Micrometer decorator for {@link TracingImplementation}.
  * <p>
  * Delegates all span creation to the wrapped implementation and increments self-metrics only.
- * Must not create spans directly or decorate the public {@code PlatformTracing} facade.
+ * Must not create spans directly or decorate the public {@code TraceOperations} facade.
  */
 public final class MeteredTracingImplementation implements DelegatingTracingImplementation {
 
@@ -6669,12 +6669,12 @@ public final class MeteredTracingImplementation implements DelegatingTracingImpl
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingActuatorAutoConfiguration.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingActuatorAutoConfiguration.java
 
-**Status:** MODIFIED  
-**Main type:** `TracingActuatorAutoConfiguration`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Actuator wiring  
+**Status:** MODIFIED
+**Main type:** `TracingActuatorAutoConfiguration`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Actuator wiring
 **Lines:** 51
 
 ```java
@@ -6691,7 +6691,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.beans.factory.ObjectProvider;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
@@ -6699,10 +6699,10 @@ import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 
 /**
- * ÐÐ²Ñ‚Ð¾-ÐºÐ¾Ð½Ñ„Ð¸Ð³ÑƒÑ€Ð°Ñ†Ð¸Ñ Actuator-Ð¸Ð½Ñ‚ÐµÐ³Ñ€Ð°Ñ†Ð¸Ð¹ Ð¿Ð»Ð°Ñ‚Ñ„Ð¾Ñ€Ð¼ÐµÐ½Ð½Ð¾Ð³Ð¾ Ð¼Ð¾Ð´ÑƒÐ»Ñ Ñ‚Ñ€Ð°ÑÑÐ¸Ñ€Ð¾Ð²ÐºÐ¸.
+ * Авто-конфигурация Actuator-интеграций платформенного модуля трассировки.
  * <p>
- * Ð ÐµÐ³Ð¸ÑÑ‚Ñ€Ð¸Ñ€ÑƒÐµÑ‚ health indicator {@code tracing} Ð¸ endpoint {@code /actuator/tracing}.
- * ÐÐºÑ‚Ð¸Ð²Ð½Ð° Ð¿Ñ€Ð¸ Ð½Ð°Ð»Ð¸Ñ‡Ð¸Ð¸ Ð² classpath Ð¸Ð½Ñ„Ñ€Ð°ÑÑ‚Ñ€ÑƒÐºÑ‚ÑƒÑ€Ñ‹ Actuator.
+ * Регистрирует health indicator {@code tracing} и endpoint {@code /actuator/tracing}.
+ * Активна при наличии в classpath инфраструктуры Actuator.
  */
 @AutoConfiguration
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
@@ -6713,30 +6713,30 @@ public class TracingActuatorAutoConfiguration {
     @Bean(name = "tracingHealthIndicator")
     @ConditionalOnMissingBean(name = "tracingHealthIndicator")
     @ConditionalOnEnabledHealthIndicator("tracing")
-    public TracingHealthIndicator tracingHealthIndicator(PlatformTracing platformTracing) {
-        return new TracingHealthIndicator(platformTracing);
+    public TracingHealthIndicator tracingHealthIndicator(TraceOperations traceOperations) {
+        return new TracingHealthIndicator(traceOperations);
     }
 
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnAvailableEndpoint
-    public TracingActuatorEndpoint tracingActuatorEndpoint(PlatformTracing platformTracing,
+    public TracingActuatorEndpoint tracingActuatorEndpoint(TraceOperations traceOperations,
                                                             TracingProperties properties,
                                                             PlatformTracingJmxClient platformTracingJmxClient,
                                                             ObjectProvider<SdkModeDiagnostics> sdkModeDiagnostics,
                                                             ManualTracingDiagnostics manualTracingDiagnostics) {
-        return new TracingActuatorEndpoint(platformTracing, properties, platformTracingJmxClient,
+        return new TracingActuatorEndpoint(traceOperations, properties, platformTracingJmxClient,
                 sdkModeDiagnostics.getIfAvailable(), manualTracingDiagnostics);
     }
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingCoreAutoConfiguration.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingCoreAutoConfiguration.java
 
-**Status:** MODIFIED  
-**Main type:** `TracingCoreAutoConfiguration`  
-**Slice / area:** Slice 6 Metering  
-**Why it matters for review:** SPI wiring + metered wrap  
+**Status:** MODIFIED
+**Main type:** `TracingCoreAutoConfiguration`
+**Slice / area:** Slice 6 Metering
+**Why it matters for review:** SPI wiring + metered wrap
 **Lines:** 179
 
 ```java
@@ -6753,7 +6753,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
@@ -6763,9 +6763,9 @@ import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeResolver;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.NoOpPlatformContextPropagation;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.NoopTraceOperations;
 import space.br1440.platform.tracing.core.OtelPlatformContextPropagation;
 import space.br1440.platform.tracing.core.impl.DefaultTracingImplementation;
 import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
@@ -6773,10 +6773,10 @@ import space.br1440.platform.tracing.core.impl.TracingImplementation;
 import space.br1440.platform.tracing.core.impl.TracingMode;
 
 /**
- * Ð‘Ð°Ð·Ð¾Ð²Ð°Ñ Ð°Ð²Ñ‚Ð¾-ÐºÐ¾Ð½Ñ„Ð¸Ð³ÑƒÑ€Ð°Ñ†Ð¸Ñ Ð¿Ð»Ð°Ñ‚Ñ„Ð¾Ñ€Ð¼ÐµÐ½Ð½Ð¾Ð³Ð¾ Ð¼Ð¾Ð´ÑƒÐ»Ñ Ñ‚Ñ€Ð°ÑÑÐ¸Ñ€Ð¾Ð²ÐºÐ¸.
+ * Базовая авто-конфигурация платформенного модуля трассировки.
  * <p>
  * Slice 2: registers {@link TracingImplementation} as the internal span-creation boundary and
- * {@link PlatformTracing} as a thin facade over it.
+ * {@link TraceOperations} as a thin facade over it.
  */
 @AutoConfiguration
 @ConditionalOnClass(OpenTelemetry.class)
@@ -6799,7 +6799,7 @@ public class TracingCoreAutoConfiguration {
                 properties.getSdk().getMode(),
                 new SdkModeResolver.Inputs(agentPresent, globalFunctional, userBeanPresent));
 
-        log.info("ÐŸÐ»Ð°Ñ‚Ñ„Ð¾Ñ€Ð¼ÐµÐ½Ð½Ð°Ñ Ñ‚Ñ€Ð°ÑÑÐ¸Ñ€Ð¾Ð²ÐºÐ°: SDK mode={} (agentDetected={}, globalFunctional={}, userOpenTelemetryBean={})",
+        log.info("Платформенная трассировка: SDK mode={} (agentDetected={}, globalFunctional={}, userOpenTelemetryBean={})",
                 resolved, agentPresent, globalFunctional, userBeanPresent);
         return new SdkModeDiagnostics(resolved, agentPresent);
     }
@@ -6834,7 +6834,7 @@ public class TracingCoreAutoConfiguration {
                     space.br1440.platform.tracing.core.exception.ExceptionRecorder> exceptionRecorderProvider,
             SdkModeDiagnostics sdkModeDiagnostics) {
         if (sdkModeDiagnostics.mode() == SdkMode.DISABLED) {
-            log.info("platform.tracing.sdk.mode=DISABLED â€” TracingImplementation DISABLED_BY_CONFIGURATION");
+            log.info("platform.tracing.sdk.mode=DISABLED — TracingImplementation DISABLED_BY_CONFIGURATION");
             return NoOpTracingImplementation.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED");
         }
 
@@ -6867,14 +6867,14 @@ public class TracingCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformTracing platformTracing(TracingImplementation tracingImplementation) {
+    public TraceOperations traceOperations(TracingImplementation tracingImplementation) {
         TracingMode mode = tracingImplementation.state().mode();
         if (mode != TracingMode.ENABLED) {
-            log.info("PlatformTracing facade: {} â€” NoOpPlatformTracing", mode);
-            return NoOpPlatformTracing.backedBy(tracingImplementation);
+            log.info("TraceOperations facade: {} — NoopTraceOperations", mode);
+            return NoopTraceOperations.backedBy(tracingImplementation);
         }
-        log.debug("PlatformTracing facade: ENABLED â€” DefaultPlatformTracing");
-        return new DefaultPlatformTracing(tracingImplementation);
+        log.debug("TraceOperations facade: ENABLED — DefaultTraceOperations");
+        return new DefaultTraceOperations(tracingImplementation);
     }
 
     private static boolean isGlobalFunctional() {
@@ -6910,23 +6910,23 @@ public class TracingCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformContextPropagation platformContextPropagation(PlatformTracing platformTracing) {
-        if (platformTracing instanceof NoOpPlatformTracing) {
-            log.debug("PlatformContextPropagation: Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ NoOp (OpenTelemetry Ð² degraded mode)");
+    public PlatformContextPropagation platformContextPropagation(TraceOperations traceOperations) {
+        if (traceOperations instanceof NoopTraceOperations) {
+            log.debug("PlatformContextPropagation: используется NoOp (OpenTelemetry в degraded mode)");
             return NoOpPlatformContextPropagation.INSTANCE;
         }
-        log.debug("PlatformContextPropagation: Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ OtelPlatformContextPropagation");
+        log.debug("PlatformContextPropagation: используется OtelPlatformContextPropagation");
         return new OtelPlatformContextPropagation();
     }
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingMetricsAutoConfiguration.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingMetricsAutoConfiguration.java
 
-**Status:** MODIFIED  
-**Main type:** `TracingMetricsAutoConfiguration`  
-**Slice / area:** Slice 6 Metering  
-**Why it matters for review:** Metrics beans; no facade decorator  
+**Status:** MODIFIED
+**Main type:** `TracingMetricsAutoConfiguration`
+**Slice / area:** Slice 6 Metering
+**Why it matters for review:** Metrics beans; no facade decorator
 **Lines:** 77
 
 ```java
@@ -6946,11 +6946,11 @@ import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetric
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSamplerMetricsBinder;
 
 /**
- * ÐÐ²Ñ‚Ð¾-ÐºÐ¾Ð½Ñ„Ð¸Ð³ÑƒÑ€Ð°Ñ†Ð¸Ñ ÑÐ°Ð¼Ð¾Ð½Ð°Ð±Ð»ÑŽÐ´Ð°Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ñ… Ð¼ÐµÑ‚Ñ€Ð¸Ðº Ð¿Ð»Ð°Ñ‚Ñ„Ð¾Ñ€Ð¼ÐµÐ½Ð½Ð¾Ð³Ð¾ Ð¼Ð¾Ð´ÑƒÐ»Ñ Ñ‚Ñ€Ð°ÑÑÐ¸Ñ€Ð¾Ð²ÐºÐ¸.
+ * Авто-конфигурация самонаблюдательных метрик платформенного модуля трассировки.
  * <p>
- * ÐÐºÑ‚Ð¸Ð²Ð½Ð° Ñ‚Ð¾Ð»ÑŒÐºÐ¾ Ð¿Ñ€Ð¸ Ð½Ð°Ð»Ð¸Ñ‡Ð¸Ð¸ Ð² ÐºÐ¾Ð½Ñ‚ÐµÐºÑÑ‚Ðµ Ð±Ð¸Ð½Ð° {@link MeterRegistry}, ÐºÐ¾Ñ‚Ð¾Ñ€Ñ‹Ð¹ Ð¿Ð¾ÑÑ‚Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¼Ð¾Ð´ÑƒÐ»ÐµÐ¼
- * {@code spring-boot-starter-platform-metrics}. Ð ÐµÐ³Ð¸ÑÑ‚Ñ€Ð¸Ñ€ÑƒÐµÑ‚ {@link PlatformTracingMetrics} Ð¸
- * Ð²ÑÐ¿Ð¾Ð¼Ð¾Ð³Ð°Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ðµ MeterBinder'Ñ‹.
+ * Активна только при наличии в контексте бина {@link MeterRegistry}, который поставляется модулем
+ * {@code spring-boot-starter-platform-metrics}. Регистрирует {@link PlatformTracingMetrics} и
+ * вспомогательные MeterBinder'ы.
  * <p>
  * Slice 6: when {@link MeterRegistry} is present, {@link TracingCoreAutoConfiguration} wraps the
  * active {@link space.br1440.platform.tracing.core.impl.TracingImplementation} with
@@ -7009,12 +7009,12 @@ public class TracingMetricsAutoConfiguration {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointProcessorErrorsTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointProcessorErrorsTest.java
 
-**Status:** MODIFIED  
-**Main type:** `TracingActuatorEndpointProcessorErrorsTest`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Processor errors tests  
+**Status:** MODIFIED
+**Main type:** `TracingActuatorEndpointProcessorErrorsTest`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Processor errors tests
 **Lines:** 90
 
 ```java
@@ -7026,7 +7026,7 @@ import org.mockito.Mockito;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.NoopTraceOperations;
 import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
 
 import java.util.LinkedHashMap;
@@ -7037,7 +7037,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 /**
- * Ð¢ÐµÑÑ‚ ÑÐµÐºÑ†Ð¸Ð¸ {@code processors} Ð² Ð²Ñ‹Ð²Ð¾Ð´Ðµ {@link TracingActuatorEndpoint#tracing()}.
+ * Тест секции {@code processors} в выводе {@link TracingActuatorEndpoint#tracing()}.
  */
 class TracingActuatorEndpointProcessorErrorsTest {
 
@@ -7052,7 +7052,7 @@ class TracingActuatorEndpointProcessorErrorsTest {
         when(jmxClient.isAvailable()).thenReturn(true);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.of(0.1d));
         endpoint = new TracingActuatorEndpoint(
-                NoOpPlatformTracing.INSTANCE,
+                NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
                 new ManualTracingDiagnostics(NoOpTracingImplementation.noop()));
@@ -7110,12 +7110,12 @@ class TracingActuatorEndpointProcessorErrorsTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpointTest.java
 
-**Status:** MODIFIED  
-**Main type:** `TracingActuatorEndpointTest`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Actuator endpoint tests  
+**Status:** MODIFIED
+**Main type:** `TracingActuatorEndpointTest`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Actuator endpoint tests
 **Lines:** 400
 
 ```java
@@ -7130,7 +7130,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.NoopTraceOperations;
 import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
 
 import java.util.Map;
@@ -7159,14 +7159,14 @@ class TracingActuatorEndpointTest {
         when(jmxClient.isAvailable()).thenReturn(true);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.of(0.1d));
         endpoint = new TracingActuatorEndpoint(
-                NoOpPlatformTracing.INSTANCE,
+                NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
                 new ManualTracingDiagnostics(NoOpTracingImplementation.noop()));
     }
 
     @Test
-    void writeOperation_Ð¿Ð¾_ÑƒÐ¼Ð¾Ð»Ñ‡Ð°Ð½Ð¸ÑŽ_mutation_disabled_Ð¾Ñ‚ÐºÐ»Ð¾Ð½ÑÐµÑ‚_Ð¸_Ð½Ðµ_Ð²Ñ‹Ð·Ñ‹Ð²Ð°ÐµÑ‚_JMX() {
+    void writeOperation_по_умолчанию_mutation_disabled_отклоняет_и_не_вызывает_JMX() {
         properties.getActuator().setMutationEnabled(false);
 
         assertThatThrownBy(() -> endpoint.updateTracing("samplingRatio", "0.5"))
@@ -7181,7 +7181,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_mutation_disabled_Ð¾Ñ‚ÐºÐ»Ð¾Ð½ÑÐµÑ‚_enabled_Ð±ÐµÐ·_Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ_properties() {
+    void writeOperation_mutation_disabled_отклоняет_enabled_без_изменения_properties() {
         properties.getActuator().setMutationEnabled(false);
 
         assertThatThrownBy(() -> endpoint.updateTracing("enabled", "false"))
@@ -7193,7 +7193,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ñ‚_actuator_mutationEnabled() {
+    void readOperation_содержит_actuator_mutationEnabled() {
         properties.getActuator().setMutationEnabled(false);
 
         Map<String, Object> info = endpoint.tracing();
@@ -7204,7 +7204,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_Ñ€Ð°Ð±Ð¾Ñ‚Ð°ÐµÑ‚_ÐºÐ¾Ð³Ð´Ð°_mutation_disabled() {
+    void readOperation_работает_когда_mutation_disabled() {
         properties.getActuator().setMutationEnabled(false);
 
         Map<String, Object> info = endpoint.tracing();
@@ -7223,7 +7223,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_enabled_Ð¼ÐµÐ½ÑÐµÑ‚_ÑÐ²Ð¾Ð¹ÑÑ‚Ð²Ð¾() {
+    void writeOperation_enabled_меняет_свойство() {
         Map<String, Object> result = endpoint.updateTracing("enabled", "false");
         assertThat(result.get("appliedValue")).isEqualTo(false);
         assertThat(result.get("previousValue")).isEqualTo(true);
@@ -7232,7 +7232,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_samplingRatio_Ð¿Ñ€Ð¾ÐºÑÐ¸Ñ€ÑƒÐµÑ‚_Ð²_JMX_Ð¸_ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð¸Ð·Ð¸Ñ€ÑƒÐµÑ‚_properties() {
+    void writeOperation_samplingRatio_проксирует_в_JMX_и_синхронизирует_properties() {
         Map<String, Object> result = endpoint.updateTracing("samplingRatio", "0.5");
 
         verify(jmxClient, times(1)).setRatio(0.5d);
@@ -7243,7 +7243,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_samplingRatio_ÐºÐ¾Ð³Ð´Ð°_Ñ€Ð°ÑÑˆÐ¸Ñ€ÐµÐ½Ð¸Ðµ_Ð½ÐµÐ´Ð¾ÑÑ‚ÑƒÐ¿Ð½Ð¾_Ð¾Ñ‚ÐºÐ°Ð·Ñ‹Ð²Ð°ÐµÑ‚_Ð´Ð¾_Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ_properties() {
+    void writeOperation_samplingRatio_когда_расширение_недоступно_отказывает_до_изменения_properties() {
         doThrow(new PlatformTracingJmxOperationException("sampling domain not available"))
                 .when(jmxClient).setRatio(anyDouble());
 
@@ -7256,7 +7256,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_samplingRatio_Ð·Ð°_Ð¿Ñ€ÐµÐ´ÐµÐ»Ð°Ð¼Ð¸_Ð´Ð¸Ð°Ð¿Ð°Ð·Ð¾Ð½Ð°_Ð±Ñ€Ð¾ÑÐ°ÐµÑ‚_ResponseStatusException() {
+    void writeOperation_samplingRatio_за_пределами_диапазона_бросает_ResponseStatusException() {
         assertThatThrownBy(() -> endpoint.updateTracing("samplingRatio", "1.5"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
@@ -7268,7 +7268,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_samplingRatio_Ð½Ðµ_Ñ‡Ð¸ÑÐ»Ð¾_Ð±Ñ€Ð¾ÑÐ°ÐµÑ‚_ResponseStatusException() {
+    void writeOperation_samplingRatio_не_число_бросает_ResponseStatusException() {
         assertThatThrownBy(() -> endpoint.updateTracing("samplingRatio", "not-a-number"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
@@ -7280,7 +7280,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_exportEnabled_Ð¿Ñ€Ð¾ÐºÑÐ¸Ñ€ÑƒÐµÑ‚_Ð²_JMX_Ð¸_ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð¸Ð·Ð¸Ñ€ÑƒÐµÑ‚_properties() {
+    void writeOperation_exportEnabled_проксирует_в_JMX_и_синхронизирует_properties() {
         Map<String, Object> result = endpoint.updateTracing("exportEnabled", "false");
 
         verify(jmxClient, times(1)).setExportEnabled(false);
@@ -7289,7 +7289,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_propagationEnabled_Ð¿Ñ€Ð¾ÐºÑÐ¸Ñ€ÑƒÐµÑ‚_Ð²_JMX_Ð¸_ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð¸Ð·Ð¸Ñ€ÑƒÐµÑ‚_properties() {
+    void writeOperation_propagationEnabled_проксирует_в_JMX_и_синхронизирует_properties() {
         Map<String, Object> result = endpoint.updateTracing("propagationEnabled", "false");
 
         verify(jmxClient, times(1)).setPropagationEnabled(false);
@@ -7298,7 +7298,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_logLevel_Ð¿Ñ€Ð¾ÐºÑÐ¸Ñ€ÑƒÐµÑ‚_Ð²_JMX_Ð¸_ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð¸Ð·Ð¸Ñ€ÑƒÐµÑ‚_properties() {
+    void writeOperation_logLevel_проксирует_в_JMX_и_синхронизирует_properties() {
         Map<String, Object> result = endpoint.updateTracing("logLevel", "DEBUG");
 
         verify(jmxClient, times(1)).setPlatformLogLevel("DEBUG");
@@ -7307,7 +7307,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_Ð½ÐµÐ¸Ð·Ð²ÐµÑÑ‚Ð½Ñ‹Ð¹_Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€_Ð±Ñ€Ð¾ÑÐ°ÐµÑ‚_ResponseStatusException() {
+    void writeOperation_неизвестный_параметр_бросает_ResponseStatusException() {
         assertThatThrownBy(() -> endpoint.updateTracing("foobar", "any"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
@@ -7317,7 +7317,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_Ð²Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚_Ñ‚ÐµÐºÑƒÑ‰ÐµÐµ_ÑÐ¾ÑÑ‚Ð¾ÑÐ½Ð¸Ðµ_Ð²ÐºÐ»ÑŽÑ‡Ð°Ñ_live_ratio() {
+    void readOperation_возвращает_текущее_состояние_включая_live_ratio() {
         Map<String, Object> info = endpoint.tracing();
         assertThat(info).containsKeys("enabled", "implementation", "sampling", "limits", "queue", "exporter",
                 "enriching", "validation", "watchdog");
@@ -7331,7 +7331,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ñ‚_ÑÐµÐºÑ†Ð¸Ð¸_enriching_validation_watchdog_Ð¸_scrubbing() {
+    void readOperation_содержит_секции_enriching_validation_watchdog_и_scrubbing() {
         Map<String, Object> info = endpoint.tracing();
 
         @SuppressWarnings("unchecked")
@@ -7403,7 +7403,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_export_ÑÐµÐºÑ†Ð¸Ñ_not_ready_ÐºÐ¾Ð³Ð´Ð°_Ð¼ÐµÑ‚Ñ€Ð¸ÐºÐ¸_Ð½ÐµÐ´Ð¾ÑÑ‚ÑƒÐ¿Ð½Ñ‹() {
+    void readOperation_export_секция_not_ready_когда_метрики_недоступны() {
         when(jmxClient.getExportMetrics()).thenReturn(Optional.empty());
 
         Map<String, Object> info = endpoint.tracing();
@@ -7414,7 +7414,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_export_ÑÐµÐºÑ†Ð¸Ñ_ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ñ‚_Ð¼ÐµÑ‚Ñ€Ð¸ÐºÐ¸_ÐºÐ¾Ð³Ð´Ð°_Ð´Ð¾ÑÑ‚ÑƒÐ¿Ð½Ñ‹() {
+    void readOperation_export_секция_содержит_метрики_когда_доступны() {
         Map<String, Object> metrics = Map.of(
                 "queueCapacity", 2048,
                 "queueSize", 10,
@@ -7432,7 +7432,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_ÐºÐ¾Ð³Ð´Ð°_Ñ€Ð°ÑÑˆÐ¸Ñ€ÐµÐ½Ð¸Ðµ_Ð½ÐµÐ´Ð¾ÑÑ‚ÑƒÐ¿Ð½Ð¾_Ð¾Ñ‚Ð´Ð°Ñ‘Ñ‚_null_live_ratio() {
+    void readOperation_когда_расширение_недоступно_отдаёт_null_live_ratio() {
         when(jmxClient.isAvailable()).thenReturn(false);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.empty());
 
@@ -7444,7 +7444,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ñ‚_ÑÐµÐºÑ†Ð¸ÑŽ_otelEffective_Ñ_Ð¿Ð¾Ð´Ð¼ÐµÐ½Ð¾Ð¹_Ð¸ÑÑ‚Ð¾Ñ‡Ð½Ð¸ÐºÐ¾Ð²() {
+    void readOperation_содержит_секцию_otelEffective_с_подменой_источников() {
         java.util.Map<String, String> sysProps = new java.util.HashMap<>();
         java.util.Map<String, String> envVars = new java.util.HashMap<>();
         sysProps.put("otel.bsp.max.queue.size", "8192");
@@ -7456,7 +7456,7 @@ class TracingActuatorEndpointTest {
         ResourceEffectiveSnapshot resourceSnapshot = new ResourceEffectiveSnapshot(
                 sysProps::get, envVars::get);
         TracingActuatorEndpoint custom = new TracingActuatorEndpoint(
-                NoOpPlatformTracing.INSTANCE,
+                NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
                 snapshot,
@@ -7504,7 +7504,7 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ñ‚_otelEnvHints_Ð¸Ð·_TracingProperties() {
+    void readOperation_содержит_otelEnvHints_из_TracingProperties() {
         properties.getQueue().setExportTimeout(java.time.Duration.ofMillis(100));
 
         Map<String, Object> info = endpoint.tracing();
@@ -7521,12 +7521,12 @@ class TracingActuatorEndpointTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/BeanTopologyTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/BeanTopologyTest.java
 
-**Status:** MODIFIED  
-**Main type:** `BeanTopologyTest`  
-**Slice / area:** Slice 2 TracingImplementation  
-**Why it matters for review:** Bean singularity gate  
+**Status:** MODIFIED
+**Main type:** `BeanTopologyTest`
+**Slice / area:** Slice 2 TracingImplementation
+**Why it matters for review:** Bean singularity gate
 **Lines:** 180
 
 ```java
@@ -7544,13 +7544,13 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingImplementation;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.NoopTraceOperations;
 import space.br1440.platform.tracing.core.impl.DefaultTracingImplementation;
 import space.br1440.platform.tracing.core.impl.NoOpTracingImplementation;
 import space.br1440.platform.tracing.core.impl.TracingImplementation;
@@ -7576,10 +7576,10 @@ class BeanTopologyTest {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    assertThat(context.getBeansOfType(PlatformTracing.class)).hasSize(1);
+                    assertThat(context.getBeansOfType(TraceOperations.class)).hasSize(1);
                     assertThat(context.getBeansOfType(TracingImplementation.class)).hasSize(1);
-                    assertThat(context.getBean(PlatformTracing.class))
-                            .isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class))
+                            .isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingImplementation.class))
                             .isInstanceOf(DefaultTracingImplementation.class);
                 });
@@ -7590,7 +7590,7 @@ class BeanTopologyTest {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    DefaultPlatformTracing facade = context.getBean(DefaultPlatformTracing.class);
+                    DefaultTraceOperations facade = context.getBean(DefaultTraceOperations.class);
                     TracingImplementation impl = context.getBean(TracingImplementation.class);
                     assertThat(facade.tracingImplementation()).isSameAs(impl);
                 });
@@ -7602,7 +7602,7 @@ class BeanTopologyTest {
                 .withUserConfiguration(OpenTelemetryConfiguration.class, MeterRegistryConfiguration.class)
                 .run(context -> {
                     assertThat(context).doesNotHaveBean("meteredPlatformTracing");
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingImplementation.class))
                             .isInstanceOf(MeteredTracingImplementation.class);
                     assertThat(((MeteredTracingImplementation) context.getBean(TracingImplementation.class)).delegate())
@@ -7617,7 +7617,7 @@ class BeanTopologyTest {
                 .run(context -> {
                     TracingImplementation impl = context.getBean(TracingImplementation.class);
                     assertThat(impl.state().mode()).isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                 });
     }
 
@@ -7626,7 +7626,7 @@ class BeanTopologyTest {
         contextRunner.run(context -> {
             TracingImplementation impl = context.getBean(TracingImplementation.class);
             assertThat(impl.state().mode()).isIn(TracingMode.UNAVAILABLE, TracingMode.NOOP);
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
         });
     }
 
@@ -7712,12 +7712,12 @@ class BeanTopologyTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/DiagnosticsBoundaryTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/DiagnosticsBoundaryTest.java
 
-**Status:** ADDED  
-**Main type:** `DiagnosticsBoundaryTest`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Diagnostics DTO boundary  
+**Status:** ADDED
+**Main type:** `DiagnosticsBoundaryTest`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Diagnostics DTO boundary
 **Lines:** 151
 
 ```java
@@ -7732,7 +7732,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.TraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -7769,7 +7769,7 @@ class DiagnosticsBoundaryTest {
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
-                            context.getBean(PlatformTracing.class),
+                            context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
                             context.getBean(ManualTracingDiagnostics.class));
@@ -7874,12 +7874,12 @@ class DiagnosticsBoundaryTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ObservationCoexistenceTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/ObservationCoexistenceTest.java
 
-**Status:** ADDED  
-**Main type:** `ObservationCoexistenceTest`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Observation coexistence gate  
+**Status:** ADDED
+**Main type:** `ObservationCoexistenceTest`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Observation coexistence gate
 **Lines:** 183
 
 ```java
@@ -7904,12 +7904,12 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingImplementation;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.NoopTraceOperations;
 import space.br1440.platform.tracing.core.impl.TracingImplementation;
 
 import java.util.List;
@@ -7939,7 +7939,7 @@ class ObservationCoexistenceTest {
     void manualOperationInsideObservation_isChildOfObservedRoot_notCompetingRoot() {
         contextRunner.run(context -> {
             ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             Observation observation = Observation.createNotStarted("app.request", observationRegistry)
@@ -7965,7 +7965,7 @@ class ObservationCoexistenceTest {
     void intentionalManualRoot_insideObservation_createsSeparateTrace() {
         contextRunner.run(context -> {
             ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             Observation observation = Observation.createNotStarted("app.request", observationRegistry)
@@ -7989,10 +7989,10 @@ class ObservationCoexistenceTest {
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
-                    PlatformTracing tracing = context.getBean(PlatformTracing.class);
+                    TraceOperations tracing = context.getBean(TraceOperations.class);
                     InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
-                    assertThat(tracing).isInstanceOf(NoOpPlatformTracing.class);
+                    assertThat(tracing).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
 
@@ -8008,11 +8008,11 @@ class ObservationCoexistenceTest {
     void meteredImplementation_doesNotCreateSpansDirectly() {
         contextRunner.run(context -> {
             TracingImplementation tracingImplementation = context.getBean(TracingImplementation.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             assertThat(tracingImplementation).isInstanceOf(MeteredTracingImplementation.class);
-            assertThat(tracing).isInstanceOf(DefaultPlatformTracing.class);
+            assertThat(tracing).isInstanceOf(DefaultTraceOperations.class);
 
             tracing.manual().operation("metered-delegate").start().close();
 
@@ -8068,12 +8068,12 @@ class ObservationCoexistenceTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/SpringBootContextMatrixTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/SpringBootContextMatrixTest.java
 
-**Status:** ADDED  
-**Main type:** `SpringBootContextMatrixTest`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** Extended context matrix  
+**Status:** ADDED
+**Main type:** `SpringBootContextMatrixTest`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** Extended context matrix
 **Lines:** 128
 
 ```java
@@ -8088,15 +8088,15 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingImplementation;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.NoopTraceOperations;
 import space.br1440.platform.tracing.core.impl.DefaultTracingImplementation;
 import space.br1440.platform.tracing.core.impl.TracingImplementation;
 import space.br1440.platform.tracing.core.impl.TracingMode;
@@ -8120,7 +8120,7 @@ class SpringBootContextMatrixTest {
         baseRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingImplementation.class))
                             .isInstanceOf(DefaultTracingImplementation.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
@@ -8132,7 +8132,7 @@ class SpringBootContextMatrixTest {
         baseRunner
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(TracingImplementation.class).state().mode())
                             .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
@@ -8143,7 +8143,7 @@ class SpringBootContextMatrixTest {
     @Test
     void unavailableOpenTelemetry_exposesUnavailableOrNoopDiagnostics() {
         baseRunner.run(context -> {
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
             assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode())
                     .isIn("UNAVAILABLE", "NOOP");
         });
@@ -8156,7 +8156,7 @@ class SpringBootContextMatrixTest {
                 .run(context -> {
                     assertThat(context.getBean(TracingImplementation.class))
                             .isInstanceOf(MeteredTracingImplementation.class);
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(ManualTracingDiagnostics.class).view().mode()).isEqualTo("ENABLED");
                 });
     }
@@ -8178,7 +8178,7 @@ class SpringBootContextMatrixTest {
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
                     TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
-                            context.getBean(PlatformTracing.class),
+                            context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
                             context.getBean(ManualTracingDiagnostics.class));
@@ -8207,12 +8207,12 @@ class SpringBootContextMatrixTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsViewJsonContractTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/diagnostics/TracingDiagnosticsViewJsonContractTest.java
 
-**Status:** ADDED  
-**Main type:** `TracingDiagnosticsViewJsonContractTest`  
-**Slice / area:** Slice 7 Diagnostics/Observation  
-**Why it matters for review:** JSON contract test  
+**Status:** ADDED
+**Main type:** `TracingDiagnosticsViewJsonContractTest`
+**Slice / area:** Slice 7 Diagnostics/Observation
+**Why it matters for review:** JSON contract test
 **Lines:** 114
 
 ```java
@@ -8332,12 +8332,12 @@ class TracingDiagnosticsViewJsonContractTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredMetricsCountTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredMetricsCountTest.java
 
-**Status:** ADDED  
-**Main type:** `MeteredMetricsCountTest`  
-**Slice / area:** Slice 6 Metering  
-**Why it matters for review:** Metrics count gate  
+**Status:** ADDED
+**Main type:** `MeteredMetricsCountTest`
+**Slice / area:** Slice 6 Metering
+**Why it matters for review:** Metrics count gate
 **Lines:** 126
 
 ```java
@@ -8355,7 +8355,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
@@ -8380,7 +8380,7 @@ class MeteredMetricsCountTest {
     void startSpan_incrementsSpansStartedByCategory() {
         contextRunner.run(context -> {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             tracing.manual().operation("op-a").start().close();
@@ -8409,7 +8409,7 @@ class MeteredMetricsCountTest {
     void recordException_incrementsExceptionsRecorded() {
         contextRunner.run(context -> {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
 
             var handle = tracing.manual().operation("failing-op").start();
             handle.recordException(new IllegalStateException("boom"));
@@ -8429,7 +8429,7 @@ class MeteredMetricsCountTest {
     void spansStartedMetric_usesBoundedCategoryTagsOnly() {
         contextRunner.run(context -> {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
 
             tracing.manual().operation("dynamic-name-" + System.nanoTime()).start().close();
 
@@ -8469,12 +8469,12 @@ class MeteredMetricsCountTest {
 }
 ```
 
-## platform-tracing-spring-boot-autoconfigure — platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTopologyMatrixTest.java
+## platform-tracing-spring-boot-autoconfigure � platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredTopologyMatrixTest.java
 
-**Status:** ADDED  
-**Main type:** `MeteredTopologyMatrixTest`  
-**Slice / area:** Slice 6 Metering  
-**Why it matters for review:** Metered topology gate  
+**Status:** ADDED
+**Main type:** `MeteredTopologyMatrixTest`
+**Slice / area:** Slice 6 Metering
+**Why it matters for review:** Metered topology gate
 **Lines:** 214
 
 ```java
@@ -8494,14 +8494,14 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
-import space.br1440.platform.tracing.core.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.impl.TracingImplementation;
 
 import java.util.List;
@@ -8531,14 +8531,14 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             assertThat(context.getBean(TracingImplementation.class))
                     .isInstanceOf(MeteredTracingImplementation.class);
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
         });
     }
 
     @Test
     void operationRootWithLinks_preservesRootTopologyAndRemoteLinks() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             SpanLinkContext link = SpanLinkContext.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
@@ -8554,7 +8554,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void operationDetached_preservesDetachedNoParentAndNoLinks() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             try (var parent = tracing.manual().operation("parent").start()) {
                 tracing.manual().operation("orphan").detached().start().close();
@@ -8571,7 +8571,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void operationDetachedWithLinks_failsFast() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             SpanLinkContext link = SpanLinkContext.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
@@ -8586,7 +8586,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void kafkaBatchRootWithLinks_preservesRootTopologyAndLinks() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             tracing.manual().transport().kafka().consumer()
                     .batch("orders")
@@ -8608,7 +8608,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void spanFromSpec_rootWithLinks_worksPerPolicy() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             SpanLinkContext link = SpanLinkContext.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
@@ -8629,7 +8629,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void spanFromSpec_detachedWithoutLinks_worksPerPolicy() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             SpanSpec spec = SpanSpec.builder("spec-detached")
                     .category(SpanCategory.INTERNAL)

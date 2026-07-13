@@ -24,7 +24,7 @@
 
 ### SpanCategory: разделение RPC + Kafka (pre-prod breaking-rename)
 
-`SpanCategory.RPC` заменён на пару `RPC_SERVER`/`RPC_CLIENT` (консистентно с `HTTP_SERVER`/`HTTP_CLIENT`), добавлены `KAFKA_PRODUCER`/`KAFKA_CONSUMER`. Это позволяет `CategoryContract` различать required-поля server/client и messaging. Решение не вышло в продакшен — breaking-rename допустим (без `@Deprecated`). Синхронно обновлены `DefaultPlatformTracing.toSpanKind` и reverse-mapping `EnrichingSpanProcessor` (PRODUCER/CONSUMER -> `kafka_producer`/`kafka_consumer`).
+`SpanCategory.RPC` заменён на пару `RPC_SERVER`/`RPC_CLIENT` (консистентно с `HTTP_SERVER`/`HTTP_CLIENT`), добавлены `KAFKA_PRODUCER`/`KAFKA_CONSUMER`. Это позволяет `CategoryContract` различать required-поля server/client и messaging. Решение не вышло в продакшен — breaking-rename допустим (без `@Deprecated`). Синхронно обновлены `DefaultTraceOperations.toSpanKind` и reverse-mapping `EnrichingSpanProcessor` (PRODUCER/CONSUMER -> `kafka_producer`/`kafka_consumer`).
 
 ### SemconvViolationException = unchecked, timing = до startSpan()
 

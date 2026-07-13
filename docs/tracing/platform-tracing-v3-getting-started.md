@@ -1,10 +1,10 @@
-# PlatformTracing v3 — Getting Started
+# TraceOperations v3 — Getting Started
 
-PlatformTracing v3 is the public manual-tracing API for Spring Boot services on the platform tracing stack. Auto-instrumentation (OpenTelemetry Java Agent, Spring/Micrometer Observation conventions, `@Traced`) is the **default**. Use `PlatformTracing.manual()` **only** when automatic instrumentation does not cover your use case.
+TraceOperations v3 is the public manual-tracing API for Spring Boot services on the platform tracing stack. Auto-instrumentation (OpenTelemetry Java Agent, Spring/Micrometer Observation conventions, `@Traced`) is the **default**. Use `traceOperations.manual()` **only** when automatic instrumentation does not cover your use case.
 
 ## Dependencies
 
-Add the appropriate platform tracing starter for your stack (Servlet or Reactive). The `PlatformTracing` bean is wired automatically when tracing is enabled.
+Add the appropriate platform tracing starter for your stack (Servlet or Reactive). The `TraceOperations` bean is wired automatically when tracing is enabled.
 
 ```gradle
 implementation 'space.br1440.platform.tracing:platform-tracing-spring-boot-starter-servlet'
@@ -14,7 +14,7 @@ implementation 'space.br1440.platform.tracing:platform-tracing-spring-boot-start
 
 ## Public API surface
 
-v3 exposes exactly two entry points on `PlatformTracing`:
+v3 exposes exactly two entry points on `TraceOperations`:
 
 | Method | Purpose |
 |--------|---------|
@@ -28,7 +28,7 @@ There is no v1 wide facade (`startSpan`, `inSpan`, `SpanRelation`, transport fac
 Use `traceContext()` for correlation. It does not expose OpenTelemetry SDK types.
 
 ```java
-String traceId = platformTracing.traceContext()
+String traceId = traceOperations.traceContext()
         .traceId()
         .orElse("unknown");
 ```
@@ -40,7 +40,7 @@ Optional fields: `spanId()`, `correlationId()`.
 ### Run a void action
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .operation("recalculate-pricing")
         .run(() -> pricingService.recalculate(orderId));
 ```
@@ -48,7 +48,7 @@ platformTracing.manual()
 ### Return a value
 
 ```java
-Price price = platformTracing.manual()
+Price price = traceOperations.manual()
         .operation("calculate-price")
         .call(() -> pricingService.calculate(orderId));
 ```
@@ -56,7 +56,7 @@ Price price = platformTracing.manual()
 ### Checked exceptions
 
 ```java
-Order order = platformTracing.manual()
+Order order = traceOperations.manual()
         .operation("load-order")
         .callChecked(() -> repository.load(orderId));
 ```
@@ -68,7 +68,7 @@ Default topology is **CHILD** when an active trace context exists; otherwise the
 When you need semconv-aligned HTTP, database, RPC, or Kafka spans, use transport builders instead of generic `operation(name)`:
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .database()
         .system("postgresql")
@@ -91,7 +91,7 @@ See [Observability and diagnostics](./platform-tracing-v3-observability-and-diag
 
 The `platform-tracing-samples` module contains documentation-as-code:
 
-`platform-tracing-samples/src/main/java/space/br1440/platform/tracing/samples/PlatformTracingV3Samples.java`
+`platform-tracing-samples/src/main/java/space/br1440/platform/tracing/samples/TraceOperationsV3Samples.java`
 
 Verify compilation:
 

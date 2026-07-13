@@ -44,7 +44,7 @@ This document is not a request for big-bang rewrite.
 
 ### Почему `platform-tracing-core` не может стать pure сразу
 
-Сейчас `platform-tracing-core` имеет `api opentelemetry-api` как транзитивную зависимость. `DefaultPlatformTracing`, `OtelPlatformContextPropagation`, `*SpanBuilderImpl` используют OTel types. Выдернуть OTel API из core одним коммитом означает сломать `DefaultPlatformTracing` и всю инфраструктуру span builders одновременно. Правильный путь: сначала извлечь pure policy (sampling rules, scrubbing engine), затем постепенно отделить OTel facade.
+Сейчас `platform-tracing-core` имеет `api opentelemetry-api` как транзитивную зависимость. `DefaultTraceOperations`, `OtelPlatformContextPropagation`, `*SpanBuilderImpl` используют OTel types. Выдернуть OTel API из core одним коммитом означает сломать `DefaultTraceOperations` и всю инфраструктуру span builders одновременно. Правильный путь: сначала извлечь pure policy (sampling rules, scrubbing engine), затем постепенно отделить OTel facade.
 
 ### Почему `TracingConfigReconciler` должен эволюционировать из существующих assets
 
@@ -855,7 +855,7 @@ This document is not a request for big-bang rewrite.
 | `PlatformAutoConfigurationCustomizer` | otel-extension | Agent SPI entry point | otel-extension | KEEP_IN_OTEL_EXTENSION_ADAPTER | `PlatformAutoConfigurationCustomizerTest` | нет | HIGH | PR-9 |
 | `PlatformSamplerFactory` | otel-extension | Builds CompositeSampler | otel-extension (тонкий adapter) | SPLIT_CORE_AND_ADAPTER | `PlatformSamplerProviderTest` | `CompositeSamplerBenchmark` | HIGH | PR-6/PR-9 |
 | `PlatformSpanProcessorFactory` | otel-extension | Builds processor chain | otel-extension | KEEP_IN_OTEL_EXTENSION_ADAPTER | processor tests | `CompositePipelineBenchmark` | MEDIUM | PR-9 |
-| `DefaultPlatformTracing` | core | Main PlatformTracing impl | platform-tracing-core (OTel facade — clean-up defer) | TEST_BEFORE_MOVE | `DefaultPlatformTracingTest`, `DefaultPlatformTracingInSpanTest` | `TypedBuilderBenchmark` | HIGH | DEFER (post PR-13) |
+| `DefaultTraceOperations` | core | Main TraceOperations impl | platform-tracing-core (OTel facade — clean-up defer) | TEST_BEFORE_MOVE | `DefaultTraceOperationsTest`, `DefaultTraceOperationsInSpanTest` | `TypedBuilderBenchmark` | HIGH | DEFER (post PR-13) |
 | `AttributePolicy` | core | Attribute allow/deny/eager | platform-tracing-core | KEEP_AS_IS | `AttributePolicyTest` | `AttributePolicyBenchmark` | LOW | — |
 | `ServletTracingAutoConfiguration` | webmvc | Servlet stack autoconfig | platform-tracing-autoconfigure-webmvc | KEEP_IN_WEBMVC_AUTOCONFIGURE | `WebStackIsolationTest`, `DuplicateSpansRegressionMatrixTest` | нет | MEDIUM | — |
 | `ReactiveTracingAutoConfiguration` | webflux | Reactive stack autoconfig | platform-tracing-autoconfigure-webflux | KEEP_IN_WEBFLUX_AUTOCONFIGURE | `ReactorContextPropagationIntegrationTest` | нет | MEDIUM | — |
@@ -881,7 +881,7 @@ This document is not a request for big-bang rewrite.
 
 ### `platform-tracing-api`
 
-**Current role:** Публичные контракты — `PlatformTracing` interface, typed span builders, semconv keys, propagation, `DomainConfigHolder`, `SpanAttributeScrubbingRule` SPI. 59 main классов.
+**Current role:** Публичные контракты — `TraceOperations` interface, typed span builders, semconv keys, propagation, `DomainConfigHolder`, `SpanAttributeScrubbingRule` SPI. 59 main классов.
 
 **Target role:** Без изменений плюс добавление wire schema (PR-2).
 
@@ -903,7 +903,7 @@ This document is not a request for big-bang rewrite.
 
 ### `platform-tracing-core`
 
-**Current role:** `DefaultPlatformTracing` facade, typed span builder implementations, `AttributePolicy`. 30 main классов. OTel-coupled сегодня — НЕ pure policy core.
+**Current role:** `DefaultTraceOperations` facade, typed span builder implementations, `AttributePolicy`. 30 main классов. OTel-coupled сегодня — НЕ pure policy core.
 
 **Target role:** Narrow pure-Java policy engine: sampling rules, scrubbing engine, validation policy, enrichment policy. OTel facade временно остаётся.
 

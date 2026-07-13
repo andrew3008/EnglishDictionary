@@ -9,9 +9,9 @@ import jakarta.annotation.Nullable;
  * {@code traceFlags} — байт W3C {@code traceflags} (sampled = {@code 0x01}).
  */
 public record RemoteSpanLink(String traceId,
-                              String spanId,
-                              byte traceFlags,
-                              @Nullable String traceState) {
+                             String spanId,
+                             byte traceFlags,
+                             @Nullable String traceState) {
 
     public static RemoteSpanLink sampled(String traceId, String spanId) {
         return new RemoteSpanLink(traceId, spanId, (byte) 1, null);

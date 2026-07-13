@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,12 +19,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OperationSpanBuilderTest {
 
     private RecordingTracingRuntime recording;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
 
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        tracing = new DefaultPlatformTracing(recording);
+        tracing = new DefaultTraceOperations(recording);
     }
 
     @Test

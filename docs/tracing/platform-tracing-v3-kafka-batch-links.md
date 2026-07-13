@@ -1,11 +1,11 @@
-# PlatformTracing v3 — Kafka Batch Links
+# TraceOperations v3 — Kafka Batch Links
 
 Kafka batch consumer processing uses **ROOT + pre-start links** to correlate a single batch span with individual message traces. This is the primary public example for span links in v3.
 
 ## Recommended pattern
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .kafka()
         .consumer()

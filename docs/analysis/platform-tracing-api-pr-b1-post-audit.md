@@ -58,7 +58,7 @@ Stale names remain only in historical docs/archives (`docs/analysis/perplexity-r
 ### Context pair (active vs snapshot)
 
 ```java
-// Live read-only view — PlatformTracing.traceContext()
+// Live read-only view — traceOperations.traceContext()
 public interface ActiveTraceContextView {
     Optional<String> traceId();
     Optional<String> spanId();

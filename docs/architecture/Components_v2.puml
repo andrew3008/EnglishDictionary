@@ -140,15 +140,15 @@ rectangle "L2 — Framework Adapter" as L2 #BBDEFB {
 }
 
 rectangle "L3 — Application Port" as L3 #FFE0B2 {
-  card "PlatformTracing\n(interface)" as pt
+  card "TraceOperations\n(interface)" as pt
   card "@Traced / SpanScope\nSpanCategory / SpanResult" as ann
   card "SPI:\nSpanEnricher\nSpanAttributeScrubbingRule\nSamplingDecisionContributor" as spi
   card "TracingRequestContext\nTracingMdcKeys\nPlatformHeaders" as cross
 }
 
 rectangle "L4 — Domain Adapter" as L4 #FFCC80 {
-  card "DefaultPlatformTracing\n→ OpenTelemetry Tracer" as dpt
-  card "NoOpPlatformTracing" as noop
+  card "DefaultTraceOperations\n→ OpenTelemetry Tracer" as dpt
+  card "NoopTraceOperations" as noop
   card "MeteredPlatformTracing\n(decorator)" as metered
 }
 
@@ -201,7 +201,7 @@ title platform-tracing-api — публичный контракт (framework-ag
 
 package "space.br1440.platform.tracing.api" as root #FFF8E1 {
 
-  interface PlatformTracing {
+  interface TraceOperations {
     +currentTraceId(): Optional<String>
     +currentSpanId(): Optional<String>
     +startSpan(name, category): SpanScope
@@ -276,8 +276,8 @@ package "spi" as spi_pkg #FFECB3 {
   }
 }
 
-PlatformTracing ..> SpanScope : creates
-PlatformTracing ..> SpanCategory
+TraceOperations ..> SpanScope : creates
+TraceOperations ..> SpanCategory
 SpanScope ..> SpanResult
 SpanScope ..> PlatformAttributes : writes
 
@@ -303,13 +303,13 @@ end note
 skinparam backgroundColor #FEFEFE
 skinparam defaultFontName "Segoe UI"
 
-title platform-tracing-core — адаптация PlatformTracing → OpenTelemetry API
+title platform-tracing-core — адаптация TraceOperations → OpenTelemetry API
 
-class DefaultPlatformTracing {
+class DefaultTraceOperations {
   -tracer: Tracer
   +INSTRUMENTATION_NAME = "space.br1440.platform.tracing"
   __
-  +DefaultPlatformTracing(OpenTelemetry)
+  +DefaultTraceOperations(OpenTelemetry)
   +startSpan() → OtelSpanScope
   +recordException()
   -toSpanKind(SpanCategory): SpanKind
@@ -321,23 +321,23 @@ class "OtelSpanScope\n(private inner)" as OtelSpanScope {
   +setAttribute / setResult / close()
 }
 
-class NoOpPlatformTracing <<singleton>> {
+class NoopTraceOperations <<singleton>> {
   +INSTANCE
   +startSpan() → NoOpSpanScope
 }
 
-interface PlatformTracing
+interface TraceOperations
 interface SpanScope
 
-PlatformTracing <|.. DefaultPlatformTracing
-PlatformTracing <|.. NoOpPlatformTracing
-DefaultPlatformTracing +-- OtelSpanScope
+TraceOperations <|.. DefaultTraceOperations
+TraceOperations <|.. NoopTraceOperations
+DefaultTraceOperations +-- OtelSpanScope
 SpanScope <|.. OtelSpanScope
 
-DefaultPlatformTracing --> "OpenTelemetry\n.getTracer()" : uses
+DefaultTraceOperations --> "OpenTelemetry\n.getTracer()" : uses
 OtelSpanScope --> "Span.makeCurrent()\nSpan.end()" : context propagation
 
-note top of DefaultPlatformTracing
+note top of DefaultTraceOperations
   **Поток создания span**
   1. tracer.spanBuilder(name)
   2. setSpanKind + platform.type attribute
@@ -345,7 +345,7 @@ note top of DefaultPlatformTracing
   4. close → scope.close + span.end
 end note
 
-note bottom of NoOpPlatformTracing
+note bottom of NoopTraceOperations
   Активируется TracingCoreAutoConfiguration когда:
   • нет OpenTelemetry bean
   • GlobalOpenTelemetry — noop (probe span invalid)
@@ -469,7 +469,7 @@ file "META-INF/spring/\nAutoConfiguration.imports" as imports
 
 package "Core & cross-cutting" as core_pkg #E3F2FD {
   class TracingCoreAutoConfiguration {
-    +platformTracing(): PlatformTracing
+    +traceOperations(): TraceOperations
     +platformSamplingControlClient()
     -isFunctional(OpenTelemetry): boolean
   }
@@ -536,8 +536,8 @@ imports --> ServletTracingAutoConfiguration
 imports --> ReactiveTracingAutoConfiguration
 
 TracingCoreAutoConfiguration --> TracingProperties
-TracingCoreAutoConfiguration --> DefaultPlatformTracing
-TracingCoreAutoConfiguration --> NoOpPlatformTracing
+TracingCoreAutoConfiguration --> DefaultTraceOperations
+TracingCoreAutoConfiguration --> NoopTraceOperations
 TracingMdcContextAutoConfiguration --> TracingMdcContextWrapper : ContextStorage.addWrapper\n(@AutoConfigureBefore Core)
 
 TracingMetricsAutoConfiguration ..> TracingCoreAutoConfiguration : @AutoConfigureBefore\n(AOP, Servlet, Reactive)
@@ -591,7 +591,7 @@ rectangle "Transitive classpath" as cp #FFFDE7 {
 }
 
 rectangle "Runtime beans (Servlet stack)" as runtime #E3F2FD {
-  component "PlatformTracing\n(@Primary MeteredPlatformTracing?)" as bean_pt
+  component "TraceOperations\n(@Primary MeteredPlatformTracing?)" as bean_pt
   component "TraceResponseHeaderServletFilter" as filt
   component "PlatformServerRequestObservationConvention" as srv_obs
   component "PlatformClientRequestObservationConvention" as cli_obs
@@ -641,8 +641,8 @@ actor Client
 participant "TraceResponseHeader\nServletFilter" as Filter
 participant "Spring MVC\n+ Micrometer Obs" as MVC
 participant "PlatformServerRequest\nObservationConvention" as Conv
-participant "PlatformTracing\n(bean)" as PT
-participant "DefaultPlatformTracing" as DPT
+participant "TraceOperations\n(bean)" as PT
+participant "DefaultTraceOperations" as DPT
 participant "OpenTelemetry\n(GlobalOpenTelemetry)" as OT
 participant "Java Agent\n+ otel-extension" as Agent
 participant "OTLP Exporter" as Export
@@ -771,7 +771,7 @@ together {
     card "**Proposal:** split autoconfigure\n→ core-autoconfigure\n  servlet-autoconfigure\n  reactive-autoconfigure"
   }
 
-  rectangle "R4 — PlatformTracing layering" as R4 #C5CAE9 {
+  rectangle "R4 — TraceOperations layering" as R4 #C5CAE9 {
     card "MeteredPlatformTracing\n@Primary decorator in Spring"
     card "Core stays pure OTel"
     card "**Proposal:** move metrics decorator\nto optional metrics-autoconfigure\n(or Micrometer Observation only)"
@@ -790,7 +790,7 @@ together {
   }
 
   rectangle "R7 — Observation vs manual API" as R7 #FFF9C4 {
-    card "Dual entry: Micrometer Observation\n+ PlatformTracing.startSpan()"
+    card "Dual entry: Micrometer Observation\n+ TraceOperations.startSpan()"
     card "Risk of overlapping spans\nif misused"
     card "**Proposal:** document single primary path;\nconsider deprecating manual API\nfor HTTP boundaries"
   }

@@ -1,4 +1,4 @@
-# План конспекта: PlatformTracing × OTel best practices (для SRE и архитекторов)
+# План конспекта: TraceOperations × OTel best practices (для SRE и архитекторов)
 
 > **Кто пишет / кому:** ведущий Java-разработчик (owner platform library) → архитекторы + lead SRE.  
 > **Цель встречи:** получить **явное согласование границ**, не «ознакомить с observability».  
@@ -22,7 +22,7 @@
 
 ```
 OTel Java Agent = default instrumentation
-PlatformTracing.manual() = governance для exception path (business attrs, topology, Kafka links)
+traceOperations.manual() = governance для exception path (business attrs, topology, Kafka links)
 Collector/SRE = tail sampling, enrich, scrub, capacity
 ```
 
@@ -30,7 +30,7 @@ Collector/SRE = tail sampling, enrich, scrub, capacity
 
 ## 0. Вступление — что просим согласовать (½ стр.)
 
-**Заголовок слайда:** «PlatformTracing v3 — не backend, а platform starter»
+**Заголовок слайда:** «TraceOperations v3 — не backend, а platform starter»
 
 **4 bullet — статус на сегодня (post-Slice 7):**
 - Public API: `traceContext()` + `manual()` only; единая точка создания span через `TracingImplementation`
@@ -47,7 +47,7 @@ Spring App
   → Gateway Collector                        [tail: errors, slow, forced]
   → Tempo/Jaeger
        ↑
-  PlatformTracing.manual() — только governance, не замена SDK
+  traceOperations.manual() — только governance, не замена SDK
 ```
 
 **Вопрос на выходе раздела:** подтверждаем, что scope platform library — **instrumentation + policy**, не Tempo/Jaeger/Collector ownership?
@@ -62,7 +62,7 @@ Spring App
 
 **Наша позиция:**
 
-| Книга | PlatformTracing | Артефакт |
+| Книга | TraceOperations | Артефакт |
 |-------|-----------------|----------|
 | Zero-code / Agent default | OTel Java Agent + extension | ADR-otel-direct-integration |
 | Custom = muscles, не skeleton | `manual()` narrow facade | v3 plan §3 |
@@ -73,7 +73,7 @@ Spring App
 **Анти-паттерн из книги (1 строка):** «Install agent, don't worry» без governance → span explosion и duplicate paths (у нас R01).
 
 **Вопрос архитекторам:**
-> PlatformTracing — **governance facade** над OTel API, не replacement SDK и не tracing backend. OK?
+> TraceOperations — **governance facade** над OTel API, не replacement SDK и не tracing backend. OK?
 
 **Вырезать:** Cocoa/SwiftUI, eBPF, proprietary agents history.
 
@@ -123,7 +123,7 @@ Spring App
 |------|---------|--------|
 | OTel Agent | Trace lifecycle для HTTP/DB/Kafka | Spans → OTLP |
 | Micrometer Observation | Metrics/conventions | Metrics, не второй root span |
-| `PlatformTracing.manual()` | Custom spans | Через `TracingImplementation` / OTel API |
+| `traceOperations.manual()` | Custom spans | Через `TracingImplementation` / OTel API |
 
 **Книжная формулировка:** «If your trace has a hundred two-millisecond spans, you probably have too many» — относится и к **двум root spans на один HTTP request**.
 
@@ -143,7 +143,7 @@ Spring App
 - Критерий span: *interesting?* (latency/failure/boundary) + *aggregable?* (group by).
 - Альтернатива — timing attrs на root/parent (`auth.duration_ms`), не лишний child.
 
-**Правила PlatformTracing (выдать как policy):**
+**Правила TraceOperations (выдать как policy):**
 
 **DO**
 - Agent для HTTP, JDBC, Kafka, gRPC

@@ -1,8 +1,8 @@
-# PlatformTracing Post-Remediation Review Package
+# TraceOperations Post-Remediation Review Package
 
 ## Executive summary
 
-PlatformTracing Slice 7 remediation B01–B10 is complete. The remediation closes the post-Slice 7 review items without changing the public `PlatformTracing` API and without restoring v1 compatibility.
+TraceOperations Slice 7 remediation B01–B10 is complete. The remediation closes the post-Slice 7 review items without changing the public `TraceOperations` API and without restoring v1 compatibility.
 
 The default build is GREEN. Module tests and ArchUnit checks are GREEN. Grep gates confirm no regression of removed v1 symbols and no raw OTel span creation in the Kafka aspect package.
 
@@ -41,7 +41,7 @@ Git commit `a02bb94` on branch `master` captures the remediation state. Slice 8 
 ## Architecture invariants preserved
 
 ```text
-PlatformTracing = traceContext() + manual()
+traceOperations = traceContext() + manual()
 Single creation boundary: TracingImplementation.startSpan(SpanSpec)
 No v1 API restored
 No SpanRelation
@@ -103,7 +103,7 @@ TraceState is preserved into `SpanLinkContext` via full record constructor (W3C 
 
 Multi-topic destination fallback: listener id if non-blank, else advised method name. Never uses first record topic for multi-topic batches.
 
-Wiring: `PlatformKafkaAutoConfiguration` injects `OpenTelemetry` + `PlatformTracing`; `@ConditionalOnBean(OpenTelemetry.class)` retained for propagators.
+Wiring: `PlatformKafkaAutoConfiguration` injects `OpenTelemetry` + `TraceOperations`; `@ConditionalOnBean(OpenTelemetry.class)` retained for propagators.
 
 ## R01 status after remediation
 
@@ -134,7 +134,7 @@ See `docs/known-issues/R01.md` for updated proof gates including `KafkaBatchAspe
 
 Act as a principal Java platform architect, Spring Boot observability expert, OpenTelemetry/Micrometer reviewer, and adversarial code reviewer.
 
-Review the attached post-remediation PlatformTracing package.
+Review the attached post-remediation TraceOperations package.
 
 Focus on:
 

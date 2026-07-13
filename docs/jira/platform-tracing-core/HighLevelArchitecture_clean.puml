@@ -34,7 +34,7 @@ rectangle "OpenTelemetry\nAPI / SDK" as OTEL #FFF0F0
 package "platform-tracing-core\nскоуп рефакторинга" as CORE #FFFFFF {
 
   package "Основная магистраль\nчитать слева направо" as BACKBONE #FFFFFF {
-    component "Entry layer\n\nfacade\npropagation\ncontext\n\nDefaultPlatformTracing\nNoOpPlatformTracing\nPlatformContextPropagation impls\nTraceContextView impls" as ENTRY #E8F1FF
+    component "Entry layer\n\nfacade\npropagation\ncontext\n\nDefaultTraceOperations\nNoopTraceOperations\nPlatformContextPropagation impls\nTraceContextView impls" as ENTRY #E8F1FF
 
     component "Manual tracing pipeline\nбез OTel trace API\n\nDefaultManualTracing\nmanual builders\nmanual.spec\nScopedExecution" as MANUAL #EAF7EA
 

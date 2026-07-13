@@ -8,10 +8,10 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 
 import java.util.Arrays;
@@ -27,7 +27,7 @@ class ScopedExecutionTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
     private RecordingTracingRuntime recording;
 
     @BeforeEach
@@ -36,7 +36,7 @@ class ScopedExecutionTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
+        tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
         recording = new RecordingTracingRuntime();
     }
 
@@ -163,7 +163,7 @@ class ScopedExecutionTest {
 
     @Test
     void terminalMethods_routeThroughTracingRuntime() {
-        DefaultPlatformTracing recordingTracing = new DefaultPlatformTracing(recording);
+        DefaultTraceOperations recordingTracing = new DefaultTraceOperations(recording);
         recordingTracing.manual().operation("routed").run(() -> {
         });
         assertThat(recording.receivedSpecs()).hasSize(1);
@@ -171,8 +171,8 @@ class ScopedExecutionTest {
     }
 
     @Test
-    void platformTracing_hasNoPublicExecuteMethod() {
-        assertThat(Arrays.stream(PlatformTracing.class.getMethods())
+    void traceOperations_hasNoPublicExecuteMethod() {
+        assertThat(Arrays.stream(TraceOperations.class.getMethods())
                 .map(java.lang.reflect.Method::getName)
                 .noneMatch("execute"::equals))
                 .isTrue();

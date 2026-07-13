@@ -1,4 +1,4 @@
-# PlatformTracing — план рефакторинга v3.4.2
+# TraceOperations — план рефакторинга v3.4.2
 
 > Canonical architecture plan (v3.4.2 architect-review correction patch). Approved public API: `platformtracing_full_production_public_interfaces_ru_v3.md`.
 
@@ -10,7 +10,7 @@
 
 **Current canonical decisions:**
 
-- `PlatformTracing` is a narrow facade: `traceContext()` + `manual()`.
+- `TraceOperations` is a narrow facade: `traceContext()` + `manual()`.
 - No behavioral default methods on public facade, builders, or internal SPI.
 - Auto-instrumentation is the default; `manual()` is used only when automatic instrumentation is not enough.
 - Manual tracing entry points are `operation(name)`, `transport()`, and governed `spanFromSpec(spec)`.
@@ -33,7 +33,7 @@
 
 ```text
 Auto-instrumentation is the default.
-Use PlatformTracing.manual() only when automatic instrumentation is not enough.
+Use traceOperations.manual() only when automatic instrumentation is not enough.
 ```
 
 ---
@@ -46,11 +46,11 @@ The ADR must decide how `TracingImplementation` relates to Spring Boot 3 / Micro
 
 Accepted options to evaluate:
 
-A. PlatformTracing controls manual tracing directly through OpenTelemetry SDK.
+A. TraceOperations controls manual tracing directly through OpenTelemetry SDK.
    - Spring auto-observation remains separate.
    - The plan must define coexistence and duplicate-span prevention rules.
 
-B. PlatformTracing is implemented as a bridge over Micrometer Observation API.
+B. TraceOperations is implemented as a bridge over Micrometer Observation API.
    - The plan must define how OTel links, SpanSpec governance, and typed semantic builders map to Observation.
 
 C. Hybrid model.
@@ -77,28 +77,28 @@ Slice 1A scope remains additive only (API skeleton and architecture tests).
 
 | Факт | Файл:строка | Следствие |
 |------|-------------|-----------|
-| `PlatformTracing` — 4 abstract, ~30 behavioral default методов | `PlatformTracing.java:29-60` | Любой decorator без переопределений молча ломает семантику |
-| `startSpan(name, category, relation)` default игнорирует relation | `PlatformTracing.java:72-77` | Корень R01; должен быть устранён, не пропатчен |
-| `startSpanWithLinks` default дропает links; `addLink` — no-op | `PlatformTracing.java:110-122` | Links должны перейти на pre-start модель |
-| `inSpan` — 4 default-метода с Javadoc-запретом переопределения | `PlatformTracing.java:256-358` | Tribal knowledge вместо структурного запрета |
+| `TraceOperations` — 4 abstract, ~30 behavioral default методов | `TraceOperations.java:29-60` | Любой decorator без переопределений молча ломает семантику |
+| `startSpan(name, category, relation)` default игнорирует relation | `TraceOperations.java:72-77` | Корень R01; должен быть устранён, не пропатчен |
+| `startSpanWithLinks` default дропает links; `addLink` — no-op | `TraceOperations.java:110-122` | Links должны перейти на pre-start модель |
+| `inSpan` — 4 default-метода с Javadoc-запретом переопределения | `TraceOperations.java:256-358` | Tribal knowledge вместо структурного запрета |
 | `MeteredPlatformTracing` переопределяет только `startSpan(2-arg)`, builder factories, `currentTraceId/Id`, `recordException` | `MeteredPlatformTracing.java` (до строки 118) | R01 подтверждён: relation/links/inSpan деградируют через default |
 | `MeteredPlatformTracing` зарегистрирован `@Primary` при наличии Micrometer | `TracingMetricsAutoConfiguration.java:106-112` | Каждое Micrometer-enabled приложение получает дефектный bean |
-| Нет теста `MeteredPlatformTracing` + `SpanRelation.ROOT` или links | `DefaultPlatformTracingTest.java`, `PlatformTracingMetricsTest.java` | R01 не воспроизведён ни одним тестом |
-| `DefaultPlatformTracing` корректно реализует relation/links | `DefaultPlatformTracing.java:159-231` | Корректное поведение есть; нужно сохранить через граничное тестирование |
+| Нет теста `MeteredPlatformTracing` + `SpanRelation.ROOT` или links | `DefaultTraceOperationsTest.java`, `PlatformTracingMetricsTest.java` | R01 не воспроизведён ни одним тестом |
+| `DefaultTraceOperations` корректно реализует relation/links | `DefaultTraceOperations.java:159-231` | Корректное поведение есть; нужно сохранить через граничное тестирование |
 | **9 классов для удаления в enabled-режиме**: 8 `Facade*SpanBuilder` + `AbstractFacadeTypedSpanBuilder` | `span/builder/` package | Все обходят semconv-валидацию и anti-double guard |
 | `AbstractPlatformSpanBuilder` anti-double guard привязан к raw OTel `Context` | `AbstractPlatformSpanBuilder.java:113-119` | Миграция guard'а на `TracingImplementation` — safety-critical |
-| Kill-switch `facadeEnabled`/`setFacadeEnabled` в `DefaultPlatformTracing` | `DefaultPlatformTracing.java:54, 194, 202, 213` | `TracingState` replaces/preserves kill-switch semantics via `TracingImplementation.state()` в Срезе 2 |
+| Kill-switch `facadeEnabled`/`setFacadeEnabled` в `DefaultTraceOperations` | `DefaultTraceOperations.java:54, 194, 202, 213` | `TracingState` replaces/preserves kill-switch semantics via `TracingImplementation.state()` в Срезе 2 |
 
 ---
 
 ## 3. Целевая публичная архитектура
 
-### 3.1 PlatformTracing — узкий фасад
+### 3.1 TraceOperations — узкий фасад
 
 Только два аксессора, ноль behavioral methods:
 
 ```java
-public interface PlatformTracing {
+public interface TraceOperations {
 
     TraceContextView traceContext();
 
@@ -159,7 +159,7 @@ public interface TransportTracing {
 }
 ```
 
-Transport builders **не** размещаются на `PlatformTracing` и **не** размещаются напрямую на `ManualTracing`. Future transport builders, such as Redis or S3, require explicit API proposal and are out of v3.4 scope.
+Transport builders **не** размещаются на `TraceOperations` и **не** размещаются напрямую на `ManualTracing`. Future transport builders, such as Redis or S3, require explicit API proposal and are out of v3.4 scope.
 
 ### 3.5 SpecifiedSpan
 
@@ -610,13 +610,13 @@ Notes:
 - This is an internal SPI, not application-facing API.
 - It must be fully abstract: no default methods and no behavioral static helpers.
 - `startSpan(SpanSpec)` is the single creation boundary used by operation builders, transport builders, `SpecifiedSpan`, metering, and no-op implementations.
-- `currentTraceContext()` backs `PlatformTracing.traceContext()`.
+- `currentTraceContext()` backs `traceOperations.traceContext()`.
 - `recordException(...)` centralizes exception recording policy.
 - `TracingState` replaces/preserves the current `facadeEnabled` kill-switch semantics and records the reason/state for diagnostics.
 
 - `MeteredTracingImplementation` декорирует `TracingImplementation` полностью.
 - `DefaultFacade(MeteredTracingImplementation(DefaultTracingImplementation))`.
-- Optional internal `TracingExecutorImpl` — routes scoped execution through `TracingImplementation.startSpan()`; **never** exposed as `PlatformTracing.execute()`.
+- Optional internal `TracingExecutorImpl` — routes scoped execution through `TracingImplementation.startSpan()`; **never** exposed as `TraceOperations.execute()`.
 
 **Validation mode:** STRICT — production default. WARN — только local/dev profile. Без silent fallback в enabled-режиме.
 
@@ -628,7 +628,7 @@ Notes:
 |----------|-------------|
 | `current()`, `CurrentTraceContext`, `currentTraceContext()` | `traceContext()`, `TraceContextView` |
 | `businessSpan`, `internalSpan` (public entry) | `manual().operation(name)` |
-| top-level `http()`/`db()`/`database()`/`rpc()`/`kafka()` on `PlatformTracing` | `manual().transport().http()/database()/rpc()/kafka()` |
+| top-level `http()`/`db()`/`database()`/`rpc()`/`kafka()` on `TraceOperations` | `manual().transport().http()/database()/rpc()/kafka()` |
 | `execute()`, public `TracingExecutor` | terminal methods on builders / `SpecifiedSpan` |
 | `AdvancedTracing`, `advanced()`, `rawSpan`, `raw()`, `escapeHatch`, `customSpan` | `manual().spanFromSpec(spec)` |
 | `justification(String)` | `reason(SpanSpecReason)` + `reference(String)` — rejected: unstructured free text without governance value (see §3.6) |
@@ -641,7 +641,7 @@ Notes:
 **Trace id:**
 
 ```java
-String traceId = platformTracing.traceContext()
+String traceId = traceOperations.traceContext()
     .traceId()
     .orElse("unknown");
 ```
@@ -649,7 +649,7 @@ String traceId = platformTracing.traceContext()
 **Standard operation:**
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
     .operation("recalculate-pricing")
     .run(() -> pricingService.recalculate(orderId));
 ```
@@ -657,7 +657,7 @@ platformTracing.manual()
 **Returning value:**
 
 ```java
-Price price = platformTracing.manual()
+Price price = traceOperations.manual()
     .operation("calculate-price")
     .call(() -> pricingService.calculate(orderId));
 ```
@@ -665,7 +665,7 @@ Price price = platformTracing.manual()
 **Checked exception:**
 
 ```java
-Order order = platformTracing.manual()
+Order order = traceOperations.manual()
     .operation("load-order")
     .callChecked(() -> repository.load(orderId));
 ```
@@ -673,7 +673,7 @@ Order order = platformTracing.manual()
 **Scheduled root job:**
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
     .operation("nightly-sync")
     .root()
     .run(() -> syncService.runNightlySync());
@@ -682,7 +682,7 @@ platformTracing.manual()
 **Detached audit operation:**
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
     .operation("write-audit-record")
     .detached()
     .run(() -> auditService.write(record));
@@ -691,7 +691,7 @@ platformTracing.manual()
 **Kafka batch with links:**
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
     .transport()
     .kafka()
     .consumer()
@@ -704,7 +704,7 @@ platformTracing.manual()
 **Manual database span:**
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
     .transport()
     .database()
     .operation("SELECT")
@@ -725,7 +725,7 @@ SpanSpec spec = SpanSpec.builder("legacy-protocol-call")
     .reference("PLATFORM-1234")
     .build();
 
-platformTracing.manual()
+traceOperations.manual()
     .spanFromSpec(spec)
     .run(() -> legacyClient.call(request));
 ```
@@ -755,10 +755,10 @@ platformTracing.manual()
 ## 5. Срезы
 
 **Срез 0A — Baseline GREEN тесты (v1 API)**
-- Цель: зафиксировать корректное поведение `DefaultPlatformTracing` для child/root/detached/links/addLink через текущий v1 API.
+- Цель: зафиксировать корректное поведение `DefaultTraceOperations` для child/root/detached/links/addLink через текущий v1 API.
 - Разрешено: только новые test-файлы в `platform-tracing-core/src/test`.
 - Запрещено: любые изменения production-кода.
-- Тесты: `DefaultPlatformTracingBaselineTest` — 5 методов. Фикстура per-test; `@AfterEach` assert `Span.current()` invalid; relative assertions only.
+- Тесты: `DefaultTraceOperationsBaselineTest` — 5 методов. Фикстура per-test; `@AfterEach` assert `Span.current()` invalid; relative assertions only.
 - **Lifecycle:** v1 baseline до Среза 1B. В Срезе 1B — переписать на v3 API (`manual().operation(...).root()`, `.linkedTo(...)`) или изолировать в non-default source set.
 - Верификация: `.\gradlew.bat :platform-tracing-core:test --tests "*BaselineTest*"`.
 
@@ -771,15 +771,15 @@ platformTracing.manual()
   - relation-aware `inSpan(..., SpanRelation.ROOT, ...)`;
   - relation-aware `inSpan(..., SpanRelation.DETACHED, ...)`;
   - `addLink(...)` through the Micrometer-enabled primary bean;
-  - sanity assertion that the active bean path really uses the Micrometer-enabled decorator path and does not accidentally exercise `DefaultPlatformTracing` directly.
+  - sanity assertion that the active bean path really uses the Micrometer-enabled decorator path and does not accidentally exercise `DefaultTraceOperations` directly.
 - Артефакт: `docs/known-issues/R01.md`.
 - **Lifecycle:** v1 known-defect artifact до Среза 1B. Срез 6 добавляет **новые v3 metered topology tests** (не конвертация v1 RED).
 - Верификация: `.\gradlew.bat :platform-tracing-core:knownDefectTest` (FAIL); `.\gradlew.bat :platform-tracing-spring-boot-autoconfigure:knownDefectTest` (FAIL); `.\gradlew.bat build` (GREEN).
 
 **Срез 1A — API skeleton (аддитивный)**
-- Цель: ввести новые sub-API интерфейсы рядом с существующим `PlatformTracing`.
+- Цель: ввести новые sub-API интерфейсы рядом с существующим `TraceOperations`.
 - Additive interfaces: `TraceContextView`, `ManualTracing`, `OperationSpanBuilder`, `TransportTracing`, `HttpTracing`, `DatabaseTracing`, `RpcTracing`, `KafkaTracing`, `SpecifiedSpan`, `SpanSpec`, `SpanSpecBuilder` (with `.child()/.root()/.detached()/.linkedTo(...)` and typed attribute overloads that normalize to `SpanSpecAttributeValue`), `SpanSpecReason`, `SpanSpecAttributeValue`, `SpanOptions` (public immutable value model, not preferred builder grammar), `SpanHandle`, transport sub-builders.
-- Запрещено: изменять `PlatformTracing.java`.
+- Запрещено: изменять `TraceOperations.java`.
 - **Forbidden stale public names in Slice 1A:**
   - `CurrentTraceContext`
   - `current()`
@@ -832,7 +832,7 @@ Allowed:
 - Верификация: `.\gradlew.bat :platform-tracing-api:build`.
 
 **Срез 1B — Атомарный cutover (multi-module)**
-- Цель: переписать `PlatformTracing` → `traceContext()` + `manual()` only; удалить 9 `Facade*`/`AbstractFacade*`; удалить `SpanRelation`; обновить core + autoconfigure.
+- Цель: переписать `TraceOperations` → `traceContext()` + `manual()` only; удалить 9 `Facade*`/`AbstractFacade*`; удалить `SpanRelation`; обновить core + autoconfigure.
 - Финальный commit/PR обязан быть GREEN.
 - v1 тесты из 0A/0B: переписать на `manual().operation(...).root()` / `.linkedTo(...)` или non-default source set.
 - **Pre-requisite: full removed-symbol inventory**
@@ -879,7 +879,7 @@ Every remaining occurrence must be classified:
 - Верификация: `.\gradlew.bat :platform-tracing-api:build :platform-tracing-core:build :platform-tracing-spring-boot-autoconfigure:build`.
 
 **Срез 2 — Внутренняя граница реализации**
-- Цель: `TracingImplementation` (minimal SPI per §3.10); refactor `DefaultPlatformTracing`; migrate anti-double guard; migrate `facadeEnabled` kill-switch to `TracingState`.
+- Цель: `TracingImplementation` (minimal SPI per §3.10); refactor `DefaultTraceOperations`; migrate anti-double guard; migrate `facadeEnabled` kill-switch to `TracingState`.
 - ArchUnit permanent gate: `TracingImplementation` — zero default methods and zero behavioral static helpers (static factories on value/spec types remain allowed per §5 Slice 1A nuance); abstract skeleton SPI classes forbidden (see Slice 1A anti-skeleton rule).
 - **Resolved direction:**
   - use `TracingImplementation.state()` returning internal `TracingState`;
@@ -971,7 +971,7 @@ This gate must be green before Slice 3A starts.
 - Верификация: `.\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --tests "*MeteredTopologyMatrixTest*" --tests "*MetricsCount*"`.
 
 **Срез 7 — Spring Boot auto-configuration и diagnostics**
-- Цель: primary `PlatformTracing` bean; no-op for disabled/unavailable; `TracingDiagnostics` Actuator endpoint.
+- Цель: primary `TraceOperations` bean; no-op for disabled/unavailable; `TracingDiagnostics` Actuator endpoint.
 - `TracingDiagnostics` must expose a stable diagnostics DTO mapped from internal `TracingState`.
 - It must include mode/reason/details suitable for support diagnostics, without exposing OpenTelemetry SDK types.
 - It must not expose internal `TracingState` directly unless architecture review explicitly decides to make `TracingState` a public supportability API.
@@ -979,7 +979,7 @@ This gate must be green before Slice 3A starts.
 - Slice 7 must include `ObservationCoexistenceTest` if Micrometer Observation remains enabled.
 
 Required assertion:
-one application operation / HTTP request must not produce two unsynchronized root spans through separate Spring Observation and PlatformTracing paths.
+one application operation / HTTP request must not produce two unsynchronized root spans through separate Spring Observation and TraceOperations paths.
 
 The exact behavior depends on the ADR selected before Slice 1A.
 - Тесты: `ApplicationContextRunner` matrix с `FilteredClassLoader`; webmvc/webflux/TracedAspect against new facade; `DiagnosticsBoundaryTest`; diagnostics DTO JSON contract test; `ObservationCoexistenceTest`.
@@ -1005,7 +1005,7 @@ The exact behavior depends on the ADR selected before Slice 1A.
 
 Required named test suites:
 
-- `DefaultPlatformTracingBaselineTest` — Slice 0A legacy behavior.
+- `DefaultTraceOperationsBaselineTest` — Slice 0A legacy behavior.
 - `MeteredPlatformTracingKnownDefectTest` — Slice 0B R01 RED.
 - `BeanTopologyTest` — Slice 2 minimal Spring Boot autoconfiguration bean singularity proof; lives in `platform-tracing-spring-boot-autoconfigure`.
 - `TracingImplementationRoutingTest` — Slice 2 core single creation boundary proof; lives in `platform-tracing-core`.
@@ -1088,7 +1088,7 @@ Required named test suites:
 | R21 | Abstract skeleton SPI class recreates partial-delegation risk | High | 1A,2 | ArchUnit forbids abstract classes with method bodies implementing `TracingImplementation`; only full concrete implementations are allowed |
 | R22 | Spring bean graph bypasses `MeteredTracingImplementation` despite new SPI | Critical | 2,6,7 | `BeanTopologyTest` proves bean singularity and metered chain under Micrometer |
 | R23 | Builders create spans outside `TracingImplementation.startSpan(SpanSpec)` | Critical | 2-6 | `TracingImplementationRoutingTest` and ArchUnit enforce single creation boundary |
-| R24 | Micrometer Observation and PlatformTracing create duplicate or inconsistent spans | High | 1A,7 | ADR before Slice 1A; `ObservationCoexistenceTest` in Slice 7 |
+| R24 | Micrometer Observation and TraceOperations create duplicate or inconsistent spans | High | 1A,7 | ADR before Slice 1A; `ObservationCoexistenceTest` in Slice 7 |
 | R25 | Diagnostics DTO becomes accidental passthrough of internal `TracingState` | Medium | 7 | Semantic stability rule and DTO contract/snapshot tests |
 
 ---
@@ -1152,10 +1152,10 @@ Required named test suites:
 
 | Срез | Цель |
 |------|------|
-| 0A | Baseline GREEN tests для `DefaultPlatformTracing` (v1 API) |
+| 0A | Baseline GREEN tests для `DefaultTraceOperations` (v1 API) |
 | 0B | `@Tag("r01-red")` RED tests + `knownDefectTest` + `docs/known-issues/R01.md` |
 | 1A | Additive API skeleton + ArchUnit anti-skeleton rule + `SpanSpecBuilderFinalStateTest` scope |
-| 1B | Cutover: `PlatformTracing` → `traceContext()` + `manual()`; delete Facade* + `SpanRelation`; full removed-symbol inventory |
+| 1B | Cutover: `TraceOperations` → `traceContext()` + `manual()`; delete Facade* + `SpanRelation`; full removed-symbol inventory |
 | 2 | `TracingImplementation`, `TracingState`, `TracingImplementationRoutingTest` (core), `BeanTopologyTest` (autoconfigure), anti-double guard, kill-switch migration |
 | 3A | `manual().operation(...)` + `manual().transport().http()`; STRICT validation |
 | 3B | `manual().transport().database()` |

@@ -11,21 +11,21 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * PR-0: параллельные тесты {@link SpanEnricher} через v3 {@code PlatformTracing.manual()},
+ * PR-0: параллельные тесты {@link SpanEnricher} через v3 {@code traceOperations.manual()},
  * без прямой зависимости от {@code InternalSpanBuilderImpl}.
  */
 class SpanEnricherV3CharacterizationTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
     private SpanEnricher enricher;
 
     @BeforeEach
@@ -34,7 +34,7 @@ class SpanEnricherV3CharacterizationTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
+        tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
         enricher = new SpanEnricher(new AttributePolicy());
     }
 

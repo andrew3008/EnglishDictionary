@@ -14,7 +14,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.web.client.RestClient;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
@@ -57,8 +57,8 @@ public class ServletTracingAutoConfiguration {
     @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".response", name = "expose-request-id-header",
             havingValue = "true", matchIfMissing = true)
     public FilterRegistrationBean<TraceResponseHeaderServletFilter> platformTraceResponseHeaderServletFilterRegistration(
-            PlatformTracing platformTracing, TracingProperties properties) {
-        TraceResponseHeaderServletFilter filter = new TraceResponseHeaderServletFilter(platformTracing, properties);
+            TraceOperations traceOperations, TracingProperties properties) {
+        TraceResponseHeaderServletFilter filter = new TraceResponseHeaderServletFilter(traceOperations, properties);
         FilterRegistrationBean<TraceResponseHeaderServletFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setName("platformTraceResponseHeaderServletFilter");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 50);

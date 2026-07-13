@@ -1,4 +1,4 @@
-# PlatformTracing v3 — Observability and Diagnostics
+# TraceOperations v3 — Observability and Diagnostics
 
 How platform manual tracing coexists with Micrometer Observation, how metering works internally, and how to inspect runtime state.
 
@@ -8,9 +8,9 @@ How platform manual tracing coexists with Micrometer Observation, how metering w
 |------|-------|---------------|
 | OpenTelemetry Java Agent | Agent bytecode instrumentation | HTTP, JDBC, gRPC, Kafka (production default) |
 | Spring / Micrometer Observation | Framework conventions, `@Observed` | HTTP server/client observations |
-| PlatformTracing `manual()` | `TracingImplementation` SPI | Governed manual and semantic transport spans |
+| TraceOperations `manual()` | `TracingImplementation` SPI | Governed manual and semantic transport spans |
 
-PlatformTracing does **not** replace Agent or Observation auto-instrumentation. Call `manual()` only for gaps. See [ADR — Micrometer Observation Boundary](../decisions/ADR-platform-tracing-micrometer-observation-boundary.md) (Option C hybrid model, **Accepted**).
+TraceOperations does **not** replace Agent or Observation auto-instrumentation. Call `manual()` only for gaps. See [ADR — Micrometer Observation Boundary](../decisions/ADR-platform-tracing-micrometer-observation-boundary.md) (Option C hybrid model, **Accepted**).
 
 ## Metering boundary (R01 fix)
 

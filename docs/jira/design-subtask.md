@@ -188,7 +188,7 @@ h3. AD-6. Минимум @Conditional
 В стартере используются только следующие условные аннотации:
 
 * {{@ConditionalOnProperty(prefix="platform.tracing", name="enabled", matchIfMissing=true)}} — корневой включатель;
-* {{@ConditionalOnBean(PlatformTracing.class)}} — только там, где bean реально требуется в конструкторе;
+* {{@ConditionalOnBean(TraceOperations.class)}} — только там, где bean реально требуется в конструкторе;
 * {{@ConditionalOnMissingBean}} — точечно для пользовательской замены;
 * {{@ConditionalOnClass(RefreshScope.class)}} — только для опционального Spring Cloud Context.
 

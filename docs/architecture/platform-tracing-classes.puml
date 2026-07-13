@@ -14,14 +14,14 @@ skinparam packageStyle rectangle
 title Межмодульные связи (implements / uses / Gradle api)
 
 package "platform-tracing-api" as M_API #FFF8E1 {
-  interface PlatformTracing
+  interface TraceOperations
   interface SpanScope
   interface SpanAttributeScrubbingRule <<SPI>>
 }
 
 package "platform-tracing-core" as M_CORE #FFE0B2 {
-  class DefaultPlatformTracing
-  class NoOpPlatformTracing
+  class DefaultTraceOperations
+  class NoopTraceOperations
 }
 
 package "platform-tracing-otel-extension" as M_OTEL #E1BEE7 {
@@ -43,11 +43,11 @@ package "platform-tracing-spring-boot-starter-servlet" as M_STARTER #E8F5E9 {
   }
 }
 
-PlatformTracing <|.. DefaultPlatformTracing
-PlatformTracing <|.. NoOpPlatformTracing
-PlatformTracing <|.. MeteredPlatformTracing
-SpanScope <|.. "DefaultPlatformTracing\n.OtelSpanScope"
-SpanScope <|.. "NoOpPlatformTracing\n.NoOpSpanScope"
+TraceOperations <|.. DefaultTraceOperations
+TraceOperations <|.. NoopTraceOperations
+TraceOperations <|.. MeteredPlatformTracing
+SpanScope <|.. "DefaultTraceOperations\n.OtelSpanScope"
+SpanScope <|.. "NoopTraceOperations\n.NoOpSpanScope"
 
 SpanAttributeScrubbingRule <|.. "EmailRule\nJwtRule\nPanRule\n..."
 
@@ -57,17 +57,17 @@ M_AUTO ..> M_API : api
 M_CORE ..> M_API : api
 M_OTEL ..> M_API : implementation
 
-DefaultPlatformTracing ..> PlatformTracing : implements
-MeteredPlatformTracing o-- PlatformTracing : delegate
-TracingCoreAutoConfiguration ..> DefaultPlatformTracing : @Bean creates
-TracingCoreAutoConfiguration ..> NoOpPlatformTracing : @Bean fallback
+DefaultTraceOperations ..> TraceOperations : implements
+MeteredPlatformTracing o-- TraceOperations : delegate
+TracingCoreAutoConfiguration ..> DefaultTraceOperations : @Bean creates
+TracingCoreAutoConfiguration ..> NoopTraceOperations : @Bean fallback
 TracingCoreAutoConfiguration ..> TracingProperties : @EnableConfigurationProperties
 
 PlatformAutoConfigurationCustomizer ..> CompositeSampler : buildSampler()
 PlatformAutoConfigurationCustomizer ..> EnrichingSpanProcessor : registerSpanProcessors()
 PlatformAutoConfigurationCustomizer ..> SpanAttributeScrubbingRule : ServiceLoader
 
-TracedAspect ..> PlatformTracing : uses
+TracedAspect ..> TraceOperations : uses
 TracedAspect ..> SpanScope : startSpan / close
 
 StarterArtifact ..> M_AUTO : transitive
@@ -94,7 +94,7 @@ skinparam defaultFontName "Segoe UI"
 title platform-tracing-api — классы и связи
 
 package "space.br1440.platform.tracing.api" {
-  interface PlatformTracing {
+  interface TraceOperations {
     +currentTraceId(): Optional<String>
     +currentSpanId(): Optional<String>
     +startSpan(name, category): SpanScope
@@ -203,8 +203,8 @@ package "space.br1440.platform.tracing.api.context" {
   }
 }
 
-PlatformTracing ..> SpanScope : «create»
-PlatformTracing ..> SpanCategory : uses
+TraceOperations ..> SpanScope : «create»
+TraceOperations ..> SpanCategory : uses
 SpanScope ..> SpanResult : uses
 Traced ..> SpanCategory : default INTERNAL
 SpanEnricher ..> SpanScope : enrich
@@ -232,10 +232,10 @@ skinparam defaultFontName "Segoe UI"
 title platform-tracing-core — классы и связи
 
 package "space.br1440.platform.tracing.core" {
-  class DefaultPlatformTracing {
+  class DefaultTraceOperations {
     {static} +INSTRUMENTATION_NAME: String
     -tracer: Tracer «OTel»
-    +DefaultPlatformTracing(openTelemetry)
+    +DefaultTraceOperations(openTelemetry)
     +currentTraceId(): Optional<String>
     +currentSpanId(): Optional<String>
     +startSpan(name, category): SpanScope
@@ -243,7 +243,7 @@ package "space.br1440.platform.tracing.core" {
     -toSpanKind(category): SpanKind
   }
 
-  class "DefaultPlatformTracing\n.OtelSpanScope" as OtelSpanScope <<inner>> {
+  class "DefaultTraceOperations\n.OtelSpanScope" as OtelSpanScope <<inner>> {
     -span: Span
     -scope: Scope
     -closed: boolean
@@ -254,14 +254,14 @@ package "space.br1440.platform.tracing.core" {
     -applyResult(result): void
   }
 
-  class NoOpPlatformTracing <<singleton>> {
-    {static} +INSTANCE: NoOpPlatformTracing
-    -NoOpPlatformTracing()
+  class NoopTraceOperations <<singleton>> {
+    {static} +INSTANCE: NoopTraceOperations
+    -NoopTraceOperations()
     +currentTraceId(): Optional.empty
     +startSpan(...): SpanScope
   }
 
-  class "NoOpPlatformTracing\n.NoOpSpanScope" as NoOpSpanScope <<inner singleton>> {
+  class "NoopTraceOperations\n.NoOpSpanScope" as NoOpSpanScope <<inner singleton>> {
     {static} +INSTANCE
     +close(): void «no-op»
   }
@@ -277,31 +277,31 @@ package "«external» io.opentelemetry.api" as OTel {
 }
 
 package "«api»" as API {
-  interface PlatformTracing
+  interface TraceOperations
   interface SpanScope
   enum SpanCategory
   enum SpanResult
   class PlatformAttributes
 }
 
-PlatformTracing <|.. DefaultPlatformTracing
-PlatformTracing <|.. NoOpPlatformTracing
+TraceOperations <|.. DefaultTraceOperations
+TraceOperations <|.. NoopTraceOperations
 SpanScope <|.. OtelSpanScope
 SpanScope <|.. NoOpSpanScope
 
-DefaultPlatformTracing +-- OtelSpanScope : «creates»
-NoOpPlatformTracing +-- NoOpSpanScope : «returns INSTANCE»
+DefaultTraceOperations +-- OtelSpanScope : «creates»
+NoopTraceOperations +-- NoOpSpanScope : «returns INSTANCE»
 
-DefaultPlatformTracing --> OpenTelemetry : constructor
-DefaultPlatformTracing --> Tracer : field
+DefaultTraceOperations --> OpenTelemetry : constructor
+DefaultTraceOperations --> Tracer : field
 OtelSpanScope --> Span : field
 OtelSpanScope --> Scope : field
-DefaultPlatformTracing ..> SpanCategory : startSpan
-DefaultPlatformTracing ..> PlatformAttributes : setAttribute
+DefaultTraceOperations ..> SpanCategory : startSpan
+DefaultTraceOperations ..> PlatformAttributes : setAttribute
 OtelSpanScope ..> SpanResult : applyResult
 
-note bottom of DefaultPlatformTracing
-  Единственная production-реализация PlatformTracing
+note bottom of DefaultTraceOperations
+  Единственная production-реализация TraceOperations
   вне Spring (чистый OTel API)
 end note
 
@@ -587,7 +587,7 @@ package "space.br1440.platform.tracing.autoconfigure" {
   class "TracingProperties.ServiceNames" as TPServiceNames <<nested>>
 
   class TracingCoreAutoConfiguration {
-    +platformTracing(...): PlatformTracing
+    +traceOperations(...): TraceOperations
     +platformTracingJmxClient(): PlatformTracingJmxClient
     +runtimeConfigApplier(...): RuntimeConfigApplier
     -isFunctional(otel): boolean
@@ -637,7 +637,7 @@ package "mdc" {
 
 package "metrics" {
   class MeteredPlatformTracing {
-    -delegate: PlatformTracing
+    -delegate: TraceOperations
     -metrics: PlatformTracingMetrics
   }
   class PlatformTracingMetrics {
@@ -719,18 +719,18 @@ package "support" {
 }
 
 package "«core»" as CORE {
-  class DefaultPlatformTracing
-  class NoOpPlatformTracing
+  class DefaultTraceOperations
+  class NoopTraceOperations
 }
 
 package "«api»" as API {
-  interface PlatformTracing
+  interface TraceOperations
   record TracingRequestContext
   class TracingMdcKeys
   class PlatformAttributes
 }
 
-PlatformTracing <|.. MeteredPlatformTracing
+TraceOperations <|.. MeteredPlatformTracing
 Supplier <|.. PlatformLocalServiceNameProvider
 Supplier <|.. PlatformRemoteServiceNameProvider
 Supplier <|.. TracingRequestContextSupplier
@@ -738,8 +738,8 @@ RuntimeException <|-- PlatformTracingJmxOperationException
 ContextStorage <|.. TracingMdcContextWrapper
 
 TracingCoreAutoConfiguration ..> TracingProperties
-TracingCoreAutoConfiguration ..> DefaultPlatformTracing : @Bean
-TracingCoreAutoConfiguration ..> NoOpPlatformTracing : @Bean fallback
+TracingCoreAutoConfiguration ..> DefaultTraceOperations : @Bean
+TracingCoreAutoConfiguration ..> NoopTraceOperations : @Bean fallback
 TracingCoreAutoConfiguration ..> PlatformTracingJmxClient : @Bean
 TracingCoreAutoConfiguration ..> RuntimeConfigApplier : @Bean
 RuntimeConfigApplier o-- PlatformTracingJmxClient
@@ -749,7 +749,7 @@ PlatformTracingJmxClient ..> TracingControlDomain : getMBeansStatus()
 TracingMdcContextAutoConfiguration ..> TracingMdcContextWrapper : ContextStorage.addWrapper
 TracingMetricsAutoConfiguration ..> MeteredPlatformTracing : @Primary @Bean
 TracingMetricsAutoConfiguration ..> PlatformTracingMetrics : @Bean
-MeteredPlatformTracing o-- PlatformTracing : delegate
+MeteredPlatformTracing o-- TraceOperations : delegate
 MeteredPlatformTracing o-- PlatformTracingMetrics
 PlatformLocalServiceNameProvider o-- TracingProperties
 PlatformLocalServiceNameProvider ..> Environment
@@ -784,7 +784,7 @@ package "servlet" {
     +platformServerRequestObservationConvention(): PlatformServerRequestObservationConvention
   }
   class TraceResponseHeaderServletFilter {
-    -platformTracing: PlatformTracing
+    -traceOperations: TraceOperations
     -properties: TracingProperties
     +doFilterInternal(...): void
   }
@@ -800,7 +800,7 @@ package "reactive" {
     +platformReactiveServerRequestObservationConvention(): ...
   }
   class TraceResponseHeaderWebFilter {
-    -platformTracing: PlatformTracing
+    -traceOperations: TraceOperations
     -properties: TracingProperties
     +filter(...): Mono<Void>
   }
@@ -819,7 +819,7 @@ package "aspect" {
     +platformTracedAspect(...): TracedAspect
   }
   class TracedAspect {
-    -platformTracing: PlatformTracing
+    -traceOperations: TraceOperations
     +aroundTraced(joinPoint): Object
     -resolveAnnotation(method): Traced
     -applyParameterAttributes(...): void
@@ -832,11 +832,11 @@ package "actuator" {
     +tracingActuatorEndpoint(...): TracingActuatorEndpoint
   }
   class TracingHealthIndicator {
-    -platformTracing: PlatformTracing
+    -traceOperations: TraceOperations
     +doHealthCheck(builder): void
   }
   class TracingActuatorEndpoint {
-    -platformTracing: PlatformTracing
+    -traceOperations: TraceOperations
     -properties: TracingProperties
     -jmxClient: PlatformTracingJmxClient
     -otelEffectiveSnapshot: OtelEffectiveConfigSnapshot
@@ -859,7 +859,7 @@ package "«Spring / Micrometer»" as SPRING {
 }
 
 package "«api»" as API {
-  interface PlatformTracing
+  interface TraceOperations
   annotation Traced
   annotation TracedAttribute
   interface SpanScope
@@ -874,20 +874,20 @@ DefaultServerRequestObservationConvention <|-- PlatformReactiveServerRequestObse
 DefaultClientRequestObservationConvention <|-- PlatformClientRequestObservationConvention
 AbstractHealthIndicator <|-- TracingHealthIndicator
 
-TraceResponseHeaderServletFilter o-- PlatformTracing
+TraceResponseHeaderServletFilter o-- TraceOperations
 TraceResponseHeaderServletFilter o-- TracingProperties
-TraceResponseHeaderWebFilter o-- PlatformTracing
+TraceResponseHeaderWebFilter o-- TraceOperations
 TraceResponseHeaderWebFilter o-- TracingProperties
-TracedAspect o-- PlatformTracing
+TracedAspect o-- TraceOperations
 TracedAspect ..> Traced : @Around
 TracedAspect ..> TracedAttribute : parameter scan
 TracedAspect ..> SpanScope : try/finally close
 TracedAspect ..> SpanResult
-TracingActuatorEndpoint o-- PlatformTracing
+TracingActuatorEndpoint o-- TraceOperations
 TracingActuatorEndpoint o-- TracingProperties
 TracingActuatorEndpoint o-- PlatformTracingJmxClient
 TracingActuatorEndpoint o-- OtelEffectiveConfigSnapshot
-TracingHealthIndicator o-- PlatformTracing
+TracingHealthIndicator o-- TraceOperations
 
 ServletTracingAutoConfiguration ..> TraceResponseHeaderServletFilter : @Bean
 ReactiveTracingAutoConfiguration ..> TraceResponseHeaderWebFilter : @Bean
@@ -942,10 +942,10 @@ TracingCoreAutoConfiguration -down-> ReactiveTracingAutoConfiguration : «@AutoC
 TracingCoreAutoConfiguration -down-> TracingRefreshScopeAutoConfiguration : «@AutoConfigureAfter»
 
 note as N1
-  **PlatformTracing bean chain**
-  1. TracingCoreAutoConfiguration → DefaultPlatformTracing | NoOpPlatformTracing
+  **TraceOperations bean chain**
+  1. TracingCoreAutoConfiguration → DefaultTraceOperations | NoopTraceOperations
   2. TracingMetricsAutoConfiguration → @Primary MeteredPlatformTracing wraps (1)
-  3. TracedAspect, Filters, Health, Endpoint inject PlatformTracing (often Metered)
+  3. TracedAspect, Filters, Health, Endpoint inject TraceOperations (often Metered)
 end note
 
 note as N2
@@ -987,8 +987,8 @@ package "Transitive autoconfigure module" as AUTO {
 }
 
 package "Transitive core and api" as DOMAIN {
-  interface PlatformTracing
-  class DefaultPlatformTracing
+  interface TraceOperations
+  class DefaultTraceOperations
 }
 
 package "Transitive Spring Web" as WEB {
@@ -999,7 +999,7 @@ package "Transitive Spring Web" as WEB {
 
 Starter --> TracingCoreAutoConfiguration : api
 Starter --> DispatcherServlet : api
-ServletTracingAutoConfiguration ..> PlatformTracing : beans at runtime
+ServletTracingAutoConfiguration ..> TraceOperations : beans at runtime
 PlatformServerRequestObservationConvention ..> Obs : customizes
 
 note bottom of Starter

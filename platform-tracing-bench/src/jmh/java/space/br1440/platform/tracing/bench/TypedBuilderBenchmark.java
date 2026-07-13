@@ -14,7 +14,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
 
@@ -26,8 +26,8 @@ import java.util.concurrent.TimeUnit;
 public class TypedBuilderBenchmark {
 
     private OpenTelemetrySdk sdk;
-    private DefaultPlatformTracing disabledPolicyTracing;
-    private DefaultPlatformTracing warnPolicyTracing;
+    private DefaultTraceOperations disabledPolicyTracing;
+    private DefaultTraceOperations warnPolicyTracing;
 
     @Setup(Level.Trial)
     public void setUp() {
@@ -36,9 +36,9 @@ public class TypedBuilderBenchmark {
                 .build();
         AttributePolicy disabledPolicy = new AttributePolicy(SemconvValidationMode.DISABLED, false, SemconvMetrics.NOOP);
         AttributePolicy warnPolicy = new AttributePolicy(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
-        disabledPolicyTracing = new DefaultPlatformTracing(
+        disabledPolicyTracing = new DefaultTraceOperations(
                 OtelTracingRuntimeFactory.create(sdk, disabledPolicy));
-        warnPolicyTracing = new DefaultPlatformTracing(
+        warnPolicyTracing = new DefaultTraceOperations(
                 OtelTracingRuntimeFactory.create(sdk, warnPolicy));
     }
 

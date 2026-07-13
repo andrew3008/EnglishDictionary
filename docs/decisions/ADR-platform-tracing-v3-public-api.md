@@ -1,18 +1,18 @@
-# ADR — PlatformTracing v3 Public API
+# ADR — TraceOperations v3 Public API
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
-PlatformTracing v1 exposed a wide facade: correlation helpers, many `startSpan*` variants, `SpanRelation`, transport factories, `inSpan`, post-start `addLink`, and facade decorators. Partial decorators (`MeteredPlatformTracing`) caused silent semantic loss ([R01](../known-issues/R01.md)). The project was pre-production; a narrow, governed public API was required.
+TraceOperations v1 exposed a wide facade: correlation helpers, many `startSpan*` variants, `SpanRelation`, transport factories, `inSpan`, post-start `addLink`, and facade decorators. Partial decorators (`MeteredPlatformTracing`) caused silent semantic loss ([R01](../known-issues/R01.md)). The project was pre-production; a narrow, governed public API was required.
 
 ## Decision
 
-The v3 public `PlatformTracing` interface exposes **exactly two** methods:
+The v3 public `TraceOperations` interface exposes **exactly two** methods:
 
 ```text
 traceContext()  — read-only correlation
@@ -41,7 +41,7 @@ Auto-instrumentation (OTel Agent, Spring/Micrometer Observation, `@Traced`) rema
 ## Why transport builders are grouped under `transport()`
 
 - Groups HTTP, database, RPC, and Kafka under one namespace, separating **protocol semconv** from generic **application operations**.
-- Replaces v1 transport factory methods on `PlatformTracing` root interface.
+- Replaces v1 transport factory methods on `TraceOperations` root interface.
 - Enables semconv version markers per transport (`@DatabaseSemconvVersion`, etc.) without polluting `operation(name)`.
 
 ## Consequences

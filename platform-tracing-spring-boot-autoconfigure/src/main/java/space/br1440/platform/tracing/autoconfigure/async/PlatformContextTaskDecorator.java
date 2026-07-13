@@ -23,7 +23,7 @@ import org.springframework.core.task.TaskDecorator;
  * <p>
  * <b>Mode.</b> На v0.1.0 поддерживается единственный режим {@code propagate-current-context}:
  * span автоматически не создаётся, переносится только контекст. Создание span'а — задача
- * прикладного кода через {@code @Traced} / {@code PlatformTracing.inSpan}.
+ * прикладного кода через {@code @Traced} / {@code TraceOperations.inSpan}.
  *
  * @see io.micrometer.context.ContextSnapshotFactory
  */

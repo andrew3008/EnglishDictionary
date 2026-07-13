@@ -24,8 +24,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.kafka.annotation.KafkaListener;
-import space.br1440.platform.tracing.api.PlatformTracing;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 
 import java.nio.charset.StandardCharsets;
@@ -46,7 +46,7 @@ class KafkaBatchAspectMigrationTest {
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
     private OpenTelemetry openTelemetry;
-    private PlatformTracing platformTracing;
+    private TraceOperations traceOperations;
 
     @BeforeEach
     void setUp() {
@@ -58,14 +58,14 @@ class KafkaBatchAspectMigrationTest {
                 .setTracerProvider(tracerProvider)
                 .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
                 .build();
-        platformTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(openTelemetry));
+        traceOperations = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(openTelemetry));
     }
 
     @AfterEach
     void tearDown() {
         tracerProvider.shutdown();
-        assertThat(platformTracing.traceContext().traceId()).isEmpty();
-        assertThat(platformTracing.traceContext().spanId()).isEmpty();
+        assertThat(traceOperations.traceContext().traceId()).isEmpty();
+        assertThat(traceOperations.traceContext().spanId()).isEmpty();
     }
 
     @Test
@@ -112,7 +112,7 @@ class KafkaBatchAspectMigrationTest {
                 .setTracerProvider(tracerProvider)
                 .setPropagators(ContextPropagators.create(new CustomHeaderPropagator()))
                 .build();
-        platformTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(openTelemetry));
+        traceOperations = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(openTelemetry));
 
         ConsumerRecord<String, String> record = new ConsumerRecord<>("orders", 0, 0L, "k", "v");
         record.headers().add("x-custom-trace", "1".getBytes(StandardCharsets.UTF_8));
@@ -155,7 +155,7 @@ class KafkaBatchAspectMigrationTest {
 
     private void invokeBatchListener(Object target, List<ConsumerRecord<String, String>> records) {
         AspectJProxyFactory factory = new AspectJProxyFactory(target);
-        factory.addAspect(new KafkaBatchLinksAspect(openTelemetry, platformTracing));
+        factory.addAspect(new KafkaBatchLinksAspect(openTelemetry, traceOperations));
         if (target instanceof BatchListenerStub) {
             BatchListenerStub proxy = factory.getProxy();
             proxy.consume(records);

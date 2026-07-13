@@ -85,7 +85,7 @@ Documented; **not** fixed in PR-4.
 |-----------|----------|-------------|
 | `platform-tracing-core` has `api opentelemetry-api` | `platform-tracing-core/build.gradle` | FF-06 forward-looking only; global core OTel ban deferred |
 | `platform-tracing-api` has `compileOnly` OTel | `platform-tracing-api` | Outside `api.control.protocol`; documented |
-| Core facade OTel-coupled (`DefaultPlatformTracing`) | `platform-tracing-core` | Extraction PR-6+ |
+| Core facade OTel-coupled (`DefaultTraceOperations`) | `platform-tracing-core` | Extraction PR-6+ |
 | Actuator MUTATION prod guard | `TracingActuatorEndpoint` | PR-11 |
 | `TracingConfigReconciler` not in codebase | target-only | PR-10 |
 | Full JMH baseline deferred | PR-0 waivers | FF-12 documented gate before PR-5/6/7/8 |

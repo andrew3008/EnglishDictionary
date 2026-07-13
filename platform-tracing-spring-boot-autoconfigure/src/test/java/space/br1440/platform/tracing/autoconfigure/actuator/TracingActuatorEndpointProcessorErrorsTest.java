@@ -6,7 +6,7 @@ import org.mockito.Mockito;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 
 import java.util.LinkedHashMap;
@@ -32,7 +32,7 @@ class TracingActuatorEndpointProcessorErrorsTest {
         when(jmxClient.isAvailable()).thenReturn(true);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.of(0.1d));
         endpoint = new TracingActuatorEndpoint(
-                NoOpPlatformTracing.INSTANCE,
+                NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
                 new ManualTracingDiagnostics(NoOpTracingRuntime.noop()));

@@ -20,7 +20,7 @@
 
 | # | Требование | Статус | Реализация |
 |---|---|---|---|
-| 1 | API создания / завершения Span'ов (Open/Close, Defer) | OK | `platform-tracing-api` — `PlatformTracing` фасад; OTel Java Agent инструментирует Spring MVC/WebFlux/JDBC автоматически |
+| 1 | API создания / завершения Span'ов (Open/Close, Defer) | OK | `platform-tracing-api` — `TraceOperations` фасад; OTel Java Agent инструментирует Spring MVC/WebFlux/JDBC автоматически |
 | 1.1 | Обязательные атрибуты span'а: `trace_id`, `span_id`, `service.name`, `host.name`, `container.id`, `service.version`, `deployment.environment.name`, `platform.trace.type`, `platform.trace.result` | OK | `PlatformResourceProvider` (resource attrs incl. `container.id` omit-if-unconfigured, `host.name`, `deployment.environment.name`); `EnrichingSpanProcessor` (`platform.trace.result`, MDC `platform.remote.service`); OTel SDK — `trace_id`/`span_id` |
 | 2 | Типизированные span'ы: HTTP / DB / RPC / Exception | OK | OTel Java Agent instrumentation (auto): `http.*`, `db.*`, `rpc.*`, `exception.*` согласно semconv. **Фаза 13:** typed span API для случаев вне покрытия Агента — `httpServerSpan()`/`httpClientSpan()`/`databaseSpan()`/`rpcServerSpan()`/`rpcClientSpan()`/`kafkaProducerSpan()`/`kafkaConsumerSpan()` + `ExceptionRecorder` (sanitized event); семантика валидируется `AttributePolicy`/`CategoryContracts` |
 | 3 | Передача контекста (W3C TraceContext) + флаги сэмплирования + `X-Trace-On` | OK | OTel Java Agent (W3C TraceContext default); `platform-tracing-otel-extension/.../sampler/CompositeSampler.java` обрабатывает `X-Trace-On` и `X-QA-Trace` |
@@ -116,8 +116,8 @@ Pod UID не подставляется в `container.id` — отдельный
 | GAP | Статус | Реализация |
 |---|---|---|
 | A-01 `SpanRelationship` API | OK | `SpanRelationship` + `startRootSpan` / `startChildSpan` / `startDetachedSpan` |
-| G-03 Span Links (Kafka batch) | OK | `RemoteSpanLink`, `startSpanWithLinks`, `addLink`; `DefaultPlatformTracing` + `createFromRemoteParent` |
-| Compile-safety | OK | default no-op methods на `PlatformTracing`; `NoOpPlatformTracing` наследует автоматически |
+| G-03 Span Links (Kafka batch) | OK | `RemoteSpanLink`, `startSpanWithLinks`, `addLink`; `DefaultTraceOperations` + `createFromRemoteParent` |
+| Compile-safety | OK | default no-op methods на `TraceOperations`; `NoopTraceOperations` наследует автоматически |
 
 Документация: [links-kafka.md](./links-kafka.md).
 
@@ -136,7 +136,7 @@ Pod UID не подставляется в `container.id` — отдельный
 
 | GAP | Статус | Реализация |
 |---|---|---|
-| G2-01 high-level `inSpan()` API (Runnable / ThrowingSupplier / SpanRelationship overloads) | OK | `PlatformTracing.inSpan(...)` — default-методы поверх `startSpan()` + `SpanHandle.close()`; `ThrowingSupplier` (`platform-tracing-api/util`) для lambda-совместимости с checked-исключениями; покрыто `DefaultPlatformTracingInSpanTest` |
+| G2-01 high-level `inSpan()` API (Runnable / ThrowingSupplier / SpanRelationship overloads) | OK | `TraceOperations.inSpan(...)` — default-методы поверх `startSpan()` + `SpanHandle.close()`; `ThrowingSupplier` (`platform-tracing-api/util`) для lambda-совместимости с checked-исключениями; покрыто `DefaultTraceOperationsInSpanTest` |
 | G2-02 фасад explicit context propagation | OK | `PlatformContextPropagation` (`platform-tracing-api/propagation`) — `wrap(Runnable)`, `wrap(ThrowingSupplier)`, `contextAware(Executor / ExecutorService)`. ADR boundary: API-модуль без Spring/Micrometer. |
 | G2-03 OTel-native реализация фасада | OK | `OtelPlatformContextPropagation` — `Context.current().wrap(...)` + `Context.taskWrapping(...)`; `NoOpPlatformContextPropagation` для degraded mode; авто-регистрация в `TracingCoreAutoConfiguration` |
 | G2-04 opt-in `TaskDecorator` композиция для `@Async` | OK | `TracingAsyncContextAutoConfiguration` + `ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` (Ordered.LOWEST_PRECEDENCE, composition через reflection чтение existing `taskDecorator`) + `PlatformContextTaskDecorator` (Micrometer `ContextSnapshotFactory.captureAll()`). Default `enabled=false`. ADR: [ADR-async-task-decorator-opt-in.md](../decisions/ADR-async-task-decorator-opt-in.md) |
@@ -172,7 +172,7 @@ ADR'ы Фазы 2:
 
 | GAP | Статус | Реализация |
 |---|---|---|
-| P13-01 typed escape-hatch builders (HTTP/DB/RPC/Kafka) | OK | `platform-tracing-api/span/builder/*` (интерфейсы + `Facade*` fallback) + `platform-tracing-core/span/*Impl` (policy-backed); фасадные фабрики на `PlatformTracing`; покрыто `EscapeHatchSpanBuilderTest` |
+| P13-01 typed escape-hatch builders (HTTP/DB/RPC/Kafka) | OK | `platform-tracing-api/span/builder/*` (интерфейсы + `Facade*` fallback) + `platform-tracing-core/span/*Impl` (policy-backed); фасадные фабрики на `TraceOperations`; покрыто `EscapeHatchSpanBuilderTest` |
 | P13-02 единый источник истины семконвенций | OK | `CategoryContracts`/`CategoryContract` (`platform-tracing-api/semconv`) — allowlist/required/requiredAnyOf/forbidden по категории; `assertSame`-страховка + `CategoryContractsTest` |
 | P13-03 runtime-валидация атрибутов + режимы | OK | `AttributePolicy.validateAndNormalize` → `ValidatedAttributes`; `ValidationMode` STRICT/WARN/DISABLED; метрики `platform.tracing.semconv.violations`; `AttributePolicyTest`. ADR: [ADR-semconv-validation-modes.md](../decisions/ADR-semconv-validation-modes.md) |
 | P13-04 anti-double instrumentation (agent-first) | OK | модель B: `PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY` маркер + degradation в enrich (`AbstractSemanticSpanBuilder`); defense-in-depth ArchUnit `TracingArchRules.ESCAPE_HATCH_BUILDERS_REQUIRE_SUPPRESSION` + `@SuppressAgentInstrumentation`; первичный guard — agent-флаг `span-suppression-strategy=semconv` + e2e no-dup |

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
@@ -21,15 +21,15 @@ import java.util.concurrent.ThreadLocalRandom;
 @RestController
 public class OrdersController {
 
-    private final ObjectProvider<PlatformTracing> tracingProvider;
+    private final ObjectProvider<TraceOperations> tracingProvider;
 
-    public OrdersController(ObjectProvider<PlatformTracing> tracingProvider) {
+    public OrdersController(ObjectProvider<TraceOperations> tracingProvider) {
         this.tracingProvider = tracingProvider;
     }
 
     @GetMapping("/api/orders/{id}")
     public Map<String, Object> getOrder(@PathVariable("id") long id) {
-        PlatformTracing tracing = tracingProvider.getIfAvailable();
+        TraceOperations tracing = tracingProvider.getIfAvailable();
         if (tracing == null) {
             return buildOrder(id);
         }
@@ -45,7 +45,7 @@ public class OrdersController {
     @PostMapping("/api/orders")
     public Map<String, Object> createOrder(@RequestBody Map<String, Object> request) {
         long id = ThreadLocalRandom.current().nextLong(1, 1_000_000);
-        PlatformTracing tracing = tracingProvider.getIfAvailable();
+        TraceOperations tracing = tracingProvider.getIfAvailable();
         if (tracing == null) {
             return buildOrder(id);
         }

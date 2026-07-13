@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
@@ -37,7 +37,7 @@ class MeteredMetricsCountTest {
     void startSpan_incrementsSpansStartedByCategory() {
         contextRunner.run(context -> {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
             tracing.manual().operation("op-a").start().close();
@@ -66,7 +66,7 @@ class MeteredMetricsCountTest {
     void recordException_incrementsExceptionsRecorded() {
         contextRunner.run(context -> {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
 
             var handle = tracing.manual().operation("failing-op").start();
             handle.recordException(new IllegalStateException("boom"));
@@ -86,7 +86,7 @@ class MeteredMetricsCountTest {
     void spansStartedMetric_usesBoundedCategoryTagsOnly() {
         contextRunner.run(context -> {
             MeterRegistry registry = context.getBean(MeterRegistry.class);
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
 
             tracing.manual().operation("dynamic-name-" + System.nanoTime()).start().close();
 

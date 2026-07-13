@@ -20,6 +20,7 @@ Audited the complete pre-production naming refactor chain:
 - PR-B1 — context / propagation naming cleanup.
 - PR-B2 — scrubbing SPI rename and runtime discovery migration.
 - Batch C — approved partial optional naming cleanup.
+- TraceOperations root API rename: `PlatformTracing` to `TraceOperations`.
 
 Read available decision/audit artifacts:
 
@@ -32,6 +33,8 @@ Read available decision/audit artifacts:
 - `docs/analysis/platform-tracing-api-batch-c-post-audit.md`
 - `docs/decisions/ADR-api-naming-refactor-batch-a.md`
 - `docs/decisions/ADR-api-naming-refactor-pr-b2.md`
+- `docs/decisions/ADR-trace-operations-root-api.md`
+- `docs/analysis/platform-tracing-api-trace-operations-rename-post-audit.md`
 - `platform-tracing-api/CHANGELOG.md`
 - `CHANGELOG.md`
 

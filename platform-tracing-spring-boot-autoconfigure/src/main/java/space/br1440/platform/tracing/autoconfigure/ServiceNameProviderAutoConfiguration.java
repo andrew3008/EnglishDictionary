@@ -33,7 +33,7 @@ import space.br1440.platform.tracing.autoconfigure.servicename.PlatformRemoteSer
  * <p><b>Намеренно не имеет зависимостей от tracing-core бинов:</b> атрибут
  * {@code after = TracingCoreAutoConfiguration.class} не указан осознанно. Оба провайдера
  * читают данные из {@link Environment} и/или {@link io.opentelemetry.api.trace.Span#current()} +
- * MDC, а не из {@link space.br1440.platform.tracing.api.PlatformTracing}. <b>Не добавлять</b>
+ * MDC, а не из {@link space.br1440.platform.tracing.api.TraceOperations}. <b>Не добавлять</b>
  * {@code after}/{@code before} «по аналогии с соседними классами»: это сделает регистрацию
  * провайдеров зависимой от {@code platform.tracing.enabled} и сломает контракт «errorhandling
  * всегда получает корректные имена сервисов, даже при выключенном tracing».

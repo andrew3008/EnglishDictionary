@@ -1,6 +1,6 @@
 description = 'Тестовая инфраструктура платформенной трассировки. ' +
         'Предоставляет JUnit 5 extension с in-memory span exporter, удобные утверждения для span\'ов ' +
-        'и заглушку PlatformTracing для unit-тестов прикладного кода.'
+        'и заглушку TraceOperations для unit-тестов прикладного кода.'
 
 dependencies {
     api platform(project(':platform-tracing-bom'))

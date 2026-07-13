@@ -151,7 +151,7 @@ Forbidden:
 
 ```
 platform-tracing-api/
-  api/                          — PlatformTracing facade interfaces
+  api/                          — TraceOperations facade interfaces
   api/attributes/               — PlatformSamplingReasons, etc.
   api/config/                   — DomainConfigHolder, Versioned
   api/control/                  — Wire schema, ControlContractVersion, allowed keys

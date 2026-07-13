@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
@@ -24,7 +24,7 @@ class V3MarkerPortCharacterizationTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
     private SpanEnricher enricher;
 
     @BeforeEach
@@ -33,7 +33,7 @@ class V3MarkerPortCharacterizationTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
+        tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
         enricher = new SpanEnricher(new AttributePolicy());
     }
 

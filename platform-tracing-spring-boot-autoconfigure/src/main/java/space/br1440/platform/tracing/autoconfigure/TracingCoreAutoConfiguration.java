@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
@@ -21,9 +21,9 @@ import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeResolver;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.propagation.NoOpPlatformContextPropagation;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
@@ -34,7 +34,7 @@ import space.br1440.platform.tracing.core.runtime.state.TracingMode;
  * Базовая авто-конфигурация платформенного модуля трассировки.
  * <p>
  * Slice 2: registers {@link TracingRuntime} as the internal span-creation boundary and
- * {@link PlatformTracing} as a thin facade over it.
+ * {@link TraceOperations} as a thin facade over it.
  * <p>
  * <b>Extension point note (B10):</b> if the application supplies its own
  * {@code TracingRuntime} bean (via {@code @ConditionalOnMissingBean}), platform
@@ -131,14 +131,14 @@ public class TracingCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformTracing platformTracing(TracingRuntime tracingImplementation) {
+    public TraceOperations traceOperations(TracingRuntime tracingImplementation) {
         TracingMode mode = tracingImplementation.state().mode();
         if (mode != TracingMode.ENABLED) {
-            log.info("PlatformTracing facade: {} — NoOpPlatformTracing", mode);
-            return NoOpPlatformTracing.backedBy(tracingImplementation);
+            log.info("TraceOperations facade: {} — NoopTraceOperations", mode);
+            return NoopTraceOperations.backedBy(tracingImplementation);
         }
-        log.debug("PlatformTracing facade: ENABLED — DefaultPlatformTracing");
-        return new DefaultPlatformTracing(tracingImplementation);
+        log.debug("TraceOperations facade: ENABLED — DefaultTraceOperations");
+        return new DefaultTraceOperations(tracingImplementation);
     }
 
     private static boolean isGlobalFunctional() {
@@ -181,8 +181,8 @@ public class TracingCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformContextPropagation platformContextPropagation(PlatformTracing platformTracing) {
-        if (platformTracing instanceof NoOpPlatformTracing) {
+    public PlatformContextPropagation platformContextPropagation(TraceOperations traceOperations) {
+        if (traceOperations instanceof NoopTraceOperations) {
             log.debug("PlatformContextPropagation: используется NoOp (OpenTelemetry в degraded mode)");
             return NoOpPlatformContextPropagation.INSTANCE;
         }

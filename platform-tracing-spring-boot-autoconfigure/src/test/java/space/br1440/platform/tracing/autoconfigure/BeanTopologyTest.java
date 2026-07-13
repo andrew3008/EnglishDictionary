@@ -12,13 +12,13 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
@@ -41,14 +41,14 @@ class BeanTopologyTest {
                     TracingMetricsAutoConfiguration.class));
 
     @Test
-    void exactlyOnePlatformTracingAndTracingRuntime() {
+    void exactlyOneTraceOperationsAndTracingRuntime() {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    assertThat(context.getBeansOfType(PlatformTracing.class)).hasSize(1);
+                    assertThat(context.getBeansOfType(TraceOperations.class)).hasSize(1);
                     assertThat(context.getBeansOfType(TracingRuntime.class)).hasSize(1);
-                    assertThat(context.getBean(PlatformTracing.class))
-                            .isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class))
+                            .isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
                 });
@@ -59,7 +59,7 @@ class BeanTopologyTest {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    DefaultPlatformTracing facade = context.getBean(DefaultPlatformTracing.class);
+                    DefaultTraceOperations facade = context.getBean(DefaultTraceOperations.class);
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
                     assertThat(facade.tracingRuntime()).isSameAs(impl);
                 });
@@ -70,8 +70,8 @@ class BeanTopologyTest {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class, MeterRegistryConfiguration.class)
                 .run(context -> {
-                    assertThat(context).doesNotHaveBean("meteredPlatformTracing");
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+                    assertThat(context).doesNotHaveBean("meteredTraceOperations");
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(MeteredTracingRuntime.class);
                     assertThat(((MeteredTracingRuntime) context.getBean(TracingRuntime.class)).delegate())
@@ -86,7 +86,7 @@ class BeanTopologyTest {
                 .run(context -> {
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
                     assertThat(impl.state().mode()).isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
-                    assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                 });
     }
 
@@ -95,7 +95,7 @@ class BeanTopologyTest {
         contextRunner.run(context -> {
             TracingRuntime impl = context.getBean(TracingRuntime.class);
             assertThat(impl.state().mode()).isIn(TracingMode.UNAVAILABLE, TracingMode.NOOP);
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
         });
     }
 
@@ -107,7 +107,7 @@ class BeanTopologyTest {
                     assertThat(context.getBeansOfType(TracingRuntime.class)).hasSize(1);
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(MarkerTracingRuntime.class);
-                    assertThat(context).doesNotHaveBean("meteredPlatformTracing");
+                    assertThat(context).doesNotHaveBean("meteredTraceOperations");
                 });
     }
 

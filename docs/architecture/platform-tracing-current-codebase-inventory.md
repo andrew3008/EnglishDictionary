@@ -1,7 +1,7 @@
 # Platform Tracing: Current Codebase Inventory
 
-> **Snapshot date:** 2026-06-11  
-> **Repository:** `spring-boot-platform-tracing` (`e:\Platform_Traces`)  
+> **Snapshot date:** 2026-06-11
+> **Repository:** `spring-boot-platform-tracing` (`e:\Platform_Traces`)
 > **Scope:** factual inventory of existing Gradle modules, Java classes, tests, benchmarks and operational behavior — **без** migration plan и **без** нового architecture review.
 
 ---
@@ -17,7 +17,7 @@ This document is a preservation-oriented inventory of the current codebase.
 This document exists to prevent loss of existing implementation, tests, benchmarks and operational behavior during migration to Clean Core Hybrid Architecture.
 ```
 
-**Позиция:** `Preserve existing assets first, refactor second.`  
+**Позиция:** `Preserve existing assets first, refactor second.`
 На текущие Java-классы, тесты, benchmark'и и perf/integration наработки затрачены большие ресурсы; их нельзя потерять при переходе.
 
 ---
@@ -46,7 +46,7 @@ This document exists to prevent loss of existing implementation, tests, benchmar
 | Concern | Current location |
 |---------|------------------|
 | **Public API / semconv / propagation contracts** | `platform-tracing-api` (59 main classes) |
-| **Application-facing facade (`PlatformTracing`, typed span builders)** | `platform-tracing-core` (30 main classes) — **реализация поверх OTel API**, не pure policy core |
+| **Application-facing facade (`TraceOperations`, typed span builders)** | `platform-tracing-core` (30 main classes) — **реализация поверх OTel API**, не pure policy core |
 | **OTel Java Agent extension (Sampler, SpanProcessor, JMX server, SPI)** | `platform-tracing-otel-extension` (99 main classes) — **наиболее ценный production runtime** |
 | **Spring Boot common autoconfigure** | `platform-tracing-spring-boot-autoconfigure` (46 main classes) |
 | **WebMVC-specific autoconfigure** | `platform-tracing-autoconfigure-webmvc` (7 main classes) |
@@ -96,9 +96,9 @@ Notes: publishes java-platform artifact; single source of truth for dependency v
 ```text
 Module: platform-tracing-api
 Public-facing: yes
-Intended consumers: application code needing PlatformTracing facade contracts, semconv, propagation, SPI scrubbing rules
+Intended consumers: application code needing TraceOperations facade contracts, semconv, propagation, SPI scrubbing rules
 Should application teams depend on it directly: yes (optional — only when explicit API needed; normally via starter)
-Current role: public contracts — PlatformTracing, @Traced, span builders (interfaces), semconv keys, propagation, DomainConfigHolder, SpanAttributeScrubbingRule SPI
+Current role: public contracts — TraceOperations, @Traced, span builders (interfaces), semconv keys, propagation, DomainConfigHolder, SpanAttributeScrubbingRule SPI
 Target role: platform-tracing-api — contracts, semconv, propagation, wire schema
 Migration sensitivity: HIGH (backward compatibility)
 Notes: has compileOnly OTel context/api — MIGRATION_RISK vs target "JDK only"
@@ -137,7 +137,7 @@ Notes: 0 Java classes — pure dependency aggregator
 ```text
 Module: platform-tracing-core
 Public-facing: no (transitive via autoconfigure — teams should not declare directly)
-Internal role: DefaultPlatformTracing facade, typed span builder implementations, AttributePolicy, exception recording
+Internal role: DefaultTraceOperations facade, typed span builder implementations, AttributePolicy, exception recording
 Framework dependencies: api io.opentelemetry:opentelemetry-api; api platform-tracing-api
 Runtime role: application ClassLoader — used by Spring autoconfigure beans
 ClassLoader assumption: Application CL
@@ -365,7 +365,7 @@ Notes: DomainConfigHolder lives here (good target alignment); compileOnly OTel =
 ```text
 Module: platform-tracing-core
 Path: platform-tracing-core/
-Purpose: PlatformTracing implementation, typed span builders, AttributePolicy, exception handling
+Purpose: TraceOperations implementation, typed span builders, AttributePolicy, exception handling
 Main packages: core, core.span, core.semconv, core.exception
 Key dependencies: api platform-tracing-api; api opentelemetry-api
 Published artifact: yes
@@ -376,7 +376,7 @@ Target architecture candidate: platform-tracing-core (requires extraction/refact
 Public/internal/test/perf category: internal (transitive)
 Migration sensitivity: HIGH
 Preservation priority: HIGH
-Notes: DefaultPlatformTracing + *SpanBuilderImpl must preserve behavior; OTel api dependency = MIGRATION_RISK
+Notes: DefaultTraceOperations + *SpanBuilderImpl must preserve behavior; OTel api dependency = MIGRATION_RISK
 ```
 
 ### `platform-tracing-otel-extension`
@@ -435,7 +435,7 @@ starters -> autoconfigure + web*                    CURRENT: yes
 
 | Package | Module | Approx. class count | Main responsibility | Policy | Adapter | Hot path | Tests | Migration target | Notes |
 |---------|--------|--------------------:|---------------------|--------|---------|----------|-------|------------------|-------|
-| `...api` | api | 1 | PlatformTracing interface | no | no | partial | yes | API | |
+| `...api` | api | 1 | TraceOperations interface | no | no | partial | yes | API | |
 | `...api.semconv` | api | 6 | Semconv keys, CategoryContracts | yes | no | no | yes | API | |
 | `...api.config` | api | 2 | DomainConfigHolder, Versioned | yes | no | yes | yes | API | atomic config holder |
 | `...api.propagation.control` | api | 6 | Outbound propagation policy | yes | partial | yes | yes | API | |
@@ -490,7 +490,7 @@ starters -> autoconfigure + web*                    CURRENT: yes
 
 | Class | Module | Responsibility | Target | Notes |
 |-------|--------|----------------|--------|-------|
-| `DefaultPlatformTracing` | core | Main PlatformTracing impl | CORE (adapter today) | SPLIT_CORE_AND_ADAPTER |
+| `DefaultTraceOperations` | core | Main TraceOperations impl | CORE (adapter today) | SPLIT_CORE_AND_ADAPTER |
 | `AttributePolicy` | core | Attribute allow/deny/eager policy | CORE | Preserve |
 | `RuntimeConfigApplier` | autoconfigure | Applies RefreshScope props to agent via JMX | SPRING_AUTOCONFIGURE | Precursor to reconciler |
 | `TracingRefreshScopeAutoConfiguration` | autoconfigure | @RefreshScope TracingProperties | SPRING_AUTOCONFIGURE | Config Server path today |
@@ -658,7 +658,7 @@ Preservation risk: HIGH
 ```text
 Constants: SemconvKeys, PlatformAttributes, PlatformSamplingReasons, PlatformHeaders, TracingMdcKeys
 Typed builders: api.span.builder.* interfaces + Facade* wrappers; core *Impl classes
-Public interfaces: PlatformTracing, SpanHandle, SpanAttributeScrubbingRule SPI, PlatformContextPropagation
+Public interfaces: TraceOperations, SpanHandle, SpanAttributeScrubbingRule SPI, PlatformContextPropagation
 Propagation contracts: InboundTraceControl, TraceControlHeaderInjector, OutboundPropagationPolicy, TrustedDestinationMatcher
 Backward compatibility sensitivity: HIGH — app code compiles against api
 Tests: CategoryContractsTest, SanitizerTest, propagation tests, RemoteServiceMdcTest
@@ -860,7 +860,7 @@ First migration wave should clarify taxonomy, enforce dependency direction, pres
 | `CompositeSampler` + rules | otel-extension | core + otel-extension | `core.sampling` + adapter | SPLIT_CORE_AND_ADAPTER | DUPLICATE_BEFORE_MOVE | HIGH | |
 | `ScrubbingSpanProcessor` + engine | otel-extension | core + otel-extension | `core.scrubbing` | SPLIT_CORE_AND_ADAPTER | MUST_KEEP | CRITICAL | |
 | `ValidatingSpanProcessor` | otel-extension | core + otel-extension | `core.validation` | SPLIT_CORE_AND_ADAPTER | yes | MEDIUM | |
-| `DefaultPlatformTracing` | core | core | `core` | KEEP_AS_IS (then decouple OTel) | yes | HIGH | TEST_BEFORE_MOVE |
+| `DefaultTraceOperations` | core | core | `core` | KEEP_AS_IS (then decouple OTel) | yes | HIGH | TEST_BEFORE_MOVE |
 | `TracingProperties` | autoconfigure | autoconfigure | `autoconfigure` | KEEP_IN_SPRING_AUTOCONFIGURE | yes | HIGH | |
 | `RuntimeConfigApplier` | autoconfigure | autoconfigure | `autoconfigure.configsource` | KEEP → evolve to reconciler | ADAPT | MEDIUM | |
 | `TracingConfigReconciler` | — | autoconfigure | `autoconfigure.configsource` | DEFER (new) | n/a | — | Not found |
@@ -881,7 +881,7 @@ First migration wave should clarify taxonomy, enforce dependency direction, pres
 ### Production behavior
 
 ```text
-What exists today: CompositeSampler chain, mandatory ScrubbingSpanProcessor, export queue, SafeSpanExporter, PlatformTracing facade, WebMVC/WebFlux filters
+What exists today: CompositeSampler chain, mandatory ScrubbingSpanProcessor, export queue, SafeSpanExporter, TraceOperations facade, WebMVC/WebFlux filters
 Why it is valuable: production tracing semantics contracted with platform services
 How to preserve during migration: characterization tests + e2e smoke + JMH before any move; no behavior change in PR-0
 Which PR should protect it: PR-0 (baseline lock), PR-1+ (incremental split)
@@ -944,7 +944,7 @@ Operational: Actuator READ responses must remain shape-stable for SRE dashboards
 | Breaking Config Server semantics | autoconfigure | RefreshScope, RuntimeConfigApplier | no reconciler yet | drift / partial apply | RuntimeConfigApplierTest, E7 | PR-7A |
 | Hot path change without perf evidence | otel-ext, core | sampler, scrubbing | micro changes invisible in unit tests | M5 FAIL worsens | JMH + M5 | PR-6 |
 | Accidentally exposing mutation in prod | autoconfigure | TracingActuatorEndpoint | WriteOperation present | unauthorized tuning | ADD prod guard test | PR-8 |
-| Moving OTel types into core | core | DefaultPlatformTracing | target forbids | violates Clean Core | ArchUnit gate | PR-1 |
+| Moving OTel types into core | core | DefaultTraceOperations | target forbids | violates Clean Core | ArchUnit gate | PR-1 |
 | Moving Spring types into core | core | none today | prevention | coupling | ExtensionNoSpringDependencyArchTest pattern | PR-1 |
 | Collapsing modules too early | all | — | loses stack isolation | Servlet pulls WebFlux | DO_NOT_COLLAPSE_NOW | n/a |
 | App teams depend on internal modules | core, otel-ext | — | Gradle allows transitive | unsupported coupling | ENFORCE_DEPENDENCY_RULES | PR-0 |
@@ -957,24 +957,24 @@ Operational: Actuator READ responses must remain shape-stable for SRE dashboards
 
 #### 1. Current module taxonomy
 
-- **Public (4):** bom, api, starter-servlet, starter-reactive  
-- **Internal runtime (5):** core, otel-extension, spring-boot-autoconfigure, autoconfigure-webmvc, autoconfigure-webflux  
-- **Verification (4+1):** test, e2e-tests, bench, perf-tests, collector-config (YAML support)  
+- **Public (4):** bom, api, starter-servlet, starter-reactive
+- **Internal runtime (5):** core, otel-extension, spring-boot-autoconfigure, autoconfigure-webmvc, autoconfigure-webflux
+- **Verification (4+1):** test, e2e-tests, bench, perf-tests, collector-config (YAML support)
 - **Excluded scaffold:** semconv-lint (on disk, not in settings.gradle)
 
 #### 2. Current high-value classes/components
 
-- **Agent runtime (99 classes):** CompositeSampler, SpanProcessors (scrub/validate/enrich/export), SafeSpanExporter, PlatformTracingControl JMX  
-- **Spring adapter (46 classes):** TracingProperties, Actuator, SamplingControlClient, RefreshScope integration  
-- **Public API (59 classes):** semconv, builders, propagation, DomainConfigHolder  
-- **Core facade (30 classes):** DefaultPlatformTracing, AttributePolicy, typed span builders — OTel-coupled today  
+- **Agent runtime (99 classes):** CompositeSampler, SpanProcessors (scrub/validate/enrich/export), SafeSpanExporter, PlatformTracingControl JMX
+- **Spring adapter (46 classes):** TracingProperties, Actuator, SamplingControlClient, RefreshScope integration
+- **Public API (59 classes):** semconv, builders, propagation, DomainConfigHolder
+- **Core facade (30 classes):** DefaultTraceOperations, AttributePolicy, typed span builders — OTel-coupled today
 - **NOT FOUND:** TracingConfigReconciler, TracingDesiredState types
 
 #### 3. Current tests and benchmarks to preserve
 
-- **213** test classes; **42** e2e; **78** otel-extension unit tests  
-- **16** JMH benchmarks with baseline infrastructure  
-- **Macro perf:** M0–M10 scenarios, documented M5 FAIL (+48% CPU, +25% RSS)  
+- **213** test classes; **42** e2e; **78** otel-extension unit tests
+- **16** JMH benchmarks with baseline infrastructure
+- **Macro perf:** M0–M10 scenarios, documented M5 FAIL (+48% CPU, +25% RSS)
 - **Critical smokes:** `RuntimeSamplingControlSmokeTest`, `PerformanceReleaseGateTest`
 
 #### 4. Target architecture summary
@@ -1044,7 +1044,7 @@ Which module collapses, if any, should be deferred until after first production 
 **Total: 279 entries.** Format: `Module / package / class`
 
 ```text
-    platform-tracing-api / space.br1440.platform.tracing.api / PlatformTracing
+    platform-tracing-api / space.br1440.platform.tracing.api / TraceOperations
     platform-tracing-api / space.br1440.platform.tracing.api.annotation / SuppressAgentInstrumentation
     platform-tracing-api / space.br1440.platform.tracing.api.annotation / Traced
     platform-tracing-api / space.br1440.platform.tracing.api.annotation / TracedAttribute
@@ -1121,9 +1121,9 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / ServletTracingAutoConfiguration
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / TraceResponseHeaderServletFilter
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / WebMvcSuppressMicrometerTracingAutoConfiguration
-    platform-tracing-core / space.br1440.platform.tracing.core / DefaultPlatformTracing
+    platform-tracing-core / space.br1440.platform.tracing.core / DefaultTraceOperations
     platform-tracing-core / space.br1440.platform.tracing.core / NoOpPlatformContextPropagation
-    platform-tracing-core / space.br1440.platform.tracing.core / NoOpPlatformTracing
+    platform-tracing-core / space.br1440.platform.tracing.core / NoopTraceOperations
     platform-tracing-core / space.br1440.platform.tracing.core / OtelPlatformContextPropagation
     platform-tracing-core / space.br1440.platform.tracing.core.exception / ExceptionMessagePolicy
     platform-tracing-core / space.br1440.platform.tracing.core.exception / ExceptionRecorder
@@ -1309,7 +1309,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.support / SdkMode
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.support / SdkModeDiagnostics
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.support / SdkModeResolver
-    platform-tracing-test / space.br1440.platform.tracing.test / PlatformTracingTestExtension
+    platform-tracing-test / space.br1440.platform.tracing.test / TraceOperationsTestExtension
     platform-tracing-test / space.br1440.platform.tracing.test.arch / OtelDirectIntegrationRules
     platform-tracing-test / space.br1440.platform.tracing.test.arch / OtelSdkArchRules
     platform-tracing-test / space.br1440.platform.tracing.test.arch / TracingArchRules
@@ -1361,8 +1361,8 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-bench / space.br1440.platform.tracing.bench.contract / PerformanceReleaseGateTest
     platform-tracing-bench / space.br1440.platform.tracing.bench.contract / ScrubbingBenchmarkFixtureContractTest
     platform-tracing-collector-config / space.br1440.platform.tracing.collectorconfig / CollectorPolicyContractTest
-    platform-tracing-core / space.br1440.platform.tracing.core / DefaultPlatformTracingInSpanTest
-    platform-tracing-core / space.br1440.platform.tracing.core / DefaultPlatformTracingTest
+    platform-tracing-core / space.br1440.platform.tracing.core / DefaultTraceOperationsInSpanTest
+    platform-tracing-core / space.br1440.platform.tracing.core / DefaultTraceOperationsTest
     platform-tracing-core / space.br1440.platform.tracing.core / NoOpPlatformContextPropagationTest
     platform-tracing-core / space.br1440.platform.tracing.core / OtelPlatformContextPropagationTest
     platform-tracing-core / space.br1440.platform.tracing.core.arch / OtelDirectIntegrationArchTest
@@ -1528,7 +1528,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.support / DurationToMillisTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.support / OtelAgentDetectorTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.support / SdkModeResolverTest
-    platform-tracing-test / space.br1440.platform.tracing.test / PlatformTracingTestExtensionTest
+    platform-tracing-test / space.br1440.platform.tracing.test / TraceOperationsTestExtensionTest
     platform-tracing-test / space.br1440.platform.tracing.test.arch / EscapeHatchArchRuleTest
     platform-tracing-test / space.br1440.platform.tracing.test.arch / OtelDirectIntegrationRulesTest
     platform-tracing-test / space.br1440.platform.tracing.test.arch / OtelSdkArchRulesTest
@@ -1589,7 +1589,7 @@ Which module collapses, if any, should be deferred until after first production 
 | `platform-tracing-spring-boot-autoconfigure/.../actuator/TracingActuatorEndpoint.java` | WriteOperation exposed without prod guard | Actuator MUTATION dev-only | SRE + platform owner |
 | `platform-tracing-spring-boot-autoconfigure/.../TracingProperties.java` | 700+ lines; topology vs policy split non-obvious | Helm vs Config Server sources | Config/platform architect |
 | `platform-tracing-spring-boot-autoconfigure/.../RuntimeConfigApplier.java` | Precursor to reconciler; RefreshScope semantics | TracingConfigReconciler | Platform owner |
-| `platform-tracing-core/.../DefaultPlatformTracing.java` | OTel-coupled "core" — split boundary unclear | pure Java core | Staff engineer |
+| `platform-tracing-core/.../DefaultTraceOperations.java` | OTel-coupled "core" — split boundary unclear | pure Java core | Staff engineer |
 | `platform-tracing-otel-extension/.../sampler/CompositeSampler.java` | SPLIT_CORE_AND_ADAPTER — policy/adapter interleaved | core vs otel-extension | Staff engineer |
 | `platform-tracing-otel-extension/.../scrubbing/engine/*` | Mandatory baseline scrubbing engine | core scrubbing policy | Security + platform |
 | `platform-tracing-api/build.gradle` | compileOnly OTel deps in public API | api = JDK only | Architect |

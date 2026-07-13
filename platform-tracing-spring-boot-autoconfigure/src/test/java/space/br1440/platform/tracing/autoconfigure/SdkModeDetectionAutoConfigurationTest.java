@@ -8,11 +8,11 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,16 +29,16 @@ class SdkModeDetectionAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(TracingCoreAutoConfiguration.class));
 
     @Test
-    @DisplayName("external: пользовательский OpenTelemetry bean → фасад DefaultPlatformTracing, НЕ NoOp")
+    @DisplayName("external: пользовательский OpenTelemetry bean → фасад DefaultTraceOperations, НЕ NoOp")
     void agent_mode_provides_facade_not_noop() {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .run(context -> {
-                    PlatformTracing tracing = context.getBean(PlatformTracing.class);
+                    TraceOperations tracing = context.getBean(TraceOperations.class);
                     assertThat(tracing)
                             .as("при наличии функционального SDK фасад должен делегировать в него, а не NoOp")
-                            .isInstanceOf(DefaultPlatformTracing.class)
-                            .isNotInstanceOf(NoOpPlatformTracing.class);
+                            .isInstanceOf(DefaultTraceOperations.class)
+                            .isNotInstanceOf(NoopTraceOperations.class);
 
                     SdkModeDiagnostics diagnostics = context.getBean(SdkModeDiagnostics.class);
                     assertThat(diagnostics.mode()).isEqualTo(SdkMode.EXTERNAL);
@@ -46,16 +46,16 @@ class SdkModeDetectionAutoConfigurationTest {
     }
 
     @Test
-    @DisplayName("DISABLED → NoOpPlatformTracing даже при наличии OpenTelemetry bean")
+    @DisplayName("DISABLED → NoopTraceOperations даже при наличии OpenTelemetry bean")
     void disabled_yields_noop() {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
-                    PlatformTracing tracing = context.getBean(PlatformTracing.class);
+                    TraceOperations tracing = context.getBean(TraceOperations.class);
                     assertThat(tracing)
                             .as("DISABLED — единственный режим с NoOp")
-                            .isInstanceOf(NoOpPlatformTracing.class);
+                            .isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(SdkModeDiagnostics.class).mode()).isEqualTo(SdkMode.DISABLED);
                 });
     }
@@ -68,7 +68,7 @@ class SdkModeDetectionAutoConfigurationTest {
                     .as("starter agent-first: SDK не создаётся стартером")
                     .doesNotHaveBean(OpenTelemetry.class);
             // Без функционального SDK фасад остаётся NoOp (поведение не изменилось; режим STARTER).
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(NoOpPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
             assertThat(context.getBean(SdkModeDiagnostics.class).mode()).isEqualTo(SdkMode.STARTER);
         });
     }

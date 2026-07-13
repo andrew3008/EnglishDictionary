@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.beans.factory.ObjectProvider;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
@@ -33,19 +33,19 @@ public class TracingActuatorAutoConfiguration {
     @Bean(name = "tracingHealthIndicator")
     @ConditionalOnMissingBean(name = "tracingHealthIndicator")
     @ConditionalOnEnabledHealthIndicator("tracing")
-    public TracingHealthIndicator tracingHealthIndicator(PlatformTracing platformTracing) {
-        return new TracingHealthIndicator(platformTracing);
+    public TracingHealthIndicator tracingHealthIndicator(TraceOperations traceOperations) {
+        return new TracingHealthIndicator(traceOperations);
     }
 
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnAvailableEndpoint
-    public TracingActuatorEndpoint tracingActuatorEndpoint(PlatformTracing platformTracing,
+    public TracingActuatorEndpoint tracingActuatorEndpoint(TraceOperations traceOperations,
                                                             TracingProperties properties,
                                                             PlatformTracingJmxClient platformTracingJmxClient,
                                                             ObjectProvider<SdkModeDiagnostics> sdkModeDiagnostics,
                                                             ManualTracingDiagnostics manualTracingDiagnostics) {
-        return new TracingActuatorEndpoint(platformTracing, properties, platformTracingJmxClient,
+        return new TracingActuatorEndpoint(traceOperations, properties, platformTracingJmxClient,
                 sdkModeDiagnostics.getIfAvailable(), manualTracingDiagnostics);
     }
 }

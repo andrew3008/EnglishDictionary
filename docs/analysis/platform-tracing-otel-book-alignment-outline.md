@@ -1,4 +1,4 @@
-# План конспекта для согласования PlatformTracing с SRE и архитекторами
+# План конспекта для согласования TraceOperations с SRE и архитекторами
 
 > **Цель документа:** 8–12 страниц (или 30-мин презентация) — аргументированная позиция «почему наше решение соответствует OTel best practices», а не пересказ книги.  
 > **Аудитория:** архитекторы (границы, ADR), SRE (pipeline, sampling, alerts), вы как owner platform library.  
@@ -12,7 +12,7 @@
 
 | Блок | Содержание (3–5 bullet) |
 |---|---|
-| **Что мы строим** | Agent-first Java platform starter: Agent + extension + Collector + narrow `PlatformTracing` API |
+| **Что мы строим** | Agent-first Java platform starter: Agent + extension + Collector + narrow `TraceOperations` API |
 | **Что не строим** | Собственный tracing backend, замена OTel SDK, per-service tracing config |
 | **Формула** | Auto-instrumentation default; `manual()` — exception path |
 | **Разделение ответственности** | Platform = library + policy; SRE = Collector + capacity; App teams = business attrs only |
@@ -22,7 +22,7 @@
 
 ```
 App (Spring) → Agent/extension (head policy) → local/agent Collector → Gateway (tail sampling) → Tempo/Jaeger
-                    ↑ PlatformTracing (manual governance only)
+                    ↑ TraceOperations (manual governance only)
 ```
 
 ---
@@ -34,7 +34,7 @@ App (Spring) → Agent/extension (head policy) → local/agent Collector → Gat
 - Нативное инструментирование в библиотеке лучше плагинов: один SDK → всё работает.
 - API отдельно от SDK; no-op по умолчанию; semconv обязательны.
 
-**Mapping на PlatformTracing:**
+**Mapping на TraceOperations:**
 
 | Книга | Наше решение | ADR/артефакт |
 |---|---|---|
@@ -45,7 +45,7 @@ App (Spring) → Agent/extension (head policy) → local/agent Collector → Gat
 | Semconv | `CategoryContracts`, STRICT, typed builders | ADR-typed-span-api |
 
 **Вопрос для архитекторов (1 слайд):**
-> PlatformTracing — platform library с нативным OTel, не tracing backend. Подтверждаем?
+> TraceOperations — platform library с нативным OTel, не tracing backend. Подтверждаем?
 
 **Не включать:** теорию про Cocoa/SwiftUI, длинные примеры sequential DB (только как иллюстрация «trace показывает anti-pattern»).
 

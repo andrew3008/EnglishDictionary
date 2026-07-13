@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.annotation.Traced;
 import space.br1440.platform.tracing.api.annotation.TracedAttribute;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
@@ -19,22 +19,22 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.test.PlatformTracingTestExtension;
+import space.br1440.platform.tracing.test.TraceOperationsTestExtension;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@ExtendWith(PlatformTracingTestExtension.class)
+@ExtendWith(TraceOperationsTestExtension.class)
 class TracedAspectTest {
 
     private SampleService service;
-    private PlatformTracing tracing;
+    private TraceOperations tracing;
 
     @BeforeEach
         // given
-    void setUp(PlatformTracing tracing) {
+    void setUp(TraceOperations tracing) {
         this.tracing = tracing;
         TracedAspect aspect = new TracedAspect(tracing);
         AspectJProxyFactory factory = new AspectJProxyFactory(new SampleServiceImpl());

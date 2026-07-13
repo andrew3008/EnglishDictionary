@@ -14,8 +14,8 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
-import space.br1440.platform.tracing.core.facade.NoOpPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
 
@@ -29,12 +29,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TracingRuntimeRoutingTest {
 
     private RecordingTracingRuntime recording;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
 
     @BeforeEach
     void setUp() {
         recording = new RecordingTracingRuntime();
-        tracing = new DefaultPlatformTracing(recording);
+        tracing = new DefaultTraceOperations(recording);
     }
 
     @Test
@@ -119,7 +119,7 @@ class TracingRuntimeRoutingTest {
         RecordingTracingRuntime recordingImpl = new RecordingTracingRuntime();
         recordingImpl.setState(ImmutableTracingState.of(
                 TracingMode.NOOP, null, java.util.Map.of()));
-        NoOpPlatformTracing noop = NoOpPlatformTracing.backedBy(recordingImpl);
+        NoopTraceOperations noop = NoopTraceOperations.backedBy(recordingImpl);
         noop.manual().operation("noop-op").run(() -> {
         });
         assertThat(recordingImpl.receivedSpecs()).hasSize(1);
@@ -132,7 +132,7 @@ class TracingRuntimeRoutingTest {
         SdkTracerProvider provider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        DefaultPlatformTracing realTracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(provider).build()));
+        DefaultTraceOperations realTracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(provider).build()));
         realTracing.setFacadeEnabled(false);
         realTracing.manual().operation("disabled").start().close();
         assertThat(exporter.getFinishedSpanItems()).isEmpty();

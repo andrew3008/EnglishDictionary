@@ -1,4 +1,4 @@
-# PlatformTracing Slice 8 Lightweight Review
+# TraceOperations Slice 8 Lightweight Review
 
 **Review date:** 2026-07-07  
 **Scope:** Slice 8 docs, ADRs, and `platform-tracing-samples` only (read-only review)  

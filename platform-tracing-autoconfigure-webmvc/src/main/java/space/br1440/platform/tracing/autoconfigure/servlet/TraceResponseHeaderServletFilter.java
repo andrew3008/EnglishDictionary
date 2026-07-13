@@ -5,7 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.filter.OncePerRequestFilter;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import org.slf4j.MDC;
 import io.opentelemetry.api.trace.Span;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
@@ -51,11 +51,11 @@ import java.util.Optional;
  */
 public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
 
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
     private final TracingProperties properties;
 
-    public TraceResponseHeaderServletFilter(PlatformTracing platformTracing, TracingProperties properties) {
-        this.platformTracing = platformTracing;
+    public TraceResponseHeaderServletFilter(TraceOperations traceOperations, TracingProperties properties) {
+        this.traceOperations = traceOperations;
         this.properties = properties;
     }
 
@@ -113,7 +113,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
      */
     private Optional<String> safeCurrentTraceId() {
         try {
-            return platformTracing.traceContext().traceId();
+            return traceOperations.traceContext().traceId();
         } catch (RuntimeException ignored) {
             return Optional.empty();
         }

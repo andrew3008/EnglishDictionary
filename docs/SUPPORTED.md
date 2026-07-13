@@ -145,7 +145,7 @@ Additional `OTEL_*` / `platform.tracing.*` — see [runbook/mdc-logging-producti
 | `otel.propagators` | `tracecontext,baggage` → дописывается `platform-trace-control` | `none` → платформенный не добавляется; дубль не создаётся |
 
 `platform.tracing.sdk.mode` (`AUTO|AGENT|STARTER|EXTERNAL|DISABLED`, дефолт `AUTO`) — **диагностика и явность**,
-не создание SDK (agent-first). `NoOpPlatformTracing` — только в `DISABLED`; в остальных режимах фасад делегирует
+не создание SDK (agent-first). `NoopTraceOperations` — только в `DISABLED`; в остальных режимах фасад делегирует
 в `GlobalOpenTelemetry`/пользовательский `OpenTelemetry` bean. Эффективный режим виден в `/actuator/tracing` →
 секция `sdk` (`mode`/`configuredMode`/`agentDetected`). Подробности:
 [ADR-named-spi-sampler-propagator.md](./decisions/ADR-named-spi-sampler-propagator.md),

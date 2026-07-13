@@ -11,7 +11,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.kafka.annotation.KafkaListener;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.KafkaBatchSpanBuilder;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
@@ -42,11 +42,11 @@ import java.util.Set;
 public class KafkaBatchLinksAspect {
 
     private final OpenTelemetry openTelemetry;
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
 
-    public KafkaBatchLinksAspect(OpenTelemetry openTelemetry, PlatformTracing platformTracing) {
+    public KafkaBatchLinksAspect(OpenTelemetry openTelemetry, TraceOperations traceOperations) {
         this.openTelemetry = openTelemetry;
-        this.platformTracing = platformTracing;
+        this.traceOperations = traceOperations;
     }
 
     @Around("@annotation(kafkaListener) && args(records,..)")
@@ -70,7 +70,7 @@ public class KafkaBatchLinksAspect {
 
         String destination = resolveDestination(records, kafkaListener, pjp);
 
-        KafkaBatchSpanBuilder builder = platformTracing.manual()
+        KafkaBatchSpanBuilder builder = traceOperations.manual()
                 .transport()
                 .kafka()
                 .consumer()

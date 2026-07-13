@@ -471,7 +471,7 @@ Schema-first reduces drift but is **build-time governance choice**, not OTel/JDK
 | `api` | Constants: `SemconvKeys`, `CategoryContracts`, `PlatformSamplingReasons`, typed span builders |
 | `core` | Validation rules, category requirements, strict/permissive mode logic |
 | `extension` | Translate core decisions → OTel `Attributes` on span |
-| `autoconfigure` | Application-facing `PlatformTracing` facade |
+| `autoconfigure` | Application-facing `TraceOperations` facade |
 
 **Baseline telemetry contract:** mandatory attributes per category must pass contract tests in **all** pipeline profiles. Optional validation processor off in prod must not remove mandatory attributes — they must be set at instrumentation/facade layer.
 

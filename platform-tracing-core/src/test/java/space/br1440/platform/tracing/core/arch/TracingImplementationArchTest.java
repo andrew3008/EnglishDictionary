@@ -63,7 +63,7 @@ class TracingImplementationArchTest {
     static final ArchRule runtimeMustNotDependOnRootFacade =
             noClasses().that().resideInAPackage("space.br1440.platform.tracing.core.runtime..")
                     .should().dependOnClassesThat().haveNameMatching(
-                            "space\\.br1440\\.platform\\.tracing\\.core\\.(DefaultPlatformTracing|NoOpPlatformTracing|OtelPlatformContextPropagation|NoOpPlatformContextPropagation)")
+                            "space\\.br1440\\.platform\\.tracing\\.core\\.(DefaultTraceOperations|NoopTraceOperations|OtelPlatformContextPropagation|NoOpPlatformContextPropagation)")
                     .because("core.runtime не должен зависеть от root facade-кlassов");
 
     @ArchTest
@@ -76,12 +76,12 @@ class TracingImplementationArchTest {
 
     @ArchTest
     static final ArchRule platformTracingFacadeDoesNotUseOtelSpanApi =
-            noClasses().that().haveSimpleName("DefaultPlatformTracing")
+            noClasses().that().haveSimpleName("DefaultTraceOperations")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "io.opentelemetry.api.trace..",
                             "io.opentelemetry.context..",
                             "io.opentelemetry.sdk..")
-                    .because("PlatformTracing facade must not use OTel span API directly");
+                    .because("TraceOperations facade must not use OTel span API directly");
 
     private static ArchCondition<JavaClass> notHaveDefaultMethods() {
         return new ArchCondition<>("not declare default methods") {

@@ -18,8 +18,8 @@ api 'io.opentelemetry:opentelemetry-api'
 
 | Класс | Пакет | OTel в public API |
 |---|---|---|
-| `DefaultPlatformTracing` | `core.facade` | **Да** — конструкторы `(OpenTelemetry, ...)`, `(OpenTelemetry, AttributePolicy, ...)` |
-| `NoOpPlatformTracing` | `core.facade` | Нет прямых OTel типов в сигнатурах |
+| `DefaultTraceOperations` | `core.facade` | **Да** — конструкторы `(OpenTelemetry, ...)`, `(OpenTelemetry, AttributePolicy, ...)` |
+| `NoopTraceOperations` | `core.facade` | Нет прямых OTel типов в сигнатурах |
 | `OtelPlatformContextPropagation` | `core.propagation` | Нет OTel типов в public методах (`PlatformContextPropagation`) |
 | `SpanEnricher` | `core.enrichment` | Нет OTel в public сигнатурах (OTel внутри) |
 | `AttributePolicy` | `core.semconv.policy` | `Attributes`, `AttributeKey` в методах валидации |
@@ -30,7 +30,7 @@ api 'io.opentelemetry:opentelemetry-api'
 
 Причины:
 
-1. `DefaultPlatformTracing(OpenTelemetry, ...)` — публичный конструктор для Spring Boot autoconfigure и прямой интеграции; потребители передают `OpenTelemetry` bean.
+1. `DefaultTraceOperations(OpenTelemetry, ...)` — публичный конструктор для Spring Boot autoconfigure и прямой интеграции; потребители передают `OpenTelemetry` bean.
 2. `AttributePolicy.validateAndNormalize(..., Attributes, ...)` — публичный класс с OTel `Attributes` в сигнатуре; используется autoconfigure и bench.
 3. Downgrade сломает компиляцию модулей, которые не объявляют прямую зависимость на `opentelemetry-api`, но вызывают эти API.
 

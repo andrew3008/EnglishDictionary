@@ -34,7 +34,7 @@
 1. **Анализ индустрии корректен** — `opentelemetry-sdk-testing`, Dynatrace, Okeanos, Quarkus описаны без искажений.
 2. **Баг #7919 (`@Nested` + `afterAll`) реален** — лечится ancestor-store lookup.
 3. **`GlobalOpenTelemetry.set()` идемпотентность реальна** — решается **не отдельным extension'ом**, а отказом от `buildAndRegisterGlobal()` в тестовом SDK.
-4. **`SimpleSpanProcessor` в тестах вместо `BatchSpanProcessor`** — верно, у нас уже так в [`PlatformTracingTestExtension.java`](../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/PlatformTracingTestExtension.java).
+4. **`SimpleSpanProcessor` в тестах вместо `BatchSpanProcessor`** — верно, у нас уже так в [`TraceOperationsTestExtension.java`](../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/TraceOperationsTestExtension.java).
 5. **`ExtensionContext.Store` + `AutoCloseable` SdkResource** — единственно правильный подход к lifecycle.
 
 ### 1.2. Спорные тезисы (меняем формулировку)
@@ -64,7 +64,7 @@
 
 ### 2.1. Что есть сейчас
 
-Единственный класс — [`PlatformTracingTestExtension.java`](../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/PlatformTracingTestExtension.java) (62 строки):
+Единственный класс — [`TraceOperationsTestExtension.java`](../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/TraceOperationsTestExtension.java) (62 строки):
 
 - `BeforeEachCallback` + `AfterEachCallback` (per-method lifecycle).
 - Создаёт `OpenTelemetrySdk` с `SimpleSpanProcessor(InMemorySpanExporter)`.
@@ -73,9 +73,9 @@
 
 ### 2.2. Что не работает
 
-1. **Не используется в реальных тестах модуля.** Поиск `PlatformTracingTestExtension` по `platform-tracing-otel-extension` и `platform-tracing-spring-boot-autoconfigure` даёт **0 ссылок**. Все 27 тестов SpanProcessor'ов и Sampler'ов вручную поднимают SDK (см. [`EnrichingSpanProcessorTest.java`](../platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/EnrichingSpanProcessorTest.java) — 12-15 строк boilerplate на каждый тест).
+1. **Не используется в реальных тестах модуля.** Поиск `TraceOperationsTestExtension` по `platform-tracing-otel-extension` и `platform-tracing-spring-boot-autoconfigure` даёт **0 ссылок**. Все 27 тестов SpanProcessor'ов и Sampler'ов вручную поднимают SDK (см. [`EnrichingSpanProcessorTest.java`](../platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/EnrichingSpanProcessorTest.java) — 12-15 строк boilerplate на каждый тест).
 2. **Нет `@Nested`-safe scope.** Per-method lifecycle вообще не страдает от бага #7919, но и не пригоден для тестов SpanProcessor — там нужен один SDK на класс.
-3. **Нет `PlatformTracing` для сервисов, которые тестируют не сам стартер, а свой код.** Метод `getPlatformTracing()` есть, но цель модуля сейчас размыта: для unit-тестов SpanProcessor он избыточен, для интеграционных тестов прикладного кода — недостаточен.
+3. **Нет `TraceOperations` для сервисов, которые тестируют не сам стартер, а свой код.** Метод `getPlatformTracing()` есть, но цель модуля сейчас размыта: для unit-тестов SpanProcessor он избыточен, для интеграционных тестов прикладного кода — недостаточен.
 
 ### 2.3. Где конкретно сокращается boilerplate
 
@@ -115,7 +115,7 @@ flowchart TB
         SamplerExt["SamplerHarnessExtension<br/>(JUnit 5 Extension, optional thin wrapper)"]
         ProcExt["SpanProcessorHarnessExtension<br/>(JUnit 5 Extension, optional thin wrapper)"]
         Assertions["SpanAssertions<br/>(static helpers over OpenTelemetryAssertions)"]
-        Legacy["PlatformTracingTestExtension<br/>(оставляем как есть, для тестов прикладного кода)"]
+        Legacy["TraceOperationsTestExtension<br/>(оставляем как есть, для тестов прикладного кода)"]
     end
 
     OtelSdk -->|reuses| SdkTesting["io.opentelemetry:opentelemetry-sdk-testing"]
@@ -130,7 +130,7 @@ flowchart TB
 - `SamplerHarness` — обычный builder-класс для подготовки атрибутов и вызова `shouldSample()`. Может использоваться без JUnit (в `main`-коде даже).
 - `SamplerHarnessExtension` — тонкая обёртка вокруг `SamplerHarness` ради `@RegisterExtension` синтаксиса и `ParameterResolver`. **Опциональна**: можно писать `new SamplerHarness(sampler)` руками.
 - `SpanProcessorHarness` / `SpanProcessorHarnessExtension` — то же для SpanProcessor'ов.
-- `PlatformTracingTestExtension` — оставляем без изменений как контракт для unit-тестов прикладного кода, использующего `PlatformTracing` фасад. Это другая аудитория (сервисы), даже если артефакт internal.
+- `TraceOperationsTestExtension` — оставляем без изменений как контракт для unit-тестов прикладного кода, использующего `TraceOperations` фасад. Это другая аудитория (сервисы), даже если артефакт internal.
 
 ---
 
@@ -321,7 +321,7 @@ public final class SpanAssertions {
 | # | Задача | Результат |
 |---|---|---|
 | 0.1 | Зафиксировать на ArchUnit: ни один тест Platform_Traces не вызывает `buildAndRegisterGlobal()` | Тест-правило в `platform-tracing-test/src/test/java/.../arch/TestGlobalOtelRulesTest.java` |
-| 0.2 | Подтвердить, что [`PlatformTracingTestExtension`](../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/PlatformTracingTestExtension.java) остаётся как есть | JavaDoc-уточнение «контракт для прикладных тестов, не для тестов самой платформы» |
+| 0.2 | Подтвердить, что [`TraceOperationsTestExtension`](../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/TraceOperationsTestExtension.java) остаётся как есть | JavaDoc-уточнение «контракт для прикладных тестов, не для тестов самой платформы» |
 | 0.3 | Создать пакетную структуру в `platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/`: `junit`, `harness`, `assertions` | Каркас + package-info.java с JavaDoc |
 
 ### Фаза 1 — `OtelSdkExtension` + `SpanAssertions` (3-4 дня)
@@ -447,7 +447,7 @@ class SpanProcessorChainTest {
 
 ```
 platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/
-├── PlatformTracingTestExtension.java          # без изменений (контракт для прикладного кода)
+├── TraceOperationsTestExtension.java          # без изменений (контракт для прикладного кода)
 ├── junit/
 │   ├── OtelSdkExtension.java                  # Фаза 1
 │   ├── SamplerHarnessExtension.java           # Фаза 2 (опционально)
@@ -604,7 +604,7 @@ dependencies {
 
 ## 12. Открытые вопросы для митинга
 
-1. **`PlatformTracingTestExtension` — оставить или мигрировать на `OtelSdkExtension`?** Сейчас он per-method и предоставляет `PlatformTracing` фасад. Предлагаю оставить как есть — это контракт для прикладных тестов, не для тестов самой платформы.
+1. **`TraceOperationsTestExtension` — оставить или мигрировать на `OtelSdkExtension`?** Сейчас он per-method и предоставляет `TraceOperations` фасад. Предлагаю оставить как есть — это контракт для прикладных тестов, не для тестов самой платформы.
 2. **Нужно ли SDK переиспользовать между `@Nested`-классами, видя span'ы из outer?** Если да — текущий дизайн работает. Если хотим изоляцию между `@Nested` блоками — нужен явный `reset()` в `beforeAll(@Nested)`. Текущее решение — `reset()` только в `beforeEach`, между `@Nested` блоками spans не очищаются. Уточнить требование.
 3. **ArchUnit-правило про `buildAndRegisterGlobal()` — куда положить?** В `platform-tracing-test`/test или в `platform-tracing-otel-extension`/test? Предлагаю в `platform-tracing-test` (единая точка контракта).
 4. **Migration пути для существующих 25 тестов: одна большая PR или серия мелких?** Предлагаю серию по модулям: первая PR — `OtelSdkExtension` + переписать 2 теста для демонстрации; вторая — массовая миграция SpanProcessor-тестов; третья — Sampler-тесты.

@@ -125,7 +125,7 @@ Guidance для потребителей:
 | **v1.1** | Рассмотреть dual mode: events + logs | `OTEL_SEMCONV_EXCEPTION_SIGNAL_OPT_IN=dup` после bump Agent ≥ 2.30 |
 | **v2.0+** | Переход на logs signal | `OTEL_SEMCONV_EXCEPTION_SIGNAL_OPT_IN=logs` |
 
-Platform `PlatformTracing.recordException()` в v1.0 делегирует в OTel Span API (`recordException`) — поведение наследуется от Agent/SDK без platform-specific fork.
+Platform `TraceOperations.recordException()` в v1.0 делегирует в OTel Span API (`recordException`) — поведение наследуется от Agent/SDK без platform-specific fork.
 
 **Backlog issue (v1.1):** «Evaluate OTEL_SEMCONV_EXCEPTION_SIGNAL_OPT_IN migration» — оценить impact на scrubbing rules (`exception.message`, stacktrace) и log correlation.
 

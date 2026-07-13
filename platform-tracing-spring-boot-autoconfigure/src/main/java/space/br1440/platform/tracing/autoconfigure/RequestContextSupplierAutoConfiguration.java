@@ -28,7 +28,7 @@ import java.util.function.Supplier;
  * <h2>Внимание разработчику</h2>
  * <p><b>Намеренно не имеет зависимостей от tracing-core бинов:</b>
  * атрибут {@code after = TracingCoreAutoConfiguration.class} не указан осознанно —
- * {@link RequestTraceContextSnapshotSupplier} не требует {@link space.br1440.platform.tracing.api.PlatformTracing}
+ * {@link RequestTraceContextSnapshotSupplier} не требует {@link space.br1440.platform.tracing.api.TraceOperations}
  * и работает напрямую с {@code Span.current()} и {@link org.slf4j.MDC}. <b>Не добавлять</b>
  * {@code after}/{@code before} «по аналогии с соседними классами»: это сделает регистрацию
  * supplier'а зависимой от {@code platform.tracing.enabled} и сломает контракт «errorhandling

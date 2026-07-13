@@ -34,7 +34,7 @@ Production-readiness verdict: **not production-ready as-is**. The API shape is s
 
 ### Facts
 
-- `PlatformTracing` has exactly two public entry methods: `traceContext()` and `manual()` in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/PlatformTracing.java`.
+- `TraceOperations` has exactly two public entry methods: `traceContext()` and `manual()` in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/TraceOperations.java`.
 - `ManualTracing` exposes `operation(String)`, `transport()`, and `spanFromSpec(SpanSpec)` in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/ManualTracing.java`.
 - `PlatformSpanBuilder` is the common fluent execution contract for manual builders in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/PlatformSpanBuilder.java`.
 - `SpanSpec.options()` returns `SpanTopologySpec` in `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpec.java`.
@@ -62,7 +62,7 @@ Production-readiness verdict: **not production-ready as-is**. The API shape is s
 
 | Inventory Claim | Repository Evidence | Status | Notes |
 |---|---|---|---|
-| API root is `PlatformTracing` with `traceContext()` and `manual()` | `PlatformTracing.java` | Confirmed | Correct root graph. |
+| API root is `TraceOperations` with `traceContext()` and `manual()` | `TraceOperations.java` | Confirmed | Correct root graph. |
 | Inventory says 80 public types | Source scan found 81 top-level public types | Corrected | Likely missed one public annotation/type; scoreboard uses repository count. |
 | `SpanOptions` removed; `SpanTopologySpec` exists | `SpanTopologySpec.java`; no `SpanOptions.java` | Confirmed | Docs still mention `SpanOptions`. |
 | `SpanSpec.options()` returns topology/link value model | `SpanSpec.java` | Confirmed with naming issue | Method name is stale vocabulary. |
@@ -77,7 +77,7 @@ Production-readiness verdict: **not production-ready as-is**. The API shape is s
 
 Strengths:
 
-- The root API is compact: `PlatformTracing.traceContext()` and `PlatformTracing.manual()` are easy for Spring Boot services.
+- The root API is compact: `traceOperations.traceContext()` and `traceOperations.manual()` are easy for Spring Boot services.
 - Fluent manual builders have a consistent grammar: `.child()`, `.root()`, `.detached()`, `.linkedTo()`, `.start()`, `.run()`, `.call()`.
 - Transport branches are mostly intuitive: HTTP/RPC/Kafka use navigator interfaces returning typed builders.
 - Wire-value enums such as `SpanCategory` and `SpanResult` have explicit stable string values.
@@ -108,7 +108,7 @@ Generic vocabulary overuse:
 
 | Current Type | Package | Current Score | Category | Recommended Name / Action | Recommended Score | Delta | Rationale |
 |---|---|---:|---|---|---:|---:|---|
-| `PlatformTracing` | `api` | 94 | KEEP_STRONG | Keep | 94 | 0 | Root facade name is intentional and commercial-grade. |
+| `TraceOperations` | `api` | 94 | KEEP_STRONG | Keep | 94 | 0 | Root facade name is intentional and commercial-grade. |
 | `Traced` | `api.annotation` | 92 | KEEP_STRONG | Keep | 92 | 0 | Standard annotation vocabulary. |
 | `TracedAttribute` | `api.annotation` | 91 | KEEP_STRONG | Keep | 91 | 0 | Clear AOP attribute annotation. |
 | `SuppressAgentInstrumentation` | `api.annotation` | 89 | KEEP_STRONG | Keep | 89 | 0 | Explicit and safer than short alternatives. |
@@ -203,7 +203,7 @@ Generic vocabulary overuse:
 | Recommended score | 91 |
 | Delta | +27 |
 | Why current name fails | `Platform` sounds like root infrastructure, not a manual builder contract. |
-| Why recommended name wins | `ManualSpanBuilder` ties the contract to `PlatformTracing.manual()` and all manual branches. |
+| Why recommended name wins | `ManualSpanBuilder` ties the contract to `traceOperations.manual()` and all manual branches. |
 | Blast radius | High imports/types, low semantic risk. |
 | Affected modules | API, core, autoconfigure tests, bench tests. |
 | Tests likely affected | `*SpanBuilderTest`, `TracingRuntimeRoutingTest`, ArchUnit tests. |
@@ -463,7 +463,7 @@ Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/
 
 | Type | Score | Why Strong |
 |---|---:|---|
-| `PlatformTracing` | 94 | Root platform facade; precise. |
+| `TraceOperations` | 94 | Root platform facade; precise. |
 | `Traced` | 92 | Conventional annotation. |
 | `TracedAttribute` | 91 | Clear annotation pair. |
 | `SuppressAgentInstrumentation` | 89 | Explicit suppression contract. |
@@ -541,7 +541,7 @@ Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/
 Builder-chain map:
 
 ```text
-PlatformTracing
+TraceOperations
   traceContext() -> ActiveTraceContextView
   manual() -> ManualTracing
     operation(name) -> OperationSpanBuilder -> ManualSpanBuilder terminals
@@ -602,7 +602,7 @@ Terminal method review:
 
 | Concept | Preferred Suffix / Name Pattern | Use When | Avoid |
 |---|---|---|---|
-| Root facade | `PlatformTracing` | Single service-facing root | Extra `Platform*` on every type |
+| Root facade | `TraceOperations` | Single service-facing root | Extra `Platform*` on every type |
 | Manual builder | `*SpanBuilder`, base `ManualSpanBuilder` | Fluent app-facing span builders | `PlatformSpanBuilder` |
 | Execution surface | `*Execution` | Object with `start/run/call` terminals | Adjectives like `SpecifiedSpan` |
 | Immutable spec | `*Spec` | Complete governed input model | `Options` for narrow model slices |
@@ -716,7 +716,7 @@ Whether to skip:
 
 ### Batch D - Do not do / rejected changes
 
-- Do not rename `PlatformTracing`; it is the correct root facade.
+- Do not rename `TraceOperations`; it is the correct root facade.
 - Do not rename `SpanCategory` to `SpanKind`; that collides with OTel vocabulary.
 - Do not reintroduce `SpanOptions` or `SpanRelation`.
 - Do not add deprecated aliases or compatibility bridges.
@@ -776,7 +776,7 @@ rg "SpanOptions|SpanTopologySpec|\.options\(\)|SpanSpec\.builder|spanFromSpec|Sp
 Additional source reads:
 
 ```powershell
-Get-Content platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/PlatformTracing.java
+Get-Content platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/TraceOperations.java
 Get-Content platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/manual/*.java
 Get-Content platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/*.java
 Get-Content platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/SpanScope.java

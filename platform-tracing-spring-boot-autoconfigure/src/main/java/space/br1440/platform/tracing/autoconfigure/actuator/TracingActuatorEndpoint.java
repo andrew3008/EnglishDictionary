@@ -8,7 +8,7 @@ import org.springframework.boot.actuate.endpoint.annotation.Selector;
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.ManualTracingDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
@@ -31,7 +31,7 @@ public class TracingActuatorEndpoint {
 
     private static final Logger log = LoggerFactory.getLogger(TracingActuatorEndpoint.class);
 
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
     private final TracingProperties properties;
     private final PlatformTracingJmxClient jmxClient;
     private final ManualTracingDiagnostics manualTracingDiagnostics;
@@ -40,41 +40,41 @@ public class TracingActuatorEndpoint {
 
     private SdkModeDiagnostics sdkModeDiagnostics;
 
-    public TracingActuatorEndpoint(PlatformTracing platformTracing,
+    public TracingActuatorEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
                                    ManualTracingDiagnostics manualTracingDiagnostics) {
-        this(platformTracing, properties, jmxClient, null, manualTracingDiagnostics,
+        this(traceOperations, properties, jmxClient, null, manualTracingDiagnostics,
                 new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot());
     }
 
-    public TracingActuatorEndpoint(PlatformTracing platformTracing,
+    public TracingActuatorEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
                                    SdkModeDiagnostics sdkModeDiagnostics,
                                    ManualTracingDiagnostics manualTracingDiagnostics) {
-        this(platformTracing, properties, jmxClient, sdkModeDiagnostics, manualTracingDiagnostics,
+        this(traceOperations, properties, jmxClient, sdkModeDiagnostics, manualTracingDiagnostics,
                 new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot());
     }
 
-    TracingActuatorEndpoint(PlatformTracing platformTracing,
+    TracingActuatorEndpoint(TraceOperations traceOperations,
                             TracingProperties properties,
                             PlatformTracingJmxClient jmxClient,
                             OtelEffectiveConfigSnapshot otelEffectiveSnapshot,
                             ResourceEffectiveSnapshot resourceEffectiveSnapshot,
                             ManualTracingDiagnostics manualTracingDiagnostics) {
-        this(platformTracing, properties, jmxClient, null, manualTracingDiagnostics,
+        this(traceOperations, properties, jmxClient, null, manualTracingDiagnostics,
                 otelEffectiveSnapshot, resourceEffectiveSnapshot);
     }
 
-    TracingActuatorEndpoint(PlatformTracing platformTracing,
+    TracingActuatorEndpoint(TraceOperations traceOperations,
                             TracingProperties properties,
                             PlatformTracingJmxClient jmxClient,
                             SdkModeDiagnostics sdkModeDiagnostics,
                             ManualTracingDiagnostics manualTracingDiagnostics,
                             OtelEffectiveConfigSnapshot otelEffectiveSnapshot,
                             ResourceEffectiveSnapshot resourceEffectiveSnapshot) {
-        this.platformTracing = platformTracing;
+        this.traceOperations = traceOperations;
         this.properties = properties;
         this.jmxClient = jmxClient;
         this.manualTracingDiagnostics = manualTracingDiagnostics;
@@ -87,7 +87,7 @@ public class TracingActuatorEndpoint {
     public Map<String, Object> tracing() {
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("enabled", properties.isEnabled());
-        info.put("implementation", platformTracing.getClass().getName());
+        info.put("implementation", traceOperations.getClass().getName());
         info.put("manualTracing", manualTracingDiagnostics.toActuatorMap());
 
         Map<String, Object> sdkInfo = new LinkedHashMap<>();
@@ -99,8 +99,8 @@ public class TracingActuatorEndpoint {
                 ? sdkModeDiagnostics.agentDetected()
                 : OtelAgentDetector.isAgentPresent());
         info.put("sdk", sdkInfo);
-        info.put("currentTraceId", platformTracing.traceContext().traceId().orElse(null));
-        info.put("currentSpanId", platformTracing.traceContext().spanId().orElse(null));
+        info.put("currentTraceId", traceOperations.traceContext().traceId().orElse(null));
+        info.put("currentSpanId", traceOperations.traceContext().spanId().orElse(null));
         info.put("service", Map.of(
                 "name", nullSafe(properties.getService().getName()),
                 "version", nullSafe(properties.getService().getVersion()),

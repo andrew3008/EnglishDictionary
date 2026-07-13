@@ -1,4 +1,4 @@
-# PlatformTracing Post-Remediation File Index
+# TraceOperations Post-Remediation File Index
 
 ## Metadata
 

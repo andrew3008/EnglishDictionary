@@ -1,4 +1,4 @@
-# PlatformTracing Slice 8 External Review Package
+# TraceOperations Slice 8 External Review Package
 
 > **Self-contained bundle.** This single Markdown file contains the **full inline text** of every Slice 8 documentation file, ADR, sample source, and build snippet. **No separate attachments or repository access is required.**
 
@@ -20,10 +20,10 @@
 
 ## Executive summary
 
-PlatformTracing v3 refactoring is complete through Slice 8. Production tracing code was not changed in Slice 8.
+TraceOperations v3 refactoring is complete through Slice 8. Production tracing code was not changed in Slice 8.
 
 ```text
-PlatformTracing public API = traceContext() + manual()
+TraceOperations public API = traceContext() + manual()
 Auto-instrumentation is the default; manual() only when auto-instrumentation is not enough
 TracingImplementation.startSpan(SpanSpec) is the single creation boundary
 No v1 API / SpanRelation / MeteredPlatformTracing / Facade*SpanBuilder / compatibility shim
@@ -61,7 +61,7 @@ Kafka batch = ROOT + links; -PrunE2e gated, not default build
 Act as a principal Java platform architect, Spring Boot observability expert,
 OpenTelemetry/Micrometer reviewer, and senior technical documentation reviewer.
 
-Review the attached PlatformTracing Slice 8 documentation/sample package.
+Review the attached TraceOperations Slice 8 documentation/sample package.
 This file IS the package - all docs/ADRs/sample sources are inline below.
 Focus on Slice 8 docs, ADRs, and sample module only.
 Verify M1/M2 doc fixes. Return Executive verdict, Blockers, Required doc fixes,
@@ -75,7 +75,7 @@ architecture consistency, Kafka batch assessment, sample assessment, production 
 <a id="file-docs-analysis-perplexity-review-platform-tracing-slice-8-lightweight-review-md"></a>
 ## INLINE COPY: `docs/analysis/perplexity-review/platform-tracing-slice-8-lightweight-review.md`
 
-# PlatformTracing Slice 8 Lightweight Review
+# TraceOperations Slice 8 Lightweight Review
 
 **Review date:** 2026-07-07  
 **Scope:** Slice 8 docs, ADRs, and `platform-tracing-samples` only (read-only review)  
@@ -272,13 +272,13 @@ Do not proceed to **final production sign-off** until operational gates are comp
 <a id="file-docs-tracing-platform-tracing-v3-getting-started-md"></a>
 ## INLINE COPY: `docs/tracing/platform-tracing-v3-getting-started.md`
 
-# PlatformTracing v3 — Getting Started
+# TraceOperations v3 — Getting Started
 
-PlatformTracing v3 is the public manual-tracing API for Spring Boot services on the platform tracing stack. Auto-instrumentation (OpenTelemetry Java Agent, Spring/Micrometer Observation conventions, `@Traced`) is the **default**. Use `PlatformTracing.manual()` **only** when automatic instrumentation does not cover your use case.
+TraceOperations v3 is the public manual-tracing API for Spring Boot services on the platform tracing stack. Auto-instrumentation (OpenTelemetry Java Agent, Spring/Micrometer Observation conventions, `@Traced`) is the **default**. Use `traceOperations.manual()` **only** when automatic instrumentation does not cover your use case.
 
 ## Dependencies
 
-Add the appropriate platform tracing starter for your stack (Servlet or Reactive). The `PlatformTracing` bean is wired automatically when tracing is enabled.
+Add the appropriate platform tracing starter for your stack (Servlet or Reactive). The `TraceOperations` bean is wired automatically when tracing is enabled.
 
 ```gradle
 implementation 'space.br1440.platform.tracing:platform-tracing-spring-boot-starter-servlet'
@@ -288,7 +288,7 @@ implementation 'space.br1440.platform.tracing:platform-tracing-spring-boot-start
 
 ## Public API surface
 
-v3 exposes exactly two entry points on `PlatformTracing`:
+v3 exposes exactly two entry points on `TraceOperations`:
 
 | Method | Purpose |
 |--------|---------|
@@ -302,7 +302,7 @@ There is no v1 wide facade (`startSpan`, `inSpan`, `SpanRelation`, transport fac
 Use `traceContext()` for correlation. It does not expose OpenTelemetry SDK types.
 
 ```java
-String traceId = platformTracing.traceContext()
+String traceId = traceOperations.traceContext()
         .traceId()
         .orElse("unknown");
 ```
@@ -314,7 +314,7 @@ Optional fields: `spanId()`, `correlationId()`.
 ### Run a void action
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .operation("recalculate-pricing")
         .run(() -> pricingService.recalculate(orderId));
 ```
@@ -322,7 +322,7 @@ platformTracing.manual()
 ### Return a value
 
 ```java
-Price price = platformTracing.manual()
+Price price = traceOperations.manual()
         .operation("calculate-price")
         .call(() -> pricingService.calculate(orderId));
 ```
@@ -330,7 +330,7 @@ Price price = platformTracing.manual()
 ### Checked exceptions
 
 ```java
-Order order = platformTracing.manual()
+Order order = traceOperations.manual()
         .operation("load-order")
         .callChecked(() -> repository.load(orderId));
 ```
@@ -342,7 +342,7 @@ Default topology is **CHILD** when an active trace context exists; otherwise the
 When you need semconv-aligned HTTP, database, RPC, or Kafka spans, use transport builders instead of generic `operation(name)`:
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .database()
         .system("postgresql")
@@ -384,9 +384,9 @@ Verify compilation:
 <a id="file-docs-tracing-platform-tracing-v3-migration-guide-md"></a>
 ## INLINE COPY: `docs/tracing/platform-tracing-v3-migration-guide.md`
 
-# PlatformTracing v3 — Migration Guide
+# TraceOperations v3 — Migration Guide
 
-This guide maps the **removed v1 public API** to the v3 replacement. PlatformTracing v3 is a **breaking, intentional** redesign. The project was **pre-production** when the cutover happened; there is **no compatibility shim** and no deprecate-first migration path.
+This guide maps the **removed v1 public API** to the v3 replacement. TraceOperations v3 is a **breaking, intentional** redesign. The project was **pre-production** when the cutover happened; there is **no compatibility shim** and no deprecate-first migration path.
 
 Facade decorators (`MeteredPlatformTracing`, `Facade*SpanBuilder`) were removed to prevent [R01](../known-issues/R01.md)-class bugs where partial decorators silently dropped ROOT/DETACHED/links semantics.
 
@@ -404,11 +404,11 @@ Facade decorators (`MeteredPlatformTracing`, `Facade*SpanBuilder`) were removed 
 | `inSpan(...)` | `.run()` / `.call()` / `.callChecked()` |
 | `SpanRelation` | `Topology` through `.child()` / `.root()` / `.detached()` |
 | `internalSpan()` / `businessSpan()` | `manual().operation(name)` |
-| transport factory methods on `PlatformTracing` | `manual().transport().http()/database()/rpc()/kafka()` |
+| transport factory methods on `TraceOperations` | `manual().transport().http()/database()/rpc()/kafka()` |
 
 ## Breaking change policy
 
-- **No compatibility shim.** v1 methods are not available on `PlatformTracing`.
+- **No compatibility shim.** v1 methods are not available on `TraceOperations`.
 - **No `MeteredPlatformTracing` public decorator.** Metering is internal on `TracingImplementation` ([ADR — Metering SPI Boundary](../decisions/ADR-platform-tracing-metering-spi-boundary.md)).
 - **No `Facade*SpanBuilder`.** Semantic builders live under `manual().transport()`.
 - **Links are pre-start only.** There is no v3 equivalent of post-start `addLink(...)`.
@@ -420,20 +420,20 @@ Facade decorators (`MeteredPlatformTracing`, `Facade*SpanBuilder`) were removed 
 
 ```java
 // v1
-String id = platformTracing.currentTraceId();
+String id = traceOperations.currentTraceId();
 
 // v3
-String id = platformTracing.traceContext().traceId().orElse("unknown");
+String id = traceOperations.traceContext().traceId().orElse("unknown");
 ```
 
 ### Scoped business logic
 
 ```java
 // v1
-platformTracing.inSpan("process-order", SpanCategory.INTERNAL, () -> service.process(orderId));
+traceOperations.inSpan("process-order", SpanCategory.INTERNAL, () -> service.process(orderId));
 
 // v3
-platformTracing.manual()
+traceOperations.manual()
         .operation("process-order")
         .run(() -> service.process(orderId));
 ```
@@ -442,10 +442,10 @@ platformTracing.manual()
 
 ```java
 // v1 (removed)
-platformTracing.startSpanWithLinks("batch", SpanCategory.INTERNAL, links);
+traceOperations.startSpanWithLinks("batch", SpanCategory.INTERNAL, links);
 
 // v3
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .kafka()
         .consumer()
@@ -461,10 +461,10 @@ See [Kafka batch links](./platform-tracing-v3-kafka-batch-links.md).
 
 ```java
 // v1
-platformTracing.databaseSpan().system("postgresql").operation("SELECT").start();
+traceOperations.databaseSpan().system("postgresql").operation("SELECT").start();
 
 // v3
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .database()
         .system("postgresql")
@@ -496,7 +496,7 @@ SpanSpec spec = SpanSpec.builder("vendor-integration")
         .reference("PLATFORM-1234")
         .build();
 
-platformTracing.manual().spanFromSpec(spec).run(action);
+traceOperations.manual().spanFromSpec(spec).run(action);
 ```
 
 See [ADR — SpanSpec Governance](../decisions/ADR-platform-tracing-span-spec-governance.md).
@@ -517,13 +517,13 @@ See [ADR — SpanSpec Governance](../decisions/ADR-platform-tracing-span-spec-go
 <a id="file-docs-tracing-platform-tracing-v3-manual-api-md"></a>
 ## INLINE COPY: `docs/tracing/platform-tracing-v3-manual-api.md`
 
-# PlatformTracing v3 — Manual API Reference
+# TraceOperations v3 — Manual API Reference
 
 Reference for the v3 manual tracing surface. All span creation routes internally through `TracingImplementation.startSpan(SpanSpec)`; application code uses the public builders below.
 
 ## Entry points
 
-### `PlatformTracing`
+### `TraceOperations`
 
 | Method | Returns | Description |
 |--------|---------|-------------|
@@ -682,14 +682,14 @@ Minimal started-span handle (`AutoCloseable`): `recordException(Throwable)`, `cl
 <a id="file-docs-tracing-platform-tracing-v3-kafka-batch-links-md"></a>
 ## INLINE COPY: `docs/tracing/platform-tracing-v3-kafka-batch-links.md`
 
-# PlatformTracing v3 — Kafka Batch Links
+# TraceOperations v3 — Kafka Batch Links
 
 Kafka batch consumer processing uses **ROOT + pre-start links** to correlate a single batch span with individual message traces. This is the primary public example for span links in v3.
 
 ## Recommended pattern
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .kafka()
         .consumer()
@@ -776,7 +776,7 @@ Proof: `KafkaBatchAspectMigrationTest`, `KafkaBatchSpanBuilderIntegrationTest`.
 <a id="file-docs-tracing-platform-tracing-v3-observability-and-diagnostics-md"></a>
 ## INLINE COPY: `docs/tracing/platform-tracing-v3-observability-and-diagnostics.md`
 
-# PlatformTracing v3 — Observability and Diagnostics
+# TraceOperations v3 — Observability and Diagnostics
 
 How platform manual tracing coexists with Micrometer Observation, how metering works internally, and how to inspect runtime state.
 
@@ -786,9 +786,9 @@ How platform manual tracing coexists with Micrometer Observation, how metering w
 |------|-------|---------------|
 | OpenTelemetry Java Agent | Agent bytecode instrumentation | HTTP, JDBC, gRPC, Kafka (production default) |
 | Spring / Micrometer Observation | Framework conventions, `@Observed` | HTTP server/client observations |
-| PlatformTracing `manual()` | `TracingImplementation` SPI | Governed manual and semantic transport spans |
+| TraceOperations `manual()` | `TracingImplementation` SPI | Governed manual and semantic transport spans |
 
-PlatformTracing does **not** replace Agent or Observation auto-instrumentation. Call `manual()` only for gaps. See [ADR — Micrometer Observation Boundary](../decisions/ADR-platform-tracing-micrometer-observation-boundary.md) (Option C hybrid model, **Accepted**).
+TraceOperations does **not** replace Agent or Observation auto-instrumentation. Call `manual()` only for gaps. See [ADR — Micrometer Observation Boundary](../decisions/ADR-platform-tracing-micrometer-observation-boundary.md) (Option C hybrid model, **Accepted**).
 
 ## Metering boundary (R01 fix)
 
@@ -846,14 +846,14 @@ Do not mark production sign-off complete unless `-PrunE2e` was actually run in a
 <a id="file-docs-tracing-platform-tracing-v3-production-readiness-md"></a>
 ## INLINE COPY: `docs/tracing/platform-tracing-v3-production-readiness.md`
 
-# PlatformTracing v3 — Production Readiness
+# TraceOperations v3 — Production Readiness
 
 Checklist for production sign-off after the v3 refactoring (Slices 0A–7, remediation B01–B10, post-Perplexity hardening). **Do not mark unchecked items as done** unless verified in your environment.
 
 ## Production readiness checklist
 
 - [x] `.\gradlew.bat build` GREEN
-- [x] targeted PlatformTracing tests GREEN
+- [x] targeted TraceOperations tests GREEN
 - [x] grep gates clean (no v1 API in active docs/code paths)
 - [ ] `-PrunE2e` run in Docker/Testcontainers environment
 - [ ] Kafka batch listener container e2e passed
@@ -923,21 +923,21 @@ Search for `SpanSpecReason.TEMPORARY_WORKAROUND` usages and verify each has a tr
 <a id="file-docs-decisions-adr-platform-tracing-v3-public-api-md"></a>
 ## INLINE COPY: `docs/decisions/ADR-platform-tracing-v3-public-api.md`
 
-# ADR — PlatformTracing v3 Public API
+# ADR — TraceOperations v3 Public API
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
-PlatformTracing v1 exposed a wide facade: correlation helpers, many `startSpan*` variants, `SpanRelation`, transport factories, `inSpan`, post-start `addLink`, and facade decorators. Partial decorators (`MeteredPlatformTracing`) caused silent semantic loss ([R01](../known-issues/R01.md)). The project was pre-production; a narrow, governed public API was required.
+TraceOperations v1 exposed a wide facade: correlation helpers, many `startSpan*` variants, `SpanRelation`, transport factories, `inSpan`, post-start `addLink`, and facade decorators. Partial decorators (`MeteredPlatformTracing`) caused silent semantic loss ([R01](../known-issues/R01.md)). The project was pre-production; a narrow, governed public API was required.
 
 ## Decision
 
-The v3 public `PlatformTracing` interface exposes **exactly two** methods:
+The v3 public `TraceOperations` interface exposes **exactly two** methods:
 
 ```text
 traceContext()  — read-only correlation
@@ -966,7 +966,7 @@ Auto-instrumentation (OTel Agent, Spring/Micrometer Observation, `@Traced`) rema
 ## Why transport builders are grouped under `transport()`
 
 - Groups HTTP, database, RPC, and Kafka under one namespace, separating **protocol semconv** from generic **application operations**.
-- Replaces v1 transport factory methods on `PlatformTracing` root interface.
+- Replaces v1 transport factory methods on `TraceOperations` root interface.
 - Enables semconv version markers per transport (`@DatabaseSemconvVersion`, etc.) without polluting `operation(name)`.
 
 ## Consequences
@@ -993,13 +993,13 @@ Auto-instrumentation (OTel Agent, Spring/Micrometer Observation, `@Traced`) rema
 <a id="file-docs-decisions-adr-platform-tracing-span-spec-governance-md"></a>
 ## INLINE COPY: `docs/decisions/ADR-platform-tracing-span-spec-governance.md`
 
-# ADR — PlatformTracing SpanSpec Governance
+# ADR — TraceOperations SpanSpec Governance
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
@@ -1060,13 +1060,13 @@ with mandatory governance metadata on every spec.
 <a id="file-docs-decisions-adr-platform-tracing-topology-links-md"></a>
 ## INLINE COPY: `docs/decisions/ADR-platform-tracing-topology-links.md`
 
-# ADR — PlatformTracing Topology and Links
+# ADR — TraceOperations Topology and Links
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
@@ -1124,17 +1124,17 @@ v1 `addLink(...)` had no v3 equivalent. Links MUST be configured before `start()
 <a id="file-docs-decisions-adr-platform-tracing-metering-spi-boundary-md"></a>
 ## INLINE COPY: `docs/decisions/ADR-platform-tracing-metering-spi-boundary.md`
 
-# ADR — PlatformTracing Metering SPI Boundary
+# ADR — TraceOperations Metering SPI Boundary
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
-v1 registered `MeteredPlatformTracing` as `@Primary` `PlatformTracing` bean. The decorator overrode only a subset of the wide facade; relation-aware and link-aware calls fell back to interface defaults on the decorator instance, silently degrading ROOT/DETACHED/links ([R01](../known-issues/R01.md)).
+v1 registered `MeteredPlatformTracing` as `@Primary` `TraceOperations` bean. The decorator overrode only a subset of the wide facade; relation-aware and link-aware calls fell back to interface defaults on the decorator instance, silently degrading ROOT/DETACHED/links ([R01](../known-issues/R01.md)).
 
 ## Decision
 
@@ -1142,12 +1142,12 @@ Platform self-metrics are recorded by **`MeteredTracingImplementation`**, which 
 
 Rules:
 
-- Metering MUST NOT decorate the public `PlatformTracing` facade.
+- Metering MUST NOT decorate the public `TraceOperations` facade.
 - Metering MUST NOT create spans except by delegating to the wrapped `TracingImplementation`.
 - Metering MUST NOT replace or wrap Spring `TracingObservationHandler` beans.
 - When Micrometer is present, exactly one active `TracingImplementation` chain exists (`BeanTopologyTest`).
 
-## Why metering is on `TracingImplementation`, not `PlatformTracing`
+## Why metering is on `TracingImplementation`, not `TraceOperations`
 
 - All manual span creation already converges on `TracingImplementation.startSpan(SpanSpec)` — one interception point.
 - Decorating the full SPI preserves ROOT/DETACHED/links semantics (`MeteredTopologyMatrixTest`).
@@ -1181,13 +1181,13 @@ Rules:
 <a id="file-docs-decisions-adr-platform-tracing-kafka-batch-links-md"></a>
 ## INLINE COPY: `docs/decisions/ADR-platform-tracing-kafka-batch-links.md`
 
-# ADR — PlatformTracing Kafka Batch Links
+# ADR — TraceOperations Kafka Batch Links
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
@@ -1198,7 +1198,7 @@ Kafka batch listeners process many records that may originate from different pro
 Kafka batch processing uses:
 
 ```java
-platformTracing.manual()
+traceOperations.manual()
         .transport()
         .kafka()
         .consumer()
@@ -1223,7 +1223,7 @@ platformTracing.manual()
 ## Aspect migration (B03)
 
 - **Removed:** raw OTel `Tracer` / `SpanBuilder` creation in `KafkaBatchLinksAspect`.
-- **Added:** injection of `PlatformTracing`; batch spans via v3 batch builder API.
+- **Added:** injection of `TraceOperations`; batch spans via v3 batch builder API.
 - `TracedAspect` already used `manual().operation(...).start()` — unchanged.
 
 ## Destination naming
@@ -1259,7 +1259,7 @@ v3 emits `KAFKA_CONSUMER` spans with messaging semconv attributes and `<destinat
 <a id="file-docs-decisions-adr-platform-tracing-micrometer-observation-boundary-md"></a>
 ## INLINE COPY: `docs/decisions/ADR-platform-tracing-micrometer-observation-boundary.md`
 
-# ADR — PlatformTracing Micrometer Observation Boundary
+# ADR — TraceOperations Micrometer Observation Boundary
 
 | Поле | Значение |
 |------|----------|
@@ -1284,11 +1284,11 @@ v3 emits `KAFKA_CONSUMER` spans with messaging semconv attributes and `<destinat
 
 ## Context
 
-PlatformTracing v3.4.2 redesign introduces an internal `TracingImplementation` boundary, a narrow public facade (`traceContext()` + `manual()`), and `MeteredTracingImplementation` for platform self-metrics. The repository already runs **three parallel telemetry paths**:
+TraceOperations v3.4.2 redesign introduces an internal `TracingImplementation` boundary, a narrow public facade (`traceContext()` + `manual()`), and `MeteredTracingImplementation` for platform self-metrics. The repository already runs **three parallel telemetry paths**:
 
 1. **OTel Java Agent** — bytecode HTTP/DB/RPC/Kafka spans (agent-first, [ADR-otel-direct-integration.md](./ADR-otel-direct-integration.md)).
 2. **Spring / Micrometer Observation** — framework HTTP observations, `@Observed`, conventions ([ADR-suppress-micrometer-tracing.md](./ADR-suppress-micrometer-tracing.md)).
-3. **PlatformTracing manual API** — `DefaultPlatformTracing` over OpenTelemetry API `Tracer` / `SpanBuilder` ([DefaultPlatformTracing.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultPlatformTracing.java)).
+3. **TraceOperations manual API** — `DefaultTraceOperations` over OpenTelemetry API `Tracer` / `SpanBuilder` ([DefaultTraceOperations.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultTraceOperations.java)).
 
 Without an explicit boundary decision, manual platform spans and Spring auto-observation can produce **duplicate or unsynchronized root spans** — structurally the same failure class as **R01** (two paths that silently diverge; see [R01.md](../known-issues/R01.md)).
 
@@ -1307,7 +1307,7 @@ The refactoring plan requires answering before Slice 1A:
 5. Should any Spring tracing handlers be **disabled, customized, or left untouched**?
 6. Which **tests** prove coexistence?
 
-Risk **R24** in the plan: *Micrometer Observation and PlatformTracing create duplicate or inconsistent spans* (High, Slices 1A/7).
+Risk **R24** in the plan: *Micrometer Observation and TraceOperations create duplicate or inconsistent spans* (High, Slices 1A/7).
 
 ---
 
@@ -1317,12 +1317,12 @@ Classification: **FACT** = directly observed in repository; **ASSUMPTION** = inf
 
 | # | Finding | Class |
 |---|---------|-------|
-| 1 | **OpenTelemetry API/SDK:** `DefaultPlatformTracing` creates spans via `OpenTelemetry.getTracer(...).spanBuilder(...)`, `Context`, `Span` ([DefaultPlatformTracing.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultPlatformTracing.java)). Typed semantic builders in core use `Tracer`/`SpanBuilder` ([ADR-typed-span-api-semantic-layer.md](./ADR-typed-span-api-semantic-layer.md)). SPI extension in `platform-tracing-otel-extension`. | FACT |
+| 1 | **OpenTelemetry API/SDK:** `DefaultTraceOperations` creates spans via `OpenTelemetry.getTracer(...).spanBuilder(...)`, `Context`, `Span` ([DefaultTraceOperations.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultTraceOperations.java)). Typed semantic builders in core use `Tracer`/`SpanBuilder` ([ADR-typed-span-api-semantic-layer.md](./ADR-typed-span-api-semantic-layer.md)). SPI extension in `platform-tracing-otel-extension`. | FACT |
 | 2 | **MeterRegistry:** `TracingMetricsAutoConfiguration` registers `PlatformTracingMetrics` and `@Primary` `MeteredPlatformTracing` when `MeterRegistry` bean exists ([TracingMetricsAutoConfiguration.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingMetricsAutoConfiguration.java)). | FACT |
 | 3 | **ObservationRegistry / Observation API:** `io.micrometer:micrometer-observation` is an **api** dependency in autoconfigure, webmvc, webflux. Production code registers `Platform*ObservationConvention` beans and `ObservationRegistryCustomizer` suppressors ([ServletTracingAutoConfiguration.java](../../platform-tracing-autoconfigure-webmvc/src/main/java/space/br1440/platform/tracing/autoconfigure/servlet/ServletTracingAutoConfiguration.java), [WebMvcSuppressMicrometerTracingAutoConfiguration.java](../../platform-tracing-autoconfigure-webmvc/src/main/java/space/br1440/platform/tracing/autoconfigure/servlet/WebMvcSuppressMicrometerTracingAutoConfiguration.java)). `TracingObservationAutoConfiguration` registers startup diagnostics only, not span creation ([TracingObservationAutoConfiguration.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingObservationAutoConfiguration.java)). | FACT |
 | 4 | **`io.micrometer.tracing`:** `compileOnly` in autoconfigure; **no production usage in core**. Test-only smoke: `MicrometerTracingMdcBridgeSmokeTest` registers `Tracer`, `TracingObservationHandler`, `ObservationRegistry` when Spring Actuator tracing autoconfig + bridge-otel are on classpath ([MicrometerTracingMdcBridgeSmokeTest.java](../../platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MicrometerTracingMdcBridgeSmokeTest.java)). | FACT |
 | 5 | **MeteredPlatformTracing:** Decorates delegate; overrides only `startSpan(name, category)`, builder factories, `currentTraceId`/`currentSpanId`, `recordException`. Does **not** override relation/links/`inSpan` — R01 ([MeteredPlatformTracing.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredPlatformTracing.java), [R01.md](../known-issues/R01.md)). | FACT |
-| 6 | **Spring bean wiring:** `TracingCoreAutoConfiguration` exposes `PlatformTracing` (`DefaultPlatformTracing` or `NoOpPlatformTracing`). `TracingMetricsAutoConfiguration` wraps it in `@Primary` `MeteredPlatformTracing` when Micrometer present. | FACT |
+| 6 | **Spring bean wiring:** `TracingCoreAutoConfiguration` exposes `TraceOperations` (`DefaultTraceOperations` or `NoopTraceOperations`). `TracingMetricsAutoConfiguration` wraps it in `@Primary` `MeteredPlatformTracing` when Micrometer present. | FACT |
 | 7 | **Existing coexistence / duplicate tests:** `DuplicateSpansRegressionMatrixTest` (webmvc + webflux), `SuppressMicrometerTracingMetricsTest`, `TracingObservationSuppressStartupTest`, e2e `DuplicateHttpSpanAgentSmokeTest`. **No `ObservationCoexistenceTest` class exists yet** (planned Slice 7). | FACT |
 | 8 | **Web / aspect auto-instrumentation:** `ServletTracingAutoConfiguration`, `ReactiveTracingAutoConfiguration`, platform Observation conventions, `@Traced` via `TracedAspect`, ArchUnit rule `NO_TRACED_AND_OBSERVED_ON_SAME_METHOD` ([TracingArchRules.java](../../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/arch/TracingArchRules.java)). | FACT |
 | 9 | **Actuator diagnostics:** `TracingActuatorEndpoint` exposes `implementation` class name, SDK mode, agent detection ([TracingActuatorEndpoint.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpoint.java)). Plan v3.4.2 adds future `TracingDiagnostics` → `TracingDiagnosticsView` mapped DTO (not yet implemented). | FACT |
@@ -1348,23 +1348,23 @@ Classification: **FACT** = directly observed in repository; **ASSUMPTION** = inf
 
 ## Options considered
 
-### Option A — PlatformTracing manual spans use direct OpenTelemetry SDK; Spring auto-observation remains separate
+### Option A — TraceOperations manual spans use direct OpenTelemetry SDK; Spring auto-observation remains separate
 
 **Description:** Manual platform tracing stays on OTel API/SDK (`TracingImplementation` → `Tracer.spanBuilder`). Spring/Micrometer Observation continues independently for framework observations. Coexistence enforced by configuration (suppress), conventions, and tests.
 
 | Aspect | Assessment |
 |--------|------------|
-| **Pros** | Aligns with ADR-otel-direct-integration and typed-span ADR; full OTel links/ROOT/DETACHED; `SpanSpec` maps cleanly to `SpanBuilder`; matches current `DefaultPlatformTracing` implementation. |
+| **Pros** | Aligns with ADR-otel-direct-integration and typed-span ADR; full OTel links/ROOT/DETACHED; `SpanSpec` maps cleanly to `SpanBuilder`; matches current `DefaultTraceOperations` implementation. |
 | **Cons** | Two lifecycle owners remain; requires strict duplicate-prevention rules and discipline; easy to mis-wire if future code bypasses ADR. |
 | **R01 impact** | Fixes R01 by moving metering to `MeteredTracingImplementation` on full abstract SPI — not by patching facade decorator. |
 | **Duplicate span risk** | Medium without suppress + ArchUnit + coexistence tests; **mitigated** by existing suppress ADR and planned `ObservationCoexistenceTest`. |
-| **OTel links** | Native via `SpanBuilder.addLink` (current `DefaultPlatformTracing` behavior). |
+| **OTel links** | Native via `SpanBuilder.addLink` (current `DefaultTraceOperations` behavior). |
 | **SpanSpec governance** | Strong — direct mapping at creation boundary. |
 | **Spring auto-observation** | Unchanged; platform customizes conventions only. |
 | **MeteredTracingImplementation** | Natural: decorate OTel-backed implementation, count at SPI boundary. |
 | **Testability** | High — InMemorySpanExporter pattern already used in core/autoconfigure tests. |
 
-### Option B — PlatformTracing implemented as a bridge over Micrometer Observation API
+### Option B — TraceOperations implemented as a bridge over Micrometer Observation API
 
 **Description:** All manual platform spans created via `ObservationRegistry` / `Observation.start()` / Micrometer Tracing handlers.
 
@@ -1384,8 +1384,8 @@ Classification: **FACT** = directly observed in repository; **ASSUMPTION** = inf
 
 **Description:** **Separate intentional telemetry paths** with explicit ownership:
 
-- **Auto path:** OTel Agent (production spans) + Spring Micrometer Observation (framework observations, conventions, optional bridge-otel dev/staging) — platform does **not** re-wrap every Observation into `PlatformTracing`.
-- **Manual path:** `PlatformTracing.manual()` → `TracingImplementation.startSpan(SpanSpec)` → OTel SDK — platform-owned topology, governance, links.
+- **Auto path:** OTel Agent (production spans) + Spring Micrometer Observation (framework observations, conventions, optional bridge-otel dev/staging) — platform does **not** re-wrap every Observation into `TraceOperations`.
+- **Manual path:** `traceOperations.manual()` → `TracingImplementation.startSpan(SpanSpec)` → OTel SDK — platform-owned topology, governance, links.
 - **Metrics path:** `MeteredTracingImplementation` decorates `TracingImplementation` only — never public facade, never Observation handlers.
 
 | Aspect | Assessment |
@@ -1430,11 +1430,11 @@ Option A is a subset of Option C (direct OTel manual path) but **without explici
 
 | Question | Decision |
 |----------|----------|
-| **1. Manual platform span lifecycle owner** | **`TracingImplementation`** (concrete: `DefaultTracingImplementation` or successor) using OpenTelemetry API `Tracer` / `SpanBuilder` at a **single** `TracingImplementation.startSpan(SpanSpec)` boundary. Public `PlatformTracing.manual()` (`manual().operation(...)`, `manual().transport()...`, `manual().spanFromSpec(spec)`) MUST NOT create spans except by routing through this boundary. |
-| **2. Spring auto-instrumented span lifecycle owner** | **OTel Java Agent** (production bytecode spans) and **Spring / Micrometer Observation** (framework observations: HTTP server/client conventions, `@Observed`, Actuator observation pipeline). PlatformTracing MUST NOT assume ownership of these spans. |
+| **1. Manual platform span lifecycle owner** | **`TracingImplementation`** (concrete: `DefaultTracingImplementation` or successor) using OpenTelemetry API `Tracer` / `SpanBuilder` at a **single** `TracingImplementation.startSpan(SpanSpec)` boundary. Public `traceOperations.manual()` (`manual().operation(...)`, `manual().transport()...`, `manual().spanFromSpec(spec)`) MUST NOT create spans except by routing through this boundary. |
+| **2. Spring auto-instrumented span lifecycle owner** | **OTel Java Agent** (production bytecode spans) and **Spring / Micrometer Observation** (framework observations: HTTP server/client conventions, `@Observed`, Actuator observation pipeline). TraceOperations MUST NOT assume ownership of these spans. |
 | **3. Duplicate span prevention** | See [Duplicate-span prevention rules](#duplicate-span-prevention-rules) and [Implementation guardrails](#implementation-guardrails). Existing `suppress-micrometer-tracing` remains the HTTP-level guard when Agent is present ([ADR-suppress-micrometer-tracing.md](./ADR-suppress-micrometer-tracing.md)). `ObservationCoexistenceTest` (Slice 7) proves no competing unsynchronized roots for one operation. |
 | **4. Micrometer tracing bridge vs MeteredTracingImplementation** | **`io.micrometer.tracing` bridge-otel** is an **optional dev/staging** Spring Actuator path ([MicrometerTracingMdcBridgeSmokeTest.java](../../platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MicrometerTracingMdcBridgeSmokeTest.java)), **not** the platform manual tracing engine. **`MeteredTracingImplementation`** records platform counters/histograms around **`TracingImplementation`** delegation only; it MUST NOT replace `TracingObservationHandler` and MUST NOT create spans. |
-| **5. Spring tracing handlers** | **Leave framework handlers in place.** Platform MAY **customize** Observation conventions (`Platform*ObservationConvention`). Platform MAY **suppress** duplicate HTTP observations via opt-in `platform.tracing.suppression.suppress-micrometer-tracing` when Agent creates HTTP spans. Platform MUST NOT globally disable Observation for non-HTTP concerns without ADR amendment. Platform MUST NOT auto-wrap all Observations into `PlatformTracing` spans. |
+| **5. Spring tracing handlers** | **Leave framework handlers in place.** Platform MAY **customize** Observation conventions (`Platform*ObservationConvention`). Platform MAY **suppress** duplicate HTTP observations via opt-in `platform.tracing.suppression.suppress-micrometer-tracing` when Agent creates HTTP spans. Platform MUST NOT globally disable Observation for non-HTTP concerns without ADR amendment. Platform MUST NOT auto-wrap all Observations into `TraceOperations` spans. |
 | **6. Coexistence tests** | **Existing:** `DuplicateSpansRegressionMatrixTest`, suppress tests, ArchUnit `NO_TRACED_AND_OBSERVED_ON_SAME_METHOD`. **Required (plan v3.4.2):** `ObservationCoexistenceTest`, `BeanTopologyTest`, `TracingImplementationRoutingTest`, `MeteredTopologyMatrixTest`, `DiagnosticsBoundaryTest`. |
 
 ---
@@ -1448,12 +1448,12 @@ These rules are normative for Slice 1A onward. Violations require ADR amendment 
 - Public builders and facade types MUST NOT use OpenTelemetry `Tracer` directly (enforced by `TracingImplementationRoutingTest` + ArchUnit in Slice 2).
 - **`MeteredTracingImplementation`** MUST decorate **`TracingImplementation`**; it MUST NOT create spans directly (delegate-only).
 - **`MeteredTracingImplementation`** MUST NOT replace or wrap Spring **`TracingObservationHandler`** beans.
-- **`MeteredTracingImplementation`** MUST NOT decorate the public **`PlatformTracing`** facade (R01 lesson; no `@Primary` metered facade pattern).
-- **`PlatformTracing`** MUST NOT auto-wrap every Micrometer **`Observation`** into a platform manual span.
+- **`MeteredTracingImplementation`** MUST NOT decorate the public **`TraceOperations`** facade (R01 lesson; no `@Primary` metered facade pattern).
+- **`TraceOperations`** MUST NOT auto-wrap every Micrometer **`Observation`** into a platform manual span.
 - Spring/Micrometer auto-observation MUST remain the owner of framework-level observations (HTTP server/client, `@Observed`, Observation handlers) unless a **later ADR** explicitly changes this.
 - Explicit **`manual().operation(...)`** inside an auto-observed request MAY create a child/manual span; it MUST be consistently related to the active trace via OTel `Context.current()` unless `SpanSpec` explicitly requests ROOT/DETACHED under governance rules.
 - No public API MUST expose OpenTelemetry SDK types.
-- **`SpanSpec` / `SpanOptions` topology** (ROOT, DETACHED, CHILD, pre-start links) MUST remain intact per plan v3.4.2; no compatibility shim for v1 wide `PlatformTracing` API.
+- **`SpanSpec` / `SpanOptions` topology** (ROOT, DETACHED, CHILD, pre-start links) MUST remain intact per plan v3.4.2; no compatibility shim for v1 wide `TraceOperations` API.
 - Durable fix for R01 is **structural SPI boundary**, not a patch to **`MeteredPlatformTracing`**.
 
 ---
@@ -1503,14 +1503,14 @@ Platform responsibilities on the auto path:
 
 Platform MUST NOT:
 
-- Replace all Spring Observation with `PlatformTracing.manual()`.
+- Replace all Spring Observation with `traceOperations.manual()`.
 - Create platform manual spans for every Observation event.
 
 ### MeteredTracingImplementation
 
 Future internal decorator MUST:
 
-- Decorate **`TracingImplementation`** only (not public `PlatformTracing` facade).
+- Decorate **`TracingImplementation`** only (not public `TraceOperations` facade).
 - Increment platform metrics on manual tracing operations at SPI boundary.
 - Preserve ROOT / DETACHED / CHILD / links topology (delegate-only span creation).
 - MUST NOT create spans except via delegation to wrapped `TracingImplementation`.
@@ -1608,8 +1608,8 @@ Future slices MUST implement (from plan v3.4.2):
 - No implementation of v3 API in this ADR.
 - No production code changes.
 - No decision to expose OpenTelemetry SDK types in public API.
-- No decision to replace all Spring Observation with PlatformTracing.
-- No backward-compatibility wrapper for v1 `PlatformTracing` API.
+- No decision to replace all Spring Observation with TraceOperations.
+- No backward-compatibility wrapper for v1 `TraceOperations` API.
 - No fix for R01 in this ADR (evidence only in Slice 0B).
 
 ---
@@ -1647,7 +1647,7 @@ Aligned with [platform-tracing-refactoring-plan.md](../analysis/platform-tracing
 - MUST NOT introduce Micrometer Observation as the implementation of public manual builders.
 - MUST preserve `SpanSpec` / `SpanOptions` / links topology required by the plan.
 - MUST preserve no OTel SDK leak in public API.
-- MUST NOT reintroduce wide v1 `PlatformTracing` behavioral defaults or `MeteredPlatformTracing` as durable metering path.
+- MUST NOT reintroduce wide v1 `TraceOperations` behavioral defaults or `MeteredPlatformTracing` as durable metering path.
 
 ### Slice 2
 
@@ -1666,7 +1666,7 @@ Aligned with [platform-tracing-refactoring-plan.md](../analysis/platform-tracing
 ### Slice 7
 
 - MUST include **`ObservationCoexistenceTest`**.
-- MUST prove Spring auto-observation and PlatformTracing manual spans do not create two unsynchronized root spans for the same operation.
+- MUST prove Spring auto-observation and TraceOperations manual spans do not create two unsynchronized root spans for the same operation.
 - MUST include **`DiagnosticsBoundaryTest`** and mapped **`TracingDiagnosticsView`** contract.
 - MAY extend Spring Boot matrix beyond Slice 2 `BeanTopologyTest` (FilteredClassLoader, webmvc/webflux, `@Traced` against new facade).
 
@@ -1745,7 +1745,7 @@ Aligned with [platform-tracing-refactoring-plan.md](../analysis/platform-tracing
 package space.br1440.platform.tracing.samples;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.RemoteContext;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanLinkContext;
@@ -1758,47 +1758,47 @@ import java.util.List;
  * Compilable v3 API examples referenced by {@code docs/tracing/platform-tracing-v3-*.md}.
  * <p>
  * This class is documentation-as-code: it is not executed in production and does not require
- * external services. Inject a {@link PlatformTracing} bean (or test double) at runtime.
+ * external services. Inject a {@link TraceOperations} bean (or test double) at runtime.
  */
 public final class PlatformTracingV3Samples {
 
-    private final PlatformTracing platformTracing;
+    private final TraceOperations traceOperations;
 
-    public PlatformTracingV3Samples(@Nonnull PlatformTracing platformTracing) {
-        this.platformTracing = platformTracing;
+    public PlatformTracingV3Samples(@Nonnull TraceOperations traceOperations) {
+        this.traceOperations = traceOperations;
     }
 
     /** {@code traceContext().traceId()} for logging and correlation. */
     public String currentTraceIdForLogging() {
-        return platformTracing.traceContext()
+        return traceOperations.traceContext()
                 .traceId()
                 .orElse("unknown");
     }
 
     /** Standard manual operation with void body. */
     public void recalculatePricing(long orderId, PricingService pricingService) {
-        platformTracing.manual()
+        traceOperations.manual()
                 .operation("recalculate-pricing")
                 .run(() -> pricingService.recalculate(orderId));
     }
 
     /** Manual operation returning a value. */
     public Price calculatePrice(long orderId, PricingService pricingService) {
-        return platformTracing.manual()
+        return traceOperations.manual()
                 .operation("calculate-price")
                 .call(() -> pricingService.calculate(orderId));
     }
 
     /** Manual operation with checked exception. */
     public Order loadOrder(long orderId, OrderRepository repository) throws Exception {
-        return platformTracing.manual()
+        return traceOperations.manual()
                 .operation("load-order")
                 .callChecked(() -> repository.load(orderId));
     }
 
     /** Explicit ROOT span for scheduled or background work without an active parent. */
     public void runScheduledReconciliation(ReconciliationService service) {
-        platformTracing.manual()
+        traceOperations.manual()
                 .operation("nightly-reconciliation")
                 .root()
                 .run(service::reconcileAll);
@@ -1806,7 +1806,7 @@ public final class PlatformTracingV3Samples {
 
     /** DETACHED span without links (allowed topology). */
     public void runDetachedAudit(AuditService auditService) {
-        platformTracing.manual()
+        traceOperations.manual()
                 .operation("compliance-audit")
                 .detached()
                 .run(auditService::runOnce);
@@ -1814,7 +1814,7 @@ public final class PlatformTracingV3Samples {
 
     /** Database semantic builder under {@code manual().transport().database()}. */
     public List<Order> queryOrders(OrderRepository repository) {
-        return platformTracing.manual()
+        return traceOperations.manual()
                 .transport()
                 .database()
                 .system("postgresql")
@@ -1825,7 +1825,7 @@ public final class PlatformTracingV3Samples {
 
     /** RPC client semantic builder under {@code manual().transport().rpc().client()}. */
     public Order fetchOrderViaRpc(OrderRpcClient client, long orderId) {
-        return platformTracing.manual()
+        return traceOperations.manual()
                 .transport()
                 .rpc()
                 .client()
@@ -1844,7 +1844,7 @@ public final class PlatformTracingV3Samples {
             List<SpanLinkContext> messageContexts,
             BatchProcessor processor,
             List<Record> records) {
-        platformTracing.manual()
+        traceOperations.manual()
                 .transport()
                 .kafka()
                 .consumer()
@@ -1859,7 +1859,7 @@ public final class PlatformTracingV3Samples {
             List<String> traceparents,
             BatchProcessor processor,
             List<Record> records) {
-        platformTracing.manual()
+        traceOperations.manual()
                 .transport()
                 .kafka()
                 .consumer()
@@ -1879,7 +1879,7 @@ public final class PlatformTracingV3Samples {
                 .attribute("integration.vendor", "acme")
                 .build();
 
-        platformTracing.manual()
+        traceOperations.manual()
                 .spanFromSpec(spec)
                 .run(legacyClient::invoke);
     }
@@ -1893,7 +1893,7 @@ public final class PlatformTracingV3Samples {
                 .reference("JIRA-5678")
                 .build();
 
-        platformTracing.manual()
+        traceOperations.manual()
                 .spanFromSpec(spec)
                 .call(client::callOnce);
     }
@@ -1961,7 +1961,7 @@ public final class PlatformTracingV3Samples {
 ## INLINE COPY: `platform-tracing-samples/build.gradle`
 
 ```gradle
-description = 'Compilable PlatformTracing v3 API usage examples for documentation (Slice 8). ' +
+description = 'Compilable TraceOperations v3 API usage examples for documentation (Slice 8). ' +
         'Not published to Nexus; no external services or Docker required.'
 
 dependencies {

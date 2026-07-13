@@ -14,14 +14,14 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
 import java.util.List;
@@ -51,14 +51,14 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             assertThat(context.getBean(TracingRuntime.class))
                     .isInstanceOf(MeteredTracingRuntime.class);
-            assertThat(context.getBean(PlatformTracing.class)).isInstanceOf(DefaultPlatformTracing.class);
+            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
         });
     }
 
     @Test
     void operationRootWithLinks_preservesRootTopologyAndRemoteLinks() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
@@ -74,7 +74,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void operationDetached_preservesDetachedNoParentAndNoLinks() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             try (var parent = tracing.manual().operation("parent").start()) {
                 tracing.manual().operation("orphan").detached().start().close();
@@ -91,7 +91,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void operationDetachedWithLinks_failsFast() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
@@ -106,7 +106,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void kafkaBatchRootWithLinks_preservesRootTopologyAndLinks() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             tracing.manual().transport().kafka().consumer()
                     .batch("orders")
@@ -128,7 +128,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void spanFromSpec_rootWithLinks_worksPerPolicy() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
@@ -149,7 +149,7 @@ class MeteredTopologyMatrixTest {
     @Test
     void spanFromSpec_detachedWithoutLinks_worksPerPolicy() {
         contextRunner.run(context -> {
-            PlatformTracing tracing = context.getBean(PlatformTracing.class);
+            TraceOperations tracing = context.getBean(TraceOperations.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
             SpanSpec spec = SpanSpec.builder("spec-detached")
                     .category(SpanCategory.INTERNAL)

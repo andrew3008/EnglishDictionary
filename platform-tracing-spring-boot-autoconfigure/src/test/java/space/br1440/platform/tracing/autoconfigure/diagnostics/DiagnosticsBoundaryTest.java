@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.api.PlatformTracing;
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -47,7 +47,7 @@ class DiagnosticsBoundaryTest {
                 .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
-                            context.getBean(PlatformTracing.class),
+                            context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
                             context.getBean(ManualTracingDiagnostics.class));

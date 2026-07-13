@@ -83,7 +83,7 @@ h2. Outcome
 
 h2. Module: `platform-tracing-api`
 
-* Контракт {{space.br1440.platform.tracing.api.PlatformTracing}}:
+* Контракт {{space.br1440.platform.tracing.api.TraceOperations}}:
 ** {{Span startSpan(String name, SpanCategory category, Map<String, ?> attributes)}}
 ** {{<T> T withinSpan(String name, SpanCategory category, ThrowingSupplier<T> body)}}
 ** {{void recordException(Throwable t, Map<String, ?> attributes)}}
@@ -97,15 +97,15 @@ h2. Module: `platform-tracing-api`
 
 h2. Module: `platform-tracing-core`
 
-* {{DefaultPlatformTracing}} — адаптер над {{io.opentelemetry.api.trace.Tracer}}; функциональный no-op detection через создание probe-span'а и проверку {{SpanContext.isValid()}}, чтобы корректно ловить состояние {{GlobalOpenTelemetry.noop()}} без reference-equality.
-* {{NoOpPlatformTracing}} — singleton ({{INSTANCE}}); все методы — pure no-op без обращения к OTel API.
+* {{DefaultTraceOperations}} — адаптер над {{io.opentelemetry.api.trace.Tracer}}; функциональный no-op detection через создание probe-span'а и проверку {{SpanContext.isValid()}}, чтобы корректно ловить состояние {{GlobalOpenTelemetry.noop()}} без reference-equality.
+* {{NoopTraceOperations}} — singleton ({{INSTANCE}}); все методы — pure no-op без обращения к OTel API.
 * {{ExceptionRecorder}} — безопасная запись ошибок в span ({{error.type}}, sanitized exception-event); используется span builder'ами и autoconfigure.
 
 h2. Acceptance criteria
 
 # Все публичные классы документированы Javadoc'ом; SPI-точки расширения помечены {{@apiNote}}.
-# Unit-тесты покрывают {{DefaultPlatformTracing}} и {{NoOpPlatformTracing}} с использованием {{opentelemetry-sdk-testing}} ({{InMemorySpanExporter}}).
-# {{NoOpPlatformTracing.startSpan(...)}} отрабатывает без NPE и без обращения к {{GlobalOpenTelemetry}} (verified через Mockito {{verifyNoInteractions}}).
+# Unit-тесты покрывают {{DefaultTraceOperations}} и {{NoopTraceOperations}} с использованием {{opentelemetry-sdk-testing}} ({{InMemorySpanExporter}}).
+# {{NoopTraceOperations.startSpan(...)}} отрабатывает без NPE и без обращения к {{GlobalOpenTelemetry}} (verified через Mockito {{verifyNoInteractions}}).
 # Аннотации имеют корректные {{@Retention(RUNTIME)}}, {{@Target}} и {{@Documented}}.
 # Code coverage публичных контрактов и SPI ≥ 80% по line; 100% по branch для критичных no-op путей.
 
@@ -132,10 +132,10 @@ h2. Components
 * AOP: {{TracedAspect}} ({{@Aspect}}, {{@Order(Ordered.HIGHEST_PRECEDENCE + 100)}}); resolve аннотаций через {{AopUtils.getMostSpecificMethod}} для корректной работы с interface-методами через Spring AOP proxy.
 * MDC: {{TracingMdcKeys}} (ключи {{trace_id}}, {{span_id}}, {{trace_flags}}); {{TracingMdcServletFilter extends OncePerRequestFilter}}, {{Ordered.HIGHEST_PRECEDENCE}}; {{TracingMdcWebFilter implements WebFilter}} для WebFlux.
 * Micrometer Observation: {{PlatformServerRequestObservationConvention}}, {{PlatformReactiveServerRequestObservationConvention}}, {{PlatformClientRequestObservationConvention}} — добавляют {{platform.type}}, {{platform.result}} к стандартным HTTP-атрибутам Spring Web.
-* Self-observability: {{PlatformTracingMetrics}} ({{Counter}} {{platform.tracing.spans.started}}, {{platform.tracing.exceptions.recorded}} с тегом {{category}}); декоратор {{MeteredPlatformTracing implements PlatformTracing}} ({{@Primary}} при наличии {{MeterRegistry}}).
+* Self-observability: {{PlatformTracingMetrics}} ({{Counter}} {{platform.tracing.spans.started}}, {{platform.tracing.exceptions.recorded}} с тегом {{category}}); декоратор {{MeteredPlatformTracing implements TraceOperations}} ({{@Primary}} при наличии {{MeterRegistry}}).
 * Actuator: {{TracingHealthIndicator}} ({{HealthIndicator}}; статус {{OUT_OF_SERVICE}} при {{platform.tracing.enabled=false}}); {{TracingActuatorEndpoint}} ({{@Endpoint(id = "tracing")}}, read-операция возвращает детерминированный JSON).
 * AutoConfiguration-классы (все с {{@AutoConfiguration}} и общим gate {{@ConditionalOnProperty(prefix = "platform.tracing", name = "enabled", matchIfMissing = true)}}):
-** {{TracingCoreAutoConfiguration}} — bean {{PlatformTracing}}
+** {{TracingCoreAutoConfiguration}} — bean {{TraceOperations}}
 ** {{TracingAopAutoConfiguration}} — bean {{TracedAspect}} под {{@ConditionalOnClass(EnableAspectJAutoProxy.class)}}
 ** {{TracingMetricsAutoConfiguration}} — bean {{MeteredPlatformTracing}} под {{@ConditionalOnBean(MeterRegistry.class)}}
 ** {{TracingObservationAutoConfiguration}} — server/client conventions
@@ -147,7 +147,7 @@ h2. Acceptance criteria
 
 # Интеграционные тесты через {{ApplicationContextRunner}} покрывают:
 #* подъём всех bean'ов под {{platform.tracing.enabled=true}}
-#* graceful fallback на {{NoOpPlatformTracing}} при отсутствии настроенного {{GlobalOpenTelemetry}} (functional check через probe-span)
+#* graceful fallback на {{NoopTraceOperations}} при отсутствии настроенного {{GlobalOpenTelemetry}} (functional check через probe-span)
 #* подмену каждого bean'а через user-defined {{@Bean}} (контракт {{@ConditionalOnMissingBean}})
 # {{TracedAspect}} корректно обрабатывает Spring AOP proxy для interface-метода vs implementation-метода (regression test на резолв аннотации через {{getMostSpecificMethod}}).
 # Каждый {{ObservationConvention}} покрыт тестом, проверяющим наличие {{platform.type}} и {{platform.result}} в финальном span'е через {{InMemorySpanExporter}}.
@@ -335,7 +335,7 @@ h2. Components
 ** *Собственные классы исключений не создаются*: {{InvalidRequestException}} объявлен {{final}} в {{web-error-model}}
 ** Аудит-логирование изменений на INFO с {{previous → applied}}
 * {{PlatformTraceContext}} (record): {{traceId}}, {{spanId}}, {{traceFlags}}, {{requestId}} — extended diagnostic context.
-* {{PlatformTraceContextProvider}} — bean расширенного контекста; зависит от {{PlatformTracing}}.
+* {{PlatformTraceContextProvider}} — bean расширенного контекста; зависит от {{TraceOperations}}.
 * {{TracingRequestContextSupplier implements Supplier<RequestContext>}}:
 ** {{Span.current().getSpanContext()}} обёрнут в try-catch (контракт §37)
 ** {{correlationId}} читается из MDC по ключу {{PlatformHeaders.X_REQUEST_ID}} через safe-MDC reader
@@ -346,7 +346,7 @@ h2. Components
 ** Javadoc с явным предупреждением: «не добавлять {{after = TracingCoreAutoConfiguration.class}} по аналогии — сломает always-on контракт»
 * {{ErrorhandlingTracingAutoConfiguration}}:
 ** *Удалить* {{@ConditionalOnClass(name = "...ErrorEntry")}} — {{web-error-model}} теперь обязательная BOM-зависимость
-** Сохранить {{@ConditionalOnBean(PlatformTracing.class)}} — {{PlatformTraceContextProvider}} требует {{PlatformTracing}} в конструкторе
+** Сохранить {{@ConditionalOnBean(TraceOperations.class)}} — {{PlatformTraceContextProvider}} требует {{TraceOperations}} в конструкторе
 * {{TracingRefreshScopeAutoConfiguration}}:
 ** {{@ConditionalOnClass(org.springframework.cloud.context.scope.refresh.RefreshScope.class)}}
 ** Регистрирует {{TracingProperties}} как {{@RefreshScope @Primary}} bean

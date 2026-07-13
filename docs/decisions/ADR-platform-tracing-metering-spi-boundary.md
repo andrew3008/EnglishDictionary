@@ -1,14 +1,14 @@
-# ADR — PlatformTracing Metering SPI Boundary
+# ADR — TraceOperations Metering SPI Boundary
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-07-07 |
-| Context | PlatformTracing v3 refactoring |
+| Context | TraceOperations v3 refactoring |
 
 ## Context
 
-v1 registered `MeteredPlatformTracing` as `@Primary` `PlatformTracing` bean. The decorator overrode only a subset of the wide facade; relation-aware and link-aware calls fell back to interface defaults on the decorator instance, silently degrading ROOT/DETACHED/links ([R01](../known-issues/R01.md)).
+v1 registered `MeteredPlatformTracing` as `@Primary` `TraceOperations` bean. The decorator overrode only a subset of the wide facade; relation-aware and link-aware calls fell back to interface defaults on the decorator instance, silently degrading ROOT/DETACHED/links ([R01](../known-issues/R01.md)).
 
 ## Decision
 
@@ -16,12 +16,12 @@ Platform self-metrics are recorded by **`MeteredTracingImplementation`**, which 
 
 Rules:
 
-- Metering MUST NOT decorate the public `PlatformTracing` facade.
+- Metering MUST NOT decorate the public `TraceOperations` facade.
 - Metering MUST NOT create spans except by delegating to the wrapped `TracingImplementation`.
 - Metering MUST NOT replace or wrap Spring `TracingObservationHandler` beans.
 - When Micrometer is present, exactly one active `TracingImplementation` chain exists (`BeanTopologyTest`).
 
-## Why metering is on `TracingImplementation`, not `PlatformTracing`
+## Why metering is on `TracingImplementation`, not `TraceOperations`
 
 - All manual span creation already converges on `TracingImplementation.startSpan(SpanSpec)` — one interception point.
 - Decorating the full SPI preserves ROOT/DETACHED/links semantics (`MeteredTopologyMatrixTest`).

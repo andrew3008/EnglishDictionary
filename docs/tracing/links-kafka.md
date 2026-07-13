@@ -31,7 +31,7 @@ List<RemoteSpanLink> links = records.stream()
         .flatMap(Optional::stream)
         .toList();
 
-try (SpanScope scope = platformTracing.startSpanWithLinks(
+try (SpanScope scope = traceOperations.startSpanWithLinks(
         "kafka.batch.process", SpanCategory.RPC, links)) {
     for (ConsumerRecord<?, ?> record : records) {
         processRecord(record);
@@ -43,10 +43,10 @@ try (SpanScope scope = platformTracing.startSpanWithLinks(
 ## Паттерн 2: root span + инкрементальные links
 
 ```java
-try (SpanScope scope = platformTracing.startRootSpan(
+try (SpanScope scope = traceOperations.startRootSpan(
         "kafka.batch.process", SpanCategory.RPC)) {
     for (ConsumerRecord<?, ?> record : records) {
-        extractLinkFromHeaders(record).ifPresent(platformTracing::addLink);
+        extractLinkFromHeaders(record).ifPresent(traceOperations::addLink);
         processRecord(record);
     }
     scope.setResult(SpanResult.SUCCESS);
@@ -83,4 +83,4 @@ Optional<RemoteSpanLink> extractLinkFromHeaders(ConsumerRecord<?, ?> record) {
 ## Связанные документы
 
 - [semconv-mapping.md](../semconv-mapping.md) — `SpanCategory.RPC` для brokered протоколов
-- `PlatformTracing` Javadoc — контракт default methods и compile-safety
+- `TraceOperations` Javadoc — контракт default methods и compile-safety

@@ -19,8 +19,8 @@
 
 | Аспект | Реализация | ADR | Проверка |
 |--------|-----------|-----|----------|
-| Программный фасад | `platform-tracing-api/.../api/PlatformTracing.java` (интерфейс) + `platform-tracing-core/.../core/DefaultPlatformTracing.java` (OTel-реализация) | [ADR-otel-direct-integration.md](../decisions/ADR-otel-direct-integration.md) | `DefaultPlatformTracingInSpanTest` |
-| High-level `inSpan()` (Runnable/Supplier) | default-методы на `PlatformTracing` поверх `startSpan()` + `SpanScope.close()` | — | `DefaultPlatformTracingInSpanTest` |
+| Программный фасад | `platform-tracing-api/.../api/TraceOperations.java` (интерфейс) + `platform-tracing-core/.../core/DefaultTraceOperations.java` (OTel-реализация) | [ADR-otel-direct-integration.md](../decisions/ADR-otel-direct-integration.md) | `DefaultTraceOperationsInSpanTest` |
+| High-level `inSpan()` (Runnable/Supplier) | default-методы на `TraceOperations` поверх `startSpan()` + `SpanScope.close()` | — | `DefaultTraceOperationsInSpanTest` |
 | Авто-инструментирование (без кода) | OTel Java Agent (Spring MVC/WebFlux/JDBC/Kafka) | [ADR-otel-direct-integration.md](../decisions/ADR-otel-direct-integration.md) | e2e smoke (`-PrunE2e`) |
 
 Атрибуты/события/статус добавляются через typed span API (см. §1.2) и `SpanEnricher`.
@@ -43,7 +43,7 @@ ADR: [ADR-platform-resource-override.md](../decisions/ADR-platform-resource-over
 | Тип | Покрытие | Реализация |
 |-----|----------|-----------|
 | HTTP / DB / RPC (auto) | OTel Agent instrumentation по semconv | `http.*` / `db.*` / `rpc.*` |
-| Typed span API (вне покрытия Агента) | `httpServerSpan()`/`httpClientSpan()`/`databaseSpan()`/`rpcServerSpan()`/`kafkaProducerSpan()`/… фабрики на `PlatformTracing` | builders в `platform-tracing-api/.../api/span/builder/` + `platform-tracing-core/.../span/*Impl` |
+| Typed span API (вне покрытия Агента) | `httpServerSpan()`/`httpClientSpan()`/`databaseSpan()`/`rpcServerSpan()`/`kafkaProducerSpan()`/… фабрики на `TraceOperations` | builders в `platform-tracing-api/.../api/span/builder/` + `platform-tracing-core/.../span/*Impl` |
 | Семантика типов (allowlist/required/forbidden) | `platform-tracing-api/.../api/semconv/CategoryContracts.java` | — |
 | Exception span (sanitized) | `platform-tracing-core/.../core/exception/ExceptionRecorder.java` (`exception.message`/`stacktrace` off-by-default) | — |
 | Санитизация URL/SQL | `platform-tracing-api/.../api/span/sanitize/UrlSanitizer.java`, `SqlSanitizer.java` | — |
@@ -153,8 +153,8 @@ Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links 
 
 | Модуль | Роль | Ключевые классы из досье |
 |--------|------|--------------------------|
-| `platform-tracing-api` | контракты без Spring/OTel-SDK | `PlatformTracing`, `PlatformAttributes`, `PlatformSamplingReasons`, `CategoryContracts`, `RequestIdSupport`, `OutboundPropagationPolicy`, `UrlSanitizer`/`SqlSanitizer` |
-| `platform-tracing-core` | OTel-aware реализации | `DefaultPlatformTracing`, `ExceptionRecorder`, `AttributePolicy` |
+| `platform-tracing-api` | контракты без Spring/OTel-SDK | `TraceOperations`, `PlatformAttributes`, `PlatformSamplingReasons`, `CategoryContracts`, `RequestIdSupport`, `OutboundPropagationPolicy`, `UrlSanitizer`/`SqlSanitizer` |
+| `platform-tracing-core` | OTel-aware реализации | `DefaultTraceOperations`, `ExceptionRecorder`, `AttributePolicy` |
 | `platform-tracing-otel-extension` | Agent extension (без Spring) | `CompositeSampler`/`SamplerState`, `*SpanProcessor` (Scrubbing/Validating/Enriching/Classification/Watchdog/Composite/DropOldest), `SafeSpanExporter`, `PlatformResourceProvider`, SPI providers, JMX `PlatformTracingControl` |
 | `platform-tracing-spring-boot-autoconfigure` | Spring-интеграция | `TracingProperties`, `TracingActuatorEndpoint`, `SamplingControlClient` |
 | `platform-tracing-collector-config` | versioned YAML + JVM-контракт-тесты | `otel-collector-gateway-tail-sampling.yaml`, `CollectorPolicyContractTest` |

@@ -14,7 +14,7 @@ package space.br1440.platform.tracing.autoconfigure.support;
  *   <li>{@link #EXTERNAL} — в контексте есть пользовательский {@code OpenTelemetry} bean;
  *       starter поднимает фасад поверх него;</li>
  *   <li>{@link #STARTER} — нет ни агента, ни пользовательского SDK (consume-mode без создания SDK);</li>
- *   <li>{@link #DISABLED} — платформенный фасад явно отключён ({@code NoOpPlatformTracing});
+ *   <li>{@link #DISABLED} — платформенный фасад явно отключён ({@code NoopTraceOperations});
  *       единственный режим, где используется NoOp.</li>
  * </ul>
  */

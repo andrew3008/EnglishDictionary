@@ -33,7 +33,7 @@
 
 - **Defense-in-depth PII: app-side exception-events больше не утекают raw `exception.message`/
   `exception.stacktrace`.** `ExceptionRecorder` (секьюр-дефолт: message/stacktrace off) был
-  спроектирован как guardrail, но фасад его обходил — `DefaultPlatformTracing.recordException`,
+  спроектирован как guardrail, но фасад его обходил — `DefaultTraceOperations.recordException`,
   `OwningSpanScope`, `NonOwningSpanScope` и `KafkaBatchLinksAspect` вызывали raw
   `Span.recordException(t)`, который пишет НЕскрабленный exception-event (events не скрабятся
   `ScrubbingSpanProcessor`'ом — только attributes). Все эти пути переведены на `ExceptionRecorder`.
@@ -132,7 +132,7 @@
   `PlatformSamplerBuilder`, `InboundTraceControlPropagatorBuilder`.
 - **SDK mode detection** (`platform.tracing.sdk.mode`: `AUTO|AGENT|STARTER|EXTERNAL|DISABLED`):
   `SdkModeResolver` + `SdkModeDiagnostics`, лог на старте, секция `sdk` в `/actuator/tracing`. Диагностика и
-  явность — **не** создание SDK (agent-first). `NoOpPlatformTracing` — только для `DISABLED`; в остальных
+  явность — **не** создание SDK (agent-first). `NoopTraceOperations` — только для `DISABLED`; в остальных
   режимах фасад делегирует в `GlobalOpenTelemetry`/пользовательский `OpenTelemetry` bean.
 - **ArchUnit-инвариант** `ExtensionNoSpringDependencyArchTest`: `platform-tracing-otel-extension` не зависит
   от `org.springframework..` (грузится `ExtensionClassLoader`'ом без Spring).
@@ -164,7 +164,7 @@
 - **Granular kill-switches (политика, не топология)**: export-gate в `SafeSpanExporter`
   (выключение экспорта без поломки propagation; счётчики `gated`/`export_enabled`), shared
   `PlatformPropagationGate` (платформенные заголовки; W3C-контекст Агента не затрагивается),
-  facade no-op через `DefaultPlatformTracing.setFacadeEnabled(false)` (+`NoOpSpanScope`).
+  facade no-op через `DefaultTraceOperations.setFacadeEnabled(false)` (+`NoOpSpanScope`).
 - **Dynamic log level**: app-CL — штатный Spring Boot `/actuator/loggers`; agent/bootstrap-CL —
   `PlatformLogControl` (shared) + JMX `setPlatformLogLevel(...)`, через который
   `RateLimitedLogger` гейтит диагностику платформы (rate-limited, сама смена уровня — тоже).
@@ -184,7 +184,7 @@
 
 ### Added (Фаза 13 — Typed Span API + Semantic Layer)
 
-- **Typed escape-hatch span builders** на фасаде `PlatformTracing`: `httpServerSpan()`,
+- **Typed escape-hatch span builders** на фасаде `TraceOperations`: `httpServerSpan()`,
   `httpClientSpan()`, `databaseSpan()`, `rpcServerSpan()`, `rpcClientSpan()`, `kafkaProducerSpan()`,
   `kafkaConsumerSpan()`, `internalSpan()`. Agent-first: предназначены для операций вне покрытия
   OTel Java Agent. API-интерфейсы в `platform-tracing-api/span/builder` с `default`-сеттерами,
@@ -216,7 +216,7 @@
 ### Changed (Фаза 13 — разделение RPC/messaging категорий)
 
 - `SpanCategory.RPC` разделён на `RPC_SERVER` / `RPC_CLIENT`; добавлены `KAFKA_PRODUCER` /
-  `KAFKA_CONSUMER`. `PlatformTracing.startRpc(...)` → `startRpcServer(...)` / `startRpcClient(...)`.
+  `KAFKA_CONSUMER`. `TraceOperations.startRpc(...)` → `startRpcServer(...)` / `startRpcClient(...)`.
   `EnrichingSpanProcessor` маппит `SpanKind.PRODUCER`→`kafka_producer`, `CONSUMER`→`kafka_consumer`.
   Решение не было в проде — переход чистый, без migration-compat. `semconv-mapping.md` обновлён.
 

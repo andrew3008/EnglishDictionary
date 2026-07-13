@@ -12,7 +12,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
+import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,7 +25,7 @@ class SpanExecutionTest {
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
-    private DefaultPlatformTracing tracing;
+    private DefaultTraceOperations tracing;
     private RecordingTracingRuntime recording;
 
     @BeforeEach
@@ -34,7 +34,7 @@ class SpanExecutionTest {
         tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                 .build();
-        tracing = new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
+        tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
         recording = new RecordingTracingRuntime();
     }
 
@@ -90,7 +90,7 @@ class SpanExecutionTest {
     @Test
     void spanFromSpec_routesSameSpecThroughTracingRuntime() {
         SpanSpec spec = governedSpec("from-spec");
-        DefaultPlatformTracing recordingTracing = new DefaultPlatformTracing(recording);
+        DefaultTraceOperations recordingTracing = new DefaultTraceOperations(recording);
         recordingTracing.manual().spanFromSpec(spec).run(() -> {
         });
         assertThat(recording.receivedSpecs()).containsExactly(spec);

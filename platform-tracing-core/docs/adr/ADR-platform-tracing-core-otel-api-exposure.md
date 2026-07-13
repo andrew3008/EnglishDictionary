@@ -1,9 +1,9 @@
 # ADR: OpenTelemetry API Exposure in `platform-tracing-core`
 
-**ID:** ADR-platform-tracing-core-otel-api-exposure  
-**Status:** Accepted  
-**Date:** 2026-07-09  
-**Deciders:** Platform Architect, Lead Platform Engineer  
+**ID:** ADR-platform-tracing-core-otel-api-exposure
+**Status:** Accepted
+**Date:** 2026-07-09
+**Deciders:** Platform Architect, Lead Platform Engineer
 **PR:** `fix/tracing-runtime-spi-completeness`
 
 ---
@@ -14,7 +14,7 @@
 The module has `api` (transitive) dependency on `io.opentelemetry:opentelemetry-api` in
 `build.gradle`, making OTel types part of the compile-time surface of core.
 
-During Slice 2 refactoring (`Fable_5`), `DefaultPlatformTracing` (facade) held three
+During Slice 2 refactoring (`Fable_5`), `DefaultTraceOperations` (facade) held three
 convenience constructors accepting `OpenTelemetry` directly, and two `instanceof OtelTracingRuntime`
 blocks to resolve `attributePolicy()` and to invoke `setKillSwitchEnabled(boolean)`. This caused:
 
@@ -33,8 +33,8 @@ However, the **exposure mechanism changes**:
 
 | Before | After |
 |---|---|
-| `new DefaultPlatformTracing(OpenTelemetry, ...)` | `new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(openTelemetry, ...))` |
-| `DefaultPlatformTracing` imports `OtelTracingRuntime` | `DefaultPlatformTracing` imports only `TracingRuntime` SPI |
+| `new DefaultTraceOperations(OpenTelemetry, ...)` | `new DefaultTraceOperations(OtelTracingRuntimeFactory.create(openTelemetry, ...))` |
+| `DefaultTraceOperations` imports `OtelTracingRuntime` | `DefaultTraceOperations` imports only `TracingRuntime` SPI |
 | Kill-switch via `OtelTracingRuntime.setKillSwitchEnabled()` | Kill-switch via atomic `RuntimeHolder` swap in facade |
 | `TracingRuntime` SPI lacks `attributePolicy()` | `TracingRuntime` SPI declares `attributePolicy()` |
 
@@ -61,13 +61,13 @@ However, the **exposure mechanism changes**:
 - `core.facade` package has zero `io.opentelemetry` imports (enforced by `FacadeOtelIsolationArchTest`).
 - `TracingRuntime` SPI is complete; decorators like `MeteredTracingRuntime` delegate
   `attributePolicy()` via `DelegatingTracingRuntime` default method.
-- Kill-switch thread-safety is explicit and documented in `DefaultPlatformTracing`.
-- Existing autoconfigure wiring (`TracingCoreAutoConfiguration.platformTracing(TracingRuntime)`) 
+- Kill-switch thread-safety is explicit and documented in `DefaultTraceOperations`.
+- Existing autoconfigure wiring (`TracingCoreAutoConfiguration.TraceOperations(TracingRuntime)`)
   is unchanged — it already injects `TracingRuntime`, not `OpenTelemetry`.
 
 ### Negative / Trade-offs
-- ~30 test and bench call sites that used `new DefaultPlatformTracing(sdk)` must migrate
-  to `new DefaultPlatformTracing(OtelTracingRuntimeFactory.create(sdk))`.
+- ~30 test and bench call sites that used `new DefaultTraceOperations(sdk)` must migrate
+  to `new DefaultTraceOperations(OtelTracingRuntimeFactory.create(sdk))`.
 - `OtelTracingRuntimeFactory` is a new public class in `core.runtime.otel`; it must be
   kept in sync with `OtelTracingRuntime` constructor signature changes.
 

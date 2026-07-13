@@ -62,7 +62,7 @@ enrichCurrentSpanIfPlatformCategory`, см. §«Предпочтительная
 ### 3) ArchUnit + аннотация (historical — removed in Slice 1B)
 
 > **Slice 1B:** правило `TracingArchRules.ESCAPE_HATCH_BUILDERS_REQUIRE_SUPPRESSION` удалено вместе
-> с v1 `Facade*SpanBuilder` factory-методами на `PlatformTracing`. Transport governance для
+> с v1 `Facade*SpanBuilder` factory-методами на `TraceOperations`. Transport governance для
 > `manual().transport()` вернётся в Slice 3. Primary guard остаётся agent-флаг (§1); §2 описывает
 > текущий marker-based enrichment механизм (runtime anti-double guard модели B удалён, см. выше).
 

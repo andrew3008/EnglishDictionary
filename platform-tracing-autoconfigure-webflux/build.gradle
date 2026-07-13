@@ -30,7 +30,7 @@ dependencies {
     // Micrometer Context Propagation для RemoteServiceContextPropagation.
     api 'io.micrometer:context-propagation'
 
-    // Платформенный API нужен в WebFilter'ах через PlatformTracing.
+    // Платформенный API нужен в WebFilter'ах через TraceOperations.
     api project(':platform-tracing-api')
 
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'

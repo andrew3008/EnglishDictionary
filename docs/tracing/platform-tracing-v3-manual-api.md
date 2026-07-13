@@ -1,10 +1,10 @@
-# PlatformTracing v3 — Manual API Reference
+# TraceOperations v3 — Manual API Reference
 
 Reference for the v3 manual tracing surface. All span creation routes internally through `TracingImplementation.startSpan(SpanSpec)`; application code uses the public builders below.
 
 ## Entry points
 
-### `PlatformTracing`
+### `TraceOperations`
 
 | Method | Returns | Description |
 |--------|---------|-------------|

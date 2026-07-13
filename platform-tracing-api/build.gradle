@@ -1,5 +1,5 @@
 description = 'Публичный API платформенного стартера трассировки. ' +
-        'Содержит интерфейс PlatformTracing, аннотацию @Traced, перечисления SpanCategory и SpanResult, ' +
+        'Содержит интерфейс TraceOperations, аннотацию @Traced, перечисления SpanCategory и SpanResult, ' +
         'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), снимок RequestTraceContextSnapshot для error-handling, точки расширения SPI. ' +
         'Модуль не зависит от Spring и OpenTelemetry SDK, чтобы прикладной код мог писаться против стабильного контракта. ' +
         'Единственная runtime-зависимость — slf4j-api для MDC-моста RemoteServiceMdc.'

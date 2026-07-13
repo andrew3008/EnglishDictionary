@@ -1,4 +1,4 @@
-# ADR — PlatformTracing Micrometer Observation Boundary
+# ADR — TraceOperations Micrometer Observation Boundary
 
 | Поле | Значение |
 |------|----------|
@@ -23,11 +23,11 @@
 
 ## Context
 
-PlatformTracing v3.4.2 redesign introduces an internal `TracingImplementation` boundary, a narrow public facade (`traceContext()` + `manual()`), and `MeteredTracingImplementation` for platform self-metrics. The repository already runs **three parallel telemetry paths**:
+TraceOperations v3.4.2 redesign introduces an internal `TracingImplementation` boundary, a narrow public facade (`traceContext()` + `manual()`), and `MeteredTracingImplementation` for platform self-metrics. The repository already runs **three parallel telemetry paths**:
 
 1. **OTel Java Agent** — bytecode HTTP/DB/RPC/Kafka spans (agent-first, [ADR-otel-direct-integration.md](./ADR-otel-direct-integration.md)).
 2. **Spring / Micrometer Observation** — framework HTTP observations, `@Observed`, conventions ([ADR-suppress-micrometer-tracing.md](./ADR-suppress-micrometer-tracing.md)).
-3. **PlatformTracing manual API** — `DefaultPlatformTracing` over OpenTelemetry API `Tracer` / `SpanBuilder` ([DefaultPlatformTracing.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultPlatformTracing.java)).
+3. **TraceOperations manual API** — `DefaultTraceOperations` over OpenTelemetry API `Tracer` / `SpanBuilder` ([DefaultTraceOperations.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultTraceOperations.java)).
 
 Without an explicit boundary decision, manual platform spans and Spring auto-observation can produce **duplicate or unsynchronized root spans** — structurally the same failure class as **R01** (two paths that silently diverge; see [R01.md](../known-issues/R01.md)).
 
@@ -46,7 +46,7 @@ The refactoring plan requires answering before Slice 1A:
 5. Should any Spring tracing handlers be **disabled, customized, or left untouched**?
 6. Which **tests** prove coexistence?
 
-Risk **R24** in the plan: *Micrometer Observation and PlatformTracing create duplicate or inconsistent spans* (High, Slices 1A/7).
+Risk **R24** in the plan: *Micrometer Observation and TraceOperations create duplicate or inconsistent spans* (High, Slices 1A/7).
 
 ---
 
@@ -56,12 +56,12 @@ Classification: **FACT** = directly observed in repository; **ASSUMPTION** = inf
 
 | # | Finding | Class |
 |---|---------|-------|
-| 1 | **OpenTelemetry API/SDK:** `DefaultPlatformTracing` creates spans via `OpenTelemetry.getTracer(...).spanBuilder(...)`, `Context`, `Span` ([DefaultPlatformTracing.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultPlatformTracing.java)). Typed semantic builders in core use `Tracer`/`SpanBuilder` ([ADR-typed-span-api-semantic-layer.md](./ADR-typed-span-api-semantic-layer.md)). SPI extension in `platform-tracing-otel-extension`. | FACT |
+| 1 | **OpenTelemetry API/SDK:** `DefaultTraceOperations` creates spans via `OpenTelemetry.getTracer(...).spanBuilder(...)`, `Context`, `Span` ([DefaultTraceOperations.java](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/DefaultTraceOperations.java)). Typed semantic builders in core use `Tracer`/`SpanBuilder` ([ADR-typed-span-api-semantic-layer.md](./ADR-typed-span-api-semantic-layer.md)). SPI extension in `platform-tracing-otel-extension`. | FACT |
 | 2 | **MeterRegistry:** `TracingMetricsAutoConfiguration` registers `PlatformTracingMetrics` and `@Primary` `MeteredPlatformTracing` when `MeterRegistry` bean exists ([TracingMetricsAutoConfiguration.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingMetricsAutoConfiguration.java)). | FACT |
 | 3 | **ObservationRegistry / Observation API:** `io.micrometer:micrometer-observation` is an **api** dependency in autoconfigure, webmvc, webflux. Production code registers `Platform*ObservationConvention` beans and `ObservationRegistryCustomizer` suppressors ([ServletTracingAutoConfiguration.java](../../platform-tracing-autoconfigure-webmvc/src/main/java/space/br1440/platform/tracing/autoconfigure/servlet/ServletTracingAutoConfiguration.java), [WebMvcSuppressMicrometerTracingAutoConfiguration.java](../../platform-tracing-autoconfigure-webmvc/src/main/java/space/br1440/platform/tracing/autoconfigure/servlet/WebMvcSuppressMicrometerTracingAutoConfiguration.java)). `TracingObservationAutoConfiguration` registers startup diagnostics only, not span creation ([TracingObservationAutoConfiguration.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingObservationAutoConfiguration.java)). | FACT |
 | 4 | **`io.micrometer.tracing`:** `compileOnly` in autoconfigure; **no production usage in core**. Test-only smoke: `MicrometerTracingMdcBridgeSmokeTest` registers `Tracer`, `TracingObservationHandler`, `ObservationRegistry` when Spring Actuator tracing autoconfig + bridge-otel are on classpath ([MicrometerTracingMdcBridgeSmokeTest.java](../../platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MicrometerTracingMdcBridgeSmokeTest.java)). | FACT |
 | 5 | **MeteredPlatformTracing:** Decorates delegate; overrides only `startSpan(name, category)`, builder factories, `currentTraceId`/`currentSpanId`, `recordException`. Does **not** override relation/links/`inSpan` — R01 ([MeteredPlatformTracing.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/MeteredPlatformTracing.java), [R01.md](../known-issues/R01.md)). | FACT |
-| 6 | **Spring bean wiring:** `TracingCoreAutoConfiguration` exposes `PlatformTracing` (`DefaultPlatformTracing` or `NoOpPlatformTracing`). `TracingMetricsAutoConfiguration` wraps it in `@Primary` `MeteredPlatformTracing` when Micrometer present. | FACT |
+| 6 | **Spring bean wiring:** `TracingCoreAutoConfiguration` exposes `TraceOperations` (`DefaultTraceOperations` or `NoopTraceOperations`). `TracingMetricsAutoConfiguration` wraps it in `@Primary` `MeteredPlatformTracing` when Micrometer present. | FACT |
 | 7 | **Existing coexistence / duplicate tests:** `DuplicateSpansRegressionMatrixTest` (webmvc + webflux), `SuppressMicrometerTracingMetricsTest`, `TracingObservationSuppressStartupTest`, e2e `DuplicateHttpSpanAgentSmokeTest`. **No `ObservationCoexistenceTest` class exists yet** (planned Slice 7). | FACT |
 | 8 | **Web / aspect auto-instrumentation:** `ServletTracingAutoConfiguration`, `ReactiveTracingAutoConfiguration`, platform Observation conventions, `@Traced` via `TracedAspect`, ArchUnit rule `NO_TRACED_AND_OBSERVED_ON_SAME_METHOD` ([TracingArchRules.java](../../platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/arch/TracingArchRules.java)). | FACT |
 | 9 | **Actuator diagnostics:** `TracingActuatorEndpoint` exposes `implementation` class name, SDK mode, agent detection ([TracingActuatorEndpoint.java](../../platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/TracingActuatorEndpoint.java)). Plan v3.4.2 adds future `TracingDiagnostics` → `TracingDiagnosticsView` mapped DTO (not yet implemented). | FACT |
@@ -87,23 +87,23 @@ Classification: **FACT** = directly observed in repository; **ASSUMPTION** = inf
 
 ## Options considered
 
-### Option A — PlatformTracing manual spans use direct OpenTelemetry SDK; Spring auto-observation remains separate
+### Option A — TraceOperations manual spans use direct OpenTelemetry SDK; Spring auto-observation remains separate
 
 **Description:** Manual platform tracing stays on OTel API/SDK (`TracingImplementation` → `Tracer.spanBuilder`). Spring/Micrometer Observation continues independently for framework observations. Coexistence enforced by configuration (suppress), conventions, and tests.
 
 | Aspect | Assessment |
 |--------|------------|
-| **Pros** | Aligns with ADR-otel-direct-integration and typed-span ADR; full OTel links/ROOT/DETACHED; `SpanSpec` maps cleanly to `SpanBuilder`; matches current `DefaultPlatformTracing` implementation. |
+| **Pros** | Aligns with ADR-otel-direct-integration and typed-span ADR; full OTel links/ROOT/DETACHED; `SpanSpec` maps cleanly to `SpanBuilder`; matches current `DefaultTraceOperations` implementation. |
 | **Cons** | Two lifecycle owners remain; requires strict duplicate-prevention rules and discipline; easy to mis-wire if future code bypasses ADR. |
 | **R01 impact** | Fixes R01 by moving metering to `MeteredTracingImplementation` on full abstract SPI — not by patching facade decorator. |
 | **Duplicate span risk** | Medium without suppress + ArchUnit + coexistence tests; **mitigated** by existing suppress ADR and planned `ObservationCoexistenceTest`. |
-| **OTel links** | Native via `SpanBuilder.addLink` (current `DefaultPlatformTracing` behavior). |
+| **OTel links** | Native via `SpanBuilder.addLink` (current `DefaultTraceOperations` behavior). |
 | **SpanSpec governance** | Strong — direct mapping at creation boundary. |
 | **Spring auto-observation** | Unchanged; platform customizes conventions only. |
 | **MeteredTracingImplementation** | Natural: decorate OTel-backed implementation, count at SPI boundary. |
 | **Testability** | High — InMemorySpanExporter pattern already used in core/autoconfigure tests. |
 
-### Option B — PlatformTracing implemented as a bridge over Micrometer Observation API
+### Option B — TraceOperations implemented as a bridge over Micrometer Observation API
 
 **Description:** All manual platform spans created via `ObservationRegistry` / `Observation.start()` / Micrometer Tracing handlers.
 
@@ -123,8 +123,8 @@ Classification: **FACT** = directly observed in repository; **ASSUMPTION** = inf
 
 **Description:** **Separate intentional telemetry paths** with explicit ownership:
 
-- **Auto path:** OTel Agent (production spans) + Spring Micrometer Observation (framework observations, conventions, optional bridge-otel dev/staging) — platform does **not** re-wrap every Observation into `PlatformTracing`.
-- **Manual path:** `PlatformTracing.manual()` → `TracingImplementation.startSpan(SpanSpec)` → OTel SDK — platform-owned topology, governance, links.
+- **Auto path:** OTel Agent (production spans) + Spring Micrometer Observation (framework observations, conventions, optional bridge-otel dev/staging) — platform does **not** re-wrap every Observation into `TraceOperations`.
+- **Manual path:** `traceOperations.manual()` → `TracingImplementation.startSpan(SpanSpec)` → OTel SDK — platform-owned topology, governance, links.
 - **Metrics path:** `MeteredTracingImplementation` decorates `TracingImplementation` only — never public facade, never Observation handlers.
 
 | Aspect | Assessment |
@@ -169,11 +169,11 @@ Option A is a subset of Option C (direct OTel manual path) but **without explici
 
 | Question | Decision |
 |----------|----------|
-| **1. Manual platform span lifecycle owner** | **`TracingImplementation`** (concrete: `DefaultTracingImplementation` or successor) using OpenTelemetry API `Tracer` / `SpanBuilder` at a **single** `TracingImplementation.startSpan(SpanSpec)` boundary. Public `PlatformTracing.manual()` (`manual().operation(...)`, `manual().transport()...`, `manual().spanFromSpec(spec)`) MUST NOT create spans except by routing through this boundary. |
-| **2. Spring auto-instrumented span lifecycle owner** | **OTel Java Agent** (production bytecode spans) and **Spring / Micrometer Observation** (framework observations: HTTP server/client conventions, `@Observed`, Actuator observation pipeline). PlatformTracing MUST NOT assume ownership of these spans. |
+| **1. Manual platform span lifecycle owner** | **`TracingImplementation`** (concrete: `DefaultTracingImplementation` or successor) using OpenTelemetry API `Tracer` / `SpanBuilder` at a **single** `TracingImplementation.startSpan(SpanSpec)` boundary. Public `traceOperations.manual()` (`manual().operation(...)`, `manual().transport()...`, `manual().spanFromSpec(spec)`) MUST NOT create spans except by routing through this boundary. |
+| **2. Spring auto-instrumented span lifecycle owner** | **OTel Java Agent** (production bytecode spans) and **Spring / Micrometer Observation** (framework observations: HTTP server/client conventions, `@Observed`, Actuator observation pipeline). TraceOperations MUST NOT assume ownership of these spans. |
 | **3. Duplicate span prevention** | See [Duplicate-span prevention rules](#duplicate-span-prevention-rules) and [Implementation guardrails](#implementation-guardrails). Existing `suppress-micrometer-tracing` remains the HTTP-level guard when Agent is present ([ADR-suppress-micrometer-tracing.md](./ADR-suppress-micrometer-tracing.md)). `ObservationCoexistenceTest` (Slice 7) proves no competing unsynchronized roots for one operation. |
 | **4. Micrometer tracing bridge vs MeteredTracingImplementation** | **`io.micrometer.tracing` bridge-otel** is an **optional dev/staging** Spring Actuator path ([MicrometerTracingMdcBridgeSmokeTest.java](../../platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MicrometerTracingMdcBridgeSmokeTest.java)), **not** the platform manual tracing engine. **`MeteredTracingImplementation`** records platform counters/histograms around **`TracingImplementation`** delegation only; it MUST NOT replace `TracingObservationHandler` and MUST NOT create spans. |
-| **5. Spring tracing handlers** | **Leave framework handlers in place.** Platform MAY **customize** Observation conventions (`Platform*ObservationConvention`). Platform MAY **suppress** duplicate HTTP observations via opt-in `platform.tracing.suppression.suppress-micrometer-tracing` when Agent creates HTTP spans. Platform MUST NOT globally disable Observation for non-HTTP concerns without ADR amendment. Platform MUST NOT auto-wrap all Observations into `PlatformTracing` spans. |
+| **5. Spring tracing handlers** | **Leave framework handlers in place.** Platform MAY **customize** Observation conventions (`Platform*ObservationConvention`). Platform MAY **suppress** duplicate HTTP observations via opt-in `platform.tracing.suppression.suppress-micrometer-tracing` when Agent creates HTTP spans. Platform MUST NOT globally disable Observation for non-HTTP concerns without ADR amendment. Platform MUST NOT auto-wrap all Observations into `TraceOperations` spans. |
 | **6. Coexistence tests** | **Existing:** `DuplicateSpansRegressionMatrixTest`, suppress tests, ArchUnit `NO_TRACED_AND_OBSERVED_ON_SAME_METHOD`. **Required (plan v3.4.2):** `ObservationCoexistenceTest`, `BeanTopologyTest`, `TracingImplementationRoutingTest`, `MeteredTopologyMatrixTest`, `DiagnosticsBoundaryTest`. |
 
 ---
@@ -187,12 +187,12 @@ These rules are normative for Slice 1A onward. Violations require ADR amendment 
 - Public builders and facade types MUST NOT use OpenTelemetry `Tracer` directly (enforced by `TracingImplementationRoutingTest` + ArchUnit in Slice 2).
 - **`MeteredTracingImplementation`** MUST decorate **`TracingImplementation`**; it MUST NOT create spans directly (delegate-only).
 - **`MeteredTracingImplementation`** MUST NOT replace or wrap Spring **`TracingObservationHandler`** beans.
-- **`MeteredTracingImplementation`** MUST NOT decorate the public **`PlatformTracing`** facade (R01 lesson; no `@Primary` metered facade pattern).
-- **`PlatformTracing`** MUST NOT auto-wrap every Micrometer **`Observation`** into a platform manual span.
+- **`MeteredTracingImplementation`** MUST NOT decorate the public **`TraceOperations`** facade (R01 lesson; no `@Primary` metered facade pattern).
+- **`TraceOperations`** MUST NOT auto-wrap every Micrometer **`Observation`** into a platform manual span.
 - Spring/Micrometer auto-observation MUST remain the owner of framework-level observations (HTTP server/client, `@Observed`, Observation handlers) unless a **later ADR** explicitly changes this.
 - Explicit **`manual().operation(...)`** inside an auto-observed request MAY create a child/manual span; it MUST be consistently related to the active trace via OTel `Context.current()` unless `SpanSpec` explicitly requests ROOT/DETACHED under governance rules.
 - No public API MUST expose OpenTelemetry SDK types.
-- **`SpanSpec` / `SpanOptions` topology** (ROOT, DETACHED, CHILD, pre-start links) MUST remain intact per plan v3.4.2; no compatibility shim for v1 wide `PlatformTracing` API.
+- **`SpanSpec` / `SpanOptions` topology** (ROOT, DETACHED, CHILD, pre-start links) MUST remain intact per plan v3.4.2; no compatibility shim for v1 wide `TraceOperations` API.
 - Durable fix for R01 is **structural SPI boundary**, not a patch to **`MeteredPlatformTracing`**.
 
 ---
@@ -242,14 +242,14 @@ Platform responsibilities on the auto path:
 
 Platform MUST NOT:
 
-- Replace all Spring Observation with `PlatformTracing.manual()`.
+- Replace all Spring Observation with `traceOperations.manual()`.
 - Create platform manual spans for every Observation event.
 
 ### MeteredTracingImplementation
 
 Future internal decorator MUST:
 
-- Decorate **`TracingImplementation`** only (not public `PlatformTracing` facade).
+- Decorate **`TracingImplementation`** only (not public `TraceOperations` facade).
 - Increment platform metrics on manual tracing operations at SPI boundary.
 - Preserve ROOT / DETACHED / CHILD / links topology (delegate-only span creation).
 - MUST NOT create spans except via delegation to wrapped `TracingImplementation`.
@@ -347,8 +347,8 @@ Future slices MUST implement (from plan v3.4.2):
 - No implementation of v3 API in this ADR.
 - No production code changes.
 - No decision to expose OpenTelemetry SDK types in public API.
-- No decision to replace all Spring Observation with PlatformTracing.
-- No backward-compatibility wrapper for v1 `PlatformTracing` API.
+- No decision to replace all Spring Observation with TraceOperations.
+- No backward-compatibility wrapper for v1 `TraceOperations` API.
 - No fix for R01 in this ADR (evidence only in Slice 0B).
 
 ---
@@ -386,7 +386,7 @@ Aligned with [platform-tracing-refactoring-plan.md](../analysis/platform-tracing
 - MUST NOT introduce Micrometer Observation as the implementation of public manual builders.
 - MUST preserve `SpanSpec` / `SpanOptions` / links topology required by the plan.
 - MUST preserve no OTel SDK leak in public API.
-- MUST NOT reintroduce wide v1 `PlatformTracing` behavioral defaults or `MeteredPlatformTracing` as durable metering path.
+- MUST NOT reintroduce wide v1 `TraceOperations` behavioral defaults or `MeteredPlatformTracing` as durable metering path.
 
 ### Slice 2
 
@@ -405,7 +405,7 @@ Aligned with [platform-tracing-refactoring-plan.md](../analysis/platform-tracing
 ### Slice 7
 
 - MUST include **`ObservationCoexistenceTest`**.
-- MUST prove Spring auto-observation and PlatformTracing manual spans do not create two unsynchronized root spans for the same operation.
+- MUST prove Spring auto-observation and TraceOperations manual spans do not create two unsynchronized root spans for the same operation.
 - MUST include **`DiagnosticsBoundaryTest`** and mapped **`TracingDiagnosticsView`** contract.
 - MAY extend Spring Boot matrix beyond Slice 2 `BeanTopologyTest` (FilteredClassLoader, webmvc/webflux, `@Traced` against new facade).
 
