@@ -16,9 +16,6 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
  *   <li>{@link #transport()} — span'ы транспортного уровня: HTTP, RPC, Kafka, Database;</li>
  *   <li>{@link #fromSpec(SpanSpec)} — span по декларативной спецификации.</li>
  * </ul>
- *
- * <p>Не является runtime, SDK, sampler, exporter или propagation API.
- * Получается через {@link space.br1440.platform.tracing.api.TraceOperations#spans()}.
  */
 public interface SpanFactory {
 

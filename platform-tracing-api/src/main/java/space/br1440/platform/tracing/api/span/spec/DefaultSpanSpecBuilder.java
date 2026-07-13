@@ -65,6 +65,7 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
             Objects.requireNonNull(link, "link");
             this.links.add(link);
         }
+
         return this;
     }
 
@@ -75,6 +76,7 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
         for (String traceparent : traceparents) {
             linkedTo(TraceparentParser.requireTraceparent(Objects.requireNonNull(traceparent, "traceparent")));
         }
+
         return this;
     }
 
@@ -130,9 +132,11 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     @Nonnull
     public SpanSpecBuilder reason(@Nonnull SpanSpecReason reason) {
         Objects.requireNonNull(reason, "reason");
+
         if (reasonSet) {
             throw new IllegalStateException("reason(...) already set");
         }
+
         this.reason = reason;
         reasonSet = true;
         return this;
@@ -142,12 +146,15 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     @Nonnull
     public SpanSpecBuilder reference(@Nonnull String reference) {
         Objects.requireNonNull(reference, "reference");
+
         if (referenceSet) {
             throw new IllegalStateException("reference(...) already set");
         }
+
         if (reference.isBlank()) {
             throw new IllegalArgumentException("reference must not be blank");
         }
+
         this.reference = reference;
         referenceSet = true;
         return this;
@@ -159,12 +166,15 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
         if (category == null) {
             throw new IllegalStateException("category(...) is required");
         }
+
         if (reason == null) {
             throw new IllegalStateException("reason(...) is required");
         }
+
         if (reason == SpanSpecReason.TEMPORARY_WORKAROUND && reference == null) {
             throw new IllegalStateException("TEMPORARY_WORKAROUND requires reference(...)");
         }
+
         SpanRelationshipSpec relationshipSpec = ImmutableSpanRelationshipSpec.of(relationship, List.copyOf(links));
         ImmutableSpanRelationshipSpec.validateRelationshipLinks(relationship, links);
         return new SpanSpecImpl(name, category, relationshipSpec, attributes, reason, reference);
@@ -172,9 +182,11 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
     private SpanSpecBuilder setRelationship(@Nonnull SpanRelationship relationship) {
         Objects.requireNonNull(relationship, "relationship");
+
         if (relationshipExplicit) {
             throw new IllegalStateException("relationship already set; first relationship setter wins");
         }
+
         this.relationship = relationship;
         relationshipExplicit = true;
         return this;
@@ -183,12 +195,15 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     private SpanSpecBuilder putAttribute(@Nonnull String key, @Nonnull SpanSpecAttributeValue value) {
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(value, "value");
+
         if (key.isBlank()) {
             throw new IllegalArgumentException("attribute key must not be blank");
         }
+
         if (attributes.containsKey(key)) {
             throw new IllegalStateException("duplicate attribute key: " + key);
         }
+
         attributes.put(key, value);
         return this;
     }

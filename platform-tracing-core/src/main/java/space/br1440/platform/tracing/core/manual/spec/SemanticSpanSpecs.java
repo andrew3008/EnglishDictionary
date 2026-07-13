@@ -5,8 +5,8 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
-import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.*;
 import space.br1440.platform.tracing.core.naming.PlatformSpanNameBuilder;
 import space.br1440.platform.tracing.core.runtime.otel.SpanSpecAttributeValueConverter;
@@ -29,6 +29,7 @@ public final class SemanticSpanSpecs {
                                  @Nonnull Map<String, SpanSpecAttributeValue> attributes,
                                  @Nonnull AttributePolicy policy,
                                  @Nonnull String builderName) {
+
         Objects.requireNonNull(category, "category");
         Objects.requireNonNull(relationship, "relationship");
         Objects.requireNonNull(links, "links");
@@ -36,42 +37,52 @@ public final class SemanticSpanSpecs {
         Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(builderName, "builderName");
 
-        Map<String, SpanSpecAttributeValue> enriched = new LinkedHashMap<>(attributes);
-        String platformTypeKey = SemconvKeys.PLATFORM_TYPE.getKey();
-        if (!enriched.containsKey(platformTypeKey)) {
-            enriched.put(platformTypeKey, SpanSpecAttributeValue.of(category.value()));
-        }
-
+        Map<String, SpanSpecAttributeValue> enriched = enrichWithPlatformType(attributes, category);
         Attributes accumulated = SpanSpecAttributeValueConverter.toAttributes(enriched);
         ValidatedAttributes validated = policy.validateAndNormalize(category, accumulated, builderName);
         String spanName = PlatformSpanNameBuilder.forCategory(category, validated.attributes(), explicitName);
         Map<String, SpanSpecAttributeValue> normalized = SpanSpecAttributeValueConverter.fromAttributes(validated.attributes());
 
-        SpanSpecBuilder builder = SpanSpec.builder(spanName)
-                .category(category)
-                .reason(SpanSpecReason.PLATFORM_EDGE_CASE);
-        applyRelationship(builder, relationship, links);
-        applyAttributes(builder, normalized);
-        return builder.build();
+        return applyAttributes(
+                applyRelationship(
+                        SpanSpec.builder(spanName)
+                                .category(category)
+                                .reason(SpanSpecReason.PLATFORM_EDGE_CASE),
+                        relationship,
+                        links
+                ),
+                normalized
+        ).build();
     }
 
-    private static void applyRelationship(SpanSpecBuilder builder, SpanRelationship relationship, List<RemoteSpanLink> links) {
-        switch (relationship) {
-            case CHILD -> builder.child();
-            case ROOT -> {
-                builder.root();
-                if (!links.isEmpty()) {
-                    builder.linkedTo(links.toArray(RemoteSpanLink[]::new));
-                }
-            }
-            case DETACHED -> builder.detached();
+    private static Map<String, SpanSpecAttributeValue> enrichWithPlatformType(Map<String, SpanSpecAttributeValue> attributes,
+                                                                              SpanCategory category) {
+        String platformTypeKey = SemconvKeys.PLATFORM_TYPE.getKey();
+        if (attributes.containsKey(platformTypeKey)) {
+            return attributes;
         }
+
+        Map<String, SpanSpecAttributeValue> enriched = new LinkedHashMap<>(attributes);
+        enriched.put(platformTypeKey, SpanSpecAttributeValue.of(category.value()));
+        return enriched;
     }
 
-    private static void applyAttributes(SpanSpecBuilder builder, Map<String, SpanSpecAttributeValue> attributes) {
-        Map<String, SpanSpecAttributeValue> copy = new LinkedHashMap<>(attributes);
-        for (Map.Entry<String, SpanSpecAttributeValue> entry : copy.entrySet()) {
-            switch (entry.getValue()) {
+    private static SpanSpecBuilder applyRelationship(SpanSpecBuilder builder,
+                                                     SpanRelationship relationship,
+                                                     List<RemoteSpanLink> links) {
+        return switch (relationship) {
+            case CHILD -> builder.child();
+            case DETACHED -> builder.detached();
+            case ROOT -> links.isEmpty()
+                    ? builder.root()
+                    : builder.root().linkedTo(links.toArray(RemoteSpanLink[]::new));
+        };
+    }
+
+    private static SpanSpecBuilder applyAttributes(SpanSpecBuilder builder,
+                                                   Map<String, SpanSpecAttributeValue> attributes) {
+        for (Map.Entry<String, SpanSpecAttributeValue> entry : attributes.entrySet()) {
+            builder = switch (entry.getValue()) {
                 case SpanSpecAttributeValue.StringValue sv -> builder.attribute(entry.getKey(), sv.value());
                 case SpanSpecAttributeValue.LongValue lv -> builder.attribute(entry.getKey(), lv.value());
                 case SpanSpecAttributeValue.DoubleValue dv -> builder.attribute(entry.getKey(), dv.value());
@@ -80,7 +91,9 @@ public final class SemanticSpanSpecs {
                 case SpanSpecAttributeValue.LongListValue llv -> builder.longListAttribute(entry.getKey(), llv.values());
                 case SpanSpecAttributeValue.DoubleListValue dlv -> builder.doubleListAttribute(entry.getKey(), dlv.values());
                 case SpanSpecAttributeValue.BooleanListValue blv -> builder.booleanListAttribute(entry.getKey(), blv.values());
-            }
+            };
         }
+
+        return builder;
     }
 }
