@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.propagation.TraceparentParser;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 
@@ -97,7 +97,7 @@ public final class PlatformTracingV3Samples {
      * {@code messageContexts} would normally be extracted from record headers via OTel propagator.
      */
     public void processKafkaBatch(
-            List<SpanLinkContext> messageContexts,
+            List<RemoteSpanLink> messageContexts,
             BatchProcessor processor,
             List<Record> records) {
         platformTracing.manual()
@@ -106,7 +106,7 @@ public final class PlatformTracingV3Samples {
                 .consumer()
                 .batch("orders")
                 .root()
-                .linkedTo(messageContexts.toArray(SpanLinkContext[]::new))
+                .linkedTo(messageContexts.toArray(RemoteSpanLink[]::new))
                 .run(() -> processor.processBatch(records));
     }
 
@@ -155,7 +155,7 @@ public final class PlatformTracingV3Samples {
     }
 
     /** Example of lenient traceparent parsing for batch header extraction loops. */
-    public List<SpanLinkContext> extractLinksFromHeaders(List<String> traceparentHeaders) {
+    public List<RemoteSpanLink> extractLinksFromHeaders(List<String> traceparentHeaders) {
         return traceparentHeaders.stream()
                 .map(TraceparentParser::parseTraceparent)
                 .flatMap(java.util.Optional::stream)

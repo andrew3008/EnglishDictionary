@@ -117,7 +117,7 @@ public final class TracingControlProtocolValidator {
         }
 
         Object normalizedValue;
-        if (descriptor.type() == TracingControlProtocolTypes.ROUTE_RATIOS_MAP) {
+        if (descriptor.type() == TracingControlProtocolFieldType.ROUTE_RATIOS_MAP) {
             normalizedValue = RouteRatiosValidator.validate(key, value, violations);
         } else {
             normalizedValue = FieldTypeSupport.validateAndNormalize(key, descriptor.type(), value, violations);

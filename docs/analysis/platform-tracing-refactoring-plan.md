@@ -16,7 +16,7 @@
 - Manual tracing entry points are `operation(name)`, `transport()`, and governed `spanFromSpec(spec)`.
 - `SpanSpec.builder(...)` uses readable public grammar: `.child()`, `.root()`, `.detached()`, `.linkedTo(...)`.
 - `SpanOptions` is a public immutable value model returned by `SpanSpec.options()`, but not the preferred application-facing builder grammar.
-- `SpanSpec.attributes()` remains `Map<String, SpanAttributeValue>`; builder attribute overloads normalize into `SpanAttributeValue`.
+- `SpanSpec.attributes()` remains `Map<String, SpanSpecAttributeValue>`; builder attribute overloads normalize into `SpanSpecAttributeValue`.
 - `SpanSpecReason` is mandatory; generic reasons such as `OTHER`, `UNKNOWN`, `CUSTOM`, and `MISC` are forbidden.
 - Links are pre-start only; post-start `addLink(...)` is removed.
 - `ROOT + links` is allowed; `DETACHED + links` is forbidden; `CHILD + links` is forbidden in v1 (future extension only).
@@ -193,7 +193,7 @@ public interface SpanSpec {
 
     SpanOptions options();
 
-    Map<String, SpanAttributeValue> attributes();
+    Map<String, SpanSpecAttributeValue> attributes();
 
     SpanSpecReason reason();
 
@@ -202,9 +202,9 @@ public interface SpanSpec {
 ```
 
 Public builder ergonomics must not weaken the immutable `SpanSpec` contract.
-`SpanSpec` stores only normalized `SpanAttributeValue` instances.
+`SpanSpec` stores only normalized `SpanSpecAttributeValue` instances.
 
-`SpanAttributeValue` — public value type или sealed hierarchy, допускающий только OpenTelemetry-compatible scalar/list values:
+`SpanSpecAttributeValue` — public value type или sealed hierarchy, допускающий только OpenTelemetry-compatible scalar/list values:
 
 - `String`
 - `long` / `Long`
@@ -217,7 +217,7 @@ Public builder ergonomics must not weaken the immutable `SpanSpec` contract.
 
 Arbitrary `Object` values forbidden. Все attributes проходят `AttributePolicy` validation до span start. Invalid attribute types fail fast в STRICT mode.
 
-**`SpanAttributeValue` invariants:**
+**`SpanSpecAttributeValue` invariants:**
 
 - immutable value object;
 - null attribute values are forbidden;
@@ -235,7 +235,7 @@ Mixed-type lists are forbidden.
 
 **Preferred implementation shape:**
 
-- use a sealed interface `SpanAttributeValue` with small immutable implementations/factories when project style allows it;
+- use a sealed interface `SpanSpecAttributeValue` with small immutable implementations/factories when project style allows it;
 - if sealed interfaces are not aligned with repository style, use final immutable value classes/factories;
 - regardless of implementation shape, the public contract must preserve the same whitelist, immutability, no-null, defensive-copy, and STRICT validation rules.
 
@@ -260,7 +260,7 @@ public interface SpanSpecBuilder {
 
     SpanSpecBuilder detached();
 
-    SpanSpecBuilder linkedTo(@Nonnull SpanLinkContext... links);
+    SpanSpecBuilder linkedTo(@Nonnull RemoteSpanLink... links);
 
     SpanSpecBuilder attribute(@Nonnull String key, @Nonnull String value);
 
@@ -287,8 +287,8 @@ public interface SpanSpecBuilder {
 ```
 
 `SpanSpecBuilder` intentionally exposes ergonomic typed attribute overloads for application code.
-All accepted values are normalized into `SpanAttributeValue` before `SpanSpec` is built.
-`SpanSpec.attributes()` remains the strict immutable view: `Map<String, SpanAttributeValue>`.
+All accepted values are normalized into `SpanSpecAttributeValue` before `SpanSpec` is built.
+`SpanSpec.attributes()` remains the strict immutable view: `Map<String, SpanSpecAttributeValue>`.
 Do not add `attribute(String, Object)`.
 Do not add raw map-based attribute injection to the public builder.
 
@@ -427,7 +427,7 @@ public interface SpanOptions {
 
     Topology topology();
 
-    List<SpanLinkContext> links();
+    List<RemoteSpanLink> links();
 
     static SpanOptions child();
 
@@ -487,7 +487,7 @@ public interface PlatformSpanBuilder<B extends PlatformSpanBuilder<B>> {
 
     B detached();
 
-    B linkedTo(@Nonnull SpanLinkContext... links);
+    B linkedTo(@Nonnull RemoteSpanLink... links);
 
     SpanHandle start();
 
@@ -778,7 +778,7 @@ platformTracing.manual()
 
 **Срез 1A — API skeleton (аддитивный)**
 - Цель: ввести новые sub-API интерфейсы рядом с существующим `PlatformTracing`.
-- Additive interfaces: `TraceContextView`, `ManualTracing`, `OperationSpanBuilder`, `TransportTracing`, `HttpTracing`, `DatabaseTracing`, `RpcTracing`, `KafkaTracing`, `SpecifiedSpan`, `SpanSpec`, `SpanSpecBuilder` (with `.child()/.root()/.detached()/.linkedTo(...)` and typed attribute overloads that normalize to `SpanAttributeValue`), `SpanSpecReason`, `SpanAttributeValue`, `SpanOptions` (public immutable value model, not preferred builder grammar), `SpanHandle`, transport sub-builders.
+- Additive interfaces: `TraceContextView`, `ManualTracing`, `OperationSpanBuilder`, `TransportTracing`, `HttpTracing`, `DatabaseTracing`, `RpcTracing`, `KafkaTracing`, `SpecifiedSpan`, `SpanSpec`, `SpanSpecBuilder` (with `.child()/.root()/.detached()/.linkedTo(...)` and typed attribute overloads that normalize to `SpanSpecAttributeValue`), `SpanSpecReason`, `SpanSpecAttributeValue`, `SpanOptions` (public immutable value model, not preferred builder grammar), `SpanHandle`, transport sub-builders.
 - Запрещено: изменять `PlatformTracing.java`.
 - **Forbidden stale public names in Slice 1A:**
   - `CurrentTraceContext`
@@ -809,7 +809,7 @@ platformTracing.manual()
 - **ArchUnit rule nuance:**
   - Behavioral default methods are forbidden on public facades, builders, and internal SPI.
   - Behavioral static helpers are forbidden on public facades, builders, and internal SPI.
-  - Static factories are allowed only on immutable value/spec types such as `SpanOptions`, `SpanSpec` builder/factory, or `SpanAttributeValue` factories.
+  - Static factories are allowed only on immutable value/spec types such as `SpanOptions`, `SpanSpec` builder/factory, or `SpanSpecAttributeValue` factories.
   - Static factories must not start spans, mutate context, access OpenTelemetry `Context`, record exceptions, or perform lifecycle work.
   - Examples allowed: `SpanOptions.child()`, `SpanOptions.root()`, `SpanOptions.detached()`, `SpanSpec.builder(...)`.
 - **ArchUnit anti-skeleton rule**
@@ -828,7 +828,7 @@ An abstract class with partial implementations can recreate the same partial-del
 Allowed:
 - fully concrete implementations;
 - pure interfaces;
-- immutable value/spec static factories such as `SpanSpec.builder(...)`, `SpanOptions.root()`, and `SpanAttributeValue` factories.
+- immutable value/spec static factories such as `SpanSpec.builder(...)`, `SpanOptions.root()`, and `SpanSpecAttributeValue` factories.
 - Верификация: `.\gradlew.bat :platform-tracing-api:build`.
 
 **Срез 1B — Атомарный cutover (multi-module)**
@@ -1078,7 +1078,7 @@ Required named test suites:
 | R10 | Kafka/RPC semconv instability | Medium | 3C | Concrete versioning annotation |
 | R12 | Metric counters маскируют topology defects | Medium | 0B, 6 | Separate test methods |
 | R13 | Kill-switch `facadeEnabled` теряется или становится недиагностируемым | Medium | 2 | Migrate to `TracingImplementation.state()` / `TracingState`; preserve mode/reason for diagnostics |
-| R14 | Untyped SpanSpec attributes become a dumping ground for invalid values, PII, high cardinality, or unsupported OTel attribute types | High | 1A-5 | `SpanAttributeValue` whitelist + typed `SpanSpecBuilder` overloads + no `attribute(String, Object)` + `AttributePolicy` validation + STRICT fail-fast |
+| R14 | Untyped SpanSpec attributes become a dumping ground for invalid values, PII, high cardinality, or unsupported OTel attribute types | High | 1A-5 | `SpanSpecAttributeValue` whitelist + typed `SpanSpecBuilder` overloads + no `attribute(String, Object)` + `AttributePolicy` validation + STRICT fail-fast |
 | R15 | `TEMPORARY_WORKAROUND` becomes permanent | Medium | 4-8 | `reference()` required + diagnostics + platform review + docs + periodic audit of active references via diagnostics/review gate |
 | R16 | `SpanSpec` examples expose confusing topology API (`.topology(SpanOptions...)` / `.options(SpanOptions...)`) | Low | 1A | Public builder grammar uses `.child()/.root()/.detached()/.linkedTo(...)` and typed attribute overloads on `SpanSpecBuilder`; validation is final-state based; `SpanOptions` is a public immutable value model returned by `SpanSpec.options()`, not the preferred builder grammar |
 | R17 | `CHILD + links` policy remains ambiguous | Medium | 5A/5B | `CHILD + links` forbidden in v1; Kafka batch uses ROOT+links; future CHILD+links requires ADR |
@@ -1099,14 +1099,14 @@ Required named test suites:
 
 **Before Slice 1A — architect review checklist (v3.4.2 clarifications):**
 
-- [x] `SpanAttributeValue` model accepted.
-- [x] `SpanAttributeValue` invariants accepted (immutability, no-null, defensive-copy lists, single-type lists, STRICT fail-fast).
-- [x] `SpanAttributeValue` preferred implementation shape accepted: sealed interface or final immutable value classes/factories.
+- [x] `SpanSpecAttributeValue` model accepted.
+- [x] `SpanSpecAttributeValue` invariants accepted (immutability, no-null, defensive-copy lists, single-type lists, STRICT fail-fast).
+- [x] `SpanSpecAttributeValue` preferred implementation shape accepted: sealed interface or final immutable value classes/factories.
 - [x] `SpanSpecBuilder` public grammar accepted: `.child()`, `.root()`, `.detached()`, `.linkedTo(...)` directly on the builder, including final-state validation independent of call order; `SpanOptions` is a public immutable value model, not the preferred builder grammar.
 - [x] `SpanSpecBuilder` attribute overload policy accepted:
   - typed scalar/list overloads;
   - no `attribute(String, Object)`;
-  - all values normalized into `SpanAttributeValue`.
+  - all values normalized into `SpanSpecAttributeValue`.
 - [x] `SpanSpecReason` governance accepted (including `TEMPORARY_WORKAROUND` rules and forbidden `OTHER`/`UNKNOWN`/`CUSTOM`/`MISC` catch-all values).
 - [x] Topology/link compatibility matrix accepted, including v1 `CHILD + links` forbidden policy.
 - [ ] `TracingImplementation` minimal SPI accepted.

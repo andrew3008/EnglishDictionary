@@ -19,6 +19,18 @@
 
 No compatibility aliases or deprecated bridges are provided.
 
+## Breaking Changes - Batch C Naming Cleanup
+
+| Old | New |
+| --- | --- |
+| `SpanLinkContext` | `RemoteSpanLink` |
+| `SpanAttributeValue` | `SpanSpecAttributeValue` |
+| `TracingControlProtocolTypes` | `TracingControlProtocolFieldType` |
+
+`TracingControlProtocolFieldType` is a Java type rename only. Enum constants such as
+`STRING`, `DOUBLE`, `STRING_ARRAY`, and `ROUTE_RATIOS_MAP` are unchanged, so schema
+expected-type strings and wire key names remain unchanged.
+
 ## Breaking Changes - PR-B2 Scrubbing SPI Rename
 
 | Old | New |

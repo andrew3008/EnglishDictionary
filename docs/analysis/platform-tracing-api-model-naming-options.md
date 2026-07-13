@@ -9,7 +9,7 @@
 - `RENAME_RECOMMENDED`: **13**.
 - `RENAME_STRONGLY_RECOMMENDED`: **7**.
 - Delete/merge/split candidates: **4**.
-- Scope note: `SpanAttributeValue` nested records are treated as part of `SpanAttributeValue`, not as separate top-level scoreboard rows.
+- Scope note: `SpanSpecAttributeValue` nested records are treated as part of `SpanSpecAttributeValue`, not as separate top-level scoreboard rows.
 
 Top 10 high-value naming changes:
 
@@ -119,7 +119,7 @@ Generic vocabulary overuse:
 | `TracingControlProtocolKeys` | `api.control.protocol.schema` | 84 | KEEP_ACCEPTABLE | Keep | 84 | 0 | Constants registry; verbose but scoped. |
 | `TracingControlProtocolOperation` | `api.control.protocol.schema` | 86 | KEEP_STRONG | Keep | 86 | 0 | Operation enum name is exact. |
 | `TracingControlProtocolSchema` | `api.control.protocol.schema` | 86 | KEEP_STRONG | Keep | 86 | 0 | Schema registry name is exact. |
-| `TracingControlProtocolTypes` | `api.control.protocol.schema` | 72 | RENAME_RECOMMENDED | `TracingControlProtocolFieldType` | 90 | +18 | Enum should be singular and field-scoped. |
+| `TracingControlProtocolFieldType` | `api.control.protocol.schema` | 72 | RENAME_RECOMMENDED | `TracingControlProtocolFieldType` | 90 | +18 | Enum should be singular and field-scoped. |
 | `TracingControlProtocolValidator` | `api.control.protocol.validation` | 88 | KEEP_STRONG | Keep | 88 | 0 | Behavior class; name is exact. |
 | `TracingControlProtocolViolationCode` | `api.control.protocol.validation` | 86 | KEEP_ACCEPTABLE | Keep | 86 | 0 | Clear protocol-scoped code enum. |
 | `TracingControlProtocolVersion` | `api.control.protocol.version` | 88 | KEEP_STRONG | Keep | 88 | 0 | Version value object is clear. |
@@ -170,10 +170,10 @@ Generic vocabulary overuse:
 | `SqlSanitizer` | `api.span.sanitize` | 84 | KEEP_ACCEPTABLE | Keep | 84 | 0 | Utility name is direct. |
 | `UrlSanitizer` | `api.span.sanitize` | 84 | KEEP_ACCEPTABLE | Keep | 84 | 0 | Utility name is direct. |
 | `SpanCategory` | `api.span` | 90 | KEEP_STRONG | Keep | 90 | 0 | Avoid `SpanKind` collision with OTel. |
-| `SpanLinkContext` | `api.span` | 72 | RENAME_RECOMMENDED | `RemoteSpanLink` | 89 | +17 | Record is a link descriptor, not a whole context. |
+| `RemoteSpanLink` | `api.span` | 72 | RENAME_RECOMMENDED | `RemoteSpanLink` | 89 | +17 | Record is a link descriptor, not a whole context. |
 | `SpanResult` | `api.span` | 82 | KEEP_ACCEPTABLE | Keep or `SpanOutcome` | 86 | +4 | Acceptable; result attribute already exists. |
 | `SpanScope` | `api.span` | 45 | DELETE_RECOMMENDED | Remove from public API; move mutable scope internal | 92 | +47 | Public legacy lifecycle surface conflicts with v3 `SpanHandle`. |
-| `SpanAttributeValue` | `api.span.spec` | 75 | RENAME_RECOMMENDED | `SpanSpecAttributeValue` | 88 | +13 | Only used in `SpanSpec.attributes()`. |
+| `SpanSpecAttributeValue` | `api.span.spec` | 75 | RENAME_RECOMMENDED | `SpanSpecAttributeValue` | 88 | +13 | Only used in `SpanSpec.attributes()`. |
 | `SpanHandle` | `api.span.spec` | 88 | KEEP_STRONG | Keep | 88 | 0 | Minimal lifecycle handle is clear. |
 | `SpanSpec` | `api.span.spec` | 88 | KEEP_STRONG | Keep; rename `options()` member | 93 | +5 | Type is strong; accessor is stale. |
 | `SpanSpecBuilder` | `api.span.spec` | 89 | KEEP_STRONG | Keep | 89 | 0 | Builder role is exact. |
@@ -391,21 +391,21 @@ Generic vocabulary overuse:
 
 Options: current `DatabaseTracing` (58), `DatabaseSpanBuilder` return type (92, chosen), `DatabaseTracingBuilder` (70, reject), `DatabaseClientSpanBuilder` (76, too narrow).
 
-### SpanAttributeValue -> SpanSpecAttributeValue
+### SpanSpecAttributeValue -> SpanSpecAttributeValue
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanAttributeValue.java`. The type is only used by `SpanSpec.attributes()` and `SpanSpecBuilder.attribute(...)`, not by mutable `SpanScope`. Rename to `SpanSpecAttributeValue` if Batch A already touches the spec package. Score: 75 -> 88.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpecAttributeValue.java`. The type is only used by `SpanSpec.attributes()` and `SpanSpecBuilder.attribute(...)`, not by mutable `SpanScope`. Rename to `SpanSpecAttributeValue` if Batch A already touches the spec package. Score: 75 -> 88.
 
-Options: `SpanAttributeValue` (75), `SpanSpecAttributeValue` (88, chosen), `AttributeValue` (62), `TraceAttributeValue` (76).
+Options: `SpanSpecAttributeValue` (75), `SpanSpecAttributeValue` (88, chosen), `AttributeValue` (62), `TraceAttributeValue` (76).
 
-### SpanLinkContext -> RemoteSpanLink
+### RemoteSpanLink -> RemoteSpanLink
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/SpanLinkContext.java`. The record is not an active context; it is a descriptor for a remote link. Rename to `RemoteSpanLink`. Score: 72 -> 89.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/RemoteSpanLink.java`. The record is not an active context; it is a descriptor for a remote link. Rename to `RemoteSpanLink`. Score: 72 -> 89.
 
-Options: `SpanLinkContext` (72), `RemoteSpanLink` (89, chosen), `SpanLink` (84), `RemoteSpanContext` (78, OTel collision).
+Options: `RemoteSpanLink` (72), `RemoteSpanLink` (89, chosen), `SpanLink` (84), `RemoteSpanContext` (78, OTel collision).
 
 ### TraceparentParser -> Traceparent
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/TraceparentParser.java`. The utility parses W3C `traceparent` and produces `SpanLinkContext`. `TraceparentParser` is too broad. Score: 64 -> 88.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/TraceparentParser.java`. The utility parses W3C `traceparent` and produces `RemoteSpanLink`. `TraceparentParser` is too broad. Score: 64 -> 88.
 
 Options: `TraceparentParser` (64), `Traceparent` (88, chosen), `TraceparentParser` (86), `RemoteTraceContext` (80).
 
@@ -441,9 +441,9 @@ Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/
 
 Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/semconv/ValidationMode.java`. Generic enum names are risky in imports. Score: 69 -> 90.
 
-### TracingControlProtocolTypes -> TracingControlProtocolFieldType
+### TracingControlProtocolFieldType -> TracingControlProtocolFieldType
 
-Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/schema/TracingControlProtocolTypes.java`. Enum should be singular and field-scoped. Score: 72 -> 90.
+Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/schema/TracingControlProtocolFieldType.java`. Enum should be singular and field-scoped. Score: 72 -> 90.
 
 ### RemoteServiceTraceMirror -> RemoteTraceContextMdcMirror
 
@@ -530,7 +530,7 @@ Current file: `platform-tracing-api/src/main/java/space/br1440/platform/tracing/
 | `SpanScope` | Delete from public API; move mutable lifecycle scope to core/internal | `SpanScope.java` says v1/v2; `SpanHandle.java` is v3; core `OwningSpanScope` implements it | Removes public legacy surface | Core internals need replacement type | **Do in Batch B** |
 | `DatabaseTracing` | Merge/delete | `DatabaseTracing extends DatabaseSpanBuilder` with no methods | Restores transport navigator consistency | Return type rename in API/core/tests | **Do in Batch A** |
 | `SpanTopologySpec` + `Topology` | Possible pair rename/split vocabulary | `Topology` confusion; `SpanTopologySpec` stores topology + links | Cleaner public language: `SpanStartSpec` + `SpanStartMode` | Accessor naming decision | **Needs design decision before Batch B** |
-| `SpanAttributeValue` | Possible narrow rename, not split | Only used by `SpanSpec` attributes | Avoids confusion with mutable span attributes | Wider spec package churn | **Batch C unless touching spec deeply** |
+| `SpanSpecAttributeValue` | Possible narrow rename, not split | Only used by `SpanSpec` attributes | Avoids confusion with mutable span attributes | Wider spec package churn | **Batch C unless touching spec deeply** |
 
 ## 10. Builder and Fluent API Naming Review
 
@@ -580,8 +580,8 @@ Terminal method review:
 |---|---|---:|---|---|
 | `SpanCategory` | `HTTP_SERVER`, `HTTP_CLIENT`, `DATABASE`, `RPC_*`, `KAFKA_*`, `INTERNAL` | 90 | Keep | Stable wire values. |
 | `SpanResult` | `SUCCESS`, `FAILURE`, `TIMEOUT`, `CANCELLED`, `REJECTED`, `SKIPPED` | 82 | Keep acceptable | `SpanOutcome` is better but not urgent. |
-| `SpanLinkContext` | `traceId`, `spanId`, `traceFlags`, `traceState` | 72 | `RemoteSpanLink` | Record is a link descriptor. |
-| `SpanAttributeValue` | nested typed values | 75 | `SpanSpecAttributeValue` | Narrow to spec usage. |
+| `RemoteSpanLink` | `traceId`, `spanId`, `traceFlags`, `traceState` | 72 | `RemoteSpanLink` | Record is a link descriptor. |
+| `SpanSpecAttributeValue` | nested typed values | 75 | `SpanSpecAttributeValue` | Narrow to spec usage. |
 | `SpanSpecReason` | governance enum values | 78 | Keep | Values are already reason-like; avoid heavier governance wording. |
 | `SpanTopologySpec` | `topology`, `links` | 83 | Keep or `SpanStartSpec` | Depends on Batch B vocabulary. |
 | `Topology` | `CHILD`, `ROOT`, `DETACHED` | 62 | `SpanStartMode` | Strongly recommended. |
@@ -592,7 +592,7 @@ Terminal method review:
 | `ValidationMode` | strict/warn/disabled | 69 | `SemconvValidationMode` | Avoid generic import. |
 | `ScrubbingDecision` | action/reason/maxLength/terminal | 90 | Keep | Excellent. |
 | `ScrubbingAction` | keep/mask/drop/hash/truncate | 89 | Keep | Excellent. |
-| `TracingControlProtocolTypes` | field types | 72 | `TracingControlProtocolFieldType` | Singular enum. |
+| `TracingControlProtocolFieldType` | field types | 72 | `TracingControlProtocolFieldType` | Singular enum. |
 
 ## 12. Proposed API Naming Conventions
 
@@ -695,14 +695,14 @@ Risk:
 
 Included changes:
 
-- `SpanAttributeValue` -> `SpanSpecAttributeValue`.
-- `SpanLinkContext` -> `RemoteSpanLink`.
+- `SpanSpecAttributeValue` -> `SpanSpecAttributeValue`.
+- `RemoteSpanLink` -> `RemoteSpanLink`.
 - `TraceparentParser` -> `Traceparent`.
 - `CategoryContract(s)` -> `SpanCategoryContract(s)`.
 - `ValidationMode` -> `SemconvValidationMode`.
 - `SemconvKeys` -> `SemanticAttributeKeys`.
 - `SensitiveDataRule` -> `SpanAttributeScrubbingRule`.
-- `TracingControlProtocolTypes` -> `TracingControlProtocolFieldType`.
+- `TracingControlProtocolFieldType` -> `TracingControlProtocolFieldType`.
 - `RemoteServiceTraceMirror` -> `RemoteTraceContextMdcMirror`.
 - Possibly `ActiveTraceContextView` -> `ActiveActiveTraceContextView`.
 

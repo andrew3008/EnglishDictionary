@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.control.protocol.validation;
 import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolViolation;
 import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolTypes;
+import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldType;
 
 import java.util.List;
 import java.util.Set;
@@ -15,7 +15,7 @@ final class FieldTypeSupport {
     private static final Set<String> VALIDATION_MODES = Set.of("STRICT", "WARN", "DISABLED");
 
     static Object validateAndNormalize(String key,
-                                       TracingControlProtocolTypes expectedType,
+                                       TracingControlProtocolFieldType expectedType,
                                        Object value,
                                        List<TracingControlProtocolViolation> violations) {
         if (value instanceof Enum<?>) {
@@ -83,7 +83,7 @@ final class FieldTypeSupport {
         violations.add(violation(
                 key,
                 "invalid wire type",
-                TracingControlProtocolTypes.STRING.name(),
+                TracingControlProtocolFieldType.STRING.name(),
                 typeName(value),
                 TracingControlProtocolViolationCode.TYPE_MISMATCH));
         return null;
@@ -99,7 +99,7 @@ final class FieldTypeSupport {
         violations.add(violation(
                 key,
                 "invalid wire type",
-                TracingControlProtocolTypes.BOOLEAN.name(),
+                TracingControlProtocolFieldType.BOOLEAN.name(),
                 typeName(value),
                 TracingControlProtocolViolationCode.TYPE_MISMATCH));
         return null;
@@ -119,7 +119,7 @@ final class FieldTypeSupport {
         violations.add(violation(
                 key,
                 "invalid wire type",
-                TracingControlProtocolTypes.INTEGER.name(),
+                TracingControlProtocolFieldType.INTEGER.name(),
                 typeName(value),
                 TracingControlProtocolViolationCode.TYPE_MISMATCH));
         return null;
@@ -139,7 +139,7 @@ final class FieldTypeSupport {
         violations.add(violation(
                 key,
                 "invalid wire type",
-                TracingControlProtocolTypes.LONG.name(),
+                TracingControlProtocolFieldType.LONG.name(),
                 typeName(value),
                 TracingControlProtocolViolationCode.TYPE_MISMATCH));
         return null;
@@ -159,7 +159,7 @@ final class FieldTypeSupport {
                 violations.add(violation(
                         key,
                         "invalid wire type",
-                        TracingControlProtocolTypes.DOUBLE.name(),
+                        TracingControlProtocolFieldType.DOUBLE.name(),
                         typeName(value),
                         TracingControlProtocolViolationCode.TYPE_MISMATCH));
                 return null;
@@ -186,7 +186,7 @@ final class FieldTypeSupport {
             violations.add(violation(
                     key,
                     "invalid wire type; use String[] not List or custom type",
-                    TracingControlProtocolTypes.STRING_ARRAY.name(),
+                    TracingControlProtocolFieldType.STRING_ARRAY.name(),
                     typeName(value),
                     TracingControlProtocolViolationCode.TYPE_MISMATCH));
             return null;

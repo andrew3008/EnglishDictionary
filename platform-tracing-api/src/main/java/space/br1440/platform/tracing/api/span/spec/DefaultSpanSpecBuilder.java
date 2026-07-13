@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.propagation.TraceparentParser;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,8 +18,8 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     private SpanCategory category;
     private SpanRelationship relationship = SpanRelationship.CHILD;
     private boolean relationshipExplicit;
-    private final List<SpanLinkContext> links = new ArrayList<>();
-    private final Map<String, SpanAttributeValue> attributes = new LinkedHashMap<>();
+    private final List<RemoteSpanLink> links = new ArrayList<>();
+    private final Map<String, SpanSpecAttributeValue> attributes = new LinkedHashMap<>();
     private SpanSpecReason reason;
     private String reference;
     private boolean reasonSet;
@@ -59,9 +59,9 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
     @Override
     @Nonnull
-    public SpanSpecBuilder linkedTo(@Nonnull SpanLinkContext... links) {
+    public SpanSpecBuilder linkedTo(@Nonnull RemoteSpanLink... links) {
         Objects.requireNonNull(links, "links");
-        for (SpanLinkContext link : links) {
+        for (RemoteSpanLink link : links) {
             Objects.requireNonNull(link, "link");
             this.links.add(link);
         }
@@ -81,49 +81,49 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     @Override
     @Nonnull
     public SpanSpecBuilder attribute(@Nonnull String key, @Nonnull String value) {
-        return putAttribute(key, SpanAttributeValue.of(value));
+        return putAttribute(key, SpanSpecAttributeValue.of(value));
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder attribute(@Nonnull String key, long value) {
-        return putAttribute(key, SpanAttributeValue.of(value));
+        return putAttribute(key, SpanSpecAttributeValue.of(value));
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder attribute(@Nonnull String key, double value) {
-        return putAttribute(key, SpanAttributeValue.of(value));
+        return putAttribute(key, SpanSpecAttributeValue.of(value));
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder attribute(@Nonnull String key, boolean value) {
-        return putAttribute(key, SpanAttributeValue.of(value));
+        return putAttribute(key, SpanSpecAttributeValue.of(value));
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder stringListAttribute(@Nonnull String key, @Nonnull List<String> values) {
-        return putAttribute(key, SpanAttributeValue.stringList(values));
+        return putAttribute(key, SpanSpecAttributeValue.stringList(values));
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder longListAttribute(@Nonnull String key, @Nonnull List<Long> values) {
-        return putAttribute(key, SpanAttributeValue.longList(values));
+        return putAttribute(key, SpanSpecAttributeValue.longList(values));
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder doubleListAttribute(@Nonnull String key, @Nonnull List<Double> values) {
-        return putAttribute(key, SpanAttributeValue.doubleList(values));
+        return putAttribute(key, SpanSpecAttributeValue.doubleList(values));
     }
 
     @Override
     @Nonnull
     public SpanSpecBuilder booleanListAttribute(@Nonnull String key, @Nonnull List<Boolean> values) {
-        return putAttribute(key, SpanAttributeValue.booleanList(values));
+        return putAttribute(key, SpanSpecAttributeValue.booleanList(values));
     }
 
     @Override
@@ -180,7 +180,7 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
         return this;
     }
 
-    private SpanSpecBuilder putAttribute(@Nonnull String key, @Nonnull SpanAttributeValue value) {
+    private SpanSpecBuilder putAttribute(@Nonnull String key, @Nonnull SpanSpecAttributeValue value) {
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(value, "value");
         if (key.isBlank()) {

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.TraceparentParser;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
 import space.br1440.platform.tracing.core.runtime.otel.SpanKinds;
@@ -56,7 +56,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void batchRootWithLinks_exportsKafkaConsumerRootWithMessagingAttributes() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         platformTracing.manual()
@@ -101,7 +101,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void batchInsideActiveParent_rootDoesNotBecomeChild() {
-        SpanLinkContext link = TraceparentParser.requireTraceparent(TRACEPARENT);
+        RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT);
 
         try (var parent = platformTracing.manual().operation("parent").start()) {
             platformTracing.manual()
@@ -124,7 +124,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void childWithLinksRejectedBeforeExport() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         assertThatThrownBy(() ->
@@ -144,7 +144,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void detachedWithLinksRejectedBeforeExport() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         assertThatThrownBy(() ->

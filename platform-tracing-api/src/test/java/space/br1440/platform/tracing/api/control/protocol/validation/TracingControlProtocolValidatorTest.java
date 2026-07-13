@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolValidationResult;
 import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolViolation;
 import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolTypes;
+import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldType;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -137,7 +137,7 @@ class TracingControlProtocolValidatorTest {
         TracingControlProtocolValidationResult result = VALIDATOR.validateRuntimePolicy(payload);
 
         assertThat(result.valid()).isFalse();
-        assertThat(result.violations().get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.DOUBLE.name());
+        assertThat(result.violations().get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.DOUBLE.name());
         assertThat(result.violations().get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
     }
 
@@ -660,7 +660,7 @@ class TracingControlProtocolValidatorTest {
 
         assertThat(v.code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.reason()).isEqualTo("invalid wire type");
-        assertThat(v.expectedType()).isEqualTo(TracingControlProtocolTypes.ROUTE_RATIOS_MAP.name());
+        assertThat(v.expectedType()).isEqualTo(TracingControlProtocolFieldType.ROUTE_RATIOS_MAP.name());
     }
 
     @Test
@@ -727,7 +727,7 @@ class TracingControlProtocolValidatorTest {
         assertThat(result.violations())
                 .anyMatch(v -> v.code() == TracingControlProtocolViolationCode.TYPE_MISMATCH
                         && "invalid wire type".equals(v.reason())
-                        && TracingControlProtocolTypes.DOUBLE.name().equals(v.expectedType()));
+                        && TracingControlProtocolFieldType.DOUBLE.name().equals(v.expectedType()));
     }
 
     @Test

@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
 import space.br1440.platform.tracing.api.propagation.TraceparentParser;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.*;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.core.manual.spec.OperationSpanSpecs;
@@ -24,8 +24,8 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
     protected final String builderName;
     private boolean relationshipExplicit = false;
     protected SpanRelationship relationship = SpanRelationship.CHILD;
-    protected final List<SpanLinkContext> links = new ArrayList<>();
-    protected final Map<String, SpanAttributeValue> attributes = new LinkedHashMap<>();
+    protected final List<RemoteSpanLink> links = new ArrayList<>();
+    protected final Map<String, SpanSpecAttributeValue> attributes = new LinkedHashMap<>();
 
     AbstractSemanticSpanBuilder(@Nonnull TracingRuntime implementation,
                                 @Nonnull AttributePolicy policy,
@@ -45,7 +45,7 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
 
     protected abstract B self();
 
-    protected void putAttribute(@Nonnull String key, @Nonnull SpanAttributeValue value) {
+    protected void putAttribute(@Nonnull String key, @Nonnull SpanSpecAttributeValue value) {
         if (attributes.containsKey(key)) {
             throw new IllegalStateException("duplicate attribute key: " + key);
         }
@@ -87,10 +87,10 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
 
     @Override
     @Nonnull
-    public B linkedTo(@Nonnull SpanLinkContext... linkContexts) {
+    public B linkedTo(@Nonnull RemoteSpanLink... linkContexts) {
         Objects.requireNonNull(linkContexts, "linkContexts");
 
-        for (SpanLinkContext link : linkContexts) {
+        for (RemoteSpanLink link : linkContexts) {
             links.add(Objects.requireNonNull(link, "link"));
         }
 

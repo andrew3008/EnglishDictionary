@@ -9,7 +9,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
@@ -85,7 +85,7 @@ class TracingRuntimeRoutingTest {
 
     @Test
     void topologyRootWithLinks_preserved() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
         tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
@@ -109,7 +109,7 @@ class TracingRuntimeRoutingTest {
         SpanSpec received = recording.receivedSpecs().getFirst();
         assertThat(received.category()).isEqualTo(SpanCategory.DATABASE);
         assertThat(received.attributes()).containsEntry("db.system",
-                space.br1440.platform.tracing.api.span.spec.SpanAttributeValue.of("postgresql"));
+                space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue.of("postgresql"));
         assertThat(received.reason()).isEqualTo(SpanSpecReason.LEGACY_INTEGRATION);
         assertThat(received.reference()).contains("ticket-42");
     }

@@ -5,6 +5,16 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), версии — [Semantic Versioning](https://semver.org/lang/ru/).
 
 ## [Unreleased] — Wave R1+ (dual-channel alignment)
+### Changed (Batch C - optional API naming cleanup)
+
+- Pre-production API rename cleanup: `SpanLinkContext` -> `RemoteSpanLink`,
+  `SpanAttributeValue` -> `SpanSpecAttributeValue`, and `TracingControlProtocolTypes` ->
+  `TracingControlProtocolFieldType`. No compatibility aliases or deprecated bridges are provided.
+- `TracingControlProtocolFieldType` preserves all enum constants and all tracing-control protocol
+  key strings; this is Java vocabulary cleanup only, not a wire-schema change.
+
+
+
 ### Changed (PR-B2 - scrubbing SPI naming)
 
 - Pre-production SPI rename: `SensitiveDataRule` -> `SpanAttributeScrubbingRule`.

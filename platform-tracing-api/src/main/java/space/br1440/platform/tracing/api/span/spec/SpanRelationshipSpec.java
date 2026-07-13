@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.api.span.spec;
 
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ public interface SpanRelationshipSpec {
     SpanRelationship kind();
 
     @Nonnull
-    List<SpanLinkContext> links();
+    List<RemoteSpanLink> links();
 
     @Nonnull
     static SpanRelationshipSpec child() {
@@ -35,7 +35,7 @@ public interface SpanRelationshipSpec {
         return ImmutableSpanRelationshipSpec.detached();
     }
 
-    static void validateRelationshipLinks(@Nonnull SpanRelationship relationship, @Nonnull List<SpanLinkContext> links) {
+    static void validateRelationshipLinks(@Nonnull SpanRelationship relationship, @Nonnull List<RemoteSpanLink> links) {
         ImmutableSpanRelationshipSpec.validateRelationshipLinks(relationship, links);
     }
 }

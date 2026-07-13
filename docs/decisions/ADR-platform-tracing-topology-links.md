@@ -20,7 +20,7 @@ v3 replaces `SpanRelation` with explicit topology setters on builders:
 .detached() — new trace, no parent, no links
 ```
 
-Links are **pre-start only** via `.linkedTo(SpanLinkContext...)` or `.fromRemoteContext(String... traceparents)`.
+Links are **pre-start only** via `.linkedTo(RemoteSpanLink...)` or `.fromRemoteContext(String... traceparents)`.
 
 ## Topology + links policy
 

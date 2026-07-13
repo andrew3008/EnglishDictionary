@@ -50,7 +50,7 @@ ADR: [ADR-platform-resource-override.md](../decisions/ADR-platform-resource-over
 
 ADR: [ADR-typed-span-api-semantic-layer.md](../decisions/ADR-typed-span-api-semantic-layer.md), [ADR-db-semconv-detection.md](../decisions/ADR-db-semconv-detection.md). Проверка: `EscapeHatchSpanBuilderTest`, `CategoryContractsTest`, `ExceptionRecorderTest`, `SanitizerTest`, e2e `DbSemconvAgentSmokeTest`.
 
-Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links — `SpanLinkContext`/`startSpanWithLinks` (см. [links-kafka.md](links-kafka.md)).
+Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links — `RemoteSpanLink`/`startSpanWithLinks` (см. [links-kafka.md](links-kafka.md)).
 
 ### 3 (раздел §1). Передача контекста + флаги сэмплирования + `X-Trace-On`
 

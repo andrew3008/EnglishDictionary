@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.api.propagation;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.Optional;
 
@@ -15,7 +15,7 @@ class TraceparentParserTest {
 
     @Test
     void parseTraceparent_validValue_returnsSampledLink() {
-        Optional<SpanLinkContext> parsed = TraceparentParser.parseTraceparent(VALID_TRACEPARENT);
+        Optional<RemoteSpanLink> parsed = TraceparentParser.parseTraceparent(VALID_TRACEPARENT);
 
         assertThat(parsed).isPresent();
         assertThat(parsed.get().traceId()).isEqualTo("0102030405060708090a0b0c0d0e0f10");
@@ -26,7 +26,7 @@ class TraceparentParserTest {
 
     @Test
     void parseTraceparent_uppercaseHex_isNormalized() {
-        Optional<SpanLinkContext> parsed = TraceparentParser.parseTraceparent(
+        Optional<RemoteSpanLink> parsed = TraceparentParser.parseTraceparent(
                 "00-0102030405060708090A0B0C0D0E0F10-0102030405060708-01");
 
         assertThat(parsed).isPresent();
@@ -46,7 +46,7 @@ class TraceparentParserTest {
 
     @Test
     void requireTraceparent_validValue_returnsLink() {
-        SpanLinkContext link = TraceparentParser.requireTraceparent(VALID_TRACEPARENT);
+        RemoteSpanLink link = TraceparentParser.requireTraceparent(VALID_TRACEPARENT);
 
         assertThat(link.traceId()).isEqualTo("0102030405060708090a0b0c0d0e0f10");
         assertThat(link.spanId()).isEqualTo("0102030405060708");

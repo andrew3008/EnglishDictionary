@@ -43,7 +43,7 @@ with mandatory governance metadata on every spec.
 
 - `SpanSpecBuilder` exposes typed scalar and homogeneous list attribute methods only.
 - **No** `attribute(String, Object)` — prevents uncontrolled type coercion and OTel wire surprises.
-- `SpanAttributeValue` sealed whitelist mirrors OTel-compatible types.
+- `SpanSpecAttributeValue` sealed whitelist mirrors OTel-compatible types.
 
 ## Consequences
 

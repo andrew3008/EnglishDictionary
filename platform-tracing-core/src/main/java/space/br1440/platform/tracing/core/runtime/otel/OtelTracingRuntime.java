@@ -8,7 +8,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.*;
 import space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
@@ -66,7 +66,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
             builder.setParent(Context.root());
         }
 
-        for (SpanLinkContext link : spec.relationship().links()) {
+        for (RemoteSpanLink link : spec.relationship().links()) {
             builder.addLink(toRemoteSpanContext(link));
         }
 
@@ -110,29 +110,29 @@ public final class OtelTracingRuntime implements TracingRuntime {
     }
 
     private void applySpecAttributes(@Nonnull OwningSpanScope scope,
-                                     @Nonnull Map<String, SpanAttributeValue> attributes) {
-        for (Map.Entry<String, SpanAttributeValue> entry : attributes.entrySet()) {
+                                     @Nonnull Map<String, SpanSpecAttributeValue> attributes) {
+        for (Map.Entry<String, SpanSpecAttributeValue> entry : attributes.entrySet()) {
             applyAttribute(scope, entry.getKey(), entry.getValue());
         }
     }
 
     private void applyAttribute(@Nonnull OwningSpanScope scope,
                                 @Nonnull String key,
-                                @Nonnull SpanAttributeValue value) {
+                                @Nonnull SpanSpecAttributeValue value) {
         switch (value) {
-            case SpanAttributeValue.StringValue sv -> scope.setAttribute(key, sv.value());
-            case SpanAttributeValue.LongValue lv -> scope.setAttribute(key, lv.value());
-            case SpanAttributeValue.DoubleValue dv -> scope.setAttribute(key, dv.value());
-            case SpanAttributeValue.BooleanValue bv -> scope.setAttribute(key, bv.value());
-            case SpanAttributeValue.StringListValue slv -> scope.setAttribute(key, String.join(",", slv.values()));
-            case SpanAttributeValue.LongListValue llv -> scope.setAttribute(key, llv.values().toString());
-            case SpanAttributeValue.DoubleListValue dlv -> scope.setAttribute(key, dlv.values().toString());
-            case SpanAttributeValue.BooleanListValue blv -> scope.setAttribute(key, blv.values().toString());
+            case SpanSpecAttributeValue.StringValue sv -> scope.setAttribute(key, sv.value());
+            case SpanSpecAttributeValue.LongValue lv -> scope.setAttribute(key, lv.value());
+            case SpanSpecAttributeValue.DoubleValue dv -> scope.setAttribute(key, dv.value());
+            case SpanSpecAttributeValue.BooleanValue bv -> scope.setAttribute(key, bv.value());
+            case SpanSpecAttributeValue.StringListValue slv -> scope.setAttribute(key, String.join(",", slv.values()));
+            case SpanSpecAttributeValue.LongListValue llv -> scope.setAttribute(key, llv.values().toString());
+            case SpanSpecAttributeValue.DoubleListValue dlv -> scope.setAttribute(key, dlv.values().toString());
+            case SpanSpecAttributeValue.BooleanListValue blv -> scope.setAttribute(key, blv.values().toString());
         }
     }
 
     @Nonnull
-    private static SpanContext toRemoteSpanContext(@Nonnull SpanLinkContext link) {
+    private static SpanContext toRemoteSpanContext(@Nonnull RemoteSpanLink link) {
         return SpanContext.createFromRemoteParent(
                 link.traceId(),
                 link.spanId(),

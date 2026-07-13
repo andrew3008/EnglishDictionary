@@ -15,16 +15,16 @@ platformTracing.manual()
         .run(() -> processor.processBatch(records));
 ```
 
-`messageContexts` is a `SpanLinkContext[]` (varargs) built from record headers. The platform `KafkaBatchLinksAspect`, which advises `@KafkaListener(batch="true")` methods, uses this same API internally.
+`messageContexts` is a `RemoteSpanLink[]` (varargs) built from record headers. The platform `KafkaBatchLinksAspect`, which advises `@KafkaListener(batch="true")` methods, uses this same API internally.
 
 ## Building link contexts
 
 ### From structured link contexts
 
 ```java
-SpanLinkContext link = SpanLinkContext.sampled(traceId, spanId);
+RemoteSpanLink link = RemoteSpanLink.sampled(traceId, spanId);
 // or with tracestate:
-SpanLinkContext link = new SpanLinkContext(traceId, spanId, (byte) 1, traceState);
+RemoteSpanLink link = new RemoteSpanLink(traceId, spanId, (byte) 1, traceState);
 ```
 
 ### From W3C traceparent headers

@@ -13,7 +13,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.kafka.annotation.KafkaListener;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.manual.KafkaBatchSpanBuilder;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 
 import java.nio.charset.StandardCharsets;
@@ -60,9 +60,9 @@ public class KafkaBatchLinksAspect {
             return pjp.proceed();
         }
 
-        List<SpanLinkContext> links = new ArrayList<>();
+        List<RemoteSpanLink> links = new ArrayList<>();
         for (ConsumerRecord<?, ?> record : records) {
-            SpanLinkContext link = extractLink(record);
+            RemoteSpanLink link = extractLink(record);
             if (link != null) {
                 links.add(link);
             }
@@ -77,7 +77,7 @@ public class KafkaBatchLinksAspect {
                 .batch(destination)
                 .root();
         if (!links.isEmpty()) {
-            builder = builder.linkedTo(links.toArray(SpanLinkContext[]::new));
+            builder = builder.linkedTo(links.toArray(RemoteSpanLink[]::new));
         }
 
         try (SpanHandle handle = builder.start()) {
@@ -106,14 +106,14 @@ public class KafkaBatchLinksAspect {
         return pjp.getSignature().getName();
     }
 
-    private SpanLinkContext extractLink(ConsumerRecord<?, ?> record) {
+    private RemoteSpanLink extractLink(ConsumerRecord<?, ?> record) {
         Context extracted = openTelemetry.getPropagators().getTextMapPropagator()
                 .extract(Context.root(), record, KafkaRecordGetter.INSTANCE);
         SpanContext spanContext = Span.fromContext(extracted).getSpanContext();
         if (!spanContext.isValid()) {
             return null;
         }
-        return new SpanLinkContext(
+        return new RemoteSpanLink(
                 spanContext.getTraceId(),
                 spanContext.getSpanId(),
                 spanContext.getTraceFlags().asByte(),

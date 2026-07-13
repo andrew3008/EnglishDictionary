@@ -22,7 +22,7 @@
 1. `validatePayload` (~125 lines, L56–185) — orchestrates envelope, category policy, required keys, and delegates type validation.
 2. Hardcoded operation allowlists (`RUNTIME_MUTATION_OPERATIONS`, `READ_OPERATIONS`) duplicate string constants from `TracingControlProtocolKeys`.
 3. Direct static calls to `TracingControlProtocol.isSupported(...)` and `TracingControlProtocol.current().version().major()` couple version support to the global protocol registry.
-4. Type validation is a flat `switch` over `TracingControlProtocolTypes` plus static helpers; domain rules (ratio bounds, `validation.mode` allowlist) are embedded in helpers.
+4. Type validation is a flat `switch` over `TracingControlProtocolFieldType` plus static helpers; domain rules (ratio bounds, `validation.mode` allowlist) are embedded in helpers.
 5. Invalid results **discard all partial normalization** (`TracingControlProtocolValidationResult.invalid` → empty map).
 
 **Test coverage:** 24 unit tests in `TracingControlProtocolValidatorTest`; 3 violation-code tests in `TracingControlProtocolViolationTest`; indirect coverage via e2e JMX round-trip and `SamplingControlClientWireContractTest`. Several coercion and edge-case paths are **untested** (see §13).
@@ -101,7 +101,7 @@ Documented in:
 | 11 | Operation allowlist | L141–147 | String not in `allowedOperations` | Violation | `OPERATION_NOT_ALLOWED` | String preserved | Context / enum mapping | HIGH |
 | 12 | Null value for known key (non-envelope) | L154–162 | `null` field value | Violation | `TYPE_MISMATCH` | — | Per-field null policy | MEDIUM |
 | 13 | Enum instance rejection | `validateAndNormalizeValue` L206–214; `validateRouteRatios` L393–400 | `Enum<?>` | Violation | `TYPE_MISMATCH` | `null` (no put) | Generic pre-check / type validator | MEDIUM |
-| 14 | Generic typed value dispatch | `validateAndNormalizeValue` L216–224 | Key, `TracingControlProtocolTypes`, value | Normalized value or null | Various | Per-type | Type strategy registry | HIGH |
+| 14 | Generic typed value dispatch | `validateAndNormalizeValue` L216–224 | Key, `TracingControlProtocolFieldType`, value | Normalized value or null | Various | Per-type | Type strategy registry | HIGH |
 | 15 | Scalar type validation | `validateString`, `validateBoolean`, `validateInteger`, `validateLong`, `validateDouble` | Raw Java object | Coerced value or violation | `TYPE_MISMATCH` | Coerced JDK type | Per-type validators | HIGH |
 | 16 | Ratio range validation | `validateDouble` L328–336 (`ratioField=true`) | Double out of [0,1] | Violation | `TYPE_MISMATCH` | — | `RatioValueValidator` | MEDIUM — semantic vs type code |
 | 17 | `validation.mode` semantic check | `validateString` L230–239; `isKnownValidationMode` L252–256 | String not in STRICT/WARN/DISABLED | Violation | `TYPE_MISMATCH` | — | `ValidationModeValidator` / descriptor metadata | MEDIUM |
@@ -388,7 +388,7 @@ validatePayload(payload, requiredKeys, allowedOperations, allowRuntimePolicyFiel
 
 ### 11.1 Switch dispatch (`validateAndNormalizeValue` L216–224)
 
-| `TracingControlProtocolTypes` | Helper | Accepted Java inputs | Normalized output | Special cases |
+| `TracingControlProtocolFieldType` | Helper | Accepted Java inputs | Normalized output | Special cases |
 |-------------------------------|--------|---------------------|-------------------|---------------|
 | `STRING` | `validateString` | String | String | `validation.mode` allowlist |
 | `BOOLEAN` | `validateBoolean` | Boolean | Boolean | — |
@@ -409,7 +409,7 @@ validatePayload(payload, requiredKeys, allowedOperations, allowRuntimePolicyFiel
 - `ProtocolTypeValidator` interface + one impl per enum value
 - `ProtocolValueNormalizer` separate from violation reporting
 - `ProtocolFieldValidator` combining descriptor + value
-- Enum methods on `TracingControlProtocolTypes` — currently bare enum with no behavior
+- Enum methods on `TracingControlProtocolFieldType` — currently bare enum with no behavior
 
 ---
 
@@ -532,8 +532,8 @@ validatePayload(payload, requiredKeys, allowedOperations, allowRuntimePolicyFiel
 1. **Extract `ValidationContext`** (required keys, allowed operations, category flags) + keep validator as thin orchestrator.
 2. **Extract `PayloadValidationEngine`** — single pipeline runner over ordered `ValidationStep` list.
 3. **Extract `ProtocolFieldValidator`** — one validator per known key or per descriptor.
-4. **Strategy per `TracingControlProtocolTypes`** — registry maps enum → `TypeValidationStrategy`.
-5. **Move normalization/validation methods onto `TracingControlProtocolTypes` enum** — enum becomes behavior carrier.
+4. **Strategy per `TracingControlProtocolFieldType`** — registry maps enum → `TypeValidationStrategy`.
+5. **Move normalization/validation methods onto `TracingControlProtocolFieldType` enum** — enum becomes behavior carrier.
 6. **`FieldValidationRule` + `FieldNormalizer` pairs** attached to `TracingControlProtocolFieldDescriptor`.
 7. **`ProtocolValidationContext` factory** on `TracingControlProtocolOperation` (runtime vs read profiles).
 8. **Dedicated special validators:** `ContractVersionValidator`, `OperationValidator`, `RouteRatiosValidator`, `RatioValueValidator`, `ValidationModeValidator`.
@@ -573,7 +573,7 @@ validatePayload(payload, requiredKeys, allowedOperations, allowRuntimePolicyFiel
 | `platform-tracing-api/.../version/TracingControlProtocolVersion.java` | 49 | Version parse |
 | `platform-tracing-api/.../schema/TracingControlProtocolSchema.java` | 162 | 26-field v1 schema |
 | `platform-tracing-api/.../schema/TracingControlProtocolKeys.java` | 47 | Key + operation constants |
-| `platform-tracing-api/.../schema/TracingControlProtocolTypes.java` | 13 | 7 wire types |
+| `platform-tracing-api/.../schema/TracingControlProtocolFieldType.java` | 13 | 7 wire types |
 | `platform-tracing-api/.../schema/TracingControlProtocolOperation.java` | 10 | 4 operations |
 | `platform-tracing-api/.../schema/TracingControlProtocolFieldDescriptor.java` | 19 | Descriptor record |
 | `platform-tracing-api/.../schema/TracingControlProtocolFieldCategory.java` | 10 | 4 categories |

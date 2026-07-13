@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.api.manual.RpcTracing;
 import space.br1440.platform.tracing.api.semconv.RpcSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
@@ -129,7 +129,7 @@ class RpcSpanBuilderTest {
 
     @Test
     void childWithLinks_rejected() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");
         assertThatThrownBy(() ->

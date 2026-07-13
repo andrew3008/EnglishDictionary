@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 
 import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
@@ -19,7 +19,7 @@ public final class OperationSpanSpecs {
     public static SpanSpec from(@Nonnull String name,
                                 @Nonnull SpanCategory category,
                                 @Nonnull SpanRelationship relationship,
-                                @Nonnull List<SpanLinkContext> links) {
+                                @Nonnull List<RemoteSpanLink> links) {
         Objects.requireNonNull(name, "name");
         if (name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
@@ -38,7 +38,7 @@ public final class OperationSpanSpecs {
             case ROOT -> {
                 builder.root();
                 if (!links.isEmpty()) {
-                    builder.linkedTo(links.toArray(SpanLinkContext[]::new));
+                    builder.linkedTo(links.toArray(RemoteSpanLink[]::new));
                 }
             }
             case DETACHED -> builder.detached();

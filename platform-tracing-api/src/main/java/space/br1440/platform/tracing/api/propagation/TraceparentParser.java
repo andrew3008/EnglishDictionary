@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.propagation;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -26,7 +26,7 @@ public final class TraceparentParser {
      * Разбирает значение W3C-заголовка {@code traceparent} в контекст связи, игнорируя невалидный ввод.
      */
     @Nonnull
-    public static Optional<SpanLinkContext> parseTraceparent(@Nullable String traceparent) {
+    public static Optional<RemoteSpanLink> parseTraceparent(@Nullable String traceparent) {
         if (traceparent == null || traceparent.isBlank()) {
             return Optional.empty();
         }
@@ -53,14 +53,14 @@ public final class TraceparentParser {
             return Optional.empty();
         }
 
-        return Optional.of(new SpanLinkContext(traceId, spanId, flags, null));
+        return Optional.of(new RemoteSpanLink(traceId, spanId, flags, null));
     }
 
     /**
      * Разбирает значение W3C-заголовка {@code traceparent} или бросает исключение, если связь получить нельзя.
      */
     @Nonnull
-    public static SpanLinkContext requireTraceparent(@Nonnull String traceparent) {
+    public static RemoteSpanLink requireTraceparent(@Nonnull String traceparent) {
         Objects.requireNonNull(traceparent, "traceparent");
         return parseTraceparent(traceparent)
                 .orElseThrow(() -> new IllegalArgumentException("invalid traceparent: " + traceparent));

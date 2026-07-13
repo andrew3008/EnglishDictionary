@@ -13,7 +13,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 
@@ -105,9 +105,9 @@ class DefaultPlatformTracingTest {
 
     @Test
     void spanFromSpec_создаёт_span_с_remote_links() {
-        SpanLinkContext link1 = SpanLinkContext.sampled(
+        RemoteSpanLink link1 = RemoteSpanLink.sampled(
                 "0000000000000000000000000000000a", "0000000000000001");
-        SpanLinkContext link2 = SpanLinkContext.sampled(
+        RemoteSpanLink link2 = RemoteSpanLink.sampled(
                 "0000000000000000000000000000000b", "0000000000000002");
         SpanSpec spec = SpanSpec.builder("kafka.batch.process")
                 .category(SpanCategory.KAFKA_CONSUMER)

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolViolation;
 import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolTypes;
+import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldType;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -52,7 +52,7 @@ class RouteRatiosValidatorTest {
         assertThat(v).hasSize(1);
         assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.get(0).reason()).isEqualTo("invalid wire type");
-        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.ROUTE_RATIOS_MAP.name());
+        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.ROUTE_RATIOS_MAP.name());
         assertThat(v.get(0).key()).isEqualTo(PARENT_KEY);
     }
 
@@ -108,7 +108,7 @@ class RouteRatiosValidatorTest {
         assertThat(v).hasSize(1);
         assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.get(0).reason()).isEqualTo("invalid wire type");
-        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.DOUBLE.name());
+        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.DOUBLE.name());
         // Synthetic key: parentKey + "." + routeKey
         assertThat(v.get(0).key()).isEqualTo(PARENT_KEY + "." + "/api");
     }

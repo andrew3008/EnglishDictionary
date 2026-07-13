@@ -1073,7 +1073,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / SemconvViolationException
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / ValidationMode
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanCategory
-    platform-tracing-api / space.br1440.platform.tracing.api.span / SpanLinkContext
+    platform-tracing-api / space.br1440.platform.tracing.api.span / RemoteSpanLink
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanRelation
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanResult
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanScope

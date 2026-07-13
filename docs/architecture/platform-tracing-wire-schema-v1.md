@@ -202,7 +202,7 @@ space.br1440.platform.tracing.api.control.protocol
   TracingControlProtocol                    // single public entrypoint
   version/TracingControlProtocolVersion
   schema/TracingControlProtocolKeys
-  schema/TracingControlProtocolTypes
+  schema/TracingControlProtocolFieldType
   schema/TracingControlProtocolOperation
   schema/TracingControlProtocolFieldCategory
   schema/TracingControlProtocolFieldDescriptor

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
@@ -94,7 +94,7 @@ class SpanRelationshipSpecTest {
 
     @Test
     void rootWithLinks_producesRootSpanWithRemoteLinks() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0000000000000000000000000000000a", "0000000000000001");
         tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
 
@@ -106,7 +106,7 @@ class SpanRelationshipSpecTest {
 
     @Test
     void detachedWithLinks_failsBeforeSpanStart() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() ->
                 tracing.manual().operation("bad-detached").detached().linkedTo(link).start())
@@ -117,7 +117,7 @@ class SpanRelationshipSpecTest {
 
     @Test
     void childWithLinks_failsBeforeSpanStart() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() ->
                 tracing.manual().operation("bad-child").child().linkedTo(link).start())
@@ -128,7 +128,7 @@ class SpanRelationshipSpecTest {
 
     @Test
     void linkedToThenRoot_isValid() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         tracing.manual().operation("order-root").linkedTo(link).root().start().close();
 
@@ -142,7 +142,7 @@ class SpanRelationshipSpecTest {
 
     @Test
     void linkedToThenDetached_isInvalid() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() ->
                 tracing.manual().operation("bad-order").linkedTo(link).detached().start())
@@ -152,7 +152,7 @@ class SpanRelationshipSpecTest {
 
     @Test
     void detachedWithLinks_rejectedBeforeSpanStartAtSpecBuild() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() -> SpanSpec.builder("invalid-detached")
                 .category(SpanCategory.INTERNAL)
@@ -167,7 +167,7 @@ class SpanRelationshipSpecTest {
 
     @Test
     void validateRelationshipLinks_rejectsChildLinks() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
 
         assertThatThrownBy(() -> SpanRelationshipSpec.validateRelationshipLinks(

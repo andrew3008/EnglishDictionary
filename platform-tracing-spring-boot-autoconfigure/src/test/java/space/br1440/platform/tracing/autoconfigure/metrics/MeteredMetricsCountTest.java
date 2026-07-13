@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
 
@@ -45,7 +45,7 @@ class MeteredMetricsCountTest {
             tracing.manual().transport().kafka().consumer()
                     .batch("orders")
                     .root()
-                    .linkedTo(SpanLinkContext.sampled(
+                    .linkedTo(RemoteSpanLink.sampled(
                             "0102030405060708090a0b0c0d0e0f10", "0102030405060708"))
                     .start()
                     .close();

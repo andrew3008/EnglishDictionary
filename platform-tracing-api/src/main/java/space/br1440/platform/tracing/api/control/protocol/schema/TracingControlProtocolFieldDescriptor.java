@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public record TracingControlProtocolFieldDescriptor(String key,
-                                                    TracingControlProtocolTypes type,
+                                                    TracingControlProtocolFieldType type,
                                                     TracingControlProtocolFieldCategory category,
                                                     Set<TracingControlProtocolOperation> requiredForOperations) {
 

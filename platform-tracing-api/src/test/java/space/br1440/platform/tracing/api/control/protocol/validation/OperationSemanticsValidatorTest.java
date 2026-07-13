@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.api.control.protocol.result.TracingControlP
 import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldCategory;
 import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldDescriptor;
 import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolTypes;
+import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldType;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -45,7 +45,7 @@ class OperationSemanticsValidatorTest {
 
     /** Builds a minimal descriptor for a given category (type and key are illustrative). */
     private static TracingControlProtocolFieldDescriptor descriptor(
-            String key, TracingControlProtocolTypes type, TracingControlProtocolFieldCategory category) {
+            String key, TracingControlProtocolFieldType type, TracingControlProtocolFieldCategory category) {
         return new TracingControlProtocolFieldDescriptor(key, type, category, Set.of());
     }
 
@@ -68,7 +68,7 @@ class OperationSemanticsValidatorTest {
         List<TracingControlProtocolViolation> v = violations();
         TracingControlProtocolFieldDescriptor d = descriptor(
                 TracingControlProtocolKeys.TOPOLOGY_EXPORTER_ENDPOINT,
-                TracingControlProtocolTypes.STRING,
+                TracingControlProtocolFieldType.STRING,
                 TracingControlProtocolFieldCategory.STARTUP_TOPOLOGY);
 
         boolean rejected = OperationSemanticsValidator.validateCategoryPolicy(
@@ -82,7 +82,7 @@ class OperationSemanticsValidatorTest {
                 .isEqualTo("startup topology field rejected for wire control path");
         assertThat(v.get(0).expectedType()).isEqualTo("runtime policy or envelope key");
         // actualType = descriptor.type().name() = "STRING"
-        assertThat(v.get(0).actualType()).isEqualTo(TracingControlProtocolTypes.STRING.name());
+        assertThat(v.get(0).actualType()).isEqualTo(TracingControlProtocolFieldType.STRING.name());
         assertThat(v.get(0).key()).isEqualTo(TracingControlProtocolKeys.TOPOLOGY_EXPORTER_ENDPOINT);
     }
 
@@ -94,7 +94,7 @@ class OperationSemanticsValidatorTest {
         List<TracingControlProtocolViolation> v = violations();
         TracingControlProtocolFieldDescriptor d = descriptor(
                 TracingControlProtocolKeys.SAMPLING_RATIO,
-                TracingControlProtocolTypes.DOUBLE,
+                TracingControlProtocolFieldType.DOUBLE,
                 TracingControlProtocolFieldCategory.RUNTIME_POLICY);
 
         boolean rejected = OperationSemanticsValidator.validateCategoryPolicy(
@@ -107,7 +107,7 @@ class OperationSemanticsValidatorTest {
         assertThat(v.get(0).reason())
                 .isEqualTo("runtime policy field not allowed in read request");
         assertThat(v.get(0).expectedType()).isEqualTo("envelope or diagnostic key");
-        assertThat(v.get(0).actualType()).isEqualTo(TracingControlProtocolTypes.DOUBLE.name());
+        assertThat(v.get(0).actualType()).isEqualTo(TracingControlProtocolFieldType.DOUBLE.name());
     }
 
     @Test
@@ -116,7 +116,7 @@ class OperationSemanticsValidatorTest {
         List<TracingControlProtocolViolation> v = violations();
         TracingControlProtocolFieldDescriptor d = descriptor(
                 TracingControlProtocolKeys.SAMPLING_RATIO,
-                TracingControlProtocolTypes.DOUBLE,
+                TracingControlProtocolFieldType.DOUBLE,
                 TracingControlProtocolFieldCategory.RUNTIME_POLICY);
 
         boolean rejected = OperationSemanticsValidator.validateCategoryPolicy(
@@ -133,7 +133,7 @@ class OperationSemanticsValidatorTest {
         List<TracingControlProtocolViolation> v = violations();
         TracingControlProtocolFieldDescriptor d = descriptor(
                 TracingControlProtocolKeys.SOURCE,
-                TracingControlProtocolTypes.STRING,
+                TracingControlProtocolFieldType.STRING,
                 TracingControlProtocolFieldCategory.ENVELOPE);
 
         boolean rejected = OperationSemanticsValidator.validateCategoryPolicy(

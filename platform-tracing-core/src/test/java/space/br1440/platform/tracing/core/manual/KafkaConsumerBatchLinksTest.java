@@ -10,7 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.TraceparentParser;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultPlatformTracing;
@@ -54,7 +54,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchRootWithLinkedTo_createsRootSpanWithRemoteLinks() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         tracing.manual().transport().kafka().consumer()
                 .batch("orders")
@@ -108,7 +108,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchChildWithLinks_rejectedBeforeStart() {
-        SpanLinkContext link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
+        RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.manual().transport().kafka().consumer()
                         .batch("orders")
@@ -122,7 +122,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchDetachedWithLinks_rejectedBeforeStart() {
-        SpanLinkContext link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
+        RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.manual().transport().kafka().consumer()
                         .batch("orders")

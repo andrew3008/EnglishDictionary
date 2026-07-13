@@ -14,14 +14,14 @@ final class SpanSpecImpl implements SpanSpec {
     private final String name;
     private final SpanCategory category;
     private final SpanRelationshipSpec relationship;
-    private final Map<String, SpanAttributeValue> attributes;
+    private final Map<String, SpanSpecAttributeValue> attributes;
     private final SpanSpecReason reason;
     private final String reference;
 
     SpanSpecImpl(@Nonnull String name,
                  @Nonnull SpanCategory category,
                  @Nonnull SpanRelationshipSpec relationship,
-                 @Nonnull Map<String, SpanAttributeValue> attributes,
+                 @Nonnull Map<String, SpanSpecAttributeValue> attributes,
                  @Nonnull SpanSpecReason reason,
                  @Nullable String reference) {
         this.name = Objects.requireNonNull(name, "name");
@@ -52,7 +52,7 @@ final class SpanSpecImpl implements SpanSpec {
 
     @Override
     @Nonnull
-    public Map<String, SpanAttributeValue> attributes() {
+    public Map<String, SpanSpecAttributeValue> attributes() {
         return attributes;
     }
 

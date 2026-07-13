@@ -19,14 +19,14 @@ Industry ref: [opentelemetry-java-instrumentation#3922](https://github.com/open-
 | `startRootSpan` | Точка входа batch listener без входящего W3C context |
 | `startSpanWithLinks` | Processing span с N links за один вызов |
 | `addLink` | Добавить link на активный span (инкрементально) |
-| `SpanLinkContext` | DTO: traceId, spanId, traceFlags, traceState (optional) |
+| `RemoteSpanLink` | DTO: traceId, spanId, traceFlags, traceState (optional) |
 
 `SpanRelation.DETACHED` создаёт span без родителя; links **не** добавляются автоматически.
 
 ## Паттерн 1: links при создании span
 
 ```java
-List<SpanLinkContext> links = records.stream()
+List<RemoteSpanLink> links = records.stream()
         .map(this::extractLinkFromHeaders)
         .flatMap(Optional::stream)
         .toList();
@@ -56,7 +56,7 @@ try (SpanScope scope = platformTracing.startRootSpan(
 ## Извлечение link из Kafka headers
 
 ```java
-Optional<SpanLinkContext> extractLinkFromHeaders(ConsumerRecord<?, ?> record) {
+Optional<RemoteSpanLink> extractLinkFromHeaders(ConsumerRecord<?, ?> record) {
     Header traceparent = record.headers().lastHeader("traceparent");
     if (traceparent == null) {
         return Optional.empty();
@@ -67,7 +67,7 @@ Optional<SpanLinkContext> extractLinkFromHeaders(ConsumerRecord<?, ?> record) {
         return Optional.empty();
     }
     byte flags = (byte) Integer.parseInt(parts[3], 16);
-    return Optional.of(new SpanLinkContext(parts[1], parts[2], flags, null));
+    return Optional.of(new RemoteSpanLink(parts[1], parts[2], flags, null));
 }
 ```
 

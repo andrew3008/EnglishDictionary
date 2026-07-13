@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.span.spec;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.List;
 
@@ -22,7 +22,7 @@ public interface SpanSpecBuilder {
     SpanSpecBuilder detached();
 
     @Nonnull
-    SpanSpecBuilder linkedTo(@Nonnull SpanLinkContext... links);
+    SpanSpecBuilder linkedTo(@Nonnull RemoteSpanLink... links);
 
     @Nonnull
     SpanSpecBuilder fromTraceparent(@Nonnull String... traceparents);

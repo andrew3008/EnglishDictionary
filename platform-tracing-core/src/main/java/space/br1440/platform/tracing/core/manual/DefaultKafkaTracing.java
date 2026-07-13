@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.manual.*;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
@@ -42,7 +42,7 @@ final class DefaultKafkaTracing implements KafkaTracing {
                                  @Nonnull SpanCategory category,
                                  @Nonnull String builderName) {
             super(implementation, policy, category, category.value(), builderName);
-            putAttribute(SemconvKeys.MESSAGING_SYSTEM.getKey(), SpanAttributeValue.of("kafka"));
+            putAttribute(SemconvKeys.MESSAGING_SYSTEM.getKey(), SpanSpecAttributeValue.of("kafka"));
         }
 
         @Nonnull
@@ -76,14 +76,14 @@ final class DefaultKafkaTracing implements KafkaTracing {
         @Override
         @Nonnull
         public KafkaProducerSpanBuilder destination(@Nonnull String topic) {
-            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanAttributeValue.of(topic));
+            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanSpecAttributeValue.of(topic));
             return this;
         }
 
         @Override
         @Nonnull
         public KafkaProducerSpanBuilder operation(@Nonnull String operation) {
-            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanAttributeValue.of(operation));
+            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanSpecAttributeValue.of(operation));
             return this;
         }
     }
@@ -104,14 +104,14 @@ final class DefaultKafkaTracing implements KafkaTracing {
         @Override
         @Nonnull
         public KafkaConsumerSpanBuilder destination(@Nonnull String topic) {
-            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanAttributeValue.of(topic));
+            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanSpecAttributeValue.of(topic));
             return this;
         }
 
         @Override
         @Nonnull
         public KafkaConsumerSpanBuilder operation(@Nonnull String operation) {
-            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanAttributeValue.of(operation));
+            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanSpecAttributeValue.of(operation));
             return this;
         }
 
@@ -135,8 +135,8 @@ final class DefaultKafkaTracing implements KafkaTracing {
                                   @Nonnull AttributePolicy policy,
                                   @Nonnull String destination) {
             super(implementation, policy, SpanCategory.KAFKA_CONSUMER, "KafkaBatchSpanBuilder");
-            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanAttributeValue.of(destination));
-            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanAttributeValue.of("process"));
+            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanSpecAttributeValue.of(destination));
+            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanSpecAttributeValue.of("process"));
         }
 
         @Override

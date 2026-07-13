@@ -27,7 +27,7 @@ public interface SpanSpec {
     SpanRelationshipSpec relationship();
 
     @Nonnull
-    Map<String, SpanAttributeValue> attributes();
+    Map<String, SpanSpecAttributeValue> attributes();
 
     @Nonnull
     SpanSpecReason reason();

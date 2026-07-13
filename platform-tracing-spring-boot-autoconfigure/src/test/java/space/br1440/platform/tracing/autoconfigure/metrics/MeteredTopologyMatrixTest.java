@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.PlatformTracing;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
@@ -60,7 +60,7 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             PlatformTracing tracing = context.getBean(PlatformTracing.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            SpanLinkContext link = SpanLinkContext.sampled(
+            RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
             tracing.manual().operation("linked-root").root().linkedTo(link).start().close();
 
@@ -93,7 +93,7 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             PlatformTracing tracing = context.getBean(PlatformTracing.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            SpanLinkContext link = SpanLinkContext.sampled(
+            RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
             assertThatThrownBy(() ->
                     tracing.manual().operation("bad-detached").detached().linkedTo(link).start())
@@ -130,7 +130,7 @@ class MeteredTopologyMatrixTest {
         contextRunner.run(context -> {
             PlatformTracing tracing = context.getBean(PlatformTracing.class);
             InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
-            SpanLinkContext link = SpanLinkContext.sampled(
+            RemoteSpanLink link = RemoteSpanLink.sampled(
                     "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
             SpanSpec spec = SpanSpec.builder("spec-root")
                     .category(SpanCategory.INTERNAL)
@@ -166,7 +166,7 @@ class MeteredTopologyMatrixTest {
 
     @Test
     void spanFromSpec_detachedWithLinks_failsFastAtBuild() {
-        SpanLinkContext link = SpanLinkContext.sampled(
+        RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10", "0102030405060708");
         assertThatThrownBy(() -> SpanSpec.builder("bad-spec")
                 .category(SpanCategory.INTERNAL)

@@ -12,7 +12,7 @@
 - Корневая точка входа v3: `space.br1440.platform.tracing.api.PlatformTracing` с двумя ветками: `traceContext()` и `manual()`. Источник: `PlatformTracing.java:14-21`.
 - В модуле **21 пакет** (включая корневой `api`) и **87 Java-файлов** в `src/main/java`, из них **80 публичных типов** и **7 package-private** реализаций/валидаторов.
 - Главные ветки иерархии от `PlatformTracing`: **manual tracing** (`ManualTracing` → builders → `SpanHandle`), **trace context view** (`ActiveTraceContextView`), плюс **параллельные** (не достижимые напрямую из `PlatformTracing`) подсистемы: semconv, enrichment, propagation, control protocol, SPI scrubbing, runtime state, annotations, MDC.
-- Основные категории моделей: span specification (`SpanSpec`, `SpanTopologySpec`), span lifecycle (`SpanHandle`, legacy `SpanScope`), topology (`Topology`, `SpanLinkContext`), attributes (`SpanAttributeValue`, `PlatformAttributes`, `SemconvKeys`), semconv policy (`CategoryContract`, `ValidationMode`), enrichment scopes, propagation control, runtime versioning.
+- Основные категории моделей: span specification (`SpanSpec`, `SpanTopologySpec`), span lifecycle (`SpanHandle`, legacy `SpanScope`), topology (`Topology`, `RemoteSpanLink`), attributes (`SpanSpecAttributeValue`, `PlatformAttributes`, `SemconvKeys`), semconv policy (`CategoryContract`, `ValidationMode`), enrichment scopes, propagation control, runtime versioning.
 - Критический naming hotspot: тип переименован `SpanOptions` → `SpanTopologySpec`, но accessor `SpanSpec.options()` **не переименован** — рассинхрон type/method. Источник: `SpanSpec.java:27`, `SpanTopologySpec.java:9`; `SpanOptions.java` **отсутствует** (`Test-Path` → `False`).
 - `SpanScope` остаётся публичным legacy lifecycle-интерфейсом (v1/v2), реализуется только в core (`OwningSpanScope`), v3 application path использует `SpanHandle`. Источник: `SpanScope.java:7-9`, `SpanHandle.java:8`, `OwningSpanScope.java:17`.
 - Пакет `api.span.builder` **удалён** (`Test-Path` → `False`); старый direct builder stack отсутствует в API-модуле.
@@ -124,7 +124,7 @@ space.br1440.platform.tracing.api
 │   └── state/                      VersionedState, VersionedStateHolder
 ├── semconv/                        CategoryContracts registry, keys, validation mode, violations
 ├── span/
-│   ├── SpanCategory, SpanResult, SpanScope, SpanLinkContext, TraceparentParser
+│   ├── SpanCategory, SpanResult, SpanScope, RemoteSpanLink, TraceparentParser
 │   ├── enrich/                     EnrichScope, GenericEnrichScope
 │   ├── sanitize/                   SqlSanitizer, UrlSanitizer
 │   └── spec/                       SpanSpec ecosystem (v3 value models + builders)
@@ -186,17 +186,17 @@ graph TD
 
     PSB --> SH[SpanHandle]
     PSB --> TOP[Topology child/root/detached]
-    PSB --> LC[SpanLinkContext via linkedTo/fromTraceparent]
+    PSB --> LC[RemoteSpanLink via linkedTo/fromTraceparent]
 
     SFS --> SS[SpanSpec]
     SS --> SSB[SpanSpecBuilder]
     SS --> STS[SpanTopologySpec]
-    SS --> SAV[SpanAttributeValue]
+    SS --> SAV[SpanSpecAttributeValue]
     SS --> SCR[SpanCategory]
     SS --> SSR[SpanSpecReason]
 
     STS --> TOP2[Topology enum]
-    STS --> LC2[SpanLinkContext list]
+    STS --> LC2[RemoteSpanLink list]
 
     SH -.legacy contrast.-> SSC[SpanScope]
 ```
@@ -239,7 +239,7 @@ graph LR
 | `PlatformTracing` | interface | `api` | Корневой v3 фасад | `traceContext()`, `manual()` | `ActiveTraceContextView`, `ManualTracing` | `DefaultPlatformTracing`, `NoOpPlatformTracing`; autoconfigure bean | OK; узкий фасад |
 | `ManualTracing` | interface | `manual` | Entry manual tracing | `operation()`, `transport()`, `spanFromSpec()` | `OperationSpanBuilder`, `TransportTracing`, `SpanSpec` | `DefaultManualTracing` | OK |
 | `ActiveTraceContextView` | interface | `manual` | Read-only trace/span/correlation | `traceId()`, `spanId()`, `correlationId()` | `PlatformTracing` | `DefaultActiveTraceContextView` | OK; не путать с `RequestTraceContextSnapshot` |
-| `PlatformSpanBuilder<B>` | interface | `manual` | Общий builder: topology + execution | `child/root/detached`, `linkedTo`, `fromTraceparent`, `start/run/call` | `SpanHandle`, `SpanLinkContext` | `AbstractSemanticSpanBuilder` hierarchy | Имя «Platform» + «SpanBuilder» может ассоциироваться с удалённым v1 stack |
+| `PlatformSpanBuilder<B>` | interface | `manual` | Общий builder: topology + execution | `child/root/detached`, `linkedTo`, `fromTraceparent`, `start/run/call` | `SpanHandle`, `RemoteSpanLink` | `AbstractSemanticSpanBuilder` hierarchy | Имя «Platform» + «SpanBuilder» может ассоциироваться с удалённым v1 stack |
 | `OperationSpanBuilder` | interface | `manual` | Internal operation spans | extends `PlatformSpanBuilder` | `ManualTracing.operation()` | `OperationSpanBuilderImpl` | OK |
 | `TransportTracing` | interface | `manual` | Transport navigator | `http/database/rpc/kafka()` | `ManualTracing` | `DefaultTransportTracing` | OK |
 | `HttpTracing` | interface | `manual` | HTTP navigator | `server()`, `client()` | `TransportTracing` | `DefaultHttpTracing` | OK |
@@ -262,8 +262,8 @@ graph LR
 |---|---|---|---|---|---|---|---|
 | `SpanSpec` | interface | `span.spec` | Immutable governed span spec | `builder()`, `name()`, `category()`, `options()`, `attributes()`, `reason()`, `reference()` | `SpanSpecBuilder`, `SpanTopologySpec` | `SpanSpecImpl` (package-private) | **`options()` returns `SpanTopologySpec`** — method/type mismatch |
 | `SpanSpecBuilder` | interface | `span.spec` | Fluent builder for `SpanSpec` | topology, links, attributes, reason, reference, `build()` | `SpanSpec` | `DefaultSpanSpecBuilder` | OK |
-| `SpanTopologySpec` | interface | `span.spec` | Topology+links value slice | `topology()`, `links()`, static `child/root/detached`, `validateTopologyLinks` | `Topology`, `SpanLinkContext` | `ImmutableSpanTopologySpec` | OK type name; accessor still `options()` on `SpanSpec` |
-| `SpanAttributeValue` | sealed interface | `span.spec` | Typed attribute values | factories `of/stringList/...`, nested records | `SpanSpec.attributes()` | converter in core | OK `*Spec` pattern for spec attributes |
+| `SpanTopologySpec` | interface | `span.spec` | Topology+links value slice | `topology()`, `links()`, static `child/root/detached`, `validateTopologyLinks` | `Topology`, `RemoteSpanLink` | `ImmutableSpanTopologySpec` | OK type name; accessor still `options()` on `SpanSpec` |
+| `SpanSpecAttributeValue` | sealed interface | `span.spec` | Typed attribute values | factories `of/stringList/...`, nested records | `SpanSpec.attributes()` | converter in core | OK `*Spec` pattern for spec attributes |
 | `SpanSpecReason` | enum | `span.spec` | Governance reason for escape-hatch spec | 5 constants incl. `LEGACY_INTEGRATION` | `SpanSpecBuilder.reason()` | tests, `SemanticSpanSpecs` | OK |
 | `Topology` | enum | `span.spec` | CHILD/ROOT/DETACHED | 3 values | `SpanTopologySpec`, builders | `OtelTracingRuntime`, topology tests | OK; краткое имя намеренно |
 | `SpanHandle` | interface | `span.spec` | v3 minimal lifecycle handle | `recordException()`, `close()` | `PlatformSpanBuilder.start()` | `SpanHandleImpl` wraps `SpanScope` | OK; contrast с `SpanScope` documented |
@@ -279,7 +279,7 @@ graph LR
 | `SpanCategory` | enum | `span` | Platform span kind | 8 categories + `value()` | builders, `SpanSpec`, semconv | widely used | OK |
 | `SpanResult` | enum | `span` | Final operation status | 6 values + `value()` | `SpanScope`, enrich scopes | tail-sampling, enricher | OK |
 | `SpanScope` | interface | `span` | Legacy full lifecycle scope | `setAttribute`, `addEvent`, `setResult`, `recordException`, `close` | contrast `SpanHandle` | `OwningSpanScope` in core | **Legacy public API**; misleading as app entry |
-| `SpanLinkContext` | record | `span` | Remote span link | `traceId`, `spanId`, `traceFlags`, `traceState`; `sampled()` | builders, `SpanTopologySpec` | `OtelTracingRuntime` | OK |
+| `RemoteSpanLink` | record | `span` | Remote span link | `traceId`, `spanId`, `traceFlags`, `traceState`; `sampled()` | builders, `SpanTopologySpec` | `OtelTracingRuntime` | OK |
 | `TraceparentParser` | utility class | `span` | W3C traceparent parsing | `parseTraceparent`, `requireTraceparent` | `SpanSpecBuilder.fromTraceparent` | tests | OK |
 | `SqlSanitizer` | class | `span.sanitize` | SQL redaction | sanitize methods | core naming | tests | OK utility |
 | `UrlSanitizer` | class | `span.sanitize` | URL redaction | sanitize methods | core naming | tests | OK utility |
@@ -357,7 +357,7 @@ graph LR
 | `TracingControlProtocolViolationCode` | enum | `control.protocol.validation` | Violation codes | enum constants | validator | tests | OK |
 | `TracingControlProtocolSchema` | class | `control.protocol.schema` | Field schema v1 | `forMajor(1)` | keys, types | validator | OK |
 | `TracingControlProtocolKeys` | class | `control.protocol.schema` | Wire key constants | static keys | schema | tests | OK |
-| `TracingControlProtocolTypes` | enum | `control.protocol.schema` | Wire types | STRING, MAP, etc. | schema | tests | OK |
+| `TracingControlProtocolFieldType` | enum | `control.protocol.schema` | Wire types | STRING, MAP, etc. | schema | tests | OK |
 | `TracingControlProtocolOperation` | enum | `control.protocol.schema` | Allowed operations | enum | validator | tests | OK |
 | `TracingControlProtocolFieldCategory` | enum | `control.protocol.schema` | Field categories | enum | schema | tests | OK |
 | `TracingControlProtocolFieldDescriptor` | record | `control.protocol.schema` | Field metadata | key, type, category, required | schema | tests | OK |
@@ -380,8 +380,8 @@ graph LR
 | `SpanSpec` | span specification | Полная immutable spec для `spanFromSpec` | `*Spec` согласован с builder | Смешивает governance (reason) и технические поля | `ManualTracing`, core runtime | **High** |
 | `SpanTopologySpec` | topology/parenting | Только topology + pre-start links | Точный scope после rename | Accessor на `SpanSpec` всё ещё `options()` | `SpanSpec`, `OtelTracingRuntime` | **High** |
 | `Topology` | topology enum | CHILD/ROOT/DETACHED | Короткий доменный enum | Коллизия с `SpanTopologySpec.topology()` | builders, runtime | Medium |
-| `SpanLinkContext` | topology/parenting | Remote link для pre-start | Ясная OTel-aligned модель | — | builders, spec, runtime | Low |
-| `SpanAttributeValue` | attribute/value | Typed immutable attrs in spec | Sealed value object | — | `SpanSpec`, converter | Medium |
+| `RemoteSpanLink` | topology/parenting | Remote link для pre-start | Ясная OTel-aligned модель | — | builders, spec, runtime | Low |
+| `SpanSpecAttributeValue` | attribute/value | Typed immutable attrs in spec | Sealed value object | — | `SpanSpec`, converter | Medium |
 | `SpanSpecReason` | governance enum | Почему использован escape-hatch spec | Ясная governance семантика | `LEGACY_INTEGRATION` confusing vs API legacy | `SpanSpecBuilder` | Medium |
 | `SpanHandle` | span lifecycle | v3 minimal closeable handle | Отличается от `SpanScope` | Минимальный — неочевидно что нет setAttribute | `PlatformSpanBuilder.start()` | **High** |
 | `SpanScope` | span lifecycle (legacy) | Full mutable scope | Исторически понятно | Публичен, но не app entry; Javadoc v1/v2 | `OwningSpanScope`, `SpanHandleImpl` | **High** |
@@ -410,7 +410,7 @@ PlatformTracing
   └─ manual() → ManualTracing
        ├─ operation(name) → OperationSpanBuilder
        │    ├─ [topology] child() | root() | detached()
-       │    ├─ [links] linkedTo(SpanLinkContext...) | fromTraceparent(traceparent...)
+       │    ├─ [links] linkedTo(RemoteSpanLink...) | fromTraceparent(traceparent...)
        │    └─ [terminal] start() → SpanHandle
        │         | run(Runnable) | call(Supplier) | callChecked(ThrowingSupplier)
        │
@@ -517,7 +517,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | `Topology` enum vs `SpanTopologySpec` | both in `span.spec` | Potential `spec.topology().topology()` after accessor rename | Medium | Yes |
 | `TracingControlProtocol*` long prefix | 11 types | Consistent family, verbose | Low | No |
 | `Default/Impl/NoOp` in API module | none in public API | Clean — implementations in core | Low | No |
-| OTel vocabulary in API | `SemconvKeys`, `EnrichScope`, `SpanLinkContext` | Intentional semconv alignment | Low | Optional |
+| OTel vocabulary in API | `SemconvKeys`, `EnrichScope`, `RemoteSpanLink` | Intentional semconv alignment | Low | Optional |
 | `LEGACY_*` in enum | `SpanSpecReason.LEGACY_INTEGRATION` | «Legacy» in name, not deprecated | Low | Optional |
 
 ---
@@ -552,7 +552,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | API Area | Test Classes | Coverage Strength | Gaps |
 |---|---|---|---|
 | v3 manual + spec facades | `V3ManualApiArchTest` | **Strong** (ArchUnit) | Stale `SpanOptions` allowlist |
-| `SpanSpecBuilder` / `SpanTopologySpec` | `SpanSpecBuilderFinalStateTest`, `SpanAttributeValueTest` | Strong | Нет тестов `SpanTopologySpec` static factories (unused) |
+| `SpanSpecBuilder` / `SpanTopologySpec` | `SpanSpecBuilderFinalStateTest`, `SpanSpecAttributeValueTest` | Strong | Нет тестов `SpanTopologySpec` static factories (unused) |
 | `TraceparentParser` | `TraceparentParserTest` | Strong | — |
 | Semconv registry | `CategoryContractsTest`, `*SemconvVersionMarkerTest` | Strong | — |
 | Control protocol | 10+ tests in `control/protocol/**` | **Strong** | — |

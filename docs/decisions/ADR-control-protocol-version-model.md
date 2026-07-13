@@ -65,9 +65,10 @@ All **public top-level production** types under `space.br1440.platform.tracing.a
 
 ### Descriptor-driven schema
 
-- `TracingControlProtocolFieldDescriptor` uses field `type` (type: `TracingControlProtocolTypes`) — **not** Java `Class<?>` and not an arbitrary value type name.
+- `TracingControlProtocolFieldDescriptor` uses field `type` (type: `TracingControlProtocolFieldType`) — **not** Java `Class<?>` and not an arbitrary value type name.
 - Operation-aware requiredness via `Set<TracingControlProtocolOperation>` and `requiredKeysFor(TracingControlProtocolOperation)`.
 - Strict unknown-key rejection for v1.
+- Batch C renamed Java type `TracingControlProtocolTypes` to `TracingControlProtocolFieldType` only. Enum constants and protocol key strings are unchanged.
 
 ### No typed DTO, no shims
 

@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.api.manual.HttpTracing;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.sanitize.UrlSanitizer;
-import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
@@ -52,21 +52,21 @@ final class DefaultHttpTracing implements HttpTracing {
         @Override
         @Nonnull
         public HttpServerSpanBuilder method(@Nonnull String httpMethod) {
-            putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanAttributeValue.of(httpMethod));
+            putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanSpecAttributeValue.of(httpMethod));
             return this;
         }
 
         @Override
         @Nonnull
         public HttpServerSpanBuilder route(@Nonnull String route) {
-            putAttribute(SemconvKeys.HTTP_ROUTE.getKey(), SpanAttributeValue.of(route));
+            putAttribute(SemconvKeys.HTTP_ROUTE.getKey(), SpanSpecAttributeValue.of(route));
             return this;
         }
 
         @Override
         @Nonnull
         public HttpServerSpanBuilder statusCode(long statusCode) {
-            putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanAttributeValue.of(statusCode));
+            putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanSpecAttributeValue.of(statusCode));
             return this;
         }
     }
@@ -87,7 +87,7 @@ final class DefaultHttpTracing implements HttpTracing {
         @Override
         @Nonnull
         public HttpClientSpanBuilder method(@Nonnull String httpMethod) {
-            putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanAttributeValue.of(httpMethod));
+            putAttribute(SemconvKeys.HTTP_REQUEST_METHOD.getKey(), SpanSpecAttributeValue.of(httpMethod));
             return this;
         }
 
@@ -99,21 +99,21 @@ final class DefaultHttpTracing implements HttpTracing {
                 throw new IllegalArgumentException("url must not be blank");
             }
 
-            putAttribute(SemconvKeys.URL_FULL.getKey(), SpanAttributeValue.of(sanitized));
+            putAttribute(SemconvKeys.URL_FULL.getKey(), SpanSpecAttributeValue.of(sanitized));
             return this;
         }
 
         @Override
         @Nonnull
         public HttpClientSpanBuilder statusCode(long statusCode) {
-            putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanAttributeValue.of(statusCode));
+            putAttribute(SemconvKeys.HTTP_RESPONSE_STATUS_CODE.getKey(), SpanSpecAttributeValue.of(statusCode));
             return this;
         }
 
         @Override
         @Nonnull
         public HttpClientSpanBuilder serverAddress(@Nonnull String address) {
-            putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanAttributeValue.of(address));
+            putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanSpecAttributeValue.of(address));
             return this;
         }
     }

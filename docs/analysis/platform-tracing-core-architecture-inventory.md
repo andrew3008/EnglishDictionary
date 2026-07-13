@@ -204,7 +204,7 @@ classDiagram
 | `TracingState` / `ImmutableTracingState` / `TracingMode` | Supportability state для diagnostics/Actuator. Kill-switch → `DISABLED_BY_CONFIGURATION`. |
 | `SemanticSpanSpecs` | `public static build(...)`: валидация semconv через `AttributePolicy`, построение имени через `PlatformSpanNameBuilder`, сборка `SpanSpec`. |
 | `OperationSpanSpecs` | `public static from(...)`: governed `SpanSpec` для `manual().operation()` без semconv-атрибутов. |
-| `SpanAttributeValueConverter` | `package-private`: конвертация `Map<String, SpanAttributeValue>` ↔ OTel `Attributes`. Guard на mixed-type lists. |
+| `SpanSpecAttributeValueConverter` | `package-private`: конвертация `Map<String, SpanSpecAttributeValue>` ↔ OTel `Attributes`. Guard на mixed-type lists. |
 
 **Поток `DefaultTracingImplementation.startSpan()`:**
 
@@ -276,7 +276,7 @@ classDiagram
 
 | Класс | Назначение |
 |-------|------------|
-| `AbstractSemanticSpanBuilder<B>` | Базовый v3 builder. Накапливает атрибуты (`Map<String, SpanAttributeValue>`), topology (first-wins policy), links. `toSpanSpec()`: INTERNAL → `OperationSpanSpecs`, иначе → `SemanticSpanSpecs.build()`. Terminal methods делегируют в `ScopedExecution`. **Не использует OTel API напрямую.** |
+| `AbstractSemanticSpanBuilder<B>` | Базовый v3 builder. Накапливает атрибуты (`Map<String, SpanSpecAttributeValue>`), topology (first-wins policy), links. `toSpanSpec()`: INTERNAL → `OperationSpanSpecs`, иначе → `SemanticSpanSpecs.build()`. Terminal methods делегируют в `ScopedExecution`. **Не использует OTel API напрямую.** |
 | `ScopedExecution` | `run`/`call`/`callChecked`: try-with-resources на `SpanHandle`, auto `recordException` на RuntimeException/Exception. |
 | `SpanHandleImpl` | `SpanHandle` с exactly-once exception recording per `Throwable` instance (IdentityHashMap). |
 | `NoOpSpanHandle` | Singleton no-op handle. |
@@ -702,7 +702,7 @@ Per `platform-tracing-core-extraction-readiness.md` PR-9D: `core.scrubbing` move
 | `TracingMode` | Enum |
 | `SemanticSpanSpecs` | Utility |
 | `OperationSpanSpecs` | Utility |
-| `SpanAttributeValueConverter` | Package-private utility |
+| `SpanSpecAttributeValueConverter` | Package-private utility |
 
 ### `core.manual` (16 классов)
 

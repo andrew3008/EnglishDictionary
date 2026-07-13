@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.api.manual.RpcServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
 import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.spec.SpanAttributeValue;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
@@ -79,21 +79,21 @@ final class DefaultRpcTracing implements RpcTracing {
         @Override
         @Nonnull
         public RpcServerSpanBuilder system(@Nonnull String rpcSystem) {
-            putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanAttributeValue.of(rpcSystem));
+            putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanSpecAttributeValue.of(rpcSystem));
             return this;
         }
 
         @Override
         @Nonnull
         public RpcServerSpanBuilder service(@Nonnull String service) {
-            putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanAttributeValue.of(service));
+            putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanSpecAttributeValue.of(service));
             return this;
         }
 
         @Override
         @Nonnull
         public RpcServerSpanBuilder method(@Nonnull String method) {
-            putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanAttributeValue.of(method));
+            putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanSpecAttributeValue.of(method));
             return this;
         }
     }
@@ -114,28 +114,28 @@ final class DefaultRpcTracing implements RpcTracing {
         @Override
         @Nonnull
         public RpcClientSpanBuilder system(@Nonnull String rpcSystem) {
-            putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanAttributeValue.of(rpcSystem));
+            putAttribute(SemconvKeys.RPC_SYSTEM.getKey(), SpanSpecAttributeValue.of(rpcSystem));
             return this;
         }
 
         @Override
         @Nonnull
         public RpcClientSpanBuilder service(@Nonnull String service) {
-            putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanAttributeValue.of(service));
+            putAttribute(SemconvKeys.RPC_SERVICE.getKey(), SpanSpecAttributeValue.of(service));
             return this;
         }
 
         @Override
         @Nonnull
         public RpcClientSpanBuilder method(@Nonnull String method) {
-            putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanAttributeValue.of(method));
+            putAttribute(SemconvKeys.RPC_METHOD.getKey(), SpanSpecAttributeValue.of(method));
             return this;
         }
 
         @Override
         @Nonnull
         public RpcClientSpanBuilder serverAddress(@Nonnull String address) {
-            putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanAttributeValue.of(address));
+            putAttribute(SemconvKeys.SERVER_ADDRESS.getKey(), SpanSpecAttributeValue.of(address));
             return this;
         }
     }

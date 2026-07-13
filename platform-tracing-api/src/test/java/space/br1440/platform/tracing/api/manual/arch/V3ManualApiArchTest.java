@@ -31,7 +31,7 @@ class V3ManualApiArchTest {
     private static final Set<String> ALLOWED_STATIC_FACTORY_TYPES = Set.of(
             "SpanRelationshipSpec",
             "SpanSpec",
-            "SpanAttributeValue"
+            "SpanSpecAttributeValue"
     );
 
     private static final Set<String> FORBIDDEN_PUBLIC_NAMES = Set.of(

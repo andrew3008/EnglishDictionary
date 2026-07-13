@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolViolation;
 import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolTypes;
+import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * independent verification of each scalar/array type validation path. They complement
  * (do not replace) the end-to-end tests in {@code TracingControlProtocolValidatorTest}.
  *
- * <p>Note: {@link TracingControlProtocolTypes#ROUTE_RATIOS_MAP} is deliberately absent
+ * <p>Note: {@link TracingControlProtocolFieldType#ROUTE_RATIOS_MAP} is deliberately absent
  * from this test class. routeRatios validation belongs to {@code RouteRatiosValidatorTest}.
  * {@code FieldTypeSupport.validateAndNormalize} must never be called for
  * {@code ROUTE_RATIOS_MAP}; any such call throws {@code IllegalStateException}.
@@ -32,7 +32,7 @@ class FieldTypeSupportTest {
         return new ArrayList<>();
     }
 
-    private static Object normalize(TracingControlProtocolTypes type, String key, Object value,
+    private static Object normalize(TracingControlProtocolFieldType type, String key, Object value,
                                     List<TracingControlProtocolViolation> v) {
         return FieldTypeSupport.validateAndNormalize(key, type, value, v);
     }
@@ -43,7 +43,7 @@ class FieldTypeSupportTest {
     @DisplayName("STRING: valid string returns same String instance, no violations")
     void stringValid_returnsSameString() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.STRING, "source", "hello", v);
+        Object result = normalize(TracingControlProtocolFieldType.STRING, "source", "hello", v);
 
         assertThat(result).isEqualTo("hello");
         assertThat(v).isEmpty();
@@ -53,20 +53,20 @@ class FieldTypeSupportTest {
     @DisplayName("STRING: wrong type produces TYPE_MISMATCH with reason 'invalid wire type'")
     void stringWrongType_returnsTypeMismatch() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.STRING, "source", 42, v);
+        Object result = normalize(TracingControlProtocolFieldType.STRING, "source", 42, v);
 
         assertThat(result).isNull();
         assertThat(v).hasSize(1);
         assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.get(0).reason()).isEqualTo("invalid wire type");
-        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.STRING.name());
+        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.STRING.name());
     }
 
     @Test
     @DisplayName("validation.mode: unknown value produces TYPE_MISMATCH")
     void validationModeUnknown_returnsTypeMismatch() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.STRING,
+        Object result = normalize(TracingControlProtocolFieldType.STRING,
                 TracingControlProtocolKeys.VALIDATION_MODE, "LOUD", v);
 
         assertThat(result).isNull();
@@ -81,7 +81,7 @@ class FieldTypeSupportTest {
     @DisplayName("validation.mode: lowercase 'warn' accepted; returned as 'warn', not canonicalized")
     void validationModeLowercaseAcceptedAndNotCanonicalized() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.STRING,
+        Object result = normalize(TracingControlProtocolFieldType.STRING,
                 TracingControlProtocolKeys.VALIDATION_MODE, "warn", v);
 
         assertThat(result).isEqualTo("warn");   // NOT "WARN"
@@ -94,20 +94,20 @@ class FieldTypeSupportTest {
     @DisplayName("BOOLEAN: wrong type produces TYPE_MISMATCH")
     void booleanWrongType_returnsTypeMismatch() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.BOOLEAN, "scrubbing.enabled", "true", v);
+        Object result = normalize(TracingControlProtocolFieldType.BOOLEAN, "scrubbing.enabled", "true", v);
 
         assertThat(result).isNull();
         assertThat(v).hasSize(1);
         assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.get(0).reason()).isEqualTo("invalid wire type");
-        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.BOOLEAN.name());
+        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.BOOLEAN.name());
     }
 
     @Test
     @DisplayName("BOOLEAN: Boolean value accepted")
     void booleanAcceptsBoolean() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.BOOLEAN, "scrubbing.enabled", Boolean.TRUE, v);
+        Object result = normalize(TracingControlProtocolFieldType.BOOLEAN, "scrubbing.enabled", Boolean.TRUE, v);
 
         assertThat(result).isEqualTo(Boolean.TRUE);
         assertThat(v).isEmpty();
@@ -119,7 +119,7 @@ class FieldTypeSupportTest {
     @DisplayName("INTEGER: Integer accepted as-is")
     void integerAcceptsInteger() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.INTEGER, "someIntKey", 42, v);
+        Object result = normalize(TracingControlProtocolFieldType.INTEGER, "someIntKey", 42, v);
 
         assertThat(result).isInstanceOf(Integer.class);
         assertThat(result).isEqualTo(42);
@@ -130,7 +130,7 @@ class FieldTypeSupportTest {
     @DisplayName("INTEGER: Long within int range coerces to Integer")
     void integerAcceptsLongInRangeAndNarrows() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.INTEGER, "someIntKey", 1L, v);
+        Object result = normalize(TracingControlProtocolFieldType.INTEGER, "someIntKey", 1L, v);
 
         assertThat(result).isInstanceOf(Integer.class);
         assertThat(result).isEqualTo(1);
@@ -141,13 +141,13 @@ class FieldTypeSupportTest {
     @DisplayName("INTEGER: Long out of int range produces TYPE_MISMATCH")
     void integerRejectsLongOutOfRange() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.INTEGER, "someIntKey", Long.MAX_VALUE, v);
+        Object result = normalize(TracingControlProtocolFieldType.INTEGER, "someIntKey", Long.MAX_VALUE, v);
 
         assertThat(result).isNull();
         assertThat(v).hasSize(1);
         assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.get(0).reason()).isEqualTo("invalid wire type");
-        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.INTEGER.name());
+        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.INTEGER.name());
     }
 
     // ─── LONG ───────────────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ class FieldTypeSupportTest {
     @DisplayName("LONG: Long accepted as-is")
     void longAcceptsLong() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.LONG,
+        Object result = normalize(TracingControlProtocolFieldType.LONG,
                 TracingControlProtocolKeys.DIAGNOSTICS_TIMESTAMP, 99L, v);
 
         assertThat(result).isInstanceOf(Long.class);
@@ -168,7 +168,7 @@ class FieldTypeSupportTest {
     @DisplayName("LONG: Integer widens to Long")
     void longAcceptsIntegerAndWidens() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.LONG,
+        Object result = normalize(TracingControlProtocolFieldType.LONG,
                 TracingControlProtocolKeys.DIAGNOSTICS_TIMESTAMP, 42, v);
 
         assertThat(result).isInstanceOf(Long.class);
@@ -220,7 +220,7 @@ class FieldTypeSupportTest {
         assertThat(v).hasSize(1);
         assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.get(0).reason()).isEqualTo("invalid wire type");
-        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.DOUBLE.name());
+        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.DOUBLE.name());
     }
 
     @Test
@@ -257,7 +257,7 @@ class FieldTypeSupportTest {
     void stringArrayAcceptsNonNullElements() {
         List<TracingControlProtocolViolation> v = violations();
         String[] arr = {"on", "true"};
-        Object result = normalize(TracingControlProtocolTypes.STRING_ARRAY,
+        Object result = normalize(TracingControlProtocolFieldType.STRING_ARRAY,
                 TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_VALUES, arr, v);
 
         assertThat(result).isInstanceOf(String[].class);
@@ -268,7 +268,7 @@ class FieldTypeSupportTest {
     @DisplayName("STRING_ARRAY: List rejected with 'invalid wire type; use String[] not List or custom type'")
     void stringArrayRejectsList() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.STRING_ARRAY,
+        Object result = normalize(TracingControlProtocolFieldType.STRING_ARRAY,
                 TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_VALUES,
                 java.util.List.of("a", "b"), v);
 
@@ -283,7 +283,7 @@ class FieldTypeSupportTest {
     @DisplayName("STRING_ARRAY: null element rejected")
     void stringArrayRejectsNullElement() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = normalize(TracingControlProtocolTypes.STRING_ARRAY,
+        Object result = normalize(TracingControlProtocolFieldType.STRING_ARRAY,
                 TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_VALUES,
                 new String[]{"ok", null, "also-ok"}, v);
 
@@ -302,13 +302,13 @@ class FieldTypeSupportTest {
     void enumInstanceRejectedBeforeTypeSwitch() {
         List<TracingControlProtocolViolation> v = violations();
         // Pass an enum value with expected type STRING — enum guard fires first, not STRING validation.
-        Object result = normalize(TracingControlProtocolTypes.STRING,
+        Object result = normalize(TracingControlProtocolFieldType.STRING,
                 TracingControlProtocolKeys.VALIDATION_MODE, Thread.State.RUNNABLE, v);
 
         assertThat(result).isNull();
         assertThat(v).hasSize(1);
         assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
         assertThat(v.get(0).reason()).isEqualTo("enum instance rejected; use String wire value");
-        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolTypes.STRING.name());
+        assertThat(v.get(0).expectedType()).isEqualTo(TracingControlProtocolFieldType.STRING.name());
     }
 }

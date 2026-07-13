@@ -116,7 +116,7 @@ Pod UID не подставляется в `container.id` — отдельный
 | GAP | Статус | Реализация |
 |---|---|---|
 | A-01 `SpanRelation` API | OK | `SpanRelation` + `startRootSpan` / `startChildSpan` / `startDetachedSpan` |
-| G-03 Span Links (Kafka batch) | OK | `SpanLinkContext`, `startSpanWithLinks`, `addLink`; `DefaultPlatformTracing` + `createFromRemoteParent` |
+| G-03 Span Links (Kafka batch) | OK | `RemoteSpanLink`, `startSpanWithLinks`, `addLink`; `DefaultPlatformTracing` + `createFromRemoteParent` |
 | Compile-safety | OK | default no-op methods на `PlatformTracing`; `NoOpPlatformTracing` наследует автоматически |
 
 Документация: [links-kafka.md](./links-kafka.md).

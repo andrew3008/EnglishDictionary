@@ -47,7 +47,7 @@ Repeated explicit relationship setter throws `IllegalStateException`.
 
 | Method | Effect |
 |--------|--------|
-| `linkedTo(SpanLinkContext... links)` | Add pre-start span links |
+| `linkedTo(RemoteSpanLink... links)` | Add pre-start span links |
 | `fromTraceparent(String... traceparents)` | Parse W3C traceparent into links (strict) |
 
 **Policy:**
@@ -141,9 +141,9 @@ Immutable value model: `kind()` + `links()`. Returned by `SpanSpec.relationship(
 
 `SpanRelationshipSpec.kind()` returns `SpanRelationship` — the new span's relationship to the current/parent trace context. This is **not** OpenTelemetry `SpanKind`; protocol/client-server kind is derived separately from `SpanCategory`.
 
-### `SpanAttributeValue`
+### `SpanSpecAttributeValue`
 
-Whitelist sealed type for spec attributes: string, long, double, boolean, and homogeneous lists. Factory methods: `SpanAttributeValue.of(...)`, `stringList(...)`, etc.
+Whitelist sealed type for spec attributes: string, long, double, boolean, and homogeneous lists. Factory methods: `SpanSpecAttributeValue.of(...)`, `stringList(...)`, etc.
 
 ## Lifecycle types
 

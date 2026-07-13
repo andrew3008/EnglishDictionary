@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.api.control.protocol.validation;
 
 import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolViolation;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolTypes;
+import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolFieldType;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,7 +18,7 @@ final class RouteRatiosValidator {
             violations.add(FieldTypeSupport.violation(
                     key,
                     "invalid wire type",
-                    TracingControlProtocolTypes.ROUTE_RATIOS_MAP.name(),
+                    TracingControlProtocolFieldType.ROUTE_RATIOS_MAP.name(),
                     FieldTypeSupport.typeName(value),
                     TracingControlProtocolViolationCode.TYPE_MISMATCH));
             return null;

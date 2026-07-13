@@ -15,7 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 
@@ -122,8 +122,8 @@ class DefaultPlatformTracingBaselineTest {
 
     @Test
     void spanFromSpec_withLinks_exportsProvidedRemoteLinks() {
-        SpanLinkContext link1 = remoteLink("0000000000000000000000000000000a", "0000000000000001");
-        SpanLinkContext link2 = remoteLink("0000000000000000000000000000000b", "0000000000000002");
+        RemoteSpanLink link1 = remoteLink("0000000000000000000000000000000a", "0000000000000001");
+        RemoteSpanLink link2 = remoteLink("0000000000000000000000000000000b", "0000000000000002");
         SpanSpec spec = SpanSpec.builder("kafka.batch.process")
                 .category(SpanCategory.KAFKA_CONSUMER)
                 .reason(SpanSpecReason.PLATFORM_EDGE_CASE)
@@ -175,8 +175,8 @@ class DefaultPlatformTracingBaselineTest {
         return exporter.getFinishedSpanItems();
     }
 
-    private static SpanLinkContext remoteLink(String traceId, String spanId) {
-        return SpanLinkContext.sampled(traceId, spanId);
+    private static RemoteSpanLink remoteLink(String traceId, String spanId) {
+        return RemoteSpanLink.sampled(traceId, spanId);
     }
 
     private static SpanData findSpanByName(List<SpanData> spans, String name) {
@@ -190,7 +190,7 @@ class DefaultPlatformTracingBaselineTest {
         assertThat(span.getParentSpanId()).isIn("", INVALID_SPAN_ID);
     }
 
-    private static void assertLinkMatches(LinkData link, SpanLinkContext expected) {
+    private static void assertLinkMatches(LinkData link, RemoteSpanLink expected) {
         assertThat(link.getSpanContext().getTraceId()).isEqualTo(expected.traceId());
         assertThat(link.getSpanContext().getSpanId()).isEqualTo(expected.spanId());
     }

@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.api.manual;
 
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 
@@ -23,7 +23,7 @@ public interface ManualSpanBuilder<B extends ManualSpanBuilder<B>> {
     B detached();
 
     @Nonnull
-    B linkedTo(@Nonnull SpanLinkContext... links);
+    B linkedTo(@Nonnull RemoteSpanLink... links);
 
     @Nonnull
     B fromTraceparent(@Nonnull String... traceparents);

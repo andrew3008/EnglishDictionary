@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.api.span.spec;
 
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.List;
 
@@ -11,8 +11,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SpanSpecBuilderFinalStateTest {
 
-    private static final SpanLinkContext LINK =
-            SpanLinkContext.sampled("01234567890123456789012345678901", "0123456789012345");
+    private static final RemoteSpanLink LINK =
+            RemoteSpanLink.sampled("01234567890123456789012345678901", "0123456789012345");
 
     private SpanSpecBuilder base() {
         return SpanSpec.builder("test-span")
@@ -109,7 +109,7 @@ class SpanSpecBuilderFinalStateTest {
 
     @Test
     void repeatedLinkedTo_isAdditive() {
-        SpanLinkContext second = SpanLinkContext.sampled(
+        RemoteSpanLink second = RemoteSpanLink.sampled(
                 "fedcba9876543210fedcba9876543210fe",
                 "fedcba9876543210");
 

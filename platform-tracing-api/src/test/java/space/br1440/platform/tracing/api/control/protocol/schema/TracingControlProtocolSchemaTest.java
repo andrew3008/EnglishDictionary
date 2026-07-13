@@ -53,7 +53,7 @@ class TracingControlProtocolSchemaTest {
                 .descriptorOf(TracingControlProtocolKeys.SAMPLING_RATIO);
 
         assertThat(descriptor.key()).isEqualTo(TracingControlProtocolKeys.SAMPLING_RATIO);
-        assertThat(descriptor.type()).isEqualTo(TracingControlProtocolTypes.DOUBLE);
+        assertThat(descriptor.type()).isEqualTo(TracingControlProtocolFieldType.DOUBLE);
         assertThat(descriptor.category()).isEqualTo(TracingControlProtocolFieldCategory.RUNTIME_POLICY);
     }
 }

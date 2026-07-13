@@ -2,16 +2,16 @@ package space.br1440.platform.tracing.api.span.spec;
 
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.span.SpanLinkContext;
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.List;
 
 final class ImmutableSpanRelationshipSpec implements SpanRelationshipSpec {
 
     private final SpanRelationship relationship;
-    private final List<SpanLinkContext> links;
+    private final List<RemoteSpanLink> links;
 
-    private ImmutableSpanRelationshipSpec(@Nonnull SpanRelationship relationship, @Nonnull List<SpanLinkContext> links) {
+    private ImmutableSpanRelationshipSpec(@Nonnull SpanRelationship relationship, @Nonnull List<RemoteSpanLink> links) {
         this.relationship = relationship;
         this.links = links;
     }
@@ -28,7 +28,7 @@ final class ImmutableSpanRelationshipSpec implements SpanRelationshipSpec {
         return new ImmutableSpanRelationshipSpec(SpanRelationship.DETACHED, List.of());
     }
 
-    static SpanRelationshipSpec of(@Nonnull SpanRelationship relationship, @Nonnull List<SpanLinkContext> links) {
+    static SpanRelationshipSpec of(@Nonnull SpanRelationship relationship, @Nonnull List<RemoteSpanLink> links) {
         return new ImmutableSpanRelationshipSpec(relationship, List.copyOf(links));
     }
 
@@ -40,11 +40,11 @@ final class ImmutableSpanRelationshipSpec implements SpanRelationshipSpec {
 
     @Override
     @Nonnull
-    public List<SpanLinkContext> links() {
+    public List<RemoteSpanLink> links() {
         return links;
     }
 
-    static void validateRelationshipLinks(@Nonnull SpanRelationship relationship, @Nonnull List<SpanLinkContext> links) {
+    static void validateRelationshipLinks(@Nonnull SpanRelationship relationship, @Nonnull List<RemoteSpanLink> links) {
         if (links.isEmpty()) {
             return;
         }
