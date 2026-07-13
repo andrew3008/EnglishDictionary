@@ -71,8 +71,8 @@ SDK-only / без `-javaagent` — **не production-standard v0.1.0** (dev/stag
 ```
 
 > **Изменено (Фаза 12 / context-first).** Флаг `-Dotel.instrumentation.http.server.capture-request-headers=X-Trace-On,X-QA-Trace`
-> **больше не требуется** для сэмплирования: `CompositeSampler` получает `PlatformTraceControl` из OTel Context
-> (через `PlatformTraceControlPropagator`), не из span-атрибутов. См. [ADR-context-first-propagation.md](./decisions/ADR-context-first-propagation.md).
+> **больше не требуется** для сэмплирования: `CompositeSampler` получает `InboundTraceControl` из OTel Context
+> (через `InboundTraceControlPropagator`), не из span-атрибутов. См. [ADR-context-first-propagation.md](./decisions/ADR-context-first-propagation.md).
 
 Рекомендуемые agent-флаги (Фаза 12, опционально):
 

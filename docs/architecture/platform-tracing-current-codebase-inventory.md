@@ -551,7 +551,7 @@ Preservation risk: MEDIUM (optional tier but heavily tested)
 ### 9.4. Enrichment
 
 ```text
-Current classes: EnrichingSpanProcessor, SpanEnricher (core), DefaultEnrichScope (core)
+Current classes: EnrichingSpanProcessor, SpanEnricher (core), DefaultSpanEnrichment (core)
 Source of enrichment data: MDC, configured attributes, remote service context
 Target attributes: platform.* semantic attributes, service metadata
 Mandatory or optional: optional tier (enriching.enabled)
@@ -658,8 +658,8 @@ Preservation risk: HIGH
 ```text
 Constants: SemconvKeys, PlatformAttributes, PlatformSamplingReasons, PlatformHeaders, TracingMdcKeys
 Typed builders: api.span.builder.* interfaces + Facade* wrappers; core *Impl classes
-Public interfaces: PlatformTracing, SpanScope, SpanAttributeScrubbingRule SPI, PlatformContextPropagation
-Propagation contracts: PlatformTraceControl, PlatformOutboundInjector, OutboundPropagationPolicy, TrustedDestinationMatcher
+Public interfaces: PlatformTracing, SpanHandle, SpanAttributeScrubbingRule SPI, PlatformContextPropagation
+Propagation contracts: InboundTraceControl, TraceControlHeaderInjector, OutboundPropagationPolicy, TrustedDestinationMatcher
 Backward compatibility sensitivity: HIGH — app code compiles against api
 Tests: CategoryContractsTest, SanitizerTest, propagation tests, RemoteServiceMdcTest
 Target role: platform-tracing-api unchanged as public contract module
@@ -727,7 +727,7 @@ Preservation risk: CRITICAL
 | `CompositePipelineBenchmark` | bench | JMH | full processor pipeline | processor chain | yes | yes | partial | yes | HIGH |
 | `AttributePolicyBenchmark` | bench | JMH | attribute policy eval | AttributePolicy | yes | yes | yes | yes | MEDIUM |
 | `TypedBuilderBenchmark` | bench | JMH | span builder alloc/latency | *SpanBuilderImpl | yes | yes | yes | partial | MEDIUM |
-| `HeaderPropagationBenchmark` | bench | JMH | propagation inject/extract | PlatformTraceControlPropagator | yes | yes | yes | partial | MEDIUM |
+| `HeaderPropagationBenchmark` | bench | JMH | propagation inject/extract | InboundTraceControlPropagator | yes | yes | yes | partial | MEDIUM |
 | `MdcCorrelationBenchmark` | bench | JMH | MDC bridge | RemoteServiceMdc | partial | yes | partial | partial | MEDIUM |
 | `TracedAspectBenchmark` | bench | JMH | @Traced AOP overhead | TracingAspect | partial | yes | partial | partial | MEDIUM |
 | `PerformanceReleaseGateTest` | bench | contract | hard budgets closed | performance-budgets.yaml | n/a | yes | no | yes | HIGH |
@@ -1052,7 +1052,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.attributes / PlatformSamplingReasons
     platform-tracing-api / space.br1440.platform.tracing.api.config / DomainConfigHolder
     platform-tracing-api / space.br1440.platform.tracing.api.config / Versioned
-    platform-tracing-api / space.br1440.platform.tracing.api.context / TracingRequestContext
+    platform-tracing-api / space.br1440.platform.tracing.api.context / RequestTraceContextSnapshot
     platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceContextReaders
     platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceMdc
     platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceTraceMirror
@@ -1061,22 +1061,22 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / PlatformHeaders
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / RequestIdSupport
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / OutboundPropagationPolicy
-    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / PlatformOutboundInjector
-    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / PlatformPropagationDecision
+    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / TraceControlHeaderInjector
+    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / OutboundPropagationDecision
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / PlatformTraceContextKeys
-    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / PlatformTraceControl
+    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / InboundTraceControl
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / TrustedDestinationMatcher
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / CategoryContract
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / CategoryContracts
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / SemconvKeys
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / SemconvViolation
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / SemconvViolationException
-    platform-tracing-api / space.br1440.platform.tracing.api.semconv / ValidationMode
+    platform-tracing-api / space.br1440.platform.tracing.api.semconv / SemconvValidationMode
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanCategory
     platform-tracing-api / space.br1440.platform.tracing.api.span / RemoteSpanLink
-    platform-tracing-api / space.br1440.platform.tracing.api.span / SpanRelation
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanRelationship
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanResult
-    platform-tracing-api / space.br1440.platform.tracing.api.span / SpanScope
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanRelationshipSpec
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / AbstractFacadeTypedSpanBuilder
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / DatabaseSpanBuilder
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeDatabaseSpanBuilder
@@ -1092,11 +1092,11 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / InternalSpanBuilder
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / KafkaConsumerSpanBuilder
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / KafkaProducerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / PlatformSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / ManualSpanBuilder
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / RpcClientSpanBuilder
     platform-tracing-api / space.br1440.platform.tracing.api.span.builder / RpcServerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.enrich / EnrichScope
-    platform-tracing-api / space.br1440.platform.tracing.api.span.enrich / GenericEnrichScope
+    platform-tracing-api / space.br1440.platform.tracing.api.span.enrich / SpanEnrichment
+    platform-tracing-api / space.br1440.platform.tracing.api.span.enrich / GenericSpanEnrichment
     platform-tracing-api / space.br1440.platform.tracing.api.span.sanitize / SqlSanitizer
     platform-tracing-api / space.br1440.platform.tracing.api.span.sanitize / UrlSanitizer
     platform-tracing-api / space.br1440.platform.tracing.api.spi / ScrubbingAction
@@ -1131,11 +1131,11 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-core / space.br1440.platform.tracing.core.semconv / EagerOnlyKeys
     platform-tracing-core / space.br1440.platform.tracing.core.semconv / SemconvMetrics
     platform-tracing-core / space.br1440.platform.tracing.core.semconv / ValidatedAttributes
-    platform-tracing-core / space.br1440.platform.tracing.core.span / AbstractPlatformSpanBuilder
+    platform-tracing-core / space.br1440.platform.tracing.core.manual / AbstractSemanticSpanBuilder
     platform-tracing-core / space.br1440.platform.tracing.core.span / AbstractTypedSpanBuilder
     platform-tracing-core / space.br1440.platform.tracing.core.span / DatabaseSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / DefaultEnrichScope
-    platform-tracing-core / space.br1440.platform.tracing.core.span / DefaultGenericEnrichScope
+    platform-tracing-core / space.br1440.platform.tracing.core.span / DefaultSpanEnrichment
+    platform-tracing-core / space.br1440.platform.tracing.core.span / DefaultGenericSpanEnrichment
     platform-tracing-core / space.br1440.platform.tracing.core.span / HttpClientSpanBuilderImpl
     platform-tracing-core / space.br1440.platform.tracing.core.span / HttpServerSpanBuilderImpl
     platform-tracing-core / space.br1440.platform.tracing.core.span / InternalSpanBuilderImpl
@@ -1180,9 +1180,9 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / FilteringBaggagePropagator
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformPropagationGate
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformPropagatorsDefaultsCustomizer
-    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformTraceControlPropagator
-    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformTraceControlPropagatorBuilder
-    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformTraceControlPropagatorProvider
+    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagator
+    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorBuilder
+    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorProvider
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PropagationDefaults
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PropagationPolicy
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / SafeTextMapPropagator
@@ -1285,7 +1285,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / PlatformContextTaskDecorator
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / TracingAsyncContextAutoConfiguration
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.errorhandling / TracingRequestContextSupplier
+    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.errorhandling / RequestTraceContextSnapshotSupplier
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.health / TracingHealthIndicator
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.kafka / KafkaBatchLinksAspect
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.kafka / PlatformKafkaAutoConfiguration
@@ -1336,7 +1336,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceMdcTest
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / RequestIdSupportTest
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / OutboundPropagationPolicyTest
-    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / PlatformOutboundInjectorTest
+    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / TraceControlHeaderInjectorTest
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / TrustedDestinationMatcherTest
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / CategoryContractsTest
     platform-tracing-api / space.br1440.platform.tracing.api.span.sanitize / SanitizerTest
@@ -1451,8 +1451,8 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.processor / ValidationPolicyRuntimeTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / FilteringBaggagePropagatorBaggageLimitsTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformPropagatorsDefaultsCustomizerTest
-    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformTraceControlPropagatorProviderTest
-    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformTraceControlPropagatorTest
+    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorProviderTest
+    platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.propagation / SafeTextMapPropagatorTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.resource / BuildInfoReaderTest
     platform-tracing-otel-extension / space.br1440.platform.tracing.otel.extension.resource / EnvironmentNormalizerTest
@@ -1517,7 +1517,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / PlatformContextTaskDecoratorTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / ThreadPoolTaskExecutorBppTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / TracingAsyncContextAutoConfigurationTest
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.errorhandling / TracingRequestContextSupplierTest
+    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.errorhandling / RequestTraceContextSnapshotSupplierTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.mdc / MdcPropagationAsyncIntegrationTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.mdc / MdcPropagationCompletableFutureTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.mdc / MicrometerTracingMdcBridgeSmokeTest

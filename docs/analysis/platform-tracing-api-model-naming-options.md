@@ -1,5 +1,9 @@
 # platform-tracing-api Model Naming Options and Scored Redesign
 
+> Historical note: this document was produced before the final platform-tracing-api naming refactor chain
+> (Batch A, PR-B1, PR-B2, Batch C). It may mention pre-refactor API names for audit/history.
+> Current API names are documented in the final umbrella audit and module CHANGELOG.
+
 ## 1. Executive Summary
 
 - Public API types analyzed: **81 top-level public types** under `platform-tracing-api/src/main/java`.
