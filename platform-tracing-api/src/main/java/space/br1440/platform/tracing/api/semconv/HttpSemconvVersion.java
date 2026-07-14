@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.PACKAGE})
+@Target(ElementType.TYPE)
 public @interface HttpSemconvVersion {
 
     /** Версия схемы semconv, например {@code "1.28.0"}. */

@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 4 hard gate: {@code spans().fromSpec(...)} terminal lifecycle.
+ * Hard gate: {@code spans().fromSpec(...)} terminal lifecycle.
  */
 class SpanExecutionTest {
 

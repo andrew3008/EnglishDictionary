@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 3B hard gate: {@code spans().transport().database()} builder behavior.
+ * Hard gate: {@code spans().transport().database()} builder behavior.
  */
 class DatabaseSpanBuilderTest {
 

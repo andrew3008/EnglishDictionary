@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 5B hard gate: Kafka consumer batch ROOT+links and links-before-start semantics.
+ * Hard gate: Kafka consumer batch ROOT+links and links-before-start semantics.
  */
 class KafkaConsumerBatchLinksTest {
 

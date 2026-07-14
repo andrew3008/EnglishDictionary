@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 3C-Kafka hard gate: {@code spans().transport().kafka()} builder foundation.
+ * Hard gate: {@code spans().transport().kafka()} builder foundation.
  */
 class KafkaSpanBuilderTest {
 
@@ -104,7 +104,7 @@ class KafkaSpanBuilderTest {
     }
 
     @Test
-    void kafkaBatchRootWithLinks_preservedForSlice5B() {
+    void kafkaBatchRootWithLinks_preservesRootAndLinks() {
         RemoteSpanLink link = RemoteSpanLink.sampled(
                 "0102030405060708090a0b0c0d0e0f10",
                 "0102030405060708");

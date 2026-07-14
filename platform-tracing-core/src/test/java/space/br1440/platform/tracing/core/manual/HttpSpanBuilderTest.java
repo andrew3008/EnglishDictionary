@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 3A hard gate: {@code spans().transport().http()} builder foundation.
+ * Hard gate: {@code spans().transport().http()} builder foundation.
  */
 class HttpSpanBuilderTest {
 

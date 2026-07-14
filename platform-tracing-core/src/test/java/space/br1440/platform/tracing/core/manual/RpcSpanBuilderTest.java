@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 3C-RPC hard gate: {@code spans().transport().rpc()} builder behavior.
+ * Hard gate: {@code spans().transport().rpc()} builder behavior.
  */
 class RpcSpanBuilderTest {
 

@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 4 hard gate: scoped terminal methods and exactly-once exception recording.
+ * Hard gate: scoped terminal methods and exactly-once exception recording.
  */
 class ScopedExecutionTest {
 

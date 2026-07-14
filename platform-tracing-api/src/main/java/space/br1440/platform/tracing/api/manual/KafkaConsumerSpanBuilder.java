@@ -16,7 +16,7 @@ public interface KafkaConsumerSpanBuilder extends ManualSpanBuilder<KafkaConsume
     KafkaConsumerSpanBuilder operation(@Nonnull String operation);
 
     /**
-     * Точка входа пакетного consumer'а (семантика ROOT+links финализирована в Slice 5B).
+     * Точка входа пакетного consumer'а (семантика ROOT+links).
      */
     @Nonnull
     KafkaBatchSpanBuilder batch(@Nonnull String destination);

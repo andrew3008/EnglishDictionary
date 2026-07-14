@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Slice 5A hard gate: {@link SpanRelationshipSpec} runtime relationship.
+ * Hard gate: {@link SpanRelationshipSpec} runtime relationship.
  */
 class SpanRelationshipSpecTest {
 
