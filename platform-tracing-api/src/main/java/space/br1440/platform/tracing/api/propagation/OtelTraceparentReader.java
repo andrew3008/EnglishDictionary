@@ -1,87 +1,49 @@
 package space.br1440.platform.tracing.api.propagation;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+/**
+ * Bridge interface for reading W3C {@code traceparent} (and optional {@code tracestate})
+ * header values into {@link space.br1440.platform.tracing.api.span.RemoteSpanLink}.
+ * <p>
+ * The single canonical implementation is {@code OtelTraceparentReaderImpl} in
+ * {@code platform-tracing-core}. This interface lives in {@code platform-tracing-api}
+ * so that api-layer builders ({@code DefaultSpanSpecBuilder}) can reference it without
+ * depending on OpenTelemetry or core internals.
+ * <p>
+ * Application code must not implement or inject this interface directly.
+ * Use {@code fromTraceparent(...)} builder methods instead.
+ */
+public interface OtelTraceparentReader {
 
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.regex.Pattern;
+    /**
+     * Reads a W3C {@code traceparent} header only (no {@code tracestate}).
+     * {@code RemoteSpanLink.traceState} will be {@code null}.
+     *
+     * @param traceparent raw header value, may be {@code null} or blank
+     * @return non-empty when the header is valid; empty otherwise
+     */
+    java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(
+            jakarta.annotation.Nullable String traceparent);
 
-@Slf4j
-@UtilityClass
-public final class OtelTraceparentReader {
+    /**
+     * Reads a W3C {@code traceparent} together with the companion {@code tracestate} header.
+     * {@code RemoteSpanLink.traceState} is populated when {@code tracestate} is present and valid.
+     *
+     * @param traceparent raw {@code traceparent} header value
+     * @param tracestate  raw {@code tracestate} header value, may be {@code null}
+     * @return non-empty when {@code traceparent} is valid; empty otherwise
+     */
+    java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(
+            jakarta.annotation.Nullable String traceparent,
+            jakarta.annotation.Nullable String tracestate);
 
-    private static final int MAX_LOGGED_CHARS = 128;
-    private static final Pattern NON_PRINTABLE_ASCII = Pattern.compile("[^\\x20-\\x7E]");
-    private static final String TRACEPARENT = "traceparent";
-
-    @Nonnull
-    public static Optional<RemoteSpanLink> read(@Nullable String traceparent) {
-        if (traceparent == null || traceparent.isBlank()) {
-            return Optional.empty();
-        }
-
-        Map<String, String> carrier = Map.of(TRACEPARENT, traceparent);
-        Context context = W3CTraceContextPropagator.getInstance()
-                .extract(Context.root(), carrier, CarrierGetter.INSTANCE);
-
-        SpanContext spanContext = Span.fromContext(context).getSpanContext();
-        if (!spanContext.isValid()) {
-            log.debug("rejected traceparent: {}", sanitize(traceparent));
-            return Optional.empty();
-        }
-
-        return Optional.of(new RemoteSpanLink(
-                spanContext.getTraceId(),
-                spanContext.getSpanId(),
-                spanContext.getTraceFlags().asByte(),
-                null));
-    }
-
-    @Nonnull
-    public static RemoteSpanLink require(@Nonnull String traceparent) {
-        Objects.requireNonNull(traceparent, "traceparent");
-        return read(traceparent)
-                .orElseThrow(() -> new IllegalArgumentException("invalid traceparent: " + sanitize(traceparent)));
-    }
-
-    private static String sanitize(@Nonnull String raw) {
-        String sanitized = NON_PRINTABLE_ASCII.matcher(raw.trim())
-                .replaceAll("?");
-
-        if (sanitized.length() <= MAX_LOGGED_CHARS) {
-            return sanitized;
-        }
-
-        return sanitized.substring(0, MAX_LOGGED_CHARS);
-    }
-
-    private enum CarrierGetter implements TextMapGetter<Map<String, String>> {
-        INSTANCE;
-
-        @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            return carrier.keySet();
-        }
-
-        @Override
-        @Nullable
-        public String get(@Nullable Map<String, String> carrier, @Nonnull String key) {
-            if (carrier == null) {
-                return null;
-            }
-
-            return carrier.get(key.toLowerCase(Locale.ROOT));
-        }
-    }
+    /**
+     * Strict variant: throws {@link IllegalArgumentException} when the header is invalid.
+     *
+     * @param traceparent raw header value, must not be {@code null}
+     * @return a valid {@link space.br1440.platform.tracing.api.span.RemoteSpanLink}
+     * @throws NullPointerException     if {@code traceparent} is {@code null}
+     * @throws IllegalArgumentException if the header value is invalid
+     */
+    space.br1440.platform.tracing.api.span.RemoteSpanLink require(
+            jakarta.annotation.Nonnull String traceparent);
 }
