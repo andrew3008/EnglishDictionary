@@ -37,7 +37,7 @@ final class DefaultSpanEnrichment implements SpanEnrichment {
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(value, "value");
 
-        if (policy.contractFor(category).allowlist().contains(key)) {
+        if (policy.isAllowed(category, key)) {
             span.setAttribute(key, value);
         } else {
             warnOnce(key);

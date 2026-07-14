@@ -71,8 +71,12 @@ public final class AttributePolicy {
         return mode;
     }
 
+    public boolean isAllowed(@Nonnull SpanCategory category, @Nonnull AttributeKey<?> key) {
+        return CategoryContracts.of(category).allowlist().contains(key);
+    }
+
     @Nonnull
-    public CategoryContract contractFor(@Nonnull SpanCategory category) {
+    CategoryContract contractFor(@Nonnull SpanCategory category) {
         return CategoryContracts.of(category);
     }
 
