@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Реестр {@link CategoryContract} по {@link SpanCategory} — ЕДИНСТВЕННЫЙ источник истины для
+ * Реестр {@link CategoryContract} по {@link SpanCategory} — единственный источник истины для
  * runtime-policy ({@code AttributePolicy}) и статического линтера ({@code PlatformSpec}).
  * <p>
  * Контракты собираются один раз при загрузке класса и неизменяемы.
@@ -29,9 +29,9 @@ public final class CategoryContracts {
     }
 
     private static Map<SpanCategory, CategoryContract> build() {
-        Map<SpanCategory, CategoryContract> m = new EnumMap<>(SpanCategory.class);
+        Map<SpanCategory, CategoryContract> map = new EnumMap<>(SpanCategory.class);
 
-        m.put(SpanCategory.INTERNAL, new CategoryContract(
+        map.put(SpanCategory.INTERNAL, new CategoryContract(
                 SpanCategory.INTERNAL,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.PLATFORM_REQUEST_ID, SemconvKeys.PLATFORM_TRACE_PRIORITY,
@@ -41,7 +41,7 @@ public final class CategoryContracts {
                 Set.of(SemconvKeys.HTTP_REQUEST_METHOD, SemconvKeys.DB_SYSTEM_NAME,
                         SemconvKeys.RPC_SYSTEM, SemconvKeys.MESSAGING_SYSTEM)));
 
-        m.put(SpanCategory.HTTP_SERVER, new CategoryContract(
+        map.put(SpanCategory.HTTP_SERVER, new CategoryContract(
                 SpanCategory.HTTP_SERVER,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.HTTP_REQUEST_METHOD, SemconvKeys.HTTP_ROUTE,
@@ -52,7 +52,7 @@ public final class CategoryContracts {
                 List.of(),
                 Set.of(SemconvKeys.URL_FULL)));
 
-        m.put(SpanCategory.HTTP_CLIENT, new CategoryContract(
+        map.put(SpanCategory.HTTP_CLIENT, new CategoryContract(
                 SpanCategory.HTTP_CLIENT,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.PLATFORM_REMOTE_SERVICE,
@@ -64,7 +64,7 @@ public final class CategoryContracts {
                 List.of(),
                 Set.of()));
 
-        m.put(SpanCategory.DATABASE, new CategoryContract(
+        map.put(SpanCategory.DATABASE, new CategoryContract(
                 SpanCategory.DATABASE,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.PLATFORM_REMOTE_SERVICE,
@@ -75,7 +75,7 @@ public final class CategoryContracts {
                 List.of(Set.of(SemconvKeys.DB_SYSTEM_NAME, SemconvKeys.DB_SYSTEM_LEGACY)),
                 Set.of(SemconvKeys.HTTP_REQUEST_METHOD)));
 
-        m.put(SpanCategory.RPC_SERVER, new CategoryContract(
+        map.put(SpanCategory.RPC_SERVER, new CategoryContract(
                 SpanCategory.RPC_SERVER,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.RPC_SYSTEM, SemconvKeys.RPC_SERVICE, SemconvKeys.RPC_METHOD,
@@ -84,7 +84,7 @@ public final class CategoryContracts {
                 List.of(),
                 Set.of()));
 
-        m.put(SpanCategory.RPC_CLIENT, new CategoryContract(
+        map.put(SpanCategory.RPC_CLIENT, new CategoryContract(
                 SpanCategory.RPC_CLIENT,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.PLATFORM_REMOTE_SERVICE,
@@ -94,26 +94,24 @@ public final class CategoryContracts {
                 List.of(),
                 Set.of()));
 
-        m.put(SpanCategory.KAFKA_PRODUCER, new CategoryContract(
+        map.put(SpanCategory.KAFKA_PRODUCER, new CategoryContract(
                 SpanCategory.KAFKA_PRODUCER,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.MESSAGING_SYSTEM, SemconvKeys.MESSAGING_DESTINATION_NAME,
                         SemconvKeys.MESSAGING_OPERATION, SemconvKeys.ERROR_TYPE),
-                Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.MESSAGING_SYSTEM,
-                        SemconvKeys.MESSAGING_DESTINATION_NAME),
+                Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.MESSAGING_SYSTEM, SemconvKeys.MESSAGING_DESTINATION_NAME),
                 List.of(),
                 Set.of()));
 
-        m.put(SpanCategory.KAFKA_CONSUMER, new CategoryContract(
+        map.put(SpanCategory.KAFKA_CONSUMER, new CategoryContract(
                 SpanCategory.KAFKA_CONSUMER,
                 Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.PLATFORM_RESULT,
                         SemconvKeys.MESSAGING_SYSTEM, SemconvKeys.MESSAGING_DESTINATION_NAME,
                         SemconvKeys.MESSAGING_OPERATION, SemconvKeys.ERROR_TYPE),
-                Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.MESSAGING_SYSTEM,
-                        SemconvKeys.MESSAGING_DESTINATION_NAME),
+                Set.of(SemconvKeys.PLATFORM_TYPE, SemconvKeys.MESSAGING_SYSTEM, SemconvKeys.MESSAGING_DESTINATION_NAME),
                 List.of(),
                 Set.of()));
 
-        return new EnumMap<>(m);
+        return new EnumMap<>(map);
     }
 }

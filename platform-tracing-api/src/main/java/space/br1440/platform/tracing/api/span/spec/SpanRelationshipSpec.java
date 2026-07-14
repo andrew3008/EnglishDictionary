@@ -8,12 +8,6 @@ import java.util.List;
 
 public interface SpanRelationshipSpec {
 
-    /**
-     * Relationship kind for parent/context selection.
-     * <p>
-     * This is not OpenTelemetry {@code SpanKind}; protocol/client/server kind is derived
-     * separately from {@code SpanCategory}.
-     */
     @Nonnull
     SpanRelationship kind();
 

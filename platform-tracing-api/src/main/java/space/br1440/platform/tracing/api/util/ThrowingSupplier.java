@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.api.util;
 
 /**
- * Поставщик значения, способный пробросить checked {@link Exception}.
+ * Источник значения, способный пробросить checked {@link Exception}.
  * <p>
  * Платформенный аналог {@code java.util.function.Supplier}, не требующий обёрток вида
  * {@code try/catch + wrap-in-RuntimeException} при работе с lambda-выражениями,

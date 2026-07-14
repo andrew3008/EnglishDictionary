@@ -61,6 +61,7 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     @Nonnull
     public SpanSpecBuilder linkedTo(@Nonnull RemoteSpanLink... links) {
         Objects.requireNonNull(links, "links");
+
         for (RemoteSpanLink link : links) {
             Objects.requireNonNull(link, "link");
             this.links.add(link);
@@ -73,8 +74,10 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     @Nonnull
     public SpanSpecBuilder fromTraceparent(@Nonnull String... traceparents) {
         Objects.requireNonNull(traceparents, "traceparents");
+
         for (String traceparent : traceparents) {
-            linkedTo(TraceparentParser.requireTraceparent(Objects.requireNonNull(traceparent, "traceparent")));
+            RemoteSpanLink link = TraceparentParser.requireTraceparent(traceparent);
+            linkedTo(link);
         }
 
         return this;

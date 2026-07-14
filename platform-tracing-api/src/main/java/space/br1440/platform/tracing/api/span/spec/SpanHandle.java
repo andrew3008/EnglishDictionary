@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.span.spec;
 import jakarta.annotation.Nullable;
 
 /**
- * Минимальный lifecycle-handle запущенного ручного span'а.
+ * lifecycle-handle запущенного ручного span'а.
  */
 public interface SpanHandle extends AutoCloseable {
 

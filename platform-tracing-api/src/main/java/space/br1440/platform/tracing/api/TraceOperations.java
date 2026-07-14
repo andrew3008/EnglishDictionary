@@ -8,7 +8,7 @@ import space.br1440.platform.tracing.api.span.SpanFactory;
 /**
  * Прикладной контракт доступа к подсистеме трассировки текущего запроса.
  *
- * <p>Предоставляет два capability:
+ * <p>Предоставляет:
  * <ul>
  *   <li>{@link #traceContext()} — read-only представление активного trace-контекста
  *       для корреляции, логирования и передачи trace-id в downstream-системы;</li>
@@ -16,8 +16,7 @@ import space.br1440.platform.tracing.api.span.SpanFactory;
  * </ul>
  *
  * <p>Не является рантаймом трассировки, SDK, SPI, propagation-подсистемой
- * или конфигурационным объектом. Реализация предоставляется платформой
- * через DI-контейнер.
+ * или конфигурационным объектом. Реализация предоставляется платформой через DI-контейнер.
  */
 public interface TraceOperations {
 
