@@ -19,18 +19,31 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+/**
+ * OTel-backed implementation of {@link OtelTraceparentReader}.
+ * <p>
+ * Lives in {@code platform-tracing-core} so that OpenTelemetry API imports are confined
+ * to the core module and do not leak into {@code platform-tracing-api}.
+ * <p>
+ * A static singleton {@link #INSTANCE} is exposed for use by api-layer builders via the
+ * {@link OtelTraceparentReader} interface. Direct use outside of
+ * {@code DefaultSpanSpecBuilder} and {@code AbstractSemanticSpanBuilder} is not permitted
+ * (enforced by ArchUnit {@code OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED}).
+ */
 @Slf4j
 public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
 
+    /** Singleton instance provided to api-layer builders at startup. */
     public static final OtelTraceparentReaderImpl INSTANCE = new OtelTraceparentReaderImpl();
 
     private static final int MAX_LOGGED_CHARS = 128;
-    private static final String TRUNCATED_SUFFIX = "…[truncated]";
+    private static final String TRUNCATED_SUFFIX = "\u2026[truncated]";
     private static final Pattern NON_PRINTABLE_ASCII = Pattern.compile("[^\\x20-\\x7E]");
     private static final String HDR_TRACEPARENT = "traceparent";
     private static final String HDR_TRACESTATE = "tracestate";
 
-    public OtelTraceparentReaderImpl() {
+    /** Private: use {@link #INSTANCE}. */
+    private OtelTraceparentReaderImpl() {
     }
 
     @Override
@@ -73,6 +86,10 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
                 .orElseThrow(() -> new IllegalArgumentException("invalid traceparent: " + sanitized));
     }
 
+    // -------------------------------------------------------------------------
+    // Internal helpers
+    // -------------------------------------------------------------------------
+
     private static Map<String, String> buildCarrier(@Nonnull String traceparent, @Nullable String tracestate) {
         if (tracestate == null || tracestate.isBlank()) {
             return Map.of(HDR_TRACEPARENT, traceparent);
@@ -84,31 +101,42 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         return carrier;
     }
 
+    /**
+     * Encodes {@link TraceState} to its W3C wire-format string ({@code k1=v1,k2=v2}),
+     * or {@code null} if the state is empty.
+     * <p>
+     * Delegates to {@link TraceState#toString()} which is the canonical OTel
+     * implementation of the W3C tracestate serialisation — no manual StringBuilder
+     * is needed and correctness is covered by the OTel test suite.
+     */
     @Nullable
     private static String encodeTraceState(@Nonnull TraceState traceState) {
         if (traceState.isEmpty()) {
             return null;
         }
-
-        StringBuilder encoded = new StringBuilder();
-        traceState.forEach((key, value) -> {
-            if (!encoded.isEmpty()) {
-                encoded.append(',');
-            }
-
-            encoded.append(key).append('=').append(value);
-        });
-
-        return encoded.toString();
+        // TraceState.toString() produces the W3C wire-format: k1=v1,k2=v2
+        return traceState.toString();
     }
 
+    /**
+     * Sanitises a raw header value for safe logging:
+     * <ul>
+     *   <li>Replaces non-printable ASCII characters with {@code ?}.</li>
+     *   <li>Truncates to {@value #MAX_LOGGED_CHARS} chars and appends
+     *       {@value #TRUNCATED_SUFFIX} when the input is longer.</li>
+     * </ul>
+     * <p>
+     * Visibility is {@code public} (not private) so that
+     * {@code OtelTraceparentReaderTest} in the api test sources can verify
+     * truncation behaviour directly without reflection.
+     * The method must not be used outside of logging contexts.
+     */
     @Nonnull
     public static String sanitize(@Nonnull String raw) {
         String sanitized = NON_PRINTABLE_ASCII.matcher(raw.trim()).replaceAll("?");
         if (sanitized.length() <= MAX_LOGGED_CHARS) {
             return sanitized;
         }
-
         return sanitized.substring(0, MAX_LOGGED_CHARS) + TRUNCATED_SUFFIX;
     }
 
@@ -126,7 +154,6 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
             if (carrier == null) {
                 return null;
             }
-
             return carrier.get(key.toLowerCase(Locale.ROOT));
         }
     }

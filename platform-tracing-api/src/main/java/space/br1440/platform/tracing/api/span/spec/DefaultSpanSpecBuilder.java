@@ -16,10 +16,22 @@ import java.util.ServiceLoader;
 final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
     /**
-     * Lazily resolved via {@link ServiceLoader} so that {@code platform-tracing-api}
-     * remains free of compile-time OTel dependencies. The implementation
-     * ({@code OtelTraceparentReaderImpl}) is registered by {@code platform-tracing-core}
-     * through {@code META-INF/services}.
+     * OTel-backed traceparent reader resolved eagerly via {@link ServiceLoader}.
+     * <p>
+     * {@code platform-tracing-api} has no compile-time dependency on OpenTelemetry,
+     * so the implementation ({@code OtelTraceparentReaderImpl}) is discovered at
+     * runtime through the {@code META-INF/services} registration provided by
+     * {@code platform-tracing-core}.
+     *
+     * <p><b>Thread safety:</b> {@code ServiceLoader.findFirst()} is called once at
+     * class-initialisation time; the resolved instance is effectively immutable
+     * and safe for concurrent use after that point.
+     *
+     * <p><b>Test classpath requirement:</b> any test that triggers
+     * {@link SpanSpec#builder(String)} must have {@code platform-tracing-core}
+     * (or a test-double registered under the same service interface) on the
+     * test runtime classpath. Without it this static initialiser will throw
+     * {@link IllegalStateException} at class load time.
      */
     private static final OtelTraceparentReader TRACEPARENT_READER =
             ServiceLoader.load(OtelTraceparentReader.class)
