@@ -10,10 +10,10 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import java.util.List;
 
 /**
- * Compilable v3 API examples referenced by {@code docs/tracing/platform-tracing-v3-*.md}.
+ * Компилируемые примеры v3 API, на которые ссылаются {@code docs/tracing/platform-tracing-v3-*.md}.
  * <p>
- * This class is documentation-as-code: it is not executed in production and does not require
- * external services. Inject a {@link TraceOperations} bean (or test double) at runtime.
+ * Этот класс — documentation-as-code: он не выполняется в production и не требует
+ * external services. В runtime передайте {@link TraceOperations} bean или test double.
  */
 public final class TraceOperationsV3Samples {
 
@@ -23,35 +23,35 @@ public final class TraceOperationsV3Samples {
         this.traceOperations = traceOperations;
     }
 
-    /** {@code traceContext().traceId()} for logging and correlation. */
+    /** {@code traceContext().traceId()} для logging и correlation. */
     public String currentTraceIdForLogging() {
         return traceOperations.traceContext()
                 .traceId()
                 .orElse("unknown");
     }
 
-    /** Standard manual operation with void body. */
+    /** Стандартная manual operation с void body. */
     public void recalculatePricing(long orderId, PricingService pricingService) {
         traceOperations.spans()
                 .operation("recalculate-pricing")
                 .run(() -> pricingService.recalculate(orderId));
     }
 
-    /** Manual operation returning a value. */
+    /** Manual operation, возвращающая значение. */
     public Price calculatePrice(long orderId, PricingService pricingService) {
         return traceOperations.spans()
                 .operation("calculate-price")
                 .call(() -> pricingService.calculate(orderId));
     }
 
-    /** Manual operation with checked exception. */
+    /** Manual operation с checked exception. */
     public Order loadOrder(long orderId, OrderRepository repository) throws Exception {
         return traceOperations.spans()
                 .operation("load-order")
                 .callChecked(() -> repository.load(orderId));
     }
 
-    /** Explicit ROOT span for scheduled or background work without an active parent. */
+    /** Явный ROOT span для scheduled/background work без active parent. */
     public void runScheduledReconciliation(ReconciliationService service) {
         traceOperations.spans()
                 .operation("nightly-reconciliation")
@@ -59,7 +59,7 @@ public final class TraceOperationsV3Samples {
                 .run(service::reconcileAll);
     }
 
-    /** DETACHED span without links (allowed topology). */
+    /** DETACHED span без links (разрешённая topology). */
     public void runDetachedAudit(AuditService auditService) {
         traceOperations.spans()
                 .operation("compliance-audit")
@@ -67,7 +67,7 @@ public final class TraceOperationsV3Samples {
                 .run(auditService::runOnce);
     }
 
-    /** Database semantic builder under {@code spans().transport().database()}. */
+    /** Database semantic builder под {@code spans().transport().database()}. */
     public List<Order> queryOrders(OrderRepository repository) {
         return traceOperations.spans()
                 .transport()
@@ -78,7 +78,7 @@ public final class TraceOperationsV3Samples {
                 .call(repository::findAll);
     }
 
-    /** RPC client semantic builder under {@code spans().transport().rpc().client()}. */
+    /** RPC client semantic builder под {@code spans().transport().rpc().client()}. */
     public Order fetchOrderViaRpc(OrderRpcClient client, long orderId) {
         return traceOperations.spans()
                 .transport()
@@ -92,8 +92,8 @@ public final class TraceOperationsV3Samples {
     }
 
     /**
-     * Kafka batch consumer: ROOT + pre-start links (primary public links example).
-     * {@code messageContexts} would normally be extracted from record headers via OTel propagator.
+     * Kafka batch consumer: ROOT + pre-start links (основной public links example).
+     * {@code messageContexts} обычно извлекаются из record headers через OTel propagator.
      */
     public void processKafkaBatch(
             List<RemoteSpanLink> messageContexts,
@@ -109,7 +109,7 @@ public final class TraceOperationsV3Samples {
                 .run(() -> processor.processBatch(records));
     }
 
-    /** Alternative batch links via W3C traceparent strings (tracestate requires a separate header and is not recovered here). */
+    /** Альтернативные batch links через W3C traceparent strings (tracestate требует отдельный header и здесь не восстанавливается). */
     public void processKafkaBatchFromTraceparents(
             List<String> traceparents,
             BatchProcessor processor,
@@ -124,7 +124,7 @@ public final class TraceOperationsV3Samples {
                 .run(() -> processor.processBatch(records));
     }
 
-    /** Governed escape hatch: {@code fromSpec} with mandatory reason and reference. */
+    /** Governed escape hatch: {@code fromSpec} с обязательными reason и reference. */
     public void legacyIntegrationCall(LegacyClient legacyClient) {
         SpanSpec spec = SpanSpec.builder("legacy-bridge-call")
                 .category(SpanCategory.INTERNAL)
@@ -139,7 +139,7 @@ public final class TraceOperationsV3Samples {
                 .run(legacyClient::invoke);
     }
 
-    /** {@code TEMPORARY_WORKAROUND} requires a non-blank reference. */
+    /** {@code TEMPORARY_WORKAROUND} требует non-blank reference. */
     public void temporaryWorkaround(TemporaryClient client) {
         SpanSpec spec = SpanSpec.builder("vendor-sdk-workaround")
                 .category(SpanCategory.INTERNAL)
@@ -153,7 +153,7 @@ public final class TraceOperationsV3Samples {
                 .call(client::callOnce);
     }
 
-    // --- Stub types (no external dependencies) ---
+    // --- Stub types (без external dependencies) ---
 
     public interface PricingService {
         void recalculate(long orderId);

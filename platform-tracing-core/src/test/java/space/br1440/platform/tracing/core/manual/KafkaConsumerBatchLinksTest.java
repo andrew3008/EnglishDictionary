@@ -21,9 +21,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Hard gate: Kafka consumer batch ROOT+links and links-before-start semantics.
- */
 class KafkaConsumerBatchLinksTest {
 
     private static final String INVALID_SPAN_ID = "0000000000000000";

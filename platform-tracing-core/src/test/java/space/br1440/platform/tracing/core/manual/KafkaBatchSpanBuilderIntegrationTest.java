@@ -22,12 +22,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Exporter-level integration test for Kafka batch builder semantics (H2 hardening).
- * <p>
- * Complements {@link KafkaConsumerBatchLinksTest} by asserting exported span kind,
- * messaging semconv attributes, and platform category — not only SpanRelationship/links.
- */
 class KafkaBatchSpanBuilderIntegrationTest {
 
     private static final String INVALID_SPAN_ID = "0000000000000000";

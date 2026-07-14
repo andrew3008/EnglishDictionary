@@ -19,20 +19,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-/**
- * OTel-backed implementation of {@link OtelTraceparentReader}.
- *
- * <p>Lives in {@code platform-tracing-core} so OpenTelemetry imports stay out of
- * {@code platform-tracing-api}. The public no-arg constructor is required by
- * {@link java.util.ServiceLoader}; {@link #INSTANCE} is kept for direct core use.
- */
 @Slf4j
 public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
 
     public static final OtelTraceparentReaderImpl INSTANCE = new OtelTraceparentReaderImpl();
 
     private static final int MAX_LOGGED_CHARS = 128;
-    private static final String TRUNCATED_SUFFIX = "\u2026[truncated]";
+    private static final String TRUNCATED_SUFFIX = "…[truncated]";
     private static final Pattern NON_PRINTABLE_ASCII = Pattern.compile("[^\\x20-\\x7E]");
     private static final String HDR_TRACEPARENT = "traceparent";
     private static final String HDR_TRACESTATE = "tracestate";
