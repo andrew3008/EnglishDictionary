@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.semconv.policy;
 
 import lombok.experimental.UtilityClass;
+import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 
 import java.util.EnumMap;
