@@ -8,7 +8,6 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
@@ -21,20 +20,20 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * OTel-backed implementation of {@link OtelTraceparentReader}.
+ * OTel-backed реализация интерфейса {@link OtelTraceparentReader}.
  * <p>
- * Lives in {@code platform-tracing-core} so that OpenTelemetry API imports are confined
- * to the core module and do not leak into {@code platform-tracing-api}.
+ * Располагается в {@code platform-tracing-core}, чтобы импорты OpenTelemetry API
+ * были ограничены core-модулем и не проникали в {@code platform-tracing-api}.
  * <p>
- * A static singleton {@link #INSTANCE} is exposed for use by api-layer builders via the
- * {@link OtelTraceparentReader} interface. Direct use outside of
- * {@code DefaultSpanSpecBuilder} and {@code AbstractSemanticSpanBuilder} is not permitted
- * (enforced by ArchUnit {@code OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED}).
+ * Статический singleton {@link #INSTANCE} предоставляется api-layer builders
+ * через интерфейс {@link OtelTraceparentReader}. Прямое использование вне
+ * {@code DefaultSpanSpecBuilder} и {@code AbstractSemanticSpanBuilder} запрещено
+ * (контролируется ArchUnit-правилом {@code OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED}).
  */
 @Slf4j
 public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
 
-    /** Singleton instance provided to api-layer builders at startup. */
+    /** Singleton, передаваемый api-layer builders при старте приложения. */
     public static final OtelTraceparentReaderImpl INSTANCE = new OtelTraceparentReaderImpl();
 
     private static final int MAX_LOGGED_CHARS = 128;
@@ -87,7 +86,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     }
 
     // -------------------------------------------------------------------------
-    // Internal helpers
+    // Внутренние вспомогательные методы
     // -------------------------------------------------------------------------
 
     private static Map<String, String> buildCarrier(@Nonnull String traceparent, @Nullable String tracestate) {
@@ -105,7 +104,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         if (traceState.isEmpty()) {
             return null;
         }
-        // OTel TraceState.toString() produces the W3C wire-format: k1=v1,k2=v2
+        // OTel TraceState.toString() возвращает W3C wire-format: k1=v1,k2=v2
         return traceState.toString();
     }
 
