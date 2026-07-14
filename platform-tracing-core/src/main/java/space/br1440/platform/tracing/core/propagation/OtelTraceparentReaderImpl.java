@@ -20,20 +20,15 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * OTel-backed реализация интерфейса {@link OtelTraceparentReader}.
- * <p>
- * Располагается в {@code platform-tracing-core}, чтобы импорты OpenTelemetry API
- * были ограничены core-модулем и не проникали в {@code platform-tracing-api}.
- * <p>
- * Статический singleton {@link #INSTANCE} предоставляется api-layer builders
- * через интерфейс {@link OtelTraceparentReader}. Прямое использование вне
- * {@code DefaultSpanSpecBuilder} и {@code AbstractSemanticSpanBuilder} запрещено
- * (контролируется ArchUnit-правилом {@code OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED}).
+ * OTel-backed implementation of {@link OtelTraceparentReader}.
+ *
+ * <p>Lives in {@code platform-tracing-core} so OpenTelemetry imports stay out of
+ * {@code platform-tracing-api}. The public no-arg constructor is required by
+ * {@link java.util.ServiceLoader}; {@link #INSTANCE} is kept for direct core use.
  */
 @Slf4j
 public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
 
-    /** Singleton, передаваемый api-layer builders при старте приложения. */
     public static final OtelTraceparentReaderImpl INSTANCE = new OtelTraceparentReaderImpl();
 
     private static final int MAX_LOGGED_CHARS = 128;
@@ -42,7 +37,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     private static final String HDR_TRACEPARENT = "traceparent";
     private static final String HDR_TRACESTATE = "tracestate";
 
-    private OtelTraceparentReaderImpl() {
+    public OtelTraceparentReaderImpl() {
     }
 
     @Override
@@ -68,12 +63,11 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
             return Optional.empty();
         }
 
-        String encodedTraceState = encodeTraceState(spanContext.getTraceState());
         return Optional.of(new RemoteSpanLink(
                 spanContext.getTraceId(),
                 spanContext.getSpanId(),
                 spanContext.getTraceFlags().asByte(),
-                encodedTraceState));
+                encodeTraceState(spanContext.getTraceState())));
     }
 
     @Override
@@ -84,10 +78,6 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         return read(traceparent)
                 .orElseThrow(() -> new IllegalArgumentException("invalid traceparent: " + sanitized));
     }
-
-    // -------------------------------------------------------------------------
-    // Внутренние вспомогательные методы
-    // -------------------------------------------------------------------------
 
     private static Map<String, String> buildCarrier(@Nonnull String traceparent, @Nullable String tracestate) {
         if (tracestate == null || tracestate.isBlank()) {
@@ -104,12 +94,18 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         if (traceState.isEmpty()) {
             return null;
         }
-        // OTel TraceState.toString() возвращает W3C wire-format: k1=v1,k2=v2
-        return traceState.toString();
+        StringBuilder encoded = new StringBuilder();
+        traceState.forEach((key, value) -> {
+            if (!encoded.isEmpty()) {
+                encoded.append(',');
+            }
+            encoded.append(key).append('=').append(value);
+        });
+        return encoded.toString();
     }
 
     @Nonnull
-    static String sanitize(@Nonnull String raw) {
+    public static String sanitize(@Nonnull String raw) {
         String sanitized = NON_PRINTABLE_ASCII.matcher(raw.trim()).replaceAll("?");
         if (sanitized.length() <= MAX_LOGGED_CHARS) {
             return sanitized;

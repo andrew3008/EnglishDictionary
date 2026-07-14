@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.samples;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -152,14 +151,6 @@ public final class TraceOperationsV3Samples {
         traceOperations.spans()
                 .fromSpec(spec)
                 .call(client::callOnce);
-    }
-
-    /** Example of lenient traceparent parsing for batch header extraction loops. */
-    public List<RemoteSpanLink> extractLinksFromHeaders(List<String> traceparentHeaders) {
-        return traceparentHeaders.stream()
-                .map(OtelTraceparentReader::read)
-                .flatMap(java.util.Optional::stream)
-                .toList();
     }
 
     // --- Stub types (no external dependencies) ---

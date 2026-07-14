@@ -9,9 +9,9 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 
@@ -108,7 +108,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchChildWithLinks_rejectedBeforeStart() {
-        RemoteSpanLink link = OtelTraceparentReader.require(TRACEPARENT_A);
+        RemoteSpanLink link = OtelTraceparentReaderImpl.INSTANCE.require(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.spans().transport().kafka().consumer()
                         .batch("orders")
@@ -122,7 +122,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchDetachedWithLinks_rejectedBeforeStart() {
-        RemoteSpanLink link = OtelTraceparentReader.require(TRACEPARENT_A);
+        RemoteSpanLink link = OtelTraceparentReaderImpl.INSTANCE.require(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.spans().transport().kafka().consumer()
                         .batch("orders")

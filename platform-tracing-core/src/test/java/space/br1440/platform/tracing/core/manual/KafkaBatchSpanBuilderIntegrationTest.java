@@ -10,8 +10,8 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.SpanKinds;
@@ -101,7 +101,7 @@ class KafkaBatchSpanBuilderIntegrationTest {
 
     @Test
     void batchInsideActiveParent_rootDoesNotBecomeChild() {
-        RemoteSpanLink link = OtelTraceparentReader.require(TRACEPARENT);
+        RemoteSpanLink link = OtelTraceparentReaderImpl.INSTANCE.require(TRACEPARENT);
 
         try (var parent = traceOperations.spans().operation("parent").start()) {
             traceOperations.spans()
