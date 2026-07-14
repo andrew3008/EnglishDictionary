@@ -16,22 +16,21 @@ import java.util.ServiceLoader;
 final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
     /**
-     * OTel-backed traceparent reader resolved eagerly via {@link ServiceLoader}.
+     * OTel-backed reader для traceparent, резолвится через {@link ServiceLoader} при старте.
      * <p>
-     * {@code platform-tracing-api} has no compile-time dependency on OpenTelemetry,
-     * so the implementation ({@code OtelTraceparentReaderImpl}) is discovered at
-     * runtime through the {@code META-INF/services} registration provided by
-     * {@code platform-tracing-core}.
+     * Модуль {@code platform-tracing-api} не имеет compile-time зависимости на OpenTelemetry,
+     * поэтому реализация ({@code OtelTraceparentReaderImpl}) обнаруживается в runtime через
+     * {@code META-INF/services}-регистрацию, предоставляемую {@code platform-tracing-core}.
      *
-     * <p><b>Thread safety:</b> {@code ServiceLoader.findFirst()} is called once at
-     * class-initialisation time; the resolved instance is effectively immutable
-     * and safe for concurrent use after that point.
+     * <p><b>Thread safety:</b> {@code ServiceLoader.findFirst()} вызывается один раз
+     * при инициализации класса; после этого полученный instance фактически immutable
+     * и безопасен для конкурентного использования.
      *
-     * <p><b>Test classpath requirement:</b> any test that triggers
-     * {@link SpanSpec#builder(String)} must have {@code platform-tracing-core}
-     * (or a test-double registered under the same service interface) on the
-     * test runtime classpath. Without it this static initialiser will throw
-     * {@link IllegalStateException} at class load time.
+     * <p><b>Требование к test classpath:</b> любой тест, который косвенно вызывает
+     * {@link SpanSpec#builder(String)}, должен иметь {@code platform-tracing-core}
+     * (или test-double, зарегистрированный под тем же service interface) в test runtime classpath.
+     * При его отсутствии static initializer бросит {@link IllegalStateException} на этапе
+     * загрузки класса.
      */
     private static final OtelTraceparentReader TRACEPARENT_READER =
             ServiceLoader.load(OtelTraceparentReader.class)

@@ -20,20 +20,20 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * OTel-backed implementation of {@link OtelTraceparentReader}.
+ * OTel-backed реализация интерфейса {@link OtelTraceparentReader}.
  * <p>
- * Lives in {@code platform-tracing-core} so that OpenTelemetry API imports are confined
- * to the core module and do not leak into {@code platform-tracing-api}.
+ * Располагается в {@code platform-tracing-core}, чтобы импорты OpenTelemetry API
+ * были ограничены core-модулем и не проникали в {@code platform-tracing-api}.
  * <p>
- * A static singleton {@link #INSTANCE} is exposed for use by api-layer builders via the
- * {@link OtelTraceparentReader} interface. Direct use outside of
- * {@code DefaultSpanSpecBuilder} and {@code AbstractSemanticSpanBuilder} is not permitted
- * (enforced by ArchUnit {@code OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED}).
+ * Статический singleton {@link #INSTANCE} предоставляется api-layer builders'ам
+ * через интерфейс {@link OtelTraceparentReader}. Прямое использование вне
+ * {@code DefaultSpanSpecBuilder} и {@code AbstractSemanticSpanBuilder} запрещено
+ * (enforced ArchUnit-правилом {@code OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED}).
  */
 @Slf4j
 public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
 
-    /** Singleton instance provided to api-layer builders at startup. */
+    /** Singleton instance, передаваемый api-layer builders'ам при старте. */
     public static final OtelTraceparentReaderImpl INSTANCE = new OtelTraceparentReaderImpl();
 
     private static final int MAX_LOGGED_CHARS = 128;
@@ -42,7 +42,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     private static final String HDR_TRACEPARENT = "traceparent";
     private static final String HDR_TRACESTATE = "tracestate";
 
-    /** Private: use {@link #INSTANCE}. */
+    /** Приватный конструктор — используйте {@link #INSTANCE}. */
     private OtelTraceparentReaderImpl() {
     }
 
@@ -87,7 +87,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     }
 
     // -------------------------------------------------------------------------
-    // Internal helpers
+    // Внутренние вспомогательные методы
     // -------------------------------------------------------------------------
 
     private static Map<String, String> buildCarrier(@Nonnull String traceparent, @Nullable String tracestate) {
@@ -102,34 +102,34 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     }
 
     /**
-     * Encodes {@link TraceState} to its W3C wire-format string ({@code k1=v1,k2=v2}),
-     * or {@code null} if the state is empty.
+     * Кодирует {@link TraceState} в W3C wire-format строку ({@code k1=v1,k2=v2}),
+     * либо возвращает {@code null}, если state пустой.
      * <p>
-     * Delegates to {@link TraceState#toString()} which is the canonical OTel
-     * implementation of the W3C tracestate serialisation — no manual StringBuilder
-     * is needed and correctness is covered by the OTel test suite.
+     * Делегирует вызов {@link TraceState#toString()} — это каноническая OTel-реализация
+     * сериализации W3C tracestate. Ручной {@code StringBuilder} не нужен:
+     * корректность покрывается test suite самого OTel.
      */
     @Nullable
     private static String encodeTraceState(@Nonnull TraceState traceState) {
         if (traceState.isEmpty()) {
             return null;
         }
-        // TraceState.toString() produces the W3C wire-format: k1=v1,k2=v2
+        // TraceState.toString() возвращает W3C wire-format: k1=v1,k2=v2
         return traceState.toString();
     }
 
     /**
-     * Sanitises a raw header value for safe logging:
+     * Санирует raw-значение header для безопасного логирования:
      * <ul>
-     *   <li>Replaces non-printable ASCII characters with {@code ?}.</li>
-     *   <li>Truncates to {@value #MAX_LOGGED_CHARS} chars and appends
-     *       {@value #TRUNCATED_SUFFIX} when the input is longer.</li>
+     *   <li>Заменяет non-printable ASCII символы на {@code ?}.</li>
+     *   <li>Обрезает строку до {@value #MAX_LOGGED_CHARS} символов и добавляет
+     *       суффикс {@value #TRUNCATED_SUFFIX}, если входная строка длиннее.</li>
      * </ul>
      * <p>
-     * Visibility is {@code public} (not private) so that
-     * {@code OtelTraceparentReaderTest} in the api test sources can verify
-     * truncation behaviour directly without reflection.
-     * The method must not be used outside of logging contexts.
+     * Видимость {@code public} (а не {@code private}) нужна для того, чтобы
+     * {@code OtelTraceparentReaderTest} в test sources модуля {@code platform-tracing-api}
+     * мог проверить поведение truncation напрямую, без reflection.
+     * Метод не должен использоваться вне logging-контекстов.
      */
     @Nonnull
     public static String sanitize(@Nonnull String raw) {
