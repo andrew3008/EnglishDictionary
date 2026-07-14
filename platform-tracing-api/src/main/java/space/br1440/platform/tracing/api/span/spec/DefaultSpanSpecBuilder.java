@@ -11,8 +11,22 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 
 final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
+
+    /**
+     * Lazily resolved via {@link ServiceLoader} so that {@code platform-tracing-api}
+     * remains free of compile-time OTel dependencies. The implementation
+     * ({@code OtelTraceparentReaderImpl}) is registered by {@code platform-tracing-core}
+     * through {@code META-INF/services}.
+     */
+    private static final OtelTraceparentReader TRACEPARENT_READER =
+            ServiceLoader.load(OtelTraceparentReader.class)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "No OtelTraceparentReader implementation found on classpath. "
+                            + "Ensure platform-tracing-core is present at runtime."));
 
     private final String name;
     private SpanCategory category;
@@ -76,7 +90,7 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
         Objects.requireNonNull(traceparents, "traceparents");
 
         for (String traceparent : traceparents) {
-            RemoteSpanLink link = OtelTraceparentReader.require(traceparent);
+            RemoteSpanLink link = TRACEPARENT_READER.require(traceparent);
             linkedTo(link);
         }
 
