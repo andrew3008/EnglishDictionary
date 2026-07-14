@@ -22,9 +22,6 @@ public final class TraceparentParser {
     private static final String INVALID_ID = "0".repeat(32);
     private static final String INVALID_SPAN_ID = "0".repeat(16);
 
-    /**
-     * Разбирает значение W3C-заголовка {@code traceparent} в контекст связи, игнорируя невалидный ввод.
-     */
     @Nonnull
     public static Optional<RemoteSpanLink> parseTraceparent(@Nullable String traceparent) {
         if (traceparent == null || traceparent.isBlank()) {
@@ -56,9 +53,6 @@ public final class TraceparentParser {
         return Optional.of(new RemoteSpanLink(traceId, spanId, flags, null));
     }
 
-    /**
-     * Разбирает значение W3C-заголовка {@code traceparent} или бросает исключение, если связь получить нельзя.
-     */
     @Nonnull
     public static RemoteSpanLink requireTraceparent(@Nonnull String traceparent) {
         Objects.requireNonNull(traceparent, "traceparent");
