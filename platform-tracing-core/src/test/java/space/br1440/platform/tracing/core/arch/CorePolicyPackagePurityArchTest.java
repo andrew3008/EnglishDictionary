@@ -68,6 +68,10 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.NO_LEGACY_SPAN_BUILDER_API;
 
     @ArchTest
+    static final ArchRule otelTraceparentReaderAccessRestricted =
+            ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED;
+
+    @ArchTest
     static final ArchRule rootPackageMustBeEmpty =
             noClasses()
                     .should().resideInAPackage("space.br1440.platform.tracing.core")

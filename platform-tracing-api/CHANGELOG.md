@@ -1,5 +1,12 @@
 # platform-tracing-api Changelog
 
+## Breaking Changes - TraceparentParser Removal
+
+- `TraceparentParser` was deleted and replaced by the OTel-backed `OtelTraceparentReader` bridge.
+- Public `fromTraceparent(String...)` builder signatures are unchanged.
+- No compatibility aliases or deprecated bridges are provided.
+- `RemoteSpanLink.traceState` remains `null` for single-string `traceparent` parsing because `tracestate` is a separate W3C header.
+
 ## Breaking Changes - SpanFactory API Shape
 
 - `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.

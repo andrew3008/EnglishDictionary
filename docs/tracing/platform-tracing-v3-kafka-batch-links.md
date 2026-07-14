@@ -35,9 +35,9 @@ OTel propagator extraction remains legitimate for **reading** remote context fro
 .fromTraceparent(traceparent1, traceparent2)
 ```
 
-For lenient extraction loops (skip malformed headers), parse with `TraceparentParser.parseTraceparent(header)` and collect valid links before calling `linkedTo(...)`.
+For lenient extraction loops (skip malformed headers), collect valid `RemoteSpanLink` values before calling `linkedTo(...)`. Application code should prefer `fromTraceparent(...)` for strict parsing; the platform's OTel-backed reader used by samples is not extension API.
 
-**Tracestate is preserved** when present on the extracted link context.
+**Tracestate note:** `fromTraceparent(String...)` receives only the W3C `traceparent` header. It cannot recover `tracestate`, because `tracestate` is a separate W3C header. Full header extraction paths that receive both headers can preserve it.
 
 ## Topology rules
 

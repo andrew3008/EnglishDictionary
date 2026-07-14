@@ -83,6 +83,20 @@ class TracingArchRulesTest {
         assertThat(hasMethod(SpanFactory.class, "span" + "FromSpec", SpanSpec.class)).isFalse();
     }
 
+    @Test
+    void traceparentReaderKeepsApprovedApiShapeAndAccess() {
+        JavaClasses classes = new ClassFileImporter()
+                .importPackages(
+                        "space.br1440.platform.tracing.api",
+                        "space.br1440.platform.tracing.core");
+
+        ModuleTaxonomyArchRules.API_PROPAGATION_HAS_NO_PUBLIC_PARSERS.check(classes);
+        ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED.check(classes);
+
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.propagation." + "Traceparent" + "Parser"))
+                .isFalse();
+    }
+
     private static boolean classCanBeLoaded(String className) {
         try {
             Class.forName(className);

@@ -21,4 +21,12 @@ class RuntimeStateArchTest {
 
     @ArchTest
     static final ArchRule noLegacySpanBuilderApi = ModuleTaxonomyArchRules.NO_LEGACY_SPAN_BUILDER_API;
+
+    @ArchTest
+    static final ArchRule apiPropagationHasNoPublicParsers =
+            ModuleTaxonomyArchRules.API_PROPAGATION_HAS_NO_PUBLIC_PARSERS;
+
+    @ArchTest
+    static final ArchRule otelTraceparentReaderAccessRestricted =
+            ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED;
 }

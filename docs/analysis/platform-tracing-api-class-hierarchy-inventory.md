@@ -128,7 +128,7 @@ space.br1440.platform.tracing.api
 │   └── state/                      VersionedState, VersionedStateHolder
 ├── semconv/                        CategoryContracts registry, keys, validation mode, violations
 ├── span/
-│   ├── SpanCategory, SpanResult, SpanScope, RemoteSpanLink, TraceparentParser
+│   ├── SpanCategory, SpanResult, SpanScope, RemoteSpanLink
 │   ├── enrich/                     EnrichScope, GenericEnrichScope
 │   ├── sanitize/                   SqlSanitizer, UrlSanitizer
 │   └── spec/                       SpanSpec ecosystem (v3 value models + builders)
@@ -284,7 +284,7 @@ graph LR
 | `SpanResult` | enum | `span` | Final operation status | 6 values + `value()` | `SpanScope`, enrich scopes | tail-sampling, enricher | OK |
 | `SpanScope` | interface | `span` | Legacy full lifecycle scope | `setAttribute`, `addEvent`, `setResult`, `recordException`, `close` | contrast `SpanHandle` | `OwningSpanScope` in core | **Legacy public API**; misleading as app entry |
 | `RemoteSpanLink` | record | `span` | Remote span link | `traceId`, `spanId`, `traceFlags`, `traceState`; `sampled()` | builders, `SpanTopologySpec` | `OtelTracingRuntime` | OK |
-| `TraceparentParser` | utility class | `span` | W3C traceparent parsing | `parseTraceparent`, `requireTraceparent` | `SpanSpecBuilder.fromTraceparent` | tests | OK |
+| `OtelTraceparentReader` | utility class | `api.propagation` | OTel-backed W3C traceparent reading | `read`, `require` | `SpanSpecBuilder.fromTraceparent` | core/tests/samples | Internal bridge; access restricted by ArchUnit |
 | `SqlSanitizer` | class | `span.sanitize` | SQL redaction | sanitize methods | core naming | tests | OK utility |
 | `UrlSanitizer` | class | `span.sanitize` | URL redaction | sanitize methods | core naming | tests | OK utility |
 
@@ -557,7 +557,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 |---|---|---|---|
 | v3 manual + spec facades | `V3ManualApiArchTest` | **Strong** (ArchUnit) | Stale `SpanOptions` allowlist |
 | `SpanSpecBuilder` / `SpanTopologySpec` | `SpanSpecBuilderFinalStateTest`, `SpanSpecAttributeValueTest` | Strong | Нет тестов `SpanTopologySpec` static factories (unused) |
-| `TraceparentParser` | `TraceparentParserTest` | Strong | — |
+| `OtelTraceparentReader` | `OtelTraceparentReaderTest` | Strong | Access restricted by ArchUnit |
 | Semconv registry | `CategoryContractsTest`, `*SemconvVersionMarkerTest` | Strong | — |
 | Control protocol | 10+ tests in `control/protocol/**` | **Strong** | — |
 | Propagation control | `OutboundPropagationPolicyTest`, `TraceControlHeaderInjectorTest`, `TrustedDestinationMatcherTest`, `RequestIdSupportTest` | Strong | — |
@@ -702,9 +702,9 @@ Public `SpanScope` and `DatabaseTracing` are removed. Database semconv marker `@
 
 ## PR-B1 Accepted Update - 2026-07-11
 
-PR-B1 has been accepted and implemented. Current context and propagation API names are `RequestTraceContextSnapshot`, `ActiveTraceContextView`, `InboundTraceControl`, `OutboundPropagationDecision`, `TraceControlHeaderInjector`, and `TraceparentParser`.
+PR-B1 has been accepted and implemented. Current context and propagation API names are `RequestTraceContextSnapshot`, `ActiveTraceContextView`, `InboundTraceControl`, and `OutboundPropagationDecision`.
 
-`TraceparentParser` lives in `space.br1440.platform.tracing.api.propagation`. Builder methods that strictly parse W3C `traceparent` values are now named `fromTraceparent(...)` on `ManualSpanBuilder` and `SpanSpecBuilder`.
+2026-07-14 update: `TraceparentParser` was deleted. Builder methods that strictly parse W3C `traceparent` values remain named `fromTraceparent(...)` on `ManualSpanBuilder` and `SpanSpecBuilder`; implementation delegates to the OTel-backed `OtelTraceparentReader`, which is not extension API.
 
 ## PR-B2 Accepted Update - 2026-07-11
 

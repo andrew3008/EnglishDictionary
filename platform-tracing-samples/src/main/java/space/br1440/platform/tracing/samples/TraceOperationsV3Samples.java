@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.samples;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.propagation.TraceparentParser;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -110,7 +110,7 @@ public final class TraceOperationsV3Samples {
                 .run(() -> processor.processBatch(records));
     }
 
-    /** Alternative batch links via W3C traceparent strings (tracestate preserved when present). */
+    /** Alternative batch links via W3C traceparent strings (tracestate requires a separate header and is not recovered here). */
     public void processKafkaBatchFromTraceparents(
             List<String> traceparents,
             BatchProcessor processor,
@@ -157,7 +157,7 @@ public final class TraceOperationsV3Samples {
     /** Example of lenient traceparent parsing for batch header extraction loops. */
     public List<RemoteSpanLink> extractLinksFromHeaders(List<String> traceparentHeaders) {
         return traceparentHeaders.stream()
-                .map(TraceparentParser::parseTraceparent)
+                .map(OtelTraceparentReader::read)
                 .flatMap(java.util.Optional::stream)
                 .toList();
     }

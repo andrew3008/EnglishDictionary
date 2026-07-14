@@ -9,7 +9,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.TraceparentParser;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
@@ -70,7 +70,7 @@ class KafkaConsumerBatchLinksTest {
     }
 
     @Test
-    void kafkaBatchRootWithFromTraceparentParser_parsesTraceparentIntoLinks() {
+    void kafkaBatchRootWithFromTraceparent_parsesTraceparentIntoLinks() {
         tracing.spans().transport().kafka().consumer()
                 .batch("orders")
                 .root()
@@ -108,7 +108,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchChildWithLinks_rejectedBeforeStart() {
-        RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
+        RemoteSpanLink link = OtelTraceparentReader.require(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.spans().transport().kafka().consumer()
                         .batch("orders")
@@ -122,7 +122,7 @@ class KafkaConsumerBatchLinksTest {
 
     @Test
     void kafkaBatchDetachedWithLinks_rejectedBeforeStart() {
-        RemoteSpanLink link = TraceparentParser.requireTraceparent(TRACEPARENT_A);
+        RemoteSpanLink link = OtelTraceparentReader.require(TRACEPARENT_A);
         assertThatThrownBy(() ->
                 tracing.spans().transport().kafka().consumer()
                         .batch("orders")

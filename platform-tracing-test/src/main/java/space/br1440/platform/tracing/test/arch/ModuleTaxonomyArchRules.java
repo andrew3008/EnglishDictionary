@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.test.arch;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
 import lombok.experimental.UtilityClass;
 
@@ -18,6 +20,25 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  */
 @UtilityClass
 public final class ModuleTaxonomyArchRules {
+
+    /**
+     * Traceparent parsing is delegated to the OTel-backed bridge; do not reintroduce public parser APIs.
+     */
+    public static final ArchRule API_PROPAGATION_HAS_NO_PUBLIC_PARSERS = noClasses()
+            .that().resideInAPackage("..api.propagation..")
+            .and().arePublic()
+            .should().haveSimpleNameEndingWith("Parser")
+            .allowEmptyShould(true)
+            .because("raw propagation wire parsing is delegated to OTel-backed bridges, not public *Parser APIs");
+
+    /**
+     * {@code OtelTraceparentReader} is public only for module visibility; it is not extension API.
+     */
+    public static final ArchRule OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED = classes()
+            .that().haveFullyQualifiedName("space.br1440.platform.tracing.api.propagation.OtelTraceparentReader")
+            .should().onlyHaveDependentClassesThat(allowedOtelTraceparentReaderDependent())
+            .allowEmptyShould(true)
+            .because("OtelTraceparentReader is an internal bridge, not an extension API");
 
     /**
      * Application classpath autoconfigure must not depend on agent extension implementation.
@@ -252,4 +273,17 @@ public final class ModuleTaxonomyArchRules {
                     "io.opentelemetry.sdk..")
             .allowEmptyShould(true)
             .because("core.semconv.policy допускает только io.opentelemetry.api.common");
+    private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
+        return new DescribedPredicate<>("be an allowed OtelTraceparentReader dependent") {
+            @Override
+            public boolean test(JavaClass input) {
+                String name = input.getName();
+                return name.equals("space.br1440.platform.tracing.api.span.spec.DefaultSpanSpecBuilder")
+                        || name.equals("space.br1440.platform.tracing.core.manual.AbstractSemanticSpanBuilder")
+                        || name.equals("space.br1440.platform.tracing.samples.TraceOperationsV3Samples")
+                        || name.contains(".test.")
+                        || name.endsWith("Test");
+            }
+        };
+    }
 }

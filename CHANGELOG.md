@@ -7,6 +7,7 @@
 ## [Unreleased] — Wave R1+ (dual-channel alignment)
 ### Breaking Changes
 
+- `TraceparentParser` has been deleted. Builder `fromTraceparent(String...)` signatures are unchanged and now use the OTel-backed bridge internally. No alias or deprecated bridge is provided.
 - `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.
 - `TraceOperations.manual()` renamed to `TraceOperations.spans()`.
 - `ManualTracing.spanFromSpec(SpanSpec)` renamed to `SpanFactory.fromSpec(SpanSpec)`.
