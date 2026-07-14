@@ -10,9 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests for {@link OtelTraceparentReaderImpl} via the {@link OtelTraceparentReader} interface.
- * Placed in the api test package to keep the test name stable and because the interface
- * contract is what callers depend on.
+ * Тесты {@link OtelTraceparentReaderImpl} через интерфейс {@link OtelTraceparentReader}.
+ * Тест-класс расположен в api test-пакете, чтобы имя теста оставалось стабильным:
+ * именно интерфейсный контракт является публичным договором для вызывающего кода.
  */
 class OtelTraceparentReaderTest {
 
@@ -25,7 +25,7 @@ class OtelTraceparentReaderTest {
     private static final String PROBE_SPAN_ID = "0123456789012345";
 
     // ------------------------------------------------------------------
-    // read(traceparent) — single-header overload
+    // read(traceparent) — однозаголовочный overload
     // ------------------------------------------------------------------
 
     @Test
@@ -60,22 +60,22 @@ class OtelTraceparentReaderTest {
 
     @Test
     void read_probeObservedEdgeCases_followOtelBehavior() {
-        // version=ff is rejected by OTel W3CTraceContextPropagator (W3C reserves 0xff as invalid)
+        // version=ff отклоняется OTel W3CTraceContextPropagator (W3C резервирует 0xff как невалидное)
         assertThat(READER.read("ff-" + PROBE_TRACE_ID + "-" + PROBE_SPAN_ID + "-01")).isEmpty();
-        // extra parts for version=00 are rejected per W3C spec
+        // лишние части при version=00 отклоняются согласно W3C spec
         assertThat(READER.read("00-" + PROBE_TRACE_ID + "-" + PROBE_SPAN_ID + "-01-extra")).isEmpty();
-        // flags must be exactly 2 hex chars
+        // flags должны быть ровно 2 hex-символа
         assertThat(READER.read("00-" + PROBE_TRACE_ID + "-" + PROBE_SPAN_ID + "-1")).isEmpty();
         assertThat(READER.read("00-" + PROBE_TRACE_ID + "-" + PROBE_SPAN_ID + "-001")).isEmpty();
 
-        // uppercase hex is normalised to lowercase by OTel
+        // uppercase hex нормализуется в lowercase через OTel
         Optional<RemoteSpanLink> uppercase = READER.read(
                 "00-" + PROBE_TRACE_ID.toUpperCase() + "-" + PROBE_SPAN_ID.toUpperCase() + "-01");
         assertThat(uppercase).isPresent();
         assertThat(uppercase.orElseThrow().traceId()).isEqualTo(PROBE_TRACE_ID);
         assertThat(uppercase.orElseThrow().spanId()).isEqualTo(PROBE_SPAN_ID);
 
-        // future version (not 00, not ff) with extra parts is accepted per W3C §3.3 forward-compat
+        // future version (не 00 и не ff) с лишними частями принимается согласно W3C §3.3 forward-compat
         Optional<RemoteSpanLink> futureVersionExtra = READER.read(
                 "01-" + PROBE_TRACE_ID + "-" + PROBE_SPAN_ID + "-01-extra");
         assertThat(futureVersionExtra).isPresent();
@@ -94,7 +94,7 @@ class OtelTraceparentReaderTest {
     }
 
     // ------------------------------------------------------------------
-    // read(traceparent, tracestate) — dual-header overload (defect #2 fix)
+    // read(traceparent, tracestate) — двухзаголовочный overload (исправление дефекта #2)
     // ------------------------------------------------------------------
 
     @Test
@@ -106,7 +106,7 @@ class OtelTraceparentReaderTest {
         RemoteSpanLink link = result.orElseThrow();
         assertThat(link.traceId()).isEqualTo(TRACE_ID);
         assertThat(link.spanId()).isEqualTo(SPAN_ID);
-        // traceState must be non-null and contain vendor entries
+        // traceState должен быть непустым и содержать vendor-записи
         assertThat(link.traceState()).isNotNull();
         assertThat(link.traceState()).contains("vendor1=abc123");
         assertThat(link.traceState()).contains("vendor2=xyz789");
@@ -161,7 +161,7 @@ class OtelTraceparentReaderTest {
     }
 
     // ------------------------------------------------------------------
-    // sanitize — truncation marker
+    // sanitize — маркер усечения
     // ------------------------------------------------------------------
 
     @Test
