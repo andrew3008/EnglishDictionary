@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.core.manual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanFactory;
+import space.br1440.platform.tracing.api.manual.RpcClientSpanBuilder;
+import space.br1440.platform.tracing.api.manual.RpcServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
 import space.br1440.platform.tracing.api.semconv.RpcSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
@@ -42,9 +44,16 @@ class RpcSpanBuilderTest {
     }
 
     @Test
-    void rpcTracing_hasSemconvVersionMarker() {
-        assertThat(RpcTracing.class.isAnnotationPresent(RpcSemconvVersion.class)).isTrue();
-        assertThat(RpcTracing.class.getAnnotation(RpcSemconvVersion.class).value()).isEqualTo("1.28.0");
+    void rpcBuilders_haveExpectedSemconvVersionMarker() {
+        final String expected = "1.28.0";
+        assertThat(RpcClientSpanBuilder.class.getAnnotation(RpcSemconvVersion.class))
+                .isNotNull()
+                .extracting(RpcSemconvVersion::value).isEqualTo(expected);
+        assertThat(RpcServerSpanBuilder.class.getAnnotation(RpcSemconvVersion.class))
+                .isNotNull()
+                .extracting(RpcSemconvVersion::value).isEqualTo(expected);
+
+        assertThat(RpcTracing.class.getAnnotation(RpcSemconvVersion.class)).isNull();
     }
 
     @Test

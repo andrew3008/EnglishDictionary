@@ -2,6 +2,9 @@ package space.br1440.platform.tracing.core.manual;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.manual.KafkaBatchSpanBuilder;
+import space.br1440.platform.tracing.api.manual.KafkaConsumerSpanBuilder;
+import space.br1440.platform.tracing.api.manual.KafkaProducerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.KafkaTracing;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.semconv.KafkaSemconvVersion;
@@ -42,9 +45,19 @@ class KafkaSpanBuilderTest {
     }
 
     @Test
-    void kafkaTracing_hasSemconvVersionMarker() {
-        assertThat(KafkaTracing.class.isAnnotationPresent(KafkaSemconvVersion.class)).isTrue();
-        assertThat(KafkaTracing.class.getAnnotation(KafkaSemconvVersion.class).value()).isEqualTo("1.28.0");
+    void kafkaBuilders_haveExpectedSemconvVersionMarker() {
+        final String expected = "1.28.0";
+        assertThat(KafkaProducerSpanBuilder.class.getAnnotation(KafkaSemconvVersion.class))
+                .isNotNull()
+                .extracting(KafkaSemconvVersion::value).isEqualTo(expected);
+        assertThat(KafkaConsumerSpanBuilder.class.getAnnotation(KafkaSemconvVersion.class))
+                .isNotNull()
+                .extracting(KafkaSemconvVersion::value).isEqualTo(expected);
+        assertThat(KafkaBatchSpanBuilder.class.getAnnotation(KafkaSemconvVersion.class))
+                .isNotNull()
+                .extracting(KafkaSemconvVersion::value).isEqualTo(expected);
+
+        assertThat(KafkaTracing.class.getAnnotation(KafkaSemconvVersion.class)).isNull();
     }
 
     @Test

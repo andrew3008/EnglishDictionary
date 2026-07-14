@@ -2,8 +2,11 @@ package space.br1440.platform.tracing.core.manual;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.manual.HttpClientSpanBuilder;
+import space.br1440.platform.tracing.api.manual.HttpServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.HttpTracing;
 import space.br1440.platform.tracing.api.span.SpanFactory;
+import space.br1440.platform.tracing.api.semconv.HttpSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
@@ -37,6 +40,19 @@ class HttpSpanBuilderTest {
         assertThat(http).isNotNull();
         assertThat(http.server()).isNotNull();
         assertThat(http.client()).isNotNull();
+    }
+
+    @Test
+    void httpBuilders_haveExpectedSemconvVersionMarker() {
+        final String expected = "1.28.0";
+        assertThat(HttpClientSpanBuilder.class.getAnnotation(HttpSemconvVersion.class))
+                .isNotNull()
+                .extracting(HttpSemconvVersion::value).isEqualTo(expected);
+        assertThat(HttpServerSpanBuilder.class.getAnnotation(HttpSemconvVersion.class))
+                .isNotNull()
+                .extracting(HttpSemconvVersion::value).isEqualTo(expected);
+
+        assertThat(HttpTracing.class.getAnnotation(HttpSemconvVersion.class)).isNull();
     }
 
     @Test
