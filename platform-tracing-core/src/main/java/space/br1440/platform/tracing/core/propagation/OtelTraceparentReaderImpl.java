@@ -67,6 +67,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     @Nonnull
     public RemoteSpanLink require(@Nonnull String traceparent) {
         Objects.requireNonNull(traceparent, "traceparent");
+
         String sanitized = sanitize(traceparent);
         return read(traceparent)
                 .orElseThrow(() -> new IllegalArgumentException("invalid traceparent: " + sanitized));
@@ -76,6 +77,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         if (tracestate == null || tracestate.isBlank()) {
             return Map.of(HDR_TRACEPARENT, traceparent);
         }
+
         Map<String, String> carrier = new HashMap<>(2);
         carrier.put(HDR_TRACEPARENT, traceparent);
         carrier.put(HDR_TRACESTATE, tracestate);
@@ -87,13 +89,16 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         if (traceState.isEmpty()) {
             return null;
         }
+
         StringBuilder encoded = new StringBuilder();
         traceState.forEach((key, value) -> {
             if (!encoded.isEmpty()) {
                 encoded.append(',');
             }
+
             encoded.append(key).append('=').append(value);
         });
+
         return encoded.toString();
     }
 
@@ -103,6 +108,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
         if (sanitized.length() <= MAX_LOGGED_CHARS) {
             return sanitized;
         }
+
         return sanitized.substring(0, MAX_LOGGED_CHARS) + TRUNCATED_SUFFIX;
     }
 
@@ -120,6 +126,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
             if (carrier == null) {
                 return null;
             }
+
             return carrier.get(key.toLowerCase(Locale.ROOT));
         }
     }
