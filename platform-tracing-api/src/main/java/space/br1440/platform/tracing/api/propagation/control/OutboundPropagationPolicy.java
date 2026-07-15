@@ -1,24 +1,17 @@
 package space.br1440.platform.tracing.api.propagation.control;
 
-import lombok.RequiredArgsConstructor;
-
 /**
  * Политика принятия решения об исходящей передаче платформенных заголовков на конкретный destination.
+ * <p>
+ * Реализация: {@code space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy}.
  */
-@RequiredArgsConstructor
-public final class OutboundPropagationPolicy {
+public interface OutboundPropagationPolicy {
 
-    private final boolean enabled;
-    private final TrustedDestinationMatcher trusted;
-    private final boolean propagateForceTrace;
-    private final boolean propagateQaTrace;
-    private final boolean propagateRequestId;
-
-    public OutboundPropagationDecision decide(String destination) {
-        if (!enabled || trusted == null || !trusted.isTrusted(destination)) {
-            return OutboundPropagationDecision.DENY_ALL;
-        }
-
-        return new OutboundPropagationDecision(propagateForceTrace, propagateQaTrace, propagateRequestId);
-    }
+    /**
+     * Принимает решение о распространении платформенных заголовков для указанного destination.
+     *
+     * @param destination HTTP-хост или Kafka-топик
+     * @return решение о распространении; никогда не {@code null}
+     */
+    OutboundPropagationDecision decide(String destination);
 }
