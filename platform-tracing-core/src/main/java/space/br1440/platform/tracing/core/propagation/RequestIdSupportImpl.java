@@ -7,13 +7,21 @@ import java.util.UUID;
 
 /**
  * Реализация {@link RequestIdSupport} без аллокаций на hot path.
- * Расположена в core, доступна только через {@link space.br1440.platform.tracing.api.propagation.RequestIdSupports#get()}.
+ * Расположена в core; прикладной код использует {@link space.br1440.platform.tracing.api.propagation.RequestIdSupports#get()},
+ * а не прямой {@code new}.
  * <p>
  * Обнаруживается через {@link java.util.ServiceLoader} SPI (регистрация в {@code META-INF/services}).
  */
 public final class RequestIdSupportImpl implements RequestIdSupport {
 
-    RequestIdSupportImpl() {
+    /**
+     * Публичный конструктор для {@link java.util.ServiceLoader}.
+     * <p>
+     * На classpath ({@code META-INF/services}) {@code ServiceLoader} требует публичный
+     * no-arg конструктор — static {@code provider()} распознаётся только в явных
+     * именованных модулях.
+     */
+    public RequestIdSupportImpl() {
     }
 
     @Override
