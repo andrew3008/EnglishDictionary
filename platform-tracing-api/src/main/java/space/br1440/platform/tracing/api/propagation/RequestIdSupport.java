@@ -1,47 +1,35 @@
 package space.br1440.platform.tracing.api.propagation;
 
-import lombok.experimental.UtilityClass;
-
-import java.util.UUID;
+import jakarta.annotation.Nullable;
 
 /**
- * Валидация и генерация correlation id ({@code X-Request-Id}).
+ * Контракт валидации и генерации correlation id ({@code X-Request-Id}).
  * <p>
- * Реализация {@link #sanitizeOrNull(String)} — zero-allocation на hot path
- * (ручной char-цикл вместо {@code Pattern.matcher()}), что уменьшает нагрузку на CPU при потоке мусорных заголовков.
+ * Единственная каноническая реализация — {@code RequestIdSupportImpl} в модуле
+ * {@code platform-tracing-core}. Разрешение через {@link RequestIdSupports} и
+ * {@link java.util.ServiceLoader} SPI.
  */
-@UtilityClass
-public final class RequestIdSupport {
+public interface RequestIdSupport {
 
-    /** Максимально допустимая длина correlation id. Превышение трактуется как аномалия -> reject. */
-    public static final int MAX_LENGTH = 128;
+    /** Максимально допустимая длина correlation id. Превышение трактуется как аномалия → reject. */
+    int MAX_LENGTH = 128;
 
-    public static String resolve(String incoming) {
-        String sanitized = sanitizeOrNull(incoming);
-        return (sanitized != null) ? sanitized : UUID.randomUUID().toString();
-    }
+    /**
+     * Валидирует входящий correlation id или генерирует новый UUIDv4 при отсутствии/невалидности.
+     *
+     * @param incoming сырое значение заголовка; допускается {@code null}
+     * @return валидный correlation id (входящий или сгенерированный)
+     */
+    String resolve(@Nullable String incoming);
 
-    public static String sanitizeOrNull(String raw) {
-        if (raw == null) {
-            return null;
-        }
-
-        String t = raw.trim();
-        if (t.isEmpty() || (t.length() > MAX_LENGTH)) {
-            return null;
-        }
-
-        for (int i = 0; i < t.length(); i++) {
-            char c = t.charAt(i);
-            boolean ok = (c >= 'a' && c <= 'z')
-                    || (c >= 'A' && c <= 'Z')
-                    || (c >= '0' && c <= '9')
-                    || c == '_' || c == '-';
-            if (!ok) {
-                return null;
-            }
-        }
-
-        return t;
-    }
+    /**
+     * Санитизирует входящий correlation id: trim, allowlist {@code [A-Za-z0-9_-]}, лимит {@link #MAX_LENGTH}.
+     * <p>
+     * Реализация — zero-allocation на hot path (ручной char-цикл вместо {@code Pattern.matcher()}).
+     *
+     * @param raw сырое значение заголовка; допускается {@code null}
+     * @return санитизированное значение или {@code null}, если вход невалиден
+     */
+    @Nullable
+    String sanitizeOrNull(@Nullable String raw);
 }

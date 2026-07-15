@@ -29,4 +29,8 @@ class RuntimeStateArchTest {
     @ArchTest
     static final ArchRule otelTraceparentReaderAccessRestricted =
             ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED;
+
+    @ArchTest
+    static final ArchRule requestIdSupportImplAccessRestricted =
+            ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED;
 }

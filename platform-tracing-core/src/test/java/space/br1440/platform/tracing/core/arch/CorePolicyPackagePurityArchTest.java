@@ -72,6 +72,10 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED;
 
     @ArchTest
+    static final ArchRule requestIdSupportImplAccessRestricted =
+            ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED;
+
+    @ArchTest
     static final ArchRule rootPackageMustBeEmpty =
             noClasses()
                     .should().resideInAPackage("space.br1440.platform.tracing.core")
