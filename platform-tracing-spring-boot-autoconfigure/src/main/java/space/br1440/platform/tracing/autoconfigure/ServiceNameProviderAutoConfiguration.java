@@ -63,6 +63,10 @@ public class ServiceNameProviderAutoConfiguration {
      * <p>
      * Потребители платформы могут расширить цепочку, зарегистрировав бин
      * {@code RemoteServiceNameSource} — он будет подхвачен автоматически.
+     * <p>
+     * <b>Ограничение:</b> список contributors фиксируется при старте контекста
+     * ({@code contributors.orderedStream().toList()}); runtime-расширение через
+     * {@code @RefreshScope} или динамическую регистрацию бинов не поддерживается.
      */
     @Bean
     @ConditionalOnMissingBean(PlatformRemoteServiceNameProvider.class)

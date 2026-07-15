@@ -8,6 +8,7 @@
 ### Breaking Changes
 
 - `TraceparentParser` has been deleted. Builder `fromTraceparent(String...)` signatures are unchanged and now use the OTel-backed bridge internally. No alias or deprecated bridge is provided.
+- `PlatformRemoteServiceNameProvider()` no-arg constructor removed (PR-2). Use the Spring bean from `ServiceNameProviderAutoConfiguration` or construct with `RemoteServiceNameResolver` in tests (package-private constructor).
 - `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.
 - `TraceOperations.manual()` renamed to `TraceOperations.spans()`.
 - `ManualTracing.spanFromSpec(SpanSpec)` renamed to `SpanFactory.fromSpec(SpanSpec)`.
@@ -31,6 +32,10 @@
 ### Changed (api.mdc / core.mdc.remote split — PR-1)
 
 - Deleted `api.mdc` implementation types (`RemoteServiceMdc`, `RemoteServiceTraceMirror`, `RemoteServiceContextReaders`). Added `api.mdc.RemoteServiceNameSource` SPI. Implementation in `core.mdc.remote` (`RemoteServiceMdc`, package-private `RemoteServiceTraceMirror`, `RemoteServiceNameResolver`). Removed `slf4j-api` runtime dependency from `platform-tracing-api`.
+
+### Changed (api.mdc Spring wiring — PR-2)
+
+- `PlatformRemoteServiceNameProvider` no-arg constructor removed; obtain the bean via `ServiceNameProviderAutoConfiguration` (or package-private constructor in tests). `RemoteServiceNameResolver` is built once at startup from `ObjectProvider<RemoteServiceNameSource>.orderedStream()`; runtime contributor registration is not supported. `RemoteServiceWebFluxMirrorConfigurer` inner class removed; `RemoteServiceContextPropagation.registerIfAbsent()` runs via `SmartInitializingSingleton` (`RemoteServiceContextPropagationInitializer` marker for override).
 
 ### Changed (core.runtime.versioned relocation)
 

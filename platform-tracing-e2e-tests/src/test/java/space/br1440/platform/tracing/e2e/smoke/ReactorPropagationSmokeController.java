@@ -38,9 +38,10 @@ class ReactorPropagationSmokeController {
         return Mono.just(callerTraceId)
                 .publishOn(Schedulers.parallel())
                 .map(id -> {
+                    String workerTraceId = currentTraceId();
                     String workerRemoteService = remoteServiceNameProvider.get().orElse(null);
                     String workerThread = Thread.currentThread().getName();
-                    return id + '|' + currentTraceId() + '|' + workerRemoteService + '|' + workerThread;
+                    return id + '|' + workerTraceId + '|' + workerRemoteService + '|' + workerThread;
                 })
                 .doOnSuccess(ignored -> servedLatch.countDown());
     }

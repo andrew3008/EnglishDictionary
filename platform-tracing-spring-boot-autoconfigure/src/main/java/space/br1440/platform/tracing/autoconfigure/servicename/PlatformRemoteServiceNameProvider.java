@@ -19,8 +19,8 @@ import java.util.function.Supplier;
  * Запись MDC выполняется {@link space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc}
  * из {@code EnrichingSpanProcessor} при завершении ERROR'ного CLIENT-span'а.
  * <p>
- * Бин создаётся через {@code ServiceNameProviderAutoConfiguration} с resolver'ом,
- * собранным из всех {@code RemoteServiceNameSource} beans в контексте через {@code ObjectProvider}.
+ * Бин создаётся через {@link space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration};
+ * прямое создание экземпляра вне тестов не поддерживается.
  * <p>
  * <b>Контракт §37 (non-blocking):</b> метод {@link #get()} никогда не выбрасывает исключений
  * и не выполняет блокирующих операций.

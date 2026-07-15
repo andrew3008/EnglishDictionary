@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -43,7 +42,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
  * MDC-ключ {@link space.br1440.platform.tracing.api.mdc.TracingMdcKeys#REMOTE_SERVICE} регистрируется
  * в Micrometer {@link io.micrometer.context.ContextRegistry} через
  * {@link RemoteServiceContextPropagation#registerIfAbsent()} в методе
- * {@link #platformTracingContextPropagationStartupRunner()}.
+ * {@link #platformTracingContextPropagationEagerInit()}.
  */
 @AutoConfiguration
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
@@ -99,14 +98,20 @@ public class ReactiveTracingAutoConfiguration {
     }
 
     /**
-     * Регистрирует {@link RemoteServiceContextPropagation#registerIfAbsent()} в момент
-     * старта контекста — без отдельного inner-класса-конфигуратора.
+     * Eager-init регистрации {@link RemoteServiceContextPropagation#registerIfAbsent()}.
+     * <p>
+     * Вызывается через {@link org.springframework.beans.factory.SmartInitializingSingleton} после
+     * инициализации всех singleton-бинов, но до {@code ContextRefreshedEvent} — раньше, чем
+     * {@link org.springframework.boot.ApplicationRunner}.
      * <p>
      * Идемпотентен: повторная регистрация одного и того же {@code ThreadLocalAccessor} безопасна.
+     * Потребитель может подменить, зарегистрировав собственный бин
+     * {@link RemoteServiceContextPropagationInitializer}.
      */
     @Bean
-    public ApplicationRunner platformTracingContextPropagationStartupRunner() {
-        return args -> RemoteServiceContextPropagation.registerIfAbsent();
+    @ConditionalOnMissingBean(RemoteServiceContextPropagationInitializer.class)
+    public RemoteServiceContextPropagationInitializer platformTracingContextPropagationEagerInit() {
+        return RemoteServiceContextPropagation::registerIfAbsent;
     }
 
     // --- Outbound propagation платформенных заголовков (WebClient) ---

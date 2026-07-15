@@ -72,6 +72,12 @@ class PlatformRemoteServiceNameProviderTest {
         }
     }
 
+    /**
+     * Без активного Span: safeCurrentTraceId() → null → resolve() без mirror-fallback.
+     * <p>
+     * MDC и contributors пусты — {@code isEmpty()} верно при любом пути; тест фиксирует
+     * отсутствие NPE/падений (fail-soft §37), а не различие resolve() vs resolve(traceId).
+     */
     @Test
     void без_активного_span_mirror_не_читается() {
         RemoteServiceMdc.putIfPresent("upstream-from-mirror", TRACE_ID);
