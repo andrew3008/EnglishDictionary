@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -73,7 +74,7 @@ class InboundTraceControlPropagatorTest {
     @DisplayName("inject без decision ничего не пишет (secure-by-default)")
     void injectWithoutDecisionWritesNothing() {
         Context ctx = Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL,
-                InboundTraceControl.fromHeaders("on", null, "req-1"));
+                InboundTraceControls.of(true, false, "req-1"));
         Map<String, String> carrier = new HashMap<>();
 
         propagator.inject(ctx, carrier, MAP_SETTER);
@@ -85,7 +86,7 @@ class InboundTraceControlPropagatorTest {
     @DisplayName("inject с ALLOW_ALL пишет платформенные заголовки")
     void injectWithDecisionWrites() {
         Context ctx = Context.root()
-                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControl.fromHeaders("on", null, "req-1"))
+                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControls.of(true, false, "req-1"))
                 .with(PlatformTraceContextKeys.PROPAGATION_DECISION, OutboundPropagationDecision.ALLOW_ALL);
         Map<String, String> carrier = new HashMap<>();
 
@@ -111,7 +112,7 @@ class InboundTraceControlPropagatorTest {
         assertThat(gate.getGatedExtracts()).isEqualTo(1);
 
         Context ctx = Context.root()
-                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControl.fromHeaders("on", null, "req-1"))
+                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControls.of(true, false, "req-1"))
                 .with(PlatformTraceContextKeys.PROPAGATION_DECISION, OutboundPropagationDecision.ALLOW_ALL);
         Map<String, String> outbound = new HashMap<>();
         gated.inject(ctx, outbound, MAP_SETTER);

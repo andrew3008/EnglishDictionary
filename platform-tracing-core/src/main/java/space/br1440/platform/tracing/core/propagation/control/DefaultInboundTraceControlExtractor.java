@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.core.propagation.control;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.RequestIdSupports;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
@@ -14,7 +16,11 @@ public final class DefaultInboundTraceControlExtractor implements InboundTraceCo
     }
 
     @Override
-    public InboundTraceControl fromHeaders(String traceOn, String qaTrace, String requestId) {
+    @Nonnull
+    public InboundTraceControl fromHeaders(
+            @Nullable String traceOn,
+            @Nullable String qaTrace,
+            @Nullable String requestId) {
         boolean isForceTrace = "on".equalsIgnoreCase(traceOn);
         boolean isQaTrace = (qaTrace != null) && !qaTrace.isBlank();
 

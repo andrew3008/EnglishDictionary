@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.extension.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.extension.factory.PlatformSamplerFactory;
@@ -107,7 +108,7 @@ class PlatformSamplerProviderTest {
                 config(Map.of("platform.tracing.sampling.ratio", "0")));
         Context forceContext = Context.root().with(
                 PlatformTraceContextKeys.TRACE_CONTROL,
-                InboundTraceControl.fromHeaders("on", null, null));
+                new DefaultInboundTraceControlExtractor().fromHeaders("on", null, null));
 
         var result = sampler.shouldSample(
                 forceContext, "00000000000000000000000000000001", "GET", SpanKind.SERVER,

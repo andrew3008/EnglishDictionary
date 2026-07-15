@@ -32,9 +32,28 @@ class DefaultInboundTraceControlExtractorTest {
     }
 
     @Test
+    @DisplayName("force + qa одновременно -> FORCE_HEADER имеет приоритет над QA_TRACE")
+    void forceTracePriorityOverQaTrace() {
+        InboundTraceControl control = extractor.fromHeaders("on", "1", null);
+        assertThat(control.forceTrace()).isTrue();
+        assertThat(control.qaTrace()).isTrue();
+        assertThat(control.samplingReason()).isEqualTo(PlatformSamplingReasons.FORCE_HEADER);
+    }
+
+    @Test
     @DisplayName("invalid request id -> null requestId")
     void invalidRequestIdRejected() {
         InboundTraceControl control = extractor.fromHeaders(null, null, "bad\r\nid");
         assertThat(control.requestId()).isNull();
+    }
+
+    @Test
+    @DisplayName("все null -> пустой контроль без reason")
+    void allNullHeaders() {
+        InboundTraceControl control = extractor.fromHeaders(null, null, null);
+        assertThat(control.forceTrace()).isFalse();
+        assertThat(control.qaTrace()).isFalse();
+        assertThat(control.requestId()).isNull();
+        assertThat(control.samplingReason()).isNull();
     }
 }

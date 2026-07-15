@@ -7,7 +7,7 @@ import java.util.ServiceLoader;
 /**
  * Единая точка разрешения {@link RequestIdSupport} через {@link ServiceLoader} SPI.
  * <p>
- * Call-site'ы ({@code InboundTraceControl.fromHeaders}, response-header filters и др.)
+ * Call-site'ы ({@code InboundTraceControlExtractor}, response-header filters и др.)
  * получают реализацию ({@code RequestIdSupportImpl} из {@code platform-tracing-core})
  * через {@code META-INF/services}, не завися от конкретного класса напрямую.
  * <p>
