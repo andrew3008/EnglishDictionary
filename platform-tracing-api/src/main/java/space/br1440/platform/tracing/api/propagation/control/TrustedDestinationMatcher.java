@@ -15,7 +15,7 @@ public interface TrustedDestinationMatcher {
      * Для Kafka-режима: {@code destination} — имя топика.
      *
      * @param destination hostname или имя топика; {@code null} безопасен — всегда возвращает {@code false}
-     * @return {@code true} если destination входит в allowlist и должен получить платформенные заголовки
+     * @return {@code true} если destination входит в allowlist
      */
     boolean isTrusted(String destination);
 }

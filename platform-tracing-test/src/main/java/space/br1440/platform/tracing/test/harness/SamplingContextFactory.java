@@ -5,8 +5,9 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 
 import java.util.Locale;
 
@@ -28,21 +29,21 @@ public final class SamplingContextFactory {
     public static Context withForceHeader(String rawForceValue) {
         boolean force = rawForceValue != null
                 && "on".equalsIgnoreCase(rawForceValue.trim());
-        InboundTraceControl control = new InboundTraceControl(
+        InboundTraceControl control = InboundTraceControls.of(
                 force,
                 false,
                 null,
-                force ? "x_trace_on" : null,
+                force ? PlatformSamplingReasons.FORCE_HEADER : null,
                 rawForceValue);
         return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }
 
     public static Context withQaTrace() {
-        InboundTraceControl control = new InboundTraceControl(
+        InboundTraceControl control = InboundTraceControls.of(
                 false,
                 true,
                 null,
-                "qa_trace",
+                PlatformSamplingReasons.QA_TRACE,
                 null);
         return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }
@@ -50,11 +51,11 @@ public final class SamplingContextFactory {
     public static Context withForceAndQa(String rawForceValue) {
         boolean force = rawForceValue != null
                 && "on".equalsIgnoreCase(rawForceValue.trim());
-        InboundTraceControl control = new InboundTraceControl(
+        InboundTraceControl control = InboundTraceControls.of(
                 force,
                 true,
                 null,
-                force ? "x_trace_on" : "qa_trace",
+                force ? PlatformSamplingReasons.FORCE_HEADER : PlatformSamplingReasons.QA_TRACE,
                 rawForceValue);
         return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }
