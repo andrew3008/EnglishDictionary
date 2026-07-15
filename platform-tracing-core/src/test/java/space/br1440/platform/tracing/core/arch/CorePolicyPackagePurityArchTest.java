@@ -76,6 +76,14 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED;
 
     @ArchTest
+    static final ArchRule controlImplsOnlyInCore =
+            ModuleTaxonomyArchRules.CONTROL_IMPLS_ONLY_IN_CORE;
+
+    @ArchTest
+    static final ArchRule controlImplAccessRestricted =
+            ModuleTaxonomyArchRules.CONTROL_IMPL_ACCESS_RESTRICTED;
+
+    @ArchTest
     static final ArchRule rootPackageMustBeEmpty =
             noClasses()
                     .should().resideInAPackage("space.br1440.platform.tracing.core")

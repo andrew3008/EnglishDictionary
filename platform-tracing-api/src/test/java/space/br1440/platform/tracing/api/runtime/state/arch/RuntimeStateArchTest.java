@@ -33,4 +33,8 @@ class RuntimeStateArchTest {
     @ArchTest
     static final ArchRule requestIdSupportImplAccessRestricted =
             ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED;
+
+    @ArchTest
+    static final ArchRule apiPropagationControlNoConcreteImpl =
+            ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL;
 }

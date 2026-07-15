@@ -93,6 +93,9 @@ class TracingArchRulesTest {
         ModuleTaxonomyArchRules.API_PROPAGATION_HAS_NO_PUBLIC_PARSERS.check(classes);
         ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED.check(classes);
         ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED.check(classes);
+        ModuleTaxonomyArchRules.CONTROL_IMPLS_ONLY_IN_CORE.check(classes);
+        ModuleTaxonomyArchRules.CONTROL_IMPL_ACCESS_RESTRICTED.check(classes);
+        ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL.check(classes);
 
         assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.propagation." + "Traceparent" + "Parser"))
                 .isFalse();

@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.test.arch;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
-import lombok.experimental.UtilityClass;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -18,8 +17,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *
  * @see docs/architecture/platform-tracing-module-taxonomy.md
  */
-@UtilityClass
 public final class ModuleTaxonomyArchRules {
+
+    private ModuleTaxonomyArchRules() {
+    }
 
     /**
      * Парсинг traceparent делегирован OTel-backed bridge;
@@ -266,6 +267,54 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("core.semconv.policy допускает только io.opentelemetry.api.common");
 
+    // -- PR-3: api.propagation.control / core.propagation.control guardrails -----------------------
+
+    /**
+     * Реализации control-интерфейсов propagation живут только в {@code core.propagation.control}.
+     * <p>
+     * Исключены анонимные и вложенные классы (inline test doubles), а также тестовые пакеты.
+     */
+    public static final ArchRule CONTROL_IMPLS_ONLY_IN_CORE = classes()
+            .that().implement("space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy")
+            .or().implement("space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher")
+            .or().implement("space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector")
+            .or().implement("space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor")
+            .and().areNotAnonymousClasses()
+            .and().areNotMemberClasses()
+            .and().resideOutsideOfPackage("..test..")
+            .and().haveSimpleNameNotEndingWith("Test")
+            .should().resideInAPackage("..core.propagation.control..")
+            .allowEmptyShould(true)
+            .because("реализации OutboundPropagationPolicy / TrustedDestinationMatcher / "
+                    + "TraceControlHeaderInjector / InboundTraceControlExtractor — только в core.propagation.control");
+
+    /**
+     * {@code TrustedDestinationMatchers} — public factory для wiring; не для starter'ов и бизнес-модулей.
+     */
+    public static final ArchRule CONTROL_IMPL_ACCESS_RESTRICTED = classes()
+            .that().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers")
+            .should().onlyHaveDependentClassesThat(allowedTrustedDestinationMatchersDependent())
+            .allowEmptyShould(true)
+            .because("TrustedDestinationMatchers — wiring factory; допустима только из core, autoconfigure, "
+                    + "otel.extension и test");
+
+    /**
+     * Запрет возврата concrete impl в {@code api.propagation.control} (откат PR-1/PR-2).
+     * <p>
+     * Допускаются: interfaces, records, enums и {@code *Keys} utility-классы
+     * (например, {@code PlatformTraceContextKeys}).
+     */
+    public static final ArchRule API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL = noClasses()
+            .that().resideInAPackage("..api.propagation.control..")
+            .and().areNotInterfaces()
+            .and().areNotRecords()
+            .and().areNotEnums()
+            .and().haveSimpleNameNotContaining("Keys")
+            .should().beInterfaces()
+            .allowEmptyShould(true)
+            .because("api.propagation.control — только интерфейсы, records, enums и *Keys utility-классы");
+
     private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
         return new DescribedPredicate<>("быть разрешённым зависимым от OtelTraceparentReaderImpl") {
             @Override
@@ -284,6 +333,20 @@ public final class ModuleTaxonomyArchRules {
             public boolean test(JavaClass input) {
                 String name = input.getName();
                 return name.startsWith("space.br1440.platform.tracing.core.propagation.")
+                        || name.contains(".test.")
+                        || name.endsWith("Test");
+            }
+        };
+    }
+
+    private static DescribedPredicate<JavaClass> allowedTrustedDestinationMatchersDependent() {
+        return new DescribedPredicate<>("быть разрешённым зависимым от TrustedDestinationMatchers") {
+            @Override
+            public boolean test(JavaClass input) {
+                String name = input.getName();
+                return name.startsWith("space.br1440.platform.tracing.core.")
+                        || name.startsWith("space.br1440.platform.tracing.autoconfigure.")
+                        || name.startsWith("space.br1440.platform.tracing.otel.extension.")
                         || name.contains(".test.")
                         || name.endsWith("Test");
             }
