@@ -39,14 +39,16 @@ public final class PlatformRemoteServiceNameProvider implements Supplier<Optiona
 
     @Override
     public Optional<String> get() {
+        String traceId = safeCurrentTraceId();
+        return (traceId != null) ? resolver.resolve(traceId) : resolver.resolve();
+    }
+
+    private static String safeCurrentTraceId() {
         try {
             var spanContext = Span.current().getSpanContext();
-            if (spanContext.isValid()) {
-                return resolver.resolve(spanContext.getTraceId());
-            }
+            return spanContext.isValid() ? spanContext.getTraceId() : null;
         } catch (RuntimeException ignored) {
-            // fail-soft §37
+            return null;
         }
-        return resolver.resolve();
     }
 }
