@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.core.propagation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.RequestIdSupport;
+import space.br1440.platform.tracing.api.propagation.RequestIdSupports;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("RequestIdSupportImpl: edge-stable correlation id (validate + reject-and-regenerate)")
 class RequestIdSupportImplTest {
 
-    private static final RequestIdSupport SUPPORT = new RequestIdSupportImpl();
+    private static final RequestIdSupport SUPPORT = RequestIdSupports.get();
 
     @Test
     @DisplayName("отсутствующий входящий -> генерируется валидный UUIDv4")

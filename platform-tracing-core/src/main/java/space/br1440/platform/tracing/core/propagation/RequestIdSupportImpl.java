@@ -13,11 +13,7 @@ import java.util.UUID;
  */
 public final class RequestIdSupportImpl implements RequestIdSupport {
 
-    /**
-     * Публичный конструктор для {@link java.util.ServiceLoader}.
-     * Прямое использование вне SPI запрещено контрактом {@code RequestIdSupports.get()}.
-     */
-    public RequestIdSupportImpl() {
+    RequestIdSupportImpl() {
     }
 
     @Override
