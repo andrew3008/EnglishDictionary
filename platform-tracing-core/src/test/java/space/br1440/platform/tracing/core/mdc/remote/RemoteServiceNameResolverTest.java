@@ -1,9 +1,5 @@
 package space.br1440.platform.tracing.core.mdc.remote;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
-import io.opentelemetry.api.trace.TraceFlags;
-import io.opentelemetry.api.trace.TraceState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -51,13 +47,17 @@ class RemoteServiceNameResolverTest {
     void mirror_fallback_когда_MDC_и_contributors_пусты() {
         RemoteServiceMdc.putIfPresent("upstream-from-mirror", TRACE_ID);
 
-        Span span = Span.wrap(SpanContext.create(
-                TRACE_ID, "b7ad6b7169203331", TraceFlags.getSampled(), TraceState.getDefault()));
         RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(List.of());
 
-        try (var scope = span.makeCurrent()) {
-            assertThat(resolver.resolve()).contains("upstream-from-mirror");
-        }
+        assertThat(resolver.resolve(TRACE_ID)).contains("upstream-from-mirror");
+    }
+
+    @Test
+    void resolve_без_traceId_не_смотрит_в_mirror() {
+        RemoteServiceMdc.putIfPresent("upstream-from-mirror", TRACE_ID);
+        MDC.remove(TracingMdcKeys.REMOTE_SERVICE);
+
+        assertThat(new RemoteServiceNameResolver(List.of()).resolve()).isEmpty();
     }
 
     @Test

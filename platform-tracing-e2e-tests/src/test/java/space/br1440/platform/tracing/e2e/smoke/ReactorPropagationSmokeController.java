@@ -19,6 +19,8 @@ class ReactorPropagationSmokeController {
     private static final String E2E_REMOTE_SERVICE = "upstream-e2e-g205";
 
     private final CountDownLatch servedLatch;
+    // TODO(PR-2): replace with injected RemoteServiceNameResolver bean from Spring context
+    private final RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(java.util.List.of());
 
     ReactorPropagationSmokeController(CountDownLatch servedLatch) {
         this.servedLatch = servedLatch;
@@ -36,9 +38,7 @@ class ReactorPropagationSmokeController {
                 .publishOn(Schedulers.parallel())
                 .map(id -> {
                     String workerTraceId = currentTraceId();
-                    String workerRemoteService = new RemoteServiceNameResolver(java.util.List.of())
-                            .resolve()
-                            .orElse(null);
+                    String workerRemoteService = resolver.resolve(workerTraceId).orElse(null);
                     String workerThread = Thread.currentThread().getName();
                     return id + '|' + workerTraceId + '|' + workerRemoteService + '|' + workerThread;
                 })

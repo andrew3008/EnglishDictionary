@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.api.mdc;
 
+import jakarta.annotation.Nonnull;
+
 import java.util.Optional;
 
 /**
@@ -11,5 +13,9 @@ import java.util.Optional;
 @FunctionalInterface
 public interface RemoteServiceNameSource {
 
+    /**
+     * @return непустое имя сервиса или {@link Optional#empty()}; never {@code null}
+     */
+    @Nonnull
     Optional<String> resolve();
 }

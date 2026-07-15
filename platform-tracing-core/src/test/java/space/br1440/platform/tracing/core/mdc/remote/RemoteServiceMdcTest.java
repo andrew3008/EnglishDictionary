@@ -48,6 +48,6 @@ class RemoteServiceMdcTest {
         RemoteServiceMdc.clearForTrace(TRACE_ID);
 
         assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isNull();
-        assertThat(new RemoteServiceNameResolver(java.util.List.of()).resolve()).isEmpty();
+        assertThat(new RemoteServiceNameResolver(java.util.List.of()).resolve(TRACE_ID)).isEmpty();
     }
 }

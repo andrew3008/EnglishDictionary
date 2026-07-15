@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.servicename;
 
+import io.opentelemetry.api.trace.Span;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
 
 import java.util.List;
@@ -38,6 +39,14 @@ public final class PlatformRemoteServiceNameProvider implements Supplier<Optiona
 
     @Override
     public Optional<String> get() {
+        try {
+            var spanContext = Span.current().getSpanContext();
+            if (spanContext.isValid()) {
+                return resolver.resolve(spanContext.getTraceId());
+            }
+        } catch (RuntimeException ignored) {
+            // fail-soft §37
+        }
         return resolver.resolve();
     }
 }

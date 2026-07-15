@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.core.mdc.remote;
 
-import io.opentelemetry.api.trace.Span;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
@@ -9,7 +8,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Read-chain для {@link TracingMdcKeys#REMOTE_SERVICE}: MDC → contributed sources → built-in mirror fallback.
+ * Read-chain для {@link TracingMdcKeys#REMOTE_SERVICE}: MDC → contributed sources → (опционально) built-in mirror fallback.
+ * <p>
+ * {@link #resolve()} — Servlet и синхронные контексты: только MDC и contributed sources.
+ * {@link #resolve(String)} — WebFlux и прочие случаи, когда traceId известен явно: добавляет mirror-fallback.
  */
 public final class RemoteServiceNameResolver {
 
@@ -20,6 +22,15 @@ public final class RemoteServiceNameResolver {
     }
 
     public Optional<String> resolve() {
+        return resolveFromMdcAndSources();
+    }
+
+    public Optional<String> resolve(String traceId) {
+        return resolveFromMdcAndSources()
+                .or(() -> RemoteServiceTraceMirror.get(traceId));
+    }
+
+    private Optional<String> resolveFromMdcAndSources() {
         try {
             String fromMdc = MDC.get(TracingMdcKeys.REMOTE_SERVICE);
             if (fromMdc != null && !fromMdc.isBlank()) {
@@ -40,11 +51,6 @@ public final class RemoteServiceNameResolver {
             }
         }
 
-        try {
-            String traceId = Span.current().getSpanContext().getTraceId();
-            return RemoteServiceTraceMirror.get(traceId);
-        } catch (RuntimeException ignored) {
-            return Optional.empty();
-        }
+        return Optional.empty();
     }
 }
