@@ -1,47 +1,39 @@
 package space.br1440.platform.tracing.api.propagation;
 
-import lombok.experimental.UtilityClass;
-
-import java.util.UUID;
+import jakarta.annotation.Nullable;
 
 /**
- * Валидация и генерация correlation id ({@code X-Request-Id}).
+ * Контракт валидации и генерации correlation id ({@code X-Request-Id}).
  * <p>
- * Реализация {@link #sanitizeOrNull(String)} — zero-allocation на hot path
- * (ручной char-цикл вместо {@code Pattern.matcher()}), что уменьшает нагрузку на CPU при потоке мусорных заголовков.
+ * Единственная каноническая реализация — {@code RequestIdSupportImpl} в модуле
+ * {@code platform-tracing-core}. Получить экземпляр следует через
+ * {@link RequestIdSupports#get()}, а не через прямое обращение к impl-классу.
+ * <p>
+ * Прикладной код не должен реализовывать этот интерфейс.
  */
-@UtilityClass
-public final class RequestIdSupport {
+public interface RequestIdSupport {
 
-    /** Максимально допустимая длина correlation id. Превышение трактуется как аномалия -> reject. */
-    public static final int MAX_LENGTH = 128;
+    /**
+     * Максимально допустимая длина correlation id.
+     * Превышение трактуется как аномалия и ведёт к reject (возврат {@code null} из {@link #sanitizeOrNull}).
+     */
+    int MAX_LENGTH = 128;
 
-    public static String resolve(String incoming) {
-        String sanitized = sanitizeOrNull(incoming);
-        return (sanitized != null) ? sanitized : UUID.randomUUID().toString();
-    }
+    /**
+     * Валидирует и нормализует входящий correlation id.
+     * Допустимый алфавит: {@code [A-Za-z0-9_-]}, длина от 1 до {@value #MAX_LENGTH}.
+     *
+     * @param raw входящее значение заголовка; допускается {@code null}
+     * @return trimmed id, если значение валидно; {@code null} иначе
+     */
+    @Nullable
+    String sanitizeOrNull(@Nullable String raw);
 
-    public static String sanitizeOrNull(String raw) {
-        if (raw == null) {
-            return null;
-        }
-
-        String t = raw.trim();
-        if (t.isEmpty() || (t.length() > MAX_LENGTH)) {
-            return null;
-        }
-
-        for (int i = 0; i < t.length(); i++) {
-            char c = t.charAt(i);
-            boolean ok = (c >= 'a' && c <= 'z')
-                    || (c >= 'A' && c <= 'Z')
-                    || (c >= '0' && c <= '9')
-                    || c == '_' || c == '-';
-            if (!ok) {
-                return null;
-            }
-        }
-
-        return t;
-    }
+    /**
+     * Возвращает валидный correlation id: санированный входящий, либо свежий UUIDv4.
+     *
+     * @param incoming входящее значение заголовка; допускается {@code null}
+     * @return непустая строка, пригодная как {@code X-Request-Id}
+     */
+    String resolve(@Nullable String incoming);
 }

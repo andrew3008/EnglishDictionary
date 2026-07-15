@@ -45,6 +45,18 @@ public final class ModuleTaxonomyArchRules {
             .because("OtelTraceparentReaderImpl — внутренний bridge в core, а не extension API");
 
     /**
+     * {@code RequestIdSupportImpl} живёт в core и не является extension API.
+     * Допустимые зависимые: {@code core.propagation.*}, SPI-holder {@code RequestIdSupports},
+     * autoconfigure-фильтры и тесты. Прямое использование в прикладном коде запрещено.
+     */
+    public static final ArchRule REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED = classes()
+            .that().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.core.propagation.RequestIdSupportImpl")
+            .should().onlyHaveDependentClassesThat(allowedRequestIdSupportImplDependent())
+            .allowEmptyShould(true)
+            .because("RequestIdSupportImpl — внутренний bridge в core; доступ разрешён только через RequestIdSupports.get()");
+
+    /**
      * Autoconfigure приложения не должен зависеть от реализации agent-extension.
      * <p>
      * Agent extension загружается в ExtensionClassLoader; App CL не должен импортировать
@@ -255,8 +267,24 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("core.semconv.policy допускает только io.opentelemetry.api.common");
 
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
     private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
         return new DescribedPredicate<>("быть разрешённым зависимым от OtelTraceparentReaderImpl") {
+            @Override
+            public boolean test(JavaClass input) {
+                String name = input.getName();
+                return name.startsWith("space.br1440.platform.tracing.core.propagation.")
+                        || name.contains(".test.")
+                        || name.endsWith("Test");
+            }
+        };
+    }
+
+    private static DescribedPredicate<JavaClass> allowedRequestIdSupportImplDependent() {
+        return new DescribedPredicate<>("быть разрешённым зависимым от RequestIdSupportImpl") {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
