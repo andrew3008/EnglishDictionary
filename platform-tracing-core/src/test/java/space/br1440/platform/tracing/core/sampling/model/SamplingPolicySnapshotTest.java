@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.core.sampling.model;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.runtime.state.VersionedState;
+import space.br1440.platform.tracing.core.runtime.versioned.VersionedState;
 import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties;
 import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicySnapshotFactory;
 

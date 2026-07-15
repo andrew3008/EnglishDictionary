@@ -36,8 +36,8 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.SAMPLING_PROPERTIES_DEPENDS_ONLY_ON_MODEL;
 
     @ArchTest
-    static final ArchRule samplingModelNotDependOnRuntimeState =
-            ModuleTaxonomyArchRules.SAMPLING_MODEL_NOT_DEPEND_ON_RUNTIME_STATE;
+    static final ArchRule samplingModelNotDependOnVersionedState =
+            ModuleTaxonomyArchRules.SAMPLING_MODEL_NOT_DEPEND_ON_VERSIONED_STATE;
 
     @ArchTest
     static final ArchRule samplingPolicyNoEngineOrConfig =
@@ -78,7 +78,7 @@ class CorePolicyPackagePurityArchTest {
     // PR-3 propagation.control guardrails (core-classpath scope).
     // API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL намеренно НЕ здесь: правило проверяет
     // ..api.propagation.control.. и зарегистрировано в platform-tracing-api
-    // (RuntimeStateArchTest), т.к. @AnalyzeClasses этого теста импортирует только core.
+    // (ApiModuleTaxonomyArchTest), т.к. @AnalyzeClasses этого теста импортирует только core.
     @ArchTest
     static final ArchRule controlImplsOnlyInCore =
             ModuleTaxonomyArchRules.CONTROL_IMPLS_ONLY_IN_CORE;

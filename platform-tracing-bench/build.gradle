@@ -38,6 +38,7 @@ dependencies {
     // Контракт-тесты Фазы 17: performance-budgets.yaml (governance) и fixtures
     // ScrubbingEngineBenchmark (защита от тихого дрейфа hit-путей правил).
     testImplementation project(':platform-tracing-api')
+    testImplementation project(':platform-tracing-core')
     testImplementation project(':platform-tracing-otel-extension')
     testImplementation 'org.yaml:snakeyaml'
     testImplementation 'org.junit.jupiter:junit-jupiter'

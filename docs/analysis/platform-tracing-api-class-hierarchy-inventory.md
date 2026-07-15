@@ -124,8 +124,6 @@ space.br1440.platform.tracing.api
 ├── mdc/                            TracingMdcKeys, RemoteServiceMdc, mirrors/readers
 ├── propagation/                    PlatformContextPropagation, PlatformHeaders, RequestIdSupport
 │   └── control/                    Outbound policy, injector, trace control records
-├── runtime/
-│   └── state/                      VersionedState, VersionedStateHolder
 ├── semconv/                        CategoryContracts registry, keys, validation mode, violations
 ├── span/
 │   ├── SpanCategory, SpanResult, SpanScope, RemoteSpanLink
@@ -343,12 +341,9 @@ graph LR
 | `RemoteServiceTraceMirror` | class | `mdc` | Trace mirror to MDC | mirror methods | — | autoconfigure | OK |
 | `RemoteServiceContextReaders` | class | `mdc` | Read remote service from context | readers | — | extension | OK |
 
-### 6.9 Runtime State (2 типа)
+### 6.9 Runtime State (relocated to core.runtime.versioned)
 
-| Type | Kind | Package | Responsibility | Key Members | Related Types | Implementation/Consumers | Naming Notes |
-|---|---|---|---|---|---|---|---|
-| `VersionedState` | interface | `runtime.state` | Monotonic version marker | `version()` | `VersionedStateHolder` | `ImmutableTracingState` in core | OK minimal contract |
-| `VersionedStateHolder<T>` | class | `runtime.state` | CAS holder | `current()`, `tryUpdate()` | `VersionedState` | core runtime state | OK; generic holder in API |
+See core architecture inventory — `VersionedState` / `VersionedStateHolder` are agent-internal CAS primitives, not part of `platform-tracing-api`.
 
 ### 6.10 Control Protocol (11 типов)
 
@@ -561,7 +556,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | Semconv registry | `CategoryContractsTest`, `*SemconvVersionMarkerTest` | Strong | — |
 | Control protocol | 10+ tests in `control/protocol/**` | **Strong** | — |
 | Propagation control | `DefaultOutboundPropagationPolicyTest`, `DefaultTraceControlHeaderInjectorTest`, `TrustedDestinationMatchersTest`, `DefaultInboundTraceControlExtractorTest`, `RequestIdSupportTest` | Strong | — |
-| Runtime state | `VersionedStateHolderTest`, `RuntimeStateArchTest` | Medium | `VersionedState` itself thin |
+| Runtime state | `VersionedStateHolderTest` (core.runtime.versioned), `CoreRuntimeVersionedArchTest`, `ApiModuleTaxonomyArchTest` | Medium | moved from api to core |
 | MDC | `RemoteServiceMdcTest` | Medium | mirrors/readers partial |
 | Sanitizers | `SanitizerTest` | Medium | — |
 | `TraceOperations` / `ManualTracing` behavior | core tests (20+ builder/topology tests) | **Strong** indirect | No direct `TraceOperations` test in api module |

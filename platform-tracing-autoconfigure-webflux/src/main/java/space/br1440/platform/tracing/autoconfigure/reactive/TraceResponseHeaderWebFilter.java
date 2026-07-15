@@ -6,7 +6,7 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.mdc.RemoteServiceMdc;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.RequestIdSupports;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;

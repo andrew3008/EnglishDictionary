@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.extension.processor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.br1440.platform.tracing.api.runtime.state.VersionedStateHolder;
+import space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder;
 import space.br1440.platform.tracing.core.validation.ValidationPolicyUpdate;
 import space.br1440.platform.tracing.core.validation.ValidationSnapshot;
 import space.br1440.platform.tracing.otel.extension.safety.RateLimitedLogger;

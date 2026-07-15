@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.extension.sampler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.br1440.platform.tracing.api.runtime.state.VersionedStateHolder;
+import space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder;
 import space.br1440.platform.tracing.otel.extension.safety.RateLimitedLogger;
 
 import java.time.Instant;
@@ -15,9 +15,9 @@ import java.util.function.UnaryOperator;
 /**
  * Holder для атомарного lock-free обновления конфигурации {@link CompositeSampler}.
  * <p>
- * Фаза 14: переиспользует общий примитив {@link VersionedStateHolder} (api-модуль, виден обоим
- * classloader'ам) по композиции — единый CAS + last-known-good механизм на все домены, без
- * дублирования логики.
+ * Фаза 14: переиспользует общий примитив {@link VersionedStateHolder} ({@code core.runtime.versioned},
+ * embedded в agent extension jar) по композиции — единый CAS + last-known-good механизм на все домены,
+ * без дублирования логики.
  * <p>
  * <b>Last-known-good (Фаза 11):</b> при попытке применить невалидную конфигурацию холдер сохраняет
  * предыдущую валидную и не даёт «плохой» конфигурации затереть рабочую. Логирование/метрики

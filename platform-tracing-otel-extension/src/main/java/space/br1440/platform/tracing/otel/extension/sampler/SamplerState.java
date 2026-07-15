@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.extension.sampler;
 
-import space.br1440.platform.tracing.api.runtime.state.VersionedState;
+import space.br1440.platform.tracing.core.runtime.versioned.VersionedState;
 import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties;
 import space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;

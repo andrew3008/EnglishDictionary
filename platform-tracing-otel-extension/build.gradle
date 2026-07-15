@@ -101,6 +101,8 @@ tasks.register('verifyAgentJarContents') {
         assert entries.any { it.contains('space/br1440/platform/tracing/api/') }  // platform-tracing-api classes
         assert entries.any { it.contains('space/br1440/platform/tracing/core/sampling/') }  // core sampling policy
         assert entries.any { it.contains('space/br1440/platform/tracing/core/propagation/control/') }  // core propagation control
+        assert entries.any { it.contains('space/br1440/platform/tracing/core/runtime/versioned/') }  // CAS versioned state primitive
+        assert entries.any { it.contains('space/br1440/platform/tracing/core/mdc/remote/') }  // MDC remote service bridge
     }
 }
 

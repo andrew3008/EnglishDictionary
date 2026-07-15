@@ -20,6 +20,6 @@ class AutoconfigureNoOtelExtensionMainDepArchTest {
             ModuleTaxonomyArchRules.AUTOCONFIGURE_MAIN_NO_OTEL_EXTENSION_IMPL;
 
     @ArchTest
-    static final ArchRule appModulesNotDependOnRuntimeState =
-            ModuleTaxonomyArchRules.APP_MODULES_NOT_DEPEND_ON_RUNTIME_STATE;
+    static final ArchRule appModulesNotDependOnCoreRuntimeVersioned =
+            ModuleTaxonomyArchRules.APP_MODULES_NOT_DEPEND_ON_CORE_RUNTIME_VERSIONED;
 }

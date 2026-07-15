@@ -146,15 +146,15 @@ public final class ModuleTaxonomyArchRules {
                     "..core.sampling.properties..")
             .because("core.sampling.policy — семантический слой правил; зависит только от model");
 
-    /** {@code core.sampling.model} не зависит от runtime-state инфраструктуры API. */
-    public static final ArchRule SAMPLING_MODEL_NOT_DEPEND_ON_RUNTIME_STATE = noClasses()
+    /** {@code core.sampling.model} не зависит от holder-managed runtime-state инфраструктуры. */
+    public static final ArchRule SAMPLING_MODEL_NOT_DEPEND_ON_VERSIONED_STATE = noClasses()
             .that().resideInAPackage("..core.sampling.model..")
-            .should().dependOnClassesThat().resideInAnyPackage("..api.runtime.state..")
-            .because("core.sampling.model — чистый domain compile state; не зависит от api.runtime.state");
+            .should().dependOnClassesThat().resideInAnyPackage("..core.runtime.versioned..")
+            .because("core.sampling.model — чистый domain compile state; не зависит от core.runtime.versioned");
 
     /** Только holder-managed production-снимки могут реализовывать {@code VersionedState}. */
     public static final ArchRule VERSIONED_STATE_IMPLS_ALLOWLIST = classes()
-            .that().implement("space.br1440.platform.tracing.api.runtime.state.VersionedState")
+            .that().implement("space.br1440.platform.tracing.core.runtime.versioned.VersionedState")
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
             .should().haveFullyQualifiedName(
@@ -165,21 +165,36 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.core.validation.ValidationSnapshot")
             .because("VersionedState — контракт holder-managed runtime state, а не generic HasVersion-маркер");
 
-    /** Autoconfigure/starter приложения не должен зависеть от holder-managed runtime-state. */
-    public static final ArchRule APP_MODULES_NOT_DEPEND_ON_RUNTIME_STATE = noClasses()
+    /** Autoconfigure/starter приложения не должен зависеть от holder-managed versioned runtime-state. */
+    public static final ArchRule APP_MODULES_NOT_DEPEND_ON_CORE_RUNTIME_VERSIONED = noClasses()
             .that().resideInAnyPackage(
                     "space.br1440.platform.tracing.autoconfigure..",
                     "space.br1440.platform.tracing.starter..")
             .and().resideOutsideOfPackage("..test..")
-            .should().dependOnClassesThat().resideInAnyPackage("..api.runtime.state..")
+            .should().dependOnClassesThat().resideInAnyPackage("..core.runtime.versioned..")
             .allowEmptyShould(true)
-            .because("api.runtime.state — agent/runtime инфраструктура, а не SDK для autoconfigure");
+            .because("core.runtime.versioned — agent/runtime инфраструктура, а не SDK для autoconfigure");
 
     /** Запрет возврата устаревшего пакета {@code api.config}. */
     public static final ArchRule NO_API_CONFIG_PACKAGE = noClasses()
             .that().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAPackage("..api.config..")
-            .because("api.config удалён; используйте api.runtime.state.VersionedState/VersionedStateHolder");
+            .because("api.config удалён; используйте core.runtime.versioned.VersionedState/VersionedStateHolder");
+
+    /** Запрет возврата удалённого пакета {@code api.runtime.state}. */
+    public static final ArchRule NO_API_RUNTIME_STATE_PACKAGE = noClasses()
+            .that().resideOutsideOfPackage("..test..")
+            .should().dependOnClassesThat().resideInAPackage("..api.runtime.state..")
+            .because("api.runtime.state удалён; CAS-примитив живёт в core.runtime.versioned");
+
+    /** {@code VersionedState} и {@code VersionedStateHolder} — только в {@code core.runtime.versioned}. */
+    public static final ArchRule VERSIONED_STATE_PRIMITIVE_ONLY_IN_CORE = classes()
+            .that().haveSimpleName("VersionedState")
+            .or().haveSimpleName("VersionedStateHolder")
+            .and().resideOutsideOfPackage("..test..")
+            .should().resideInAPackage("..core.runtime.versioned..")
+            .allowEmptyShould(true)
+            .because("VersionedState/VersionedStateHolder — agent-internal CAS primitive; только core.runtime.versioned");
 
     /**
      * Запрет возврата удалённого legacy-стека {@code api.span.builder.*} (PR-5, Fable_5 v1.2).

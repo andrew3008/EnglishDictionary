@@ -13,7 +13,7 @@ import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import jakarta.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.mdc.RemoteServiceMdc;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.otel.extension.utils.Strings;

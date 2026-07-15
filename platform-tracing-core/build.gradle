@@ -25,6 +25,7 @@ dependencies {
     testImplementation project(':platform-tracing-test')
     testImplementation 'io.micrometer:micrometer-core'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'ch.qos.logback:logback-classic'
 }
 
 test {

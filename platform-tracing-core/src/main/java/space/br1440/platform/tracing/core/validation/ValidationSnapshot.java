@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.core.validation;
 
-import space.br1440.platform.tracing.api.runtime.state.VersionedState;
+import space.br1440.platform.tracing.core.runtime.versioned.VersionedState;
 
 import java.time.Instant;
 

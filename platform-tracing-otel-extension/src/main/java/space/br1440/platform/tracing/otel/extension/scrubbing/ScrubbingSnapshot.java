@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.extension.scrubbing;
 
-import space.br1440.platform.tracing.api.runtime.state.VersionedState;
+import space.br1440.platform.tracing.core.runtime.versioned.VersionedState;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.extension.scrubbing.engine.PriorityHardening;

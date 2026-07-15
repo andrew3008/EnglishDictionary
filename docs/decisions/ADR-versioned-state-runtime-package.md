@@ -1,36 +1,35 @@
-# ADR: Runtime State Package (`api.runtime.state`)
+# ADR: Versioned runtime state (`core.runtime.versioned`)
 
-**Status:** Accepted  
-**Date:** 2026-07-02  
-**Context:** Pre-production cleanup of misleading `api.config` primitives.
+**Status:** Accepted (supersedes prior `api.runtime.state` placement)  
+**Date:** 2026-07-15  
+**Context:** Module taxonomy cleanup — CAS/LKG holder is agent-internal infrastructure, not public application SDK.
 
 ## Decision
 
-Replace:
-
-- `space.br1440.platform.tracing.api.config.Versioned`
-- `space.br1440.platform.tracing.api.config.DomainConfigHolder`
-
-With:
+Replace deleted package:
 
 - `space.br1440.platform.tracing.api.runtime.state.VersionedState`
 - `space.br1440.platform.tracing.api.runtime.state.VersionedStateHolder`
 
-Delete `api.config` entirely. No compatibility shims. No `package-info.java`.
+With:
 
-## Why `api.config` was wrong
+- `space.br1440.platform.tracing.core.runtime.versioned.VersionedState`
+- `space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder`
 
-The package contained only a CAS/LKG runtime-state publication primitive, not application configuration, Spring properties, or wire schema. The name conflicted with `core.sampling.properties`, `@ConfigurationProperties`, and `api.control.wire`.
+Delete `api.runtime.state` entirely. No compatibility shims.
 
-## Why `api.runtime.state`
+## Why not `api`
 
-Honest semantics: immutable runtime snapshots published atomically via holder. Lives in `platform-tracing-api` for dual classloader visibility (App CL + OTel Agent CL).
+- **Single consumer module:** only `platform-tracing-otel-extension` domain holders instantiate `VersionedStateHolder` (`SamplerStateHolder`, `ScrubbingPolicyHolder`, `ValidationPolicyHolder`).
+- **Application code never uses it:** autoconfigure/starters are ArchUnit-forbidden from depending on `core.runtime.versioned`.
+- **Agent visibility:** `platform-tracing-otel-extension` already depends on `platform-tracing-core`; `agentExtensionJar` embeds core classes (same pattern as `core.propagation.control`).
+- **Honest taxonomy:** `platform-tracing-api` = public contracts; CAS holder is runtime implementation detail.
 
-## Why `VersionedState` / `VersionedStateHolder`
+Prior ADR rationale («dual classloader visibility via api») is obsolete after embedding core in the agent extension jar.
 
-- `VersionedState` — role marker (like `Comparable`), not generic `HasVersion`.
-- `VersionedStateHolder` — names the generic bound; pairs with marker.
-- Rejected: `AtomicRuntimeStateHolder` (leaks `AtomicReference`), `RuntimeStateHolder` (loses versioning), separate `platform-tracing-runtime-api` module (YAGNI for 2 types).
+## Why `core.runtime.versioned` (not `core.runtime.state`)
+
+[`core.runtime.state`](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/runtime/state/) hosts SDK tracing runtime (`TracingState`, `TracingMode`, `ImmutableTracingState`) for `TracingRuntime` — a different domain. CAS policy snapshots use a dedicated sub-package to avoid confusion.
 
 ## Why `VersionedState` is intentionally closed (ArchUnit allowlist)
 
@@ -38,21 +37,15 @@ Honest semantics: immutable runtime snapshots published atomically via holder. L
 
 Allowed production implementers:
 
-1. `SamplerState`
-2. `ScrubbingSnapshot`
-3. `ValidationSnapshot`
+1. `SamplerState` (otel-extension)
+2. `ScrubbingSnapshot` (otel-extension)
+3. `ValidationSnapshot` (core.validation)
 
-To add a new holder-managed state: implement `VersionedState`, wrap in `VersionedStateHolder<T>`, update ArchUnit allowlist + ADR.
+To add a new holder-managed state: implement `VersionedState`, wrap in `VersionedStateHolder<T>`, update ArchUnit allowlist + this ADR.
 
-## SamplingPolicySnapshot decoupling
+## SamplingPolicySnapshot decoupling (unchanged)
 
-`SamplingPolicySnapshot` is nested compiled policy inside `SamplerState`, not holder-managed. Removed:
-
-- `implements VersionedState` / former `Versioned`
-- `version` field and `version()` method
-- `SamplingPolicyProperties.version` component
-
-**Source of truth for sampling version:** `SamplerState.version()` only.
+`SamplingPolicySnapshot` is nested compiled policy inside `SamplerState`, not holder-managed. **Source of truth for sampling version:** `SamplerState.version()` only.
 
 ## Behavior invariants (unchanged)
 
@@ -61,16 +54,15 @@ To add a new holder-managed state: implement `VersionedState`, wrap in `Versione
 - `prev.version() + 1` increment convention
 - JMX / wire schema behavior
 - Sampling / scrubbing / validation runtime behavior
-- `defaultRatio` fail-fast in `SamplingPolicySnapshotFactory`
-- Lenient route-ratio compilation
 
 ## Guardrails
 
 ArchUnit rules in `ModuleTaxonomyArchRules`:
 
 - `VERSIONED_STATE_IMPLS_ALLOWLIST`
-- `SAMPLING_MODEL_NOT_DEPEND_ON_RUNTIME_STATE`
-- `APP_MODULES_NOT_DEPEND_ON_RUNTIME_STATE`
-- `NO_API_CONFIG_PACKAGE`
+- `SAMPLING_MODEL_NOT_DEPEND_ON_VERSIONED_STATE`
+- `APP_MODULES_NOT_DEPEND_ON_CORE_RUNTIME_VERSIONED`
+- `NO_API_RUNTIME_STATE_PACKAGE`
+- `VERSIONED_STATE_PRIMITIVE_ONLY_IN_CORE`
+- `NO_API_CONFIG_PACKAGE` (legacy ban)
 - `SNAPSHOT_FIELDS_ARE_FINAL` (+ scrubbing/validation variants)
-- Stale `..core.sampling.config..` globs fixed to `..core.sampling.properties..`

@@ -10,7 +10,7 @@ import org.slf4j.MDC;
 import io.opentelemetry.api.trace.Span;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
-import space.br1440.platform.tracing.api.mdc.RemoteServiceMdc;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.RequestIdSupports;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;

@@ -20,12 +20,7 @@ import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderI
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
-import java.util.Optional;
-
 import jakarta.annotation.PostConstruct;
-import io.opentelemetry.api.trace.Span;
-import space.br1440.platform.tracing.api.mdc.RemoteServiceContextReaders;
-import space.br1440.platform.tracing.api.mdc.RemoteServiceTraceMirror;
 
 /**
  * Авто-конфигурация реактивного веб-уровня (WebFlux) платформенного модуля трассировки.
@@ -145,24 +140,16 @@ public class ReactiveTracingAutoConfiguration {
     }
 
     /**
-     * Инициализатор Reactor/MDC mirror для {@code platform.remote.service}.
+     * Инициализатор Micrometer ThreadLocalAccessor для {@code platform.remote.service}.
+     * <p>
+     * Trace-scoped mirror read — встроенный fallback {@link space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver}
+     * (PR-2: WebFlux {@code RemoteServiceNameSource} bean).
      */
     public static final class RemoteServiceWebFluxMirrorConfigurer {
 
         @PostConstruct
         void init() {
             RemoteServiceContextPropagation.registerIfAbsent();
-            RemoteServiceContextReaders.register(() -> {
-                try {
-                    Span span = Span.current();
-                    if (span == null || !span.getSpanContext().isValid()) {
-                        return Optional.empty();
-                    }
-                    return RemoteServiceTraceMirror.get(span.getSpanContext().getTraceId());
-                } catch (RuntimeException ignored) {
-                    return Optional.empty();
-                }
-            });
         }
     }
 }

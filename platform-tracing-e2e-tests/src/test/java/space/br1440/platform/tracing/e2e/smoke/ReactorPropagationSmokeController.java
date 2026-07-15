@@ -5,8 +5,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import space.br1440.platform.tracing.api.mdc.RemoteServiceContextReaders;
-import space.br1440.platform.tracing.api.mdc.RemoteServiceMdc;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -36,7 +36,9 @@ class ReactorPropagationSmokeController {
                 .publishOn(Schedulers.parallel())
                 .map(id -> {
                     String workerTraceId = currentTraceId();
-                    String workerRemoteService = RemoteServiceContextReaders.readFirst().orElse(null);
+                    String workerRemoteService = new RemoteServiceNameResolver(java.util.List.of())
+                            .resolve()
+                            .orElse(null);
                     String workerThread = Thread.currentThread().getName();
                     return id + '|' + workerTraceId + '|' + workerRemoteService + '|' + workerThread;
                 })

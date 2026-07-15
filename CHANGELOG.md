@@ -28,6 +28,14 @@
   Custom rule JARs must implement the new SPI and use
   `META-INF/services/space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule`.
   No compatibility alias or duplicate service descriptor is provided.
+### Changed (api.mdc / core.mdc.remote split — PR-1)
+
+- Deleted `api.mdc` implementation types (`RemoteServiceMdc`, `RemoteServiceTraceMirror`, `RemoteServiceContextReaders`). Added `api.mdc.RemoteServiceNameSource` SPI. Implementation in `core.mdc.remote` (`RemoteServiceMdc`, package-private `RemoteServiceTraceMirror`, `RemoteServiceNameResolver`). Removed `slf4j-api` runtime dependency from `platform-tracing-api`.
+
+### Changed (core.runtime.versioned relocation)
+
+- Deleted `api.runtime.state` package. `VersionedState` and `VersionedStateHolder` (CAS + last-known-good agent policy primitive) moved to `core.runtime.versioned`. Not public application SDK; consumed by otel-extension domain holders and embedded in `agentExtensionJar` via core. ADR-versioned-state-runtime-package updated.
+
 ### Changed (propagation.control api/core split)
 
 - `api.propagation.control` now contains contracts only: interfaces (`OutboundPropagationPolicy`, `TraceControlHeaderInjector`, `TrustedDestinationMatcher`, `InboundTraceControlExtractor`), records (`InboundTraceControl`, `OutboundPropagationDecision`), and `PlatformTraceContextKeys`. Implementations live in `core.propagation.control` (`DefaultOutboundPropagationPolicy`, `DefaultTraceControlHeaderInjector`, `DefaultInboundTraceControlExtractor`, `TrustedDestinationMatchers`). Agent extension jar embeds both modules; ADR-outbound-propagation point 2 updated accordingly.

@@ -602,7 +602,7 @@ Span export/onEnding
 | `api.span.enrich.*` | `SpanEnricher` + enrich scopes |
 | `api.semconv.*` | `CategoryContracts`, `SemconvKeys`, `ValidationMode` → `AttributePolicy` |
 | `api.propagation.*` | `OtelPlatformContextPropagation` |
-| `api.runtime.state.VersionedState` | `ValidationSnapshot` |
+| `api.runtime.state.VersionedState` | `ValidationSnapshot` (now `core.runtime.versioned.VersionedState`) |
 
 ### 6.2. `platform-tracing-spring-boot-autoconfigure`
 
