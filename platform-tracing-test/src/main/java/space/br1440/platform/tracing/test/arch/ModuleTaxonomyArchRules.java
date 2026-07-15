@@ -3,27 +3,29 @@ package space.br1440.platform.tracing.test.arch;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
-import lombok.experimental.UtilityClass;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Guardrails модульной таксономии PR-1 (migration-first стратегия сохранения границ).
+ * Guardrails модульной таксономии платформы трассировки.
  * <p>
- * Правила обеспечивают соблюдение <b>forward</b>-зависимостей. Известные pre-existing нарушения
- * вне их scope (например, {@code platform-tracing-core} с {@code api opentelemetry-api})
- * задокументированы как MIGRATION_RISK в
- * {@code docs/architecture/platform-tracing-module-taxonomy.md} и не приводят к падению CI.
+ * Правила обеспечивают соблюдение <b>forward</b>-зависимостей.
+ * Известные pre-existing нарушения вне их scope задокументированы
+ * как MIGRATION_RISK в {@code docs/architecture/platform-tracing-module-taxonomy.md}.
  *
  * @see docs/architecture/platform-tracing-module-taxonomy.md
  */
-@UtilityClass
 public final class ModuleTaxonomyArchRules {
+
+    private ModuleTaxonomyArchRules() {
+    }
+
+    // ── api.propagation / Parser ────────────────────────────────────────────────
 
     /**
      * Парсинг traceparent делегирован OTel-backed bridge;
-     * повторное введение публичных *Parser API в пакете api.propagation запрещено.
+     * повторное введение публичных {@code *Parser} API в пакете {@code api.propagation} запрещено.
      */
     public static final ArchRule API_PROPAGATION_HAS_NO_PUBLIC_PARSERS = noClasses()
             .that().resideInAPackage("..api.propagation..")
@@ -32,10 +34,72 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("wire-парсинг propagation делегирован OTel-backed bridge'ам, а не публичным *Parser API");
 
+    // ── api.propagation.control — только интерфейсы, records, ContextKey ───────
+
+    /**
+     * Пакет {@code api.propagation.control} должен содержать исключительно:
+     * интерфейсы, record'ы, enum'ы, ContextKey-классы и вспомогательные UtilityClass-утилиты.
+     * Конкретные реализации ({@code Default*}, {@code Glob*}) запрещены —
+     * они живут в {@code core.propagation.control}.
+     * <p>
+     * Правило ловит повторный возврат concrete impl в api после PR-1/PR-2.
+     */
+    public static final ArchRule API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL = noClasses()
+            .that().resideInAPackage("..api.propagation.control..")
+            .and().areNotInterfaces()
+            .and(DescribedPredicate.not(JavaClass::isRecord))
+            .and(DescribedPredicate.not(JavaClass::isEnum))
+            .and().haveSimpleNameNotContaining("Keys")   // PlatformTraceContextKeys — ContextKey holder
+            .and().resideOutsideOfPackage("..test..")
+            .and().haveSimpleNameNotEndingWith("Test")
+            .should().haveSimpleNameEndingWith("_NEVER_MATCHES_")
+            .allowEmptyShould(true)
+            .because("api.propagation.control содержит только интерфейсы, records и ContextKey-классы; "
+                    + "конкретные реализации живут в core.propagation.control");
+
+    // ── core.propagation.control — impl только здесь ────────────────────────────
+
+    /**
+     * Все production-реализации интерфейсов {@code api.propagation.control}
+     * ({@code OutboundPropagationPolicy}, {@code TrustedDestinationMatcher},
+     * {@code TraceControlHeaderInjector}, {@code InboundTraceControlExtractor})
+     * должны находиться строго в пакете {@code ..core.propagation.control..}.
+     * <p>
+     * Исключены: анонимные классы (inline test doubles), вложенные классы (enum/record),
+     * тестовые пакеты и классы с суффиксом {@code Test}.
+     */
+    public static final ArchRule CONTROL_IMPLS_ONLY_IN_CORE = classes()
+            .that().implement("space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy")
+            .or().implement("space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher")
+            .or().implement("space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector")
+            .or().implement("space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor")
+            .and().areNotAnonymousClasses()
+            .and().areNotMemberClasses()
+            .and().resideOutsideOfPackage("..test..")
+            .and().haveSimpleNameNotEndingWith("Test")
+            .should().resideInAPackage("..core.propagation.control..")
+            .allowEmptyShould(true)
+            .because("реализации api.propagation.control — не extension API; допустимы только в core.propagation.control");
+
+    // ── TrustedDestinationMatchers — public factory, но не для всех ─────────────
+
+    /**
+     * {@code TrustedDestinationMatchers} — public utility-фабрика в {@code core}, видимая
+     * autoconfigure/otel-extension для wiring'а matcher'а. Остальные модули (starter, app) не должны
+     * зависеть от неё напрямую: они получают {@code TrustedDestinationMatcher} через DI.
+     */
+    public static final ArchRule CONTROL_IMPL_ACCESS_RESTRICTED = classes()
+            .that().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers")
+            .should().onlyHaveDependentClassesThat(allowedTrustedDestinationMatchersDependent())
+            .allowEmptyShould(true)
+            .because("TrustedDestinationMatchers — wiring-фабрика core; "
+                    + "допустима только из autoconfigure, otel-extension, core и test");
+
+    // ── OtelTraceparentReaderImpl ───────────────────────────────────────────────
+
     /**
      * {@code OtelTraceparentReaderImpl} живёт в core и не является extension API.
-     * Зависимые классы должны располагаться в разрешённых core/test-пакетах.
-     * Предикат основан на паттернах пакетов, чтобы избежать хрупких hardcoded FQN-списков.
      */
     public static final ArchRule OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
@@ -44,9 +108,10 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("OtelTraceparentReaderImpl — внутренний bridge в core, а не extension API");
 
+    // ── RequestIdSupportImpl ────────────────────────────────────────────────────
+
     /**
      * {@code RequestIdSupportImpl} живёт в core и не является extension API.
-     * Зависимые классы должны располагаться в разрешённых core/test-пакетах.
      */
     public static final ArchRule REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
@@ -55,11 +120,10 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("RequestIdSupportImpl — внутренний bridge в core, а не extension API");
 
+    // ── Classloader boundaries ──────────────────────────────────────────────────
+
     /**
      * Autoconfigure приложения не должен зависеть от реализации agent-extension.
-     * <p>
-     * Agent extension загружается в ExtensionClassLoader; App CL не должен импортировать
-     * production-классы {@code platform-tracing-otel-extension} напрямую.
      */
     public static final ArchRule AUTOCONFIGURE_MAIN_NO_OTEL_EXTENSION_IMPL = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.autoconfigure..")
@@ -93,6 +157,8 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("platform-tracing-autoconfigure-webflux не должен зависеть от типов Servlet/MVC");
 
+    // ── core policy packages — pure domain ──────────────────────────────────────
+
     /**
      * Будущие pure policy пакеты в core (цели экстракции после PR-6).
      */
@@ -106,7 +172,7 @@ public final class ModuleTaxonomyArchRules {
                     "org.springframework..",
                     "javax.management..")
             .allowEmptyShould(true)
-            .because("pure policy-пакеты core.{sampling,scrubbing,validation,enrichment} "
+            .because("pure policy-пакеты core.{sampling,scrubbing,validation} "
                     + "не должны зависеть от OTel, Spring или JMX (граница PR-9B)");
 
     /**
@@ -118,7 +184,7 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage("javax.management..")
             .because("platform-tracing-core не должен зависеть от JMX — управление runtime является agent-side");
 
-    // -- Слоистые границы пакета core.sampling: model / policy / engine / config -------------------
+    // ── core.sampling layers ────────────────────────────────────────────────────
 
     /** {@code core.sampling.model} — чистый слой состояния: не зависит от policy/engine/config. */
     public static final ArchRule SAMPLING_MODEL_IS_PURE = noClasses()
@@ -129,7 +195,7 @@ public final class ModuleTaxonomyArchRules {
                     "..core.sampling.properties..")
             .because("core.sampling.model — чистый слой состояния, без зависимостей на policy/engine/properties");
 
-    /** {@code core.sampling.properties} зависит только от model (нормализация/валидация в compile-time). */
+    /** {@code core.sampling.properties} зависит только от model. */
     public static final ArchRule SAMPLING_PROPERTIES_DEPENDS_ONLY_ON_MODEL = noClasses()
             .that().resideInAPackage("..core.sampling.properties..")
             .should().dependOnClassesThat().resideInAnyPackage(
@@ -151,6 +217,8 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage("..api.runtime.state..")
             .because("core.sampling.model — чистый domain compile state; не зависит от api.runtime.state");
 
+    // ── VersionedState ──────────────────────────────────────────────────────────
+
     /** Только holder-managed production-снимки могут реализовывать {@code VersionedState}. */
     public static final ArchRule VERSIONED_STATE_IMPLS_ALLOWLIST = classes()
             .that().implement("space.br1440.platform.tracing.api.runtime.state.VersionedState")
@@ -164,7 +232,7 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.core.validation.ValidationSnapshot")
             .because("VersionedState — контракт holder-managed runtime state, а не generic HasVersion-маркер");
 
-    /** Autoconfigure/starter приложения не должен зависеть от holder-managed runtime-state. */
+    /** Autoconfigure/starter не должен зависеть от holder-managed runtime-state. */
     public static final ArchRule APP_MODULES_NOT_DEPEND_ON_RUNTIME_STATE = noClasses()
             .that().resideInAnyPackage(
                     "space.br1440.platform.tracing.autoconfigure..",
@@ -174,6 +242,8 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("api.runtime.state — agent/runtime инфраструктура, а не SDK для autoconfigure");
 
+    // ── Legacy / removed packages ───────────────────────────────────────────────
+
     /** Запрет возврата устаревшего пакета {@code api.config}. */
     public static final ArchRule NO_API_CONFIG_PACKAGE = noClasses()
             .that().resideOutsideOfPackage("..test..")
@@ -182,15 +252,13 @@ public final class ModuleTaxonomyArchRules {
 
     /**
      * Запрет возврата удалённого legacy-стека {@code api.span.builder.*} (PR-5, Fable_5 v1.2).
-     * <p>
-     * Пакет удалён вместе с {@code core.span.legacy}; typed builders для v3 живут в
-     * {@code api.manual.*}. Правило ловит как повторное копирование legacy-классов,
-     * так и восстановление пакета из старой ветки.
      */
     public static final ArchRule NO_LEGACY_SPAN_BUILDER_API = noClasses()
             .that().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAPackage("..api.span.builder..")
             .because("api.span.builder.* удалён в рефакторинге Fable_5 v1.2; используйте api.manual.*");
+
+    // ── Snapshot immutability ───────────────────────────────────────────────────
 
     /** Holder-managed snapshots остаются иммутабельными (все поля final). */
     public static final ArchRule SNAPSHOT_FIELDS_ARE_FINAL = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields()
@@ -210,11 +278,10 @@ public final class ModuleTaxonomyArchRules {
             .should().beFinal()
             .because("VersionedState snapshots должны оставаться иммутабельными (ValidationSnapshot)");
 
+    // ── SamplingPolicyRule ──────────────────────────────────────────────────────
+
     /**
      * Реализации {@code SamplingPolicyRule} живут только в {@code core.sampling.policy}.
-     * <p>
-     * Делает статус «public, но не extension API» машинно-проверяемым: новый rule-класс
-     * нельзя добавить вне policy-пакета. Сам интерфейс себя не реализует.
      */
     public static final ArchRule SAMPLING_RULE_IMPLS_ONLY_IN_POLICY = classes()
             .that().implement("space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule")
@@ -223,9 +290,8 @@ public final class ModuleTaxonomyArchRules {
             .because("реализации SamplingPolicyRule — не extension API; допустимы только в core.sampling.policy");
 
     /**
-     * {@code ProductionSamplingPolicyChain} публичен только по необходимости компиляции
-     * (движок в соседнем пакете), но НЕ является extension API: зависеть от него могут
-     * только policy и engine.
+     * {@code ProductionSamplingPolicyChain} публичен только по необходимости компиляции,
+     * но НЕ является extension API.
      */
     public static final ArchRule PRODUCTION_CHAIN_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
@@ -236,7 +302,7 @@ public final class ModuleTaxonomyArchRules {
             .because("ProductionSamplingPolicyChain публичен только ради cross-package компиляции движка; "
                     + "не является публичным extension API");
 
-    // -- PR-1: границы пакетов enrichment / naming / semconv.policy ------------------------------
+    // ── core.enrichment / naming / semconv.policy ───────────────────────────────
 
     /** {@code core.enrichment} не зависит от legacy builders и v3 manual transport. */
     public static final ArchRule CORE_ENRICHMENT_NO_MANUAL_OR_LEGACY = noClasses()
@@ -265,6 +331,22 @@ public final class ModuleTaxonomyArchRules {
                     "io.opentelemetry.sdk..")
             .allowEmptyShould(true)
             .because("core.semconv.policy допускает только io.opentelemetry.api.common");
+
+    // ── Predicates ──────────────────────────────────────────────────────────────
+
+    private static DescribedPredicate<JavaClass> allowedTrustedDestinationMatchersDependent() {
+        return new DescribedPredicate<>("быть разрешённым потребителем TrustedDestinationMatchers") {
+            @Override
+            public boolean test(JavaClass input) {
+                String name = input.getName();
+                return name.startsWith("space.br1440.platform.tracing.core.")
+                        || name.startsWith("space.br1440.platform.tracing.autoconfigure.")
+                        || name.startsWith("space.br1440.platform.tracing.otel.extension.")
+                        || name.contains(".test.")
+                        || name.endsWith("Test");
+            }
+        };
+    }
 
     private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
         return new DescribedPredicate<>("быть разрешённым зависимым от OtelTraceparentReaderImpl") {
