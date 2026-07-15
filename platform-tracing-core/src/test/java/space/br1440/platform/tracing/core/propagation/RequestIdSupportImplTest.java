@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("RequestIdSupportImpl: edge-stable correlation id (validate + reject-and-regenerate)")
 class RequestIdSupportImplTest {
 
-    private static final RequestIdSupport SUPPORT = RequestIdSupportImpl.INSTANCE;
+    private static final RequestIdSupport SUPPORT = new RequestIdSupportImpl();
 
     @Test
     @DisplayName("отсутствующий входящий -> генерируется валидный UUIDv4")

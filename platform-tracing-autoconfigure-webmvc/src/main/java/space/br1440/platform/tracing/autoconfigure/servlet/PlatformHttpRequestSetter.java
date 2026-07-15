@@ -4,6 +4,8 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 import jakarta.annotation.Nonnull;
 import org.springframework.http.HttpRequest;
 
+import java.util.Objects;
+
 /**
  * {@link TextMapSetter} для записи платформенных заголовков в исходящий {@link HttpRequest}
  * ({@code RestTemplate} / {@code RestClient}).
@@ -21,6 +23,7 @@ final class PlatformHttpRequestSetter implements TextMapSetter<HttpRequest> {
 
     @Override
     public void set(HttpRequest request, @Nonnull String key, @Nonnull String value) {
+        Objects.requireNonNull(value, "value");
         if (request != null) {
             request.getHeaders().set(key, value);
         }

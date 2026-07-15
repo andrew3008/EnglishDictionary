@@ -4,6 +4,8 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 import jakarta.annotation.Nonnull;
 import org.springframework.web.reactive.function.client.ClientRequest;
 
+import java.util.Objects;
+
 /**
  * {@link TextMapSetter} для записи платформенных заголовков в исходящий {@code WebClient}-запрос
  * (через {@link ClientRequest.Builder}).
@@ -17,6 +19,7 @@ enum PlatformClientRequestBuilderSetter implements TextMapSetter<ClientRequest.B
 
     @Override
     public void set(ClientRequest.Builder carrier, @Nonnull String key, @Nonnull String value) {
+        Objects.requireNonNull(value, "value");
         if (carrier != null) {
             carrier.headers(httpHeaders -> httpHeaders.set(key, value));
         }

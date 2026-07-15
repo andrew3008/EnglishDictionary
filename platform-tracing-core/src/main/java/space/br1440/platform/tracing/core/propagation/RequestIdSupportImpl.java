@@ -6,16 +6,16 @@ import space.br1440.platform.tracing.api.propagation.RequestIdSupport;
 import java.util.UUID;
 
 /**
- * Обнаруживается call-site'ами ({@code InboundTraceControl.fromHeaders}, response-header filters)
- * единообразно через {@link space.br1440.platform.tracing.api.propagation.RequestIdSupports}
- * и {@link java.util.ServiceLoader} SPI (регистрация в {@code META-INF/services}).
+ * Реализация {@link RequestIdSupport} без аллокаций на hot path.
+ * Расположена в core, доступна только через {@link space.br1440.platform.tracing.api.propagation.RequestIdSupports#get()}.
+ * <p>
+ * Обнаруживается через {@link java.util.ServiceLoader} SPI (регистрация в {@code META-INF/services}).
  */
 public final class RequestIdSupportImpl implements RequestIdSupport {
 
-    public static final RequestIdSupportImpl INSTANCE = new RequestIdSupportImpl();
-
     /**
      * Публичный конструктор для {@link java.util.ServiceLoader}.
+     * Прямое использование вне SPI запрещено контрактом {@code RequestIdSupports.get()}.
      */
     public RequestIdSupportImpl() {
     }
