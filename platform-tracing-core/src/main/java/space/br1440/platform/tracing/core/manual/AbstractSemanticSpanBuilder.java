@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
-import space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.*;
@@ -22,6 +22,7 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
     protected final SpanCategory category;
     protected final String explicitName;
     protected final String builderName;
+    private final OtelTraceparentReader traceparentReader;
     private boolean relationshipExplicit = false;
     protected SpanRelationship relationship = SpanRelationship.CHILD;
     protected final List<RemoteSpanLink> links = new ArrayList<>();
@@ -31,12 +32,14 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
                                 @Nonnull AttributePolicy policy,
                                 @Nonnull SpanCategory category,
                                 @Nonnull String explicitName,
-                                @Nonnull String builderName) {
+                                @Nonnull String builderName,
+                                @Nonnull OtelTraceparentReader traceparentReader) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
         this.category = Objects.requireNonNull(category, "category");
         this.explicitName = Objects.requireNonNull(explicitName, "explicitName");
         this.builderName = Objects.requireNonNull(builderName, "builderName");
+        this.traceparentReader = Objects.requireNonNull(traceparentReader, "traceparentReader");
 
         if (explicitName.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
@@ -103,7 +106,7 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
         Objects.requireNonNull(traceparents, "traceparents");
 
         for (String traceparent : traceparents) {
-            linkedTo(OtelTraceparentReaderImpl.INSTANCE.require(Objects.requireNonNull(traceparent, "traceparent")));
+            linkedTo(traceparentReader.require(Objects.requireNonNull(traceparent, "traceparent")));
         }
 
         return self();
