@@ -75,6 +75,10 @@ class CorePolicyPackagePurityArchTest {
     static final ArchRule requestIdSupportImplAccessRestricted =
             ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED;
 
+    // PR-3 propagation.control guardrails (core-classpath scope).
+    // API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL намеренно НЕ здесь: правило проверяет
+    // ..api.propagation.control.. и зарегистрировано в platform-tracing-api
+    // (RuntimeStateArchTest), т.к. @AnalyzeClasses этого теста импортирует только core.
     @ArchTest
     static final ArchRule controlImplsOnlyInCore =
             ModuleTaxonomyArchRules.CONTROL_IMPLS_ONLY_IN_CORE;
