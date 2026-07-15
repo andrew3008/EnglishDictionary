@@ -255,25 +255,12 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("core.semconv.policy допускает только io.opentelemetry.api.common");
 
-    // -------------------------------------------------------------------------
-    // Приватные вспомогательные методы
-    // -------------------------------------------------------------------------
-
-    /**
-     * Предикат на основе паттернов пакетов — избегает хрупких hardcoded FQN-списков.
-     * Разрешённые зависимые:
-     * - core.manual.* (AbstractSemanticSpanBuilder)
-     * - core.propagation.* (сам OtelTraceparentReaderImpl)
-     * - любой test-класс (по конвенции пакета или имени)
-     * NOTE: samples намеренно исключены — sample-код не должен использовать internal API.
-     */
     private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
         return new DescribedPredicate<>("быть разрешённым зависимым от OtelTraceparentReaderImpl") {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return name.startsWith("space.br1440.platform.tracing.core.manual.")
-                        || name.startsWith("space.br1440.platform.tracing.core.propagation.")
+                return name.startsWith("space.br1440.platform.tracing.core.propagation.")
                         || name.contains(".test.")
                         || name.endsWith("Test");
             }

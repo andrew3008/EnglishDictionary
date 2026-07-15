@@ -2,7 +2,8 @@ package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
-import space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReaders;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.*;
@@ -16,6 +17,8 @@ import java.util.*;
 import java.util.function.Supplier;
 
 abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> implements ManualSpanBuilder<B> {
+
+    private static final OtelTraceparentReader TRACEPARENT_READER = OtelTraceparentReaders.get();
 
     protected final TracingRuntime implementation;
     protected final AttributePolicy policy;
@@ -103,7 +106,7 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
         Objects.requireNonNull(traceparents, "traceparents");
 
         for (String traceparent : traceparents) {
-            linkedTo(OtelTraceparentReaderImpl.INSTANCE.require(Objects.requireNonNull(traceparent, "traceparent")));
+            linkedTo(TRACEPARENT_READER.require(Objects.requireNonNull(traceparent, "traceparent")));
         }
 
         return self();

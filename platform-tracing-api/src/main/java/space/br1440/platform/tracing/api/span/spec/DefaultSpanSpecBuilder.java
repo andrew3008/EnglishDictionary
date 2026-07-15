@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.api.span.spec;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReaders;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
@@ -11,33 +12,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.ServiceLoader;
 
 final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
-    /**
-     * OTel-backed reader для traceparent, резолвится через {@link ServiceLoader} при старте.
-     * <p>
-     * Модуль {@code platform-tracing-api} не имеет compile-time зависимости на OpenTelemetry,
-     * поэтому реализация ({@code OtelTraceparentReaderImpl}) обнаруживается в runtime через
-     * {@code META-INF/services}-регистрацию, предоставляемую {@code platform-tracing-core}.
-     *
-     * <p><b>Thread safety:</b> {@code ServiceLoader.findFirst()} вызывается один раз
-     * при инициализации класса; после этого полученный instance фактически immutable
-     * и безопасен для конкурентного использования.
-     *
-     * <p><b>Требование к test classpath:</b> любой тест, который косвенно вызывает
-     * {@link SpanSpec#builder(String)}, должен иметь {@code platform-tracing-core}
-     * (или test-double, зарегистрированный под тем же service interface) в test runtime classpath.
-     * При его отсутствии static initializer бросит {@link IllegalStateException} на этапе
-     * загрузки класса.
-     */
-    private static final OtelTraceparentReader TRACEPARENT_READER =
-            ServiceLoader.load(OtelTraceparentReader.class)
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException(
-                            "No OtelTraceparentReader implementation found on classpath. "
-                            + "Ensure platform-tracing-core is present at runtime."));
+    private static final OtelTraceparentReader TRACEPARENT_READER = OtelTraceparentReaders.get();
 
     private final String name;
     private SpanCategory category;
