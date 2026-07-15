@@ -39,8 +39,8 @@ public final class TracingMdcKeys {
 
     /**
      * Логическое имя upstream-сервиса, вызов которого завершился ошибкой в рамках текущего запроса.
-     * Заполняется {@link RemoteServiceMdc} из {@code EnrichingSpanProcessor} при завершении
-     * CLIENT-span'а со статусом ERROR. Очищается в HTTP-фильтрах запроса.
+     * Заполняется {@code core.mdc.remote.RemoteServiceMdc} из {@code EnrichingSpanProcessor}
+     * при завершении CLIENT-span'а со статусом ERROR. Очищается в HTTP-фильтрах запроса.
      * Имя совпадает со значением одноимённого платформенного атрибута
      * {@code space.br1440.platform.tracing.api.attributes.PlatformAttributes#PLATFORM_REMOTE_SERVICE}.
      */

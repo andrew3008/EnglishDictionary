@@ -1,15 +1,11 @@
 description = 'Публичный API платформенного стартера трассировки. ' +
         'Содержит интерфейс TraceOperations, аннотацию @Traced, перечисления SpanCategory и SpanResult, ' +
-        'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), снимок RequestTraceContextSnapshot для error-handling, точки расширения SPI. ' +
-        'Модуль не зависит от Spring и OpenTelemetry SDK, чтобы прикладной код мог писаться против стабильного контракта. ' +
-        'Единственная runtime-зависимость — slf4j-api для MDC-моста RemoteServiceMdc. ' +
-        'Зависимости OTel API/Context объявлены как compileOnly и предоставляются consuming runtime.'
+        'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), SPI RemoteServiceNameSource, ' +
+        'снимок RequestTraceContextSnapshot для error-handling, точки расширения SPI. ' +
+        'Модуль не зависит от Spring, OpenTelemetry SDK и SLF4J — стабильный контракт без runtime-зависимостей.'
 
 dependencies {
     api platform(project(':platform-tracing-bom'))
-
-    // MDC-мост platform.remote.service — единственная runtime-зависимость API-модуля.
-    implementation 'org.slf4j:slf4j-api'
 
     // Аннотации Jakarta для Nullable / Nonnull без зависимостей на implementation-фреймворки.
     api 'jakarta.annotation:jakarta.annotation-api'
@@ -32,6 +28,5 @@ dependencies {
     testImplementation 'io.opentelemetry:opentelemetry-api'
     testImplementation 'io.opentelemetry:opentelemetry-context'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    // Binding для ThreadLocal MDC в unit-тестах RemoteServiceMdc.
-    testRuntimeOnly 'ch.qos.logback:logback-classic'
+    // Binding для ThreadLocal MDC убран — тест RemoteServiceMdcTest перенесён в platform-tracing-core
 }
