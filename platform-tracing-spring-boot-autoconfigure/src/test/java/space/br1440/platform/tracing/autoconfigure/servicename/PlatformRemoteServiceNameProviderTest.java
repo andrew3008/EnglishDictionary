@@ -11,6 +11,7 @@ import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,11 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlatformRemoteServiceNameProviderTest {
 
     private static final String TRACE_ID = "0af7651916cd43dd8448eb211c80319c";
+    private static final String SPAN_ID = "b7ad6b7169203331";
 
-    private final PlatformRemoteServiceNameProvider provider = new PlatformRemoteServiceNameProvider();
+    private final PlatformRemoteServiceNameProvider provider =
+            new PlatformRemoteServiceNameProvider(new RemoteServiceNameResolver(List.of()));
 
     @AfterEach
-    void clearMdc() {
+    void cleanup() {
         MDC.clear();
         RemoteServiceMdc.clearForTrace(TRACE_ID);
     }
@@ -36,18 +39,14 @@ class PlatformRemoteServiceNameProviderTest {
     void читает_имя_upstream_сервиса_из_MDC() {
         MDC.put(TracingMdcKeys.REMOTE_SERVICE, "billing-service");
 
-        Optional<String> result = provider.get();
-
-        assertThat(result).contains("billing-service");
+        assertThat(provider.get()).contains("billing-service");
     }
 
     @Test
     void пустая_строка_в_MDC_трактуется_как_отсутствие_значения() {
         MDC.put(TracingMdcKeys.REMOTE_SERVICE, "  ");
 
-        Optional<String> result = provider.get();
-
-        assertThat(result).isEmpty();
+        assertThat(provider.get()).isEmpty();
     }
 
     @Test
@@ -57,21 +56,34 @@ class PlatformRemoteServiceNameProviderTest {
         assertThat(provider.get()).contains("ok");
     }
 
+    /**
+     * Mirror-fallback: traceId извлекается из активного Span через safeCurrentTraceId(),
+     * resolver вызывается с resolve(traceId) — mirror читается по явному ключу.
+     */
     @Test
-    void читает_trace_scoped_mirror_если_MDC_пуст() {
+    void читает_trace_scoped_mirror_через_активный_span() {
         RemoteServiceMdc.putIfPresent("upstream-from-mirror", TRACE_ID);
+        MDC.remove(TracingMdcKeys.REMOTE_SERVICE);
 
         Span span = Span.wrap(SpanContext.create(
-                TRACE_ID, "b7ad6b7169203331", TraceFlags.getSampled(), TraceState.getDefault()));
-        try (var scope = span.makeCurrent()) {
+                TRACE_ID, SPAN_ID, TraceFlags.getSampled(), TraceState.getDefault()));
+        try (var ignored = span.makeCurrent()) {
             assertThat(provider.get()).contains("upstream-from-mirror");
         }
     }
 
     @Test
+    void без_активного_span_mirror_не_читается() {
+        RemoteServiceMdc.putIfPresent("upstream-from-mirror", TRACE_ID);
+        MDC.remove(TracingMdcKeys.REMOTE_SERVICE);
+
+        assertThat(provider.get()).isEmpty();
+    }
+
+    @Test
     void contributor_через_resolver() {
         PlatformRemoteServiceNameProvider withSource = new PlatformRemoteServiceNameProvider(
-                new RemoteServiceNameResolver(java.util.List.of(() -> Optional.of("from-contributor"))));
+                new RemoteServiceNameResolver(List.of(() -> Optional.of("from-contributor"))));
 
         assertThat(withSource.get()).contains("from-contributor");
     }

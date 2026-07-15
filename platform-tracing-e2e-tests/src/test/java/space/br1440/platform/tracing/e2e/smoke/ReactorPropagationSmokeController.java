@@ -5,8 +5,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import space.br1440.platform.tracing.autoconfigure.servicename.PlatformRemoteServiceNameProvider;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -19,11 +19,12 @@ class ReactorPropagationSmokeController {
     private static final String E2E_REMOTE_SERVICE = "upstream-e2e-g205";
 
     private final CountDownLatch servedLatch;
-    // TODO(PR-2): replace with injected RemoteServiceNameResolver bean from Spring context
-    private final RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(java.util.List.of());
+    private final PlatformRemoteServiceNameProvider remoteServiceNameProvider;
 
-    ReactorPropagationSmokeController(CountDownLatch servedLatch) {
+    ReactorPropagationSmokeController(CountDownLatch servedLatch,
+                                    PlatformRemoteServiceNameProvider remoteServiceNameProvider) {
         this.servedLatch = servedLatch;
+        this.remoteServiceNameProvider = remoteServiceNameProvider;
     }
 
     /**
@@ -37,10 +38,9 @@ class ReactorPropagationSmokeController {
         return Mono.just(callerTraceId)
                 .publishOn(Schedulers.parallel())
                 .map(id -> {
-                    String workerTraceId = currentTraceId();
-                    String workerRemoteService = resolver.resolve(workerTraceId).orElse(null);
+                    String workerRemoteService = remoteServiceNameProvider.get().orElse(null);
                     String workerThread = Thread.currentThread().getName();
-                    return id + '|' + workerTraceId + '|' + workerRemoteService + '|' + workerThread;
+                    return id + '|' + currentTraceId() + '|' + workerRemoteService + '|' + workerThread;
                 })
                 .doOnSuccess(ignored -> servedLatch.countDown());
     }
