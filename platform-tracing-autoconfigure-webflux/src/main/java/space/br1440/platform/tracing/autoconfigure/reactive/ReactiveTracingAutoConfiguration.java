@@ -20,8 +20,6 @@ import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderI
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
-import jakarta.annotation.PostConstruct;
-
 /**
  * Авто-конфигурация реактивного веб-уровня (WebFlux) платформенного модуля трассировки.
  * <p>
@@ -40,6 +38,11 @@ import jakarta.annotation.PostConstruct;
  * стандартные {@code ThreadLocalAccessor}'ы Micrometer Tracing; отдельный реактивный
  * {@code WebFilter} для MDC не регистрируется. Для корректной работы при включённом
  * {@code spring.main.lazy-initialization=true} см. {@link TracingReactorEagerInitConfiguration}.
+ * <p>
+ * MDC-ключ {@link space.br1440.platform.tracing.api.mdc.TracingMdcKeys#REMOTE_SERVICE} регистрируется
+ * в Micrometer {@link io.micrometer.context.ContextRegistry} через
+ * {@link RemoteServiceContextPropagation#registerIfAbsent()} в методе
+ * {@link #platformTracingContextPropagationStartupRunner()}.
  */
 @AutoConfiguration
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
@@ -95,13 +98,14 @@ public class ReactiveTracingAutoConfiguration {
     }
 
     /**
-     * Регистрирует Micrometer {@code ThreadLocalAccessor} для {@code platform.remote.service}
-     * и дополнительные context readers для WebFlux error-handling.
+     * Регистрирует {@link RemoteServiceContextPropagation#registerIfAbsent()} в момент
+     * старта контекста — без отдельного inner-класса-конфигуратора.
+     * <p>
+     * Идемпотентен: повторная регистрация одного и того же {@code ThreadLocalAccessor} безопасна.
      */
     @Bean
-    @ConditionalOnMissingBean(RemoteServiceWebFluxMirrorConfigurer.class)
-    public RemoteServiceWebFluxMirrorConfigurer remoteServiceWebFluxMirrorConfigurer() {
-        return new RemoteServiceWebFluxMirrorConfigurer();
+    public org.springframework.boot.ApplicationRunner platformTracingContextPropagationStartupRunner() {
+        return args -> RemoteServiceContextPropagation.registerIfAbsent();
     }
 
     // --- Outbound propagation платформенных заголовков (WebClient) ---
@@ -137,19 +141,5 @@ public class ReactiveTracingAutoConfiguration {
                 filters.add(filter);
             }
         });
-    }
-
-    /**
-     * Инициализатор Micrometer ThreadLocalAccessor для {@code platform.remote.service}.
-     * <p>
-     * Trace-scoped mirror read — встроенный fallback {@link space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver}
-     * (PR-2: WebFlux {@code RemoteServiceNameSource} bean).
-     */
-    public static final class RemoteServiceWebFluxMirrorConfigurer {
-
-        @PostConstruct
-        void init() {
-            RemoteServiceContextPropagation.registerIfAbsent();
-        }
     }
 }

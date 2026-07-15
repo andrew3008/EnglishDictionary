@@ -1,12 +1,15 @@
 package space.br1440.platform.tracing.autoconfigure;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
+import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.autoconfigure.servicename.PlatformLocalServiceNameProvider;
 import space.br1440.platform.tracing.autoconfigure.servicename.PlatformRemoteServiceNameProvider;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
 
 /**
  * Авто-конфигурация платформенных провайдеров имени сервиса для интеграции с внешним
@@ -49,9 +52,24 @@ public class ServiceNameProviderAutoConfiguration {
         return new PlatformLocalServiceNameProvider(properties, environment);
     }
 
+    /**
+     * Регистрирует {@link PlatformRemoteServiceNameProvider} с полностью составленным
+     * {@link RemoteServiceNameResolver}.
+     * <p>
+     * Contributors ({@link RemoteServiceNameSource} beans) собираются через
+     * {@link ObjectProvider} — ленивo и без обязательного наличия: если ни одного бина
+     * {@code RemoteServiceNameSource} в контексте нет, resolver работает с пустым списком
+     * (MDC + mirror-fallback достаточны для типичного сценария).
+     * <p>
+     * Потребители платформы могут расширить цепочку, зарегистрировав бин
+     * {@code RemoteServiceNameSource} — он будет подхвачен автоматически.
+     */
     @Bean
     @ConditionalOnMissingBean(PlatformRemoteServiceNameProvider.class)
-    public PlatformRemoteServiceNameProvider platformRemoteServiceNameProvider() {
-        return new PlatformRemoteServiceNameProvider();
+    public PlatformRemoteServiceNameProvider platformRemoteServiceNameProvider(
+            ObjectProvider<RemoteServiceNameSource> contributors) {
+        RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(
+                contributors.orderedStream().toList());
+        return new PlatformRemoteServiceNameProvider(resolver);
     }
 }
