@@ -8,6 +8,20 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 
+/**
+ * Каноническая реализация {@link TraceControlHeaderInjector}.
+ * <p>
+ * Единый источник истины для outbound-инжекции: и {@code InboundTraceControlPropagator.inject()}
+ * (agent classloader), и client-интерсепторы Spring (app classloader) делегируют сюда — это
+ * исключает дрейф логики между классами и classloader'ами (см. ADR-outbound-propagation).
+ * <p>
+ * <b>Secure-by-default:</b> без {@link OutboundPropagationDecision} в {@link Context} — no-op.
+ * W3C {@code traceparent}/{@code tracestate} и {@code baggage} не трогаются (зона OTel Java Agent).
+ * <p>
+ * <b>{@code X-Trace-On}:</b> по умолчанию наружу не пробрасывается ({@code propagateForceTrace=false});
+ * решение о записи уже несёт sampled-flag в {@code traceparent}; явный проброс включается через
+ * {@link OutboundPropagationDecision#propagateForceTrace()}.
+ */
 @RequiredArgsConstructor
 public final class DefaultTraceControlHeaderInjector implements TraceControlHeaderInjector {
 

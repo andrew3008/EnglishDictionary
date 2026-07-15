@@ -18,6 +18,11 @@ import io.opentelemetry.context.propagation.TextMapSetter;
  *       и {@code baggage} — зона OTel Java Agent.</li>
  *   <li>Thread-safe; реализации обязаны быть stateless.</li>
  * </ul>
+ *
+ * @implNote {@code X-Trace-On} по умолчанию наружу не пробрасывается ({@code propagateForceTrace=false});
+ *           решение о записи уже несёт sampled-flag в {@code traceparent}. Подробнее — см.
+ *           {@link space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector}.
+ * @see space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector
  */
 public interface TraceControlHeaderInjector {
 
