@@ -6,18 +6,25 @@ import space.br1440.platform.tracing.api.propagation.RequestIdSupport;
 import java.util.UUID;
 
 /**
- * Обнаруживается call-site'ами ({@code InboundTraceControl.fromHeaders}, response-header filters)
- * единообразно через {@link space.br1440.platform.tracing.api.propagation.RequestIdSupports}
- * и {@link java.util.ServiceLoader} SPI (регистрация в {@code META-INF/services}).
+ * Реализация {@link RequestIdSupport} без аллокаций на hot path.
+ * <p>
+ * Располагается в {@code platform-tracing-core} и обнаруживается через
+ * {@link java.util.ServiceLoader} SPI (регистрация в {@code META-INF/services}).
+ * Единственный публичный доступ — через
+ * {@link space.br1440.platform.tracing.api.propagation.RequestIdSupports#get()}.
+ * <p>
+ * Прямое использование вне тестов запрещено
+ * (enforced ArchUnit-правилом
+ * {@code ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED}).
  */
 public final class RequestIdSupportImpl implements RequestIdSupport {
 
-    public static final RequestIdSupportImpl INSTANCE = new RequestIdSupportImpl();
-
     /**
-     * Публичный конструктор для {@link java.util.ServiceLoader}.
+     * Пакетный конструктор: {@link java.util.ServiceLoader} находит класс через
+     * {@code META-INF/services} и не требует public конструктора.
+     * Пакетный модификатор запрещает внешним модулям создавать экземпляр напрямую.
      */
-    public RequestIdSupportImpl() {
+    RequestIdSupportImpl() {
     }
 
     @Override
