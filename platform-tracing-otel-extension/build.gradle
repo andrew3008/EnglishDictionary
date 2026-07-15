@@ -100,6 +100,7 @@ tasks.register('verifyAgentJarContents') {
         assert entries.any { it == 'org/slf4j/LoggerFactory.class' }  // slf4j-api embedded
         assert entries.any { it.contains('space/br1440/platform/tracing/api/') }  // platform-tracing-api classes
         assert entries.any { it.contains('space/br1440/platform/tracing/core/sampling/') }  // core sampling policy
+        assert entries.any { it.contains('space/br1440/platform/tracing/core/propagation/control/') }  // core propagation control
     }
 }
 

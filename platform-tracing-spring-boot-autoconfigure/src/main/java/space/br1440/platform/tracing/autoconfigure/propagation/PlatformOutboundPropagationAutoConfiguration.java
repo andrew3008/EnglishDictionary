@@ -10,6 +10,9 @@ import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderI
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy;
+import space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector;
+import space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers;
 
 /**
  * Общие (framework-agnostic) бины outbound-пропагации платформенных заголовков.
@@ -35,7 +38,7 @@ public class PlatformOutboundPropagationAutoConfiguration {
     public TraceControlHeaderInjector platformOutboundInjector(TracingProperties properties) {
         TracingProperties.Propagation.PlatformHeadersConfig headers =
                 properties.getPropagation().getPlatformHeaders();
-        return new TraceControlHeaderInjector(
+        return new DefaultTraceControlHeaderInjector(
                 headers.getForceTraceHeader(),
                 headers.getQaTraceHeader(),
                 headers.getRequestIdHeader());
@@ -48,9 +51,9 @@ public class PlatformOutboundPropagationAutoConfiguration {
     @ConditionalOnMissingBean(name = "platformHttpOutboundPolicy")
     public OutboundPropagationPolicy platformHttpOutboundPolicy(TracingProperties properties) {
         TracingProperties.Propagation.Outbound outbound = properties.getPropagation().getOutbound();
-        TrustedDestinationMatcher matcher = TrustedDestinationMatcher.forHttpHosts(
+        TrustedDestinationMatcher matcher = TrustedDestinationMatchers.forHttpHosts(
                 outbound.getTrustedHostPatterns(), outbound.isAllowIpLiterals());
-        return new OutboundPropagationPolicy(
+        return new DefaultOutboundPropagationPolicy(
                 outbound.isEnabled(),
                 matcher,
                 outbound.isPropagateForceTrace(),

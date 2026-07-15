@@ -4,9 +4,12 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
+import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor;
+import space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector;
 import space.br1440.platform.tracing.otel.extension.utils.Strings;
 
 import java.util.Collection;
@@ -28,6 +31,7 @@ public final class InboundTraceControlPropagator implements TextMapPropagator {
 
     // Единый источник истины для outbound-инжекции (общий с client-интерсепторами через platform-tracing-api).
     private final TraceControlHeaderInjector outboundInjector;
+    private final InboundTraceControlExtractor inboundExtractor;
 
     // Runtime kill-switch платформенной пропагации (Фаза 14). По умолчанию — процессный shared-гейт.
     private final PlatformPropagationGate gate;
@@ -42,7 +46,8 @@ public final class InboundTraceControlPropagator implements TextMapPropagator {
         this.qaTraceHeader = qaTraceHeader;
         this.requestIdHeader = requestIdHeader;
         this.fields = List.of(forceTraceHeader, qaTraceHeader, requestIdHeader);
-        this.outboundInjector = new TraceControlHeaderInjector(forceTraceHeader, qaTraceHeader, requestIdHeader);
+        this.outboundInjector = new DefaultTraceControlHeaderInjector(forceTraceHeader, qaTraceHeader, requestIdHeader);
+        this.inboundExtractor = new DefaultInboundTraceControlExtractor();
         this.gate = gate;
     }
 
@@ -72,7 +77,7 @@ public final class InboundTraceControlPropagator implements TextMapPropagator {
             return context;
         }
 
-        InboundTraceControl control = InboundTraceControl.fromHeaders(forceTraceVal, qaTraceVal, requestIdVal);
+        InboundTraceControl control = inboundExtractor.fromHeaders(forceTraceVal, qaTraceVal, requestIdVal);
 
         return context.with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }

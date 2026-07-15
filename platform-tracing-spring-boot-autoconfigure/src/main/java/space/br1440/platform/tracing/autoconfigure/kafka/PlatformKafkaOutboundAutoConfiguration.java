@@ -10,6 +10,8 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy;
+import space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers;
 
 /**
  * Авто-конфигурация исходящей инжекции платформенных заголовков в Kafka producer (agent-compatible).
@@ -36,8 +38,8 @@ public class PlatformKafkaOutboundAutoConfiguration {
 
         // enabled для Kafka = режим agent-compatible (disabled -> DENY_ALL).
         boolean enabled = "agent-compatible".equalsIgnoreCase(kafka.getMode());
-        TrustedDestinationMatcher topicMatcher = TrustedDestinationMatcher.forKafkaTopics(kafka.getTrustedTopicPatterns());
-        OutboundPropagationPolicy policy = new OutboundPropagationPolicy(
+        TrustedDestinationMatcher topicMatcher = TrustedDestinationMatchers.forKafkaTopics(kafka.getTrustedTopicPatterns());
+        OutboundPropagationPolicy policy = new DefaultOutboundPropagationPolicy(
                 enabled,
                 topicMatcher,
                 outbound.isPropagateForceTrace(),
