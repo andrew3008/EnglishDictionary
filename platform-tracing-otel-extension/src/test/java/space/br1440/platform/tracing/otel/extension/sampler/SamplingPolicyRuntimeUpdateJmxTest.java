@@ -5,10 +5,10 @@ import io.opentelemetry.context.Context;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.otel.extension.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
 import space.br1440.platform.tracing.test.assertions.SamplingAssertions;
+import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
 import java.util.List;
@@ -52,7 +52,7 @@ class SamplingPolicyRuntimeUpdateJmxTest {
 
         Context forceContext = Context.root().with(
                 PlatformTraceContextKeys.TRACE_CONTROL,
-                new InboundTraceControl(true, false, null, "x_trace_on", "force-me"));
+                InboundTraceControls.of(true, false, null, PlatformSamplingReasons.FORCE_HEADER, "force-me"));
         var forceResult = SamplerHarness.of(sampler)
                 .spanKind(SpanKind.SERVER)
                 .parentContext(forceContext)

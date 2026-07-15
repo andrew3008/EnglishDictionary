@@ -59,7 +59,7 @@ Also inspected current source directly across API, core, autoconfigure, otel-ext
 | Area | Evidence | Result |
 | --- | --- | --- |
 | Context pair | `RequestTraceContextSnapshot` is a nullable captured record for request/error handling; `ActiveTraceContextView` is a live read-only trace/span/correlation view. | PASS |
-| Inbound/outbound pair | `InboundTraceControl.fromHeaders(...)` extracts incoming carrier values; `OutboundPropagationDecision` controls outbound propagation; `TraceControlHeaderInjector` writes only platform trace-control headers. | PASS |
+| Inbound/outbound pair | `DefaultInboundTraceControlExtractor.fromHeaders(...)` extracts incoming carrier values; `OutboundPropagationDecision` controls outbound propagation; `TraceControlHeaderInjector` writes only platform trace-control headers. | PASS |
 | Traceparent parser | `TraceparentParser` is a `@UtilityClass` parser with static `parseTraceparent` / `requireTraceparent`, returning `RemoteSpanLink`; it is not a value object. | PASS |
 | Builder method rename | Active Java source uses `fromTraceparent(...)`; no active Java source `fromRemoteContext(...)` remains. | PASS |
 | Propagator classes | `InboundTraceControlPropagator`, `InboundTraceControlPropagatorBuilder`, and `InboundTraceControlPropagatorProvider` exist and are used. | PASS |
@@ -121,7 +121,7 @@ Current user-facing manual API docs, architecture inventory, support matrix, sem
 - `docs/tracing/platform-tracing-v3-span-factory-api.md` uses new manual/context/link/spec names.
 - `docs/tracing/platform-tracing-v3-kafka-batch-links.md` uses `RemoteSpanLink`.
 - `docs/tracing/otel-compatibility-matrix.md` and `docs/tracing/requirements-coverage-dossier.md` use `InboundTraceControlPropagatorProvider`.
-- `docs/tracing/traceability.md` now uses `SpanRelationship`, `SpanHandle.close()`, `TraceControlHeaderInjector`, `InboundTraceControl.fromHeaders`, `InboundTraceControlPropagatorProvider`, `InboundTraceControlPropagatorBuilder`, and `InboundTraceControlPropagatorProviderTest`.
+- `docs/tracing/traceability.md` now uses `SpanRelationship`, `SpanHandle.close()`, `TraceControlHeaderInjector`, `DefaultInboundTraceControlExtractor`, `InboundTraceControlPropagatorProvider`, `InboundTraceControlPropagatorBuilder`, and `InboundTraceControlPropagatorProviderTest`.
 - `docs/architecture/platform-tracing-current-codebase-inventory.md` now uses current Batch A / PR-B1 / PR-B2 names for API, propagation, enrichment, and extension entries.
 - `docs/SUPPORTED.md` now describes sampler context flow through `InboundTraceControl` and `InboundTraceControlPropagator`.
 - `docs/semconv-mapping.md` now describes enrichment through `GenericSpanEnrichment` and `SpanEnrichment`.

@@ -366,7 +366,7 @@ Notes: DomainConfigHolder lives here (good target alignment); compileOnly OTel =
 Module: platform-tracing-core
 Path: platform-tracing-core/
 Purpose: TraceOperations implementation, typed span builders, AttributePolicy, exception handling
-Main packages: core, core.span, core.semconv, core.exception
+Main packages: core, core.span, core.semconv, core.exception, core.propagation.control
 Key dependencies: api platform-tracing-api; api opentelemetry-api
 Published artifact: yes
 Runtime role: Application CL Spring beans
@@ -438,10 +438,10 @@ starters -> autoconfigure + web*                    CURRENT: yes
 | `...api` | api | 1 | TraceOperations interface | no | no | partial | yes | API | |
 | `...api.semconv` | api | 6 | Semconv keys, CategoryContracts | yes | no | no | yes | API | |
 | `...api.config` | api | 2 | DomainConfigHolder, Versioned | yes | no | yes | yes | API | atomic config holder |
-| `...api.propagation.control` | api | 6 | Outbound propagation policy | yes | partial | yes | yes | API | |
+| `...api.propagation.control` | api | 7 | Propagation control contracts (interfaces + records) | yes | no | yes | partial | API | impl in core.propagation.control |
 | `...api.span.builder` | api | 18 | Typed builder interfaces/facades | partial | no | yes | partial | API | |
 | `...api.spi` | api | 3 | SpanAttributeScrubbingRule SPI | yes | no | yes | yes | API | |
-| `...core.span` | core | 19 | Span builder implementations | partial | yes (OTel) | yes | yes | CORE + SPLIT | OTel Span types |
+| `...core.propagation.control` | core | 5 | Default outbound/inbound propagation control impl | yes | partial | yes | yes | CORE | TrustedDestinationMatchers, Default* |
 | `...core.semconv` | core | 4 | AttributePolicy, ValidatedAttributes | yes | partial | yes | yes | CORE | |
 | `...otel.extension.sampler` | otel-ext | 18 | CompositeSampler, rules, state | yes | yes | **yes** | **yes** | SPLIT_CORE_AND_ADAPTER | primary sampling |
 | `...otel.extension.processor` | otel-ext | 11 | Scrub/validate/enrich/export processors | yes | yes | **yes** | **yes** | OTEL_EXTENSION_ADAPTER | |
@@ -659,7 +659,7 @@ Preservation risk: HIGH
 Constants: SemconvKeys, PlatformAttributes, PlatformSamplingReasons, PlatformHeaders, TracingMdcKeys
 Typed builders: api.span.builder.* interfaces + Facade* wrappers; core *Impl classes
 Public interfaces: TraceOperations, SpanHandle, SpanAttributeScrubbingRule SPI, PlatformContextPropagation
-Propagation contracts: InboundTraceControl, TraceControlHeaderInjector, OutboundPropagationPolicy, TrustedDestinationMatcher
+Propagation contracts: InboundTraceControl, TraceControlHeaderInjector, OutboundPropagationPolicy, TrustedDestinationMatcher, InboundTraceControlExtractor (api); Default* + TrustedDestinationMatchers (core.propagation.control)
 Backward compatibility sensitivity: HIGH — app code compiles against api
 Tests: CategoryContractsTest, SanitizerTest, propagation tests, RemoteServiceMdcTest
 Target role: platform-tracing-api unchanged as public contract module
@@ -1065,6 +1065,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / OutboundPropagationDecision
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / PlatformTraceContextKeys
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / InboundTraceControl
+    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / InboundTraceControlExtractor
     platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / TrustedDestinationMatcher
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / CategoryContract
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / CategoryContracts
@@ -1121,6 +1122,11 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / ServletTracingAutoConfiguration
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / TraceResponseHeaderServletFilter
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / WebMvcSuppressMicrometerTracingAutoConfiguration
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultInboundTraceControlExtractor
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultOutboundPropagationPolicy
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultTraceControlHeaderInjector
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / GlobTrustedDestinationMatcher
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / TrustedDestinationMatchers
     platform-tracing-core / space.br1440.platform.tracing.core / DefaultTraceOperations
     platform-tracing-core / space.br1440.platform.tracing.core / NoOpPlatformContextPropagation
     platform-tracing-core / space.br1440.platform.tracing.core / NoopTraceOperations
@@ -1335,9 +1341,10 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.config / DomainConfigHolderTest
     platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceMdcTest
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / RequestIdSupportTest
-    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / OutboundPropagationPolicyTest
-    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / TraceControlHeaderInjectorTest
-    platform-tracing-api / space.br1440.platform.tracing.api.propagation.control / TrustedDestinationMatcherTest
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultInboundTraceControlExtractorTest
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultOutboundPropagationPolicyTest
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultTraceControlHeaderInjectorTest
+    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / TrustedDestinationMatchersTest
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / CategoryContractsTest
     platform-tracing-api / space.br1440.platform.tracing.api.span.sanitize / SanitizerTest
     platform-tracing-autoconfigure-webflux / space.br1440.platform.tracing.autoconfigure.reactive / BridgeOtelReactorContextPropagationIntegrationTest

@@ -23,7 +23,7 @@ Warnings are limited to stale references in historical/operational documentation
 | --- | --- | --- |
 | Context snapshot rename | `RequestTraceContextSnapshot` record in `api.context`; supplier `RequestTraceContextSnapshotSupplier` | PASS |
 | Active context view rename | `ActiveTraceContextView` in `api.manual`; impl `DefaultActiveTraceContextView` in core | PASS |
-| Inbound trace-control model | `InboundTraceControl.fromHeaders(...)` extracts from inbound carrier (`InboundTraceControl.java:7-28`) | PASS |
+| Inbound trace-control model | `DefaultInboundTraceControlExtractor.fromHeaders(...)` extracts from inbound carrier (`core.propagation.control`); `InboundTraceControl` record in api (no static factory) | PASS |
 | Outbound propagation decision | `OutboundPropagationDecision` used by HTTP/Kafka outbound interceptors (`PlatformOutboundHttpInterceptor`, `PlatformKafkaProducerInterceptor`) | PASS |
 | Trace-control header injector | `TraceControlHeaderInjector.inject()` writes outbound headers using `OutboundPropagationDecision` + `InboundTraceControl` from Context | PASS |
 | Traceparent utility moved + renamed | `api.propagation.TraceparentParser` (`@UtilityClass`, static `parseTraceparent` / `requireTraceparent`) | PASS |
@@ -77,20 +77,20 @@ Semantic separation is correct: snapshot is request-scoped captured data for err
 ### Inbound / outbound propagation model
 
 ```java
-// Inbound extraction from carrier headers
-public record InboundTraceControl(...) {
-    public static InboundTraceControl fromHeaders(String traceOn, String qaTrace, String requestId);
+// Inbound extraction from carrier headers (core.propagation.control)
+public interface InboundTraceControlExtractor {
+    InboundTraceControl fromHeaders(String traceOn, String qaTrace, String requestId);
 }
 
-// Outbound trusted-destination policy result
+// Outbound trusted-destination policy result (api.propagation.control)
 public record OutboundPropagationDecision(
     boolean propagateForceTrace,
     boolean propagateQaTrace,
     boolean propagateRequestId) {}
 
-// Outbound writer — trace-control headers only (not W3C traceparent)
-public final class TraceControlHeaderInjector {
-    public <C> void inject(Context context, C carrier, TextMapSetter<C> setter);
+// Outbound writer — trace-control headers only (api interface; core Default* impl)
+public interface TraceControlHeaderInjector {
+    <C> void inject(Context context, C carrier, TextMapSetter<C> setter);
 }
 ```
 

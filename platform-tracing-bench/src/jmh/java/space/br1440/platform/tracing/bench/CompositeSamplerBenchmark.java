@@ -17,8 +17,9 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.otel.extension.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
 
@@ -74,7 +75,7 @@ public class CompositeSamplerBenchmark {
         // Ветка 1: форсированная запись через X-Trace-On (см. CompositeSamplerTest.withControl).
         forceHeaderContext = Context.root().with(
                 PlatformTraceContextKeys.TRACE_CONTROL,
-                new InboundTraceControl(true, false, null, "x_trace_on", "on"));
+                new InboundTraceControl(true, false, null, PlatformSamplingReasons.FORCE_HEADER, "on"));
 
         // Ветка 2: удалённый sampled-родитель — ParentDecisionRule наследует решение.
         parentSampledContext = Context.root().with(

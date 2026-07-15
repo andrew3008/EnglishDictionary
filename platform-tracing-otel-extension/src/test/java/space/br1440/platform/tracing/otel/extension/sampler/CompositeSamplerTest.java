@@ -10,9 +10,10 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.test.assertions.SamplerDecisionAssert;
+import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
 import java.util.List;
@@ -23,14 +24,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CompositeSamplerTest {
 
     private static Context withControl(boolean force, boolean qa) {
-        InboundTraceControl control = new InboundTraceControl(force, qa, null, force ? "x_trace_on" : (qa ? "qa_trace" : null), force ? "on" : null);
-        return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
+        String reason = force ? PlatformSamplingReasons.FORCE_HEADER : (qa ? PlatformSamplingReasons.QA_TRACE : null);
+        return Context.root().with(
+                PlatformTraceContextKeys.TRACE_CONTROL,
+                InboundTraceControls.of(force, qa, null, reason, force ? "on" : null));
     }
-    
+
     private static Context withControlRaw(String raw) {
         boolean force = "on".equalsIgnoreCase(raw);
-        InboundTraceControl control = new InboundTraceControl(force, false, null, force ? "x_trace_on" : null, raw);
-        return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
+        return Context.root().with(
+                PlatformTraceContextKeys.TRACE_CONTROL,
+                InboundTraceControls.of(force, false, null, force ? PlatformSamplingReasons.FORCE_HEADER : null, raw));
     }
 
     @Test

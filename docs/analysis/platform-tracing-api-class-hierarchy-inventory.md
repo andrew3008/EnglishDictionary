@@ -560,7 +560,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | `OtelTraceparentReader` | `OtelTraceparentReaderTest` | Strong | Access restricted by ArchUnit |
 | Semconv registry | `CategoryContractsTest`, `*SemconvVersionMarkerTest` | Strong | — |
 | Control protocol | 10+ tests in `control/protocol/**` | **Strong** | — |
-| Propagation control | `OutboundPropagationPolicyTest`, `TraceControlHeaderInjectorTest`, `TrustedDestinationMatcherTest`, `RequestIdSupportTest` | Strong | — |
+| Propagation control | `DefaultOutboundPropagationPolicyTest`, `DefaultTraceControlHeaderInjectorTest`, `TrustedDestinationMatchersTest`, `DefaultInboundTraceControlExtractorTest`, `RequestIdSupportTest` | Strong | — |
 | Runtime state | `VersionedStateHolderTest`, `RuntimeStateArchTest` | Medium | `VersionedState` itself thin |
 | MDC | `RemoteServiceMdcTest` | Medium | mirrors/readers partial |
 | Sanitizers | `SanitizerTest` | Medium | — |
