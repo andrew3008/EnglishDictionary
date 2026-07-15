@@ -37,4 +37,12 @@ class RuntimeStateArchTest {
     @ArchTest
     static final ArchRule apiPropagationControlNoConcreteImpl =
             ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL;
+
+    @ArchTest
+    static final ArchRule apiMdcContractsOnly =
+            ModuleTaxonomyArchRules.API_MDC_CONTRACTS_ONLY;
+
+    @ArchTest
+    static final ArchRule apiMdcNoSlf4jImports =
+            ModuleTaxonomyArchRules.API_MDC_NO_SLF4J_IMPORTS;
 }

@@ -315,6 +315,35 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("api.propagation.control — только интерфейсы, records, enums и *Keys utility-классы");
 
+    // -- PR-3: api.mdc guardrails ---------------------------------------------------------------
+
+    /**
+     * После split в {@code api.mdc} допустимы только контрактные типы:
+     * interfaces и utility-классы {@code *Keys}/{@code *Constants}.
+     * Concrete bridge/mirror/readers запрещены.
+     */
+    public static final ArchRule API_MDC_CONTRACTS_ONLY = noClasses()
+            .that().resideInAPackage("..api.mdc..")
+            .and().areNotInterfaces()
+            .and().areNotRecords()
+            .and().areNotEnums()
+            .and().haveSimpleNameNotContaining("Keys")
+            .and().haveSimpleNameNotContaining("Constants")
+            .should().beInterfaces()
+            .allowEmptyShould(true)
+            .because("api.mdc — только контракты: interfaces и utility *Keys/*Constants; "
+                    + "bridge/mirror/readers должны жить вне api");
+
+    /**
+     * После split {@code api.mdc} не должен импортировать SLF4J.
+     * Это regression guard против возврата MDC bridge в API-модуль.
+     */
+    public static final ArchRule API_MDC_NO_SLF4J_IMPORTS = noClasses()
+            .that().resideInAPackage("..api.mdc..")
+            .should().dependOnClassesThat().resideInAnyPackage("org.slf4j..")
+            .allowEmptyShould(true)
+            .because("api.mdc — contracts-only; SLF4J bridge живёт в core.mdc.remote");
+
     private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
         return new DescribedPredicate<>("быть разрешённым зависимым от OtelTraceparentReaderImpl") {
             @Override

@@ -96,9 +96,10 @@ class TracingArchRulesTest {
         ModuleTaxonomyArchRules.CONTROL_IMPLS_ONLY_IN_CORE.check(classes);
         ModuleTaxonomyArchRules.CONTROL_IMPL_ACCESS_RESTRICTED.check(classes);
         ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL.check(classes);
+        ModuleTaxonomyArchRules.API_MDC_CONTRACTS_ONLY.check(classes);
+        ModuleTaxonomyArchRules.API_MDC_NO_SLF4J_IMPORTS.check(classes);
 
-        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.propagation." + "Traceparent" + "Parser"))
-                .isFalse();
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.propagation." + "Traceparent" + "Parser")).isFalse();
     }
 
     private static boolean classCanBeLoaded(String className) {
