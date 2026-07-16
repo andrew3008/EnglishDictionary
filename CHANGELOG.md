@@ -8,11 +8,16 @@
 ### Breaking Changes
 
 - `TraceparentParser` has been deleted. Builder `fromTraceparent(String...)` signatures are unchanged and now use the OTel-backed bridge internally. No alias or deprecated bridge is provided.
-- `PlatformRemoteServiceNameProvider()` no-arg constructor removed (PR-2). Use the Spring bean from `ServiceNameProviderAutoConfiguration` or construct with `RemoteServiceNameResolver` in tests (package-private constructor).
+- `PlatformRemoteServiceNameProvider()` no-arg constructor removed (PR-2). Use the Spring bean from `ServiceNameProviderAutoConfiguration` or construct with `RemoteServiceNameResolver` in tests.
 - `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.
 - `TraceOperations.manual()` renamed to `TraceOperations.spans()`.
 - `ManualTracing.spanFromSpec(SpanSpec)` renamed to `SpanFactory.fromSpec(SpanSpec)`.
 - `ManualTracing.operation(String)` is retained as `SpanFactory.operation(String)` inside the `spans()` namespace.
+
+### Changed (api.mdc ArchUnit guardrails — PR-3)
+
+- Added ArchUnit rules: `API_MDC_CONTRACTS_ONLY`, `TRACE_MIRROR_PACKAGE_PRIVATE`, `REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE`, `NO_REMOTE_SERVICE_CONTEXT_READERS`, `OTEL_EXTENSION_MDC_FROM_CORE`. New tests: `CoreMdcRemoteArchTest`, `ExtensionMdcBoundaryArchTest`. E2E `ReactorPropagationSmokeController` injects `RemoteServiceNameSource` instead of `PlatformRemoteServiceNameProvider`.
+
 ### Changed (Batch C - optional API naming cleanup)
 
 - Pre-production API rename cleanup: `SpanLinkContext` -> `RemoteSpanLink`,

@@ -14,11 +14,16 @@ import org.springframework.core.annotation.Order;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.WebFilter;
+import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
+import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+
+import java.util.Optional;
 
 /**
  * Авто-конфигурация реактивного веб-уровня (WebFlux) платформенного модуля трассировки.
@@ -112,6 +117,30 @@ public class ReactiveTracingAutoConfiguration {
     @ConditionalOnMissingBean(RemoteServiceContextPropagationInitializer.class)
     public RemoteServiceContextPropagationInitializer platformTracingContextPropagationEagerInit() {
         return RemoteServiceContextPropagation::registerIfAbsent;
+    }
+
+    /**
+     * WebFlux {@link RemoteServiceNameSource}: читает {@link TracingMdcKeys#REMOTE_SERVICE} из MDC
+     * после проброса через {@link RemoteServiceContextPropagation} (publishOn / scheduler switch).
+     * <p>
+     * Подхватывается {@code ServiceNameProviderAutoConfiguration} в цепочку
+     * {@code RemoteServiceNameResolver}; также доступен для прямой инжекции (e2e smoke).
+     */
+    @Bean
+    @Order(Ordered.LOWEST_PRECEDENCE)
+    @ConditionalOnMissingBean(name = "webFluxTraceMirrorSource")
+    RemoteServiceNameSource webFluxTraceMirrorSource() {
+        return () -> {
+            try {
+                String fromMdc = MDC.get(TracingMdcKeys.REMOTE_SERVICE);
+                if (fromMdc != null && !fromMdc.isBlank()) {
+                    return Optional.of(fromMdc);
+                }
+            } catch (RuntimeException ignored) {
+                // fail-soft
+            }
+            return Optional.empty();
+        };
     }
 
     // --- Outbound propagation платформенных заголовков (WebClient) ---

@@ -39,4 +39,7 @@ class ApiModuleTaxonomyArchTest {
     @ArchTest
     static final ArchRule apiPropagationControlNoConcreteImpl =
             ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL;
+
+    @ArchTest
+    static final ArchRule apiMdcContractsOnly = ModuleTaxonomyArchRules.API_MDC_CONTRACTS_ONLY;
 }

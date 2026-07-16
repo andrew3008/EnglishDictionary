@@ -5,13 +5,18 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import space.br1440.platform.tracing.autoconfigure.servicename.PlatformRemoteServiceNameProvider;
+import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 
 import java.util.concurrent.CountDownLatch;
 
 /**
  * Эндпоинт G2-05: проверка OTel Context и {@code platform.remote.service} после {@code publishOn}.
+ * <p>
+ * Получает {@link RemoteServiceNameSource} напрямую (Spring-bean
+ * {@code ReactiveTracingAutoConfiguration#webFluxTraceMirrorSource}), а не через
+ * {@code PlatformRemoteServiceNameProvider} — это устраняет coupling e2e-теста к
+ * autoconfigure-internal bean (PR-3).
  */
 @RestController
 class ReactorPropagationSmokeController {
@@ -19,12 +24,12 @@ class ReactorPropagationSmokeController {
     private static final String E2E_REMOTE_SERVICE = "upstream-e2e-g205";
 
     private final CountDownLatch servedLatch;
-    private final PlatformRemoteServiceNameProvider remoteServiceNameProvider;
+    private final RemoteServiceNameSource remoteServiceNameSource;
 
     ReactorPropagationSmokeController(CountDownLatch servedLatch,
-                                    PlatformRemoteServiceNameProvider remoteServiceNameProvider) {
+                                    RemoteServiceNameSource remoteServiceNameSource) {
         this.servedLatch = servedLatch;
-        this.remoteServiceNameProvider = remoteServiceNameProvider;
+        this.remoteServiceNameSource = remoteServiceNameSource;
     }
 
     /**
@@ -39,7 +44,7 @@ class ReactorPropagationSmokeController {
                 .publishOn(Schedulers.parallel())
                 .map(id -> {
                     String workerTraceId = currentTraceId();
-                    String workerRemoteService = remoteServiceNameProvider.get().orElse(null);
+                    String workerRemoteService = remoteServiceNameSource.resolve().orElse(null);
                     String workerThread = Thread.currentThread().getName();
                     return id + '|' + workerTraceId + '|' + workerRemoteService + '|' + workerThread;
                 })
