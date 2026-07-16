@@ -1,5 +1,18 @@
 # platform-tracing-api Changelog
 
+## Breaking Changes - Span API Boundary
+
+- Added public `api.span.enrich.SpanEnricher` with the platform-safe
+  `enrichCurrentSpan(Consumer<GenericSpanEnrichment>)` contract.
+- Removed public OTel-based `SpanEnrichment` and `SemconvKeys`.
+- Removed `GenericSpanEnrichment.businessTag`; the remaining methods are `requestId`, `userHash`,
+  and `result`.
+- Removed public `api.span.sanitize` utilities.
+- Removed the `opentelemetry-api` compile dependency; `opentelemetry-context` remains for approved
+  propagation/control contracts.
+
+No compatibility aliases or deprecated bridges are provided.
+
 ## Breaking Changes - TraceparentParser Removal
 
 - `TraceparentParser` was deleted and replaced by the OTel-backed `OtelTraceparentReader` bridge.

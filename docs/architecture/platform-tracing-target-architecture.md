@@ -156,13 +156,15 @@ platform-tracing-api/
   api/config/                   — DomainConfigHolder, Versioned
   api/control/                  — Wire schema, ControlContractVersion, allowed keys
   api/propagation/              — PlatformHeaders, trace control
-  api/semconv/                  — CategoryContracts, SemconvKeys
+  api/semconv/                  — public validation modes/violations and version annotations
+  api/span/enrich/              — SpanEnricher, GenericSpanEnrichment
 
 platform-tracing-core/
   core/policy/                  — SamplerState, policy merge, validators
   core/scrubbing/               — RuleEngine, RuleSet, CircuitBreaker logic
   core/validation/              — CategoryValidator, ValidationMode rules
-  core/enrichment/              — EnrichmentSpec (data only, no OTel types)
+  core/enrichment/              — DefaultSpanEnricher (OTel-backed implementation)
+  core/semconv/                 — internal typed SemconvKeys
 
 platform-tracing-otel-extension/
   otel/extension/spi/           — PlatformAutoConfigurationCustomizer (orchestration)

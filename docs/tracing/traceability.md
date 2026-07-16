@@ -172,15 +172,15 @@ ADR'ы Фазы 2:
 
 | GAP | Статус | Реализация |
 |---|---|---|
-| P13-01 typed escape-hatch builders (HTTP/DB/RPC/Kafka) | OK | `platform-tracing-api/span/builder/*` (интерфейсы + `Facade*` fallback) + `platform-tracing-core/span/*Impl` (policy-backed); фасадные фабрики на `TraceOperations`; покрыто `EscapeHatchSpanBuilderTest` |
-| P13-02 единый источник истины семконвенций | OK | `CategoryContracts`/`CategoryContract` (`platform-tracing-api/semconv`) — allowlist/required/requiredAnyOf/forbidden по категории; `assertSame`-страховка + `CategoryContractsTest` |
-| P13-03 runtime-валидация атрибутов + режимы | OK | `AttributePolicy.validateAndNormalize` → `ValidatedAttributes`; `ValidationMode` STRICT/WARN/DISABLED; метрики `platform.tracing.semconv.violations`; `AttributePolicyTest`. ADR: [ADR-semconv-validation-modes.md](../decisions/ADR-semconv-validation-modes.md) |
-| P13-04 anti-double instrumentation (agent-first) | OK | модель B: `PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY` маркер + degradation в enrich (`AbstractSemanticSpanBuilder`); defense-in-depth ArchUnit `TracingArchRules.ESCAPE_HATCH_BUILDERS_REQUIRE_SUPPRESSION` + `@SuppressAgentInstrumentation`; первичный guard — agent-флаг `span-suppression-strategy=semconv` + e2e no-dup |
-| P13-05 enrichment активного span'а | OK | `SpanEnricher.enrichCurrentSpan` (`GenericSpanEnrichment` — только platform-safe) / `enrichCurrentSpanIfPlatformCategory` (`SpanEnrichment` — allowlist); `SpanEnricherTest` |
+| P13-01 typed escape-hatch builders (HTTP/DB/RPC/Kafka) | OK | контракты `platform-tracing-api/api.manual`, реализации `platform-tracing-core/core.manual`, вход через `TraceOperations.spans()` / `SpanFactory` |
+| P13-02 единый источник истины семконвенций | OK | internal `core.semconv.SemconvKeys` + `core.semconv.policy.CategoryContracts`/`CategoryContract`; публичным реестром строковых имён остаётся `PlatformAttributes` |
+| P13-03 runtime-валидация атрибутов + режимы | OK | `AttributePolicy.validateAndNormalize` → `ValidatedAttributes`; `SemconvValidationMode` STRICT/WARN/DISABLED; метрики `platform.tracing.semconv.violations`; `AttributePolicyTest`. ADR: [ADR-semconv-validation-modes.md](../decisions/ADR-semconv-validation-modes.md) |
+| P13-04 anti-double instrumentation (agent-first) | OK | primary guard — agent-флаг `span-suppression-strategy=semconv` + e2e no-dup; manual spans используют явную topology (`child`/`root`/`detached`), marker-based degradation удалена |
+| P13-05 enrichment активного span'а | OK | API-owned `SpanEnricher.enrichCurrentSpan` + `GenericSpanEnrichment` (`requestId`, `userHash`, `result`); category-specific OTel path удалён |
 | P13-06 безопасная запись исключений (PII) | OK | `ExceptionRecorder` + `ExceptionMessagePolicy` (message/stacktrace off-by-default, обрезка); закрывает gap «`ScrubbingSpanProcessor` чистит attrs, но не events»; `ExceptionRecorderTest` |
 | P13-07 unsafe-attribute escape-hatch + аудит | OK | `unsafeAttribute(String,String)` → метрика `platform.tracing.unsafe_attributes{key_class}`; в STRICT запрещён без `allow-unsafe-attributes` |
-| P13-08 STRICT в test/CI, WARN в проде | OK | `SemconvStrictTestAutoConfiguration` (`platform-tracing-test`) публикует бин `ValidationMode.STRICT` с приоритетом над property; `SemanticLayerAutoConfigurationTest` |
-| P13-09 санитизация URL/SQL | OK | `UrlSanitizer`/`SqlSanitizer` (`platform-tracing-api/span/sanitize`) — redaction userinfo/query, замена SQL-литералов на `?`; `SanitizerTest`; используются lazy в builder'ах |
+| P13-08 STRICT в test/CI, WARN в проде | OK | `SemconvStrictTestAutoConfiguration` (`platform-tracing-test`) публикует бин `SemconvValidationMode.STRICT` с приоритетом над property; `SemanticLayerAutoConfigurationTest` |
+| P13-09 санитизация URL/SQL | REVISED | package-private `core.manual.UrlSanitizer` редактирует userinfo/query для `DefaultHttpTracing`; неиспользуемый `SqlSanitizer` удалён |
 
 ADR'ы Фазы 13:
 - [ADR-typed-span-api-semantic-layer.md](../decisions/ADR-typed-span-api-semantic-layer.md)

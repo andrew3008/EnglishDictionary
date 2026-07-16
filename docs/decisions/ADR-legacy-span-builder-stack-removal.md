@@ -4,6 +4,10 @@
 
 Принято (pre-production, PR-5 рефакторинга `platform-tracing-core`).
 
+> **Изменено 2026-07-16:** marker-based enrichment через `PLATFORM_SPAN_CATEGORY` удалён решением
+> [ADR-api-span-package-boundary](./ADR-api-span-package-boundary.md). Остальные решения ADR
+> сохраняют силу.
+
 ## Контекст
 
 До рефакторинга платформа имела два пути создания span'ов:

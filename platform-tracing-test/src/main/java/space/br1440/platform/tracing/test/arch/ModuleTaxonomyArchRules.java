@@ -282,6 +282,52 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("core.semconv.policy допускает только io.opentelemetry.api.common");
 
+    // -- Граница публичного span API ---------------------------------------------------------------
+
+    /** Публичный API не раскрывает типы {@code io.opentelemetry.api}; Context-контракты проверяются отдельно. */
+    public static final ArchRule API_MAIN_NO_OTEL_API = noClasses()
+            .that().resideInAPackage("..api..")
+            .should().dependOnClassesThat().resideInAnyPackage("io.opentelemetry.api..")
+            .allowEmptyShould(true)
+            .because("OTel API остаётся деталью core; публичные enrichment/semconv контракты platform-owned");
+
+    /** Удалённый пакет санитайзеров не должен возвращаться в публичный API. */
+    public static final ArchRule NO_API_SPAN_SANITIZE_PACKAGE = noClasses()
+            .that().resideOutsideOfPackage("..test..")
+            .should().resideInAPackage("..api.span.sanitize..")
+            .allowEmptyShould(true)
+            .because("санитайзеры являются implementation utility и живут рядом с internal caller");
+
+    /** URL sanitizer допустим только рядом с единственным caller в {@code core.manual}. */
+    public static final ArchRule URL_SANITIZER_ONLY_IN_CORE_MANUAL = classes()
+            .that().haveSimpleName("UrlSanitizer")
+            .and().resideOutsideOfPackage("..test..")
+            .should().resideInAPackage("..core.manual..")
+            .allowEmptyShould(true)
+            .because("UrlSanitizer не является публичным API или extension point");
+
+    /** Неиспользуемый SQL sanitizer удалён без замещающего API. */
+    public static final ArchRule NO_SQL_SANITIZER = noClasses()
+            .that().resideOutsideOfPackage("..test..")
+            .should().haveSimpleName("SqlSanitizer")
+            .allowEmptyShould(true)
+            .because("SQL sanitizer не имел production callers и не должен возвращаться");
+
+    /** OTel-based category enrichment удалён без aliases и deprecated bridges. */
+    public static final ArchRule NO_PUBLIC_SPAN_ENRICHMENT = noClasses()
+            .that().resideOutsideOfPackage("..test..")
+            .should().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.api.span.enrich.SpanEnrichment")
+            .allowEmptyShould(true)
+            .because("runtime enrichment ограничен platform-safe GenericSpanEnrichment");
+
+    /** Category marker больше не участвует в runtime-контракте. */
+    public static final ArchRule NO_PLATFORM_SPAN_CONTEXT_KEYS = noClasses()
+            .that().resideOutsideOfPackage("..test..")
+            .should().haveSimpleName("PlatformSpanContextKeys")
+            .allowEmptyShould(true)
+            .because("category marker path удалён вместе с category-specific enrichment");
+
     // -- PR-3: api.propagation.control / core.propagation.control guardrails -----------------------
 
     /**

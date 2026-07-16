@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.core.runtime.otel;
 
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import jakarta.annotation.Nonnull;
@@ -14,8 +15,7 @@ import java.util.Objects;
 /**
  * Конвертирует OpenTelemetry {@code Attributes} обратно в платформенные {@link SpanSpecAttributeValue}.
  * <p>
- * <b>Пустые списки:</b> OpenTelemetry в runtime теряет информацию о типе элементов для
- * list-атрибутов с пустым значением; такие значения маппятся в пустой {@code StringListValue}.
+ * <b>Пустые списки:</b> тип элементов восстанавливается из {@link AttributeKey#getType()}.
  * <p>
  * <b>Списки смешанного типа:</b> не поддерживаются и считаются нарушением границы контракта.
  * Платформенные builder'ы не могут породить mixed-type списки, но внешние OTel-экземпляры
@@ -38,7 +38,7 @@ public final class SpanSpecAttributeValueConverter {
     @Nonnull
     public static Map<String, SpanSpecAttributeValue> fromAttributes(@Nonnull Attributes attributes) {
         Map<String, SpanSpecAttributeValue> map = new LinkedHashMap<>();
-        attributes.forEach((key, value) -> map.put(key.getKey(), fromOtelValue(value)));
+        attributes.forEach((key, value) -> map.put(key.getKey(), fromOtelValue(key, value)));
         return Map.copyOf(map);
     }
 
@@ -65,7 +65,8 @@ public final class SpanSpecAttributeValueConverter {
     }
 
     @Nonnull
-    public static SpanSpecAttributeValue fromOtelValue(Object value) {
+    static SpanSpecAttributeValue fromOtelValue(@Nonnull AttributeKey<?> key, @Nonnull Object value) {
+        Objects.requireNonNull(key, "key");
         Objects.requireNonNull(value, "value");
         return switch (value) {
             case String s -> SpanSpecAttributeValue.of(s);
@@ -73,14 +74,21 @@ public final class SpanSpecAttributeValueConverter {
             case Integer i -> SpanSpecAttributeValue.of(i.longValue());
             case Double d -> SpanSpecAttributeValue.of(d);
             case Boolean b -> SpanSpecAttributeValue.of(b);
-            case List<?> list -> fromOtelList(list);
+            case List<?> list -> fromOtelList(key, list);
             default -> SpanSpecAttributeValue.of(String.valueOf(value));
         };
     }
 
-    private static SpanSpecAttributeValue fromOtelList(List<?> list) {
+    private static SpanSpecAttributeValue fromOtelList(AttributeKey<?> key, List<?> list) {
         if (list.isEmpty()) {
-            return SpanSpecAttributeValue.stringList(List.of());
+            return switch (key.getType()) {
+                case STRING_ARRAY -> SpanSpecAttributeValue.stringList(List.of());
+                case LONG_ARRAY -> SpanSpecAttributeValue.longList(List.of());
+                case DOUBLE_ARRAY -> SpanSpecAttributeValue.doubleList(List.of());
+                case BOOLEAN_ARRAY -> SpanSpecAttributeValue.booleanList(List.of());
+                default -> throw new IllegalArgumentException(
+                        "Attribute key is not a list key: " + key.getKey() + " (" + key.getType() + ")");
+            };
         }
 
         Class<?> elementType = requireHomogeneousElementType(list);

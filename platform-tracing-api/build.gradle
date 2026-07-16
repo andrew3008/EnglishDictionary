@@ -1,8 +1,8 @@
 description = 'Публичный API платформенного стартера трассировки. ' +
         'Содержит интерфейс TraceOperations, аннотацию @Traced, перечисления SpanCategory и SpanResult, ' +
         'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), снимок RequestTraceContextSnapshot для error-handling, точки расширения SPI. ' +
-        'Модуль не зависит от Spring и OpenTelemetry SDK, чтобы прикладной код мог писаться против стабильного контракта. ' +
-        'Зависимости OTel API/Context объявлены как compileOnly и предоставляются consuming runtime.'
+        'Модуль не зависит от Spring и OpenTelemetry API/SDK, чтобы прикладной код мог писаться против стабильного контракта. ' +
+        'OTel Context объявлен как compileOnly для propagation-контрактов и предоставляется consuming runtime.'
 
 dependencies {
     api platform(project(':platform-tracing-bom'))
@@ -13,10 +13,6 @@ dependencies {
     // Для PlatformTraceContextKeys (io.opentelemetry.context.ContextKey)
     compileOnly 'io.opentelemetry:opentelemetry-context'
 
-    // Для SpanAttributeScrubbingRule.evaluate(AttributeKey<?>, Object): тип/имя атрибута.
-    // compileOnly — runtime предоставляется OTel Agent/SDK в потребляющем модуле.
-    compileOnly 'io.opentelemetry:opentelemetry-api'
-
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
@@ -24,7 +20,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation project(':platform-tracing-test')
-    // OTel Context/API нужны для unit-тестов TraceControlHeaderInjector (compileOnly в main).
+    // OTel Context/API нужны для unit-тестов TraceControlHeaderInjector.
     testImplementation 'io.opentelemetry:opentelemetry-api'
     testImplementation 'io.opentelemetry:opentelemetry-context'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

@@ -4,11 +4,10 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.manual.HttpClientSpanBuilder;
 import space.br1440.platform.tracing.api.manual.HttpServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.HttpTracing;
-import space.br1440.platform.tracing.api.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.sanitize.UrlSanitizer;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;

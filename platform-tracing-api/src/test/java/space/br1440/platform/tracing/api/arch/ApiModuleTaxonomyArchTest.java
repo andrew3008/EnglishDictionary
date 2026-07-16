@@ -42,4 +42,15 @@ class ApiModuleTaxonomyArchTest {
 
     @ArchTest
     static final ArchRule apiMdcContractsOnly = ModuleTaxonomyArchRules.API_MDC_CONTRACTS_ONLY;
+
+    @ArchTest
+    static final ArchRule apiMainNoOtelApi = ModuleTaxonomyArchRules.API_MAIN_NO_OTEL_API;
+
+    @ArchTest
+    static final ArchRule noApiSpanSanitizePackage =
+            ModuleTaxonomyArchRules.NO_API_SPAN_SANITIZE_PACKAGE;
+
+    @ArchTest
+    static final ArchRule noPublicSpanEnrichment =
+            ModuleTaxonomyArchRules.NO_PUBLIC_SPAN_ENRICHMENT;
 }

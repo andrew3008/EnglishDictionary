@@ -153,10 +153,10 @@ LENIENT — в [ADR-semconv-validation-modes.md](./decisions/ADR-semconv-validat
 `SpanEnricher` обогащает уже активный span (в т.ч. созданный Агентом) без создания нового:
 
 - `enrichCurrentSpan(...)` — только платформенно-безопасные атрибуты (`GenericSpanEnrichment`:
-  `requestId`, `userHash`, `result`, `businessTag`); произвольные `AttributeKey` недоступны.
-- `enrichCurrentSpanIfPlatformCategory(category, ...)` — категорийное обогащение (`SpanEnrichment`),
-  применяется только если активный span помечен platform-маркером той же категории; атрибуты
-  проходят allowlist-валидацию `AttributePolicy`.
+  `requestId`, `userHash`, `result`); произвольные ключи и `AttributeKey` недоступны.
+
+Категорийное runtime enrichment удалено. Семантические атрибуты задаются до старта через typed
+builders или governed `SpanSpec`, поэтому sampler видит их при принятии решения.
 
 ## Запись исключений (Фаза 13)
 

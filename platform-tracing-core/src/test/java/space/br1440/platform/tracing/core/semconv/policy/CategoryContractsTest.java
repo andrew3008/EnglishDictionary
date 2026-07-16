@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import space.br1440.platform.tracing.api.semconv.SemconvKeys;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 
 import java.util.HashSet;

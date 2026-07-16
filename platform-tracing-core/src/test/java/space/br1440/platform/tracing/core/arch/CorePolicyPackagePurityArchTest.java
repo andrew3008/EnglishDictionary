@@ -64,6 +64,18 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.CORE_SEMCONV_POLICY_OTEL_COMMON_ONLY;
 
     @ArchTest
+    static final ArchRule urlSanitizerOnlyInCoreManual =
+            ModuleTaxonomyArchRules.URL_SANITIZER_ONLY_IN_CORE_MANUAL;
+
+    @ArchTest
+    static final ArchRule noSqlSanitizer =
+            ModuleTaxonomyArchRules.NO_SQL_SANITIZER;
+
+    @ArchTest
+    static final ArchRule noPlatformSpanContextKeys =
+            ModuleTaxonomyArchRules.NO_PLATFORM_SPAN_CONTEXT_KEYS;
+
+    @ArchTest
     static final ArchRule noLegacySpanBuilderApi =
             ModuleTaxonomyArchRules.NO_LEGACY_SPAN_BUILDER_API;
 

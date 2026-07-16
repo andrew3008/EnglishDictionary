@@ -10,6 +10,9 @@
 | Сопутствующие документы | [platform-tracing-target-architecture.md](../architecture/platform-tracing-target-architecture.md), [platform-tracing-pr-roadmap.md](../architecture/platform-tracing-pr-roadmap.md), [platform-tracing-evidence-before-committee.md](../architecture/platform-tracing-evidence-before-committee.md) (Evidence Gates E1–E7), [platform-tracing-fitness-functions.md](../architecture/platform-tracing-fitness-functions.md) |
 | Supporting review materials | Perplexity Pass 5, Sonar Fact Check, GPT-5.4 Adversarial Check, Gemini Final Recommendation |
 
+> **Уточнено 2026-07-16:** `SemconvKeys` перенесён из public contracts в OTel-backed core согласно
+> [ADR-api-span-package-boundary](./ADR-api-span-package-boundary.md).
+
 ---
 
 ## Status

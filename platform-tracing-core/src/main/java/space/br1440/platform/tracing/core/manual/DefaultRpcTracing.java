@@ -5,7 +5,7 @@ import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcClientSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
-import space.br1440.platform.tracing.api.semconv.SemconvKeys;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;

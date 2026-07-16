@@ -7,6 +7,10 @@
 | Контекст | Фаза 13 (Typed Span API и Semantic Layer) |
 | Стек | OTel BOM **1.62.0**, OTel instrumentation/agent **2.28.1**, Spring Boot **3.5.5** |
 
+> **Изменено 2026-07-16:** размещение `SemconvKeys` и marker-based category enrichment заменены
+> решением [ADR-api-span-package-boundary](./ADR-api-span-package-boundary.md). Generic enrichment
+> сохранён через API-owned `SpanEnricher`; `SpanEnrichment` и `PLATFORM_SPAN_CATEGORY` удалены.
+
 ## Проблема
 
 Низкоуровневый span API (`SpanScope.setAttribute(String, ...)`) допускает semantic drift: произвольные имена span'ов (high-cardinality), произвольные ключи атрибутов, рассинхрон с semconv и платформенными `platform.*`-конвенциями. Требование Фазы 13 — превратить его в **управляемый semantic layer**: типизированные builder'ы направляют к корректной семантике и валидируют контракт до старта span'а.

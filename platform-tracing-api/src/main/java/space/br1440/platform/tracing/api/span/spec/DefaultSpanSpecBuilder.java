@@ -15,8 +15,6 @@ import java.util.Objects;
 
 final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
 
-    private static final OtelTraceparentReader TRACEPARENT_READER = OtelTraceparentReaders.get();
-
     private final String name;
     private SpanCategory category;
     private SpanRelationship relationship = SpanRelationship.CHILD;
@@ -78,8 +76,9 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
     public SpanSpecBuilder fromTraceparent(@Nonnull String... traceparents) {
         Objects.requireNonNull(traceparents, "traceparents");
 
+        OtelTraceparentReader reader = OtelTraceparentReaders.get();
         for (String traceparent : traceparents) {
-            RemoteSpanLink link = TRACEPARENT_READER.require(traceparent);
+            RemoteSpanLink link = reader.require(traceparent);
             linkedTo(link);
         }
 

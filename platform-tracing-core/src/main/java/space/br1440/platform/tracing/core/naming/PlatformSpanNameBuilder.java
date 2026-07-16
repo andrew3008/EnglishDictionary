@@ -5,7 +5,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import lombok.experimental.UtilityClass;
-import space.br1440.platform.tracing.api.semconv.SemconvKeys;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 
 /**

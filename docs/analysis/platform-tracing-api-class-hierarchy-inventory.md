@@ -3,6 +3,10 @@
 > Historical note: this document was produced before the final platform-tracing-api naming refactor chain
 > (Batch A, PR-B1, PR-B2, Batch C). It may mention pre-refactor API names for audit/history.
 > Current API names are documented in the final umbrella audit and module CHANGELOG.
+> Enrichment/semconv/sanitizer placement was subsequently changed by
+> [ADR-api-span-package-boundary](../decisions/ADR-api-span-package-boundary.md): public
+> `SpanEnrichment` and API `SemconvKeys` were removed, generic `SpanEnricher` became API-owned,
+> and `api.span.sanitize` was deleted.
 
 > Документ подготовлен для handoff в Codex Extension (анализ имён API-моделей).
 > Источник: read-only инспекция `platform-tracing-api/src/main/java` и выборочная проверка потребителей в `platform-tracing-core`, `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-test`, `platform-tracing-bench`, `platform-tracing-e2e-tests`.

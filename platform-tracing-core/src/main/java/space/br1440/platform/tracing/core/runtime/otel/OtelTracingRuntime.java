@@ -14,13 +14,11 @@ import space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.runtime.SpanHandleImpl;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
-import space.br1440.platform.tracing.core.runtime.otel.context.PlatformSpanContextKeys;
 import space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -59,8 +57,10 @@ public final class OtelTracingRuntime implements TracingRuntime {
 
         SpanRelationship relationship = spec.relationship().kind();
         SpanBuilder builder = tracer.spanBuilder(spec.name())
-                .setSpanKind(SpanKinds.toSpanKind(spec.category()))
-                .setAttribute(PlatformAttributes.PLATFORM_TYPE, spec.category().value());
+                .setSpanKind(SpanKinds.toSpanKind(spec.category()));
+        builder.setAllAttributes(SpanSpecAttributeValueConverter.toAttributes(spec.attributes()));
+        // Каноническая категория платформы не может быть переопределена пользовательским атрибутом.
+        builder.setAttribute(PlatformAttributes.PLATFORM_TYPE, spec.category().value());
 
         if (relationship == SpanRelationship.ROOT || relationship == SpanRelationship.DETACHED) {
             builder.setParent(Context.root());
@@ -71,12 +71,9 @@ public final class OtelTracingRuntime implements TracingRuntime {
         }
 
         Span span = builder.startSpan();
-        Context ctx = Context.current()
-                .with(span)
-                .with(PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY, spec.category());
+        Context ctx = Context.current().with(span);
         Scope scope = ctx.makeCurrent();
         OwningSpanScope spanScope = new OwningSpanScope(span, scope, exceptionRecorder);
-        applySpecAttributes(spanScope, spec.attributes());
         return SpanHandleImpl.wrap(spanScope);
     }
 
@@ -107,28 +104,6 @@ public final class OtelTracingRuntime implements TracingRuntime {
     Optional<String> currentSpanId() {
         SpanContext context = Span.current().getSpanContext();
         return context.isValid() ? Optional.of(context.getSpanId()) : Optional.empty();
-    }
-
-    private void applySpecAttributes(@Nonnull OwningSpanScope scope,
-                                     @Nonnull Map<String, SpanSpecAttributeValue> attributes) {
-        for (Map.Entry<String, SpanSpecAttributeValue> entry : attributes.entrySet()) {
-            applyAttribute(scope, entry.getKey(), entry.getValue());
-        }
-    }
-
-    private void applyAttribute(@Nonnull OwningSpanScope scope,
-                                @Nonnull String key,
-                                @Nonnull SpanSpecAttributeValue value) {
-        switch (value) {
-            case SpanSpecAttributeValue.StringValue sv -> scope.setAttribute(key, sv.value());
-            case SpanSpecAttributeValue.LongValue lv -> scope.setAttribute(key, lv.value());
-            case SpanSpecAttributeValue.DoubleValue dv -> scope.setAttribute(key, dv.value());
-            case SpanSpecAttributeValue.BooleanValue bv -> scope.setAttribute(key, bv.value());
-            case SpanSpecAttributeValue.StringListValue slv -> scope.setAttribute(key, String.join(",", slv.values()));
-            case SpanSpecAttributeValue.LongListValue llv -> scope.setAttribute(key, llv.values().toString());
-            case SpanSpecAttributeValue.DoubleListValue dlv -> scope.setAttribute(key, dlv.values().toString());
-            case SpanSpecAttributeValue.BooleanListValue blv -> scope.setAttribute(key, blv.values().toString());
-        }
     }
 
     @Nonnull

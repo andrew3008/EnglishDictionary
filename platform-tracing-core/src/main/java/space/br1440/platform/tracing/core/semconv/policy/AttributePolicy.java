@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import space.br1440.platform.tracing.api.semconv.SemconvKeys;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.semconv.SemconvViolation;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;

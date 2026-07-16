@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.annotation.Traced;
 import space.br1440.platform.tracing.api.span.SpanFactory;
+import space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment;
+import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 
 import java.lang.annotation.ElementType;
@@ -98,6 +100,25 @@ class TracingArchRulesTest {
         ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL.check(classes);
 
         assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.propagation." + "Traceparent" + "Parser"))
+                .isFalse();
+    }
+
+    @Test
+    void spanEnrichmentKeepsApprovedApiShape() {
+        assertThat(SpanEnricher.class.getDeclaredMethods())
+                .extracting(java.lang.reflect.Method::getName)
+                .containsExactly("enrichCurrentSpan");
+        assertThat(GenericSpanEnrichment.class.getDeclaredMethods())
+                .extracting(java.lang.reflect.Method::getName)
+                .containsExactlyInAnyOrder("requestId", "userHash", "result");
+
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.span.enrich.SpanEnrichment"))
+                .isFalse();
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.semconv.SemconvKeys"))
+                .isFalse();
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.span.sanitize.UrlSanitizer"))
+                .isFalse();
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.span.sanitize.SqlSanitizer"))
                 .isFalse();
     }
 

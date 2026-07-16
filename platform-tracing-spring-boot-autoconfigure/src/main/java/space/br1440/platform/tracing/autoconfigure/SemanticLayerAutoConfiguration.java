@@ -12,11 +12,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
+import space.br1440.platform.tracing.core.enrichment.DefaultSpanEnricher;
 import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
-import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
 
 /**
  * Авто-конфигурация платформенного semantic-слоя (Фаза 13): бин {@link AttributePolicy}.
@@ -54,9 +55,9 @@ public class SemanticLayerAutoConfiguration {
 
     /** Enricher активного (Агентского) span'а — основной agent-first путь обогащения. */
     @Bean
-    @ConditionalOnMissingBean
-    public SpanEnricher platformSpanEnricher(AttributePolicy attributePolicy) {
-        return new SpanEnricher(attributePolicy);
+    @ConditionalOnMissingBean(SpanEnricher.class)
+    public SpanEnricher platformSpanEnricher() {
+        return new DefaultSpanEnricher();
     }
 
     /** Политика публикации текста исключения (секьюр-дефолт: message/stacktrace off). */

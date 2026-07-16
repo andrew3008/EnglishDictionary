@@ -37,7 +37,7 @@ messaging span'ы создаёт **OTel Java Agent** автоматически 
 Подавляет дубли вложенных span'ов одного типа на уровне Агента — основной механизм. См.
 [SUPPORTED.md](../SUPPORTED.md), раздел рекомендованных agent-флагов.
 
-### 2) Marker-based enrichment (v3, начиная с рефакторинга Fable_5 v1.2)
+### 2) Явная топология и generic enrichment
 
 > **Важно (актуально после PR-5/PR-2b):** runtime anti-double guard модели B
 > (`NonOwningSpanScope`, деградация builder'а в enrich при re-entry, `forceNewSpan()`) **удалён**
@@ -47,13 +47,11 @@ messaging span'ы создаёт **OTel Java Agent** автоматически 
 > `spans().*()` — топология явная (`child()` / `root()` / `detached()`), автоматической
 > деградации в enrich при повторном входе платформы больше нет.
 
-Вместо runtime-guard'а `OtelTracingRuntime.startSpan()` проставляет в OTel `Context` internal-маркер
-категории (`PlatformSpanContextKeys.PLATFORM_SPAN_CATEGORY`, package `core.runtime.otel.context`).
-Маркер используется **только** для marker-based enrichment (`SpanEnricher.
-enrichCurrentSpanIfPlatformCategory`, см. §«Предпочтительная альтернатива» ниже) — он подтверждает,
-что активный span создан платформой с ожидаемой категорией, и позволяет безопасно обогащать его
-типизированными атрибутами. Агентский span маркера не несёт, поэтому такое обогащение — no-op на
-чистых Агентских span'ах.
+Marker-based category enrichment удалён решением
+[ADR-api-span-package-boundary](../decisions/ADR-api-span-package-boundary.md). Runtime больше не
+записывает category marker в OTel `Context`. Семантические атрибуты, известные до старта, задаются
+через typed builders или governed `SpanSpec`; runtime enrichment ограничен именованными
+platform-safe атрибутами.
 
 Если нужно избежать двойной инструментации при повторном вызове `spans().*()` в рамках одной
 операции — контролируйте это на уровне вызывающего кода (не вызывайте builder повторно) или
@@ -92,13 +90,7 @@ public void queryLegacy() {
 // Платформенно-безопасные атрибуты на любом активном span'е:
 spanEnricher.enrichCurrentSpan(s -> s
         .requestId(requestId)
-        .businessTag("order.status", "PAID")
         .result(SpanResult.SUCCESS));
-
-// Категорийное обогащение — применяется ТОЛЬКО если активный span помечен платформой
-// как HTTP_SERVER (иначе no-op):
-spanEnricher.enrichCurrentSpanIfPlatformCategory(SpanCategory.HTTP_SERVER, s -> s
-        .attribute(SemconvKeys.HTTP_ROUTE, "/orders/{id}"));
 ```
 
 Enrichment не создаёт span — двойная инструментация невозможна by design.
@@ -114,10 +106,9 @@ span пришёл из источника вне платформенного к
 
 Регрессия на дубли HTTP-span'ов покрыта существующей e2e-инфраструктурой
 (`DuplicateHttpSpanAgentSmokeTest`, профиль `-PrunE2e`, Agent 2.28.1) и startup-матрицей
-`DuplicateSpansRegressionMatrixTest` (Servlet/WebFlux × suppress on/off). Marker-based enrichment
-(v3) покрыт характеризационными тестами `platform-tracing-core`:
-`V3MarkerPortCharacterizationTest`, `MarkerBasedEnrichmentCharacterizationTest`, а также
-`SpanEnricherTest.enrichCurrentSpanIfPlatformCategory_*`.
+`DuplicateSpansRegressionMatrixTest` (Servlet/WebFlux × suppress on/off). Generic enrichment
+покрыт `SpanEnricherTest` и `SpanEnricherV3CharacterizationTest`; удалённые category-marker FQN
+защищены ArchUnit/API-shape проверками.
 
 > `EscapeHatchSpanBuilderTest` (legacy unit-тест degradation-в-enrich / `forceNewSpan`) удалён
 > вместе с `core.span.legacy` в PR-5 — контракт, который он проверял, больше не существует.

@@ -5,9 +5,10 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
+import space.br1440.platform.tracing.core.enrichment.DefaultSpanEnricher;
 import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.core.enrichment.SpanEnricher;
 import space.br1440.platform.tracing.test.semconv.SemconvStrictTestAutoConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,6 +27,8 @@ class SemanticLayerAutoConfigurationTest {
         contextRunner.run(context -> {
             assertThat(context).hasSingleBean(AttributePolicy.class);
             assertThat(context).hasSingleBean(SpanEnricher.class);
+            assertThat(context.getBean(SpanEnricher.class)).isInstanceOf(DefaultSpanEnricher.class);
+            assertThat(context).hasBean("platformSpanEnricher");
             assertThat(context).hasSingleBean(ExceptionRecorder.class);
             assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(SemconvValidationMode.WARN);
         });
@@ -57,5 +60,19 @@ class SemanticLayerAutoConfigurationTest {
                 .withPropertyValues("platform.tracing.test.semconv-strict=false")
                 .run(context ->
                         assertThat(context.getBean(AttributePolicy.class).mode()).isEqualTo(SemconvValidationMode.WARN));
+    }
+
+    @Test
+    void пользовательскийSpanEnricherПереопределяетDefaultРеализацию() {
+        SpanEnricher custom = enrichment -> {
+            // Тестовая реализация намеренно не вызывает callback.
+        };
+
+        contextRunner
+                .withBean(SpanEnricher.class, () -> custom)
+                .run(context -> {
+                    assertThat(context).hasSingleBean(SpanEnricher.class);
+                    assertThat(context.getBean(SpanEnricher.class)).isSameAs(custom);
+                });
     }
 }

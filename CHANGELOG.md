@@ -7,6 +7,12 @@
 ## [Unreleased] — Wave R1+ (dual-channel alignment)
 ### Breaking Changes
 
+- Public OTel-based `SpanEnrichment`, API `SemconvKeys`, category marker enrichment and
+  `GenericSpanEnrichment.businessTag` have been removed. Applications enrich active spans through
+  the API-owned `SpanEnricher` and its named platform-safe methods. No aliases or deprecated
+  bridges are provided.
+- Public `api.span.sanitize` has been removed: unused SQL sanitization was deleted and URL
+  sanitization moved next to its internal core caller.
 - `TraceparentParser` has been deleted. Builder `fromTraceparent(String...)` signatures are unchanged and now use the OTel-backed bridge internally. No alias or deprecated bridge is provided.
 - `PlatformRemoteServiceNameProvider()` no-arg constructor removed (PR-2). Use the Spring bean from `ServiceNameProviderAutoConfiguration` or construct with `RemoteServiceNameResolver` in tests.
 - `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.
@@ -21,6 +27,11 @@
   `TracingControlProtocolFieldType`. No compatibility aliases or deprecated bridges are provided.
 - `TracingControlProtocolFieldType` preserves all enum constants and all tracing-control protocol
   key strings; this is Java vocabulary cleanup only, not a wire-schema change.
+
+### Fixed (SpanSpec creation-time attributes)
+
+- Scalar and list `SpanSpec` attributes are now passed to OTel before `startSpan()`, so head
+  samplers can inspect them and exported list values retain their exact OTel attribute type.
 
 
 

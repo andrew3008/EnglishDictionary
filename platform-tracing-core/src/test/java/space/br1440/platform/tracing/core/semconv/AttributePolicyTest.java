@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.core.semconv;
 import io.opentelemetry.api.common.Attributes;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.api.semconv.SemconvKeys;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
