@@ -198,10 +198,6 @@ public final class ModuleTaxonomyArchRules {
 
     /**
      * Запрет возврата удалённого legacy-стека {@code api.span.builder.*} (PR-5, Fable_5 v1.2).
-     * <p>
-     * Пакет удалён вместе с {@code core.span.legacy}; typed builders для v3 живут в
-     * {@code api.manual.*}. Правило ловит как повторное копирование legacy-классов,
-     * так и восстановление пакета из старой ветки.
      */
     public static final ArchRule NO_LEGACY_SPAN_BUILDER_API = noClasses()
             .that().resideOutsideOfPackage("..test..")
@@ -228,9 +224,6 @@ public final class ModuleTaxonomyArchRules {
 
     /**
      * Реализации {@code SamplingPolicyRule} живут только в {@code core.sampling.policy}.
-     * <p>
-     * Делает статус «public, но не extension API» машинно-проверяемым: новый rule-класс
-     * нельзя добавить вне policy-пакета. Сам интерфейс себя не реализует.
      */
     public static final ArchRule SAMPLING_RULE_IMPLS_ONLY_IN_POLICY = classes()
             .that().implement("space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule")
@@ -240,8 +233,7 @@ public final class ModuleTaxonomyArchRules {
 
     /**
      * {@code ProductionSamplingPolicyChain} публичен только по необходимости компиляции
-     * (движок в соседнем пакете), но НЕ является extension API: зависеть от него могут
-     * только policy и engine.
+     * (движок в соседнем пакете), но НЕ является extension API.
      */
     public static final ArchRule PRODUCTION_CHAIN_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
@@ -317,8 +309,7 @@ public final class ModuleTaxonomyArchRules {
     /**
      * Запрет возврата concrete impl в {@code api.propagation.control} (откат PR-1/PR-2).
      * <p>
-     * Допускаются: interfaces, records, enums и {@code *Keys} utility-классы
-     * (например, {@code PlatformTraceContextKeys}).
+     * Допускаются: interfaces, records, enums и {@code *Keys} utility-классы.
      */
     public static final ArchRule API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL = noClasses()
             .that().resideInAPackage("..api.propagation.control..")
@@ -329,6 +320,88 @@ public final class ModuleTaxonomyArchRules {
             .should().beInterfaces()
             .allowEmptyShould(true)
             .because("api.propagation.control — только интерфейсы, records, enums и *Keys utility-классы");
+
+    // -- PR-3 (api.mdc split guardrails) ----------------------------------------------------------
+
+    /**
+     * {@code api.mdc} должен содержать только контракты: utility-холдеры констант ({@code *Keys},
+     * {@code *Constants}) и интерфейсы / {@code @FunctionalInterface}.
+     * <p>
+     * Запрещены любые concrete-классы (кроме utility-holders по имени), SLF4J-импорты, mutable state.
+     * Паттерн — аналог {@link #API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL}:
+     * исключить utility-holders по имени, требовать interface для остального.
+     * <p>
+     * {@code TracingMdcKeys} — {@code public final class} с private ctor (utility-holder),
+     * поэтому исключается через {@code haveSimpleNameNotContaining("Keys")}.
+     */
+    public static final ArchRule API_MDC_CONTRACTS_ONLY = noClasses()
+            .that().resideInAPackage("..api.mdc..")
+            .and().areNotInterfaces()
+            .and().areNotAnnotations()
+            .and().areNotRecords()
+            .and().areNotEnums()
+            .and().haveSimpleNameNotContaining("Keys")
+            .and().haveSimpleNameNotContaining("Constants")
+            .should().beInterfaces()
+            .allowEmptyShould(true)
+            .because("api.mdc — только контракты: интерфейсы/@FunctionalInterface и utility *Keys/*Constants. "
+                    + "SLF4J-мост, TraceMirror и конкретные реализации живут в core.mdc.remote");
+
+    /**
+     * {@code RemoteServiceTraceMirror} — package-private инфраструктура; не должен быть public.
+     * <p>
+     * Использует {@code bePackagePrivate()} (не {@code areNotPublic()}) — иначе пропустит protected.
+     */
+    public static final ArchRule TRACE_MIRROR_PACKAGE_PRIVATE = classes()
+            .that().haveSimpleName("RemoteServiceTraceMirror")
+            .and().resideOutsideOfPackage("..test..")
+            .should().bePackagePrivate()
+            .allowEmptyShould(true)
+            .because("RemoteServiceTraceMirror — internal trace-scoped map; "
+                    + "пишет только RemoteServiceMdc, читает только RemoteServiceNameResolver — оба в одном пакете");
+
+    /**
+     * {@code RemoteServiceMdc} и {@code RemoteServiceNameResolver} живут только в
+     * {@code core.mdc.remote}. Запрещает случайный возврат implementation-типов в api.mdc.
+     */
+    public static final ArchRule REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE = classes()
+            .that().haveSimpleName("RemoteServiceMdc")
+            .or().haveSimpleName("RemoteServiceNameResolver")
+            .and().resideOutsideOfPackage("..test..")
+            .should().resideInAPackage("..core.mdc.remote..")
+            .allowEmptyShould(true)
+            .because("RemoteServiceMdc и RemoteServiceNameResolver — implementation; "
+                    + "только core.mdc.remote (не api.mdc)");
+
+    /**
+     * Запрет возврата удалённого anti-pattern {@code RemoteServiceContextReaders}
+     * (global mutable static registry, удалён в PR-2).
+     */
+    public static final ArchRule NO_REMOTE_SERVICE_CONTEXT_READERS = noClasses()
+            .that().resideOutsideOfPackage("..test..")
+            .should().dependOnClassesThat().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.api.mdc.RemoteServiceContextReaders")
+            .allowEmptyShould(true)
+            .because("RemoteServiceContextReaders удалён в PR-2 (anti-pattern: mutable global static registry); "
+                    + "используйте ObjectProvider<RemoteServiceNameSource>");
+
+    /**
+     * otel-extension main-sources: из {@code ..api.mdc..} разрешены только
+     * {@code TracingMdcKeys} и {@code RemoteServiceNameSource}.
+     * Любой другой api.mdc-тип (вернувшийся после рефакторинга) — нарушение.
+     * <p>
+     * Правило запрещает зависимость на api.mdc целиком, кроме двух разрешённых FQN.
+     * Техника: {@code noClasses().should().dependOnClassesThat()} с предикатом-исключением.
+     */
+    public static final ArchRule OTEL_EXTENSION_MDC_FROM_CORE = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.otel.extension..")
+            .and().resideOutsideOfPackage("..test..")
+            .should().dependOnClassesThat(apiMdcExceptAllowed())
+            .allowEmptyShould(true)
+            .because("otel-extension использует MDC только через core.mdc.remote.RemoteServiceMdc; "
+                    + "из api.mdc разрешены только TracingMdcKeys и RemoteServiceNameSource");
+
+    // -- private predicates -----------------------------------------------------------------------
 
     private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
         return new DescribedPredicate<>("быть разрешённым зависимым от OtelTraceparentReaderImpl") {
@@ -364,6 +437,25 @@ public final class ModuleTaxonomyArchRules {
                         || name.startsWith("space.br1440.platform.tracing.otel.extension.")
                         || name.contains(".test.")
                         || name.endsWith("Test");
+            }
+        };
+    }
+
+    /**
+     * Предикат: класс находится в {@code ..api.mdc..} И не является одним из двух разрешённых
+     * контрактных типов ({@code TracingMdcKeys}, {@code RemoteServiceNameSource}).
+     */
+    private static DescribedPredicate<JavaClass> apiMdcExceptAllowed() {
+        return new DescribedPredicate<>("находиться в ..api.mdc.. и не быть TracingMdcKeys/RemoteServiceNameSource") {
+            @Override
+            public boolean test(JavaClass input) {
+                String pkg = input.getPackageName();
+                if (!pkg.contains(".api.mdc")) {
+                    return false;
+                }
+                String simpleName = input.getSimpleName();
+                return !"TracingMdcKeys".equals(simpleName)
+                        && !"RemoteServiceNameSource".equals(simpleName);
             }
         };
     }

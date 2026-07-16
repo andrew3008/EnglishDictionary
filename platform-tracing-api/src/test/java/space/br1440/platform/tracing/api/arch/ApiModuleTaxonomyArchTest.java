@@ -7,7 +7,8 @@ import com.tngtech.archunit.lang.ArchRule;
 import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 
 /**
- * ArchUnit guardrails для {@code platform-tracing-api}: запрет legacy-пакетов и taxonomy propagation.
+ * ArchUnit guardrails для {@code platform-tracing-api}: запрет legacy-пакетов,
+ * taxonomy propagation и api.mdc contracts-only (PR-3).
  */
 @AnalyzeClasses(
         packages = "space.br1440.platform.tracing.api",
@@ -39,4 +40,13 @@ class ApiModuleTaxonomyArchTest {
     @ArchTest
     static final ArchRule apiPropagationControlNoConcreteImpl =
             ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL;
+
+    /**
+     * PR-3: api.mdc содержит только контракты — интерфейсы и utility *Keys/*Constants.
+     * Запрещены: concrete classes, SLF4J-импорты, mutable state.
+     *
+     * @see ModuleTaxonomyArchRules#API_MDC_CONTRACTS_ONLY
+     */
+    @ArchTest
+    static final ArchRule apiMdcContractsOnly = ModuleTaxonomyArchRules.API_MDC_CONTRACTS_ONLY;
 }
