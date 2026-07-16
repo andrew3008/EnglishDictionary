@@ -24,4 +24,5 @@ public @interface SuppressAgentInstrumentation {
 
     /** Причина: почему операция не покрыта Агентом и ручной span оправдан (для аудита). */
     String value() default "";
+
 }

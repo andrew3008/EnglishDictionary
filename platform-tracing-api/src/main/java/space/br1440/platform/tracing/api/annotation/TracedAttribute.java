@@ -23,4 +23,5 @@ public @interface TracedAttribute {
      * Имя ключа атрибута. Если не задано, используется имя параметра (требует компиляции с {@code -parameters}).
      */
     String value() default "";
+
 }

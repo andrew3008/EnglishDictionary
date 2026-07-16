@@ -18,4 +18,5 @@ public interface SpanEnricher {
      * @param enrichment callback, задающий разрешённые атрибуты
      */
     void enrichCurrentSpan(@Nonnull Consumer<GenericSpanEnrichment> enrichment);
+
 }

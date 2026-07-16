@@ -37,4 +37,5 @@ public @interface Traced {
      * Применяется к параметрам, помеченным {@link TracedAttribute}.
      */
     String[] attributes() default {};
+
 }
