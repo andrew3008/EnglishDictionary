@@ -374,9 +374,14 @@ public final class ModuleTaxonomyArchRules {
      * {@code core.mdc.remote}. Запрещает случайный возврат implementation-типов в api.mdc.
      */
     public static final ArchRule REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE = classes()
-            .that().haveSimpleName("RemoteServiceMdc")
-            .or().haveSimpleName("RemoteServiceNameResolver")
-            .and().resideOutsideOfPackage("..test..")
+            .that(new DescribedPredicate<>("be RemoteServiceMdc or RemoteServiceNameResolver outside tests") {
+                @Override
+                public boolean test(JavaClass input) {
+                    String simpleName = input.getSimpleName();
+                    return ("RemoteServiceMdc".equals(simpleName) || "RemoteServiceNameResolver".equals(simpleName))
+                            && !input.getPackageName().contains(".test");
+                }
+            })
             .should().resideInAPackage("..core.mdc.remote..")
             .allowEmptyShould(true)
             .because("RemoteServiceMdc и RemoteServiceNameResolver — implementation; "

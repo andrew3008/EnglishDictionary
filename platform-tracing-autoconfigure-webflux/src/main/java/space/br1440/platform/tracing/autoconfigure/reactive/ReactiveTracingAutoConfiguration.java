@@ -14,6 +14,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.WebFilter;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
@@ -49,6 +50,7 @@ import java.util.Optional;
  * {@link RemoteServiceContextPropagation#registerIfAbsent()} в методе
  * {@link #platformTracingContextPropagationEagerInit()}.
  */
+@Slf4j
 @AutoConfiguration
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
 @ConditionalOnClass({WebFluxConfigurer.class})
@@ -128,7 +130,7 @@ public class ReactiveTracingAutoConfiguration {
      */
     @Bean
     @Order(Ordered.LOWEST_PRECEDENCE)
-    @ConditionalOnMissingBean(name = "webFluxTraceMirrorSource")
+    @ConditionalOnMissingBean(RemoteServiceNameSource.class)
     RemoteServiceNameSource webFluxTraceMirrorSource() {
         return () -> {
             try {
@@ -136,8 +138,8 @@ public class ReactiveTracingAutoConfiguration {
                 if (fromMdc != null && !fromMdc.isBlank()) {
                     return Optional.of(fromMdc);
                 }
-            } catch (RuntimeException ignored) {
-                // fail-soft
+            } catch (RuntimeException e) {
+                log.debug("Не удалось прочитать MDC ключ {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
             }
             return Optional.empty();
         };

@@ -14,10 +14,6 @@
 - `ManualTracing.spanFromSpec(SpanSpec)` renamed to `SpanFactory.fromSpec(SpanSpec)`.
 - `ManualTracing.operation(String)` is retained as `SpanFactory.operation(String)` inside the `spans()` namespace.
 
-### Changed (api.mdc ArchUnit guardrails — PR-3)
-
-- Added ArchUnit rules: `API_MDC_CONTRACTS_ONLY`, `TRACE_MIRROR_PACKAGE_PRIVATE`, `REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE`, `NO_REMOTE_SERVICE_CONTEXT_READERS`, `OTEL_EXTENSION_MDC_FROM_CORE`. New tests: `CoreMdcRemoteArchTest`, `ExtensionMdcBoundaryArchTest`. E2E `ReactorPropagationSmokeController` injects `RemoteServiceNameSource` instead of `PlatformRemoteServiceNameProvider`.
-
 ### Changed (Batch C - optional API naming cleanup)
 
 - Pre-production API rename cleanup: `SpanLinkContext` -> `RemoteSpanLink`,
@@ -41,6 +37,10 @@
 ### Changed (api.mdc Spring wiring — PR-2)
 
 - `PlatformRemoteServiceNameProvider` no-arg constructor removed; obtain the bean via `ServiceNameProviderAutoConfiguration` (or package-private constructor in tests). `RemoteServiceNameResolver` is built once at startup from `ObjectProvider<RemoteServiceNameSource>.orderedStream()`; runtime contributor registration is not supported. `RemoteServiceWebFluxMirrorConfigurer` inner class removed; `RemoteServiceContextPropagation.registerIfAbsent()` runs via `SmartInitializingSingleton` (`RemoteServiceContextPropagationInitializer` marker for override).
+
+### Changed (api.mdc ArchUnit guardrails — PR-3)
+
+- Added ArchUnit rules: `API_MDC_CONTRACTS_ONLY`, `TRACE_MIRROR_PACKAGE_PRIVATE`, `REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE`, `NO_REMOTE_SERVICE_CONTEXT_READERS`, `OTEL_EXTENSION_MDC_FROM_CORE`. New tests: `CoreMdcRemoteArchTest`, `ExtensionMdcBoundaryArchTest`. E2E `ReactorPropagationSmokeController` injects `RemoteServiceNameSource` instead of `PlatformRemoteServiceNameProvider`. `webFluxTraceMirrorSource` registers when no other `RemoteServiceNameSource` bean is present.
 
 ### Changed (core.runtime.versioned relocation)
 
