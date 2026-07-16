@@ -269,7 +269,8 @@
   Secure-by-default: `platform.tracing.propagation.outbound.enabled=false`.
 - **Единый источник истины outbound-контрактов в `platform-tracing-api`**: `TrustedDestinationMatcher`
   (перенесён из agent-модуля; hardening — host canonicalization, label-aware glob, запрет IP-литералов),
-  `OutboundPropagationPolicy`, `TraceControlHeaderInjector`, `RequestIdSupport`.
+  `OutboundPropagationPolicy`, `TraceControlHeaderInjector`. Request-id sanitization moved to
+  `platform-tracing-core` as `RequestIdSupport`.
   `InboundTraceControlPropagator.inject()` делегирует в `TraceControlHeaderInjector`.
 - **HTTP outbound**: `PlatformOutboundHttpInterceptor` (RestTemplate/RestClient, Servlet-стек),
   `PlatformOutboundExchangeFilterFunction` (WebClient, Reactive-стек, Reactor Context bridge).

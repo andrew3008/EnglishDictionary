@@ -133,7 +133,7 @@ Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links 
 | Ошибки **всегда** сэмплируются (желательно на Collector'е) | OK (Collector) | `tail_sampling.errors-always-sample` (status_code=ERROR) — **по явному пожеланию** | [ADR-collector-boundary.md](../decisions/ADR-collector-boundary.md) |
 | Общие запросы без сэмплирования / по % | OK | `DefaultRatioRule` (детерминированный `traceIdRatioBased`) | [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md) (§2.3) |
 | Кастомный header → 100% запись (для авто-тестов) | OK | `ForceHeaderRule` (`X-Trace-On`), значения настраиваются `forceRecordValues` | [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md) |
-| QA-ручка возвращает Request ID | OK | `QaTraceRule` (`X-QA-Trace`); response-заголовок `X-Request-Id`; `platform-tracing-api/.../propagation/RequestIdSupport.java` (reject-and-regenerate, CWE-113) | [ADR-request-id-correlation-id.md](../decisions/ADR-request-id-correlation-id.md), [ADR-response-headers.md](../decisions/ADR-response-headers.md) |
+| QA-ручка возвращает Request ID | OK | `QaTraceRule` (`X-QA-Trace`); response-заголовок `X-Request-Id`; `platform-tracing-core/.../propagation/RequestIdSupport.java` (reject-and-regenerate, CWE-113) | [ADR-request-id-correlation-id.md](../decisions/ADR-request-id-correlation-id.md), [ADR-response-headers.md](../decisions/ADR-response-headers.md) |
 
 Контракт значений `platform.sampling.reason` (`platform-tracing-api/.../api/attributes/PlatformSamplingReasons.java`) машинно охраняется `CollectorPolicyContractTest` — Collector-политики не могут ссылаться на несуществующие причины.
 
@@ -153,8 +153,8 @@ Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links 
 
 | Модуль | Роль | Ключевые классы из досье |
 |--------|------|--------------------------|
-| `platform-tracing-api` | контракты без Spring/OTel-SDK | `TraceOperations`, `PlatformAttributes`, `PlatformSamplingReasons`, `CategoryContracts`, `RequestIdSupport`, `OutboundPropagationPolicy`, `UrlSanitizer`/`SqlSanitizer` |
-| `platform-tracing-core` | OTel-aware реализации | `DefaultTraceOperations`, `ExceptionRecorder`, `AttributePolicy` |
+| `platform-tracing-api` | контракты без Spring/OTel-SDK | `TraceOperations`, `PlatformAttributes`, `PlatformSamplingReasons`, `CategoryContracts`, `OutboundPropagationPolicy`, `UrlSanitizer`/`SqlSanitizer` |
+| `platform-tracing-core` | OTel-aware реализации и pure core utilities | `DefaultTraceOperations`, `ExceptionRecorder`, `AttributePolicy`, `RequestIdSupport` |
 | `platform-tracing-otel-extension` | Agent extension (без Spring) | `CompositeSampler`/`SamplerState`, `*SpanProcessor` (Scrubbing/Validating/Enriching/Classification/Watchdog/Composite/DropOldest), `SafeSpanExporter`, `PlatformResourceProvider`, SPI providers, JMX `PlatformTracingControl` |
 | `platform-tracing-spring-boot-autoconfigure` | Spring-интеграция | `TracingProperties`, `TracingActuatorEndpoint`, `SamplingControlClient` |
 | `platform-tracing-collector-config` | versioned YAML + JVM-контракт-тесты | `otel-collector-gateway-tail-sampling.yaml`, `CollectorPolicyContractTest` |

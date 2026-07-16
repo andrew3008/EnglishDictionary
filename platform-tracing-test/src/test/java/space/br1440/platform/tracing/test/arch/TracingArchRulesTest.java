@@ -94,7 +94,9 @@ class TracingArchRulesTest {
 
         ModuleTaxonomyArchRules.API_PROPAGATION_HAS_NO_PUBLIC_PARSERS.check(classes);
         ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED.check(classes);
-        ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED.check(classes);
+        ModuleTaxonomyArchRules.API_HAS_NO_REQUEST_ID_SUPPORT_SPI.check(classes);
+        ModuleTaxonomyArchRules.API_NO_SERVICE_LOADER_EXCEPT_TRACEPARENT_READER.check(classes);
+        ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_CORE_UTILITY_IS_DEPENDENCY_LIGHT.check(classes);
         ModuleTaxonomyArchRules.CONTROL_IMPLS_ONLY_IN_CORE.check(classes);
         ModuleTaxonomyArchRules.CONTROL_IMPL_ACCESS_RESTRICTED.check(classes);
         ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL.check(classes);

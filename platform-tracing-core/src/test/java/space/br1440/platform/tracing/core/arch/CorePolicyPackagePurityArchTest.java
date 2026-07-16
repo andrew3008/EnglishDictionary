@@ -84,8 +84,8 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED;
 
     @ArchTest
-    static final ArchRule requestIdSupportImplAccessRestricted =
-            ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED;
+    static final ArchRule requestIdSupportCoreUtilityIsDependencyLight =
+            ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_CORE_UTILITY_IS_DEPENDENCY_LIGHT;
 
     // PR-3 propagation.control guardrails (core-classpath scope).
     // API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL намеренно НЕ здесь: правило проверяет

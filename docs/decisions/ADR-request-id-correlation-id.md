@@ -23,7 +23,17 @@
 
 ## Security (CWE-113/174/180)
 
-Входящее значение — недоверенный ввод. Канонизация (trim) до валидации; allowlist-формат `[A-Za-z0-9_-]`, лимит 128; стратегия **reject-and-regenerate** (не «тихая мутация в `_`»): любое несоответствие/CRLF/control-char/превышение длины -> отбрасываем и генерируем новый UUIDv4 + audit-лог (one-shot/rate-limited, без утечки значения). Реализация — zero-allocation (`RequestIdSupport`).
+Входящее значение — недоверенный ввод. Канонизация (trim) до валидации; allowlist-формат `[A-Za-z0-9_-]`, лимит 128; стратегия **reject-and-regenerate** (не «тихая мутация в `_`»): любое несоответствие/CRLF/control-char/превышение длины -> отбрасываем и генерируем новый UUIDv4 + audit-лог (one-shot/rate-limited, без утечки значения). Реализация — zero-allocation (`space.br1440.platform.tracing.core.propagation.RequestIdSupport`).
+
+## Дополнение: RequestIdSupport как core utility
+
+Изначальный API SPI (`api.propagation.RequestIdSupport` + `RequestIdSupports` holder через `ServiceLoader`) оказался ложной точкой расширения: внешний provider отсутствует, единственная реализация жила в core, а API получал classpath trap через eager `ServiceLoader`. Это также закрепляло constant-interface antipattern для `MAX_LENGTH`.
+
+Решение: свернуть request-id validation/resolve в статическую `@UtilityClass` `core.propagation.RequestIdSupport`, удалить API SPI/holder и `META-INF/services` descriptor, а три production call-site (`DefaultInboundTraceControlExtractor`, servlet filter, webflux filter) перевести на прямые static-вызовы. Совместимые wrappers/deprecated bridges не добавляются, потому что решение ещё не вышло в production.
+
+Последствия: request-id поведение является platform invariant, а не public extension API. Будущие `RequestIdPolicy`, value object `RequestId`, multiple header names или per-service max length требуют отдельных ADR.
+
+Архитектурная оговорка: в этом PR нет blanket-запрета `api.. -> ServiceLoader`, потому что `OtelTraceparentReaders` всё ещё использует `ServiceLoader` и покрывается отдельным traceparent refactoring plan. Прямой импорт `core.propagation.RequestIdSupport` из webmvc/webflux autoconfigure допустим: существующие ArchUnit-ограничения запрещают только зависимость на `core.runtime.versioned`, а не на весь core.
 
 ## Отвергнутые альтернативы
 

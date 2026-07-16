@@ -46,15 +46,36 @@ public final class ModuleTaxonomyArchRules {
             .because("OtelTraceparentReaderImpl — внутренний bridge в core, а не extension API");
 
     /**
-     * {@code RequestIdSupportImpl} живёт в core и не является extension API.
-     * Зависимые классы должны располагаться в разрешённых core/test-пакетах.
+     * Request id validation is a core invariant, not an api SPI.
      */
-    public static final ArchRule REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED = classes()
-            .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.core.propagation.RequestIdSupportImpl")
-            .should().onlyHaveDependentClassesThat(allowedRequestIdSupportImplDependent())
+    public static final ArchRule API_HAS_NO_REQUEST_ID_SUPPORT_SPI = noClasses()
+            .that(requestIdSupportApiTypes())
+            .should().resideInAPackage("..api..")
             .allowEmptyShould(true)
-            .because("RequestIdSupportImpl — внутренний bridge в core, а не extension API");
+            .because("RequestIdSupport SPI/holder удалены; request-id sanitization живёт в core.propagation");
+
+    /**
+     * Api must not reintroduce the request-id ServiceLoader holder. OtelTraceparentReaders is a known
+     * temporary exception tracked by the traceparent parser refactoring plan.
+     */
+    public static final ArchRule API_NO_SERVICE_LOADER_EXCEPT_TRACEPARENT_READER = noClasses()
+            .that().resideInAPackage("..api..")
+            .and().haveSimpleNameNotContaining("OtelTraceparentReaders")
+            .should().dependOnClassesThat().haveFullyQualifiedName("java.util.ServiceLoader")
+            .allowEmptyShould(true)
+            .because("RequestIdSupport no longer uses api ServiceLoader; OtelTraceparentReaders is handled "
+                    + "by traceparent-parser-opus-refactoring-plan.md");
+
+    /**
+     * The core request-id utility must stay dependency-light and framework-free.
+     */
+    public static final ArchRule REQUEST_ID_SUPPORT_CORE_UTILITY_IS_DEPENDENCY_LIGHT = noClasses()
+            .that().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.core.propagation.RequestIdSupport")
+            .should().dependOnClassesThat(requestIdSupportForbiddenDependencies())
+            .allowEmptyShould(true)
+            .because("RequestIdSupport is a pure sanitizer/generator utility without OTel, Spring, Servlet, "
+                    + "Reactor, or ServiceLoader coupling");
 
     /**
      * Autoconfigure приложения не должен зависеть от реализации agent-extension.
@@ -473,14 +494,27 @@ public final class ModuleTaxonomyArchRules {
         };
     }
 
-    private static DescribedPredicate<JavaClass> allowedRequestIdSupportImplDependent() {
-        return new DescribedPredicate<>("быть разрешённым зависимым от RequestIdSupportImpl") {
+    private static DescribedPredicate<JavaClass> requestIdSupportApiTypes() {
+        return new DescribedPredicate<>("be RequestIdSupport* in api propagation") {
+            @Override
+            public boolean test(JavaClass input) {
+                return input.getPackageName().contains(".api.propagation")
+                        && input.getSimpleName().startsWith("RequestIdSupport");
+            }
+        };
+    }
+
+    private static DescribedPredicate<JavaClass> requestIdSupportForbiddenDependencies() {
+        return new DescribedPredicate<>("be forbidden RequestIdSupport dependency") {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return name.startsWith("space.br1440.platform.tracing.core.propagation.")
-                        || name.contains(".test.")
-                        || name.endsWith("Test");
+                String pkg = input.getPackageName();
+                return pkg.startsWith("io.opentelemetry.")
+                        || pkg.startsWith("org.springframework.")
+                        || pkg.startsWith("jakarta.servlet.")
+                        || pkg.startsWith("reactor.")
+                        || "java.util.ServiceLoader".equals(name);
             }
         };
     }

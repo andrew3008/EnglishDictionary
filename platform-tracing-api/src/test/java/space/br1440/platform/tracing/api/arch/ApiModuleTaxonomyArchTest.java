@@ -33,8 +33,12 @@ class ApiModuleTaxonomyArchTest {
             ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED;
 
     @ArchTest
-    static final ArchRule requestIdSupportImplAccessRestricted =
-            ModuleTaxonomyArchRules.REQUEST_ID_SUPPORT_IMPL_ACCESS_RESTRICTED;
+    static final ArchRule apiHasNoRequestIdSupportSpi =
+            ModuleTaxonomyArchRules.API_HAS_NO_REQUEST_ID_SUPPORT_SPI;
+
+    @ArchTest
+    static final ArchRule apiNoServiceLoaderExceptTraceparentReader =
+            ModuleTaxonomyArchRules.API_NO_SERVICE_LOADER_EXCEPT_TRACEPARENT_READER;
 
     @ArchTest
     static final ArchRule apiPropagationControlNoConcreteImpl =

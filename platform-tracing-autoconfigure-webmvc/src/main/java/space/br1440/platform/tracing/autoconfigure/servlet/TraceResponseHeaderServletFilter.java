@@ -12,8 +12,8 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.api.propagation.RequestIdSupports;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.core.propagation.RequestIdSupport;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -69,7 +69,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         final TracingProperties.Propagation.Mdc mdcConfig = properties.getPropagation().getMdc();
         final String incomingRequestId = request.getHeader(
                 properties.getPropagation().getPlatformHeaders().getRequestIdHeader());
-        final String correlationId = RequestIdSupports.get().resolve(incomingRequestId);
+        final String correlationId = RequestIdSupport.resolve(incomingRequestId);
 
         if (mdcConfig.isPutRequestId()) {
             MDC.put(mdcConfig.getRequestIdKey(), correlationId);

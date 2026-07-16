@@ -11,7 +11,7 @@ import java.util.Objects;
  * ({@code RestTemplate} / {@code RestClient}).
  * <p>
  * ВАЖНО (CWE-113): {@code HttpHeaders.set} НЕ гарантирует strip CR/LF. Безопасность обеспечивается
- * тем, что сюда попадают только санитизированные значения ({@code RequestIdSupports}) либо
+ * тем, что сюда попадают только санитизированные значения ({@code RequestIdSupport}) либо
  * контролируемые литералы ({@code "on"}/{@code "1"}) — не сырой пользовательский ввод.
  */
 final class PlatformHttpRequestSetter implements TextMapSetter<HttpRequest> {

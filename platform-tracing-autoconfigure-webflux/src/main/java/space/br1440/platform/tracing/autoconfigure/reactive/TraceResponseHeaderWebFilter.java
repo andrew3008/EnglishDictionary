@@ -8,8 +8,8 @@ import reactor.core.publisher.Mono;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.api.propagation.RequestIdSupports;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.core.propagation.RequestIdSupport;
 
 import java.util.Optional;
 
@@ -39,7 +39,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
         // Correlation id вычисляется на этапе filter() (request-thread): входящий или сгенерированный.
         final String incomingRequestId = exchange.getRequest().getHeaders()
                 .getFirst(properties.getPropagation().getPlatformHeaders().getRequestIdHeader());
-        final String correlationId = RequestIdSupports.get().resolve(incomingRequestId);
+        final String correlationId = RequestIdSupport.resolve(incomingRequestId);
 
         response.beforeCommit(() -> Mono.fromRunnable(() -> {
             try {

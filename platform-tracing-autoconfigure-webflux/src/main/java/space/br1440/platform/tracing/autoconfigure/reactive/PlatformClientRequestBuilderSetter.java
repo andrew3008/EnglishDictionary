@@ -11,7 +11,7 @@ import java.util.Objects;
  * (через {@link ClientRequest.Builder}).
  * <p>
  * Безопасность (CWE-113): в заголовки попадают только санитизированные значения
- * ({@code RequestIdSupports}) или контролируемые литералы — не сырой пользовательский ввод.
+ * ({@code RequestIdSupport}) или контролируемые литералы — не сырой пользовательский ввод.
  */
 enum PlatformClientRequestBuilderSetter implements TextMapSetter<ClientRequest.Builder> {
 

@@ -24,8 +24,7 @@ public record ScrubbingDecision(@Nonnull ScrubbingAction action, @Nonnull String
     private static final ScrubbingDecision KEEP = new ScrubbingDecision(ScrubbingAction.KEEP, "no-match", -1, false);
 
     /** Singleton fail-closed решения. */
-    private static final ScrubbingDecision SCRUBBING_FAILED =
-            new ScrubbingDecision(ScrubbingAction.MASK, SCRUBBING_FAILED_REASON, -1, false);
+    private static final ScrubbingDecision SCRUBBING_FAILED = new ScrubbingDecision(ScrubbingAction.MASK, SCRUBBING_FAILED_REASON, -1, false);
 
     /** Значение безопасно, изменений не требуется. */
     @Nonnull

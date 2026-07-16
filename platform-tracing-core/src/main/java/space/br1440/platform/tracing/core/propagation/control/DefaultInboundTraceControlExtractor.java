@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.core.propagation.control;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.api.propagation.RequestIdSupports;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
+import space.br1440.platform.tracing.core.propagation.RequestIdSupport;
 
 /**
  * Реализация {@link InboundTraceControlExtractor} без singleton-поля INSTANCE.
@@ -31,7 +31,7 @@ public final class DefaultInboundTraceControlExtractor implements InboundTraceCo
             reason = PlatformSamplingReasons.QA_TRACE;
         }
 
-        String validRequestId = RequestIdSupports.get().sanitizeOrNull(requestId);
+        String validRequestId = RequestIdSupport.sanitizeOrNull(requestId);
         return new InboundTraceControl(isForceTrace, isQaTrace, validRequestId, reason, traceOn);
     }
 }
