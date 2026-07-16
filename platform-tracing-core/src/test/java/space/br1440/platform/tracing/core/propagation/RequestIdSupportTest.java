@@ -25,6 +25,13 @@ class RequestIdSupportTest {
     }
 
     @Test
+    @DisplayName("trimmed value is accepted, not rejected (trim-and-accept)")
+    void trimsAndAcceptsLeadingAndTrailingWhitespace() {
+        assertThat(RequestIdSupport.sanitizeOrNull(" valid-id ")).isEqualTo("valid-id");
+        assertThat(RequestIdSupport.resolve(" valid-id ")).isEqualTo("valid-id");
+    }
+
+    @Test
     @DisplayName("MAX_LENGTH boundary is accepted")
     void acceptsMaxLengthBoundary() {
         String boundary = "a".repeat(RequestIdSupport.MAX_LENGTH);
