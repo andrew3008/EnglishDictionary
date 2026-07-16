@@ -7,8 +7,8 @@ package space.br1440.platform.tracing.api.propagation.control;
  * Создание — через {@code InboundTraceControlExtractor} (реализация в {@code platform-tracing-core}).
  */
 public record InboundTraceControl(boolean forceTrace,
-                                   boolean qaTrace,
-                                   String requestId,
-                                   String samplingReason,
-                                   String rawForceTraceValue) {
+                                  boolean qaTrace,
+                                  String requestId,
+                                  String samplingReason,
+                                  String rawForceTraceValue) {
 }

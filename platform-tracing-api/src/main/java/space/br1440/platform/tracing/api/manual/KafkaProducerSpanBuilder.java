@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.api.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.semconv.KafkaSemconvVersion;
+import space.br1440.platform.tracing.api.semconv.annotation.KafkaSemconvVersion;
 
 /**
  * Семантический построитель Kafka producer под {@link KafkaTracing#producer()}.

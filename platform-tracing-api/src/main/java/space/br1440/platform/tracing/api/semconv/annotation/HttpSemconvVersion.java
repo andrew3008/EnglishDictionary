@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.api.semconv;
+package space.br1440.platform.tracing.api.semconv.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

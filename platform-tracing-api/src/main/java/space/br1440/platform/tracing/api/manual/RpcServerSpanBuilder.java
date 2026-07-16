@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.api.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.semconv.RpcSemconvVersion;
+import space.br1440.platform.tracing.api.semconv.annotation.RpcSemconvVersion;
 
 /**
  * Семантический построитель RPC server под {@link RpcTracing#server()}.

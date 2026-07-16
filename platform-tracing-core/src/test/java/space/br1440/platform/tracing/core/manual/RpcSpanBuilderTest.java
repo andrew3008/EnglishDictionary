@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.manual.RpcClientSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.RpcTracing;
-import space.br1440.platform.tracing.api.semconv.RpcSemconvVersion;
+import space.br1440.platform.tracing.api.semconv.annotation.RpcSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;

@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.api.manual.HttpClientSpanBuilder;
 import space.br1440.platform.tracing.api.manual.HttpServerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.HttpTracing;
 import space.br1440.platform.tracing.api.span.SpanFactory;
-import space.br1440.platform.tracing.api.semconv.HttpSemconvVersion;
+import space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;

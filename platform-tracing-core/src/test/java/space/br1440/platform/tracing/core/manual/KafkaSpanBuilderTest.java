@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.api.manual.KafkaConsumerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.KafkaProducerSpanBuilder;
 import space.br1440.platform.tracing.api.manual.KafkaTracing;
 import space.br1440.platform.tracing.api.span.SpanFactory;
-import space.br1440.platform.tracing.api.semconv.KafkaSemconvVersion;
+import space.br1440.platform.tracing.api.semconv.annotation.KafkaSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;

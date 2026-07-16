@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.api.manual;
 
-import space.br1440.platform.tracing.api.semconv.KafkaSemconvVersion;
+import space.br1440.platform.tracing.api.semconv.annotation.KafkaSemconvVersion;
 
 /**
  * Построитель span'а пакетного Kafka consumer, возвращаемый {@link KafkaConsumerSpanBuilder#batch(String)}.

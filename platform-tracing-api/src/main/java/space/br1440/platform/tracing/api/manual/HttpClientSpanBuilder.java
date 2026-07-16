@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.api.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.semconv.HttpSemconvVersion;
+import space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion;
 
 /**
  * Семантический построитель HTTP client под {@link HttpTracing#client()}.
