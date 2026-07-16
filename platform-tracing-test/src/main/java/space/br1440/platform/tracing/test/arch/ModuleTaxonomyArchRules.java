@@ -175,13 +175,13 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("core.runtime.versioned — agent/runtime инфраструктура, а не SDK для autoconfigure");
 
-    /** Запрет возврата устаревшего пакета {@code api.config}. */
+    /** Regression guard: пакет {@code api.config} удалён; запрет любых зависимостей (cherry-pick / copy-paste). */
     public static final ArchRule NO_API_CONFIG_PACKAGE = noClasses()
             .that().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAPackage("..api.config..")
             .because("api.config удалён; используйте core.runtime.versioned.VersionedState/VersionedStateHolder");
 
-    /** Запрет возврата удалённого пакета {@code api.runtime.state}. */
+    /** Regression guard: пакет {@code api.runtime.state} удалён; запрет любых зависимостей. */
     public static final ArchRule NO_API_RUNTIME_STATE_PACKAGE = noClasses()
             .that().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAPackage("..api.runtime.state..")

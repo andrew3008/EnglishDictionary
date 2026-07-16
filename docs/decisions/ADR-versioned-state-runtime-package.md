@@ -64,5 +64,5 @@ ArchUnit rules in `ModuleTaxonomyArchRules`:
 - `APP_MODULES_NOT_DEPEND_ON_CORE_RUNTIME_VERSIONED`
 - `NO_API_RUNTIME_STATE_PACKAGE`
 - `VERSIONED_STATE_PRIMITIVE_ONLY_IN_CORE`
-- `NO_API_CONFIG_PACKAGE` (legacy ban)
+- `NO_API_CONFIG_PACKAGE` (regression guard: deleted `api.config` package must not reappear)
 - `SNAPSHOT_FIELDS_ARE_FINAL` (+ scrubbing/validation variants)

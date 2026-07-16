@@ -76,7 +76,7 @@
 |---|---|---|
 | `api` | `platform-tracing-bom` | Версионирование |
 | `api` | `jakarta.annotation-api` | `@Nonnull`/`@Nullable` |
-| `implementation` | `slf4j-api` | MDC bridge (`RemoteServiceMdc`) |
+| `implementation` | _(none — contracts only)_ | MDC/runtime impl in `platform-tracing-core` |
 | `compileOnly` | `opentelemetry-context` | `PlatformTraceContextKeys` |
 | `compileOnly` | `opentelemetry-api` | `SpanAttributeScrubbingRule`, `SemconvKeys`, `CategoryContract`, `EnrichScope` signatures |
 | `compileOnly` | `lombok` | `@UtilityClass` и др. |
@@ -121,7 +121,7 @@ space.br1440.platform.tracing.api
 │       ├── validation/             TracingControlProtocolValidator (+ package-private helpers)
 │       └── version/                TracingControlProtocolVersion
 ├── manual/                         v3 manual tracing facades & builders
-├── mdc/                            TracingMdcKeys, RemoteServiceMdc, mirrors/readers
+├── mdc/                            TracingMdcKeys, RemoteServiceNameSource (impl in core.mdc.remote)
 ├── propagation/                    PlatformContextPropagation, PlatformHeaders, RequestIdSupport
 │   └── control/                    Outbound policy, injector, trace control records
 ├── semconv/                        CategoryContracts registry, keys, validation mode, violations
@@ -318,28 +318,29 @@ graph LR
 | `@TracedAttribute` | annotation | `annotation` | Mark method param for auto-attr | — | `@Traced` | AOP | OK |
 | `@SuppressAgentInstrumentation` | annotation | `annotation` | Escape-hatch audit marker | `value` reason | ArchUnit in test | agent-first guard | OK |
 
-### 6.7 Propagation (8 типов)
+### 6.7 Propagation (10 типов)
 
 | Type | Kind | Package | Responsibility | Key Members | Related Types | Implementation/Consumers | Naming Notes |
 |---|---|---|---|---|---|---|---|
 | `PlatformContextPropagation` | interface | `propagation` | Cross-thread context wrap | `wrap`, `contextAware` | `ThrowingSupplier` | `OtelPlatformContextPropagation`, `NoOp...` | OK |
 | `PlatformHeaders` | utility class | `propagation` | Header name constants | W3C + platform headers | propagation control | web filters | OK |
 | `RequestIdSupport` | utility class | `propagation` | Request ID sanitize/generate | static helpers | `InboundTraceControl` | autoconfigure | OK |
-| `OutboundPropagationPolicy` | class | `propagation.control` | Outbound inject policy | policy methods | `TraceControlHeaderInjector` | extension | OK |
-| `TraceControlHeaderInjector` | class | `propagation.control` | OTel context inject | inject methods | OTel Context | tests | OK |
+| `OutboundPropagationPolicy` | interface | `propagation.control` | Outbound inject policy | `decide(destination)` | `OutboundPropagationDecision` | `DefaultOutboundPropagationPolicy` (core) | OK |
+| `TraceControlHeaderInjector` | interface | `propagation.control` | OTel context inject | `inject(...)` | OTel Context | `DefaultTraceControlHeaderInjector` (core) | OK |
+| `InboundTraceControlExtractor` | interface | `propagation.control` | Parse inbound control headers | `fromHeaders(...)` | `InboundTraceControl` | `DefaultInboundTraceControlExtractor` (core) | OK |
 | `OutboundPropagationDecision` | record | `propagation.control` | Inject decision | `propagateForceTrace`, etc. | outbound policy | extension | OK |
 | `PlatformTraceContextKeys` | utility class | `propagation.control` | OTel ContextKey constants | keys | OTel Context | extension | OTel type in API |
 | `InboundTraceControl` | record | `propagation.control` | Inbound control params | `forceTrace`, `qaTrace`, `requestId`, etc. | `PlatformHeaders` | web filters | OK |
-| `TrustedDestinationMatcher` | class | `propagation.control` | Allowlist matcher | match methods | outbound policy | tests | OK |
+| `TrustedDestinationMatcher` | interface | `propagation.control` | Allowlist matcher | `isTrusted(destination)` | outbound policy | `TrustedDestinationMatchers` (core) | OK |
 
-### 6.8 MDC (4 типа)
+### 6.8 MDC (2 типа в api — contracts only)
 
 | Type | Kind | Package | Responsibility | Key Members | Related Types | Implementation/Consumers | Naming Notes |
 |---|---|---|---|---|---|---|---|
-| `TracingMdcKeys` | utility class | `mdc` | Canonical MDC key names | `TRACE_ID`, `SPAN_ID`, `CORRELATION_ID`, etc. | logging starter | autoconfigure | OK |
-| `RemoteServiceMdc` | class | `mdc` | MDC bridge for remote service | put/clear | `TracingMdcKeys` | autoconfigure | OK |
-| `RemoteServiceTraceMirror` | class | `mdc` | Trace mirror to MDC | mirror methods | — | autoconfigure | OK |
-| `RemoteServiceContextReaders` | class | `mdc` | Read remote service from context | readers | — | extension | OK |
+| `TracingMdcKeys` | utility class | `mdc` | Canonical MDC key names | `TRACE_ID`, `SPAN_ID`, `CORRELATION_ID`, `REMOTE_SERVICE` | logging starter | autoconfigure, extension | OK |
+| `RemoteServiceNameSource` | interface | `mdc` | Read-side contributor SPI | `resolve()` | `RemoteServiceNameResolver` (core) | autoconfigure `@Bean` contributors | OK |
+
+Implementation (`RemoteServiceMdc`, `RemoteServiceTraceMirror`, `RemoteServiceNameResolver`) — `core.mdc.remote` (см. core architecture inventory).
 
 ### 6.9 Runtime State (relocated to core.runtime.versioned)
 
@@ -557,7 +558,7 @@ SpanSpec.builder(name) → SpanSpecBuilder
 | Control protocol | 10+ tests in `control/protocol/**` | **Strong** | — |
 | Propagation control | `DefaultOutboundPropagationPolicyTest`, `DefaultTraceControlHeaderInjectorTest`, `TrustedDestinationMatchersTest`, `DefaultInboundTraceControlExtractorTest`, `RequestIdSupportTest` | Strong | — |
 | Runtime state | `VersionedStateHolderTest` (core.runtime.versioned), `CoreRuntimeVersionedArchTest`, `ApiModuleTaxonomyArchTest` | Medium | moved from api to core |
-| MDC | `RemoteServiceMdcTest` | Medium | mirrors/readers partial |
+| MDC | `RemoteServiceMdcTest`, `RemoteServiceNameResolverTest` (core.mdc.remote) | Medium | api.mdc = contracts only |
 | Sanitizers | `SanitizerTest` | Medium | — |
 | `TraceOperations` / `ManualTracing` behavior | core tests (20+ builder/topology tests) | **Strong** indirect | No direct `TraceOperations` test in api module |
 | `SpanHandle` / `SpanScope` lifecycle | core `SpanOptionsTopologyTest`, builder tests | Strong indirect | API module не тестирует `SpanScope` |

@@ -98,7 +98,7 @@ Module: platform-tracing-api
 Public-facing: yes
 Intended consumers: application code needing TraceOperations facade contracts, semconv, propagation, SPI scrubbing rules
 Should application teams depend on it directly: yes (optional — only when explicit API needed; normally via starter)
-Current role: public contracts — TraceOperations, @Traced, span builders (interfaces), semconv keys, propagation, DomainConfigHolder, SpanAttributeScrubbingRule SPI
+Current role: public contracts — TraceOperations, @Traced, SpanFactory/SpanSpec, api.manual transport builders, semconv keys, propagation, mdc SPI, SpanAttributeScrubbingRule SPI
 Target role: platform-tracing-api — contracts, semconv, propagation, wire schema
 Migration sensitivity: HIGH (backward compatibility)
 Notes: has compileOnly OTel context/api — MIGRATION_RISK vs target "JDK only"
@@ -346,18 +346,18 @@ platform-tracing-otel-extension agentExtensionJar (classifier: agent)
 ```text
 Module: platform-tracing-api
 Path: platform-tracing-api/
-Purpose: Public tracing contracts without Spring; MDC bridge via slf4j
-Main packages: api, api.span.builder, api.semconv, api.propagation.control, api.config, api.spi
-Key dependencies: slf4j-api (implementation); compileOnly OTel context/api; jakarta.annotation-api
+Purpose: Public tracing contracts without Spring; no runtime implementation deps
+Main packages: api, api.semconv, api.propagation.control, api.mdc, api.spi
+Key dependencies: compileOnly OTel context/api; jakarta.annotation-api (no slf4j-api)
 Published artifact: yes
 Runtime role: Application CL — shared between app and agent extension (embedded in agent jar)
 ClassLoader assumption: Application CL + embedded in Agent CL via fat agent jar
-Current architecture role: public API layer
+Current architecture role: public API layer (contracts only)
 Target architecture candidate: platform-tracing-api
 Public/internal/test/perf category: public
 Migration sensitivity: HIGH
 Preservation priority: HIGH
-Notes: DomainConfigHolder lives here (good target alignment); compileOnly OTel = MIGRATION_RISK
+Notes: Implementation in core (propagation.control, mdc.remote, runtime.versioned); compileOnly OTel = MIGRATION_RISK
 ```
 
 ### `platform-tracing-core`
@@ -437,9 +437,11 @@ starters -> autoconfigure + web*                    CURRENT: yes
 |---------|--------|--------------------:|---------------------|--------|---------|----------|-------|------------------|-------|
 | `...api` | api | 1 | TraceOperations interface | no | no | partial | yes | API | |
 | `...api.semconv` | api | 6 | Semconv keys, CategoryContracts | yes | no | no | yes | API | |
-| `...api.config` | api | 2 | DomainConfigHolder, Versioned | yes | no | yes | yes | API | atomic config holder |
+| `...api.mdc` | api | 2 | MDC contracts (`TracingMdcKeys`, `RemoteServiceNameSource`) | yes | no | no | partial | API | impl in core.mdc.remote |
 | `...api.propagation.control` | api | 7 | Propagation control contracts (interfaces + records) | yes | no | yes | partial | API | impl in core.propagation.control |
-| `...api.span.builder` | api | 18 | Typed builder interfaces/facades | partial | no | yes | partial | API | |
+| `...api.span` | api | 4 | SpanFactory, categories, links | partial | no | yes | partial | API | |
+| `...api.span.spec` | api | 11 | SpanSpec pipeline (builder → execution) | partial | no | yes | partial | API | |
+| `...api.manual` | api | 15 | Manual/transport span builders | partial | no | yes | partial | API | |
 | `...api.spi` | api | 3 | SpanAttributeScrubbingRule SPI | yes | no | yes | yes | API | |
 | `...core.propagation.control` | core | 5 | Default outbound/inbound propagation control impl | yes | partial | yes | yes | CORE | TrustedDestinationMatchers, Default* |
 | `...core.semconv` | core | 4 | AttributePolicy, ValidatedAttributes | yes | partial | yes | yes | CORE | |
@@ -463,8 +465,8 @@ starters -> autoconfigure + web*                    CURRENT: yes
 | Class | Module | Package | Current responsibility | Framework dep | Stateful | Hot path | Tests | Target layer | Preserve/Refactor/Split | Notes |
 |-------|--------|---------|------------------------|---------------|----------|----------|-------|--------------|---------------------------|-------|
 | `CompositeSampler` | otel-extension | sampler | Head sampling decision chain | OTel Sampler | yes | **yes** | **yes** | SPLIT_CORE_AND_ADAPTER | **Split** | Rule chain in core, OTel callback in extension |
-| `SamplerStateHolder` | otel-extension | sampler | Atomic sampler config state | none | yes | **yes** | yes | SPLIT_CORE_AND_ADAPTER | **Split** | Uses DomainConfigHolder pattern |
-| `DomainConfigHolder` | api | config | Versioned atomic config holder | none | yes | **yes** | yes | API→CORE | **Preserve** | Already in api |
+| `SamplerStateHolder` | otel-extension | sampler | Atomic sampler config state | none | yes | **yes** | yes | SPLIT_CORE_AND_ADAPTER | **Split** | Wraps `VersionedStateHolder<SamplerState>` |
+| `VersionedStateHolder` | core | runtime.versioned | Versioned atomic config holder (CAS) | none | yes | **yes** | yes | CORE | **Preserve** | Relocated from deleted `api.config` |
 | `ScrubbingSpanProcessor` | otel-extension | processor | Mandatory PII scrubbing on span start/end | OTel SpanProcessor | yes | **yes** | **yes** | SPLIT_CORE_AND_ADAPTER | **Split** | |
 | `ValidatingSpanProcessor` | otel-extension | processor | Semconv validation on spans | OTel | yes | yes | yes | SPLIT_CORE_AND_ADAPTER | **Split** | optional tier |
 | `EnrichingSpanProcessor` | otel-extension | processor | Platform attribute enrichment | OTel | yes | yes | yes | SPLIT_CORE_AND_ADAPTER | **Split** | optional tier |
@@ -511,7 +513,7 @@ starters -> autoconfigure + web*                    CURRENT: yes
 ```text
 Current classes: CompositeSampler, SamplerStateHolder, SamplerState, *Rule (KillSwitch, ForceHeader, QaTrace, RouteRatio, DefaultRatio, HardDrop, ParentDecision), PlatformSamplerFactory, PlatformSamplerProvider, SafeSampler
 Current decision chain: KillSwitch → ForceHeader (X-Trace-On) → QaTrace (X-QA-Trace) → RouteRatio → DefaultRatio → HardDrop → ParentDecision (see CompositeSampler)
-Current state holders: SamplerStateHolder (wraps DomainConfigHolder<SamplerState>)
+Current state holders: SamplerStateHolder (wraps VersionedStateHolder<SamplerState>)
 Hot path: yes — every root span sampling decision
 Config inputs: ExtensionPropertyNames / ConfigProperties / PlatformTracingDefaultsProvider (agent); platform.tracing.sampling.* via TracingProperties → JMX apply
 Runtime mutation support: yes — JMX setSamplingRatio; Actuator POST samplingRatio; RefreshScope batch apply via RuntimeConfigApplier
@@ -583,7 +585,7 @@ Raw Java DTO usage: no cross-CL DTO sharing — invoke-by-name design
 Map/Object usage: yes — partial Map-based config operations on MBean
 Validation behavior: invalid config increments invalidConfigCounter; failures logged WARN, non-blocking
 Failure behavior: SamplingControlUnavailableException → HTTP 503 on Actuator; JMX client returns Optional.empty()
-LKG behavior: agent keeps last applied SamplerState on invalid update (DomainConfigHolder pattern)
+LKG behavior: agent keeps last applied SamplerState on invalid update (VersionedStateHolder pattern)
 Tests: PlatformTracingControlTest, SamplingControlClientTest, RuntimeSamplingControlSmokeTest
 Target migration: validated Map/OpenMBean-compatible wire
 Preservation risk: HIGH
@@ -657,7 +659,7 @@ Preservation risk: HIGH
 
 ```text
 Constants: SemconvKeys, PlatformAttributes, PlatformSamplingReasons, PlatformHeaders, TracingMdcKeys
-Typed builders: api.span.builder.* interfaces + Facade* wrappers; core *Impl classes
+Span API: SpanFactory + api.span.spec.* (SpanSpecBuilder → SpanExecution); api.manual.* transport builders; core span impl
 Public interfaces: TraceOperations, SpanHandle, SpanAttributeScrubbingRule SPI, PlatformContextPropagation
 Propagation contracts: InboundTraceControl, TraceControlHeaderInjector, OutboundPropagationPolicy, TrustedDestinationMatcher, InboundTraceControlExtractor (api); Default* + TrustedDestinationMatchers (core.propagation.control)
 Backward compatibility sensitivity: HIGH — app code compiles against api
@@ -676,7 +678,7 @@ Preservation risk: CRITICAL
 
 | Category | Count (approx.) | Representative tests | Tag |
 |----------|----------------:|----------------------|-----|
-| **Unit tests** | 120+ | `CompositeSamplerTest`, `AttributePolicyTest`, `DomainConfigHolderTest` | MUST_KEEP |
+| **Unit tests** | 120+ | `CompositeSamplerTest`, `AttributePolicyTest`, `VersionedStateHolderTest` | MUST_KEEP |
 | **Spring Boot tests** | 40+ | `TracingAutoConfigurationTest`, `TracingPropertiesBindingTest` | MUST_KEEP |
 | **WebMVC tests** | 8 | `WebStackIsolationTest`, `TraceResponseHeaderServletFilterTest` | MUST_KEEP |
 | **WebFlux tests** | 9 | `TracingReactorEagerInitConfigurationTest`, `ReactorContextPropagationIntegrationTest` | MUST_KEEP |
@@ -775,8 +777,8 @@ Preservation risk: CRITICAL
 ```text
 Current mutation caller: TracingActuatorEndpoint (POST), RuntimeConfigApplier (refresh), SamplingControlClient, PerfAdminController (perf only)
 Current mutation target: PlatformTracingControl MBean → SamplerStateHolder / policy holders in Agent
-Current validation: DomainConfigHolder replace; invalid config counter; partial validation in MBean methods
-Current LKG behavior: DomainConfigHolder retains last good version on failed replace
+Current validation: VersionedStateHolder replace; invalid config counter; partial validation in MBean methods
+Current LKG behavior: VersionedStateHolder retains last good version on failed replace
 Current audit: Actuator write logged INFO; JMX WARN on failures
 Current drift detection: DualChannelDriftDiagnostics (Spring properties vs Agent effective config)
 Current absent agent behavior: SamplingControlUnavailableException / Optional.empty(); local SDK-only mode
@@ -797,7 +799,7 @@ Config Server as authority: partial — RefreshScope binding exists; no dedicate
 | **Shared API** | `platform-tracing-api` — loaded in both CLs (duplicate definition in agent fat jar) | Must remain CL-neutral |
 | **JMX payload** | primitives, String[], Map via OpenMBean-compatible types | No shared Java DTO interface across CLs |
 | **Risky cross-CL** | None found for DTO passing — **by design** invoke-by-name | Preserve this property |
-| **Safe crossing** | MBeanServer.invoke with open types; DomainConfigHolder in agent only | |
+| **Safe crossing** | MBeanServer.invoke with open types; VersionedStateHolder in agent (via embedded core) | |
 
 ```text
 Risk: raw Java DTO crosses App CL / Agent CL boundary.
@@ -856,7 +858,7 @@ First migration wave should clarify taxonomy, enforce dependency direction, pres
 
 | Current class/package | Current module | Target module | Target package (indicative) | Migration action | Preserve tests | Risk | Notes |
 |----------------------|----------------|---------------|-------------------------------|------------------|----------------|------|-------|
-| `DomainConfigHolder` | api | api (or core) | `api.config` | KEEP_AS_IS | yes | LOW | |
+| `VersionedStateHolder` | core | core | `core.runtime.versioned` | DONE (relocated from api) | yes | LOW | agent-internal CAS primitive |
 | `CompositeSampler` + rules | otel-extension | core + otel-extension | `core.sampling` + adapter | SPLIT_CORE_AND_ADAPTER | DUPLICATE_BEFORE_MOVE | HIGH | |
 | `ScrubbingSpanProcessor` + engine | otel-extension | core + otel-extension | `core.scrubbing` | SPLIT_CORE_AND_ADAPTER | MUST_KEEP | CRITICAL | |
 | `ValidatingSpanProcessor` | otel-extension | core + otel-extension | `core.validation` | SPLIT_CORE_AND_ADAPTER | yes | MEDIUM | |
@@ -966,7 +968,7 @@ Operational: Actuator READ responses must remain shape-stable for SRE dashboards
 
 - **Agent runtime (99 classes):** CompositeSampler, SpanProcessors (scrub/validate/enrich/export), SafeSpanExporter, PlatformTracingControl JMX
 - **Spring adapter (46 classes):** TracingProperties, Actuator, SamplingControlClient, RefreshScope integration
-- **Public API (59 classes):** semconv, builders, propagation, DomainConfigHolder
+- **Public API (~86 classes):** semconv, SpanFactory/SpanSpec, api.manual, propagation, mdc contracts
 - **Core facade (30 classes):** DefaultTraceOperations, AttributePolicy, typed span builders — OTel-coupled today
 - **NOT FOUND:** TracingConfigReconciler, TracingDesiredState types
 
@@ -1050,12 +1052,8 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.annotation / TracedAttribute
     platform-tracing-api / space.br1440.platform.tracing.api.attributes / PlatformAttributes
     platform-tracing-api / space.br1440.platform.tracing.api.attributes / PlatformSamplingReasons
-    platform-tracing-api / space.br1440.platform.tracing.api.config / DomainConfigHolder
-    platform-tracing-api / space.br1440.platform.tracing.api.config / Versioned
     platform-tracing-api / space.br1440.platform.tracing.api.context / RequestTraceContextSnapshot
-    platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceContextReaders
-    platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceMdc
-    platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceTraceMirror
+    platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceNameSource
     platform-tracing-api / space.br1440.platform.tracing.api.mdc / TracingMdcKeys
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / PlatformContextPropagation
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / PlatformHeaders
@@ -1075,27 +1073,34 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / SemconvValidationMode
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanCategory
     platform-tracing-api / space.br1440.platform.tracing.api.span / RemoteSpanLink
-    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanRelationship
+    platform-tracing-api / space.br1440.platform.tracing.api.span / SpanFactory
     platform-tracing-api / space.br1440.platform.tracing.api.span / SpanResult
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / DefaultSpanSpecBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / ImmutableSpanRelationshipSpec
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanExecution
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanHandle
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanRelationship
     platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanRelationshipSpec
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / AbstractFacadeTypedSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / DatabaseSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeDatabaseSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeHttpClientSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeHttpServerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeInternalSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeKafkaConsumerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeKafkaProducerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeRpcClientSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / FacadeRpcServerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / HttpClientSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / HttpServerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / InternalSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / KafkaConsumerSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / KafkaProducerSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanSpec
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanSpecAttributeValue
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanSpecBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanSpecImpl
+    platform-tracing-api / space.br1440.platform.tracing.api.span.spec / SpanSpecReason
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / ActiveTraceContextView
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / DatabaseSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / HttpClientSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / HttpServerSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / HttpTracing
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / KafkaBatchSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / KafkaConsumerSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / KafkaProducerSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / KafkaTracing
     platform-tracing-api / space.br1440.platform.tracing.api.manual / ManualSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / RpcClientSpanBuilder
-    platform-tracing-api / space.br1440.platform.tracing.api.span.builder / RpcServerSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / OperationSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / RpcClientSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / RpcServerSpanBuilder
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / RpcTracing
+    platform-tracing-api / space.br1440.platform.tracing.api.manual / TransportTracing
     platform-tracing-api / space.br1440.platform.tracing.api.span.enrich / SpanEnrichment
     platform-tracing-api / space.br1440.platform.tracing.api.span.enrich / GenericSpanEnrichment
     platform-tracing-api / space.br1440.platform.tracing.api.span.sanitize / SqlSanitizer
@@ -1338,8 +1343,8 @@ Which module collapses, if any, should be deferred until after first production 
 **Total: 213 entries.** Format: `Module / package / test class`
 
 ```text
-    platform-tracing-api / space.br1440.platform.tracing.api.config / DomainConfigHolderTest
-    platform-tracing-api / space.br1440.platform.tracing.api.mdc / RemoteServiceMdcTest
+    platform-tracing-core / space.br1440.platform.tracing.core.mdc.remote / RemoteServiceMdcTest
+    platform-tracing-core / space.br1440.platform.tracing.core.runtime.versioned / VersionedStateHolderTest
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / RequestIdSupportTest
     platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultInboundTraceControlExtractorTest
     platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultOutboundPropagationPolicyTest
