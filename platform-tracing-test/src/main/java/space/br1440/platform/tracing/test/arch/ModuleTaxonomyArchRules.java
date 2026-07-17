@@ -218,16 +218,15 @@ public final class ModuleTaxonomyArchRules {
             .because("VersionedState/VersionedStateHolder — agent-internal CAS primitive; только core.runtime.versioned");
 
     /**
-     * Запрет возврата удалённого legacy-стека {@code api.span.builder.*} (PR-5, Fable_5 v1.2).
+     * Запрет возврата удалённого пакета {@code api.manual.*}.
      * <p>
-     * Пакет удалён вместе с {@code core.span.legacy}; typed builders для v3 живут в
-     * {@code api.manual.*}. Правило ловит как повторное копирование legacy-классов,
-     * так и восстановление пакета из старой ветки.
+     * Typed span builders для v3 живут в {@code api.span.builder.*}. Правило ловит
+     * повторное копирование старого пакета из предыдущей ветки.
      */
-    public static final ArchRule NO_LEGACY_SPAN_BUILDER_API = noClasses()
+    public static final ArchRule NO_API_MANUAL_PACKAGE = noClasses()
             .that().resideOutsideOfPackage("..test..")
-            .should().dependOnClassesThat().resideInAPackage("..api.span.builder..")
-            .because("api.span.builder.* удалён в рефакторинге Fable_5 v1.2; используйте api.manual.*");
+            .should().dependOnClassesThat().resideInAPackage("..api.manual..")
+            .because("api.manual.* переименован в api.span.builder.*; используйте api.span.builder.*");
 
     /** Holder-managed snapshots остаются иммутабельными (все поля final). */
     public static final ArchRule SNAPSHOT_FIELDS_ARE_FINAL = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields()

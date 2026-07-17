@@ -32,4 +32,5 @@ public interface SpanRelationshipSpec {
     static void validateRelationshipLinks(@Nonnull SpanRelationship relationship, @Nonnull List<RemoteSpanLink> links) {
         ImmutableSpanRelationshipSpec.validateRelationshipLinks(relationship, links);
     }
+
 }

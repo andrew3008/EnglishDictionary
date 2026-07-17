@@ -7,7 +7,7 @@ import io.opentelemetry.context.Scope;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.*;
 import space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView;

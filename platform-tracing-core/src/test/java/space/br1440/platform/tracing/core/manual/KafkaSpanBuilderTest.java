@@ -2,10 +2,10 @@ package space.br1440.platform.tracing.core.manual;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.manual.KafkaBatchSpanBuilder;
-import space.br1440.platform.tracing.api.manual.KafkaConsumerSpanBuilder;
-import space.br1440.platform.tracing.api.manual.KafkaProducerSpanBuilder;
-import space.br1440.platform.tracing.api.manual.KafkaTracing;
+import space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaTracing;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.semconv.annotation.KafkaSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;

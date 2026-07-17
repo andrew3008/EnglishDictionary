@@ -76,8 +76,8 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.NO_PLATFORM_SPAN_CONTEXT_KEYS;
 
     @ArchTest
-    static final ArchRule noLegacySpanBuilderApi =
-            ModuleTaxonomyArchRules.NO_LEGACY_SPAN_BUILDER_API;
+    static final ArchRule noApiManualPackage =
+            ModuleTaxonomyArchRules.NO_API_MANUAL_PACKAGE;
 
     @ArchTest
     static final ArchRule otelTraceparentReaderAccessRestricted =

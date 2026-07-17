@@ -37,4 +37,5 @@ public enum SpanRelationship {
      * и приводит к {@link IllegalStateException} при создании спецификации.
      */
     DETACHED
+
 }

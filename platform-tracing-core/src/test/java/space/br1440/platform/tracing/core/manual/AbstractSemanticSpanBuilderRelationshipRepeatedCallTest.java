@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;

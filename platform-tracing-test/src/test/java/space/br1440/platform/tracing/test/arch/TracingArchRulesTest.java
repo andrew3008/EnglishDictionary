@@ -72,7 +72,7 @@ class TracingArchRulesTest {
                 .should().haveSimpleName("Manual" + "Tracing")
                 .check(classes);
 
-        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.manual." + "Manual" + "Tracing")).isFalse();
+        assertThat(classCanBeLoaded("space.br1440.platform.tracing.api.span.builder." + "Manual" + "Tracing")).isFalse();
 
         assertThat(TraceOperations.class.getMethod("spans").getReturnType()).isEqualTo(SpanFactory.class);
         assertThat(hasNoArgMethod(TraceOperations.class, "manual")).isFalse();

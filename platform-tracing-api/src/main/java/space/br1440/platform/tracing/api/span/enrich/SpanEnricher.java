@@ -6,8 +6,6 @@ import java.util.function.Consumer;
 
 /**
  * Обогащает текущий записываемый span разрешёнными платформенными атрибутами.
- * <p>
- * Если активного записываемого span нет, операция ничего не делает.
  */
 @FunctionalInterface
 public interface SpanEnricher {

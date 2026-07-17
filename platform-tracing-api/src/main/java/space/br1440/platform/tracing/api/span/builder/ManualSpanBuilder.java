@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.api.manual;
+package space.br1440.platform.tracing.api.span.builder;
 
 import jakarta.annotation.Nonnull;
 
@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import java.util.function.Supplier;
 
 /**
- * Общий контракт выполнения в области видимости span'а для семантических построителей.
+ * Общий контракт выполнения в области видимости span'а для семантических builders.
  */
 public interface ManualSpanBuilder<B extends ManualSpanBuilder<B>> {
 

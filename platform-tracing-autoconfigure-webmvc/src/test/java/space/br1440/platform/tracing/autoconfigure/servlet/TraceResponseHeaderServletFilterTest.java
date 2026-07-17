@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;

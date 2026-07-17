@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.core.runtime;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;

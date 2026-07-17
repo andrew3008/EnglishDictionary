@@ -22,7 +22,7 @@ class ApiModuleTaxonomyArchTest {
     static final ArchRule noApiRuntimeStatePackage = ModuleTaxonomyArchRules.NO_API_RUNTIME_STATE_PACKAGE;
 
     @ArchTest
-    static final ArchRule noLegacySpanBuilderApi = ModuleTaxonomyArchRules.NO_LEGACY_SPAN_BUILDER_API;
+    static final ArchRule noApiManualPackage = ModuleTaxonomyArchRules.NO_API_MANUAL_PACKAGE;
 
     @ArchTest
     static final ArchRule apiPropagationHasNoPublicParsers =

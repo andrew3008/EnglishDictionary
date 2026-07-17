@@ -2,9 +2,9 @@ package space.br1440.platform.tracing.core.manual;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.manual.HttpClientSpanBuilder;
-import space.br1440.platform.tracing.api.manual.HttpServerSpanBuilder;
-import space.br1440.platform.tracing.api.manual.HttpTracing;
+import space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.HttpTracing;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion;
 import space.br1440.platform.tracing.api.semconv.SemconvViolationException;

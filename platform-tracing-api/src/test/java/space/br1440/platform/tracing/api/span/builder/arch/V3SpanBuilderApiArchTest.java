@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.api.manual.arch;
+package space.br1440.platform.tracing.api.span.builder.arch;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethod;
@@ -17,16 +17,16 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Slice 1A architecture guardrails for additive v3 manual/spec public API.
+ * Slice 1A architecture guardrails for additive v3 span.builder/spec public API.
  */
 @AnalyzeClasses(
         packages = {
-                "space.br1440.platform.tracing.api.manual",
+                "space.br1440.platform.tracing.api.span.builder",
                 "space.br1440.platform.tracing.api.span.spec"
         },
         importOptions = ImportOption.DoNotIncludeTests.class
 )
-class V3ManualApiArchTest {
+class V3SpanBuilderApiArchTest {
 
     private static final Set<String> ALLOWED_STATIC_FACTORY_TYPES = Set.of(
             "SpanRelationshipSpec",
@@ -68,7 +68,7 @@ class V3ManualApiArchTest {
     static final ArchRule noOpenTelemetryTypesInV3PublicApi =
             noClasses()
                     .that().resideInAnyPackage(
-                            "space.br1440.platform.tracing.api.manual..",
+                            "space.br1440.platform.tracing.api.span.builder..",
                             "space.br1440.platform.tracing.api.span.spec..")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "io.opentelemetry.api..",
@@ -80,7 +80,7 @@ class V3ManualApiArchTest {
     static final ArchRule noAbstractClassesInV3ApiPackages =
             classes()
                     .that().resideInAnyPackage(
-                            "space.br1440.platform.tracing.api.manual..",
+                            "space.br1440.platform.tracing.api.span.builder..",
                             "space.br1440.platform.tracing.api.span.spec..")
                     .should(notBeAbstractClass())
                     .because("abstract skeleton implementations are forbidden in v3 API packages");
@@ -89,7 +89,7 @@ class V3ManualApiArchTest {
     static final ArchRule forbiddenStalePublicNamesAbsent =
             classes()
                     .that().resideInAnyPackage(
-                            "space.br1440.platform.tracing.api.manual..",
+                            "space.br1440.platform.tracing.api.span.builder..",
                             "space.br1440.platform.tracing.api.span.spec..")
                     .should(notDeclareForbiddenStaleNames());
 

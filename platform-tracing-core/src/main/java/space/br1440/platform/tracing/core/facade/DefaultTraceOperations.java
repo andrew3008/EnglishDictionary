@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.core.facade;
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanFactory;
-import space.br1440.platform.tracing.api.manual.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.core.manual.DefaultSpanFactory;
 import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;

@@ -1,10 +1,10 @@
-package space.br1440.platform.tracing.api.manual;
+package space.br1440.platform.tracing.api.span.builder;
 
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.semconv.annotation.DatabaseSemconvVersion;
 
 /**
- * Семантический построитель Database span {@link TransportTracing#database()}.
+ * Семантический builder Database span {@link TransportTracing#database()}.
  */
 @DatabaseSemconvVersion("1.28.0")
 public interface DatabaseSpanBuilder extends ManualSpanBuilder<DatabaseSpanBuilder> {

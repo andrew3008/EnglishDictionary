@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.manual.ManualSpanBuilder;
-import space.br1440.platform.tracing.api.manual.RpcClientSpanBuilder;
-import space.br1440.platform.tracing.api.manual.RpcServerSpanBuilder;
-import space.br1440.platform.tracing.api.manual.RpcTracing;
+import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.RpcTracing;
 import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;

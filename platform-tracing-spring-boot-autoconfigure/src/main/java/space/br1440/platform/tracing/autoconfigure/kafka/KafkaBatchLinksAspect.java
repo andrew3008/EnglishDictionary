@@ -12,7 +12,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.kafka.annotation.KafkaListener;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.manual.KafkaBatchSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 

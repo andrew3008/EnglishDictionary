@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.manual.OperationSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;

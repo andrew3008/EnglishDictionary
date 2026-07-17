@@ -2,8 +2,8 @@ package space.br1440.platform.tracing.api.span;
 
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.manual.OperationSpanBuilder;
-import space.br1440.platform.tracing.api.manual.TransportTracing;
+import space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.TransportTracing;
 import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 

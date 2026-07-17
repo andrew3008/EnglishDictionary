@@ -1,10 +1,7 @@
-package space.br1440.platform.tracing.api.manual;
+﻿package space.br1440.platform.tracing.api.span.builder;
 
 import jakarta.annotation.Nonnull;
 
-/**
- * Точка входа в трассировку Kafka-транспорта.
- */
 public interface KafkaTracing {
 
     @Nonnull
