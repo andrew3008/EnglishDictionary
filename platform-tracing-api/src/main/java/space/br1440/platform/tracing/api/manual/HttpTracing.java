@@ -12,4 +12,5 @@ public interface HttpTracing {
 
     @Nonnull
     HttpClientSpanBuilder client();
+
 }

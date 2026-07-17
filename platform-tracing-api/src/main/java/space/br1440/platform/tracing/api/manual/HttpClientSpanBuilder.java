@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion;
 
 /**
- * Семантический построитель HTTP client под {@link HttpTracing#client()}.
+ * Семантический построитель HTTP client span {@link HttpTracing#client()}.
  */
 @HttpSemconvVersion("1.28.0")
 public interface HttpClientSpanBuilder extends ManualSpanBuilder<HttpClientSpanBuilder> {

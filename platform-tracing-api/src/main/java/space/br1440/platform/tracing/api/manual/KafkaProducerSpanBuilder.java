@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.semconv.annotation.KafkaSemconvVersion;
 
 /**
- * Семантический построитель Kafka producer под {@link KafkaTracing#producer()}.
+ * Семантический построитель Kafka producer span {@link KafkaTracing#producer()}.
  */
 @KafkaSemconvVersion("1.28.0")
 public interface KafkaProducerSpanBuilder extends ManualSpanBuilder<KafkaProducerSpanBuilder> {
@@ -14,4 +14,5 @@ public interface KafkaProducerSpanBuilder extends ManualSpanBuilder<KafkaProduce
 
     @Nonnull
     KafkaProducerSpanBuilder operation(@Nonnull String operation);
+
 }

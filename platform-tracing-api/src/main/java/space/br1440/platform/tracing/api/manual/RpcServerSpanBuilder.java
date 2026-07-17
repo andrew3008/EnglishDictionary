@@ -4,7 +4,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.semconv.annotation.RpcSemconvVersion;
 
 /**
- * Семантический построитель RPC server под {@link RpcTracing#server()}.
+ * Семантический построитель RPC server span {@link RpcTracing#server()}.
  */
 @RpcSemconvVersion("1.28.0")
 public interface RpcServerSpanBuilder extends ManualSpanBuilder<RpcServerSpanBuilder> {
