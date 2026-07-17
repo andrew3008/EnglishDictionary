@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.api.span;
 
+/**
+ * Перечень поддерживаемых категорий span'а.
+ */
 public enum SpanCategory {
 
     /** Входящий HTTP-запрос. */
