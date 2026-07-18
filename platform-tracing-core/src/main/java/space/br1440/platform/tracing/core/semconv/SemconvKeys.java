@@ -10,8 +10,8 @@ import static io.opentelemetry.api.common.AttributeKey.stringKey;
  * Внутренний реестр типизированных ключей OpenTelemetry.
  * <p>
  * Публичным источником имён атрибутов остаётся
- * {@link space.br1440.platform.tracing.api.attributes.PlatformAttributes}. Типизированные ключи
- * нужны только OTel-backed реализациям, semantic policy и внутренним тестам core.
+ * {@link space.br1440.platform.tracing.api.attributes.PlatformAttributes}.
+ * Типизированные ключи нужны только OTel-backed реализациям, semantic policy и внутренним тестам core.
  */
 @UtilityClass
 public final class SemconvKeys {

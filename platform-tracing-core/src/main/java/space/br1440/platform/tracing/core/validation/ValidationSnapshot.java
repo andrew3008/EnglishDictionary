@@ -11,8 +11,10 @@ import java.time.Instant;
  * {@code source}. Режимы:
  * <ul>
  *   <li>{@code enabled=false} — обход валидации в {@code onEnding}</li>
- *   <li>{@code enabled=true, strict=false} — мягкий режим: аннотация {@code platform.validation.missing},
- *       rate-limited WARN, span по-прежнему экспортируется</li>
+ *   <li>{@code enabled=true, strict=false} — мягкий режим:
+ *       аннотация {@code platform.validation.missing},
+ *       rate-limited WARN,
+ *       span по-прежнему экспортируется</li>
  *   <li>{@code enabled=true, strict=true} — строгий режим:
  *       {@code TracingValidationException} при отсутствии обязательных атрибутов</li>
  * </ul>
