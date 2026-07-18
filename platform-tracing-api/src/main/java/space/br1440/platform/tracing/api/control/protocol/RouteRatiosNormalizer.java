@@ -1,13 +1,13 @@
 package space.br1440.platform.tracing.api.control.protocol;
 
+import lombok.experimental.UtilityClass;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@UtilityClass
 final class RouteRatiosNormalizer {
-
-    private RouteRatiosNormalizer() {
-    }
 
     static Map<String, Double> normalize(String key,
                                          Object value,

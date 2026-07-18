@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.api.control.protocol;
 
+import lombok.experimental.UtilityClass;
+
 import java.util.List;
 
+@UtilityClass
 final class FieldTypeSupport {
-
-    private FieldTypeSupport() {
-    }
 
     static Object validateAndNormalize(String key,
                                        TracingControlProtocolFieldType expectedType,
@@ -28,8 +28,7 @@ final class FieldTypeSupport {
             case LONG -> validateLong(key, value, violations);
             case DOUBLE -> validateDouble(key, value, violations);
             case STRING_ARRAY -> validateStringArray(key, value, violations);
-            case ROUTE_RATIOS_MAP -> throw new IllegalStateException(
-                    "ROUTE_RATIOS_MAP must be decoded by RouteRatiosNormalizer");
+            case ROUTE_RATIOS_MAP -> throw new IllegalStateException("ROUTE_RATIOS_MAP must be decoded by RouteRatiosNormalizer");
         };
     }
 

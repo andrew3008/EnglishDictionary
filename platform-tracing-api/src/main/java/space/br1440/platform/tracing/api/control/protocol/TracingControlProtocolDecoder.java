@@ -1,20 +1,16 @@
 package space.br1440.platform.tracing.api.control.protocol;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
+import java.util.*;
+
+import static lombok.AccessLevel.PACKAGE;
+
+@RequiredArgsConstructor(access = PACKAGE)
 final class TracingControlProtocolDecoder {
 
     private final int expectedMajor;
     private final TracingControlProtocolSchema schema;
-
-    TracingControlProtocolDecoder(int expectedMajor, TracingControlProtocolSchema schema) {
-        this.expectedMajor = expectedMajor;
-        this.schema = schema;
-    }
 
     TracingControlProtocolDecodeResult decode(Map<String, Object> payload) {
         if (payload == null) {
@@ -65,9 +61,8 @@ final class TracingControlProtocolDecoder {
         return TracingControlProtocolDecodeResult.failure(operation.orElseThrow(), violations);
     }
 
-    private Optional<TracingControlProtocolOperation> decodeOperation(
-            Map<String, Object> payload,
-            List<TracingControlProtocolViolation> violations) {
+    private Optional<TracingControlProtocolOperation> decodeOperation(Map<String, Object> payload,
+                                                                      List<TracingControlProtocolViolation> violations) {
         if (!payload.containsKey(TracingControlProtocolKeys.OPERATION)) {
             violations.add(FieldTypeSupport.violation(
                     TracingControlProtocolKeys.OPERATION,
@@ -164,6 +159,7 @@ final class TracingControlProtocolDecoder {
                         TracingControlProtocolFieldType.INTEGER.name(),
                         "absent",
                         TracingControlProtocolViolationCode.MISSING_REQUIRED_KEY),
+
                 FieldTypeSupport.violation(
                         TracingControlProtocolKeys.OPERATION,
                         "required key missing",

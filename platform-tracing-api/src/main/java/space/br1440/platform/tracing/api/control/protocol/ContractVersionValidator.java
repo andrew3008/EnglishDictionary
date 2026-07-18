@@ -1,13 +1,13 @@
 package space.br1440.platform.tracing.api.control.protocol;
 
+import lombok.experimental.UtilityClass;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@UtilityClass
 final class ContractVersionValidator {
-
-    private ContractVersionValidator() {
-    }
 
     static void validate(String key,
                          Object value,

@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.api.control.protocol;
 
 /**
- * Стабильные machine-readable коды ошибок структурного декодирования control protocol.
+ * Machine-readable коды ошибок структурного декодирования control protocol.
  */
 public enum TracingControlProtocolViolationCode {
 
