@@ -39,7 +39,9 @@ public record RuntimePolicyControlHandleResult(
         /** Structural/wire decode failed; operation unknown. */
         DECODE_REJECTED,
         /** Decode succeeded but domain/policy validation failed. */
-        DOMAIN_REJECTED
+        DOMAIN_REJECTED,
+        /** Decode and domain validation succeeded, but mutation is disabled. */
+        MUTATION_REJECTED
     }
 
     public RuntimePolicyControlHandleResult {
@@ -76,6 +78,15 @@ public record RuntimePolicyControlHandleResult(
                 HandleStatus.DOMAIN_REJECTED,
                 Optional.of(operation),
                 domainViolations);
+    }
+
+    public static RuntimePolicyControlHandleResult mutationRejected(
+            TracingControlProtocolOperation operation,
+            String reason) {
+        return new RuntimePolicyControlHandleResult(
+                HandleStatus.MUTATION_REJECTED,
+                Optional.of(operation),
+                List.of(reason));
     }
 
     // -------------------------------------------------------------------------

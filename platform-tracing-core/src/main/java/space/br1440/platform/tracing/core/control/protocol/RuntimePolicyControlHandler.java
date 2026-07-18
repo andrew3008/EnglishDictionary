@@ -40,9 +40,16 @@ import java.util.Objects;
 public final class RuntimePolicyControlHandler {
 
     private final RuntimePolicyApplier applier;
+    private final RuntimeControlMutationPolicy mutationPolicy;
 
     public RuntimePolicyControlHandler(RuntimePolicyApplier applier) {
+        this(applier, RuntimeControlMutationPolicy.startupConfigured(false));
+    }
+
+    public RuntimePolicyControlHandler(RuntimePolicyApplier applier,
+                                       RuntimeControlMutationPolicy mutationPolicy) {
         this.applier = Objects.requireNonNull(applier, "applier");
+        this.mutationPolicy = Objects.requireNonNull(mutationPolicy, "mutationPolicy");
     }
 
     /**
@@ -78,6 +85,17 @@ public final class RuntimePolicyControlHandler {
 
         if (!domainResult.valid()) {
             return RuntimePolicyControlHandleResult.domainRejected(operation, domainResult.violations());
+        }
+
+        // VALIDATE выполняет только domain-проверку и не меняет runtime-состояние.
+        if (operation == TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY) {
+            return RuntimePolicyControlHandleResult.success(operation);
+        }
+
+        // Политика проверяется только для уже корректной мутирующей операции.
+        RuntimeControlMutationDecision decision = mutationPolicy.evaluate(operation);
+        if (!decision.allowed()) {
+            return RuntimePolicyControlHandleResult.mutationRejected(operation, decision.reason());
         }
 
         // --- Step 4: apply (mutating operations only) ---

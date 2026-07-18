@@ -80,6 +80,30 @@ All other fields are operation-specific (see §6 and §7).
 
 Unknown operation names produce an `OPERATION_NOT_ALLOWED` violation.
 
+### 5.1 Runtime mutation policy
+
+`APPLY_RUNTIME_POLICY` is fail-closed by default. The runtime adapter evaluates
+the mutation policy only after successful decode and domain validation, and
+before invoking an applier. With the default startup configuration, the JMX
+result is `MUTATION_REJECTED APPLY_RUNTIME_POLICY` and includes the reason;
+the applied snapshot, version, and source remain unchanged.
+
+Enable unified control-protocol mutations explicitly at JVM startup:
+
+```text
+-Dplatform.tracing.control.runtime-mutation.enabled=true
+```
+
+The equivalent environment variable is
+`PLATFORM_TRACING_CONTROL_RUNTIME_MUTATION_ENABLED=true`. `READ_APPLIED_STATE`
+and `VALIDATE_RUNTIME_POLICY` remain available when mutations are disabled;
+`VALIDATE_RUNTIME_POLICY` never invokes an applier.
+
+For rollback, remove the startup property (or set it to `false`) and restart
+the service. This setting gates the unified control-protocol MBean only; it
+does not replace JVM/JMX network and authorization controls, nor does it
+protect legacy domain MBeans that are outside this protocol boundary.
+
 ---
 
 ## 6. APPLY_RUNTIME_POLICY / VALIDATE_RUNTIME_POLICY field reference

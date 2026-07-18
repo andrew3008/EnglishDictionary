@@ -331,6 +331,15 @@ Do **not** remove RESOLVED entries from the summary without moving them to the R
 
 ---
 
+## PR-B update for W-007
+
+The unified control-protocol MBean now rejects `APPLY_RUNTIME_POLICY` by
+default before an applier is called. Operators must explicitly enable it at
+JVM startup with `platform.tracing.control.runtime-mutation.enabled=true`;
+READ and VALIDATE remain available. This reduces the unified protocol path's
+exposure but does not eliminate W-007: direct domain JMX MBeans still require
+deployment-level JMX network and authorization controls.
+
 ## References
 
 - [runtime-policy-control-architecture.md](../tracing/runtime-policy-control-architecture.md)

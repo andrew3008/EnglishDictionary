@@ -76,6 +76,18 @@ class PlatformSpanProcessorFactoryWiringTest {
                 .ExtensionConfig(minimalConfig());
     }
 
+    private space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig
+            mutationEnabledExtensionConfig() {
+        return new space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig(
+                new EmptyConfigProperties() {
+                    @Override
+                    public Boolean getBoolean(String name) {
+                        return "platform.tracing.control.runtime-mutation.enabled".equals(name)
+                                ? Boolean.TRUE : null;
+                    }
+                });
+    }
+
     private SdkTracerProviderBuilder stubBuilder() {
         // Real builder; we don't care about its output in these tests.
         return io.opentelemetry.sdk.trace.SdkTracerProvider.builder();
@@ -102,7 +114,7 @@ class PlatformSpanProcessorFactoryWiringTest {
         PlatformSpanProcessorFactory factory =
                 new PlatformSpanProcessorFactory(registrar);
         factory.registerSpanProcessors(
-                stubBuilder(), minimalExtensionConfig(), minimalConfig());
+                stubBuilder(), mutationEnabledExtensionConfig(), minimalConfig());
 
         // Build a minimal APPLY_RUNTIME_POLICY CompositeData
         String[]      keys  = {
@@ -174,7 +186,7 @@ class PlatformSpanProcessorFactoryWiringTest {
      * Минимальная конфигурация для wiring-тестов: все значения отсутствуют,
      * default-методы интерфейса возвращают переданные fallback'и.
      */
-    private static final class EmptyConfigProperties implements ConfigProperties {
+    private static class EmptyConfigProperties implements ConfigProperties {
 
         @Override
         public String getString(String name) {

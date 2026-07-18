@@ -21,6 +21,7 @@ public final class ExtensionConfig {
     private final QueueExtensionConfig queue;
     private final BaggageExtensionConfig baggage;
     private final SdkExtensionConfig sdk;
+    private final RuntimeControlExtensionConfig control;
 
     public ExtensionConfig(ConfigProperties config) {
         Objects.requireNonNull(config, "config");
@@ -37,5 +38,6 @@ public final class ExtensionConfig {
         this.queue = new QueueExtensionConfig(reader);
         this.baggage = new BaggageExtensionConfig(reader);
         this.sdk = new SdkExtensionConfig(reader);
+        this.control = new RuntimeControlExtensionConfig(reader);
     }
 }

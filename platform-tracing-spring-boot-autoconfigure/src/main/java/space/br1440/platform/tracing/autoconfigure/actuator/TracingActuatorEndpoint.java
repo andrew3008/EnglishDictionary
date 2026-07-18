@@ -187,6 +187,10 @@ public class TracingActuatorEndpoint {
                         + "enforcement from platform.tracing.validation.strict-runtime-allowed");
         info.put("validation", validationInfo);
 
+        info.put("control", Map.of(
+                "runtimeMutationEnabled", properties.getControl().getRuntimeMutation().isEnabled(),
+                "effectivePolicySource", "otel-agent startup configuration"));
+
         info.put("watchdog", Map.of(
                 "enabled", properties.getWatchdog().isEnabled(),
                 "scanInterval", properties.getWatchdog().getScanInterval().toString(),

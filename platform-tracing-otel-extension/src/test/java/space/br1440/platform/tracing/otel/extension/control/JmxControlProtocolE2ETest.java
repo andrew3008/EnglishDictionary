@@ -9,6 +9,7 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.otel.extension.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.extension.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.extension.processor.ValidatingSpanProcessor;
@@ -73,7 +74,8 @@ class JmxControlProtocolE2ETest {
 
         // --- Applier and handler ---
         applier  = new JmxRuntimePolicyApplier(samplingControl, validationControl);
-        handler  = new RuntimePolicyControlHandler(applier);
+        handler  = new RuntimePolicyControlHandler(
+                applier, RuntimeControlMutationPolicy.startupConfigured(true));
     }
 
     // =========================================================================

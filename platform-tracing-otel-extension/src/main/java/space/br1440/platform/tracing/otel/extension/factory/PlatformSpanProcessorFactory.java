@@ -6,6 +6,7 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.extension.configuration.ValidationMode;
 import space.br1440.platform.tracing.otel.extension.configuration.ValidationModeResolver;
@@ -117,7 +118,8 @@ public final class PlatformSpanProcessorFactory {
                 validatingForHandler = stub;
             }
 
-            wireControlProtocolHandler(validatingForHandler);
+            wireControlProtocolHandler(validatingForHandler,
+                    extConfig.control().runtimeMutationEnabled());
 
             // --- Remaining optional processors ---
 
@@ -175,7 +177,8 @@ public final class PlatformSpanProcessorFactory {
      * that failed control-protocol invocations are reflected in the
      * diagnostics MBean together with other invalid-config events.
      */
-    private void wireControlProtocolHandler(ValidatingSpanProcessor validating) {
+    private void wireControlProtocolHandler(ValidatingSpanProcessor validating,
+                                            boolean runtimeMutationEnabled) {
         // samplingControl reuses the already-registered SamplerStateHolder
         // inside the registrar — no new state is created.
         PlatformSamplingControl samplingControl = jmxRegistrar.buildSamplingControl();
@@ -188,7 +191,9 @@ public final class PlatformSpanProcessorFactory {
                 new JmxRuntimePolicyApplier(samplingControl, validationControl);
 
         RuntimePolicyControlHandler handler =
-                new RuntimePolicyControlHandler(applier);
+                new RuntimePolicyControlHandler(
+                        applier,
+                        RuntimeControlMutationPolicy.startupConfigured(runtimeMutationEnabled));
 
         jmxRegistrar.setControlHandler(handler);
     }

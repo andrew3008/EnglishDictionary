@@ -47,7 +47,9 @@ class RuntimePolicyControlHandlerTest {
     @BeforeEach
     void setUp() {
         applier = new RecordingApplier();
-        handler = new RuntimePolicyControlHandler(applier);
+        handler = new RuntimePolicyControlHandler(
+                applier,
+                RuntimeControlMutationPolicy.startupConfigured(true));
     }
 
     // =========================================================================
@@ -206,6 +208,65 @@ class RuntimePolicyControlHandlerTest {
         assertThat(applier.appliedPayloads).hasSize(1);
     }
 
+    @Test
+    void deniesApplyByDefaultWithoutCallingApplier() {
+        RuntimePolicyControlHandler disabledHandler = new RuntimePolicyControlHandler(applier);
+        Map<String, Object> raw = validApplyRuntimePolicyPayload();
+        raw.put(TracingControlProtocolKeys.SAMPLING_RATIO, 0.5d);
+
+        RuntimePolicyControlHandleResult result = disabledHandler.handle(
+                TracingControlProtocol.current().decode(raw));
+
+        assertThat(result.status())
+                .isEqualTo(RuntimePolicyControlHandleResult.HandleStatus.MUTATION_REJECTED);
+        assertThat(result.violations()).singleElement()
+                .asString().contains("runtime mutation is disabled");
+        assertThat(applier.appliedPayloads).isEmpty();
+    }
+
+    @Test
+    void validateOperationDoesNotCallApplierWhenMutationIsDisabled() {
+        RuntimePolicyControlHandler disabledHandler = new RuntimePolicyControlHandler(applier);
+        Map<String, Object> raw = validDryRunPayload();
+        raw.put(TracingControlProtocolKeys.SAMPLING_RATIO, 0.5d);
+
+        RuntimePolicyControlHandleResult result = disabledHandler.handle(
+                TracingControlProtocol.current().decode(raw));
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.operation())
+                .contains(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY);
+        assertThat(applier.appliedPayloads).isEmpty();
+    }
+
+    @Test
+    void disabledMutationPolicyDoesNotMaskDecodeRejection() {
+        RuntimePolicyControlHandler disabledHandler = new RuntimePolicyControlHandler(applier);
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
+
+        RuntimePolicyControlHandleResult result = disabledHandler.handle(
+                TracingControlProtocol.current().decode(raw));
+
+        assertThat(result.status())
+                .isEqualTo(RuntimePolicyControlHandleResult.HandleStatus.DECODE_REJECTED);
+        assertThat(applier.appliedPayloads).isEmpty();
+    }
+
+    @Test
+    void disabledMutationPolicyDoesNotMaskDomainRejection() {
+        RuntimePolicyControlHandler disabledHandler = new RuntimePolicyControlHandler(applier);
+        Map<String, Object> raw = validApplyRuntimePolicyPayload();
+        raw.put(TracingControlProtocolKeys.SAMPLING_RATIO, 1.5d);
+
+        RuntimePolicyControlHandleResult result = disabledHandler.handle(
+                TracingControlProtocol.current().decode(raw));
+
+        assertThat(result.status())
+                .isEqualTo(RuntimePolicyControlHandleResult.HandleStatus.DOMAIN_REJECTED);
+        assertThat(applier.appliedPayloads).isEmpty();
+    }
+
     // =========================================================================
     // SUCCESS – read-only operation (no apply)
     // =========================================================================
@@ -238,6 +299,14 @@ class RuntimePolicyControlHandlerTest {
         map.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
         map.put(TracingControlProtocolKeys.OPERATION,
                 TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue());
+        return map;
+    }
+
+    private static Map<String, Object> validDryRunPayload() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
+        map.put(TracingControlProtocolKeys.OPERATION,
+                TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY.wireValue());
         return map;
     }
 }

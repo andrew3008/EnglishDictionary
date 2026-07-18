@@ -180,6 +180,21 @@ class TracingPropertiesBindingTest {
     }
 
     @Test
+    void defaultRuntimeControlMutationEnabled_isFalse() {
+        contextRunner
+                .run(ctx -> assertThat(ctx.getBean(TracingProperties.class)
+                        .getControl().getRuntimeMutation().isEnabled()).isFalse());
+    }
+
+    @Test
+    void bindsRuntimeControlMutationEnabled() {
+        contextRunner
+                .withPropertyValues("platform.tracing.control.runtime-mutation.enabled=true")
+                .run(ctx -> assertThat(ctx.getBean(TracingProperties.class)
+                        .getControl().getRuntimeMutation().isEnabled()).isTrue());
+    }
+
+    @Test
     void defaultValidationValues_preserved() {
         contextRunner
                 .run(ctx -> {

@@ -93,6 +93,12 @@ class ExtensionConfigTest {
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
             assertThat(cfg.sdk()).isSameAs(cfg.sdk());
         }
+
+        @Test
+        void control_returns_same_instance() {
+            ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
+            assertThat(cfg.control()).isSameAs(cfg.control());
+        }
     }
 
     // -- Defaults from empty config --------------------------------------------------------------
@@ -217,6 +223,19 @@ class ExtensionConfigTest {
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
         assertThat(config.sdk().mode()).isNull();
+    }
+
+    @Test
+    void runtimeControlMutationIsDisabledByDefault() {
+        assertThat(new ExtensionConfig(emptyConfig()).control().runtimeMutationEnabled()).isFalse();
+    }
+
+    @Test
+    void runtimeControlMutationCanBeExplicitlyEnabled() {
+        ExtensionConfig config = new ExtensionConfig(
+                booleanConfig(ExtensionPropertyNames.CONTROL_RUNTIME_MUTATION_ENABLED, true));
+
+        assertThat(config.control().runtimeMutationEnabled()).isTrue();
     }
 
     // -- Explicit overrides ----------------------------------------------------------------------

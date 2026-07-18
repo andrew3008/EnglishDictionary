@@ -8,6 +8,7 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.otel.extension.control.JmxRuntimePolicyApplier;
 import space.br1440.platform.tracing.otel.extension.control.ReadAppliedStateHandler;
 import space.br1440.platform.tracing.otel.extension.jmx.PlatformTracingObjectNames;
@@ -93,7 +94,8 @@ class PlatformControlProtocolJmxWireE2ETest {
                 new JmxRuntimePolicyApplier(samplingControl, validationControl);
 
         RuntimePolicyControlHandler handler =
-                new RuntimePolicyControlHandler(applier);
+                new RuntimePolicyControlHandler(
+                        applier, RuntimeControlMutationPolicy.startupConfigured(true));
 
         ReadAppliedStateHandler readHandler =
                 new ReadAppliedStateHandler(samplerHolder, validatingProcessor);
@@ -244,6 +246,32 @@ class PlatformControlProtocolJmxWireE2ETest {
             assertThat(validatingProcessor.isEnabled()).isTrue();
             assertThat(validatingProcessor.isStrict()).isFalse();
         }
+    }
+
+    @Test
+    void mutationDisabledRejectsApplyWithoutChangingAppliedState() throws Exception {
+        RuntimePolicyControlHandler disabledHandler = new RuntimePolicyControlHandler(
+                new JmxRuntimePolicyApplier(
+                        new PlatformSamplingControl(samplerHolder, null, counter),
+                        new PlatformValidationControl(validatingProcessor, counter)));
+        PlatformControlProtocolMBean disabledMBean = new PlatformControlProtocolMBean(
+                TracingControlProtocol.current(),
+                disabledHandler,
+                new ReadAppliedStateHandler(samplerHolder, validatingProcessor),
+                counter);
+        CompositeData payload = buildPayload(
+                new String[]{TracingControlProtocolKeys.SAMPLING_RATIO},
+                new Object[]{0.55d});
+        long versionBefore = samplerHolder.current().version();
+        String sourceBefore = samplerHolder.current().source();
+
+        assertThat(disabledMBean.readAppliedState()).isNotNull();
+        String result = disabledMBean.applyPolicy(payload);
+
+        assertThat(result).startsWith("MUTATION_REJECTED APPLY_RUNTIME_POLICY");
+        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.1d);
+        assertThat(samplerHolder.current().version()).isEqualTo(versionBefore);
+        assertThat(samplerHolder.current().source()).isEqualTo(sourceBefore);
     }
 
     // =========================================================================

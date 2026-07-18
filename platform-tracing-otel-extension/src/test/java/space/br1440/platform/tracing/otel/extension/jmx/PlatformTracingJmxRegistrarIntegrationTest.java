@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.otel.extension.control.JmxRuntimePolicyApplier;
 import space.br1440.platform.tracing.otel.extension.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.extension.jmx.validation.PlatformValidationControl;
@@ -91,7 +92,8 @@ class PlatformTracingJmxRegistrarIntegrationTest {
         JmxRuntimePolicyApplier applier =
                 new JmxRuntimePolicyApplier(samplingCtl, validationCtl);
         RuntimePolicyControlHandler handler =
-                new RuntimePolicyControlHandler(applier);
+                new RuntimePolicyControlHandler(
+                        applier, RuntimeControlMutationPolicy.startupConfigured(true));
 
         registrar.setValidating(validatingProcessor);
         registrar.setControlHandler(handler);

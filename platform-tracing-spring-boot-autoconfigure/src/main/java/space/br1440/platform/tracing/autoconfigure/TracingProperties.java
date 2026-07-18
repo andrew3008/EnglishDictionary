@@ -54,6 +54,7 @@ public class TracingProperties {
     private final ContextPropagation contextPropagation = new ContextPropagation();
     private final Diagnostics diagnostics = new Diagnostics();
     private final Actuator actuator = new Actuator();
+    private final Control control = new Control();
 
     /**
      * Режим работы относительно OpenTelemetry SDK (Фаза 15).
@@ -831,5 +832,26 @@ public class TracingProperties {
          * access to domain MBeans — see runtime policy architecture docs.
          */
         private boolean mutationEnabled = false;
+    }
+
+    /**
+     * Startup-настройки unified runtime-control protocol.
+     *
+     * <p>В agent-first режиме это значение является операторским зеркалом:
+     * effective policy задаётся одноимённым свойством в конфигурации Java Agent.
+     */
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    public static class Control {
+        private final RuntimeMutation runtimeMutation = new RuntimeMutation();
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    public static class RuntimeMutation {
+        /** По умолчанию APPLY_RUNTIME_POLICY запрещён. */
+        private boolean enabled = false;
     }
 }

@@ -59,6 +59,9 @@ public final class ExtensionPropertyNames {
 
     public static final String SDK_MODE = "platform.tracing.sdk.mode";
 
+    public static final String CONTROL_RUNTIME_MUTATION_ENABLED =
+            "platform.tracing.control.runtime-mutation.enabled";
+
     public static final String OTEL_JAVAAGENT_EXTENSIONS = "otel.javaagent.extensions";
 
 }

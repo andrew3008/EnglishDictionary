@@ -65,6 +65,11 @@ final class OtelEnvHintsBuilder {
                 properties.getQueue().getPolicy().name(),
                 "platform.tracing.queue.policy");
 
+        put(hints, "PLATFORM_TRACING_CONTROL_RUNTIME_MUTATION_ENABLED",
+                "platform.tracing.control.runtime-mutation.enabled",
+                String.valueOf(properties.getControl().getRuntimeMutation().isEnabled()),
+                "platform.tracing.control.runtime-mutation.enabled");
+
         // Resource identity (Фаза 9): платформенный namespace PLATFORM_TRACING_* (не OTEL_*).
         // Эти env-переменные пробрасываются env-bridge'ем PlatformTracingDefaultsProvider в Agent mode.
         putResourceHint(hints, "PLATFORM_TRACING_SERVICE_NAME",
