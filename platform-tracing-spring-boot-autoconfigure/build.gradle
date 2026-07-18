@@ -40,6 +40,7 @@ dependencies {
 
     // Spring Boot Actuator: health indicator и /actuator/tracing endpoint.
     compileOnly 'org.springframework.boot:spring-boot-starter-actuator'
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
 
     // Kafka: опциональная интеграция для batch links aspect.
     compileOnly 'org.springframework.kafka:spring-kafka'

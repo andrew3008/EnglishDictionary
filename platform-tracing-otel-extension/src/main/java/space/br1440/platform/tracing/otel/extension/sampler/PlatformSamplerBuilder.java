@@ -20,7 +20,7 @@ import java.util.Map;
  * построенный bootstrap-владельцем ({@code PlatformAutoConfigurationCustomizer}).
  * Прямое чтение {@code ConfigProperties} / {@code ExtensionPropertyNames} / {@code ExtensionDefaults}
  * намеренно удалено; {@code ALIGN_TO_EXTENSION_DEFAULTS = 0.1} применяется через дефолт
- * {@link SamplingExtensionConfig#ratio()}.
+ * {@code SamplingExtensionConfig#ratio}.
  * <p>
  * JMX-регистрация в этот класс <b>намеренно не входит</b> (без side-effect'ов): её выполняет
  * вызывающая фабрика, которая владеет {@code PlatformTracingJmxRegistrar}. Это позволяет
