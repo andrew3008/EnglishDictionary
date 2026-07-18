@@ -173,7 +173,7 @@ class PlatformTracingJmxRegistrarTest {
         // Идемпотентность: ровно 6 регистраций (по одной на домен), не больше
         assertThat(registerCallCount.get())
                 .as("registerMBean должен быть вызван ровно 6 раз, независимо от числа потоков")
-                .isEqualTo(6);
+                .isEqualTo(7);
     }
 
     @Test

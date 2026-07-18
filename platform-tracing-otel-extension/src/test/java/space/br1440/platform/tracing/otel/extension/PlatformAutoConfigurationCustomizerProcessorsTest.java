@@ -354,7 +354,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void object_name_sampling_MBean_совпадает_с_публичным_контрактом() {
         assertThat(PlatformTracingObjectNames.SAMPLING_OBJECT_NAME_STR)
-                .isEqualTo("space.br1440.platform.tracing:type=SamplingControl,name=PlatformSamplingControl");
+                .isEqualTo("space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
     }
 
     /** Ratio при установке через MBean подвергается валидации. */

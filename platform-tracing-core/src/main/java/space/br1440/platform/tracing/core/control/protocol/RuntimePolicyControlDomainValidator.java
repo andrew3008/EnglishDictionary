@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.control.protocol;
 
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties;
 import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyPropertiesValidator;
 
@@ -36,6 +37,24 @@ import java.util.Set;
  */
 public final class RuntimePolicyControlDomainValidator {
 
+    private static final Set<String> RUNTIME_POLICY_KEYS = Set.of(
+            TracingControlProtocolKeys.SAMPLING_RATIO,
+            TracingControlProtocolKeys.SAMPLING_ROUTE_RATIOS,
+            TracingControlProtocolKeys.SAMPLING_KILL_SWITCH_ENABLED,
+            TracingControlProtocolKeys.SAMPLING_QA_TRACE_ENABLED,
+            TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_ENABLED,
+            TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_VALUES,
+            TracingControlProtocolKeys.SAMPLING_DROP_PATH_PREFIXES,
+            TracingControlProtocolKeys.SCRUBBING_ENABLED,
+            TracingControlProtocolKeys.SCRUBBING_MODE,
+            TracingControlProtocolKeys.SCRUBBING_RULE_NAMES,
+            TracingControlProtocolKeys.VALIDATION_ENABLED,
+            TracingControlProtocolKeys.VALIDATION_MODE,
+            TracingControlProtocolKeys.VALIDATION_STRICT,
+            TracingControlProtocolKeys.ENRICHING_ENABLED,
+            TracingControlProtocolKeys.EXPORT_ENABLED,
+            TracingControlProtocolKeys.PROPAGATION_ENABLED);
+
     private RuntimePolicyControlDomainValidator() {
     }
 
@@ -49,6 +68,7 @@ public final class RuntimePolicyControlDomainValidator {
     public static TracingControlDomainValidationResult validate(Map<String, Object> normalizedPayload) {
         List<String> violations = new ArrayList<>();
 
+        collectEmptyMutationViolation(normalizedPayload, violations);
         collectSamplingViolations(normalizedPayload, violations);
         collectValidationModeViolations(normalizedPayload, violations);
 
@@ -56,6 +76,22 @@ public final class RuntimePolicyControlDomainValidator {
             return TracingControlDomainValidationResult.success();
         }
         return new TracingControlDomainValidationResult(false, violations);
+    }
+
+    private static void collectEmptyMutationViolation(Map<String, Object> payload,
+                                                      List<String> violations) {
+        if (!isApplyOperation(payload)) {
+            return;
+        }
+        boolean hasMutation = payload.keySet().stream().anyMatch(RUNTIME_POLICY_KEYS::contains);
+        if (!hasMutation) {
+            violations.add("empty mutation rejected");
+        }
+    }
+
+    private static boolean isApplyOperation(Map<String, Object> payload) {
+        return TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue()
+                .equals(payload.get(TracingControlProtocolKeys.OPERATION));
     }
 
     // -------------------------------------------------------------------------

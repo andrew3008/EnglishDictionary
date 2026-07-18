@@ -19,17 +19,20 @@ final class TracingControlProtocolSchema {
         Map<String, TracingControlProtocolFieldDescriptor> runtimePolicy = runtimePolicyFields();
         Map<String, TracingControlProtocolFieldDescriptor> diagnostics = diagnosticFields();
 
-        Map<TracingControlProtocolOperation, RequestSchema> requests =
-                new EnumMap<>(TracingControlProtocolOperation.class);
+        Map<TracingControlProtocolOperation, RequestSchema> requests = new EnumMap<>(TracingControlProtocolOperation.class);
+
         requests.put(TracingControlProtocolOperation.APPLY_RUNTIME_POLICY,
                 new RequestSchema(merge(envelope, runtimePolicy, diagnostics),
                         Set.of(TracingControlProtocolKeys.CONTRACT_VERSION, TracingControlProtocolKeys.OPERATION)));
+
         requests.put(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY,
                 new RequestSchema(merge(envelope, runtimePolicy, diagnostics),
                         Set.of(TracingControlProtocolKeys.CONTRACT_VERSION, TracingControlProtocolKeys.OPERATION)));
+
         requests.put(TracingControlProtocolOperation.READ_APPLIED_STATE,
                 new RequestSchema(merge(envelope, diagnostics),
                         Set.of(TracingControlProtocolKeys.CONTRACT_VERSION, TracingControlProtocolKeys.OPERATION)));
+
         return new TracingControlProtocolSchema(requests);
     }
 
@@ -73,18 +76,16 @@ final class TracingControlProtocolSchema {
         return fields;
     }
 
-    private static Map<String, TracingControlProtocolFieldDescriptor> merge(
-            Map<String, TracingControlProtocolFieldDescriptor> first,
-            Map<String, TracingControlProtocolFieldDescriptor> second) {
+    private static Map<String, TracingControlProtocolFieldDescriptor> merge(Map<String, TracingControlProtocolFieldDescriptor> first,
+                                                                            Map<String, TracingControlProtocolFieldDescriptor> second) {
         Map<String, TracingControlProtocolFieldDescriptor> merged = new LinkedHashMap<>(first);
         merged.putAll(second);
         return merged;
     }
 
-    private static Map<String, TracingControlProtocolFieldDescriptor> merge(
-            Map<String, TracingControlProtocolFieldDescriptor> first,
-            Map<String, TracingControlProtocolFieldDescriptor> second,
-            Map<String, TracingControlProtocolFieldDescriptor> third) {
+    private static Map<String, TracingControlProtocolFieldDescriptor> merge(Map<String, TracingControlProtocolFieldDescriptor> first,
+                                                                            Map<String, TracingControlProtocolFieldDescriptor> second,
+                                                                            Map<String, TracingControlProtocolFieldDescriptor> third) {
         Map<String, TracingControlProtocolFieldDescriptor> merged = merge(first, second);
         merged.putAll(third);
         return merged;
@@ -106,10 +107,6 @@ final class TracingControlProtocolSchema {
 
         TracingControlProtocolFieldDescriptor descriptorOf(String key) {
             return descriptorsByKey.get(key);
-        }
-
-        boolean containsKey(String key) {
-            return descriptorsByKey.containsKey(key);
         }
     }
 }

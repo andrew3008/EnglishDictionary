@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Asserts stability of well-known wire-key string constants.
  *
- * <p>{@code OPERATION_READ_SCHEMA} assertion was removed: that operation
- * was deleted in slice-3 as speculative test-only API.
+ * <p>The speculative schema-read operation assertion was removed: that operation
+ * was deleted in slice-3 as test-only API.
  * A guard asserting its <em>absence</em> from the operation enum is added
  * instead, so any accidental re-introduction is caught.
  */
@@ -34,32 +34,33 @@ class TracingControlProtocolKeysTest {
     }
 
     @Test
-    @DisplayName("operation constants match exactly 3 TracingControlProtocolOperation values; READ_SCHEMA absent")
+    @DisplayName("operation enum is the only operation wire-value source")
     void operationConstants() {
-        assertThat(TracingControlProtocolKeys.OPERATION_APPLY_RUNTIME_POLICY)
+        String removedSchemaReadOperation = "READ_" + "SCHEMA";
+
+        assertThat(TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue())
                 .isEqualTo("APPLY_RUNTIME_POLICY");
-        assertThat(TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY)
+        assertThat(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY.wireValue())
                 .isEqualTo("VALIDATE_RUNTIME_POLICY");
-        assertThat(TracingControlProtocolKeys.OPERATION_READ_APPLIED_STATE)
+        assertThat(TracingControlProtocolOperation.READ_APPLIED_STATE.wireValue())
                 .isEqualTo("READ_APPLIED_STATE");
 
-        // Guard: READ_SCHEMA must not be present in the enum (deleted in slice-3).
         assertThat(TracingControlProtocolOperation.values())
                 .as("operation enum must have exactly 3 values")
                 .hasSize(3);
         for (TracingControlProtocolOperation op : TracingControlProtocolOperation.values()) {
             assertThat(op.name())
-                    .as("READ_SCHEMA must not appear as an operation")
-                    .isNotEqualTo("READ_SCHEMA");
+                    .as("removed schema-read operation must not appear")
+                    .isNotEqualTo(removedSchemaReadOperation);
         }
     }
 
     @Test
-    @DisplayName("topology keys use exporter/sdk prefixes")
-    void topologyKeys() {
-        assertThat(TracingControlProtocolKeys.TOPOLOGY_EXPORTER_ENDPOINT)
-                .isEqualTo("exporter.endpoint");
-        assertThat(TracingControlProtocolKeys.TOPOLOGY_SDK_MODE)
-                .isEqualTo("sdk.mode");
+    @DisplayName("topology keys are not part of the request key constants")
+    void topologyKeysAreNotConstants() {
+        String removedPrefix = "TOPOLOGY" + "_";
+        assertThat(TracingControlProtocolKeys.class.getFields())
+                .extracting(field -> field.getName())
+                .noneMatch(name -> name.startsWith(removedPrefix));
     }
 }

@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.api.control.protocol;
 
 /**
- * Стабильные machine-readable коды структурного декодирования control protocol.
+ * Стабильные machine-readable коды ошибок структурного декодирования control protocol.
  */
 public enum TracingControlProtocolViolationCode {
 
@@ -11,4 +11,5 @@ public enum TracingControlProtocolViolationCode {
     MISSING_REQUIRED_KEY,
     TYPE_MISMATCH,
     OPERATION_NOT_ALLOWED
+
 }

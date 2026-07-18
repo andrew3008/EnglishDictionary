@@ -127,8 +127,9 @@ dependencies {
     testExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
 
     // Test-only JMX wire round-trip extension JAR (harness for MapWireRoundTripE2ETest).
-    // platform-tracing-api предоставляет TracingControlProtocol.current().validator(); spi — для провайдера.
+    // platform-tracing-api предоставляет TracingControlProtocol.current().decode(...); spi — для провайдера.
     jmxWireExtensionCompileOnly project(':platform-tracing-api')
+    jmxWireExtensionCompileOnly project(':platform-tracing-core')
     jmxWireExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
 
     // App-CL сторона E2E (MapWireRoundTripMain) использует константы MBean и маркеры харнесса.
@@ -174,14 +175,16 @@ tasks.named('processTestExtensionResources') {
 
 // Test-only extension JAR с JMX wire round-trip харнессом (WireRoundTripTest*).
 // Загружается через otel.javaagent.extensions; OTel Agent создаёт отдельный ExtensionClassLoader
-// на каждый JAR, поэтому platform-tracing-api embedded внутрь, чтобы TracingControlProtocol.current().validator()
+// на каждый JAR, поэтому platform-tracing-api embedded внутрь, чтобы TracingControlProtocol.current().decode(...)
 // был доступен в CL расширения. Это test-only артефакт, в production agentExtensionJar не входит.
 tasks.register('testJmxWireExtensionJar', Jar) {
     archiveClassifier.set('jmx-wire')
     dependsOn project(':platform-tracing-api').tasks.named('jar')
+    dependsOn project(':platform-tracing-core').tasks.named('jar')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from sourceSets.jmxWireExtension.output
     from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
+    from { zipTree(project(':platform-tracing-core').jar.archiveFile) }
 }
 
 tasks.named('processJmxWireExtensionResources') {

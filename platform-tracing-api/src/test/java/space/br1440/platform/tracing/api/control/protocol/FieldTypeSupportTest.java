@@ -60,28 +60,24 @@ class FieldTypeSupportTest {
     }
 
     @Test
-    @DisplayName("validation.mode: unknown value produces TYPE_MISMATCH")
-    void validationModeUnknown_returnsTypeMismatch() {
+    @DisplayName("validation.mode: any String is structurally accepted")
+    void validationModeStringIsStructurallyAccepted() {
         List<TracingControlProtocolViolation> v = violations();
         Object result = normalize(TracingControlProtocolFieldType.STRING,
                 TracingControlProtocolKeys.VALIDATION_MODE, "LOUD", v);
 
-        assertThat(result).isNull();
-        assertThat(v).hasSize(1);
-        assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
-        assertThat(v.get(0).reason()).isEqualTo("unknown validation.mode wire value");
-        assertThat(v.get(0).expectedType()).isEqualTo("STRICT|WARN|DISABLED");
-        assertThat(v.get(0).actualType()).isEqualTo("LOUD");
+        assertThat(result).isEqualTo("LOUD");
+        assertThat(v).isEmpty();
     }
 
     @Test
-    @DisplayName("validation.mode: lowercase 'warn' accepted; returned as 'warn', not canonicalized")
+    @DisplayName("validation.mode: lowercase value is returned as-is, not canonicalized")
     void validationModeLowercaseAcceptedAndNotCanonicalized() {
         List<TracingControlProtocolViolation> v = violations();
         Object result = normalize(TracingControlProtocolFieldType.STRING,
-                TracingControlProtocolKeys.VALIDATION_MODE, "warn", v);
+                TracingControlProtocolKeys.VALIDATION_MODE, "log_only", v);
 
-        assertThat(result).isEqualTo("warn");
+        assertThat(result).isEqualTo("log_only");
         assertThat(v).isEmpty();
     }
 
@@ -176,28 +172,28 @@ class FieldTypeSupportTest {
     // ─── DOUBLE ─────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("DOUBLE: Double, Float, Integer, Long all coerce to Double when in [0.0, 1.0]")
+    @DisplayName("DOUBLE: Double, Float, Integer, Long all coerce to Double")
     void doubleAcceptsDoubleFloatIntegerLong() {
         String key = TracingControlProtocolKeys.SAMPLING_RATIO;
 
         List<TracingControlProtocolViolation> v1 = violations();
-        Object r1 = FieldTypeSupport.validateDouble(key, 0.5d, v1, true);
+        Object r1 = FieldTypeSupport.validateDouble(key, 0.5d, v1);
         assertThat(r1).isInstanceOf(Double.class).isEqualTo(0.5d);
         assertThat(v1).isEmpty();
 
         List<TracingControlProtocolViolation> v2 = violations();
-        Object r2 = FieldTypeSupport.validateDouble(key, 0.5f, v2, true);
+        Object r2 = FieldTypeSupport.validateDouble(key, 0.5f, v2);
         assertThat(r2).isInstanceOf(Double.class);
         assertThat((Double) r2).isCloseTo(0.5, org.assertj.core.data.Offset.offset(1e-9));
         assertThat(v2).isEmpty();
 
         List<TracingControlProtocolViolation> v3 = violations();
-        Object r3 = FieldTypeSupport.validateDouble(key, 1, v3, true);
+        Object r3 = FieldTypeSupport.validateDouble(key, 1, v3);
         assertThat(r3).isInstanceOf(Double.class).isEqualTo(1.0d);
         assertThat(v3).isEmpty();
 
         List<TracingControlProtocolViolation> v4 = violations();
-        Object r4 = FieldTypeSupport.validateDouble(key, 1L, v4, true);
+        Object r4 = FieldTypeSupport.validateDouble(key, 1L, v4);
         assertThat(r4).isInstanceOf(Double.class).isEqualTo(1.0d);
         assertThat(v4).isEmpty();
     }
@@ -207,7 +203,7 @@ class FieldTypeSupportTest {
     void doubleRejectsWrongType() {
         List<TracingControlProtocolViolation> v = violations();
         Object result = FieldTypeSupport.validateDouble(
-                TracingControlProtocolKeys.SAMPLING_RATIO, "not-a-number", v, true);
+                TracingControlProtocolKeys.SAMPLING_RATIO, "not-a-number", v);
 
         assertThat(result).isNull();
         assertThat(v).hasSize(1);
@@ -217,25 +213,10 @@ class FieldTypeSupportTest {
     }
 
     @Test
-    @DisplayName("DOUBLE: out-of-range ratio produces TYPE_MISMATCH 'ratio must be in [0.0, 1.0]'")
-    void doubleRejectsOutOfRangeRatio() {
+    @DisplayName("DOUBLE: out-of-domain value is structurally accepted")
+    void doubleAllowsOutOfDomainValue() {
         List<TracingControlProtocolViolation> v = violations();
-        Object result = FieldTypeSupport.validateDouble(
-                TracingControlProtocolKeys.SAMPLING_RATIO, 1.5d, v, true);
-
-        assertThat(result).isNull();
-        assertThat(v).hasSize(1);
-        assertThat(v.get(0).code()).isEqualTo(TracingControlProtocolViolationCode.TYPE_MISMATCH);
-        assertThat(v.get(0).reason()).isEqualTo("ratio must be in [0.0, 1.0]");
-        assertThat(v.get(0).expectedType()).isEqualTo("[0.0, 1.0]");
-        assertThat(v.get(0).actualType()).isEqualTo("1.5");
-    }
-
-    @Test
-    @DisplayName("DOUBLE: out-of-range value accepted when ratioField=false")
-    void doubleAllowsOutOfRangeWhenRatioFlagFalse() {
-        List<TracingControlProtocolViolation> v = violations();
-        Object result = FieldTypeSupport.validateDouble("someDoubleKey", 1.5d, v, false);
+        Object result = FieldTypeSupport.validateDouble("someDoubleKey", 1.5d, v);
 
         assertThat(result).isInstanceOf(Double.class).isEqualTo(1.5d);
         assertThat(v).isEmpty();

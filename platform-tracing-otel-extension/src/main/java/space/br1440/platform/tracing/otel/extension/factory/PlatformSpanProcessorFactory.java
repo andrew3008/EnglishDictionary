@@ -112,6 +112,7 @@ public final class PlatformSpanProcessorFactory {
                 // Stub: validation is off at startup but operator may enable
                 // it later via JMX control protocol.
                 ValidatingSpanProcessor stub = new ValidatingSpanProcessor(false, false);
+                stub.tryApplyPolicyUpdate(false, false, "startup");
                 jmxRegistrar.setValidating(stub);
                 validatingForHandler = stub;
             }

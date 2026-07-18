@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link TracingControlProtocolViolationCode} for common structural error scenarios.
  *
  * <p>Migrated from {@code result/TracingControlProtocolViolationTest} which relied on
- * the deleted {@code validator().validateRuntimePolicy()} API. Rewritten to use
+ * the deleted public validator API. Rewritten to use
  * {@code TracingControlProtocol.current().decode(Map)} which is the canonical entry-point
  * after slice-3 refactor.
  */
@@ -26,7 +26,7 @@ class TracingControlProtocolViolationTest {
         Map<String, Object> payload = new HashMap<>();
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 2);
         payload.put(TracingControlProtocolKeys.OPERATION,
-                TracingControlProtocolKeys.OPERATION_APPLY_RUNTIME_POLICY);
+                TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue());
 
         TracingControlProtocolDecodeResult result =
                 TracingControlProtocol.current().decode(payload);
@@ -43,7 +43,7 @@ class TracingControlProtocolViolationTest {
         Map<String, Object> payload = new HashMap<>();
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, "abc");
         payload.put(TracingControlProtocolKeys.OPERATION,
-                TracingControlProtocolKeys.OPERATION_APPLY_RUNTIME_POLICY);
+                TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue());
 
         TracingControlProtocolDecodeResult result =
                 TracingControlProtocol.current().decode(payload);
@@ -60,7 +60,7 @@ class TracingControlProtocolViolationTest {
         Map<String, Object> payload = new HashMap<>();
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
         payload.put(TracingControlProtocolKeys.OPERATION,
-                TracingControlProtocolKeys.OPERATION_APPLY_RUNTIME_POLICY);
+                TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue());
         payload.put("unknown", true);
 
         TracingControlProtocolDecodeResult result =

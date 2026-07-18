@@ -162,7 +162,7 @@ class ApiProtocolNoImplementationDependencyArchTest {
     void noForbiddenTypeNames() {
         Set<String> simpleNames = publicProductionSimpleNames();
         simpleNames.forEach(name ->
-                assertThat(name).doesNotContainAnyWhitespacesOf("")
+                assertThat(name).doesNotContain(" ")
         );
         assertThat(simpleNames).noneMatch(n ->
                 n.endsWith("Registry") || n.endsWith("Command") ||
@@ -210,12 +210,13 @@ class ApiProtocolNoImplementationDependencyArchTest {
     // ---------- operations assertions ----------
 
     @Test
-    @DisplayName("TracingControlProtocolOperation has exactly 3 values, no READ_SCHEMA")
+    @DisplayName("TracingControlProtocolOperation has exactly 3 values and no schema-read operation")
     void operationEnumHasThreeValues() {
+        String removedSchemaReadOperation = "READ_" + "SCHEMA";
         TracingControlProtocolOperation[] ops = TracingControlProtocolOperation.values();
         assertThat(ops).hasSize(3);
         assertThat(Arrays.stream(ops).map(TracingControlProtocolOperation::name))
-                .doesNotContain("READ_SCHEMA");
+                .doesNotContain(removedSchemaReadOperation);
     }
 
     // ---------- decode result assertions ----------

@@ -3,8 +3,8 @@ package space.br1440.platform.tracing.otel.extension.control;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult;
-import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecoder;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult;
@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <pre>
  * raw Map (wire payload)
- *   --[TracingControlProtocolDecoder]--> TracingControlProtocolDecodeResult
+ *   --[TracingControlProtocol]--> TracingControlProtocolDecodeResult
  *       --[RuntimePolicyControlHandler]--> RuntimePolicyControlHandleResult
  *           (domain validate inside handler)
  *               --[JmxRuntimePolicyApplier]-->
@@ -51,7 +51,6 @@ class JmxControlProtocolE2ETest {
     private PlatformValidationControl validationControl;
     private JmxRuntimePolicyApplier  applier;
     private RuntimePolicyControlHandler handler;
-    private TracingControlProtocolDecoder decoder;
 
     @BeforeEach
     void wireComponents() {
@@ -65,6 +64,7 @@ class JmxControlProtocolE2ETest {
 
         // --- ValidatingSpanProcessor: start with enabled=false, strict=false ---
         validatingProcessor = new ValidatingSpanProcessor(false, true);
+        validatingProcessor.tryApplyPolicyUpdate(false, false, "startup");
 
         // --- JMX MBeans backed by real holders ---
         LongAdder invalidCounter = new LongAdder();
@@ -74,7 +74,6 @@ class JmxControlProtocolE2ETest {
         // --- Applier and handler ---
         applier  = new JmxRuntimePolicyApplier(samplingControl, validationControl);
         handler  = new RuntimePolicyControlHandler(applier);
-        decoder  = TracingControlProtocolDecoder.v1();
     }
 
     // =========================================================================
@@ -82,7 +81,7 @@ class JmxControlProtocolE2ETest {
     // =========================================================================
 
     private RuntimePolicyControlHandleResult handle(Map<String, Object> rawPayload) {
-        TracingControlProtocolDecodeResult decoded = decoder.decode(rawPayload);
+        TracingControlProtocolDecodeResult decoded = TracingControlProtocol.current().decode(rawPayload);
         return handler.handle(decoded);
     }
 

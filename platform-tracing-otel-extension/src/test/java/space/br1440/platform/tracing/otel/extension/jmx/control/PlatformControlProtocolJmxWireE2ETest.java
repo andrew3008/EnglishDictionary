@@ -4,7 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecoder;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
@@ -18,6 +18,7 @@ import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
+import javax.management.StandardMBean;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
@@ -80,7 +81,7 @@ class PlatformControlProtocolJmxWireE2ETest {
                 Collections.emptyMap(),
                 0.1d);
 
-        validatingProcessor = new ValidatingSpanProcessor(false, false);
+        validatingProcessor = new ValidatingSpanProcessor(false, true);
         counter             = new LongAdder();
 
         PlatformSamplingControl  samplingControl  =
@@ -98,7 +99,7 @@ class PlatformControlProtocolJmxWireE2ETest {
                 new ReadAppliedStateHandler(samplerHolder, validatingProcessor);
 
         mbean = new PlatformControlProtocolMBean(
-                TracingControlProtocolDecoder.v1(),
+                TracingControlProtocol.current(),
                 handler,
                 readHandler,
                 counter);
@@ -106,7 +107,7 @@ class PlatformControlProtocolJmxWireE2ETest {
         if (mbeanServer.isRegistered(TEST_NAME)) {
             mbeanServer.unregisterMBean(TEST_NAME);
         }
-        mbeanServer.registerMBean(mbean, TEST_NAME);
+        mbeanServer.registerMBean(new StandardMBean(mbean, PlatformControlProtocolMXBean.class, false), TEST_NAME);
     }
 
     @AfterEach
@@ -262,10 +263,6 @@ class PlatformControlProtocolJmxWireE2ETest {
 
         @Test
         void unknownOperationIsDecodeRejected() throws Exception {
-            CompositeData payload = buildPayload(
-                    new String[]{TracingControlProtocolKeys.OPERATION},
-                    new Object[]{"DO_WEIRD_STUFF"});
-            // Override operation key (already set; rebuild with wrong operation)
             String[] keys  = {
                     TracingControlProtocolKeys.CONTRACT_VERSION,
                     TracingControlProtocolKeys.OPERATION};

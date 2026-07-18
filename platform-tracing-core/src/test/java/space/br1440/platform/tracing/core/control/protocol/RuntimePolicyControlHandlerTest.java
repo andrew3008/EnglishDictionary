@@ -2,8 +2,8 @@ package space.br1440.platform.tracing.core.control.protocol;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult;
-import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecoder;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 
@@ -62,7 +62,7 @@ class RuntimePolicyControlHandlerTest {
         // 'operation' intentionally absent
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
 
@@ -84,7 +84,7 @@ class RuntimePolicyControlHandlerTest {
         raw.put(TracingControlProtocolKeys.SAMPLING_RATIO, 1.5d); // out of [0,1]
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
         assertThat(decoded.valid()).isTrue(); // structural decode passes
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
@@ -104,7 +104,7 @@ class RuntimePolicyControlHandlerTest {
         raw.put(TracingControlProtocolKeys.VALIDATION_STRICT, true); // conflict
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
         assertThat(decoded.valid()).isTrue(); // structural decode passes
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
@@ -122,7 +122,7 @@ class RuntimePolicyControlHandlerTest {
         raw.put(TracingControlProtocolKeys.VALIDATION_MODE, "TURBO"); // unknown
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
         assertThat(decoded.valid()).isTrue();
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
@@ -142,7 +142,7 @@ class RuntimePolicyControlHandlerTest {
         raw.put(TracingControlProtocolKeys.VALIDATION_STRICT, true);    // mode conflict
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
 
@@ -162,7 +162,7 @@ class RuntimePolicyControlHandlerTest {
         raw.put(TracingControlProtocolKeys.SAMPLING_RATIO, 0.5d);
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
 
@@ -181,7 +181,7 @@ class RuntimePolicyControlHandlerTest {
         raw.put(TracingControlProtocolKeys.VALIDATION_MODE, "LOG_ONLY");
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
 
@@ -198,7 +198,7 @@ class RuntimePolicyControlHandlerTest {
         raw.put(TracingControlProtocolKeys.VALIDATION_STRICT, true);
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);
 
@@ -218,7 +218,7 @@ class RuntimePolicyControlHandlerTest {
                 TracingControlProtocolOperation.READ_APPLIED_STATE.wireValue());
 
         TracingControlProtocolDecodeResult decoded =
-                TracingControlProtocolDecoder.v1().decode(raw);
+                TracingControlProtocol.current().decode(raw);
         assertThat(decoded.valid()).isTrue();
 
         RuntimePolicyControlHandleResult result = handler.handle(decoded);

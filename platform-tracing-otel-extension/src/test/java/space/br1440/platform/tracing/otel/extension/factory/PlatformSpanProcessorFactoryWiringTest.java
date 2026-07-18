@@ -13,12 +13,12 @@ import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Verifies that {@link PlatformSpanProcessorFactory#registerSpanProcessors}
@@ -29,9 +29,9 @@ import static org.mockito.Mockito.when;
  * <p>An isolated (non-platform) {@link MBeanServer} is used so these
  * tests never pollute or conflict with other tests or the platform server.
  *
- * <p>The test uses a minimal {@link ConfigProperties} mock that returns
- * default/empty values for all scrubbing-related lookups so we avoid
- * loading real scrubbing rules.
+ * <p>The test uses a minimal {@link ConfigProperties} implementation that
+ * returns default/empty values for all lookups so we avoid loading real
+ * scrubbing rules.
  */
 class PlatformSpanProcessorFactoryWiringTest {
 
@@ -64,16 +64,7 @@ class PlatformSpanProcessorFactoryWiringTest {
     // =========================================================================
 
     private ConfigProperties minimalConfig() {
-        ConfigProperties cfg = mock(ConfigProperties.class);
-        // Return safe defaults for every key the factory may query
-        when(cfg.getString(org.mockito.ArgumentMatchers.anyString()))
-                .thenReturn(null);
-        when(cfg.getBoolean(org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyBoolean()))
-                .thenAnswer(inv -> inv.getArgument(1));
-        when(cfg.getList(org.mockito.ArgumentMatchers.anyString()))
-                .thenReturn(List.of());
-        return cfg;
+        return new EmptyConfigProperties();
     }
 
     private space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig
@@ -176,6 +167,53 @@ class PlatformSpanProcessorFactoryWiringTest {
             assertThat(privateMBeanServer.isRegistered(name))
                     .as("Expected MBean to be registered: " + name)
                     .isTrue();
+        }
+    }
+
+    /**
+     * Минимальная конфигурация для wiring-тестов: все значения отсутствуют,
+     * default-методы интерфейса возвращают переданные fallback'и.
+     */
+    private static final class EmptyConfigProperties implements ConfigProperties {
+
+        @Override
+        public String getString(String name) {
+            return null;
+        }
+
+        @Override
+        public Boolean getBoolean(String name) {
+            return null;
+        }
+
+        @Override
+        public Integer getInt(String name) {
+            return null;
+        }
+
+        @Override
+        public Long getLong(String name) {
+            return null;
+        }
+
+        @Override
+        public Double getDouble(String name) {
+            return null;
+        }
+
+        @Override
+        public Duration getDuration(String name) {
+            return null;
+        }
+
+        @Override
+        public List<String> getList(String name) {
+            return List.of();
+        }
+
+        @Override
+        public Map<String, String> getMap(String name) {
+            return Map.of();
         }
     }
 }

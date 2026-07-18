@@ -5,7 +5,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 
 import javax.management.MBeanServer;
@@ -51,7 +53,8 @@ class SamplingControlClientWireContractTest {
     void validMapInvoke() throws Exception {
         Map<String, Object> payload = new HashMap<>();
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
-        payload.put(TracingControlProtocolKeys.OPERATION, TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY);
+        payload.put(TracingControlProtocolKeys.OPERATION,
+                TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY.wireValue());
         payload.put(TracingControlProtocolKeys.SAMPLING_RATIO, 0.5d);
 
         Map<String, Object> result = invokeEvaluate(payload);
@@ -64,7 +67,8 @@ class SamplingControlClientWireContractTest {
     void rawDtoInvokeRejected() throws Exception {
         Map<String, Object> payload = new HashMap<>();
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
-        payload.put(TracingControlProtocolKeys.OPERATION, TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY);
+        payload.put(TracingControlProtocolKeys.OPERATION,
+                TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY.wireValue());
         payload.put(TracingControlProtocolKeys.SOURCE, new AppSideDto());
 
         Map<String, Object> result = invokeEvaluate(payload);
@@ -86,7 +90,7 @@ class SamplingControlClientWireContractTest {
     static final class WireEvaluateStub implements WireEvaluateStubMBean {
         @Override
         public Map<String, Object> evaluateWirePayload(Map<String, Object> payload) {
-            var validation = TracingControlProtocol.current().validator().validateRuntimePolicy(payload);
+            TracingControlProtocolDecodeResult validation = TracingControlProtocol.current().decode(payload);
             Map<String, Object> result = new HashMap<>();
             result.put("valid", validation.valid());
             result.put("violationCount", validation.violations().size());

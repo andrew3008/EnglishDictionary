@@ -1,10 +1,12 @@
 package space.br1440.platform.tracing.e2e.extension.jmx.wire;
 
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
-import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolValidationResult;
-import space.br1440.platform.tracing.api.control.protocol.result.TracingControlProtocolViolation;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
-import space.br1440.platform.tracing.api.control.protocol.validation.TracingControlProtocolValidator;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation;
+import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlDomainValidator;
+import space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanServer;
@@ -22,27 +24,42 @@ import java.util.Map;
  */
 public final class WireRoundTripTestMBeanImpl implements WireRoundTripTestMBean {
 
-    private static final TracingControlProtocolValidator VALIDATOR = TracingControlProtocol.current().validator();
-
     @Override
     public Map<String, Object> evaluateWirePayload(Map<String, Object> payload) {
-        TracingControlProtocolValidationResult result = VALIDATOR.validateRuntimePolicy(payload);
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put(RESULT_VALID, result.valid());
-        response.put(RESULT_VIOLATION_COUNT, result.violations().size());
-        response.put(RESULT_AGENT_API_CLASS, VALIDATOR.getClass().getName());
+        TracingControlProtocolDecodeResult result = TracingControlProtocol.current().decode(payload);
+        TracingControlDomainValidationResult domainResult = validateDomainIfNeeded(result);
+        boolean valid = result.valid() && domainResult.valid();
+        int violationCount = result.violations().size() + domainResult.violations().size();
 
-        if (result.valid()) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put(RESULT_VALID, valid);
+        response.put(RESULT_VIOLATION_COUNT, violationCount);
+        response.put(RESULT_AGENT_API_CLASS, TracingControlProtocol.class.getName());
+
+        if (valid) {
             response.put(RESULT_CONTRACT_VERSION,
                     result.normalizedPayload().get(TracingControlProtocolKeys.CONTRACT_VERSION));
             response.put(RESULT_FIRST_VIOLATION_KEY, "");
             response.put(RESULT_FIRST_VIOLATION_REASON, "");
-        } else {
+        } else if (!result.valid()) {
             TracingControlProtocolViolation first = result.violations().getFirst();
             response.put(RESULT_FIRST_VIOLATION_KEY, nullToEmpty(first.key()));
             response.put(RESULT_FIRST_VIOLATION_REASON, nullToEmpty(first.reason()));
+        } else {
+            response.put(RESULT_FIRST_VIOLATION_KEY, "domain");
+            response.put(RESULT_FIRST_VIOLATION_REASON, nullToEmpty(domainResult.violations().getFirst()));
         }
         return response;
+    }
+
+    private static TracingControlDomainValidationResult validateDomainIfNeeded(TracingControlProtocolDecodeResult result) {
+        if (!result.valid()) {
+            return TracingControlDomainValidationResult.success();
+        }
+        if (result.operation().orElseThrow() == TracingControlProtocolOperation.READ_APPLIED_STATE) {
+            return TracingControlDomainValidationResult.success();
+        }
+        return RuntimePolicyControlDomainValidator.validate(result.normalizedPayload());
     }
 
     /**

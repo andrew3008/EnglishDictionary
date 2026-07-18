@@ -81,7 +81,7 @@ Wire payloads must use **OpenMBean-compatible open types** only: primitives wrap
 ## 6. Forbidden wire types
 
 - Arbitrary Java DTOs / custom classes
-- `Enum` instances (use `String` wire values, e.g. `validation.mode=WARN`)
+- `Enum` instances (use `String` wire values, e.g. `validation.mode=LOG_ONLY`)
 - `Class`, `ClassLoader`, serialized blobs
 - Collections with non-`String` keys
 - Nested maps (except allowlisted `sampling.routeRatios`)
@@ -141,7 +141,7 @@ Topology fields require redeploy / Helm / env changes — not JMX wire apply. PR
 | `scrubbing.mode` | String | **Requires manual review** (semantics TBD) |
 | `scrubbing.ruleNames` | `String[]` | `updateScrubbingPolicy` ruleNames |
 | `validation.enabled` | Boolean | `updateValidationPolicy` |
-| `validation.mode` | String | `STRICT` / `WARN` / `DISABLED` |
+| `validation.mode` | String | `STRICT` / `LOG_ONLY` |
 | `validation.strict` | Boolean | `updateValidationPolicy` strict flag |
 | `enriching.enabled` | Boolean | Future reconciler field |
 | `export.enabled` | Boolean | `setExportEnabled` |

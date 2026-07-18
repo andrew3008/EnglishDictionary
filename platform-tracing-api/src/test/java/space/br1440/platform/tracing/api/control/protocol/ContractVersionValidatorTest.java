@@ -33,7 +33,7 @@ class ContractVersionValidatorTest {
     private static void validate(Object value,
                                  List<TracingControlProtocolViolation> v,
                                  Map<String, Object> n) {
-        ContractVersionValidator.validate(TracingControlProtocolKeys.CONTRACT_VERSION, value, v, n);
+        ContractVersionValidator.validate(TracingControlProtocolKeys.CONTRACT_VERSION, value, 1, v, n);
     }
 
     // ─── INVALID_VALUE paths ─────────────────────────────────────────────────────

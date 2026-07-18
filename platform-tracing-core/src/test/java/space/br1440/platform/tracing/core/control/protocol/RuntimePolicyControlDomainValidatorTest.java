@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.core.control.protocol;
 
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,5 +32,19 @@ class RuntimePolicyControlDomainValidatorTest {
 
         assertThat(result.valid()).isFalse();
         assertThat(result.violations()).isNotEmpty();
+    }
+
+    @Test
+    void emptyApplyMutationIsRejectedByDomainValidator() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
+        payload.put(TracingControlProtocolKeys.OPERATION,
+                TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue());
+        payload.put(TracingControlProtocolKeys.DIAGNOSTICS_REQUEST_ID, "empty-apply");
+
+        TracingControlDomainValidationResult result = RuntimePolicyControlDomainValidator.validate(payload);
+
+        assertThat(result.valid()).isFalse();
+        assertThat(result.violations()).contains("empty mutation rejected");
     }
 }

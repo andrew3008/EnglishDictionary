@@ -44,8 +44,11 @@ The protocol uses a single **`contractVersion`** integer field in every request.
 
 Version compatibility rules:
 
-- The decoder accepts **major version `1`** only. Any other value causes an
-  `UNSUPPORTED_VERSION` violation and the decode is rejected.
+- A missing `contractVersion` produces `MISSING_REQUIRED_KEY`.
+- A present but non-numeric / unparsable `contractVersion` produces
+  `INVALID_VALUE`.
+- The decoder accepts **major version `1`** only. Any other parsed numeric
+  value causes an `UNSUPPORTED_VERSION` violation and the decode is rejected.
 - Minor/patch evolution within v1 is backwards-compatible (new optional keys
   may be added; existing keys are not removed).
 - A new major (v2) will require a new `TracingControlProtocolDecoder.v2()` and
@@ -136,14 +139,22 @@ Only envelope fields are allowed in the request. No policy or diagnostics
 fields should be sent. Policy fields in a `READ_APPLIED_STATE` payload
 produce `UNKNOWN_KEY` violations.
 
-**Response:** A `CompositeData` snapshot containing at minimum:
+**Response:** A read-only diagnostic `CompositeData` snapshot. The current
+implementation does not include `contractVersion` in this response. All values
+are exposed as `String` values by the JMX adapter for maximum client
+compatibility; this response is not a round-trip write payload.
 
-| Key | Type | Description |
+| Key | JMX value type | Description |
 |---|---|---|
-| `sampling.ratio` | `Double` | Currently applied default sampling ratio. |
-| `validation.enabled` | `Boolean` | Whether span validation is currently enabled. |
-| `validation.strict` | `Boolean` | Whether strict mode is currently active. |
-| `contractVersion` | `Integer` | Protocol version of this snapshot (`1`). |
+| `sampling.ratio` | `String` | Currently applied default sampling ratio, string-coerced. |
+| `sampling.killSwitch.enabled` | `String` | Whether sampler kill-switch is active, string-coerced. |
+| `sampling.routeRatios` | `String` | Current route-ratio map, string-coerced. |
+| `sampling.dropPathPrefixes` | `String` | Current drop-path prefixes, string-coerced. |
+| `sampling.forceHeader.values` | `String` | Current force-header values, string-coerced. |
+| `validation.enabled` | `String` | Whether span validation is enabled, string-coerced. |
+| `validation.strict` | `String` | Whether strict mode is active, string-coerced. |
+| `validation.mode` | `String` | Current validation mode (`"STRICT"` or `"LOG_ONLY"`). |
+| `_meta.*` | `String` | Implementation metadata such as config version/source, string-coerced. |
 
 ---
 
@@ -173,12 +184,15 @@ Structural violations returned in `TracingControlProtocolDecodeResult.violations
 
 | Code | When raised |
 |---|---|
-| `UNSUPPORTED_VERSION` | `contractVersion` is missing, not an `Integer`, or not `1`. |
+| `UNSUPPORTED_VERSION` | `contractVersion` is a parsed numeric major version other than `1`. |
 | `MISSING_REQUIRED_KEY` | A required envelope key (`contractVersion`, `operation`) is absent from the payload. |
 | `OPERATION_NOT_ALLOWED` | The `operation` value is not one of the recognised operation names. |
 | `UNKNOWN_KEY` | The payload contains a key not declared in the operation's allowed-key set. |
 | `TYPE_MISMATCH` | A key's value cannot be coerced to its declared wire type (e.g. String where Double expected). |
 | `INVALID_VALUE` | A value is structurally well-typed but violates a basic structural constraint (e.g. null inside a route-ratios map). |
+
+For `contractVersion`, malformed or unparsable values are `INVALID_VALUE`;
+missing values are `MISSING_REQUIRED_KEY`.
 
 > **Note:** Domain violations (sampling ratio out of `[0,1]`, conflicting
 > flags, etc.) are **not** part of the decode result. They are produced

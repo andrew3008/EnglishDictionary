@@ -61,7 +61,7 @@ public record RuntimePolicyControlHandleResult(
     public static RuntimePolicyControlHandleResult decodeRejected(
             List<TracingControlProtocolViolation> violations) {
         List<String> messages = violations.stream()
-                .map(v -> v.code().name() + ": " + v.message())
+                .map(v -> v.code().name() + ": " + v.reason())
                 .toList();
         return new RuntimePolicyControlHandleResult(
                 HandleStatus.DECODE_REJECTED,

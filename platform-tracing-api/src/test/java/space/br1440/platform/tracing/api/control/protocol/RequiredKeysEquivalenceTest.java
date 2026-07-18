@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Migrated from {@code schema/RequiredKeysEquivalenceTest}.
  *
  * <p>The original version relied on
- * {@code TracingControlProtocol.current().schema().requiredKeysFor(op)},
+ * the former public schema-introspection method,
  * which was deleted in slice-3. This rewrite verifies the same invariant
  * behaviourally via {@link TracingControlProtocol#decode(Map)}:
  *

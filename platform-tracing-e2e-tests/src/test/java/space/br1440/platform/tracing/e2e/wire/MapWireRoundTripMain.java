@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.e2e.wire;
 
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.e2e.extension.jmx.wire.WireRoundTripTestMBean;
 import space.br1440.platform.tracing.e2e.extension.jmx.wire.WireRoundTripTestMarkers;
 
@@ -80,46 +81,46 @@ public final class MapWireRoundTripMain {
     }
 
     private static Map<String, Object> validPayload() {
-        Map<String, Object> payload = basePayload(TracingControlProtocolKeys.OPERATION_APPLY_RUNTIME_POLICY);
+        Map<String, Object> payload = basePayload(TracingControlProtocolOperation.APPLY_RUNTIME_POLICY);
         payload.put(TracingControlProtocolKeys.SAMPLING_RATIO, 0.5d);
         payload.put(TracingControlProtocolKeys.DIAGNOSTICS_REQUEST_ID, "e2e-wire-req");
         return payload;
     }
 
     private static Map<String, Object> invalidTypePayload() {
-        Map<String, Object> payload = basePayload(TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY);
+        Map<String, Object> payload = basePayload(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY);
         payload.put(TracingControlProtocolKeys.SAMPLING_RATIO, "0.5");
         return payload;
     }
 
     private static Map<String, Object> unknownKeyPayload() {
-        Map<String, Object> payload = basePayload(TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY);
+        Map<String, Object> payload = basePayload(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY);
         payload.put("unknown.key", true);
         return payload;
     }
 
     private static Map<String, Object> topologyPayload() {
-        Map<String, Object> payload = basePayload(TracingControlProtocolKeys.OPERATION_APPLY_RUNTIME_POLICY);
-        payload.put(TracingControlProtocolKeys.TOPOLOGY_EXPORTER_ENDPOINT, "http://collector:4318");
+        Map<String, Object> payload = basePayload(TracingControlProtocolOperation.APPLY_RUNTIME_POLICY);
+        payload.put("exporter.endpoint", "http://collector:4318");
         return payload;
     }
 
     private static Map<String, Object> rawDtoPayload() {
-        Map<String, Object> payload = basePayload(TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY);
+        Map<String, Object> payload = basePayload(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY);
         payload.put(TracingControlProtocolKeys.SOURCE, new AppSideWireDto());
         return payload;
     }
 
     private static Map<String, Object> unsupportedVersionPayload() {
-        Map<String, Object> payload = basePayload(TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY);
+        Map<String, Object> payload = basePayload(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY);
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 99);
         return payload;
     }
 
-    private static Map<String, Object> basePayload(String operation) {
+    private static Map<String, Object> basePayload(TracingControlProtocolOperation operation) {
         Map<String, Object> payload = new HashMap<>();
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
-        payload.put(TracingControlProtocolKeys.OPERATION, operation);
+        payload.put(TracingControlProtocolKeys.OPERATION, operation.wireValue());
         return payload;
     }
 

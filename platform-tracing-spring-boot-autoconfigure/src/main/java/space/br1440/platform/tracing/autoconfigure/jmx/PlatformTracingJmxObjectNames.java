@@ -11,17 +11,17 @@ import javax.management.ObjectName;
 public final class PlatformTracingJmxObjectNames {
 
     public static final String SAMPLING_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=SamplingControl,name=PlatformSamplingControl";
+            "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl";
     public static final String SCRUBBING_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=ScrubbingControl,name=PlatformScrubbingControl";
+            "space.br1440.platform.tracing:type=Scrubbing,name=PlatformScrubbingControl";
     public static final String VALIDATION_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=ValidationControl,name=PlatformValidationControl";
+            "space.br1440.platform.tracing:type=Validation,name=PlatformValidationControl";
     public static final String EXPORT_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=ExportControl,name=PlatformExportControl";
+            "space.br1440.platform.tracing:type=Export,name=PlatformExportControl";
     public static final String PROCESSOR_METRICS_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=ProcessorMetricsControl,name=PlatformProcessorMetricsControl";
+            "space.br1440.platform.tracing:type=Metrics,name=PlatformProcessorMetricsControl";
     public static final String DIAGNOSTICS_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=DiagnosticsControl,name=PlatformDiagnosticsControl";
+            "space.br1440.platform.tracing:type=Diagnostics,name=PlatformDiagnosticsControl";
 
     public static final ObjectName SAMPLING;
     public static final ObjectName SCRUBBING;

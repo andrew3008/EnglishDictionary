@@ -5,8 +5,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
-import space.br1440.platform.tracing.api.control.protocol.schema.TracingControlProtocolKeys;
-import space.br1440.platform.tracing.api.control.protocol.validation.TracingControlProtocolValidator;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.e2e.extension.jmx.wire.WireRoundTripTestMBean;
 import space.br1440.platform.tracing.e2e.extension.jmx.wire.WireRoundTripTestMBeanImpl;
 
@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * In-process JMX round-trip over the test-only wire harness: an OpenMBean-compatible Map crosses
  * {@link MBeanServer#invoke} and returns a structured validation result from
- * {@link TracingControlProtocol#current()} validator.
+ * {@link TracingControlProtocol#current()} decode.
  * <p>
  * Preserves the assertions of the former production-coupled unit tests (the removed
  * {@code jmx.spike} round-trip tests) without any production {@code jmx.spike} dependency.
@@ -60,7 +60,7 @@ class WireRoundTripInProcessTest {
         assertThat(result.get(WireRoundTripTestMBean.RESULT_VIOLATION_COUNT)).isEqualTo(0);
         assertThat(result.get(WireRoundTripTestMBean.RESULT_CONTRACT_VERSION)).isEqualTo(1);
         assertThat(result.get(WireRoundTripTestMBean.RESULT_AGENT_API_CLASS))
-                .isEqualTo(TracingControlProtocolValidator.class.getName());
+                .isEqualTo(TracingControlProtocol.class.getName());
     }
 
     @Test
@@ -91,9 +91,9 @@ class WireRoundTripInProcessTest {
     @DisplayName("SpanRelationship fields rejected for runtime apply")
     void topologyFieldRejected() throws Exception {
         Map<String, Object> payload = minimalValidPayload();
-        payload.put(TracingControlProtocolKeys.TOPOLOGY_EXPORTER_ENDPOINT, "http://collector:4318");
-        payload.put(TracingControlProtocolKeys.TOPOLOGY_QUEUE_SIZE, 10_000);
-        payload.put(TracingControlProtocolKeys.TOPOLOGY_SDK_MODE, "agent");
+        payload.put("exporter.endpoint", "http://collector:4318");
+        payload.put("queue.size", 10_000);
+        payload.put("sdk.mode", "agent");
 
         Map<String, Object> result = invokeEvaluate(payload);
 
@@ -138,7 +138,8 @@ class WireRoundTripInProcessTest {
     private static Map<String, Object> minimalValidPayload() {
         Map<String, Object> payload = new HashMap<>();
         payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 1);
-        payload.put(TracingControlProtocolKeys.OPERATION, TracingControlProtocolKeys.OPERATION_VALIDATE_RUNTIME_POLICY);
+        payload.put(TracingControlProtocolKeys.OPERATION,
+                TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY.wireValue());
         return payload;
     }
 

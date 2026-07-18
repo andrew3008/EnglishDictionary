@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.api.control.protocol;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class TracingControlProtocolKeys {
 
     public static final String CONTRACT_VERSION = "contractVersion";
@@ -30,6 +33,4 @@ public final class TracingControlProtocolKeys {
     public static final String DIAGNOSTICS_REQUEST_ID = "diagnostics.requestId";
     public static final String DIAGNOSTICS_TIMESTAMP = "diagnostics.timestamp";
 
-    private TracingControlProtocolKeys() {
-    }
 }

@@ -1,19 +1,13 @@
 package space.br1440.platform.tracing.otel.extension.jmx.control;
 
 import lombok.extern.slf4j.Slf4j;
+import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult;
-import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecoder;
-import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
 import space.br1440.platform.tracing.otel.extension.control.ReadAppliedStateHandler;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.CompositeDataSupport;
-import javax.management.openmbean.CompositeType;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -28,7 +22,7 @@ import java.util.concurrent.atomic.LongAdder;
  *   --CompositeData--&gt;
  *     {@link #applyPolicy}  (this class: JMX-to-Map bridge)
  *       --Map&lt;String,Object&gt;--&gt;
- *         {@link TracingControlProtocolDecoder}  (api: structural validation)
+ *         {@link TracingControlProtocol}  (api: structural validation)
  *           --DecodeResult--&gt;
  *             {@link RuntimePolicyControlHandler}  (core: domain validation + apply)
  *               --HandleResult--&gt; return status string
@@ -48,17 +42,17 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 public final class PlatformControlProtocolMBean implements PlatformControlProtocolMXBean {
 
-    private final TracingControlProtocolDecoder   decoder;
+    private final TracingControlProtocol          protocol;
     private final RuntimePolicyControlHandler     handler;
     private final ReadAppliedStateHandler         readHandler;
     private final LongAdder                       invalidConfigCounter;
 
     public PlatformControlProtocolMBean(
-            TracingControlProtocolDecoder decoder,
+            TracingControlProtocol        protocol,
             RuntimePolicyControlHandler   handler,
             ReadAppliedStateHandler       readHandler,
             LongAdder                     invalidConfigCounter) {
-        this.decoder             = Objects.requireNonNull(decoder,             "decoder");
+        this.protocol            = Objects.requireNonNull(protocol,            "protocol");
         this.handler             = Objects.requireNonNull(handler,             "handler");
         this.readHandler         = Objects.requireNonNull(readHandler,         "readHandler");
         this.invalidConfigCounter = Objects.requireNonNull(invalidConfigCounter, "invalidConfigCounter");
@@ -72,7 +66,7 @@ public final class PlatformControlProtocolMBean implements PlatformControlProtoc
     public String applyPolicy(CompositeData payload) {
         Map<String, Object> wire = compositeToMap(payload);
 
-        TracingControlProtocolDecodeResult decoded = decoder.decode(wire);
+        TracingControlProtocolDecodeResult decoded = protocol.decode(wire);
         RuntimePolicyControlHandleResult   result  = handler.handle(decoded);
 
         if (!result.isSuccess()) {
