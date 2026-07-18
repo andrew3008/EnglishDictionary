@@ -30,8 +30,8 @@ import java.util.function.Function;
  * </table>
  *
  * <h2>Управление</h2>
- * Включается флагами {@link TracingProperties.Diagnostics#isDropOldestAspirationWarn()} и
- * {@link TracingProperties.Diagnostics#isDropOldestAspirationInfo()} (оба {@code true} по
+ * Включается флагами {@link TracingProperties.Diagnostics#dropOldestAspirationWarn} и
+ * {@link TracingProperties.Diagnostics#dropOldestAspirationInfo} (оба {@code true} по
  * умолчанию). См. {@code docs/decisions/ADR-drop-oldest-export-processor-v1.md}.
  */
 public final class DropOldestAspirationDiagnostics implements SmartInitializingSingleton {

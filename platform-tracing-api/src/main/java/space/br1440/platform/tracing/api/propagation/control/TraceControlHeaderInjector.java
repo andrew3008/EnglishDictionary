@@ -8,7 +8,7 @@ import io.opentelemetry.context.propagation.TextMapSetter;
  * <p>
  * Источник истины для outbound-инжекции: и {@code InboundTraceControlPropagator.inject()}
  * (агент-сторона), и client-интерсепторы (Spring-бины) используют одну реализацию
- * ({@code DefaultTraceControlHeaderInjector} в {@code platform-tracing-core}).
+ * ({@code DefaultTraceControlHeaderInjector} в runtime-модуле).
  *
  * <h3>Контракт</h3>
  * <ul>
@@ -21,8 +21,7 @@ import io.opentelemetry.context.propagation.TextMapSetter;
  *
  * @implNote {@code X-Trace-On} по умолчанию наружу не пробрасывается ({@code propagateForceTrace=false});
  *           решение о записи уже несёт sampled-flag в {@code traceparent}. Подробнее — см.
- *           {@link space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector}.
- * @see space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector
+ *           Реализация живет за пределами public API модуля.
  */
 public interface TraceControlHeaderInjector {
 
