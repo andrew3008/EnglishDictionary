@@ -31,7 +31,7 @@ class TracingControlProtocolDecodeTest {
     }
 
     @Test
-    void decodesValidateRuntimePolicyPayload() {
+    void decodesPolicyValidationPayload() {
         Map<String, Object> payload = base(TracingControlProtocolOperation.VALIDATE_RUNTIME_POLICY);
         payload.put(TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_VALUES, new String[]{"on", "1"});
 
