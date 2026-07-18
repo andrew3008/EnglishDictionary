@@ -18,13 +18,13 @@ final class TracingControlProtocolDecoder {
 
     TracingControlProtocolDecodeResult decode(Map<String, Object> payload) {
         if (payload == null) {
-            return TracingControlProtocolDecodeResult.failure(Optional.empty(), missingEnvelopeViolations());
+            return TracingControlProtocolDecodeResult.failure(null, missingEnvelopeViolations());
         }
 
         List<TracingControlProtocolViolation> envelopeViolations = new ArrayList<>();
         Optional<TracingControlProtocolOperation> operation = decodeOperation(payload, envelopeViolations);
         if (operation.isEmpty()) {
-            return TracingControlProtocolDecodeResult.failure(Optional.empty(), envelopeViolations);
+            return TracingControlProtocolDecodeResult.failure(null, envelopeViolations);
         }
 
         TracingControlProtocolSchema.RequestSchema requestSchema = schema.requestFor(operation.get());
@@ -61,7 +61,8 @@ final class TracingControlProtocolDecoder {
         if (violations.isEmpty()) {
             return TracingControlProtocolDecodeResult.success(operation.get(), normalized);
         }
-        return TracingControlProtocolDecodeResult.failure(operation, violations);
+
+        return TracingControlProtocolDecodeResult.failure(operation.orElseThrow(), violations);
     }
 
     private Optional<TracingControlProtocolOperation> decodeOperation(
@@ -97,6 +98,7 @@ final class TracingControlProtocolDecoder {
                     wireOperation,
                     TracingControlProtocolViolationCode.OPERATION_NOT_ALLOWED));
         }
+
         return operation;
     }
 

@@ -16,6 +16,7 @@ public record TracingControlProtocolDecodeResult(boolean valid,
         normalizedPayload = (normalizedPayload == null)
                 ? Map.of()
                 : Collections.unmodifiableMap(new LinkedHashMap<>(normalizedPayload));
+
         violations = (violations == null) ? List.of() : List.copyOf(violations);
 
         if (valid && operation.isEmpty()) {
@@ -39,19 +40,22 @@ public record TracingControlProtocolDecodeResult(boolean valid,
                                                              Map<String, Object> normalizedPayload) {
         Objects.requireNonNull(operation, "operation");
         Objects.requireNonNull(normalizedPayload, "normalizedPayload");
+
         return new TracingControlProtocolDecodeResult(true, Optional.of(operation), normalizedPayload, List.of());
     }
 
-    public static TracingControlProtocolDecodeResult failure(Optional<TracingControlProtocolOperation> operation,
+    public static TracingControlProtocolDecodeResult failure(TracingControlProtocolOperation operation,
                                                              List<TracingControlProtocolViolation> violations) {
         Objects.requireNonNull(violations, "violations");
+
         if (violations.isEmpty()) {
             throw new IllegalArgumentException("invalid decode result must contain violations");
         }
-        return new TracingControlProtocolDecodeResult(false, operation, Map.of(), violations);
+
+        return new TracingControlProtocolDecodeResult(false, Optional.ofNullable(operation), Map.of(), violations);
     }
 
-    public static TracingControlProtocolDecodeResult failure(Optional<TracingControlProtocolOperation> operation,
+    public static TracingControlProtocolDecodeResult failure(TracingControlProtocolOperation operation,
                                                              TracingControlProtocolViolation violation) {
         return failure(operation, List.of(violation));
     }

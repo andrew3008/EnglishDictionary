@@ -154,7 +154,7 @@ class TracingControlProtocolDecodeTest {
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> TracingControlProtocolDecodeResult.failure(
-                java.util.Optional.empty(), java.util.List.of()))
+                null, java.util.List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
