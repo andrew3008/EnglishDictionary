@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.core.sampling.properties;
 
 import lombok.experimental.UtilityClass;
-import space.br1440.platform.tracing.core.utils.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -74,7 +73,7 @@ public final class SamplingPolicyPropertiesValidator {
 
         for (Map.Entry<String, Double> entry : routeRatios.entrySet()) {
             String prefix = entry.getKey();
-            if (StringUtils.isNullOrBlank(prefix)) {
+            if (prefix == null || prefix.isBlank()) {
                 throw new IllegalArgumentException("Route ratio prefix must not be null or blank");
             }
 

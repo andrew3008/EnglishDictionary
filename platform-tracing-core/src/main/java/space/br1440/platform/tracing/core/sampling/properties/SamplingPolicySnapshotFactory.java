@@ -3,8 +3,6 @@ package space.br1440.platform.tracing.core.sampling.properties;
 import lombok.experimental.UtilityClass;
 import space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
-import space.br1440.platform.tracing.core.utils.MapUtils;
-import space.br1440.platform.tracing.core.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +25,7 @@ public final class SamplingPolicySnapshotFactory {
     }
 
     private static List<RouteRatioPrefix> buildRouteRatios(Map<String, Double> routeRatios) {
-        if (MapUtils.isNullOrEmpty(routeRatios)) {
+        if (routeRatios == null || routeRatios.isEmpty()) {
             return List.of();
         }
 
@@ -36,7 +34,7 @@ public final class SamplingPolicySnapshotFactory {
             String route = entry.getKey();
             Double ratioValue = entry.getValue();
 
-            if (StringUtils.isNullOrBlank(route) || ratioValue == null) {
+            if (route == null || route.isBlank() || ratioValue == null) {
                 continue;
             }
 

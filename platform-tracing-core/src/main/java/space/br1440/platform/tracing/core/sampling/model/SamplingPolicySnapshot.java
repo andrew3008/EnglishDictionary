@@ -1,9 +1,6 @@
 package space.br1440.platform.tracing.core.sampling.model;
 
 import lombok.Getter;
-import space.br1440.platform.tracing.core.utils.ListUtils;
-import space.br1440.platform.tracing.core.utils.SetUtils;
-import space.br1440.platform.tracing.core.utils.StringUtils;
 
 import java.util.*;
 
@@ -34,13 +31,13 @@ public final class SamplingPolicySnapshot {
     }
 
     private static Set<String> normalizeForceValues(Set<String> values) {
-        if (SetUtils.isNullOrEmpty(values)) {
+        if (values == null || values.isEmpty()) {
             return Set.of();
         }
 
         ArrayList<String> normalized = new ArrayList<>(values.size());
         for (String value : values) {
-            if (StringUtils.isNullOrBlank(value)) {
+            if (value == null || value.isBlank()) {
                 continue;
             }
 
@@ -51,13 +48,13 @@ public final class SamplingPolicySnapshot {
     }
 
     private static List<String> normalizeDropPaths(List<String> values) {
-        if (ListUtils.isNullOrEmpty(values)) {
+        if (values == null || values.isEmpty()) {
             return List.of();
         }
 
         List<String> normalized = new ArrayList<>(values.size());
         for (String value : values) {
-            if (StringUtils.isNullOrBlank(value)) {
+            if (value == null || value.isBlank()) {
                 continue;
             }
 
@@ -68,7 +65,7 @@ public final class SamplingPolicySnapshot {
     }
 
     private static RouteRatioPrefix[] normalizeRouteRatios(List<RouteRatioPrefix> values) {
-        if (ListUtils.isNullOrEmpty(values)) {
+        if (values == null || values.isEmpty()) {
             return new RouteRatioPrefix[0];
         }
 

@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.core.sampling.model;
 
-import space.br1440.platform.tracing.core.utils.StringUtils;
-
 public record SamplingPolicyDecision(
         SamplingPolicyDecisionType decisionType,
         SamplingPolicyReason reason,
@@ -14,7 +12,7 @@ public record SamplingPolicyDecision(
                 throw new IllegalArgumentException("ABSTAIN requires NO_MATCH reason");
             }
 
-            if (StringUtils.isNotEmpty(winningRule)) {
+            if (winningRule != null && !winningRule.isEmpty()) {
                 throw new IllegalArgumentException("ABSTAIN must not carry a winning rule");
             }
         } else {
@@ -22,7 +20,7 @@ public record SamplingPolicyDecision(
                 throw new IllegalArgumentException("decision requires a concrete reason");
             }
 
-            if (StringUtils.isNullOrEmpty(winningRule)) {
+            if (winningRule == null || winningRule.isEmpty()) {
                 throw new IllegalArgumentException("decision requires a winning rule");
             }
         }

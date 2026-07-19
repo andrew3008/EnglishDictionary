@@ -5,14 +5,13 @@ import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
 import space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain;
 import space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule;
-import space.br1440.platform.tracing.core.utils.ArrayUtils;
 
 public final class SamplingPolicyEngine {
 
     private final SamplingPolicyRule[] rules;
 
     SamplingPolicyEngine(SamplingPolicyRule... rules) {
-        if (ArrayUtils.isNullOrEmpty(rules)) {
+        if (rules == null || rules.length == 0) {
             throw new IllegalArgumentException("rules must not be empty");
         }
 

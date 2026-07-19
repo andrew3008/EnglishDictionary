@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.core.exception;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
-import space.br1440.platform.tracing.core.utils.StringUtils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -28,7 +27,7 @@ public final class ExceptionMessagePolicy {
         }
 
         String message = exception.getMessage();
-        if (StringUtils.isNullOrBlank(message)) {
+        if (message == null || message.isBlank()) {
             return null;
         }
 

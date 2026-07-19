@@ -4,7 +4,6 @@ import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
-import space.br1440.platform.tracing.core.utils.StringUtils;
 
 final class HardDropPolicyRule implements SamplingPolicyRule {
 
@@ -24,7 +23,7 @@ final class HardDropPolicyRule implements SamplingPolicyRule {
         }
 
         String urlPath = request.urlPath();
-        if (StringUtils.isNullOrEmpty(urlPath)) {
+        if (urlPath == null || urlPath.isEmpty()) {
             return null;
         }
 

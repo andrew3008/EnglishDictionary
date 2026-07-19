@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.core.sampling.policy;
 
 import space.br1440.platform.tracing.core.sampling.model.*;
-import space.br1440.platform.tracing.core.utils.StringUtils;
 
 final class RouteRatioPolicyRule implements SamplingPolicyRule {
 
@@ -26,7 +25,7 @@ final class RouteRatioPolicyRule implements SamplingPolicyRule {
         }
 
         String urlPath = request.urlPath();
-        if (StringUtils.isNullOrEmpty(urlPath)) {
+        if (urlPath == null || urlPath.isEmpty()) {
             return null;
         }
 

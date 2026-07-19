@@ -4,8 +4,6 @@ import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
-import space.br1440.platform.tracing.core.utils.SetUtils;
-import space.br1440.platform.tracing.core.utils.StringUtils;
 
 import java.util.Set;
 
@@ -34,7 +32,8 @@ final class ForceHeaderPolicyRule implements SamplingPolicyRule {
     }
 
     private static boolean matchesForceValue(Set<String> normalizedValues, String rawValue) {
-        if (StringUtils.isNullOrEmpty(rawValue) || SetUtils.isNullOrEmpty(normalizedValues)) {
+        if (rawValue == null || rawValue.isEmpty()
+                || normalizedValues == null || normalizedValues.isEmpty()) {
             return false;
         }
 
