@@ -31,6 +31,7 @@ Agent mode теперь определяется только доказанны
 | `pr4ArchitectureFitnessVerify` | PASS |
 | `pr1ModuleTaxonomyVerify` | PASS |
 | Real-agent `ClassLoaderVisibilityE2ETest` | PASS, `tests=1`, `skipped=0`, `failures=0`, `errors=0` |
+| Spring+Agent / Disabled+Agent `SpringAgentCompositionE2ETest` | PASS, `tests=1`, `skipped=0`, `failures=0`, `errors=0` |
 
 Real-agent команда:
 
@@ -38,18 +39,29 @@ Real-agent команда:
 $env:DOCKER_HOST = "tcp://192.168.100.70:2375"
 .\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e `
   --tests "*ClassLoaderVisibilityE2ETest" --rerun-tasks --no-daemon
+
+.\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e `
+  --tests "*SpringAgentCompositionE2ETest" --rerun-tasks --no-daemon
 ```
+
+`SpringAgentCompositionE2ETest` запускает Spring application plane в дочерней JVM с
+реальным `-javaagent` и последовательно проверяет `AUTO -> AGENT` и явный `DISABLED`.
+Общий classpath E2E-модуля содержит OTel SDK и actuator только для других тестов, поэтому
+probe исключает Boot-owned OTel SDK/export auto-configuration. Это не маскирует product
+dependency: опубликованный servlet starter runtime graph содержит `opentelemetry-api`, но
+не содержит `opentelemetry-sdk`, actuator auto-configuration или platform OTel implementation.
+В обоих контекстах дополнительно проверяется отсутствие Spring `OpenTelemetry` bean.
 
 ## 3. Deployment Matrix Status
 
 | Режим | Evidence | Статус |
 |---|---|---|
 | Spring без Agent | external SDK bean и mode ownership проверены; starter-owned SDK bootstrap отсутствует | PARTIAL |
-| Spring + Agent | marker, разные class identities, isolation и current OTel context проверены packaged E2E | PASS для classloader/context gate |
+| Spring + Agent | real marker, разные class identities, isolation, отсутствие второго SDK bean и current OTel context проверены packaged E2E | PASS |
 | Direct SDK | `OtelTracingRuntimeFactory` и direct facade integration tests | PASS |
 | Agent-only | packaged Agent/extension запускается без app-side facade/reader injection | PASS |
 | Disabled без Agent | Spring context возвращает no-op facade | PASS |
-| Disabled facade + Agent | resolver разрешает `DISABLED` при marker; packaged combined Spring proof отсутствует | PARTIAL |
+| Disabled facade + Agent | no-op facade, отсутствие Spring SDK bean и живой agent span проверены packaged E2E | PASS |
 
 ## 4. Blocking Clarification
 
@@ -67,5 +79,8 @@ Slice E остаётся `IN_PROGRESS`. Допустимые решения:
 1. утвердить starter-owned SDK bootstrap и exact lifecycle/configuration contract, supersede ADR;
 2. сохранить agent-first ADR и скорректировать §7.1: Spring без Agent требует external
    `OpenTelemetry` runtime, а отсутствие runtime является fail-fast либо явно degraded mode.
+
+Точный decision packet с evidence, сравнением вариантов и рекомендуемой fail-fast семантикой:
+[`platform-tracing-slice-e-spring-sdk-decision-packet.md`](platform-tracing-slice-e-spring-sdk-decision-packet.md).
 
 Slice G по-прежнему отдельно заблокирован: `CP-2 = CLARIFICATION REQUIRED`.
