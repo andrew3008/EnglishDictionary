@@ -13,7 +13,7 @@
   bridges are provided.
 - Public `api.span.sanitize` has been removed: unused SQL sanitization was deleted and URL
   sanitization moved next to its internal core caller.
-- `TraceparentParser` has been deleted. Builder `fromTraceparent(String...)` signatures are unchanged and now use the OTel-backed bridge internally. No alias or deprecated bridge is provided.
+- `OtelTraceparentReaders` and its API-side `ServiceLoader` lookup have been removed. `SpanSpecBuilder.fromTraceparent(String...)` is removed; use `linkedTo(RemoteSpanLink...)`. Manual builders obtained from `SpanFactory` retain `fromTraceparent(String...)` and use an application-composed reader. No alias or deprecated bridge is provided.
 - `PlatformRemoteServiceNameProvider()` no-arg constructor removed (PR-2). Use the Spring bean from `ServiceNameProviderAutoConfiguration` or construct with `RemoteServiceNameResolver` in tests.
 - `ManualTracing` renamed to `SpanFactory` and moved to `api.span`.
 - `TraceOperations.manual()` renamed to `TraceOperations.spans()`.

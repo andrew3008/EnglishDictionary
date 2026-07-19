@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder;
 import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
@@ -12,8 +13,10 @@ import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 final class DatabaseSpanBuilderImpl extends AbstractSemanticSpanBuilder<DatabaseSpanBuilder> implements DatabaseSpanBuilder {
 
     DatabaseSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                            @Nonnull AttributePolicy policy) {
-        super(implementation, policy, SpanCategory.DATABASE, SpanCategory.DATABASE.value(),"DatabaseSpanBuilder");
+                            @Nonnull AttributePolicy policy,
+                            @Nonnull OtelTraceparentReader traceparentReader) {
+        super(implementation, policy, traceparentReader, SpanCategory.DATABASE,
+                SpanCategory.DATABASE.value(), "DatabaseSpanBuilder");
     }
 
     @Override

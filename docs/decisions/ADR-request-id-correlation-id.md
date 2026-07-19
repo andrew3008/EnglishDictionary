@@ -33,7 +33,7 @@
 
 Последствия: request-id поведение является platform invariant, а не public extension API. Будущие `RequestIdPolicy`, value object `RequestId`, multiple header names или per-service max length требуют отдельных ADR.
 
-Архитектурная оговорка: в этом PR нет blanket-запрета `api.. -> ServiceLoader`, потому что `OtelTraceparentReaders` всё ещё использует `ServiceLoader` и покрывается отдельным traceparent refactoring plan. Прямой импорт `core.propagation.RequestIdSupport` из webmvc/webflux autoconfigure допустим: существующие ArchUnit-ограничения запрещают только зависимость на `core.runtime.versioned`, а не на весь core.
+Уточнение от 2026-07-19: временное исключение `OtelTraceparentReaders` закрыто Slice C1; holder и provider descriptor удалены, а ArchUnit теперь полностью запрещает `api.. -> ServiceLoader`. Прямой импорт `core.propagation.RequestIdSupport` из webmvc/webflux autoconfigure остаётся допустимым: существующие ArchUnit-ограничения запрещают зависимость на `core.runtime.versioned`, а не на весь core.
 
 ## Отвергнутые альтернативы
 

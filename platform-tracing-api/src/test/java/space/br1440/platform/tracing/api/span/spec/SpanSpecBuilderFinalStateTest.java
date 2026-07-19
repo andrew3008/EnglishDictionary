@@ -14,9 +14,6 @@ class SpanSpecBuilderFinalStateTest {
     private static final RemoteSpanLink LINK =
             RemoteSpanLink.sampled("01234567890123456789012345678901", "0123456789012345");
 
-    private static final String TRACEPARENT_A = "00-0102030405060708090a0b0c0d0e0f10-0102030405060708-01";
-    private static final String TRACEPARENT_B = "00-020406080a0c0e10121416181a1c1e20-020406080a0c0e10-01";
-
     private SpanSpecBuilder base() {
         return SpanSpec.builder("test-span")
                 .category(SpanCategory.INTERNAL)
@@ -119,44 +116,6 @@ class SpanSpecBuilderFinalStateTest {
         SpanSpec spec = base().root().linkedTo(LINK).linkedTo(second).build();
 
         assertThat(spec.relationship().links()).containsExactly(LINK, second);
-    }
-
-    @Test
-    void fromTraceparent_parsesSingleTraceparentIntoLinks() {
-        SpanSpec spec = base().root().fromTraceparent(TRACEPARENT_A).build();
-
-        assertThat(spec.relationship().kind()).isEqualTo(SpanRelationship.ROOT);
-        assertThat(spec.relationship().links()).hasSize(1);
-        RemoteSpanLink link = spec.relationship().links().getFirst();
-        assertThat(link.traceId()).isEqualTo("0102030405060708090a0b0c0d0e0f10");
-        assertThat(link.spanId()).isEqualTo("0102030405060708");
-        assertThat(link.traceFlags()).isEqualTo((byte) 0x01);
-    }
-
-    @Test
-    void fromTraceparent_multipleTraceparents_areAdditive() {
-        SpanSpec spec = base().root().fromTraceparent(TRACEPARENT_A, TRACEPARENT_B).build();
-
-        assertThat(spec.relationship().links()).hasSize(2);
-        assertThat(spec.relationship().links())
-                .extracting(RemoteSpanLink::traceId)
-                .containsExactly(
-                        "0102030405060708090a0b0c0d0e0f10",
-                        "020406080a0c0e10121416181a1c1e20");
-    }
-
-    @Test
-    void fromTraceparent_invalidValue_throws() {
-        assertThatThrownBy(() -> base().root().fromTraceparent("invalid").build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("invalid traceparent");
-    }
-
-    @Test
-    void fromTraceparentThenChild_isInvalid() {
-        assertThatThrownBy(() -> base().fromTraceparent(TRACEPARENT_A).child().build())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("CHILD");
     }
 
     @Test

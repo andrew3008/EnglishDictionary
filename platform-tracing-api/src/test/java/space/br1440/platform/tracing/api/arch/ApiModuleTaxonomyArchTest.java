@@ -37,8 +37,7 @@ class ApiModuleTaxonomyArchTest {
             ModuleTaxonomyArchRules.API_HAS_NO_REQUEST_ID_SUPPORT_SPI;
 
     @ArchTest
-    static final ArchRule apiNoServiceLoaderExceptTraceparentReader =
-            ModuleTaxonomyArchRules.API_NO_SERVICE_LOADER_EXCEPT_TRACEPARENT_READER;
+    static final ArchRule apiNoServiceLoader = ModuleTaxonomyArchRules.API_NO_SERVICE_LOADER;
 
     @ArchTest
     static final ArchRule apiPropagationControlNoConcreteImpl =

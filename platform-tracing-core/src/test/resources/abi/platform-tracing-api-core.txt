@@ -148,8 +148,6 @@ TYPE public abstract interface space.br1440.platform.tracing.api.propagation.Ote
   METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String)
   METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String,java.lang.String)
   METHOD public abstract space.br1440.platform.tracing.api.span.RemoteSpanLink require(java.lang.String)
-TYPE public final class space.br1440.platform.tracing.api.propagation.OtelTraceparentReaders
-  METHOD public static space.br1440.platform.tracing.api.propagation.OtelTraceparentReader get()
 TYPE public abstract interface space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
   METHOD public abstract java.lang.Runnable wrap(java.lang.Runnable)
   METHOD public abstract java.util.concurrent.Executor contextAware(java.util.concurrent.Executor)
@@ -421,7 +419,6 @@ TYPE public abstract interface space.br1440.platform.tracing.api.span.spec.SpanS
   METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder reference(java.lang.String)
   METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder root()
   METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder stringListAttribute(java.lang.String,java.util.List<java.lang.String>)
-  METHOD public abstract transient space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder fromTraceparent(java.lang.String[])
   METHOD public abstract transient space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder linkedTo(space.br1440.platform.tracing.api.span.RemoteSpanLink[])
 TYPE public final enum space.br1440.platform.tracing.api.span.spec.SpanSpecReason
   FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanSpecReason LEGACY_INTEGRATION

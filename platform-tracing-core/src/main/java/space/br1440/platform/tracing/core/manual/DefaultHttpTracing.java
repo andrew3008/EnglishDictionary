@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.HttpTracing;
@@ -16,31 +17,36 @@ final class DefaultHttpTracing implements HttpTracing {
 
     private final TracingRuntime implementation;
     private final AttributePolicy policy;
+    private final OtelTraceparentReader traceparentReader;
 
     DefaultHttpTracing(@Nonnull TracingRuntime implementation,
-                       @Nonnull AttributePolicy policy) {
+                       @Nonnull AttributePolicy policy,
+                       @Nonnull OtelTraceparentReader traceparentReader) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
+        this.traceparentReader = Objects.requireNonNull(traceparentReader, "traceparentReader");
     }
 
     @Override
     @Nonnull
     public HttpServerSpanBuilder server() {
-        return new HttpServerSpanBuilderImpl(implementation, policy);
+        return new HttpServerSpanBuilderImpl(implementation, policy, traceparentReader);
     }
 
     @Override
     @Nonnull
     public HttpClientSpanBuilder client() {
-        return new HttpClientSpanBuilderImpl(implementation, policy);
+        return new HttpClientSpanBuilderImpl(implementation, policy, traceparentReader);
     }
 
     private static final class HttpServerSpanBuilderImpl extends AbstractSemanticSpanBuilder<HttpServerSpanBuilder>
             implements HttpServerSpanBuilder {
 
         HttpServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                                  @Nonnull AttributePolicy policy) {
-            super(implementation, policy, SpanCategory.HTTP_SERVER, SpanCategory.HTTP_SERVER.value(),"HttpServerSpanBuilder");
+                                  @Nonnull AttributePolicy policy,
+                                  @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader, SpanCategory.HTTP_SERVER,
+                    SpanCategory.HTTP_SERVER.value(), "HttpServerSpanBuilder");
         }
 
         @Override
@@ -74,8 +80,10 @@ final class DefaultHttpTracing implements HttpTracing {
             implements HttpClientSpanBuilder {
 
         HttpClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                                  @Nonnull AttributePolicy policy) {
-            super(implementation, policy, SpanCategory.HTTP_CLIENT, SpanCategory.HTTP_CLIENT.value(),"HttpClientSpanBuilder");
+                                  @Nonnull AttributePolicy policy,
+                                  @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader, SpanCategory.HTTP_CLIENT,
+                    SpanCategory.HTTP_CLIENT.value(), "HttpClientSpanBuilder");
         }
 
         @Override

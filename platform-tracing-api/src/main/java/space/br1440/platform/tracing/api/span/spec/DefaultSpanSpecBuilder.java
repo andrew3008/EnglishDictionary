@@ -2,8 +2,6 @@ package space.br1440.platform.tracing.api.span.spec;
 
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReaders;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
@@ -66,20 +64,6 @@ final class DefaultSpanSpecBuilder implements SpanSpecBuilder {
         for (RemoteSpanLink link : links) {
             Objects.requireNonNull(link, "link");
             this.links.add(link);
-        }
-
-        return this;
-    }
-
-    @Override
-    @Nonnull
-    public SpanSpecBuilder fromTraceparent(@Nonnull String... traceparents) {
-        Objects.requireNonNull(traceparents, "traceparents");
-
-        OtelTraceparentReader reader = OtelTraceparentReaders.get();
-        for (String traceparent : traceparents) {
-            RemoteSpanLink link = reader.require(traceparent);
-            linkedTo(link);
         }
 
         return this;

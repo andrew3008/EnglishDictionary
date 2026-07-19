@@ -55,16 +55,13 @@ public final class ModuleTaxonomyArchRules {
             .because("RequestIdSupport SPI/holder удалены; request-id sanitization живёт в core.propagation");
 
     /**
-     * Api must not reintroduce the request-id ServiceLoader holder. OtelTraceparentReaders is a known
-     * temporary exception tracked by the traceparent parser refactoring plan.
+     * API не должен разрешать implementation через ServiceLoader.
      */
-    public static final ArchRule API_NO_SERVICE_LOADER_EXCEPT_TRACEPARENT_READER = noClasses()
+    public static final ArchRule API_NO_SERVICE_LOADER = noClasses()
             .that().resideInAPackage("..api..")
-            .and().haveSimpleNameNotContaining("OtelTraceparentReaders")
             .should().dependOnClassesThat().haveFullyQualifiedName("java.util.ServiceLoader")
             .allowEmptyShould(true)
-            .because("RequestIdSupport no longer uses api ServiceLoader; OtelTraceparentReaders is handled "
-                    + "by traceparent-parser-opus-refactoring-plan.md");
+            .because("implementation selection belongs to composition roots, not API class initialization");
 
     /**
      * The core request-id utility must stay dependency-light and framework-free.
@@ -487,6 +484,7 @@ public final class ModuleTaxonomyArchRules {
             public boolean test(JavaClass input) {
                 String name = input.getName();
                 return name.startsWith("space.br1440.platform.tracing.core.propagation.")
+                        || name.equals("space.br1440.platform.tracing.core.manual.DefaultSpanFactory")
                         || name.contains(".test.")
                         || name.endsWith("Test");
             }

@@ -5,18 +5,15 @@
 | Status | Accepted |
 | Date | 2026-07-14 |
 | Context | Refactoring `api.propagation.TraceparentParser` before production API freeze |
+| Amended | 2026-07-19, Slice C1 composition hardening |
 
 ## Context
 
 `TraceparentParser` was a hand-written public utility for parsing W3C `traceparent` strings into `RemoteSpanLink`.
 It duplicated validation rules owned by OpenTelemetry and exposed a raw wire-parser as public API.
 
-The public ergonomic entry points remain the builder methods:
-
-- `ManualSpanBuilder.fromTraceparent(String...)`
-- `SpanSpecBuilder.fromTraceparent(String...)`
-
-Those methods are strict and continue to return span links through existing builder state.
+The public ergonomic entry point is `ManualSpanBuilder.fromTraceparent(String...)`, obtained through `SpanFactory`.
+It is strict and returns span links through existing builder state. Static `SpanSpec.builder()` accepts only explicit `RemoteSpanLink` values through `linkedTo(...)` because it has no composition root.
 
 ## Decision
 
@@ -26,6 +23,8 @@ Add `OtelTraceparentReader` in `space.br1440.platform.tracing.api.propagation` a
 It delegates extraction to `io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator`.
 
 `OtelTraceparentReader` is public only for module visibility and tests/samples. It is not extension API; access is restricted with ArchUnit.
+
+Slice C1 removed the static `OtelTraceparentReaders` ServiceLoader holder and provider descriptor. `DefaultSpanFactory` now supplies an application-side reader to manual builders as an instance dependency; disabled runtimes receive a no-op reader.
 
 No compatibility aliases and no `@Deprecated` bridges are provided.
 
@@ -42,4 +41,4 @@ Runtime execution of code paths that use OTel-backed traceparent reading require
 - `RemoteSpanLink.traceFlags` remains `byte`.
 - `RemoteSpanLink.traceState` remains `null` for single-string `traceparent` parsing, because `tracestate` is a separate W3C header.
 - Future two-header `traceparent + tracestate` convenience API remains out of scope.
-- Public builder method names and signatures are unchanged.
+- `SpanSpecBuilder.fromTraceparent(String...)` is removed; `ManualSpanBuilder.fromTraceparent(String...)` is unchanged.

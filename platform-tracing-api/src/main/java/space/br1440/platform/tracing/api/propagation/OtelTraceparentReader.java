@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.api.propagation;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.Optional;
@@ -10,13 +11,11 @@ import java.util.Optional;
  * Bridge-интерфейс для чтения W3C {@code traceparent} (и опционального {@code tracestate})
  * из HTTP-заголовков и преобразования в {@link RemoteSpanLink}.
  * <p>
- * Единственная каноническая реализация — {@code OtelTraceparentReaderImpl} в модуле
- * {@code platform-tracing-core}. Интерфейс был добавлен в {@code platform-tracing-api},
- * чтобы api-layer builders ({@code DefaultSpanSpecBuilder}) могли обращаться к нему
- * без compile-time зависимости на OpenTelemetry или core-внутренности.
+ * Каноническая реализация находится в implementation-модуле и передаётся manual builder-ам
+ * через application composition root без глобального поиска provider-а.
  * <p>
  * Прикладной код не должен реализовывать или инжектировать этот интерфейс напрямую.
- * Используйте builder-метод {@code fromTraceparent(...)}.
+ * Используйте manual builder, полученный из {@code SpanFactory}.
  */
 public interface OtelTraceparentReader {
 

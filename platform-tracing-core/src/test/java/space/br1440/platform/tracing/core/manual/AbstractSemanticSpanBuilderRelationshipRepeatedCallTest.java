@@ -34,8 +34,8 @@ class AbstractSemanticSpanBuilderRelationshipRepeatedCallTest {
         RecordingTracingRuntime impl = new RecordingTracingRuntime();
         AttributePolicy policy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
         DefaultSpanFactory manual = new DefaultSpanFactory(impl, policy);
-        DefaultTransportTracing transport = new DefaultTransportTracing(impl, policy);
-        DefaultRpcTracing rpc = new DefaultRpcTracing(impl, policy);
+        var transport = manual.transport();
+        var rpc = transport.rpc();
         return Stream.of(
                 manual.operation("op"),
                 transport.http().server().method("GET").route("/api"),

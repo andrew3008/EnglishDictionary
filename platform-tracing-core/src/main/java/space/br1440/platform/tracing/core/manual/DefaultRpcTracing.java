@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder;
@@ -18,23 +19,26 @@ final class DefaultRpcTracing implements RpcTracing {
 
     private final TracingRuntime implementation;
     private final AttributePolicy policy;
+    private final OtelTraceparentReader traceparentReader;
 
     DefaultRpcTracing(@Nonnull TracingRuntime implementation,
-                      @Nonnull AttributePolicy policy) {
+                      @Nonnull AttributePolicy policy,
+                      @Nonnull OtelTraceparentReader traceparentReader) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
+        this.traceparentReader = Objects.requireNonNull(traceparentReader, "traceparentReader");
     }
 
     @Override
     @Nonnull
     public RpcServerSpanBuilder server() {
-        return new RpcServerSpanBuilderImpl(implementation, policy);
+        return new RpcServerSpanBuilderImpl(implementation, policy, traceparentReader);
     }
 
     @Override
     @Nonnull
     public RpcClientSpanBuilder client() {
-        return new RpcClientSpanBuilderImpl(implementation, policy);
+        return new RpcClientSpanBuilderImpl(implementation, policy, traceparentReader);
     }
 
     private static abstract class AbstractRpcSpanBuilder<B extends ManualSpanBuilder<B>>
@@ -42,9 +46,10 @@ final class DefaultRpcTracing implements RpcTracing {
 
         AbstractRpcSpanBuilder(@Nonnull TracingRuntime implementation,
                                @Nonnull AttributePolicy policy,
+                               @Nonnull OtelTraceparentReader traceparentReader,
                                @Nonnull SpanCategory category,
                                @Nonnull String builderName) {
-            super(implementation, policy, category, category.value(), builderName);
+            super(implementation, policy, traceparentReader, category, category.value(), builderName);
         }
 
         @Nonnull
@@ -67,8 +72,9 @@ final class DefaultRpcTracing implements RpcTracing {
             implements RpcServerSpanBuilder {
 
         RpcServerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                                 @Nonnull AttributePolicy policy) {
-            super(implementation, policy, SpanCategory.RPC_SERVER, "RpcServerSpanBuilder");
+                                 @Nonnull AttributePolicy policy,
+                                 @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader, SpanCategory.RPC_SERVER, "RpcServerSpanBuilder");
         }
 
         @Override
@@ -102,8 +108,9 @@ final class DefaultRpcTracing implements RpcTracing {
             implements RpcClientSpanBuilder {
 
         RpcClientSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                                 @Nonnull AttributePolicy policy) {
-            super(implementation, policy, SpanCategory.RPC_CLIENT, "RpcClientSpanBuilder");
+                                 @Nonnull AttributePolicy policy,
+                                 @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader, SpanCategory.RPC_CLIENT, "RpcClientSpanBuilder");
         }
 
         @Override

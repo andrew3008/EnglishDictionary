@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.builder.*;
 import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
@@ -15,23 +16,26 @@ final class DefaultKafkaTracing implements KafkaTracing {
 
     private final TracingRuntime implementation;
     private final AttributePolicy policy;
+    private final OtelTraceparentReader traceparentReader;
 
     DefaultKafkaTracing(@Nonnull TracingRuntime implementation,
-                        @Nonnull AttributePolicy policy) {
+                        @Nonnull AttributePolicy policy,
+                        @Nonnull OtelTraceparentReader traceparentReader) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.policy = Objects.requireNonNull(policy, "policy");
+        this.traceparentReader = Objects.requireNonNull(traceparentReader, "traceparentReader");
     }
 
     @Override
     @Nonnull
     public KafkaProducerSpanBuilder producer() {
-        return new KafkaProducerSpanBuilderImpl(implementation, policy);
+        return new KafkaProducerSpanBuilderImpl(implementation, policy, traceparentReader);
     }
 
     @Override
     @Nonnull
     public KafkaConsumerSpanBuilder consumer() {
-        return new KafkaConsumerSpanBuilderImpl(implementation, policy);
+        return new KafkaConsumerSpanBuilderImpl(implementation, policy, traceparentReader);
     }
 
     private static abstract class AbstractKafkaSpanBuilder<B extends ManualSpanBuilder<B>>
@@ -39,9 +43,10 @@ final class DefaultKafkaTracing implements KafkaTracing {
 
         AbstractKafkaSpanBuilder(@Nonnull TracingRuntime implementation,
                                  @Nonnull AttributePolicy policy,
+                                 @Nonnull OtelTraceparentReader traceparentReader,
                                  @Nonnull SpanCategory category,
                                  @Nonnull String builderName) {
-            super(implementation, policy, category, category.value(), builderName);
+            super(implementation, policy, traceparentReader, category, category.value(), builderName);
             putAttribute(SemconvKeys.MESSAGING_SYSTEM.getKey(), SpanSpecAttributeValue.of("kafka"));
         }
 
@@ -64,8 +69,10 @@ final class DefaultKafkaTracing implements KafkaTracing {
             implements KafkaProducerSpanBuilder {
 
         KafkaProducerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                                     @Nonnull AttributePolicy policy) {
-            super(implementation, policy, SpanCategory.KAFKA_PRODUCER, "KafkaProducerSpanBuilder");
+                                     @Nonnull AttributePolicy policy,
+                                     @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader,
+                    SpanCategory.KAFKA_PRODUCER, "KafkaProducerSpanBuilder");
         }
 
         @Override
@@ -92,8 +99,10 @@ final class DefaultKafkaTracing implements KafkaTracing {
             implements KafkaConsumerSpanBuilder {
 
         KafkaConsumerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
-                                     @Nonnull AttributePolicy policy) {
-            super(implementation, policy, SpanCategory.KAFKA_CONSUMER, "KafkaConsumerSpanBuilder");
+                                     @Nonnull AttributePolicy policy,
+                                     @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader,
+                    SpanCategory.KAFKA_CONSUMER, "KafkaConsumerSpanBuilder");
         }
 
         @Override
@@ -124,7 +133,7 @@ final class DefaultKafkaTracing implements KafkaTracing {
                 throw new IllegalArgumentException("destination must not be blank");
             }
 
-            return new KafkaBatchSpanBuilderImpl(implementation, policy, destination);
+            return new KafkaBatchSpanBuilderImpl(implementation, policy, traceparentReader, destination);
         }
     }
 
@@ -133,8 +142,10 @@ final class DefaultKafkaTracing implements KafkaTracing {
 
         KafkaBatchSpanBuilderImpl(@Nonnull TracingRuntime implementation,
                                   @Nonnull AttributePolicy policy,
+                                  @Nonnull OtelTraceparentReader traceparentReader,
                                   @Nonnull String destination) {
-            super(implementation, policy, SpanCategory.KAFKA_CONSUMER, "KafkaBatchSpanBuilder");
+            super(implementation, policy, traceparentReader,
+                    SpanCategory.KAFKA_CONSUMER, "KafkaBatchSpanBuilder");
             putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanSpecAttributeValue.of(destination));
             putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanSpecAttributeValue.of("process"));
         }

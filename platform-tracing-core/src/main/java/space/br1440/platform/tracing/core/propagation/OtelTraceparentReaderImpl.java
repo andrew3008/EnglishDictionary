@@ -20,10 +20,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Обнаруживается builder-точками ({@code DefaultSpanSpecBuilder} в api и
- * {@code AbstractSemanticSpanBuilder} в core) единообразно через
- * {@link space.br1440.platform.tracing.api.propagation.OtelTraceparentReaders}
- * и {@link java.util.ServiceLoader} SPI (регистрация в {@code META-INF/services}).
+ * OTel-backed реализация чтения W3C trace context.
+ * Экземпляр передаётся manual builder-ам через application composition root.
  */
 @Slf4j
 public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
@@ -37,12 +35,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     private static final String HDR_TRACESTATE = "tracestate";
 
     /**
-     * Публичный конструктор для {@link java.util.ServiceLoader}.
-     * <p>
-     * На classpath ({@code META-INF/services}) {@code ServiceLoader} требует публичный
-     * no-arg конструктор — static {@code provider()} распознаётся только в явных
-     * именованных модулях. Прямые вызывающие могут переиспользовать {@link #INSTANCE},
-     * так как класс stateless.
+     * Создаёт stateless reader. Composition roots обычно переиспользуют {@link #INSTANCE}.
      */
     public OtelTraceparentReaderImpl() {
     }

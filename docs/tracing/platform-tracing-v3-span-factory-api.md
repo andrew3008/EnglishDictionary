@@ -114,7 +114,7 @@ Immutable governed specification for `spans().fromSpec(spec)`.
 |--------|-------|
 | `category(SpanCategory)` | Required semantic category |
 | `child()` / `root()` / `detached()` | Span relationship (`SpanRelationship`) |
-| `linkedTo(...)` / `fromTraceparent(...)` | Pre-start links |
+| `linkedTo(RemoteSpanLink...)` | Pre-start links; parsing belongs to the composed manual-builder path |
 | `attribute(key, typedValue)` | Typed scalar attributes only |
 | `stringListAttribute` / `longListAttribute` / … | Homogeneous lists |
 | `reason(SpanSpecReason)` | **Mandatory** |

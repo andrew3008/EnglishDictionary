@@ -16,7 +16,7 @@ No compatibility aliases or deprecated bridges are provided.
 ## Breaking Changes - TraceparentParser Removal
 
 - `TraceparentParser` was deleted and replaced by the OTel-backed `OtelTraceparentReader` bridge.
-- Public `fromTraceparent(String...)` builder signatures are unchanged.
+- `SpanSpecBuilder.fromTraceparent(String...)` and the static `OtelTraceparentReaders` holder were removed. Manual builders obtained from `SpanFactory` retain `fromTraceparent(String...)` through an application-composed reader.
 - No compatibility aliases or deprecated bridges are provided.
 - `RemoteSpanLink.traceState` remains `null` for single-string `traceparent` parsing because `tracestate` is a separate W3C header.
 
