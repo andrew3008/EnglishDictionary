@@ -1,17 +1,13 @@
 description = 'Публичный API платформенного стартера трассировки. ' +
         'Содержит интерфейс TraceOperations, аннотацию @Traced, перечисления SpanCategory и SpanResult, ' +
         'константы атрибутов и заголовков, ключи MDC (TracingMdcKeys), снимок RequestTraceContextSnapshot для error-handling, точки расширения SPI. ' +
-        'Модуль не зависит от Spring и OpenTelemetry API/SDK, чтобы прикладной код мог писаться против стабильного контракта. ' +
-        'OTel Context объявлен как compileOnly для propagation-контрактов и предоставляется consuming runtime.'
+        'Модуль не зависит от Spring и OpenTelemetry API/SDK, чтобы прикладной код мог писаться против стабильного контракта.'
 
 dependencies {
     api platform(project(':platform-tracing-bom'))
 
     // Аннотации Jakarta для Nullable / Nonnull без зависимостей на implementation-фреймворки.
     api 'jakarta.annotation:jakarta.annotation-api'
-
-    // Для PlatformTraceContextKeys (io.opentelemetry.context.ContextKey)
-    compileOnly 'io.opentelemetry:opentelemetry-context'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -20,8 +16,5 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation project(':platform-tracing-test')
-    // OTel Context/API нужны для unit-тестов TraceControlHeaderInjector.
-    testImplementation 'io.opentelemetry:opentelemetry-api'
-    testImplementation 'io.opentelemetry:opentelemetry-context'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

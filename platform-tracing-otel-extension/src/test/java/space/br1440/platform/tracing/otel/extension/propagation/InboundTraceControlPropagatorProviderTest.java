@@ -7,7 +7,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 
 import java.util.HashMap;

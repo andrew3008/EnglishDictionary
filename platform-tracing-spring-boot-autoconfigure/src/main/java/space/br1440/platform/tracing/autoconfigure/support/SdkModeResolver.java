@@ -4,8 +4,8 @@ package space.br1440.platform.tracing.autoconfigure.support;
  * Резолвер эффективного {@link SdkMode} (Фаза 15, PR-3).
  * <p>
  * Чистая функция от наблюдаемых признаков среды — без побочных эффектов, удобна для unit-тестов.
- * Если оператор задал явный режим (не {@link SdkMode#AUTO}), он возвращается как есть; иначе режим
- * детектируется по приоритету: agent → external → starter.
+ * Явный режим оператора проходит проверку на совместимость с наблюдаемой средой. Для
+ * {@link SdkMode#AUTO} приоритет таков: подтверждённый agent marker → external runtime → starter.
  */
 public final class SdkModeResolver {
 
@@ -27,19 +27,67 @@ public final class SdkModeResolver {
      * Возвращает эффективный режим. Явный режим оператора имеет приоритет над авто-детектом.
      */
     public static SdkMode resolve(SdkMode configured, Inputs inputs) {
-        if (configured != null && configured != SdkMode.AUTO) {
-            // Явное значение оператора (включая DISABLED) — уважаем без авто-детекта.
-            return configured;
+        SdkMode requested = configured == null ? SdkMode.AUTO : configured;
+        if (requested == SdkMode.DISABLED) {
+            return SdkMode.DISABLED;
         }
-        // Agent-first: наличие агента/функционального global — это режим AGENT.
-        if (inputs.agentPresent() || inputs.globalFunctional()) {
+        if (inputs.agentPresent() && inputs.userBeanPresent()) {
+            throw new IllegalStateException(
+                    "OpenTelemetry bean and active Java Agent detected simultaneously; "
+                            + "remove the bean or disable the Agent");
+        }
+
+        return switch (requested) {
+            case AUTO -> resolveAutomatically(inputs);
+            case AGENT -> requireAgent(inputs);
+            case STARTER -> requireStarterOwnership(inputs);
+            case EXTERNAL -> requireExternalRuntime(inputs);
+            case DISABLED -> SdkMode.DISABLED;
+        };
+    }
+
+    private static SdkMode resolveAutomatically(Inputs inputs) {
+        if (inputs.agentPresent()) {
             return SdkMode.AGENT;
         }
-        // Пользовательский SDK-bean без агента — EXTERNAL (фасад поверх него).
-        if (inputs.userBeanPresent()) {
+        if (inputs.globalFunctional() || inputs.userBeanPresent()) {
             return SdkMode.EXTERNAL;
         }
-        // Нет ни агента, ни bean — consume-mode без создания SDK.
         return SdkMode.STARTER;
+    }
+
+    private static SdkMode requireAgent(Inputs inputs) {
+        if (!inputs.agentPresent()) {
+            throw new IllegalStateException(
+                    "platform.tracing.sdk.mode=AGENT requires an active OpenTelemetry Java Agent marker");
+        }
+        return SdkMode.AGENT;
+    }
+
+    private static SdkMode requireStarterOwnership(Inputs inputs) {
+        if (inputs.agentPresent()) {
+            throw new IllegalStateException(
+                    "platform.tracing.sdk.mode=STARTER conflicts with an active OpenTelemetry Java Agent; "
+                            + "use AUTO or AGENT");
+        }
+        if (inputs.globalFunctional() || inputs.userBeanPresent()) {
+            throw new IllegalStateException(
+                    "platform.tracing.sdk.mode=STARTER conflicts with an external OpenTelemetry runtime; "
+                            + "use AUTO or EXTERNAL");
+        }
+        return SdkMode.STARTER;
+    }
+
+    private static SdkMode requireExternalRuntime(Inputs inputs) {
+        if (inputs.agentPresent()) {
+            throw new IllegalStateException(
+                    "platform.tracing.sdk.mode=EXTERNAL conflicts with an active OpenTelemetry Java Agent; "
+                            + "use AUTO or AGENT");
+        }
+        if (!inputs.globalFunctional() && !inputs.userBeanPresent()) {
+            throw new IllegalStateException(
+                    "platform.tracing.sdk.mode=EXTERNAL requires a functional external OpenTelemetry runtime");
+        }
+        return SdkMode.EXTERNAL;
     }
 }

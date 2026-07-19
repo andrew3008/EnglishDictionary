@@ -11,7 +11,7 @@ import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.core.sampling.model.ParentContextState;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;

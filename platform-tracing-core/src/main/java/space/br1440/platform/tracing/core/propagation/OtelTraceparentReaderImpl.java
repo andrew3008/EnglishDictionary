@@ -9,7 +9,6 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import java.util.HashMap;

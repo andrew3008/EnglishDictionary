@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.otel.extension.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.extension.configuration.SamplingExtensionConfig;

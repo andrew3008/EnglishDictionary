@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.core.spike;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl;
 
 import java.util.Optional;

@@ -20,7 +20,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
@@ -156,8 +156,8 @@ public class ReactiveTracingAutoConfiguration {
     @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".propagation.outbound", name = "enabled", havingValue = "true")
     public PlatformOutboundExchangeFilterFunction platformOutboundExchangeFilterFunction(
             @Qualifier("platformHttpOutboundPolicy") OutboundPropagationPolicy policy,
-            TraceControlHeaderInjector injector) {
-        return new PlatformOutboundExchangeFilterFunction(policy, injector);
+            PlatformOutboundPropagation propagation) {
+        return new PlatformOutboundExchangeFilterFunction(policy, propagation);
     }
 
     /**

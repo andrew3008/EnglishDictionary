@@ -9,10 +9,10 @@ package space.br1440.platform.tracing.autoconfigure.support;
  *
  * <ul>
  *   <li>{@link #AUTO} — режим определяется автоматически (см. {@link SdkModeResolver});</li>
- *   <li>{@link #AGENT} — обнаружен OTel Java Agent / функциональный {@code GlobalOpenTelemetry};
- *       starter поднимает фасад поверх global;</li>
- *   <li>{@link #EXTERNAL} — в контексте есть пользовательский {@code OpenTelemetry} bean;
- *       starter поднимает фасад поверх него;</li>
+ *   <li>{@link #AGENT} — подтверждён runtime marker OTel Java Agent;
+ *       starter поднимает фасад поверх agent-owned global;</li>
+ *   <li>{@link #EXTERNAL} — в контексте есть пользовательский {@code OpenTelemetry} bean либо
+ *       без agent marker обнаружен функциональный {@code GlobalOpenTelemetry}; starter поднимает фасад поверх него;</li>
  *   <li>{@link #STARTER} — нет ни агента, ни пользовательского SDK (consume-mode без создания SDK);</li>
  *   <li>{@link #DISABLED} — платформенный фасад явно отключён ({@code NoopTraceOperations});
  *       единственный режим, где используется NoOp.</li>

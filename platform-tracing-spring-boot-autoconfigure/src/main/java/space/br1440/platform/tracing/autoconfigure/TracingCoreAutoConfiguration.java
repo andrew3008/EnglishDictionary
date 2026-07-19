@@ -125,7 +125,7 @@ public class TracingCoreAutoConfiguration {
             log.info("TracingRuntime: GlobalOpenTelemetry no-op; UNAVAILABLE mode");
             return NoOpTracingRuntime.unavailable("GlobalOpenTelemetry not functional");
         }
-        log.debug("TracingRuntime: GlobalOpenTelemetry (agent)");
+        log.debug("TracingRuntime: functional GlobalOpenTelemetry for SDK mode={}", sdkModeDiagnostics.mode());
         return new OtelTracingRuntime(global, policy, exceptionRecorder);
     }
 

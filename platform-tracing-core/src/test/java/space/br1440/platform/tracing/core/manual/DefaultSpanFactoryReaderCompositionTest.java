@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.core.manual;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;

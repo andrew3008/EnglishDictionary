@@ -1,16 +1,21 @@
 package space.br1440.platform.tracing.core.manual;
 
-import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
-import space.br1440.platform.tracing.api.span.builder.*;
-import space.br1440.platform.tracing.core.semconv.SemconvKeys;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
-import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
-
 import java.util.Objects;
+
+import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaTracing;
+import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReader;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 final class DefaultKafkaTracing implements KafkaTracing {
 

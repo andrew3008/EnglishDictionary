@@ -6,7 +6,7 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 

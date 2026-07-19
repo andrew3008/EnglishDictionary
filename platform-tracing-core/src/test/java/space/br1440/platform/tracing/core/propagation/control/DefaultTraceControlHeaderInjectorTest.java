@@ -1,18 +1,21 @@
 package space.br1440.platform.tracing.core.propagation.control;
 
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapSetter;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
+
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapSetter;
 
 @DisplayName("DefaultTraceControlHeaderInjector: secure-by-default + per-header inject")
 class DefaultTraceControlHeaderInjectorTest {
@@ -20,6 +23,8 @@ class DefaultTraceControlHeaderInjectorTest {
     private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> carrier.put(key, value);
 
     private final TraceControlHeaderInjector injector =
+            new DefaultTraceControlHeaderInjector("X-Trace-On", "X-QA-Trace", "X-Request-Id");
+    private final PlatformOutboundPropagation propagation =
             new DefaultTraceControlHeaderInjector("X-Trace-On", "X-QA-Trace", "X-Request-Id");
 
     private static Context contextWith(OutboundPropagationDecision decision) {
@@ -72,5 +77,28 @@ class DefaultTraceControlHeaderInjectorTest {
         injector.inject(contextWith(OutboundPropagationDecision.ALLOW_ALL), carrier, MAP_SETTER);
         assertThat(carrier).containsKeys("X-Trace-On", "X-QA-Trace", "X-Request-Id");
         assertThat(carrier.get("X-Trace-On")).isEqualTo("on");
+    }
+
+    @Test
+    @DisplayName("application port читает current context и возвращает типизированные slots")
+    void resolveReadsCurrentContext() {
+        try (Scope ignored = contextWith(OutboundPropagationDecision.ALLOW_ALL).makeCurrent()) {
+            OutboundPropagationHeaders headers = propagation.resolve(OutboundPropagationDecision.ALLOW_ALL);
+
+            assertThat(headers.forceTrace()).contains(
+                    new OutboundPropagationHeaders.Header("X-Trace-On", "on"));
+            assertThat(headers.qaTrace()).contains(
+                    new OutboundPropagationHeaders.Header("X-QA-Trace", "1"));
+            assertThat(headers.requestId()).contains(
+                    new OutboundPropagationHeaders.Header("X-Request-Id", "req-123"));
+        }
+    }
+
+    @Test
+    @DisplayName("application port fail-closed при отсутствии decision или current control")
+    void resolveWithoutRequiredStateIsEmpty() {
+        assertThat(propagation.resolve(null)).isEqualTo(OutboundPropagationHeaders.EMPTY);
+        assertThat(propagation.resolve(OutboundPropagationDecision.ALLOW_ALL))
+                .isEqualTo(OutboundPropagationHeaders.EMPTY);
     }
 }

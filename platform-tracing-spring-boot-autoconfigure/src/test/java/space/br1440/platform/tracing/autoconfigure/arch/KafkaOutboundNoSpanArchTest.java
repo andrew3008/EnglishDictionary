@@ -1,19 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.arch;
 
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.lang.ArchRule;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.lang.ArchRule;
 
 /**
  * Anti-double-instrumentation guard (PR-7): outbound Kafka-классы НЕ создают span'ы и НЕ инжектят W3C.
  * <p>
  * Создание span'ов и W3C propagation — зона OTel Java Agent. Платформенные outbound-компоненты
- * добавляют только платформенные заголовки через {@code io.opentelemetry.context} (Context/TextMapSetter),
- * но НЕ должны зависеть от {@code io.opentelemetry.api.trace} (Tracer/Span/SpanBuilder).
+ * добавляют только платформенные заголовки через OTel-free propagation-port.
  */
 @DisplayName("ArchUnit: Kafka outbound не создаёт span'ы и не инжектит W3C")
 class KafkaOutboundNoSpanArchTest {
@@ -22,12 +22,11 @@ class KafkaOutboundNoSpanArchTest {
             .importPackages("space.br1440.platform.tracing.autoconfigure.kafka");
 
     @Test
-    @DisplayName("PlatformKafka* outbound-классы не зависят от io.opentelemetry.api.trace")
+    @DisplayName("PlatformKafka* outbound-классы не зависят от OpenTelemetry")
     void outboundDoesNotDependOnTraceApi() {
         ArchRule rule = noClasses()
                 .that().haveSimpleNameStartingWith("PlatformKafkaProducer")
-                .or().haveSimpleName("PlatformKafkaHeaderSetter")
-                .should().dependOnClassesThat().resideInAnyPackage("io.opentelemetry.api.trace..");
+                .should().dependOnClassesThat().resideInAnyPackage("io.opentelemetry..");
         rule.check(OUTBOUND_CLASSES);
     }
 
@@ -36,7 +35,6 @@ class KafkaOutboundNoSpanArchTest {
     void outboundDoesNotReferenceW3CPropagator() {
         ArchRule rule = noClasses()
                 .that().haveSimpleNameStartingWith("PlatformKafkaProducer")
-                .or().haveSimpleName("PlatformKafkaHeaderSetter")
                 .should().dependOnClassesThat().haveFullyQualifiedName(
                         "io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator");
         rule.check(OUTBOUND_CLASSES);

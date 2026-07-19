@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder;
 import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;

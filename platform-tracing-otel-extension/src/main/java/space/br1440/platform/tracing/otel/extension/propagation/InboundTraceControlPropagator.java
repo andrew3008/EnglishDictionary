@@ -1,19 +1,20 @@
 package space.br1440.platform.tracing.otel.extension.propagation;
 
+import java.util.Collection;
+import java.util.List;
+
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
+import space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor;
+import space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector;
+import space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.core.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.otel.extension.utils.Strings;
+
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
-import space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor;
-import space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector;
-import space.br1440.platform.tracing.otel.extension.utils.Strings;
-
-import java.util.Collection;
-import java.util.List;
 
 /**
  * Извлекает платформенные управляющие заголовки из carrier'а и сохраняет их в Context

@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
@@ -35,7 +35,7 @@ public class PlatformOutboundPropagationAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public TraceControlHeaderInjector platformOutboundInjector(TracingProperties properties) {
+    public PlatformOutboundPropagation platformOutboundPropagation(TracingProperties properties) {
         TracingProperties.Propagation.PlatformHeadersConfig headers =
                 properties.getPropagation().getPlatformHeaders();
         return new DefaultTraceControlHeaderInjector(

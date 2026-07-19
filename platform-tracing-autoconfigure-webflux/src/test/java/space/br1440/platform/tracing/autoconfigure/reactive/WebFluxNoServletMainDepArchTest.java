@@ -4,6 +4,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+
 import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 
 /**
@@ -18,4 +19,8 @@ class WebFluxNoServletMainDepArchTest {
     @ArchTest
     static final ArchRule webFluxMainNoServletStack =
             ModuleTaxonomyArchRules.WEBFLUX_MAIN_NO_SERVLET_STACK;
+
+    @ArchTest
+    static final ArchRule webFluxMainNoCoreImplementation =
+            ModuleTaxonomyArchRules.WEB_AUTOCONFIGURE_MAIN_NO_CORE_IMPL;
 }

@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy;
@@ -29,10 +29,10 @@ import space.br1440.platform.tracing.core.propagation.control.TrustedDestination
 public class PlatformKafkaOutboundAutoConfiguration {
 
     @Bean
-    @ConditionalOnBean(TraceControlHeaderInjector.class)
+    @ConditionalOnBean(PlatformOutboundPropagation.class)
     @ConditionalOnMissingBean
     public PlatformKafkaProducerFactoryCustomizer platformKafkaProducerFactoryCustomizer(
-            TracingProperties properties, TraceControlHeaderInjector injector) {
+            TracingProperties properties, PlatformOutboundPropagation propagation) {
         TracingProperties.Kafka kafka = properties.getKafka();
         TracingProperties.Propagation.Outbound outbound = properties.getPropagation().getOutbound();
 
@@ -46,6 +46,6 @@ public class PlatformKafkaOutboundAutoConfiguration {
                 outbound.isPropagateQaTrace(),
                 outbound.isPropagateRequestId());
 
-        return new PlatformKafkaProducerFactoryCustomizer(policy, injector);
+        return new PlatformKafkaProducerFactoryCustomizer(policy, propagation);
     }
 }

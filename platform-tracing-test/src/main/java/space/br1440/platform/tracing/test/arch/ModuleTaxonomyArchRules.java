@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.test.arch;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
-
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
  * Guardrails модульной таксономии PR-1 (migration-first стратегия сохранения границ).
@@ -88,6 +88,17 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("platform-tracing-spring-boot-autoconfigure (App CL) не должен зависеть от "
                     + "platform-tracing-otel-extension (Agent CL) implementation-классов");
+
+    /**
+     * Web-модули компилируются только против API и публичной границы autoconfigure.
+     */
+    public static final ArchRule WEB_AUTOCONFIGURE_MAIN_NO_CORE_IMPL = noClasses()
+            .that().resideInAnyPackage(
+                    "space.br1440.platform.tracing.autoconfigure.servlet..",
+                    "space.br1440.platform.tracing.autoconfigure.reactive..")
+            .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.core..")
+            .allowEmptyShould(true)
+            .because("web autoconfigure не должен раскрывать platform-tracing-core на compile classpath потребителя");
 
     /**
      * Servlet web autoconfigure не должен тянуть типы WebFlux/Reactor в main-sources.
@@ -355,7 +366,7 @@ public final class ModuleTaxonomyArchRules {
     public static final ArchRule CONTROL_IMPLS_ONLY_IN_CORE = classes()
             .that().implement("space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy")
             .or().implement("space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher")
-            .or().implement("space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector")
+            .or().implement("space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation")
             .or().implement("space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor")
             .and().areNotAnonymousClasses()
             .and().areNotMemberClasses()
@@ -364,7 +375,7 @@ public final class ModuleTaxonomyArchRules {
             .should().resideInAPackage("..core.propagation.control..")
             .allowEmptyShould(true)
             .because("реализации OutboundPropagationPolicy / TrustedDestinationMatcher / "
-                    + "TraceControlHeaderInjector / InboundTraceControlExtractor — только в core.propagation.control");
+                    + "PlatformOutboundPropagation / InboundTraceControlExtractor — только в core.propagation.control");
 
     /**
      * {@code TrustedDestinationMatchers} — public factory для wiring; не для starter'ов и бизнес-модулей.
@@ -380,18 +391,16 @@ public final class ModuleTaxonomyArchRules {
     /**
      * Запрет возврата concrete impl в {@code api.propagation.control} (откат PR-1/PR-2).
      * <p>
-     * Допускаются: interfaces, records, enums и {@code *Keys} utility-классы
-     * (например, {@code PlatformTraceContextKeys}).
+     * Допускаются: interfaces, records и enums.
      */
     public static final ArchRule API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL = noClasses()
             .that().resideInAPackage("..api.propagation.control..")
             .and().areNotInterfaces()
             .and().areNotRecords()
             .and().areNotEnums()
-            .and().haveSimpleNameNotContaining("Keys")
             .should().beInterfaces()
             .allowEmptyShould(true)
-            .because("api.propagation.control — только интерфейсы, records, enums и *Keys utility-классы");
+            .because("api.propagation.control — только интерфейсы, records и enums");
 
     // -- PR-3 (api.mdc split guardrails) ----------------------------------------------------------
 

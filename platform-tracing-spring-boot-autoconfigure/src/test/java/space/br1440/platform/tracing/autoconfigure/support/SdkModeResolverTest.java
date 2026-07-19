@@ -1,9 +1,10 @@
 package space.br1440.platform.tracing.autoconfigure.support;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * PR-3 (Фаза 15): резолв {@link SdkMode} по признакам среды и явному значению оператора.
@@ -23,10 +24,10 @@ class SdkModeResolverTest {
     }
 
     @Test
-    @DisplayName("AUTO + функциональный GlobalOpenTelemetry → AGENT")
-    void resolver_agent_when_global_set() {
+    @DisplayName("AUTO + функциональный GlobalOpenTelemetry без marker → EXTERNAL")
+    void resolver_external_when_global_set_without_agent_marker() {
         assertThat(SdkModeResolver.resolve(SdkMode.AUTO, inputs(false, true, false)))
-                .isEqualTo(SdkMode.AGENT);
+                .isEqualTo(SdkMode.EXTERNAL);
     }
 
     @Test
@@ -44,18 +45,25 @@ class SdkModeResolverTest {
     }
 
     @Test
-    @DisplayName("agent имеет приоритет над пользовательским bean при AUTO")
-    void resolver_agent_precedence_over_bean() {
-        assertThat(SdkModeResolver.resolve(SdkMode.AUTO, inputs(true, false, true)))
-                .isEqualTo(SdkMode.AGENT);
+    @DisplayName("agent и пользовательский bean завершают startup диагностируемой ошибкой")
+    void resolver_rejects_agent_and_user_bean() {
+        assertThatIllegalStateException()
+                .isThrownBy(() -> SdkModeResolver.resolve(SdkMode.AUTO, inputs(true, false, true)))
+                .withMessageContaining("OpenTelemetry bean and active Java Agent");
     }
 
     @Test
-    @DisplayName("явный режим оператора уважается без авто-детекта")
-    void explicit_mode_wins() {
+    @DisplayName("DISABLED разрешён независимо от agent marker")
+    void disabled_mode_wins() {
         assertThat(SdkModeResolver.resolve(SdkMode.DISABLED, inputs(true, true, true)))
                 .isEqualTo(SdkMode.DISABLED);
-        assertThat(SdkModeResolver.resolve(SdkMode.STARTER, inputs(true, false, false)))
-                .isEqualTo(SdkMode.STARTER);
+    }
+
+    @Test
+    @DisplayName("несовместимый explicit STARTER завершается ошибкой")
+    void explicit_starter_rejects_agent() {
+        assertThatIllegalStateException()
+                .isThrownBy(() -> SdkModeResolver.resolve(SdkMode.STARTER, inputs(true, false, false)))
+                .withMessageContaining("STARTER conflicts with an active OpenTelemetry Java Agent");
     }
 }

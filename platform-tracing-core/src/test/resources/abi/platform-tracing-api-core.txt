@@ -144,10 +144,6 @@ TYPE public final class space.br1440.platform.tracing.api.mdc.TracingMdcKeys
   FIELD public static final java.lang.String SPAN_ID
   FIELD public static final java.lang.String TRACE_FLAGS
   FIELD public static final java.lang.String TRACE_ID
-TYPE public abstract interface space.br1440.platform.tracing.api.propagation.OtelTraceparentReader
-  METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String)
-  METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String,java.lang.String)
-  METHOD public abstract space.br1440.platform.tracing.api.span.RemoteSpanLink require(java.lang.String)
 TYPE public abstract interface space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
   METHOD public abstract java.lang.Runnable wrap(java.lang.Runnable)
   METHOD public abstract java.util.concurrent.Executor contextAware(java.util.concurrent.Executor)
@@ -180,13 +176,26 @@ TYPE public final record space.br1440.platform.tracing.api.propagation.control.O
   METHOD public final boolean equals(java.lang.Object)
   METHOD public final int hashCode()
   METHOD public final java.lang.String toString()
+TYPE public final record space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders
+  FIELD public static final space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders EMPTY
+  CTOR public space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders(java.util.Optional<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header>,java.util.Optional<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header>,java.util.Optional<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header>)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.Optional<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header> forceTrace()
+  METHOD public java.util.Optional<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header> qaTrace()
+  METHOD public java.util.Optional<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header> requestId()
+TYPE public static final record space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header
+  CTOR public space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders$Header(java.lang.String,java.lang.String)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String name()
+  METHOD public java.lang.String value()
 TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy
   METHOD public abstract space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision decide(java.lang.String)
-TYPE public final class space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys
-  FIELD public static final io.opentelemetry.context.ContextKey<space.br1440.platform.tracing.api.propagation.control.InboundTraceControl> TRACE_CONTROL
-  FIELD public static final io.opentelemetry.context.ContextKey<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision> PROPAGATION_DECISION
-TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector
-  METHOD public abstract void inject(io.opentelemetry.context.Context,C,io.opentelemetry.context.propagation.TextMapSetter<C>)
+TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation
+  METHOD public abstract space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders resolve(space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision)
 TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher
   METHOD public abstract boolean isTrusted(java.lang.String)
 TYPE public final enum space.br1440.platform.tracing.api.semconv.SemconvValidationMode
@@ -586,7 +595,11 @@ TYPE public class space.br1440.platform.tracing.core.propagation.OtelPlatformCon
   METHOD public java.util.concurrent.Executor contextAware(java.util.concurrent.Executor)
   METHOD public java.util.concurrent.ExecutorService contextAware(java.util.concurrent.ExecutorService)
   METHOD public space.br1440.platform.tracing.api.util.ThrowingSupplier<T> wrap(space.br1440.platform.tracing.api.util.ThrowingSupplier<T>)
-TYPE public final class space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl implements space.br1440.platform.tracing.api.propagation.OtelTraceparentReader
+TYPE public abstract interface space.br1440.platform.tracing.core.propagation.OtelTraceparentReader
+  METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String)
+  METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String,java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.RemoteSpanLink require(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl implements space.br1440.platform.tracing.core.propagation.OtelTraceparentReader
   FIELD public static final space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl INSTANCE
   CTOR public space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl()
   METHOD public java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String)
@@ -603,9 +616,15 @@ TYPE public final class space.br1440.platform.tracing.core.propagation.control.D
 TYPE public final class space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy implements space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy
   CTOR public space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy(boolean,space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher,boolean,boolean,boolean)
   METHOD public space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision decide(java.lang.String)
-TYPE public final class space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector implements space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector
+TYPE public final class space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector implements space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation,space.br1440.platform.tracing.core.propagation.control.TraceControlHeaderInjector
   CTOR public space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector(java.lang.String,java.lang.String,java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders resolve(space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision)
   METHOD public void inject(io.opentelemetry.context.Context,C,io.opentelemetry.context.propagation.TextMapSetter<C>)
+TYPE public final class space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys
+  FIELD public static final io.opentelemetry.context.ContextKey<space.br1440.platform.tracing.api.propagation.control.InboundTraceControl> TRACE_CONTROL
+  FIELD public static final io.opentelemetry.context.ContextKey<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision> PROPAGATION_DECISION
+TYPE public abstract interface space.br1440.platform.tracing.core.propagation.control.TraceControlHeaderInjector
+  METHOD public abstract void inject(io.opentelemetry.context.Context,C,io.opentelemetry.context.propagation.TextMapSetter<C>)
 TYPE public final class space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers
   METHOD public static space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher forHttpHosts(java.util.List<java.lang.String>,boolean)
   METHOD public static space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher forKafkaTopics(java.util.List<java.lang.String>)

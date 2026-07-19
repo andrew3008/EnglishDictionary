@@ -1,19 +1,28 @@
 package space.br1440.platform.tracing.core.manual;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Supplier;
+
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
-import space.br1440.platform.tracing.api.span.SpanCategory;
+
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.api.span.spec.*;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
+import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.core.manual.spec.OperationSpanSpecs;
 import space.br1440.platform.tracing.core.manual.spec.SemanticSpanSpecs;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
-
-import java.util.*;
-import java.util.function.Supplier;
 
 abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> implements ManualSpanBuilder<B> {
 

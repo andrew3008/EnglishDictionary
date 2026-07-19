@@ -47,4 +47,4 @@ Routing/lifecycle тесты обновлены с проверки object ident
 
 ## Открытый checkpoint
 
-CP-C2 остаётся `PROPOSED / AWAITING APPROVAL`. Slice C2 и зависящая от него blocking chain не стартуют до явного решения architecture committee.
+Исторически на момент закрытия Slice D CP-C2 оставался `PROPOSED / AWAITING APPROVAL`. 19 июля 2026 года architecture committee утвердил его `APPROVED AS PROPOSED`; актуальное состояние зафиксировано в ADR CP-C2 и authoritative plan.

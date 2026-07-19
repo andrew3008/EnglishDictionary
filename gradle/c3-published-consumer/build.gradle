@@ -1,0 +1,86 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'java'
+}
+
+def c3Repository = providers.gradleProperty('c3Repository').get()
+def platformTracingVersion = providers.gradleProperty('platformTracingVersion').get()
+
+repositories {
+    maven {
+        url = uri(c3Repository)
+        metadataSources {
+            gradleMetadata()
+            mavenPom()
+            artifact()
+        }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation "space.br1440.platform.tracing:platform-tracing-spring-boot-starter-servlet:${platformTracingVersion}"
+}
+
+sourceSets {
+    negative {
+        java.srcDir 'src/negative/java'
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+
+tasks.register('verifyPublishedMetadata') {
+    doLast {
+        def compileModules = configurations.compileClasspath.incoming.resolutionResult.allComponents
+                .collect { it.moduleVersion?.name }
+                .findAll { it != null } as Set
+        def runtimeModules = configurations.runtimeClasspath.incoming.resolutionResult.allComponents
+                .collect { it.moduleVersion?.name }
+                .findAll { it != null } as Set
+
+        assert compileModules.contains('opentelemetry-api')
+        assert !compileModules.contains('platform-tracing-core')
+        assert !compileModules.contains('platform-tracing-otel-extension')
+        assert runtimeModules.contains('platform-tracing-core')
+        assert !runtimeModules.contains('platform-tracing-otel-extension')
+
+        File versionDirectory = file("${c3Repository}/space/br1440/platform/tracing/"
+                + "platform-tracing-spring-boot-autoconfigure/${platformTracingVersion}")
+        File moduleFile = versionDirectory.listFiles()
+                .findAll { it.name.endsWith('.module') }
+                .max { it.lastModified() }
+        File pomFile = versionDirectory.listFiles()
+                .findAll { it.name.endsWith('.pom') }
+                .max { it.lastModified() }
+        assert moduleFile.isFile()
+        assert pomFile.isFile()
+
+        def metadata = new JsonSlurper().parse(moduleFile)
+        def apiVariant = metadata.variants.find { it.name == 'apiElements' }
+        def runtimeVariant = metadata.variants.find { it.name == 'runtimeElements' }
+        assert apiVariant != null
+        assert runtimeVariant != null
+        assert !apiVariant.dependencies.any { it.module == 'platform-tracing-core' }
+        assert runtimeVariant.dependencies.any { it.module == 'platform-tracing-core' }
+
+        def pom = new XmlSlurper().parse(pomFile)
+        def coreDependency = pom.dependencies.dependency.find {
+            it.artifactId.text() == 'platform-tracing-core'
+        }
+        assert coreDependency.size() == 1
+        assert coreDependency.scope.text() == 'runtime'
+    }
+}
+
+tasks.register('runMinimalContext', JavaExec) {
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'c3.consumer.ConsumerApplication'
+}
+
+tasks.register('verifyPublishedConsumer') {
+    dependsOn tasks.named('compileJava')
+    dependsOn tasks.named('verifyPublishedMetadata')
+    dependsOn tasks.named('runMinimalContext')
+}

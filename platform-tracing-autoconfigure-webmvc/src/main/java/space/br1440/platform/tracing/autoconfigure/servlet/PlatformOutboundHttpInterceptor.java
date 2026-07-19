@@ -1,16 +1,15 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
-import io.opentelemetry.context.Context;
+import java.io.IOException;
+
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
-
-import java.io.IOException;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 
 /**
  * Client-интерсептор Servlet-стека ({@code RestTemplate}/{@code RestClient}), добавляющий
@@ -24,11 +23,12 @@ import java.io.IOException;
 public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestInterceptor {
 
     private final OutboundPropagationPolicy policy;
-    private final TraceControlHeaderInjector injector;
+    private final PlatformOutboundPropagation propagation;
 
-    public PlatformOutboundHttpInterceptor(OutboundPropagationPolicy policy, TraceControlHeaderInjector injector) {
+    public PlatformOutboundHttpInterceptor(OutboundPropagationPolicy policy,
+                                           PlatformOutboundPropagation propagation) {
         this.policy = policy;
-        this.injector = injector;
+        this.propagation = propagation;
     }
 
     @Override
@@ -37,11 +37,16 @@ public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestI
         try {
             String host = request.getURI().getHost();
             OutboundPropagationDecision decision = policy.decide(host);
-            Context decided = Context.current().with(PlatformTraceContextKeys.PROPAGATION_DECISION, decision);
-            injector.inject(decided, request, PlatformHttpRequestSetter.INSTANCE);
+            apply(request, propagation.resolve(decision));
         } catch (RuntimeException ignored) {
             // Изоляция: сбой propagation не должен влиять на исходящий запрос.
         }
         return execution.execute(request, body);
+    }
+
+    private static void apply(HttpRequest request, OutboundPropagationHeaders headers) {
+        headers.forceTrace().ifPresent(header -> request.getHeaders().set(header.name(), header.value()));
+        headers.qaTrace().ifPresent(header -> request.getHeaders().set(header.name(), header.value()));
+        headers.requestId().ifPresent(header -> request.getHeaders().set(header.name(), header.value()));
     }
 }

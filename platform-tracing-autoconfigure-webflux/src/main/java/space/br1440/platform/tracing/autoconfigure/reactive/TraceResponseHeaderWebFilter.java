@@ -1,17 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import java.util.Optional;
+
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
+
 import reactor.core.publisher.Mono;
+
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.core.propagation.RequestIdSupport;
-
-import java.util.Optional;
+import space.br1440.platform.tracing.autoconfigure.support.RemoteServiceMdcBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdBoundarySupport;
 
 /**
  * Реактивный фильтр, добавляющий correlation/trace заголовки в HTTP-ответ.
@@ -39,7 +41,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
         // Correlation id вычисляется на этапе filter() (request-thread): входящий или сгенерированный.
         final String incomingRequestId = exchange.getRequest().getHeaders()
                 .getFirst(properties.getPropagation().getPlatformHeaders().getRequestIdHeader());
-        final String correlationId = RequestIdSupport.resolve(incomingRequestId);
+        final String correlationId = RequestIdBoundarySupport.resolve(incomingRequestId);
 
         response.beforeCommit(() -> Mono.fromRunnable(() -> {
             try {
@@ -55,7 +57,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
             }
         }));
         return chain.filter(exchange)
-                .doFinally(signal -> capturedTraceId.ifPresentOrElse(RemoteServiceMdc::clearForTrace, RemoteServiceMdc::clear));
+                .doFinally(signal -> RemoteServiceMdcBoundarySupport.clear(capturedTraceId.orElse(null)));
     }
 
     private Optional<String> safeCurrentTraceId() {

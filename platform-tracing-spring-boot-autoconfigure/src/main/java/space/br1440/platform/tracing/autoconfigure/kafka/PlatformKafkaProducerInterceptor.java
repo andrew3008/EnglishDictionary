@@ -1,15 +1,16 @@
 package space.br1440.platform.tracing.autoconfigure.kafka;
 
-import io.opentelemetry.context.Context;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
 import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.header.Headers;
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
-import space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys;
-
-import java.util.Map;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 
 /**
  * Kafka {@link ProducerInterceptor}, добавляющий платформенные управляющие заголовки в исходящую
@@ -21,7 +22,7 @@ import java.util.Map;
  * <h3>Контракт ProducerInterceptor</h3>
  * <ul>
  *   <li>Создаётся Kafka-клиентом по рефлексии (НЕ Spring-бин). Зависимости ({@link OutboundPropagationPolicy},
- *       {@link TraceControlHeaderInjector}) передаются через producer-config map и читаются в
+ *       {@link PlatformOutboundPropagation}) передаются через producer-config map и читаются в
  *       {@link #configure(Map)}. Kafka логирует WARN об «unknown config» для кастомных ключей —
  *       это ожидаемо.</li>
  *   <li>{@code onSend()} вызывается на producer-потоке -> inject строго неблокирующий (без I/O).</li>
@@ -33,19 +34,18 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
 
     /** Ключ producer-config с объектом политики {@link OutboundPropagationPolicy}. */
     public static final String CONFIG_POLICY = "platform.tracing.kafka.outbound-policy";
-    /** Ключ producer-config с объектом инжектора {@link TraceControlHeaderInjector}. */
-    public static final String CONFIG_INJECTOR = "platform.tracing.kafka.outbound-injector";
+    /** Ключ producer-config с объектом порта {@link PlatformOutboundPropagation}. */
+    public static final String CONFIG_PROPAGATION = "platform.tracing.kafka.outbound-propagation";
 
     private OutboundPropagationPolicy policy;
-    private TraceControlHeaderInjector injector;
+    private PlatformOutboundPropagation propagation;
 
     @Override
     public ProducerRecord<K, V> onSend(ProducerRecord<K, V> record) {
         try {
-            if (policy != null && injector != null && record != null) {
+            if (policy != null && propagation != null && record != null) {
                 OutboundPropagationDecision decision = policy.decide(record.topic());
-                Context decided = Context.current().with(PlatformTraceContextKeys.PROPAGATION_DECISION, decision);
-                injector.inject(decided, record.headers(), PlatformKafkaHeaderSetter.INSTANCE);
+                apply(record.headers(), propagation.resolve(decision));
             }
         } catch (RuntimeException ignored) {
             // Изоляция: сбой propagation не должен влиять на отправку сообщения.
@@ -69,10 +69,21 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
         if (policyObj instanceof OutboundPropagationPolicy p) {
             this.policy = p;
         }
-        Object injectorObj = configs.get(CONFIG_INJECTOR);
-        if (injectorObj instanceof TraceControlHeaderInjector i) {
-            this.injector = i;
+        Object propagationObj = configs.get(CONFIG_PROPAGATION);
+        if (propagationObj instanceof PlatformOutboundPropagation value) {
+            this.propagation = value;
         }
         // Если зависимости не переданы (некорректная конфигурация) — интерсептор остаётся no-op.
+    }
+
+    private static void apply(Headers carrier, OutboundPropagationHeaders headers) {
+        headers.forceTrace().ifPresent(header -> set(carrier, header));
+        headers.qaTrace().ifPresent(header -> set(carrier, header));
+        headers.requestId().ifPresent(header -> set(carrier, header));
+    }
+
+    private static void set(Headers carrier, OutboundPropagationHeaders.Header header) {
+        carrier.remove(header.name())
+                .add(header.name(), header.value().getBytes(StandardCharsets.UTF_8));
     }
 }

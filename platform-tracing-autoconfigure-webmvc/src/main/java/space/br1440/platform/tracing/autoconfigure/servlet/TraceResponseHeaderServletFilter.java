@@ -1,22 +1,24 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
+import java.io.IOException;
+import java.util.Optional;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.web.filter.OncePerRequestFilter;
-import space.br1440.platform.tracing.api.TraceOperations;
-import org.slf4j.MDC;
-import io.opentelemetry.api.trace.Span;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
+import org.slf4j.MDC;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import io.opentelemetry.api.trace.Span;
+
+import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.core.propagation.RequestIdSupport;
-
-import java.io.IOException;
-import java.util.Optional;
+import space.br1440.platform.tracing.autoconfigure.support.RemoteServiceMdcBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdBoundarySupport;
 
 /**
  * Сервлет-фильтр, добавляющий correlation/trace заголовки в HTTP-ответ.
@@ -69,7 +71,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         final TracingProperties.Propagation.Mdc mdcConfig = properties.getPropagation().getMdc();
         final String incomingRequestId = request.getHeader(
                 properties.getPropagation().getPlatformHeaders().getRequestIdHeader());
-        final String correlationId = RequestIdSupport.resolve(incomingRequestId);
+        final String correlationId = RequestIdBoundarySupport.resolve(incomingRequestId);
 
         if (mdcConfig.isPutRequestId()) {
             MDC.put(mdcConfig.getRequestIdKey(), correlationId);
@@ -87,7 +89,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            capturedTraceId.ifPresentOrElse(RemoteServiceMdc::clearForTrace, RemoteServiceMdc::clear);
+            RemoteServiceMdcBoundarySupport.clear(capturedTraceId.orElse(null));
 
             if (mdcConfig.isPutRequestId()) {
                 MDC.remove(mdcConfig.getRequestIdKey());

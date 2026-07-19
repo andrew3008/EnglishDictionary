@@ -1,12 +1,12 @@
 package space.br1440.platform.tracing.autoconfigure.support;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
+import org.junit.jupiter.api.Test;
+
 /**
- * Spike A: точная mismatch-семантика до изменения production resolver.
+ * Регрессия утверждённой в Spike A mismatch-семантики production resolver.
  */
 class SdkModeDecisionPrototypeTest {
 
@@ -73,55 +73,7 @@ class SdkModeDecisionPrototypeTest {
     }
 
     private static SdkMode resolve(SdkMode configured, SdkModeResolver.Inputs inputs) {
-        if (configured == SdkMode.DISABLED) {
-            return SdkMode.DISABLED;
-        }
-        if (inputs.agentPresent() && inputs.userBeanPresent()) {
-            throw new IllegalStateException(
-                    "OpenTelemetry bean and active Java Agent detected simultaneously; "
-                            + "remove the bean or disable the Agent");
-        }
-        if (configured == null || configured == SdkMode.AUTO) {
-            if (inputs.agentPresent()) {
-                return SdkMode.AGENT;
-            }
-            return inputs.globalFunctional() || inputs.userBeanPresent()
-                    ? SdkMode.EXTERNAL
-                    : SdkMode.STARTER;
-        }
-        if (configured == SdkMode.AGENT) {
-            if (!inputs.agentPresent()) {
-                throw new IllegalStateException(
-                        "platform.tracing.sdk.mode=AGENT requires an active OpenTelemetry Java Agent marker");
-            }
-            return SdkMode.AGENT;
-        }
-        if (configured == SdkMode.STARTER) {
-            if (inputs.agentPresent()) {
-                throw new IllegalStateException(
-                        "platform.tracing.sdk.mode=STARTER conflicts with an active OpenTelemetry Java Agent; "
-                                + "use AUTO or AGENT");
-            }
-            if (inputs.globalFunctional() || inputs.userBeanPresent()) {
-                throw new IllegalStateException(
-                        "platform.tracing.sdk.mode=STARTER conflicts with an external OpenTelemetry runtime; "
-                                + "use AUTO or EXTERNAL");
-            }
-            return SdkMode.STARTER;
-        }
-        if (configured == SdkMode.EXTERNAL) {
-            if (inputs.agentPresent()) {
-                throw new IllegalStateException(
-                        "platform.tracing.sdk.mode=EXTERNAL conflicts with an active OpenTelemetry Java Agent; "
-                                + "use AUTO or AGENT");
-            }
-            if (!inputs.globalFunctional() && !inputs.userBeanPresent()) {
-                throw new IllegalStateException(
-                        "platform.tracing.sdk.mode=EXTERNAL requires a functional external OpenTelemetry runtime");
-            }
-            return SdkMode.EXTERNAL;
-        }
-        throw new IllegalStateException("Unsupported SDK mode: " + configured);
+        return SdkModeResolver.resolve(configured, inputs);
     }
 
     private static SdkModeResolver.Inputs inputs(boolean agent, boolean global, boolean userBean) {

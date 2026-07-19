@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.core.manual;
 
 import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder;
@@ -10,6 +9,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl;
+import space.br1440.platform.tracing.core.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;

@@ -21,11 +21,14 @@ space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver
 space.br1440.platform.tracing.core.naming.PlatformSpanNameBuilder
 space.br1440.platform.tracing.core.propagation.NoOpPlatformContextPropagation
 space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation
+space.br1440.platform.tracing.core.propagation.OtelTraceparentReader
 space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl
 space.br1440.platform.tracing.core.propagation.RequestIdSupport
 space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor
 space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy
 space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector
+space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys
+space.br1440.platform.tracing.core.propagation.control.TraceControlHeaderInjector
 space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers
 space.br1440.platform.tracing.core.runtime.DelegatingTracingRuntime
 space.br1440.platform.tracing.core.runtime.NoOpSpanHandle

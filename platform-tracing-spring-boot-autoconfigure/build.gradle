@@ -6,7 +6,7 @@ dependencies {
     api platform(project(':platform-tracing-bom'))
 
     api project(':platform-tracing-api')
-    api project(':platform-tracing-core')
+    implementation project(':platform-tracing-core')
 
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework.boot:spring-boot'
