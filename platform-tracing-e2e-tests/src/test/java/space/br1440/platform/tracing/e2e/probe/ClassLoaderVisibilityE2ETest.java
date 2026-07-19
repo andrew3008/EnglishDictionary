@@ -82,6 +82,24 @@ class ClassLoaderVisibilityE2ETest {
         assertThat(output)
                 .as("probeClassLoader должен быть ExtensionClassLoader, а не AppClassLoader")
                 .contains(CL_PREFIX + "probeClassLoader=io.opentelemetry.javaagent.tooling.ExtensionClassLoader");
+        assertThat(output)
+                .contains(CL_PREFIX + "extensionApiClassLoader=io.opentelemetry.javaagent.tooling.ExtensionClassLoader")
+                .contains(CL_PREFIX + "applicationLauncherVisibleFromExtension=false")
+                .contains(CL_PREFIX + "extensionProbeVisibleFromApplication=false")
+                .contains(CL_PREFIX + "applicationCurrentSpanValid=true");
+
+        String extensionApiLoader = markerValue(output, "extensionApiClassLoader");
+        String applicationApiLoader = markerValue(output, "applicationApiClassLoader");
+        assertThat(applicationApiLoader)
+                .as("API application plane должен принадлежать application ClassLoader")
+                .doesNotContain("ExtensionClassLoader");
+        assertThat(applicationApiLoader)
+                .as("Application и agent extension должны иметь разные class identities API")
+                .isNotEqualTo(extensionApiLoader);
+        assertThat(markerValue(output, "applicationCurrentTraceId"))
+                .as("Current context должен быть видим application plane через OTel Context")
+                .matches("[0-9a-f]{32}")
+                .doesNotMatch("0{32}");
 
         // --- F1: все варианты ServiceLoader не видят custom-rule JAR ---
         List<Map<String, String>> variants = parseCLVariants(output);
@@ -199,5 +217,14 @@ class ClassLoaderVisibilityE2ETest {
             }
         }
         return variants;
+    }
+
+    private static String markerValue(String output, String key) {
+        String prefix = CL_PREFIX + key + "=";
+        return output.lines()
+                .filter(line -> line.startsWith(prefix))
+                .map(line -> line.substring(prefix.length()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Marker not found: " + key));
     }
 }

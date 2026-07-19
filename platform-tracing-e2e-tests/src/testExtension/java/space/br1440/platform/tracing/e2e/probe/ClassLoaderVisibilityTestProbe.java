@@ -51,6 +51,10 @@ public final class ClassLoaderVisibilityTestProbe implements AutoConfigurationCu
         emit("BEGIN");
         emit("extensionProbeLoaded=true");
         emit("probeClassLoader=" + classLoaderName(ClassLoaderVisibilityTestProbe.class.getClassLoader()));
+        emit("extensionApiClassLoader=" + classLoaderName(SpanAttributeScrubbingRule.class.getClassLoader()));
+        emit("applicationLauncherVisibleFromExtension=" + isClassVisible(
+                "space.br1440.platform.tracing.e2e.probe.ClassLoaderVisibilityE2ELauncher",
+                ClassLoaderVisibilityTestProbe.class.getClassLoader()));
 
         // F1: нативный ServiceLoader не видит custom-rules JAR из otel.javaagent.extensions
         probeF1Variants();
@@ -177,6 +181,15 @@ public final class ClassLoaderVisibilityTestProbe implements AutoConfigurationCu
             return "bootstrap";
         }
         return loader.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(loader));
+    }
+
+    private static boolean isClassVisible(String className, ClassLoader loader) {
+        try {
+            Class.forName(className, false, loader);
+            return true;
+        } catch (ClassNotFoundException expected) {
+            return false;
+        }
     }
 
     private static void emit(String payload) {

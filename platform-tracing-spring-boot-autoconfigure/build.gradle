@@ -76,17 +76,19 @@ dependencies {
 
 test {
     useJUnitPlatform {
-        excludeTags 'r01-red'
+        excludeTags 'known-defect'
     }
 }
 
 tasks.register('knownDefectTest', Test) {
-    description = 'Runs R01 known-defect RED tests (expected to fail until structural fix in Slice 2/6).'
+    description = 'Runs green characterization tests for confirmed defects owned by later slices.'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform {
-        includeTags 'r01-red'
+        includeTags 'known-defect'
     }
     shouldRunAfter test
 }
+
+check.dependsOn tasks.named('knownDefectTest')

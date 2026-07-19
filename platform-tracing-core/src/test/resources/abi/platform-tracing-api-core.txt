@@ -1,0 +1,876 @@
+TYPE public abstract interface space.br1440.platform.tracing.api.TraceOperations
+  METHOD public abstract space.br1440.platform.tracing.api.span.SpanFactory spans()
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
+TYPE public abstract annotation space.br1440.platform.tracing.api.annotation.SuppressAgentInstrumentation extends java.lang.annotation.Annotation
+  METHOD public abstract java.lang.String value() default=
+TYPE public abstract annotation space.br1440.platform.tracing.api.annotation.Traced extends java.lang.annotation.Annotation
+  METHOD public abstract java.lang.String value() default=
+  METHOD public abstract java.lang.String[] attributes() default=[]
+  METHOD public abstract space.br1440.platform.tracing.api.span.SpanCategory category() default=INTERNAL
+TYPE public abstract annotation space.br1440.platform.tracing.api.annotation.TracedAttribute extends java.lang.annotation.Annotation
+  METHOD public abstract java.lang.String value() default=
+TYPE public final class space.br1440.platform.tracing.api.attributes.PlatformAttributes
+  FIELD public static final java.lang.String CONTAINER_ID
+  FIELD public static final java.lang.String DB_OPERATION_NAME
+  FIELD public static final java.lang.String DB_RESPONSE_STATUS_CODE
+  FIELD public static final java.lang.String DB_SYSTEM_NAME
+  FIELD public static final java.lang.String ERROR_TYPE
+  FIELD public static final java.lang.String EXCEPTION_MESSAGE
+  FIELD public static final java.lang.String EXCEPTION_TYPE
+  FIELD public static final java.lang.String HTTP_REQUEST_METHOD
+  FIELD public static final java.lang.String HTTP_REQUEST_METHOD_ORIGINAL
+  FIELD public static final java.lang.String HTTP_RESPONSE_STATUS_CODE
+  FIELD public static final java.lang.String NETWORK_PROTOCOL_NAME
+  FIELD public static final java.lang.String PLATFORM_C_GROUP
+  FIELD public static final java.lang.String PLATFORM_ENVIRONMENT
+  FIELD public static final java.lang.String PLATFORM_HOST
+  FIELD public static final java.lang.String PLATFORM_ID
+  FIELD public static final java.lang.String PLATFORM_REMOTE_SERVICE
+  FIELD public static final java.lang.String PLATFORM_REQUEST_ID
+  FIELD public static final java.lang.String PLATFORM_RESULT
+  FIELD public static final java.lang.String PLATFORM_SAMPLING_REASON
+  FIELD public static final java.lang.String PLATFORM_TIMEOUT
+  FIELD public static final java.lang.String PLATFORM_TRACED_METHOD
+  FIELD public static final java.lang.String PLATFORM_TRACE_DURATION_CLASS
+  FIELD public static final java.lang.String PLATFORM_TRACE_PRIORITY
+  FIELD public static final java.lang.String PLATFORM_TYPE
+  FIELD public static final java.lang.String RPC_RESPONSE_STATUS_CODE
+  FIELD public static final java.lang.String RPC_SYSTEM_NAME
+  FIELD public static final java.lang.String SERVER_ADDRESS
+  FIELD public static final java.lang.String SERVER_PORT
+  FIELD public static final java.lang.String SERVICE_NAME
+  FIELD public static final java.lang.String SERVICE_VERSION
+  FIELD public static final java.lang.String URL_FULL
+TYPE public final class space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons
+  FIELD public static final java.lang.String DROP_PATH
+  FIELD public static final java.lang.String FALLBACK_DROP
+  FIELD public static final java.lang.String FORCE_HEADER
+  FIELD public static final java.lang.String GLOBAL_RATIO
+  FIELD public static final java.lang.String GLOBAL_RATIO_DROP
+  FIELD public static final java.lang.String KILL_SWITCH
+  FIELD public static final java.lang.String PARENT_DROP
+  FIELD public static final java.lang.String PARENT_SAMPLED
+  FIELD public static final java.lang.String QA_TRACE
+  FIELD public static final java.lang.String ROUTE_RATIO
+  FIELD public static final java.lang.String ROUTE_RATIO_DROP
+  FIELD public static final java.util.Set<java.lang.String> DROPPED
+  FIELD public static final java.util.Set<java.lang.String> EXPORTED
+  CTOR public space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons()
+TYPE public final record space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot
+  CTOR public space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot(java.lang.String,java.lang.String,java.lang.String)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String correlationId()
+  METHOD public java.lang.String spanId()
+  METHOD public java.lang.String traceId()
+TYPE public final class space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
+  METHOD public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult decode(java.util.Map<java.lang.String,java.lang.Object>)
+  METHOD public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion version()
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol current()
+TYPE public final record space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult
+  CTOR public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult(boolean,java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation>,java.util.Map<java.lang.String,java.lang.Object>,java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation>)
+  METHOD public boolean valid()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation> violations()
+  METHOD public java.util.Map<java.lang.String,java.lang.Object> normalizedPayload()
+  METHOD public java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation> operation()
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult failure(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation>)
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult failure(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation)
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult success(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.Map<java.lang.String,java.lang.Object>)
+TYPE public final class space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys
+  FIELD public static final java.lang.String CONTRACT_VERSION
+  FIELD public static final java.lang.String DIAGNOSTICS_REQUEST_ID
+  FIELD public static final java.lang.String DIAGNOSTICS_TIMESTAMP
+  FIELD public static final java.lang.String ENRICHING_ENABLED
+  FIELD public static final java.lang.String EXPORT_ENABLED
+  FIELD public static final java.lang.String OPERATION
+  FIELD public static final java.lang.String PROPAGATION_ENABLED
+  FIELD public static final java.lang.String SAMPLING_DROP_PATH_PREFIXES
+  FIELD public static final java.lang.String SAMPLING_FORCE_HEADER_ENABLED
+  FIELD public static final java.lang.String SAMPLING_FORCE_HEADER_VALUES
+  FIELD public static final java.lang.String SAMPLING_KILL_SWITCH_ENABLED
+  FIELD public static final java.lang.String SAMPLING_QA_TRACE_ENABLED
+  FIELD public static final java.lang.String SAMPLING_RATIO
+  FIELD public static final java.lang.String SAMPLING_ROUTE_RATIOS
+  FIELD public static final java.lang.String SCRUBBING_ENABLED
+  FIELD public static final java.lang.String SCRUBBING_MODE
+  FIELD public static final java.lang.String SCRUBBING_RULE_NAMES
+  FIELD public static final java.lang.String SOURCE
+  FIELD public static final java.lang.String VALIDATION_ENABLED
+  FIELD public static final java.lang.String VALIDATION_MODE
+  FIELD public static final java.lang.String VALIDATION_STRICT
+TYPE public final enum space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation APPLY_RUNTIME_POLICY
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation READ_APPLIED_STATE
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation VALIDATE_RUNTIME_POLICY
+  METHOD public java.lang.String wireValue()
+  METHOD public static java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation> parse(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation[] values()
+TYPE public final record space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion
+  CTOR public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion(int)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public int major()
+  METHOD public static java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion> parse(java.lang.Object)
+TYPE public final record space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation
+  CTOR public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation(java.lang.String,java.lang.String,java.lang.String,java.lang.String,space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String actualType()
+  METHOD public java.lang.String expectedType()
+  METHOD public java.lang.String key()
+  METHOD public java.lang.String reason()
+  METHOD public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode code()
+TYPE public final enum space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode INVALID_VALUE
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode MISSING_REQUIRED_KEY
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode OPERATION_NOT_ALLOWED
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode TYPE_MISMATCH
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode UNKNOWN_KEY
+  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode UNSUPPORTED_VERSION
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode[] values()
+TYPE public abstract interface space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource
+  METHOD public abstract java.util.Optional<java.lang.String> resolve()
+TYPE public final class space.br1440.platform.tracing.api.mdc.TracingMdcKeys
+  FIELD public static final java.lang.String CORRELATION_ID
+  FIELD public static final java.lang.String REMOTE_SERVICE
+  FIELD public static final java.lang.String SPAN_ID
+  FIELD public static final java.lang.String TRACE_FLAGS
+  FIELD public static final java.lang.String TRACE_ID
+TYPE public abstract interface space.br1440.platform.tracing.api.propagation.OtelTraceparentReader
+  METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String)
+  METHOD public abstract java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String,java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.RemoteSpanLink require(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.api.propagation.OtelTraceparentReaders
+  METHOD public static space.br1440.platform.tracing.api.propagation.OtelTraceparentReader get()
+TYPE public abstract interface space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
+  METHOD public abstract java.lang.Runnable wrap(java.lang.Runnable)
+  METHOD public abstract java.util.concurrent.Executor contextAware(java.util.concurrent.Executor)
+  METHOD public abstract java.util.concurrent.ExecutorService contextAware(java.util.concurrent.ExecutorService)
+  METHOD public abstract space.br1440.platform.tracing.api.util.ThrowingSupplier<T> wrap(space.br1440.platform.tracing.api.util.ThrowingSupplier<T>)
+TYPE public final class space.br1440.platform.tracing.api.propagation.PlatformHeaders
+  FIELD public static final java.lang.String X_QA_TRACE
+  FIELD public static final java.lang.String X_REQUEST_ID
+  FIELD public static final java.lang.String X_TRACE_ID
+  FIELD public static final java.lang.String X_TRACE_ON
+TYPE public final record space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
+  CTOR public space.br1440.platform.tracing.api.propagation.control.InboundTraceControl(boolean,boolean,java.lang.String,java.lang.String,java.lang.String)
+  METHOD public boolean forceTrace()
+  METHOD public boolean qaTrace()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String rawForceTraceValue()
+  METHOD public java.lang.String requestId()
+  METHOD public java.lang.String samplingReason()
+TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor
+  METHOD public abstract space.br1440.platform.tracing.api.propagation.control.InboundTraceControl fromHeaders(java.lang.String,java.lang.String,java.lang.String)
+TYPE public final record space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision
+  FIELD public static final space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision ALLOW_ALL
+  FIELD public static final space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision DENY_ALL
+  CTOR public space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision(boolean,boolean,boolean)
+  METHOD public boolean propagateForceTrace()
+  METHOD public boolean propagateQaTrace()
+  METHOD public boolean propagateRequestId()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy
+  METHOD public abstract space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision decide(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.api.propagation.control.PlatformTraceContextKeys
+  FIELD public static final io.opentelemetry.context.ContextKey<space.br1440.platform.tracing.api.propagation.control.InboundTraceControl> TRACE_CONTROL
+  FIELD public static final io.opentelemetry.context.ContextKey<space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision> PROPAGATION_DECISION
+TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector
+  METHOD public abstract void inject(io.opentelemetry.context.Context,C,io.opentelemetry.context.propagation.TextMapSetter<C>)
+TYPE public abstract interface space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher
+  METHOD public abstract boolean isTrusted(java.lang.String)
+TYPE public final enum space.br1440.platform.tracing.api.semconv.SemconvValidationMode
+  FIELD public static final space.br1440.platform.tracing.api.semconv.SemconvValidationMode DISABLED
+  FIELD public static final space.br1440.platform.tracing.api.semconv.SemconvValidationMode STRICT
+  FIELD public static final space.br1440.platform.tracing.api.semconv.SemconvValidationMode WARN
+  METHOD public static space.br1440.platform.tracing.api.semconv.SemconvValidationMode valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.semconv.SemconvValidationMode[] values()
+TYPE public final record space.br1440.platform.tracing.api.semconv.SemconvViolation
+  CTOR public space.br1440.platform.tracing.api.semconv.SemconvViolation(java.lang.String,space.br1440.platform.tracing.api.span.SpanCategory,java.lang.String,java.lang.String,java.lang.String)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String attributeKey()
+  METHOD public java.lang.String builder()
+  METHOD public java.lang.String message()
+  METHOD public java.lang.String ruleId()
+  METHOD public space.br1440.platform.tracing.api.span.SpanCategory category()
+TYPE public final class space.br1440.platform.tracing.api.semconv.SemconvViolationException extends java.lang.RuntimeException
+  CTOR public space.br1440.platform.tracing.api.semconv.SemconvViolationException(space.br1440.platform.tracing.api.semconv.SemconvViolation)
+  METHOD public space.br1440.platform.tracing.api.semconv.SemconvViolation violation()
+TYPE public abstract annotation space.br1440.platform.tracing.api.semconv.annotation.DatabaseSemconvVersion extends java.lang.annotation.Annotation
+  METHOD public abstract java.lang.String value()
+TYPE public abstract annotation space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion extends java.lang.annotation.Annotation
+  METHOD public abstract java.lang.String value()
+TYPE public abstract annotation space.br1440.platform.tracing.api.semconv.annotation.KafkaSemconvVersion extends java.lang.annotation.Annotation
+  METHOD public abstract java.lang.String value()
+TYPE public abstract annotation space.br1440.platform.tracing.api.semconv.annotation.RpcSemconvVersion extends java.lang.annotation.Annotation
+  METHOD public abstract java.lang.String value()
+TYPE public final record space.br1440.platform.tracing.api.span.RemoteSpanLink
+  CTOR public space.br1440.platform.tracing.api.span.RemoteSpanLink(java.lang.String,java.lang.String,byte,java.lang.String)
+  METHOD public byte traceFlags()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String spanId()
+  METHOD public java.lang.String traceId()
+  METHOD public java.lang.String traceState()
+  METHOD public static space.br1440.platform.tracing.api.span.RemoteSpanLink sampled(java.lang.String,java.lang.String)
+TYPE public final enum space.br1440.platform.tracing.api.span.SpanCategory
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory DATABASE
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory HTTP_CLIENT
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory HTTP_SERVER
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory INTERNAL
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory KAFKA_CONSUMER
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory KAFKA_PRODUCER
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory RPC_CLIENT
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanCategory RPC_SERVER
+  METHOD public java.lang.String value()
+  METHOD public static space.br1440.platform.tracing.api.span.SpanCategory valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.span.SpanCategory[] values()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.SpanFactory
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder operation(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.TransportTracing transport()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanExecution fromSpec(space.br1440.platform.tracing.api.span.spec.SpanSpec)
+TYPE public final enum space.br1440.platform.tracing.api.span.SpanResult
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanResult CANCELLED
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanResult FAILURE
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanResult REJECTED
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanResult SKIPPED
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanResult SUCCESS
+  FIELD public static final space.br1440.platform.tracing.api.span.SpanResult TIMEOUT
+  METHOD public java.lang.String value()
+  METHOD public static space.br1440.platform.tracing.api.span.SpanResult valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.span.SpanResult[] values()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView
+  METHOD public abstract java.util.Optional<java.lang.String> correlationId()
+  METHOD public abstract java.util.Optional<java.lang.String> spanId()
+  METHOD public abstract java.util.Optional<java.lang.String> traceId()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder>
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder collection(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder operation(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder system(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder>
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder method(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder serverAddress(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder statusCode(long)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder url(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder>
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder method(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder route(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder statusCode(long)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.HttpTracing
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder client()
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder server()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder>
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder>
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder batch(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder destination(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder operation(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder>
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder destination(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder operation(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.KafkaTracing
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder consumer()
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder producer()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder
+  METHOD public abstract B child()
+  METHOD public abstract B detached()
+  METHOD public abstract B root()
+  METHOD public abstract T call(java.util.function.Supplier<T>)
+  METHOD public abstract T callChecked(space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanHandle start()
+  METHOD public abstract transient B fromTraceparent(java.lang.String[])
+  METHOD public abstract transient B linkedTo(space.br1440.platform.tracing.api.span.RemoteSpanLink[])
+  METHOD public abstract void run(java.lang.Runnable)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder>
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder>
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder method(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder serverAddress(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder service(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder system(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder>
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder method(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder service(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder system(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.RpcTracing
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder client()
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder server()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.TransportTracing
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder database()
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.HttpTracing http()
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.KafkaTracing kafka()
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.RpcTracing rpc()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment
+  METHOD public abstract space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment requestId(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment result(space.br1440.platform.tracing.api.span.SpanResult)
+  METHOD public abstract space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment userHash(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.enrich.SpanEnricher
+  METHOD public abstract void enrichCurrentSpan(java.util.function.Consumer<space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment>)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.spec.SpanExecution
+  METHOD public abstract T call(java.util.function.Supplier<T>)
+  METHOD public abstract T callChecked(space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanHandle start()
+  METHOD public abstract void run(java.lang.Runnable)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.spec.SpanHandle extends java.lang.AutoCloseable
+  METHOD public abstract void close()
+  METHOD public abstract void recordException(java.lang.Throwable)
+TYPE public final enum space.br1440.platform.tracing.api.span.spec.SpanRelationship
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanRelationship CHILD
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanRelationship DETACHED
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanRelationship ROOT
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanRelationship valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanRelationship[] values()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec
+  METHOD public abstract java.util.List<space.br1440.platform.tracing.api.span.RemoteSpanLink> links()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanRelationship kind()
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec child()
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec detached()
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec root()
+  METHOD public static void validateRelationshipLinks(space.br1440.platform.tracing.api.span.spec.SpanRelationship,java.util.List<space.br1440.platform.tracing.api.span.RemoteSpanLink>)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.spec.SpanSpec
+  METHOD public abstract java.lang.String name()
+  METHOD public abstract java.util.Map<java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue> attributes()
+  METHOD public abstract java.util.Optional<java.lang.String> reference()
+  METHOD public abstract space.br1440.platform.tracing.api.span.SpanCategory category()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec relationship()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecReason reason()
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder builder(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue booleanList(java.util.List<java.lang.Boolean>)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue doubleList(java.util.List<java.lang.Double>)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue longList(java.util.List<java.lang.Long>)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue of(boolean)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue of(double)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue of(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue of(long)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue stringList(java.util.List<java.lang.String>)
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$BooleanListValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$BooleanListValue(java.util.List<java.lang.Boolean>)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<java.lang.Boolean> values()
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$BooleanValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$BooleanValue(boolean)
+  METHOD public boolean value()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$DoubleListValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$DoubleListValue(java.util.List<java.lang.Double>)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<java.lang.Double> values()
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$DoubleValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$DoubleValue(double)
+  METHOD public double value()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$LongListValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$LongListValue(java.util.List<java.lang.Long>)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<java.lang.Long> values()
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$LongValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$LongValue(long)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public long value()
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$StringListValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$StringListValue(java.util.List<java.lang.String>)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<java.lang.String> values()
+TYPE public static final record space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$StringValue implements space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+  CTOR public space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue$StringValue(java.lang.String)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String value()
+TYPE public abstract interface space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpec build()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder attribute(java.lang.String,boolean)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder attribute(java.lang.String,double)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder attribute(java.lang.String,java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder attribute(java.lang.String,long)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder booleanListAttribute(java.lang.String,java.util.List<java.lang.Boolean>)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder category(space.br1440.platform.tracing.api.span.SpanCategory)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder child()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder detached()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder doubleListAttribute(java.lang.String,java.util.List<java.lang.Double>)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder longListAttribute(java.lang.String,java.util.List<java.lang.Long>)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder reason(space.br1440.platform.tracing.api.span.spec.SpanSpecReason)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder reference(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder root()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder stringListAttribute(java.lang.String,java.util.List<java.lang.String>)
+  METHOD public abstract transient space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder fromTraceparent(java.lang.String[])
+  METHOD public abstract transient space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder linkedTo(space.br1440.platform.tracing.api.span.RemoteSpanLink[])
+TYPE public final enum space.br1440.platform.tracing.api.span.spec.SpanSpecReason
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanSpecReason LEGACY_INTEGRATION
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanSpecReason PLATFORM_EDGE_CASE
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanSpecReason TEMPORARY_WORKAROUND
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanSpecReason UNSUPPORTED_LIBRARY
+  FIELD public static final space.br1440.platform.tracing.api.span.spec.SpanSpecReason UNSUPPORTED_PROTOCOL
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecReason valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpecReason[] values()
+TYPE public final enum space.br1440.platform.tracing.api.spi.ScrubbingAction
+  FIELD public static final space.br1440.platform.tracing.api.spi.ScrubbingAction DROP
+  FIELD public static final space.br1440.platform.tracing.api.spi.ScrubbingAction HASH
+  FIELD public static final space.br1440.platform.tracing.api.spi.ScrubbingAction KEEP
+  FIELD public static final space.br1440.platform.tracing.api.spi.ScrubbingAction MASK
+  FIELD public static final space.br1440.platform.tracing.api.spi.ScrubbingAction TRUNCATE
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingAction valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingAction[] values()
+TYPE public final record space.br1440.platform.tracing.api.spi.ScrubbingDecision
+  FIELD public static final java.lang.String SCRUBBING_FAILED_REASON
+  CTOR public space.br1440.platform.tracing.api.spi.ScrubbingDecision(space.br1440.platform.tracing.api.spi.ScrubbingAction,java.lang.String,int,boolean)
+  METHOD public boolean terminal()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public int maxLength()
+  METHOD public java.lang.String reason()
+  METHOD public space.br1440.platform.tracing.api.spi.ScrubbingAction action()
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision drop(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision dropTerminal(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision hash(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision keep()
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision mask(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision maskTerminal(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision scrubbingFailed()
+  METHOD public static space.br1440.platform.tracing.api.spi.ScrubbingDecision truncate(java.lang.String,int)
+TYPE public abstract interface space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule
+  METHOD public abstract java.lang.String name()
+  METHOD public abstract space.br1440.platform.tracing.api.spi.ScrubbingDecision evaluate(java.lang.String,java.lang.Object)
+  METHOD public boolean critical()
+  METHOD public boolean isExcluded(java.lang.String)
+  METHOD public int priority()
+TYPE public abstract interface space.br1440.platform.tracing.api.util.ThrowingSupplier
+  METHOD public abstract T get() throws java.lang.Exception
+TYPE public final class space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView implements space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView
+  CTOR public space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView(java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>)
+  METHOD public java.util.Optional<java.lang.String> correlationId()
+  METHOD public java.util.Optional<java.lang.String> spanId()
+  METHOD public java.util.Optional<java.lang.String> traceId()
+TYPE public final record space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationDecision
+  CTOR public space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationDecision(boolean,java.lang.String)
+  METHOD public boolean allowed()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String reason()
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationDecision permitted()
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationDecision rejected(java.lang.String)
+TYPE public abstract interface space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy
+  METHOD public abstract space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationDecision evaluate(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation)
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy startupConfigured(boolean)
+TYPE public abstract interface space.br1440.platform.tracing.core.control.protocol.RuntimePolicyApplier
+  METHOD public abstract void apply(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.Map<java.lang.String,java.lang.Object>,java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlDomainValidator
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult validate(java.util.Map<java.lang.String,java.lang.Object>)
+TYPE public final record space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult
+  CTOR public space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult(space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus,java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation>,java.util.List<java.lang.String>)
+  METHOD public boolean isRejected()
+  METHOD public boolean isSuccess()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<java.lang.String> violations()
+  METHOD public java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation> operation()
+  METHOD public space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus status()
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult decodeRejected(java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation>)
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult domainRejected(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.List<java.lang.String>)
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult mutationRejected(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult success(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation)
+TYPE public static final enum space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus
+  FIELD public static final space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus DECODE_REJECTED
+  FIELD public static final space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus DOMAIN_REJECTED
+  FIELD public static final space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus MUTATION_REJECTED
+  FIELD public static final space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus SUCCESS
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult$HandleStatus[] values()
+TYPE public final class space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler
+  CTOR public space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler(space.br1440.platform.tracing.core.control.protocol.RuntimePolicyApplier)
+  CTOR public space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler(space.br1440.platform.tracing.core.control.protocol.RuntimePolicyApplier,space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy)
+  METHOD public space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult handle(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult)
+TYPE public final record space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult
+  CTOR public space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult(boolean,java.util.List<java.lang.String>)
+  METHOD public boolean valid()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<java.lang.String> violations()
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult invalid(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult success()
+TYPE public final class space.br1440.platform.tracing.core.control.protocol.ValidationModePolicyValidator
+  FIELD public static final java.lang.String MODE_LOG_ONLY
+  FIELD public static final java.lang.String MODE_STRICT
+  METHOD public static space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult validate(java.util.Map<java.lang.String,java.lang.Object>)
+TYPE public final class space.br1440.platform.tracing.core.enrichment.DefaultSpanEnricher implements space.br1440.platform.tracing.api.span.enrich.SpanEnricher
+  CTOR public space.br1440.platform.tracing.core.enrichment.DefaultSpanEnricher()
+  METHOD public void enrichCurrentSpan(java.util.function.Consumer<space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment>)
+TYPE public final class space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy
+  CTOR public space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy(boolean,boolean)
+  METHOD public java.lang.String sanitizeOrNull(java.lang.Throwable)
+  METHOD public java.lang.String sanitizedStackOrNull(java.lang.Throwable)
+  METHOD public static space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy secureDefault()
+TYPE public final class space.br1440.platform.tracing.core.exception.ExceptionRecorder
+  CTOR public space.br1440.platform.tracing.core.exception.ExceptionRecorder(space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy)
+  METHOD public static space.br1440.platform.tracing.core.exception.ExceptionRecorder secureDefault()
+  METHOD public void markCurrentSpanAsError()
+  METHOD public void record(io.opentelemetry.api.trace.Span,java.lang.Throwable)
+  METHOD public void record(java.lang.Throwable)
+  METHOD public void result(space.br1440.platform.tracing.api.span.SpanResult)
+TYPE public class space.br1440.platform.tracing.core.facade.DefaultTraceOperations implements space.br1440.platform.tracing.api.TraceOperations
+  CTOR public space.br1440.platform.tracing.core.facade.DefaultTraceOperations(space.br1440.platform.tracing.core.runtime.TracingRuntime)
+  METHOD public boolean isFacadeEnabled()
+  METHOD public space.br1440.platform.tracing.api.span.SpanFactory spans()
+  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
+  METHOD public space.br1440.platform.tracing.core.runtime.TracingRuntime tracingRuntime()
+  METHOD public void setFacadeEnabled(boolean)
+TYPE public final class space.br1440.platform.tracing.core.facade.NoopTraceOperations implements space.br1440.platform.tracing.api.TraceOperations
+  FIELD public static final space.br1440.platform.tracing.core.facade.NoopTraceOperations INSTANCE
+  METHOD public space.br1440.platform.tracing.api.span.SpanFactory spans()
+  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
+  METHOD public static space.br1440.platform.tracing.core.facade.NoopTraceOperations backedBy(space.br1440.platform.tracing.core.runtime.TracingRuntime)
+TYPE public final class space.br1440.platform.tracing.core.manual.DefaultSpanFactory implements space.br1440.platform.tracing.api.span.SpanFactory
+  CTOR public space.br1440.platform.tracing.core.manual.DefaultSpanFactory(space.br1440.platform.tracing.core.runtime.TracingRuntime,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy)
+  METHOD public space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder operation(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.span.builder.TransportTracing transport()
+  METHOD public space.br1440.platform.tracing.api.span.spec.SpanExecution fromSpec(space.br1440.platform.tracing.api.span.spec.SpanSpec)
+TYPE public final class space.br1440.platform.tracing.core.manual.DefaultTransportTracing implements space.br1440.platform.tracing.api.span.builder.TransportTracing
+  CTOR public space.br1440.platform.tracing.core.manual.DefaultTransportTracing(space.br1440.platform.tracing.core.runtime.TracingRuntime,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy)
+  METHOD public space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder database()
+  METHOD public space.br1440.platform.tracing.api.span.builder.HttpTracing http()
+  METHOD public space.br1440.platform.tracing.api.span.builder.KafkaTracing kafka()
+  METHOD public space.br1440.platform.tracing.api.span.builder.RpcTracing rpc()
+TYPE public final class space.br1440.platform.tracing.core.manual.spec.OperationSpanSpecs
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpec from(java.lang.String,space.br1440.platform.tracing.api.span.SpanCategory,space.br1440.platform.tracing.api.span.spec.SpanRelationship,java.util.List<space.br1440.platform.tracing.api.span.RemoteSpanLink>)
+TYPE public final class space.br1440.platform.tracing.core.manual.spec.SemanticSpanSpecs
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpec build(space.br1440.platform.tracing.api.span.SpanCategory,java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanRelationship,java.util.List<space.br1440.platform.tracing.api.span.RemoteSpanLink>,java.util.Map<java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue>,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy,java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc
+  METHOD public static void clear()
+  METHOD public static void clearForTrace(java.lang.String)
+  METHOD public static void putIfPresent(java.lang.String)
+  METHOD public static void putIfPresent(java.lang.String,java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver
+  CTOR public space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver(java.util.List<space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource>)
+  METHOD public java.util.Optional<java.lang.String> resolve()
+  METHOD public java.util.Optional<java.lang.String> resolve(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.naming.PlatformSpanNameBuilder
+  METHOD public static java.lang.String forCategory(space.br1440.platform.tracing.api.span.SpanCategory,io.opentelemetry.api.common.Attributes,java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.propagation.NoOpPlatformContextPropagation implements space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
+  FIELD public static final space.br1440.platform.tracing.core.propagation.NoOpPlatformContextPropagation INSTANCE
+  METHOD public java.lang.Runnable wrap(java.lang.Runnable)
+  METHOD public java.util.concurrent.Executor contextAware(java.util.concurrent.Executor)
+  METHOD public java.util.concurrent.ExecutorService contextAware(java.util.concurrent.ExecutorService)
+  METHOD public space.br1440.platform.tracing.api.util.ThrowingSupplier<T> wrap(space.br1440.platform.tracing.api.util.ThrowingSupplier<T>)
+TYPE public class space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation implements space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
+  CTOR public space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation()
+  METHOD public java.lang.Runnable wrap(java.lang.Runnable)
+  METHOD public java.util.concurrent.Executor contextAware(java.util.concurrent.Executor)
+  METHOD public java.util.concurrent.ExecutorService contextAware(java.util.concurrent.ExecutorService)
+  METHOD public space.br1440.platform.tracing.api.util.ThrowingSupplier<T> wrap(space.br1440.platform.tracing.api.util.ThrowingSupplier<T>)
+TYPE public final class space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl implements space.br1440.platform.tracing.api.propagation.OtelTraceparentReader
+  FIELD public static final space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl INSTANCE
+  CTOR public space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl()
+  METHOD public java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String)
+  METHOD public java.util.Optional<space.br1440.platform.tracing.api.span.RemoteSpanLink> read(java.lang.String,java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.span.RemoteSpanLink require(java.lang.String)
+  METHOD public static java.lang.String sanitize(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.propagation.RequestIdSupport
+  FIELD public static final int MAX_LENGTH
+  METHOD public static java.lang.String resolve(java.lang.String)
+  METHOD public static java.lang.String sanitizeOrNull(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor implements space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor
+  CTOR public space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor()
+  METHOD public space.br1440.platform.tracing.api.propagation.control.InboundTraceControl fromHeaders(java.lang.String,java.lang.String,java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy implements space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy
+  CTOR public space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy(boolean,space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher,boolean,boolean,boolean)
+  METHOD public space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision decide(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector implements space.br1440.platform.tracing.api.propagation.control.TraceControlHeaderInjector
+  CTOR public space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector(java.lang.String,java.lang.String,java.lang.String)
+  METHOD public void inject(io.opentelemetry.context.Context,C,io.opentelemetry.context.propagation.TextMapSetter<C>)
+TYPE public final class space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers
+  METHOD public static space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher forHttpHosts(java.util.List<java.lang.String>,boolean)
+  METHOD public static space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher forKafkaTopics(java.util.List<java.lang.String>)
+TYPE public abstract interface space.br1440.platform.tracing.core.runtime.DelegatingTracingRuntime extends space.br1440.platform.tracing.core.runtime.TracingRuntime
+  METHOD public abstract space.br1440.platform.tracing.core.runtime.TracingRuntime delegate()
+  METHOD public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy()
+TYPE public final class space.br1440.platform.tracing.core.runtime.NoOpSpanHandle implements space.br1440.platform.tracing.api.span.spec.SpanHandle
+  FIELD public static final space.br1440.platform.tracing.core.runtime.NoOpSpanHandle INSTANCE
+  METHOD public void close()
+  METHOD public void recordException(java.lang.Throwable)
+TYPE public final class space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime implements space.br1440.platform.tracing.core.runtime.TracingRuntime
+  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
+  METHOD public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
+  METHOD public space.br1440.platform.tracing.core.runtime.state.TracingState state()
+  METHOD public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy()
+  METHOD public static space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime disabledByConfiguration(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime noop()
+  METHOD public static space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime unavailable(java.lang.String)
+  METHOD public void recordException(space.br1440.platform.tracing.api.span.spec.SpanHandle,java.lang.Throwable)
+TYPE public final class space.br1440.platform.tracing.core.runtime.SpanHandleImpl implements space.br1440.platform.tracing.api.span.spec.SpanHandle
+  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanHandle wrap(space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope)
+  METHOD public void close()
+  METHOD public void recordException(java.lang.Throwable)
+TYPE public abstract interface space.br1440.platform.tracing.core.runtime.TracingRuntime
+  METHOD public abstract space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
+  METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
+  METHOD public abstract space.br1440.platform.tracing.core.runtime.state.TracingState state()
+  METHOD public abstract space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy()
+  METHOD public abstract void recordException(space.br1440.platform.tracing.api.span.spec.SpanHandle,java.lang.Throwable)
+TYPE public final class space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime implements space.br1440.platform.tracing.core.runtime.TracingRuntime
+  FIELD public static final java.lang.String INSTRUMENTATION_NAME
+  CTOR public space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime(io.opentelemetry.api.OpenTelemetry,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy,space.br1440.platform.tracing.core.exception.ExceptionRecorder)
+  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
+  METHOD public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
+  METHOD public space.br1440.platform.tracing.core.runtime.state.TracingState state()
+  METHOD public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy()
+  METHOD public void recordException(space.br1440.platform.tracing.api.span.spec.SpanHandle,java.lang.Throwable)
+TYPE public final class space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory
+  METHOD public static space.br1440.platform.tracing.core.runtime.TracingRuntime create(io.opentelemetry.api.OpenTelemetry)
+  METHOD public static space.br1440.platform.tracing.core.runtime.TracingRuntime create(io.opentelemetry.api.OpenTelemetry,space.br1440.platform.tracing.core.exception.ExceptionRecorder)
+  METHOD public static space.br1440.platform.tracing.core.runtime.TracingRuntime create(io.opentelemetry.api.OpenTelemetry,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy)
+  METHOD public static space.br1440.platform.tracing.core.runtime.TracingRuntime create(io.opentelemetry.api.OpenTelemetry,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy,space.br1440.platform.tracing.core.exception.ExceptionRecorder)
+TYPE public final class space.br1440.platform.tracing.core.runtime.otel.SpanKinds
+  METHOD public static io.opentelemetry.api.trace.SpanKind toSpanKind(space.br1440.platform.tracing.api.span.SpanCategory)
+TYPE public final class space.br1440.platform.tracing.core.runtime.otel.SpanSpecAttributeValueConverter
+  METHOD public static io.opentelemetry.api.common.Attributes toAttributes(java.util.Map<java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue>)
+  METHOD public static java.util.Map<java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue> fromAttributes(io.opentelemetry.api.common.Attributes)
+TYPE public final class space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope implements java.lang.AutoCloseable
+  CTOR public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope(io.opentelemetry.api.trace.Span,io.opentelemetry.context.Scope,space.br1440.platform.tracing.core.exception.ExceptionRecorder)
+  METHOD public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope addEvent(java.lang.String)
+  METHOD public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope recordException(java.lang.Throwable)
+  METHOD public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope setAttribute(java.lang.String,boolean)
+  METHOD public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope setAttribute(java.lang.String,double)
+  METHOD public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope setAttribute(java.lang.String,java.lang.String)
+  METHOD public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope setAttribute(java.lang.String,long)
+  METHOD public space.br1440.platform.tracing.core.runtime.otel.scope.OwningSpanScope setResult(space.br1440.platform.tracing.api.span.SpanResult)
+  METHOD public void close()
+TYPE public final class space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState implements space.br1440.platform.tracing.core.runtime.state.TracingState
+  METHOD public java.util.Map<java.lang.String,java.lang.String> details()
+  METHOD public java.util.Optional<java.lang.String> reason()
+  METHOD public space.br1440.platform.tracing.core.runtime.state.TracingMode mode()
+  METHOD public static space.br1440.platform.tracing.core.runtime.state.TracingState enabled()
+  METHOD public static space.br1440.platform.tracing.core.runtime.state.TracingState of(space.br1440.platform.tracing.core.runtime.state.TracingMode,java.lang.String,java.util.Map<java.lang.String,java.lang.String>)
+TYPE public final enum space.br1440.platform.tracing.core.runtime.state.TracingMode
+  FIELD public static final space.br1440.platform.tracing.core.runtime.state.TracingMode DISABLED_BY_CONFIGURATION
+  FIELD public static final space.br1440.platform.tracing.core.runtime.state.TracingMode ENABLED
+  FIELD public static final space.br1440.platform.tracing.core.runtime.state.TracingMode NOOP
+  FIELD public static final space.br1440.platform.tracing.core.runtime.state.TracingMode TEST
+  FIELD public static final space.br1440.platform.tracing.core.runtime.state.TracingMode UNAVAILABLE
+  METHOD public static space.br1440.platform.tracing.core.runtime.state.TracingMode valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.runtime.state.TracingMode[] values()
+TYPE public abstract interface space.br1440.platform.tracing.core.runtime.state.TracingState
+  METHOD public abstract java.util.Map<java.lang.String,java.lang.String> details()
+  METHOD public abstract java.util.Optional<java.lang.String> reason()
+  METHOD public abstract space.br1440.platform.tracing.core.runtime.state.TracingMode mode()
+TYPE public abstract interface space.br1440.platform.tracing.core.runtime.versioned.VersionedState
+  METHOD public abstract long version()
+TYPE public final class space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder
+  CTOR public space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder(T)
+  METHOD public T current()
+  METHOD public boolean tryUpdate(java.util.function.UnaryOperator<T>)
+  METHOD public boolean tryUpdate(java.util.function.UnaryOperator<T>,java.util.function.Predicate<T>)
+  METHOD public long version()
+TYPE public final class space.br1440.platform.tracing.core.sampling.engine.SamplingPolicyEngine
+  METHOD public int ruleCount()
+  METHOD public java.lang.String ruleNameAt(int)
+  METHOD public space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest,space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot)
+  METHOD public static space.br1440.platform.tracing.core.sampling.engine.SamplingPolicyEngine productionEngine()
+TYPE public final enum space.br1440.platform.tracing.core.sampling.model.ParentContextState
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.ParentContextState ABSENT
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.ParentContextState NOT_SAMPLED
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.ParentContextState SAMPLED
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.ParentContextState valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.ParentContextState[] values()
+TYPE public final record space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix
+  CTOR public space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix(java.lang.String,double)
+  METHOD public double ratio()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String prefix()
+TYPE public final record space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision
+  CTOR public space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision(space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType,space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason,java.lang.String)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String winningRule()
+  METHOD public space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType decisionType()
+  METHOD public space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason reason()
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision abstain()
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision drop(space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason,java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision recordAndSample(space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason,java.lang.String)
+TYPE public final enum space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType ABSTAIN
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType DROP
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType RECORD_AND_SAMPLE
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType RECORD_ONLY
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType[] values()
+TYPE public final enum space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason DEFAULT_RATIO
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason DEFAULT_RATIO_DROP
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason FORCE_HEADER
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason HARD_DROP
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason KILL_SWITCH
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason NO_MATCH
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason PARENT_DECISION
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason PARENT_DROP
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason QA_TRACE
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason ROUTE_RATIO
+  FIELD public static final space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason ROUTE_RATIO_DROP
+  METHOD public java.lang.String reasonCode()
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason[] values()
+TYPE public final record space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest
+  CTOR public space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest(java.lang.String)
+  CTOR public space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest(java.lang.String,java.lang.String,java.lang.String,boolean,space.br1440.platform.tracing.core.sampling.model.ParentContextState)
+  METHOD public boolean qaTrace()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String forceTraceHeaderValue()
+  METHOD public java.lang.String traceId()
+  METHOD public java.lang.String urlPath()
+  METHOD public space.br1440.platform.tracing.core.sampling.model.ParentContextState parentContextState()
+TYPE public final class space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot
+  CTOR public space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot(boolean,java.util.List<java.lang.String>,java.util.Set<java.lang.String>,java.util.List<space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix>,double)
+  METHOD public boolean isEnabled()
+  METHOD public double getDefaultRatio()
+  METHOD public java.util.List<java.lang.String> getDroppedRoutes()
+  METHOD public java.util.Set<java.lang.String> getForceRecordValues()
+  METHOD public space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix[] getRouteRatios()
+TYPE public final class space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain
+  METHOD public static space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule[] foundationRules()
+  METHOD public static space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule[] productionRules()
+TYPE public abstract interface space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule
+  METHOD public abstract java.lang.String ruleName()
+  METHOD public abstract space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest,space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot)
+TYPE public final record space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties
+  CTOR public space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties(boolean,double,java.util.List<java.lang.String>,java.util.Set<java.lang.String>,java.util.Map<java.lang.String,java.lang.Double>)
+  METHOD public boolean enabled()
+  METHOD public double defaultRatio()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.util.List<java.lang.String> droppedRoutes()
+  METHOD public java.util.Map<java.lang.String,java.lang.Double> routeRatios()
+  METHOD public java.util.Set<java.lang.String> forceRecordValues()
+TYPE public final class space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyPropertiesValidator
+  FIELD public static final int MAX_DROP_PATHS
+  FIELD public static final int MAX_FORCE_VALUES
+  FIELD public static final int MAX_FORCE_VALUE_LENGTH
+  METHOD public static void validate(space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties)
+  METHOD public static void validateDefaultRatio(double)
+TYPE public final class space.br1440.platform.tracing.core.sampling.properties.SamplingPolicySnapshotFactory
+  METHOD public static space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot create(space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties)
+TYPE public final class space.br1440.platform.tracing.core.semconv.SemconvKeys
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.Long> HTTP_RESPONSE_STATUS_CODE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.Long> SERVER_PORT
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> DB_COLLECTION_NAME
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> DB_NAMESPACE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> DB_OPERATION_NAME
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> DB_SYSTEM_LEGACY
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> DB_SYSTEM_NAME
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> ERROR_TYPE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> EXCEPTION_MESSAGE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> EXCEPTION_STACKTRACE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> EXCEPTION_TYPE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> HTTP_REQUEST_METHOD
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> HTTP_ROUTE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> MESSAGING_DESTINATION_NAME
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> MESSAGING_OPERATION
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> MESSAGING_SYSTEM
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> NETWORK_PROTOCOL_VERSION
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> PLATFORM_REMOTE_SERVICE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> PLATFORM_REQUEST_ID
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> PLATFORM_RESULT
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> PLATFORM_SAMPLING_REASON
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> PLATFORM_TRACE_PRIORITY
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> PLATFORM_TYPE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> PLATFORM_USER_HASH
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> RPC_METHOD
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> RPC_SERVICE
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> RPC_SYSTEM
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> SERVER_ADDRESS
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> URL_FULL
+  FIELD public static final io.opentelemetry.api.common.AttributeKey<java.lang.String> URL_SCHEME
+TYPE public final class space.br1440.platform.tracing.core.semconv.policy.AttributePolicy
+  CTOR public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy()
+  CTOR public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy(space.br1440.platform.tracing.api.semconv.SemconvValidationMode,boolean,space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics)
+  METHOD public boolean isAllowed(space.br1440.platform.tracing.api.span.SpanCategory,io.opentelemetry.api.common.AttributeKey<?>)
+  METHOD public space.br1440.platform.tracing.api.semconv.SemconvValidationMode mode()
+  METHOD public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy$UnsafeKeyClass auditUnsafeAttribute(java.lang.String)
+  METHOD public space.br1440.platform.tracing.core.semconv.policy.ValidatedAttributes validateAndNormalize(space.br1440.platform.tracing.api.span.SpanCategory,io.opentelemetry.api.common.Attributes,java.lang.String)
+TYPE public static final enum space.br1440.platform.tracing.core.semconv.policy.AttributePolicy$UnsafeKeyClass
+  FIELD public static final space.br1440.platform.tracing.core.semconv.policy.AttributePolicy$UnsafeKeyClass KNOWN
+  FIELD public static final space.br1440.platform.tracing.core.semconv.policy.AttributePolicy$UnsafeKeyClass REJECTED
+  FIELD public static final space.br1440.platform.tracing.core.semconv.policy.AttributePolicy$UnsafeKeyClass UNKNOWN
+  METHOD public java.lang.String metricValue()
+  METHOD public static space.br1440.platform.tracing.core.semconv.policy.AttributePolicy$UnsafeKeyClass valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.semconv.policy.AttributePolicy$UnsafeKeyClass[] values()
+TYPE public abstract interface space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics
+  FIELD public static final space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics NOOP
+  METHOD public void unsafeAttribute(java.lang.String)
+  METHOD public void violation(java.lang.String,java.lang.String)
+TYPE public final record space.br1440.platform.tracing.core.semconv.policy.ValidatedAttributes
+  CTOR public space.br1440.platform.tracing.core.semconv.policy.ValidatedAttributes(io.opentelemetry.api.common.Attributes,java.util.List<space.br1440.platform.tracing.api.semconv.SemconvViolation>)
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public io.opentelemetry.api.common.Attributes attributes()
+  METHOD public java.util.List<space.br1440.platform.tracing.api.semconv.SemconvViolation> violations()
+TYPE public final class space.br1440.platform.tracing.core.utils.ArrayUtils
+  METHOD public static boolean isNotEmpty(T[])
+  METHOD public static boolean isNullOrEmpty(T[])
+TYPE public final class space.br1440.platform.tracing.core.utils.ListUtils
+  METHOD public static boolean isNotEmpty(java.util.List<?>)
+  METHOD public static boolean isNullOrEmpty(java.util.List<?>)
+TYPE public final class space.br1440.platform.tracing.core.utils.MapUtils
+  METHOD public static V getOrDefault(java.util.Map<K,V>,K,V)
+  METHOD public static boolean containsKey(java.util.Map<K,V>,K)
+  METHOD public static boolean isNotEmpty(java.util.Map<?,?>)
+  METHOD public static boolean isNullOrEmpty(java.util.Map<?,?>)
+  METHOD public static int size(java.util.Map<?,?>)
+TYPE public final class space.br1440.platform.tracing.core.utils.SetUtils
+  METHOD public static boolean isNotEmpty(java.util.Set<?>)
+  METHOD public static boolean isNullOrEmpty(java.util.Set<?>)
+TYPE public final class space.br1440.platform.tracing.core.utils.StringUtils
+  METHOD public static boolean isNotEmpty(java.lang.String)
+  METHOD public static boolean isNullOrBlank(java.lang.String)
+  METHOD public static boolean isNullOrEmpty(java.lang.String)
+TYPE public final class space.br1440.platform.tracing.core.validation.ValidationPolicyUpdate
+  METHOD public static java.lang.String normalizeSource(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.core.validation.ValidationSnapshot buildNext(space.br1440.platform.tracing.core.validation.ValidationSnapshot,boolean,boolean,java.lang.String)
+TYPE public final record space.br1440.platform.tracing.core.validation.ValidationSnapshot implements space.br1440.platform.tracing.core.runtime.versioned.VersionedState
+  CTOR public space.br1440.platform.tracing.core.validation.ValidationSnapshot(boolean,boolean,long,java.time.Instant,java.lang.String)
+  METHOD public boolean enabled()
+  METHOD public boolean strict()
+  METHOD public final boolean equals(java.lang.Object)
+  METHOD public final int hashCode()
+  METHOD public final java.lang.String toString()
+  METHOD public java.lang.String source()
+  METHOD public java.time.Instant updatedAt()
+  METHOD public long version()
+  METHOD public static space.br1440.platform.tracing.core.validation.ValidationSnapshot fromPolicy(boolean,boolean,long,java.time.Instant,java.lang.String)
