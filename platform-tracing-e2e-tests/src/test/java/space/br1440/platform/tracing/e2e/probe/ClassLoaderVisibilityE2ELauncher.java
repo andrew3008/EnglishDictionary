@@ -4,6 +4,7 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
 
 /**
  * Минимальный child-JVM entrypoint для E2E-теста {@code ClassLoaderVisibilityE2ETest}.
@@ -27,6 +28,7 @@ public final class ClassLoaderVisibilityE2ELauncher {
         emit("extensionProbeVisibleFromApplication=" + isClassVisible(
                 "space.br1440.platform.tracing.e2e.probe.ClassLoaderVisibilityTestProbe",
                 ClassLoaderVisibilityE2ELauncher.class.getClassLoader()));
+        emit("applicationAgentMarkerPresent=" + OtelAgentDetector.isAgentPresent());
 
         Span span = GlobalOpenTelemetry.getTracer("classloader-visibility-e2e")
                 .spanBuilder("context-visibility")

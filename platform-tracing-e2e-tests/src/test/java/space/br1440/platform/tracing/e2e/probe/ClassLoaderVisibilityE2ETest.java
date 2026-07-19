@@ -86,6 +86,7 @@ class ClassLoaderVisibilityE2ETest {
                 .contains(CL_PREFIX + "extensionApiClassLoader=io.opentelemetry.javaagent.tooling.ExtensionClassLoader")
                 .contains(CL_PREFIX + "applicationLauncherVisibleFromExtension=false")
                 .contains(CL_PREFIX + "extensionProbeVisibleFromApplication=false")
+                .contains(CL_PREFIX + "applicationAgentMarkerPresent=true")
                 .contains(CL_PREFIX + "applicationCurrentSpanValid=true");
 
         String extensionApiLoader = markerValue(output, "extensionApiClassLoader");
