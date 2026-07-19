@@ -6,6 +6,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -14,16 +15,23 @@ final class SpanExecutionImpl implements SpanExecution {
 
     private final TracingRuntime implementation;
     private final SpanSpec spec;
+    private final AttributePolicy policy;
+    private final String builderName;
 
-    SpanExecutionImpl(@Nonnull TracingRuntime implementation, @Nonnull SpanSpec spec) {
+    SpanExecutionImpl(@Nonnull TracingRuntime implementation,
+                      @Nonnull SpanSpec spec,
+                      @Nonnull AttributePolicy policy,
+                      @Nonnull String builderName) {
         this.implementation = Objects.requireNonNull(implementation, "implementation");
         this.spec = Objects.requireNonNull(spec, "spec");
+        this.policy = Objects.requireNonNull(policy, "policy");
+        this.builderName = Objects.requireNonNull(builderName, "builderName");
     }
 
     @Override
     @Nonnull
     public SpanHandle start() {
-        return implementation.startSpan(spec);
+        return implementation.startSpan(SpanSpecGovernance.validateAndNormalize(spec, policy, builderName));
     }
 
     @Override

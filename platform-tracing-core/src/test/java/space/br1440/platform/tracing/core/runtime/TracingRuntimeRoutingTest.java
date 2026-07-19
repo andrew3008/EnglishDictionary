@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
@@ -18,6 +19,7 @@ import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 
 import java.util.List;
 
@@ -57,18 +59,18 @@ class TracingRuntimeRoutingTest {
     }
 
     @Test
-    void fromSpecStart_routesSameSpec() {
+    void fromSpecStart_routesNormalizedSpec() {
         SpanSpec spec = governedSpec("from-spec");
         tracing.spans().fromSpec(spec).start().close();
-        assertThat(recording.receivedSpecs()).containsExactly(spec);
+        assertNormalizedFromSpec(spec);
     }
 
     @Test
-    void fromSpecRun_routesSameSpec() {
+    void fromSpecRun_routesNormalizedSpec() {
         SpanSpec spec = governedSpec("from-spec-run");
         tracing.spans().fromSpec(spec).run(() -> {
         });
-        assertThat(recording.receivedSpecs()).containsExactly(spec);
+        assertNormalizedFromSpec(spec);
     }
 
     @Test
@@ -109,7 +111,7 @@ class TracingRuntimeRoutingTest {
         SpanSpec received = recording.receivedSpecs().getFirst();
         assertThat(received.category()).isEqualTo(SpanCategory.DATABASE);
         assertThat(received.attributes()).containsEntry("db.system",
-                space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue.of("postgresql"));
+                SpanSpecAttributeValue.of("postgresql"));
         assertThat(received.reason()).isEqualTo(SpanSpecReason.LEGACY_INTEGRATION);
         assertThat(received.reference()).contains("ticket-42");
     }
@@ -146,6 +148,17 @@ class TracingRuntimeRoutingTest {
         assertThat(spec.name()).isEqualTo(name);
         assertThat(spec.relationship().kind()).isEqualTo(relationship);
         assertThat(spec.category()).isEqualTo(SpanCategory.INTERNAL);
+    }
+
+    private void assertNormalizedFromSpec(SpanSpec source) {
+        assertThat(source.attributes()).isEmpty();
+        assertThat(recording.receivedSpecs()).singleElement().satisfies(received -> {
+            assertThat(received.name()).isEqualTo(source.name());
+            assertThat(received.category()).isEqualTo(source.category());
+            assertThat(received.relationship().kind()).isEqualTo(source.relationship().kind());
+            assertThat(received.reason()).isEqualTo(source.reason());
+            assertThat(received.attributes()).containsKey(SemconvKeys.PLATFORM_TYPE.getKey());
+        });
     }
 
     private static SpanSpec governedSpec(String name) {

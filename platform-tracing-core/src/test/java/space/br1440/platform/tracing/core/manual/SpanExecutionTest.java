@@ -14,6 +14,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.RecordingTracingRuntime;
+import space.br1440.platform.tracing.core.semconv.SemconvKeys;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -88,12 +89,20 @@ class SpanExecutionTest {
     }
 
     @Test
-    void fromSpec_routesSameSpecThroughTracingRuntime() {
+    void fromSpec_routesNormalizedSpecThroughTracingRuntime() {
         SpanSpec spec = governedSpec("from-spec");
         DefaultTraceOperations recordingTracing = new DefaultTraceOperations(recording);
         recordingTracing.spans().fromSpec(spec).run(() -> {
         });
-        assertThat(recording.receivedSpecs()).containsExactly(spec);
+
+        assertThat(spec.attributes()).isEmpty();
+        assertThat(recording.receivedSpecs()).singleElement().satisfies(received -> {
+            assertThat(received.name()).isEqualTo(spec.name());
+            assertThat(received.category()).isEqualTo(spec.category());
+            assertThat(received.relationship().kind()).isEqualTo(spec.relationship().kind());
+            assertThat(received.reason()).isEqualTo(spec.reason());
+            assertThat(received.attributes()).containsKey(SemconvKeys.PLATFORM_TYPE.getKey());
+        });
     }
 
     private static SpanSpec governedSpec(String name) {

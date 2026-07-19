@@ -8,7 +8,6 @@ package space.br1440.platform.tracing.test.characterization;
  */
 public enum KnownDefectId {
 
-    FROM_SPEC_POLICY_BYPASS("ALIGN-04", "Slice D"),
     UNBOUNDED_REMOTE_SERVICE_MIRROR("ALIGN-10", "Slice H"),
     LEGACY_REQUEST_ID_CORRELATION_KEY("IDENT-1/IDENT-5", "Slice M");
 

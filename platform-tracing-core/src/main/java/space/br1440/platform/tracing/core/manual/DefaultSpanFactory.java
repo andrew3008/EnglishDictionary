@@ -17,6 +17,8 @@ import java.util.Optional;
 
 public final class DefaultSpanFactory implements SpanFactory {
 
+    private static final String FROM_SPEC_BUILDER_NAME = "SpanFactory.fromSpec";
+
     private final TracingRuntime implementation;
     private final AttributePolicy policy;
     private final OtelTraceparentReader traceparentReader;
@@ -50,7 +52,11 @@ public final class DefaultSpanFactory implements SpanFactory {
     @Override
     @Nonnull
     public SpanExecution fromSpec(@Nonnull SpanSpec spec) {
-        return new SpanExecutionImpl(implementation, spec);
+        return new SpanExecutionImpl(
+                implementation,
+                Objects.requireNonNull(spec, "spec"),
+                policy,
+                FROM_SPEC_BUILDER_NAME);
     }
 
     static OtelTraceparentReader readerFor(TracingRuntime implementation) {
