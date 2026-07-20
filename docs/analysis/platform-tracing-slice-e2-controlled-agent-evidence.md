@@ -2,19 +2,24 @@
 
 > Дата: 2026-07-20  
 > Ветка: `feature/runtime-control-hardening`, HEAD `56fed4b` до незакоммиченных E2-изменений  
-> Исторический E2 evidence. Repository-часть superseded итоговым `CP-E PASS` в
+> Исторический E2 evidence. Repository-часть superseded итоговым `CP-E APPROVED` в
 > `platform-tracing-slice-e-evidence.md`. Формулировка `E2 PARTIAL` означает только открытый
 > внешний release gate `RG-CONTROLLED-AGENT`; она не блокирует Slice F.
-> Статус: `CP-E PASS / RG-CONTROLLED-AGENT OPEN`
+> Статус: `CP-E APPROVED / SLICE E CLOSED / SLICE F UNBLOCKED`
+> Release gate: `RG-CONTROLLED-AGENT OPEN / PRODUCTION ROLLOUT FORBIDDEN`
 
 ## 1. Вердикт
 
-**CP-E PASS; RG-CONTROLLED-AGENT OPEN.** В репозитории реализованы
+**CP-E APPROVED; SLICE E CLOSED; SLICE F UNBLOCKED; RG-CONTROLLED-AGENT OPEN.** В репозитории реализованы
 атомарный дистрибутив, исполняемый pre-JVM verifier и runtime fail-closed proof. Fresh packaged
 WebMVC/WebFlux/composition проверки прошли. Kafka runtime через remote Gentoo Docker и IP endpoints
 подтвердил producer `send|publish`, delivery/retry/batch/consumer spans/manual links без Spring SDK
 bean. До внешнего enforcement launcher/admission/signing pilot и production rollout запрещены,
 но внутренняя разработка может перейти к Slice F.
+
+Spring startup отклоняет stock Agent без compatible extension, но это не pre-JVM security boundary:
+ранний незащищённый export возможен до Spring fail-fast. Stock Agent остаётся неподдерживаемой и
+небезопасной deployment-конфигурацией; защита production требует `RG-CONTROLLED-AGENT` enforcement.
 
 ## 2. Pre-flight E1
 
@@ -161,3 +166,5 @@ B1-C remains technically viable without a second SDK: Agent owns SDK/instrumenta
 starter owns facade and application adapters. E2 does not approve production rollout. Approval needs
 signed immutable distribution and deployment enforcement
 proving every service invokes preflight and cannot attach stock Agent.
+
+Release contract: [RG-CONTROLLED-AGENT](../architecture/rg-controlled-agent-release-gate.md).

@@ -25,6 +25,8 @@
 6. Spring starter предоставляет facade/adapters/diagnostics и не создаёт `SdkTracerProvider`.
    Production mode surface и gate separation определены
    [ADR-sdk-mode-detection.md](ADR-sdk-mode-detection.md).
+7. Architecture Committee approval communicated by the project owner: `CP-E APPROVED`,
+   `SLICE E CLOSED`, `SLICE F UNBLOCKED`. `RG-CONTROLLED-AGENT OPEN`; production rollout forbidden.
 
 ## Version governance
 

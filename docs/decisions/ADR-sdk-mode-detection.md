@@ -50,13 +50,19 @@ snapshot и не вызывает `GlobalOpenTelemetry.get()` повторно.
 
 ## Gate separation
 
-`CP-E` является repository development gate и блокирует Slice F до зелёных implementation audit,
-Spring matrix, packaged E2E, architecture/build gates и синхронизации документов.
+`CP-E APPROVED`; `SLICE E CLOSED`; `SLICE F UNBLOCKED`. Implementation audit, Spring matrix,
+packaged E2E, architecture/build gates и синхронизация документов завершены. Источник решения:
+Architecture Committee approval communicated by the project owner.
 
 `RG-CONTROLLED-AGENT` является внешним production release gate. Он блокирует pilot/production,
 но после закрытия `CP-E` не блокирует Slice F. Gate остаётся **OPEN** до signing, SBOM/provenance,
 immutable registry, обязательного pre-JVM verifier, Helm/init-container wiring, admission policy,
 запрета stock Agent/external extension overrides и fleet rollout/rollback proof.
+
+Spring application startup отклоняет stock Agent без compatible extension. Этот fail-fast не является
+pre-JVM security boundary и не способен предотвратить ранний незащищённый Agent export. Stock Agent
+остаётся неподдерживаемым и небезопасным; production protection требует
+[RG-CONTROLLED-AGENT](../architecture/rg-controlled-agent-release-gate.md).
 
 ## Последствия
 

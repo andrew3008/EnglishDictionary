@@ -2,7 +2,9 @@
 
 > Дата: 2026-07-20
 > Ветка: `feature/runtime-control-hardening`  
-> Статус: `CP-E PASS`; `RG-CONTROLLED-AGENT OPEN`
+> Статус: `CP-E APPROVED`; `SLICE E CLOSED`; `SLICE F UNBLOCKED`
+> Release gate: `RG-CONTROLLED-AGENT OPEN`; `PRODUCTION ROLLOUT FORBIDDEN`
+> Источник решения: Architecture Committee approval communicated by the project owner
 
 ## 1. Implemented architecture
 
@@ -38,7 +40,7 @@ Test SDK используется только в `src/test` harness или из
 
 Fresh child-JVM attestation и composition:
 
-- stock Agent без platform extension завершается fail-closed;
+- Spring application startup отклоняет stock Agent без compatible platform extension;
 - incomplete, timed-out, failed, incompatible и capability-missing extension отклоняются;
 - dual application SDK отклоняется до runtime wiring;
 - final Controlled Agent distribution достигает `AGENT_READY`;
@@ -49,7 +51,9 @@ Fresh child-JVM attestation и composition:
 
 Security differential использует stock Agent только как изолированный контроль без platform
 autoconfiguration: stock export содержит Authorization, final Controlled Agent удаляет sensitive
-value до Collector. Это не объявляет stock Agent поддерживаемым runtime.
+value до Collector. Spring-side startup rejection не является pre-JVM security boundary и не может
+предотвратить ранний незащищённый Agent export. Stock Agent остаётся неподдерживаемой и небезопасной
+deployment-конфигурацией; production protection требует `RG-CONTROLLED-AGENT` enforcement.
 
 Fresh closing suite через IP-based remote Docker выполнил 16 тестов: failures `0`, errors `0`,
 skipped `0`. Protected WebMVC экспортировал ровно один SERVER span на запрос и подтвердил ноль
@@ -82,15 +86,18 @@ configuration-cache совместимость не заявляется. Тех
 
 ## 5. Gate separation
 
-`CP-E` закрыт: финальный build, architecture gates, packaged E2E и post-fix audit прошли.
-Внутренняя разработка может перейти к Slice F.
+`CP-E APPROVED`; `SLICE E CLOSED`; `SLICE F UNBLOCKED`. Финальный build, architecture gates,
+packaged E2E и post-fix audit прошли. Решение передано как: Architecture Committee approval
+communicated by the project owner.
 
-`RG-CONTROLLED-AGENT` остаётся **OPEN** и блокирует pilot/production, но не Slice F после `CP-E`.
+`RG-CONTROLLED-AGENT OPEN` блокирует pilot/production, но не Slice F после закрытия `CP-E`.
 Не выполнены repository-independent signing, SBOM/provenance, immutable registry, mandatory pre-JVM
 verifier wiring, Helm/init-container integration, admission policy, stock Agent/external extension
 override prohibition и fleet rollout/rollback proof.
 
-**Production rollout запрещён, пока `RG-CONTROLLED-AGENT` открыт.**
+Полный release-gate contract: [RG-CONTROLLED-AGENT](../architecture/rg-controlled-agent-release-gate.md).
+
+**PRODUCTION ROLLOUT FORBIDDEN.**
 
 ## 6. Closing verification
 

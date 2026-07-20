@@ -3,8 +3,8 @@
 > Дата: 2026-07-20  
 > Ветка: `feature/runtime-control-hardening`  
 > Исторический E1 evidence. Требование Controlled Distribution реализовано в E2 и проверено
-> итоговым Slice E gate. Текущий нормативный статус: `CP-E PASS / RG-CONTROLLED-AGENT OPEN`;
-> внешний release gate не блокирует Slice F.
+> итоговым Slice E gate. Текущий нормативный статус: `CP-E APPROVED / SLICE E CLOSED /
+> SLICE F UNBLOCKED / RG-CONTROLLED-AGENT OPEN / PRODUCTION ROLLOUT FORBIDDEN`.
 > Статус: `SUPERSEDED AS DECISION INPUT`
 
 ## 1. E1 verdict
@@ -87,7 +87,7 @@ prototype `platformAgentDistribution`: pinned Agent + extension + SHA-256 manife
 | Сценарий | Результат |
 |---|---|
 | No Agent | PASS, `AGENT_MISSING` |
-| Stock Agent без extension | PASS, `EXTENSION_MISSING`, facade NoOp |
+| Stock Agent без extension | HISTORICAL OBSERVATION: Spring обнаружил `EXTENSION_MISSING`; это не security PASS и не предотвращает ранний Agent export |
 | Реальный compatible extension | PASS, `AGENT_READY`, context виден app facade |
 | Protocol v99 | PASS, `EXTENSION_INCOMPATIBLE` |
 | Endpoint без required processor | PASS, `EXTENSION_INCOMPATIBLE` |

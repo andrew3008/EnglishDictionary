@@ -16,15 +16,18 @@
 ```text
 Java 21
   + Spring Boot 3.5.x (validated: 3.5.5)
-  + OpenTelemetry Java Agent 2.28.x
-  + platform-tracing-otel-extension-*-agent.jar (otel.javaagent.extensions)
+  + Controlled Platform Agent Distribution (pinned Agent 2.28.x + embedded platform extension)
   + platform-tracing-spring-boot-starter-servlet | -reactive
   + spring-boot-starter-platform-logging (MDC reader — recommended co-use)
   + OpenTelemetry Logback MDC Appender (camelCase keys — см. ADR-mdc-via-otel-agent-logback)
   + OpenTelemetry Collector (platform-tracing-collector-config)
 ```
 
-SDK-only / без `-javaagent` — **не production-standard v0.1.0** (dev/staging exception по согласованию). Для SDK-only path требуется явный opt-in `micrometer-tracing-bridge-otel` — см. [MIGRATION.md](./MIGRATION.md).
+SDK-only / без Controlled Agent Distribution не является поддерживаемым runtime. Для локальной
+работы используется `DISABLED`; test-only SDK допустим только в непубликуемых fixtures/source sets.
+
+`RG-CONTROLLED-AGENT OPEN`; `PRODUCTION ROLLOUT FORBIDDEN`. Поставка в pilot/production разрешается
+только после выполнения [release gate](./architecture/rg-controlled-agent-release-gate.md).
 
 ---
 
@@ -62,13 +65,18 @@ SDK-only / без `-javaagent` — **не production-standard v0.1.0** (dev/stag
 
 ---
 
-## Required JVM flags (production)
+## Required launcher (production)
 
 ```text
--javaagent:/path/to/opentelemetry-javaagent.jar
--Dotel.javaagent.extensions=/path/to/platform-tracing-otel-extension-{version}-agent.jar
--Dotel.instrumentation.logback-mdc.enabled=false
+/opt/platform-agent/platform-agent-launcher.sh \
+  -Dotel.instrumentation.logback-mdc.enabled=false \
+  -jar /app/application.jar
 ```
+
+Launcher сначала запускает pre-JVM verifier, затем подключает embedded Agent. Отдельные
+`-javaagent`, `otel.javaagent.extensions` и `OTEL_JAVAAGENT_EXTENSIONS` запрещены: они обходят
+атомарность distribution. Этот deployment path не разрешён для pilot/production до закрытия
+`RG-CONTROLLED-AGENT`.
 
 > **Изменено (Фаза 12 / context-first).** Флаг `-Dotel.instrumentation.http.server.capture-request-headers=X-Trace-On,X-QA-Trace`
 > **больше не требуется** для сэмплирования: `CompositeSampler` получает `InboundTraceControl` из OTel Context
@@ -279,7 +287,9 @@ A: Not in v0.1.0 matrix. Request via separate epic if business requires.
 A: Untested. Production target is 3.5.x aligned with platform BOM.
 
 **Q: Can we run without Java Agent?**  
-A: Dev/local yes (degraded). Production v0.1.0 — agent-first only. SDK-only requires explicit `micrometer-tracing-bridge-otel` — [MIGRATION.md](./MIGRATION.md).
+A: В production и при `enabled=true` — нет: требуется READY Controlled Agent Distribution.
+Для local/dev без Agent используйте `enabled=false` и `sdk.mode=DISABLED`; application SDK не
+является поддерживаемым fallback.
 
 **Q: Кто пишет traceId в MDC?**  
 A: Production: `OpenTelemetryAppender` (camelCase). Tracing-стартер не пишет trace-ключи при `suppress=true`. Runbook: [runbook/mdc-logging-production.md](./runbook/mdc-logging-production.md).

@@ -36,17 +36,22 @@ WebMvc/WebFlux **не добавляют** своих `@ConfigurationProperties`
 
 ### «Обязательные для старта» vs «обязательные для production»
 
-В коде **нет** `@NotNull` / fail-fast на `TracingProperties` — модуль стартует с дефолтами (`enabled=true`, sampling 0.1, OTLP endpoint `http://otel-collector:4317` и т.д.).
+Properties имеют defaults, но runtime ownership проверяется fail-fast: default `enabled=true` и
+`sdk.mode=AGENT` требуют compatible `READY` Controlled Agent. Без него Spring startup отклоняется.
 
 Для **production** (по `docs/SUPPORTED.md`) обязательны:
 
 #### 1. JVM / Agent (не `application.yml`)
 
 ```text
--javaagent:/path/to/opentelemetry-javaagent.jar
--Dotel.javaagent.extensions=/path/to/platform-tracing-otel-extension-*-agent.jar
--Dotel.instrumentation.logback-mdc.enabled=false
+/opt/platform-agent/platform-agent-launcher.sh \
+  -Dotel.instrumentation.logback-mdc.enabled=false \
+  -jar /app/application.jar
 ```
+
+Отдельные Agent/extension flags не являются поддерживаемым deployment path. Launcher обязан
+выполнить verifier до application JVM; production остаётся запрещён до закрытия
+`RG-CONTROLLED-AGENT`.
 
 #### 2. `application.yml` (минимальный production-контракт)
 
@@ -113,16 +118,17 @@ platform:
 
 Тот же YAML; модуль `platform-tracing-autoconfigure-webflux` активируется автоматически при `spring.main.web-application-type=reactive`.
 
-### Dev без Agent (не production-standard)
+### Local/dev без Agent
 
 ```yaml
 platform:
   tracing:
-    enabled: true
-    suppression:
-      suppress-micrometer-tracing: false
-# + явный opt-in micrometer-tracing-bridge-otel (см. docs/MIGRATION.md)
+    enabled: false
+    sdk:
+      mode: DISABLED
 ```
+
+Application SDK и `micrometer-tracing-bridge-otel` не являются fallback production runtime.
 
 ---
 
@@ -275,12 +281,12 @@ platform:
 
 ---
 
-### C. JVM system properties (часто через `JAVA_TOOL_OPTIONS`)
+### C. JVM system properties (передаются controlled launcher)
 
 | System property | ENV-эквивалент | Обяз. (prod) | Описание |
 |-----------------|----------------|--------------|----------|
-| `-javaagent:...` | — | **Да** | OTel Java Agent |
-| `otel.javaagent.extensions` | `OTEL_JAVAAGENT_EXTENSIONS` | **Да** | Platform extension |
+| `-javaagent:...` | — | Управляет launcher | Запрещено задавать приложению отдельно |
+| `otel.javaagent.extensions` | `OTEL_JAVAAGENT_EXTENSIONS` | Запрещено | External override нарушает controlled distribution |
 | `otel.instrumentation.logback-mdc.enabled=false` | — | **Да** | Не ломать camelCase MDC |
 | `otel.instrumentation.messaging.experimental.receive-telemetry.enabled=true` | — | Рек. (Kafka) | Consumer links |
 | `otel.instrumentation.experimental.span-suppression-strategy=semconv` | — | Рек. | Anti double-instrumentation |
@@ -288,7 +294,10 @@ platform:
 
 ---
 
-## Пример Helm env для production
+## Кандидат Helm wiring до закрытия release gate
+
+Это не утверждённый production template: Helm/init-container/admission integration является
+частью открытого `RG-CONTROLLED-AGENT`.
 
 ```yaml
 env:
@@ -304,19 +313,19 @@ env:
     value: "http://otel-collector.observability:4317"
   - name: OTEL_BSP_MAX_QUEUE_SIZE
     value: "2048"
-  - name: JAVA_TOOL_OPTIONS
-    value: >-
-      -javaagent:/otel/opentelemetry-javaagent.jar
-      -Dotel.javaagent.extensions=/otel/platform-tracing-otel-extension-agent.jar
-      -Dotel.instrumentation.logback-mdc.enabled=false
+command: ["/otel/platform-agent-launcher.sh"]
+args:
+  - "-Dotel.instrumentation.logback-mdc.enabled=false"
+  - "-jar"
+  - "/app/application.jar"
 ```
 
 ---
 
 ## Практические выводы
 
-1. **Strictly required для старта Spring** — ничего из `platform.tracing.*` (всё с дефолтами).
-2. **Strictly required для рабочего production tracing** — Agent JAR + extension, `suppress-micrometer-tracing=true`, имя сервиса, реальный `OTEL_EXPORTER_OTLP_ENDPOINT`.
+1. **Strictly required при default `enabled=true`** — compatible READY Controlled Agent Distribution; иначе startup failure.
+2. **Strictly required для рабочего production tracing** — verified atomic distribution, `suppress-micrometer-tracing=true`, имя сервиса, реальный `OTEL_EXPORTER_OTLP_ENDPOINT`.
 3. **WebMvc vs WebFlux** — различаются только starter-модулем; свойства одинаковые, outbound inject включается одним флагом `propagation.outbound.enabled`.
 4. **Dual-channel** — меняя только `application.yml`, вы не меняете BSP/limits/exporter в Agent; выравнивайте через `OTEL_*` или смотрите `GET /actuator/tracing` → `otelEnvHints` / `otelEffective`.
 
@@ -332,7 +341,7 @@ GET /actuator/tracing
 
 | Секция | Назначение |
 |--------|------------|
-| `sdk` | Режим SDK (`AGENT` / `STARTER` / `DISABLED`), `agentDetected` |
+| `sdk` | Режим (`AGENT` / `DISABLED`), Controlled Agent readiness и безопасная причина startup failure |
 | `otelEffective` | Фактически применённые OTel-значения (Agent classloader) |
 | `otelEnvHints` | Рекомендуемые `OTEL_*` / `PLATFORM_TRACING_*` из текущего Spring-конфига |
 | `resourceEffective` | Drift resource-идентичности между каналами |
