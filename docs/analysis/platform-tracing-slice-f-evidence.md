@@ -3,7 +3,8 @@
 > Branch: `feature/slice-f-lifecycle-state-verification`
 > Base: Slice E final commit `bba8ba0`
 > Status: `SLICE F IMPLEMENTATION COMPLETE`; `SLICE F VERIFICATION GREEN`;
-> `SLICE F COMMIT/PR PENDING`; `SLICE F NOT YET MERGED`
+> `SLICE F COMMITTED/PUSHED`; `SLICE F PR CREATION BLOCKED (GitHub integration 403)`;
+> `SLICE F NOT YET MERGED`
 > `RG-CONTROLLED-AGENT OPEN`; `PRODUCTION ROLLOUT FORBIDDEN`
 
 ## Authoritative scope ledger
@@ -58,9 +59,10 @@ Slice F scope.
 
 ## Gate result
 
-`SLICE F IMPLEMENTATION COMPLETE`; `SLICE F VERIFICATION GREEN`; `SLICE F COMMIT/PR PENDING`;
-`SLICE F NOT YET MERGED`. Production refactor не требуется. Следующие этапы сохраняют свои
-независимые prerequisites: Slice H не считается выполненным; CP-1(a-d,f) остаётся обязательным
-architecture checkpoint; Slice M остаётся NO-GO до завершения H и CP-1.
+`SLICE F IMPLEMENTATION COMPLETE`; `SLICE F VERIFICATION GREEN`; `SLICE F COMMITTED/PUSHED`;
+`SLICE F PR CREATION BLOCKED (GitHub integration 403)`; `SLICE F NOT YET MERGED`. Production
+refactor не требуется. Следующие этапы сохраняют свои независимые prerequisites: Slice H не
+считается выполненным; CP-1(a-d,f) остаётся обязательным architecture checkpoint; Slice M остаётся
+NO-GO до завершения H и CP-1.
 
 `RG-CONTROLLED-AGENT OPEN`; `PRODUCTION ROLLOUT FORBIDDEN`.
