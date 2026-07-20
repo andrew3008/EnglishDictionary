@@ -96,12 +96,13 @@ class KafkaControlledAgentE2ETest {
                 .contains("KAFKA_E2:singleAttempts=2")
                 .contains("KAFKA_E2:batchRecords=2")
                 .contains("KAFKA_E2:openTelemetryBeans=0")
+                .contains("KAFKA_E2:samplerDecisions=")
                 .contains("KAFKA_E2:COMPLETE")
                 .doesNotContain("OpenTelemetry Javaagent failed to start");
 
         await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(1)).untilAsserted(() -> {
             List<String> names = jaegerClient.listSpanNames(SERVICE_NAME);
-            assertThat(names).anyMatch(name -> name.contains("send"));
+            assertThat(names).anyMatch(name -> name.contains("send") || name.contains("publish"));
             assertThat(names).anyMatch(name -> name.contains("process"));
             assertThat(jaegerClient.maximumSpanLinkCount(SERVICE_NAME)).isGreaterThanOrEqualTo(2);
         });

@@ -130,12 +130,13 @@ contract и разрешить supersede действующих ADR. До это
 
 **Verdict: `E2 PARTIAL — EXTERNAL DEPLOYMENT ENFORCEMENT REQUIRED`.** Реализованы embedded
 controlled Agent distribution, JDK-only pre-JVM verifier, versioned manifest/checksums и runtime
-fail-closed callback matrix. Fresh embedded-Agent composition и WebFlux проверки green; packaged
+fail-closed callback matrix. Fresh embedded-Agent composition, WebMVC и WebFlux проверки green; packaged
 failure matrix доказала, что при mandatory extension failure приложение может обслуживать запрос,
 но spans не экспортируются.
 
-Gate не закрыт: Kafka fixture скомпилирован, но не выполнен; успешный protected WebMVC fixture после
-переключения на embedded Agent не перезапущен; signing/immutable registry/admission/launcher
-enforcement находятся вне репозитория. До этих доказательств произвольный stock Agent остаётся
+Kafka runtime через IP endpoints подтвердил delivery, retry, batch, consumer spans и manual links
+без Spring SDK bean. Producer span подтверждён для текущего semantic-convention имени
+`send|publish` на stock и controlled Agent. Signing/immutable registry/admission/launcher
+enforcement находятся вне репозитория. До внешнего enforcement произвольный stock Agent остаётся
 операционным bypass, а переход `E -> F` запрещён. Полный ledger:
 `docs/analysis/platform-tracing-slice-e2-controlled-agent-evidence.md`.

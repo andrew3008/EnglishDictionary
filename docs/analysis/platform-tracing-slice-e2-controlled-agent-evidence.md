@@ -8,10 +8,9 @@
 
 **E2 PARTIAL — EXTERNAL DEPLOYMENT ENFORCEMENT REQUIRED.** В репозитории реализованы
 атомарный дистрибутив, исполняемый pre-JVM verifier и runtime fail-closed proof. Fresh packaged
-WebFlux/composition проверки прошли; успешный WebMVC fixture после переключения на embedded Agent
-не перезапускался. Kafka fixture собран, но по указанию владельца после
-обнаружения системной DNS-проблемы Gentoo его runtime-прогон отложен. До Kafka green и внешнего
-enforcement launcher/admission/signing rollout приложений небезопасен.
+WebMVC/WebFlux/composition проверки прошли. Kafka runtime через remote Gentoo Docker и IP endpoints
+подтвердил producer `send|publish`, delivery/retry/batch/consumer spans/manual links без Spring SDK
+bean. До внешнего enforcement launcher/admission/signing rollout приложений небезопасен.
 
 ## 2. Pre-flight E1
 
@@ -22,7 +21,7 @@ enforcement launcher/admission/signing rollout приложений небезо
 | marker/MBean сами по себе достаточны | REFUTED, как в E1 | stock Agent экспортировал sensitive header; endpoint-only readiness не принимается |
 | extension failure останавливает JVM | CONTRADICTED upstream | pinned Agent ловит `Throwable` из premain и не пробрасывает его |
 | extension failure может закрыть export | CONFIRMED executable | восемь callback failure child-JVM обслужили HTTP, Jaeger не получил spans |
-| Kafka parity | E1 UNVERIFIED; E2 COMPILED, NOT EXECUTED | `KafkaControlledAgentE2ETest` |
+| Kafka parity | CONFIRMED executable | producer/consumer/retry/batch/manual links green |
 
 Fresh E1 regression до E2: extension unit tests и `verifyPlatformAgentDistribution` green;
 `AgentExtensionAttestationE2ETest`, `SpringAgentCompositionE2ETest`,
@@ -93,11 +92,10 @@ SpanProcessor, propagation, exporter и protected export path.
 
 ## 7. WebMVC parity
 
-До финального переключения fixture E1/E2 подтвердил реальный servlet request, Agent export и
-удаление captured `Authorization` до Jaeger при external extension loading; stock Agent control
-экспортировал исходный bearer value. Mandatory-failure матрица уже использовала embedded Agent и
-подтвердила закрытый export при обслуженном servlet request. Успешный protected WebMVC case после
-переключения на embedded controlled Agent **не перезапускался** и остаётся pending.
+Fresh successful protected WebMVC case на embedded controlled Agent подтвердил реальный servlet
+request, Agent export и удаление captured `Authorization` до Jaeger; stock Agent control
+экспортировал исходный bearer value. Mandatory-failure матрица использовала embedded Agent и
+подтвердила закрытый export при обслуженном servlet request.
 
 Fresh composition fixture на embedded Agent подтвердил 0 app-side OTel bean, отсутствие cross-CL
 object injection, видимость current Agent span и сохранение Agent instrumentation при facade
@@ -119,9 +117,13 @@ platform remote-service context сохранились после `publishOn` н
 недоступен в Agent mode. Aspect переведён на OTel-free W3C `traceparent`/`tracestate` extraction в
 `RemoteSpanLink`; conditional Spring SDK bean удалён. Unit tests green.
 
-Добавлен packaged `KafkaControlledAgentE2ETest`: remote Kafka container, producer send,
-single-record retry/redelivery, batch listener, 0 Spring OTel bean, Agent propagation и минимум два
-links у batch span. Fixture компилируется, но runtime **не выполнен** после запрета Gentoo-прогона.
+Packaged `KafkaControlledAgentE2ETest` выполнен через
+`DOCKER_HOST=tcp://192.168.100.70:2375` и IP-based mapped endpoints: producer delivery,
+single-record retry (`attempts=2`), batch из двух записей, 0 Spring OTel bean, consumer `process`
+spans и минимум два links у manual batch span подтверждены. Links доказывают W3C propagation из
+producer records. Producer operation проверяется как `send|publish`: pinned Agent использует
+актуальное semantic-convention имя `publish`; прежнее ожидание только `send` было дефектом fixture.
+Stock `always_on` и controlled `platform` прогоны оба подтвердили producer span.
 Kafka arbitrary sensitive-header export не доказан: upstream Kafka instrumentation не публикует
 такой header как гарантированный span attribute. Этот security case нельзя объявлять green.
 
@@ -133,10 +135,11 @@ Kafka arbitrary sensitive-header export не доказан: upstream Kafka inst
 | Wrong protocol/profile/version | verifier exit 23 | GREEN |
 | Duplicate/external Agent configuration | verifier exit 24 | GREEN where launcher is enforced |
 | Mandatory runtime callback failure | application may start; exporter remains closed | GREEN packaged |
-| Successful protected WebMVC on embedded Agent | code migrated; fresh runtime rerun absent | PENDING |
+| Successful protected WebMVC on embedded Agent | stock leak control + protected sanitization | GREEN packaged |
 | Collector unavailable | startup resilience inherited from E1 tests | GREEN prior evidence |
 | Stock Agent bypasses launcher | repository cannot prevent external command | EXTERNAL BLOCKER |
-| Kafka runtime parity | fixture compiled only | PENDING |
+| Kafka consumer/retry/batch/manual-links parity | remote packaged test through IP endpoints | GREEN |
+| Kafka producer span | `send|publish`, stock и controlled Agent | GREEN |
 | Gradle configuration cache | fat-JAR/prepare tasks используют execution-time project/task state | NOT SUPPORTED |
 
 ## 11. Supply chain and rollback
@@ -150,5 +153,5 @@ repository and remain mandatory external work. Launcher bypass must be prohibite
 
 B1-C remains technically viable without a second SDK: Agent owns SDK/instrumentation/pipeline;
 starter owns facade and application adapters. E2 does not approve production rollout. Approval needs
-fresh Kafka and protected WebMVC green, remaining exact Web parity gaps disposition, signed immutable distribution and
-deployment enforcement proving every service invokes preflight and cannot attach stock Agent.
+signed immutable distribution and deployment enforcement
+proving every service invokes preflight and cannot attach stock Agent.

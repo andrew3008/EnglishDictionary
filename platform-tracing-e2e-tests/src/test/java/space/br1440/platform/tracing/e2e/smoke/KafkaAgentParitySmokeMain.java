@@ -1,18 +1,21 @@
 package space.br1440.platform.tracing.e2e.smoke;
 
+import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
-import io.opentelemetry.api.OpenTelemetry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -23,8 +26,20 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
+import io.opentelemetry.api.OpenTelemetry;
+
 @EnableKafka
-@SpringBootApplication
+@EnableAutoConfiguration(excludeName = {
+        "space.br1440.platform.logging.configuration.LoggingAutoConfiguration",
+        "space.br1440.platform.logging.configuration.GrpcLoggingConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.opentelemetry.OpenTelemetryAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.logging.OpenTelemetryLoggingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.logging.otlp.OtlpLoggingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryTracingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpTracingAutoConfiguration"
+})
+@SpringBootConfiguration
 public class KafkaAgentParitySmokeMain {
 
     private static final CountDownLatch SINGLE_SUCCESS = new CountDownLatch(1);
@@ -61,6 +76,11 @@ public class KafkaAgentParitySmokeMain {
             System.out.println("KAFKA_E2:singleAttempts=" + SINGLE_ATTEMPTS.get());
             System.out.println("KAFKA_E2:batchRecords=" + BATCH_RECORDS.get());
             System.out.println("KAFKA_E2:openTelemetryBeans=" + context.getBeansOfType(OpenTelemetry.class).size());
+            MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+            ObjectName sampling = new ObjectName(
+                    "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
+            System.out.println("KAFKA_E2:samplerDecisions="
+                    + server.getAttribute(sampling, "SamplerDecisionCounts"));
             System.out.println("KAFKA_E2:COMPLETE");
             Thread.sleep(Duration.ofSeconds(3).toMillis());
         }
@@ -89,19 +109,27 @@ public class KafkaAgentParitySmokeMain {
         return factory;
     }
 
-    @KafkaListener(topics = "${e2.kafka.single-topic}", groupId = "e2-single",
-            containerFactory = "singleKafkaListenerContainerFactory")
-    public void consumeSingle(ConsumerRecord<String, String> record) {
-        if (SINGLE_ATTEMPTS.incrementAndGet() == 1) {
-            throw new IllegalStateException("intentional first delivery failure");
-        }
-        SINGLE_SUCCESS.countDown();
+    @Bean
+    KafkaListeners kafkaListeners() {
+        return new KafkaListeners();
     }
 
-    @KafkaListener(topics = "${e2.kafka.batch-topic}", groupId = "e2-batch", batch = "true",
-            containerFactory = "batchKafkaListenerContainerFactory")
-    public void consumeBatch(List<ConsumerRecord<String, String>> records) {
-        BATCH_RECORDS.set(records.size());
-        BATCH_SUCCESS.countDown();
+    static class KafkaListeners {
+
+        @KafkaListener(topics = "${e2.kafka.single-topic}", groupId = "e2-single",
+                containerFactory = "singleKafkaListenerContainerFactory")
+        public void consumeSingle(ConsumerRecord<String, String> record) {
+            if (SINGLE_ATTEMPTS.incrementAndGet() == 1) {
+                throw new IllegalStateException("intentional first delivery failure");
+            }
+            SINGLE_SUCCESS.countDown();
+        }
+
+        @KafkaListener(topics = "${e2.kafka.batch-topic}", groupId = "e2-batch", batch = "true",
+                containerFactory = "batchKafkaListenerContainerFactory")
+        public void consumeBatch(List<ConsumerRecord<String, String>> records) {
+            BATCH_RECORDS.set(records.size());
+            BATCH_SUCCESS.countDown();
+        }
     }
 }
