@@ -1,11 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.kafka;
 
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
-import io.opentelemetry.api.trace.TraceState;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapGetter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -21,6 +15,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Аспект для связывания (links) батчевых Kafka-вызовов с их исходными сообщениями.
@@ -28,8 +23,8 @@ import java.util.Set;
  * OTel Java Agent 2.27 не создаёт per-record links для batch-listeners
  * (сохраняет только traceparent последнего сообщения как родительский).
  * Этот аспект создаёт отдельный KAFKA_CONSUMER span вокруг метода {@code @KafkaListener(batch="true")}
- * через v3 manual batch API, извлекает remote context из каждого {@link ConsumerRecord} через
- * настроенный OTel propagator и добавляет их как links к новому платформенному span'у.
+ * через v3 manual batch API, извлекает W3C {@code traceparent}/{@code tracestate} из каждого
+ * {@link ConsumerRecord} и добавляет их как links к новому платформенному span'у.
  * <p>
  * Он <b>не мутирует</b> созданный агентом CONSUMER span, так как это хрупко.
  * <p>
@@ -41,11 +36,13 @@ import java.util.Set;
 @Aspect
 public class KafkaBatchLinksAspect {
 
-    private final OpenTelemetry openTelemetry;
+    private static final Pattern TRACE_ID = Pattern.compile("[0-9a-f]{32}");
+    private static final Pattern SPAN_ID = Pattern.compile("[0-9a-f]{16}");
+    private static final Pattern TRACE_FLAGS = Pattern.compile("[0-9a-f]{2}");
+
     private final TraceOperations traceOperations;
 
-    public KafkaBatchLinksAspect(OpenTelemetry openTelemetry, TraceOperations traceOperations) {
-        this.openTelemetry = openTelemetry;
+    public KafkaBatchLinksAspect(TraceOperations traceOperations) {
         this.traceOperations = traceOperations;
     }
 
@@ -107,54 +104,39 @@ public class KafkaBatchLinksAspect {
     }
 
     private RemoteSpanLink extractLink(ConsumerRecord<?, ?> record) {
-        Context extracted = openTelemetry.getPropagators().getTextMapPropagator()
-                .extract(Context.root(), record, KafkaRecordGetter.INSTANCE);
-        SpanContext spanContext = Span.fromContext(extracted).getSpanContext();
-        if (!spanContext.isValid()) {
+        String traceparent = header(record, "traceparent");
+        if (traceparent == null) {
             return null;
         }
-        return new RemoteSpanLink(
-                spanContext.getTraceId(),
-                spanContext.getSpanId(),
-                spanContext.getTraceFlags().asByte(),
-                serializeTraceState(spanContext.getTraceState()));
+        String normalized = traceparent.toLowerCase(java.util.Locale.ROOT);
+        String[] parts = normalized.split("-", -1);
+        if (parts.length != 4
+                || !"00".equals(parts[0])
+                || !TRACE_ID.matcher(parts[1]).matches()
+                || !SPAN_ID.matcher(parts[2]).matches()
+                || !TRACE_FLAGS.matcher(parts[3]).matches()
+                || isAllZero(parts[1])
+                || isAllZero(parts[2])) {
+            return null;
+        }
+        return new RemoteSpanLink(parts[1], parts[2], (byte) Integer.parseInt(parts[3], 16),
+                header(record, "tracestate"));
     }
 
-    private static String serializeTraceState(TraceState traceState) {
-        if (traceState.isEmpty()) {
+    private static boolean isAllZero(String value) {
+        return value.chars().allMatch(character -> character == '0');
+    }
+
+    private static String header(ConsumerRecord<?, ?> record, String name) {
+        org.apache.kafka.common.header.Header header = record.headers().lastHeader(name);
+        if (header == null || header.value() == null) {
             return null;
         }
-        StringBuilder sb = new StringBuilder();
-        traceState.forEach((key, value) -> {
-            if (sb.length() > 0) {
-                sb.append(',');
-            }
-            sb.append(key).append('=').append(value);
-        });
-        return sb.toString();
+        return new String(header.value(), StandardCharsets.UTF_8);
     }
 
     private boolean isBatchInferred(List<ConsumerRecord<?, ?>> records) {
         return records != null;
     }
 
-    private static final class KafkaRecordGetter implements TextMapGetter<ConsumerRecord<?, ?>> {
-        static final KafkaRecordGetter INSTANCE = new KafkaRecordGetter();
-
-        @Override
-        public Iterable<String> keys(ConsumerRecord<?, ?> carrier) {
-            return java.util.stream.StreamSupport.stream(carrier.headers().spliterator(), false)
-                    .map(org.apache.kafka.common.header.Header::key)
-                    .toList();
-        }
-
-        @Override
-        public String get(ConsumerRecord<?, ?> carrier, String key) {
-            org.apache.kafka.common.header.Header header = carrier.headers().lastHeader(key);
-            if (header == null || header.value() == null) {
-                return null;
-            }
-            return new String(header.value(), StandardCharsets.UTF_8);
-        }
-    }
 }

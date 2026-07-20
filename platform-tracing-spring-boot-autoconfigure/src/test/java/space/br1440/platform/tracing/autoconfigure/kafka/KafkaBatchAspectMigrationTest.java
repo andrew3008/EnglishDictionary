@@ -1,16 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.kafka;
 
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.TraceFlags;
-import io.opentelemetry.api.trace.TraceState;
-import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.ContextPropagators;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.context.propagation.TextMapSetter;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
@@ -29,7 +21,6 @@ import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -107,24 +98,14 @@ class KafkaBatchAspectMigrationTest {
     }
 
     @Test
-    void configuredPropagator_isUsedForExtraction() {
-        openTelemetry = OpenTelemetrySdk.builder()
-                .setTracerProvider(tracerProvider)
-                .setPropagators(ContextPropagators.create(new CustomHeaderPropagator()))
-                .build();
-        traceOperations = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(openTelemetry));
-
+    void nonW3cHeaderDoesNotCreateLink() {
         ConsumerRecord<String, String> record = new ConsumerRecord<>("orders", 0, 0L, "k", "v");
         record.headers().add("x-custom-trace", "1".getBytes(StandardCharsets.UTF_8));
 
         invokeBatchListener(new BatchListenerStub(), List.of(record));
 
         SpanData span = exporter.getFinishedSpanItems().getFirst();
-        assertThat(span.getLinks()).hasSize(1);
-        assertThat(span.getLinks().getFirst().getSpanContext().getTraceId())
-                .isEqualTo(CustomHeaderPropagator.TRACE_ID);
-        assertThat(span.getLinks().getFirst().getSpanContext().getSpanId())
-                .isEqualTo(CustomHeaderPropagator.SPAN_ID);
+        assertThat(span.getLinks()).isEmpty();
     }
 
     @Test
@@ -155,7 +136,7 @@ class KafkaBatchAspectMigrationTest {
 
     private void invokeBatchListener(Object target, List<ConsumerRecord<String, String>> records) {
         AspectJProxyFactory factory = new AspectJProxyFactory(target);
-        factory.addAspect(new KafkaBatchLinksAspect(openTelemetry, traceOperations));
+        factory.addAspect(new KafkaBatchLinksAspect(traceOperations));
         if (target instanceof BatchListenerStub) {
             BatchListenerStub proxy = factory.getProxy();
             proxy.consume(records);
@@ -192,32 +173,4 @@ class KafkaBatchAspectMigrationTest {
         }
     }
 
-    static final class CustomHeaderPropagator implements TextMapPropagator {
-
-        static final String TRACE_ID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        static final String SPAN_ID = "bbbbbbbbbbbbbbbb";
-        private static final String HEADER = "x-custom-trace";
-
-        @Override
-        public Collection<String> fields() {
-            return List.of(HEADER);
-        }
-
-        @Override
-        public <C> void inject(Context context, C carrier, TextMapSetter<C> setter) {
-        }
-
-        @Override
-        public <C> Context extract(Context context, C carrier, TextMapGetter<C> getter) {
-            if (getter.get(carrier, HEADER) == null) {
-                return context;
-            }
-            SpanContext remote = SpanContext.createFromRemoteParent(
-                    TRACE_ID,
-                    SPAN_ID,
-                    TraceFlags.getSampled(),
-                    TraceState.getDefault());
-            return context.with(Span.wrap(remote));
-        }
-    }
 }

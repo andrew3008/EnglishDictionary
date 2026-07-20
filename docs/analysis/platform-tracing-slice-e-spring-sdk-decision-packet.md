@@ -125,3 +125,17 @@ Slice E Spring-without-Agent: APPROVED OPTION B AS PROPOSED.
 
 либо предоставить для Option A точный SDK/exporter/resource/propagator/lifecycle ownership
 contract и разрешить supersede действующих ADR. До этого Slice E остаётся OPEN.
+
+## 9. Slice E2 execution evidence (2026-07-20)
+
+**Verdict: `E2 PARTIAL — EXTERNAL DEPLOYMENT ENFORCEMENT REQUIRED`.** Реализованы embedded
+controlled Agent distribution, JDK-only pre-JVM verifier, versioned manifest/checksums и runtime
+fail-closed callback matrix. Fresh embedded-Agent composition и WebFlux проверки green; packaged
+failure matrix доказала, что при mandatory extension failure приложение может обслуживать запрос,
+но spans не экспортируются.
+
+Gate не закрыт: Kafka fixture скомпилирован, но не выполнен; успешный protected WebMVC fixture после
+переключения на embedded Agent не перезапущен; signing/immutable registry/admission/launcher
+enforcement находятся вне репозитория. До этих доказательств произвольный stock Agent остаётся
+операционным bypass, а переход `E -> F` запрещён. Полный ledger:
+`docs/analysis/platform-tracing-slice-e2-controlled-agent-evidence.md`.

@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.kafka;
 
-import io.opentelemetry.api.OpenTelemetry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -18,9 +17,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 public class PlatformKafkaAutoConfiguration {
 
     @Bean
-    @ConditionalOnBean(OpenTelemetry.class)
-    public KafkaBatchLinksAspect kafkaBatchLinksAspect(OpenTelemetry openTelemetry,
-                                                       TraceOperations traceOperations) {
-        return new KafkaBatchLinksAspect(openTelemetry, traceOperations);
+    public KafkaBatchLinksAspect kafkaBatchLinksAspect(TraceOperations traceOperations) {
+        return new KafkaBatchLinksAspect(traceOperations);
     }
 }

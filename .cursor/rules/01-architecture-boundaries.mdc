@@ -1,0 +1,395 @@
+---
+description: Architecture-boundary guardrails for module ownership, dependency direction, public API separation, and classloader-sensitive integration.
+globs:
+  - "**/*.java"
+  - "**/*.gradle"
+  - "**/*.gradle.kts"
+  - "**/settings.gradle"
+  - "**/settings.gradle.kts"
+alwaysApply: false
+---
+
+# Architecture Boundary Rules
+
+## Applicability
+
+Apply this rule when changing:
+
+- module dependencies
+- public API or SPI
+- package ownership
+- Spring Boot auto-configuration
+- servlet or WebFlux integration
+- OpenTelemetry agent/SDK integration
+- JMX/OpenMBean adapters
+- runtime control
+- wire protocols
+- shared infrastructure abstractions
+- Gradle project structure
+
+Before editing, inspect the actual module graph, public consumers, custom source sets, tests, and current architecture gates.
+
+## Primary Boundary Model
+
+The tracing platform uses explicit ownership boundaries:
+
+```text
+application code
+    -> platform-tracing-api
+    -> platform-tracing-core
+    -> Spring / Web / OTel / JMX adapters
+    -> external runtime and telemetry infrastructure
+```
+
+Do not collapse these layers for convenience.
+
+## API Boundary
+
+`platform-tracing-api` owns:
+
+- application-facing contracts
+- intentional SPIs
+- immutable value objects
+- specifications and builders
+- public annotations
+- classloader-neutral wire/control vocabulary
+- public result and violation models
+
+It must not own:
+
+- runtime implementation
+- Spring Boot wiring
+- servlet or WebFlux types
+- JMX/OpenMBean implementation
+- OTel SDK implementation
+- exporters or processors
+- domain validation
+- sampling or scrubbing algorithms
+- mutable live state
+
+The API module must not depend on core.
+
+## Core Boundary
+
+`platform-tracing-core` owns:
+
+- implementations of public contracts
+- runtime behavior
+- lifecycle
+- domain validation
+- sampling and scrubbing policies
+- runtime-control handlers
+- atomic state transitions
+- last-known-good state
+- no-op behavior
+- safety invariants
+
+Core must not depend on:
+
+- Spring Boot
+- `ApplicationContext`
+- `@ConfigurationProperties`
+- servlet APIs
+- WebFlux/Reactor adapter APIs
+- JMX/OpenMBean transport types
+
+## Spring Boundary
+
+Spring Boot modules own:
+
+- bean wiring
+- typed configuration properties
+- conditional registration
+- startup diagnostics
+- Actuator integration
+- mapping startup configuration into core contracts
+
+They must not own:
+
+- tracing algorithms
+- wire decoding
+- domain validation
+- sampling/scrubbing implementation
+- runtime-control state transitions
+- JMX transport behavior
+
+Do not use Spring as a service locator for core runtime behavior.
+
+## Servlet and WebFlux Boundaries
+
+Servlet and WebFlux adapters must remain isolated.
+
+Forbidden:
+
+- servlet adapter -> WebFlux adapter
+- WebFlux adapter -> servlet adapter
+- servlet types in reactive modules
+- Reactor/WebFlux types in servlet modules
+- ThreadLocal-only context assumptions in reactive flows
+
+Shared behavior may move to API, core, or common auto-configuration only when it is genuinely framework-neutral.
+
+## OTel and JMX Boundary
+
+OTel/JMX modules own:
+
+- Java agent and SDK bridges
+- sampler, processor, exporter, and provider integration
+- JMX/OpenMBean adapters
+- classloader-sensitive wiring
+
+They must not:
+
+- become a second domain core
+- expose implementation classes through public API
+- leak JMX/OpenMBean or OTel SDK implementation types into application-facing contracts
+- duplicate domain validation already owned by core
+
+## Starter Boundary
+
+Starters are thin dependency aggregators.
+
+They must not contain:
+
+- business logic
+- runtime algorithms
+- domain validation
+- duplicate auto-configuration
+- environment-specific orchestration
+- mutable global state
+- hidden startup side effects
+
+A starter may select the intended integration path and dependencies only.
+
+## Expected Dependency Direction
+
+```text
+platform-tracing-core
+    -> platform-tracing-api
+
+platform-tracing-spring-boot-autoconfigure
+    -> platform-tracing-api
+    -> platform-tracing-core
+
+platform-tracing-autoconfigure-webmvc
+    -> approved API/core/autoconfigure modules
+
+platform-tracing-autoconfigure-webflux
+    -> approved API/core/autoconfigure modules
+
+platform-tracing-otel-extension
+    -> approved API/core modules
+
+starters
+    -> matching integration and auto-configuration modules
+
+tests, samples, benchmarks, and E2E
+    -> production modules under test
+```
+
+## Forbidden Dependency Directions
+
+Do not introduce:
+
+- API -> core
+- core -> Spring
+- WebMVC -> WebFlux
+- WebFlux -> servlet
+- production -> test/sample/benchmark/E2E
+- API -> JMX/OpenMBean implementation
+- API -> OTel SDK implementation without an approved contract
+- circular dependencies
+- runtime module -> starter
+- domain policy -> transport adapter
+
+Do not solve cycles by:
+
+- changing `implementation` to `api`
+- making helpers public
+- introducing static holders
+- moving domain logic into auto-configuration
+- duplicating contracts
+
+Fix ownership.
+
+## Public Surface
+
+Every public type must be classified as one of:
+
+1. application-facing API
+2. external SPI
+3. wire/control contract
+4. public-for-compilation internal bridge
+5. accidental public type to remove
+
+The default for a new type is package-private.
+
+A public-for-compilation internal bridge must:
+
+- be documented as internal
+- have a narrow consumer allowlist
+- be protected by ArchUnit or equivalent
+- not appear in application-facing documentation
+
+Do not create public helpers merely to cross subpackages.
+
+## Classloader Boundary
+
+Application and agent code may use different classloaders.
+
+Across the boundary:
+
+- use JDK-only wire types
+- use explicit schemas
+- use String wire values instead of Java enum instances
+- avoid implementation-class casts
+- avoid shared static holders
+- isolate JMX/OpenMBean types in adapters
+- do not use Java native serialization
+- test real classloader behavior
+
+Do not pass Spring or OTel SDK implementation objects across the boundary.
+
+## Control Protocol Boundary
+
+Preserve:
+
+```text
+wire payload
+    -> structural decode
+    -> domain validation
+    -> mutation policy
+    -> apply or read
+```
+
+Ownership:
+
+- API: wire vocabulary and structural validation
+- Core: domain validation and state transitions
+- Adapter: JMX/OpenMBean conversion and transport
+
+Do not reintroduce:
+
+- raw wire-map application
+- domain rules in the API decoder
+- public internal schema/validator
+- dual legacy/new decode paths
+- transport types in core/API contracts
+
+## Shared Code
+
+Shared code is acceptable only when it represents a genuinely shared stable concept.
+
+Do not create:
+
+- `Utils`
+- `Common`
+- `Shared`
+- giant helper modules
+- catch-all base classes
+- generic managers
+- platform-wide registries
+
+Prefer:
+
+- domain-specific packages
+- narrow internal services
+- explicit contracts
+- duplication over a false shared abstraction when ownership differs
+
+A shared abstraction must reduce real semantic duplication, not just line count.
+
+## Side Effects and Coupling
+
+Hidden side effects are architecture violations.
+
+Review:
+
+- static initialization
+- bean construction
+- background threads
+- JMX registration
+- global OTel mutation
+- exporter creation
+- filesystem access
+- network access
+- system-property mutation
+
+Side effects must be:
+
+- explicitly owned
+- lifecycle-managed
+- idempotent where needed
+- reversible where practical
+- observable
+- tested
+
+Do not use hidden callbacks, reflection, or framework lookup to cross boundaries.
+
+## Pre-Production Policy
+
+The tracing solution is pre-production.
+
+Breaking module, package, API, SPI, bean, property, or dependency changes are allowed when they materially improve ownership and final architecture.
+
+Prefer direct migration and deletion over:
+
+- compatibility aliases
+- forwarding modules
+- deprecated bridges
+- duplicate contracts
+- dual implementation paths
+
+A breaking boundary change must still migrate all consumers, tests, custom source sets, samples, docs, and build logic.
+
+Do not use pre-production status to justify arbitrary module churn.
+
+## Architecture Fitness
+
+Protect boundaries with executable rules where practical.
+
+Verify:
+
+- API does not depend on core
+- core does not depend on Spring
+- servlet and WebFlux remain isolated
+- JMX/OpenMBean absent from API
+- OTel SDK implementation absent from API
+- internal helpers are not public
+- starters remain thin
+- legacy packages and symbols do not return
+- raw wire payload cannot reach apply
+- domain validation remains in core
+- production modules do not depend on test modules
+- dependency cycles fail the build
+
+Do not weaken a gate to make generated code compile.
+
+## Verification
+
+For boundary changes:
+
+1. compile affected modules
+2. compile affected test and custom source sets
+3. run focused tests
+4. run module taxonomy and architecture fitness gates
+5. inspect dependency reports when Gradle edges change
+6. run full build for module/publication changes
+7. run E2E for classloader, JMX, agent, servlet, WebFlux, or runtime-control boundaries
+
+A final report must include:
+
+```text
+Boundary changed:
+Old ownership:
+New ownership:
+Dependency edges added/removed:
+Public API/SPI impact:
+Classloader impact:
+Migration:
+Architecture gates:
+Tests and E2E:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` based on executed evidence.

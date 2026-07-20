@@ -16,6 +16,16 @@ configurations {
     }
 }
 
+sourceSets {
+    distributionVerifier {
+        java.srcDir 'src/distributionVerifier/java'
+    }
+    test {
+        compileClasspath += distributionVerifier.output
+        runtimeClasspath += distributionVerifier.output
+    }
+}
+
 dependencies {
     api platform(project(':platform-tracing-bom'))
 
@@ -83,10 +93,12 @@ jar {
     }
 }
 
-tasks.register('agentExtensionJar', Jar) {
+def agentExtensionJarTask = tasks.register('agentExtensionJar', Jar) {
     archiveClassifier.set('agent')
     dependsOn classes, project(':platform-tracing-api').tasks.named('jar'), project(':platform-tracing-core').tasks.named('jar')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
     from sourceSets.main.output
     from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
     from { zipTree(project(':platform-tracing-core').jar.archiveFile) }
@@ -97,6 +109,41 @@ tasks.register('agentExtensionJar', Jar) {
                 'Implementation-Version': project.version,
                 'OpenTelemetry-Extension': 'true'
         )
+    }
+}
+
+def controlledExtensionFileName = 'platform-tracing-otel-javaagent-extension.jar'
+
+def platformExtendedAgentJarTask = tasks.register('platformExtendedAgentJar', Jar) {
+    dependsOn agentExtensionJar, configurations.platformAgentBinary
+    archiveFileName.set('opentelemetry-javaagent.jar')
+    destinationDirectory.set(layout.buildDirectory.dir('controlled-agent'))
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    from { zipTree(configurations.platformAgentBinary.singleFile) }
+    from(agentExtensionJarTask.flatMap { it.archiveFile }) {
+        into 'extensions'
+        rename { controlledExtensionFileName }
+    }
+    doFirst {
+        manifest.from(
+                zipTree(configurations.platformAgentBinary.singleFile)
+                        .matching { include 'META-INF/MANIFEST.MF' }
+                        .singleFile
+        )
+    }
+}
+
+def distributionVerifierJarTask = tasks.register('distributionVerifierJar', Jar) {
+    dependsOn distributionVerifierClasses
+    archiveFileName.set('platform-agent-verifier.jar')
+    destinationDirectory.set(layout.buildDirectory.dir('controlled-agent'))
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    from sourceSets.distributionVerifier.output
+    manifest {
+        attributes('Main-Class': 'space.br1440.platform.tracing.distribution.PlatformAgentDistributionVerifier')
     }
 }
 
@@ -149,8 +196,20 @@ tasks.register('verifyExtensionSpiRegistration') {
 
 def platformAgentDistributionDir = layout.buildDirectory.dir('platform-agent-distribution')
 
+def sha256 = { File file ->
+    def md = java.security.MessageDigest.getInstance('SHA-256')
+    file.withInputStream { stream ->
+        byte[] buffer = new byte[8192]
+        int read
+        while ((read = stream.read(buffer)) != -1) {
+            md.update(buffer, 0, read)
+        }
+    }
+    md.digest().collect { String.format('%02x', it) }.join()
+}
+
 tasks.register('preparePlatformAgentDistribution') {
-    dependsOn agentExtensionJar, configurations.platformAgentBinary
+    dependsOn platformExtendedAgentJar, agentExtensionJar, distributionVerifierJar
     outputs.dir platformAgentDistributionDir
     doLast {
         def outputDir = platformAgentDistributionDir.get().asFile
@@ -158,46 +217,73 @@ tasks.register('preparePlatformAgentDistribution') {
         outputDir.mkdirs()
 
         copy {
-            from configurations.platformAgentBinary.singleFile
+            from platformExtendedAgentJarTask.flatMap { it.archiveFile }
             into outputDir
-            rename { 'opentelemetry-javaagent.jar' }
         }
         copy {
-            from agentExtensionJar.archiveFile
+            from agentExtensionJarTask.flatMap { it.archiveFile }
             into outputDir
-            rename { 'platform-tracing-extension.jar' }
+            rename { controlledExtensionFileName }
         }
         copy {
-            from 'src/main/distribution/platform-agent-launcher.sh'
+            from distributionVerifierJarTask.flatMap { it.archiveFile }
             into outputDir
+        }
+        copy {
+            from 'src/main/distribution'
+            into outputDir
+            include 'platform-agent-launcher.sh', 'platform-agent-launcher.cmd'
         }
 
-        def digest = { File file ->
-            def md = java.security.MessageDigest.getInstance('SHA-256')
-            file.withInputStream { stream ->
-                byte[] buffer = new byte[8192]
-                int read
-                while ((read = stream.read(buffer)) != -1) {
-                    md.update(buffer, 0, read)
-                }
+        def gitCommit = 'UNKNOWN'
+        try {
+            def process = new ProcessBuilder('git', 'rev-parse', 'HEAD')
+                    .directory(rootProject.projectDir)
+                    .redirectErrorStream(true)
+                    .start()
+            def output = process.inputStream.getText('UTF-8').trim()
+            if (process.waitFor() == 0 && output ==~ /[0-9a-fA-F]{40}/) {
+                gitCommit = output.toLowerCase(Locale.ROOT)
             }
-            md.digest().collect { String.format('%02x', it) }.join()
+        } catch (IOException ignored) {
+            // UNKNOWN остаётся явным значением для source archive без Git metadata.
         }
         def agentFile = new File(outputDir, 'opentelemetry-javaagent.jar')
-        def extensionFile = new File(outputDir, 'platform-tracing-extension.jar')
-        new File(outputDir, 'SHA256SUMS').text =
-                "${digest(agentFile)}  ${agentFile.name}\n${digest(extensionFile)}  ${extensionFile.name}\n"
-        new File(outputDir, 'distribution.properties').text =
-                "distribution.version=${project.version}\n" +
-                "otel.javaagent.version=${openTelemetryInstrumentationBomVersion}\n" +
-                "attestation.protocol.version=1\n" +
-                "attestation.profile=platform-agent-secure-v1\n"
+        def extensionFile = new File(outputDir, controlledExtensionFileName)
+        def manifestFile = new File(outputDir, 'manifest.json')
+        def versionFile = new File(outputDir, 'VERSION')
+        versionFile.setText("${project.version}\n", 'UTF-8')
+        def manifest = [
+                schemaVersion             : '1',
+                distributionVersion       : project.version.toString(),
+                openTelemetryAgentVersion : openTelemetryInstrumentationBomVersion.toString(),
+                platformExtensionVersion  : project.version.toString(),
+                readinessProtocolVersion  : '1',
+                requiredCapabilityProfile : 'platform-agent-secure-v1',
+                javaCompatibility         : [minimum: 17, maximumTested: 21],
+                buildProvenance           : [gitCommit: gitCommit, buildSystem: "Gradle ${gradle.gradleVersion}"],
+                extensionLoading          : [mode: 'embedded', directory: 'extensions', externalParameterAllowed: false],
+                artifacts                 : [
+                        agent    : [file: agentFile.name, sha256: sha256(agentFile)],
+                        extension: [file: extensionFile.name, sha256: sha256(extensionFile)]
+                ]
+        ]
+        manifestFile.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(manifest)) + '\n', 'UTF-8')
+
+        def checksumFiles = [agentFile, extensionFile, manifestFile, versionFile,
+                             new File(outputDir, 'platform-agent-verifier.jar'),
+                             new File(outputDir, 'platform-agent-launcher.sh'),
+                             new File(outputDir, 'platform-agent-launcher.cmd')]
+        new File(outputDir, 'checksums.sha256').setText(
+                checksumFiles.collect { "${sha256(it)}  ${it.name}" }.join('\n') + '\n', 'UTF-8')
     }
 }
 
-tasks.register('platformAgentDistribution', Zip) {
-    dependsOn preparePlatformAgentDistribution
+def platformAgentDistributionTask = tasks.register('platformAgentDistribution', Zip) {
+    dependsOn 'verifyPlatformAgentDistribution'
     archiveClassifier.set('platform-agent-distribution')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
     from platformAgentDistributionDir
 }
 
@@ -205,24 +291,46 @@ tasks.register('verifyPlatformAgentDistribution') {
     dependsOn preparePlatformAgentDistribution
     doLast {
         def outputDir = platformAgentDistributionDir.get().asFile
-        ['opentelemetry-javaagent.jar', 'platform-tracing-extension.jar',
-         'platform-agent-launcher.sh', 'SHA256SUMS', 'distribution.properties'].each { name ->
+        ['opentelemetry-javaagent.jar', controlledExtensionFileName,
+         'platform-agent-verifier.jar', 'platform-agent-launcher.sh', 'platform-agent-launcher.cmd',
+         'manifest.json', 'checksums.sha256', 'VERSION'].each { name ->
             assert new File(outputDir, name).isFile() : "Missing controlled Agent distribution file: ${name}"
         }
-        assert new File(outputDir, 'SHA256SUMS').readLines().size() == 2
+
+        def result = javaexec {
+            classpath = files(new File(outputDir, 'platform-agent-verifier.jar'))
+            mainClass.set('space.br1440.platform.tracing.distribution.PlatformAgentDistributionVerifier')
+            args 'verify', outputDir.absolutePath
+            ignoreExitValue = true
+        }
+        assert result.exitValue == 0 : "Controlled Agent verifier exited with ${result.exitValue}"
+
+        def extendedAgent = new java.util.jar.JarFile(new File(outputDir, 'opentelemetry-javaagent.jar'))
+        try {
+            assert extendedAgent.getJarEntry("extensions/${controlledExtensionFileName}") != null :
+                    'Controlled Agent does not contain the embedded platform extension'
+        } finally {
+            extendedAgent.close()
+        }
     }
+}
+
+tasks.named('test') {
+    dependsOn preparePlatformAgentDistribution
+    systemProperty 'platform.agent.distribution.dir', platformAgentDistributionDir.get().asFile.absolutePath
 }
 
 check.dependsOn verifyAgentJarContents
 check.dependsOn verifyExtensionSpiRegistration
 check.dependsOn verifyPlatformAgentDistribution
 
-// Публикация self-contained agentExtensionJar (classifier agent) вместе со standard jar.
+// Публикация extension JAR и проверенного controlled distribution вместе со standard jar.
 afterEvaluate {
     publishing {
         publications {
             named('mavenJava') {
                 artifact agentExtensionJar
+                artifact platformAgentDistributionTask
             }
         }
     }

@@ -1,0 +1,536 @@
+---
+description: Observability guardrails for tracing, metrics, structured logging, runtime diagnostics, sampling, scrubbing, and context propagation.
+globs:
+  - "**/*Tracing*.java"
+  - "**/*Trace*.java"
+  - "**/*Span*.java"
+  - "**/*Sampler*.java"
+  - "**/*Scrubb*.java"
+  - "**/*Metric*.java"
+  - "**/*Meter*.java"
+  - "**/*Observation*.java"
+  - "**/*Health*.java"
+  - "**/*Diagnostic*.java"
+  - "**/*Mdc*.java"
+  - "**/*Telemetry*.java"
+  - "**/*Exporter*.java"
+  - "**/*Processor*.java"
+  - "**/*Propag*.java"
+  - "**/*instrumentation*/**/*.java"
+  - "**/*observability*/**/*.java"
+  - "**/*tracing*/**/*.java"
+alwaysApply: false
+---
+
+# Observability Rules
+
+## Applicability
+
+Apply this rule when changing:
+
+- tracing API or runtime behavior
+- span creation, naming, relationships, links, events, or attributes
+- context propagation or MDC
+- sampling or force-sampling
+- scrubbing or PII handling
+- Micrometer/OTel metrics
+- structured logging
+- health, readiness, startup diagnostics, or runtime diagnostics
+- exporters, processors, collectors, queues, retries, or drops
+- servlet, WebFlux, Kafka, database, async, or scheduled instrumentation
+
+Before adding telemetry, identify the concrete operational question it answers.
+
+Do not instrument code merely because telemetry can be added.
+
+## Signal Ownership
+
+Every signal must have one owner.
+
+- Traces belong to tracing API/core and OTel integration.
+- Platform metrics belong to the approved telemetry/runtime module.
+- Structured logging follows platform logging conventions.
+- Health and readiness belong to Spring Boot Actuator/infrastructure integration.
+- Runtime diagnostics belong to bounded read-only diagnostics surfaces.
+
+Do not duplicate signals already emitted by the Java agent, OTel SDK, Micrometer, Spring Boot, or client libraries.
+
+## Required Decision Record
+
+For every new or changed signal, define:
+
+```text
+Operational question:
+Signal type:
+Owner module:
+Name:
+Dimensions/attributes:
+Cardinality budget:
+Sensitive-data assessment:
+Disabled/no-op behavior:
+Failure/degradation behavior:
+Test evidence:
+```
+
+A signal without a consumer or operator use case is observability noise.
+
+## Tracing
+
+Use OpenTelemetry and W3C Trace Context.
+
+Do not:
+
+- invent custom trace formats
+- reimplement W3C parsing when the approved OTel implementation is available
+- expose OTel SDK implementation types through application-facing API
+- create manual spans that duplicate auto-instrumentation
+- use tracing metadata for authentication or authorization
+- log full malformed propagation headers
+
+Manual spans require a demonstrated semantic gap.
+
+## Span Naming
+
+Span names must be:
+
+- stable
+- low cardinality
+- based on operation or normalized route
+- free of raw identifiers and payload values
+
+Preferred:
+
+```text
+payment.process
+GET /orders/{id}
+kafka.consume
+```
+
+Forbidden:
+
+```text
+payment.user-123
+GET /orders/98765
+consume.customer@example.com
+```
+
+Do not include trace IDs, span IDs, request IDs, user/account IDs, query strings, timestamps, or exception messages in span names.
+
+## Span Design
+
+Create spans only for meaningful operations or boundaries.
+
+Avoid:
+
+- one span per trivial method
+- one span per loop item without a volume budget
+- excessive nesting
+- duplicate transport spans
+- duplicate exception events
+
+Where applicable, verify:
+
+- span count
+- name
+- parent/root/link relationship
+- trace continuity
+- attributes
+- status and events
+- resource identity
+- sampling outcome
+- absence of duplicates
+
+## Span Lifecycle
+
+Spans and scopes must be closed deterministically.
+
+Requirements:
+
+- start exactly once
+- end exactly once
+- restore previous context
+- preserve lifecycle semantics in no-op mode
+- avoid leaks on exception, cancellation, or retry
+- document reuse/thread-safety for builders and handles
+
+Do not rely on garbage collection or finalizers.
+
+## Attributes and Events
+
+Attributes and event data must be:
+
+- operationally useful
+- bounded
+- type-safe
+- stable
+- reviewed for cardinality and privacy
+
+Do not:
+
+- use user input as an attribute key
+- attach raw payloads
+- attach credentials, cookies, tokens, or authorization headers
+- attach unbounded maps or collections
+- copy arbitrary baggage into attributes
+- attach full SQL or message payloads
+- blindly record exception messages
+
+Use approved semantic conventions and platform-owned namespaces.
+
+## Cardinality
+
+Every metric tag and aggregatable attribute needs a bounded value set or explicit budget.
+
+Generally forbidden as metric labels:
+
+- trace ID
+- span ID
+- request ID
+- user/account ID
+- raw route/path
+- endpoint URL
+- exception message
+- baggage value
+- arbitrary rule/configuration value
+
+If a value can grow without a deployment, treat it as high cardinality.
+
+## Metrics
+
+Use Micrometer unless a lower-level OTel metric path is explicitly required.
+
+Metrics must be:
+
+- stable
+- low cardinality
+- bounded
+- aggregatable
+- operationally useful
+- owned by one module
+
+Before adding a metric, inspect existing OTel, agent, Spring Boot, Micrometer, and client-library metrics.
+
+Do not add a duplicate metric because an internal counter is available.
+
+Use:
+
+- counters for monotonic events
+- gauges for stable current state with a clear owner
+- timers/histograms only for a concrete latency question
+
+Do not use dynamic metric names.
+
+## Structured Logging
+
+Use parameterized and structured logging.
+
+Logs must:
+
+- identify the capability
+- include bounded machine-readable status/reason fields where useful
+- preserve root cause safely
+- be actionable
+- avoid repeated floods
+
+Never log:
+
+- secrets
+- credentials
+- tokens
+- authorization headers
+- cookies
+- raw control payloads
+- raw baggage
+- full malformed trace headers
+- raw PII
+- exporter credentials
+- full environment/configuration dumps
+
+Do not emit one INFO log per span or sampling decision.
+
+## Logging Levels
+
+Use:
+
+- `ERROR` for unsafe or unrecoverable platform failures
+- `WARN` for bounded degraded states, rejected unsafe configuration, or operator action
+- `INFO` for concise lifecycle/mode summaries
+- `DEBUG`/`TRACE` for bounded troubleshooting
+
+Do not require DEBUG logs to understand a critical production failure.
+
+Warning deduplication must be bounded, thread-safe, and test-isolated.
+
+## Correlation and Context
+
+MDC is a logging integration, not the source of truth.
+
+Use validated/current trace context to populate correlation fields.
+
+Requirements:
+
+- restore previous MDC values
+- clean up on success, error, cancellation, and retry
+- do not assume ThreadLocal propagation in Reactor
+- do not mutate trace context from MDC
+- keep correlation fields small and stable
+- do not use request/correlation IDs as metric labels
+
+Test no cross-request or cross-subscription leakage.
+
+## Reactive and Async Flows
+
+Do not:
+
+- block Reactor event-loop threads
+- rely on plain ThreadLocal propagation
+- create hidden subscriptions
+- add unbounded retries
+- duplicate spans across retries/subscriptions
+- perform synchronous export on reactive/request threads
+
+Test:
+
+- thread hops
+- context visibility
+- context restoration
+- cancellation
+- error path
+- retry behavior
+- MDC cleanup
+- outbound propagation
+- duplicate instrumentation
+
+## Propagation and Baggage
+
+Incoming propagation data is untrusted.
+
+Use the approved OTel propagators.
+
+Do not:
+
+- trust trace context for authorization
+- copy arbitrary baggage into logs or spans
+- propagate secrets or raw PII
+- accept unbounded baggage
+- echo raw invalid request IDs or headers
+
+Baggage requires an allowlist and size limits.
+
+## Sampling
+
+Sampling must be deterministic and explainable.
+
+Require:
+
+- validated ratios
+- explicit route precedence
+- normalized route templates
+- deterministic tests using `0.0` or `1.0` where appropriate
+- readable applied state
+- last-known-good preservation after rejected mutation
+- no conflict between platform and OTel sampler settings
+
+Force sampling must not bypass:
+
+- scrubbing
+- export kill switches
+- runtime mutation policy
+- security controls
+
+## Scrubbing and PII
+
+Scrubbing is a production safety control.
+
+State its exact scope.
+
+A span-attribute processor does not automatically protect:
+
+- events
+- links
+- baggage
+- resources
+- logs
+- metrics
+
+Require:
+
+- deterministic rules
+- visibility of active/skipped rules
+- safe rule fingerprint
+- explicit critical failure behavior
+- no raw sensitive values in diagnostics
+- force-sampled spans still pass through scrubbing
+
+Do not claim broad PII protection without signal-specific evidence.
+
+## Diagnostics and Health
+
+Diagnostics should expose bounded live state, such as:
+
+- tracing active/no-op
+- agent/runtime mode
+- active adapters
+- sampling mode
+- mutation gate state
+- applied policy version/status
+- scrubbing rule summary
+- exporter/processor readiness
+- actionable warnings
+
+Do not expose:
+
+- secrets
+- PII
+- raw payloads
+- mutable live collections
+- full environment
+- implementation object dumps
+- unbounded maps
+
+Distinguish desired startup configuration from current applied runtime state.
+
+Do not make liveness depend on optional collector/exporter availability.
+
+## Runtime Control Observability
+
+For control operations, make it possible to determine:
+
+- operation
+- structural decode result
+- domain validation result
+- mutation-policy result
+- apply/read result
+- state changed or unchanged
+- active state version
+- bounded reason code
+
+Do not log raw control payloads.
+
+Rejected operations must not change state.
+
+## Exporter and Collector
+
+Export must not block application request or reactive threads.
+
+Use:
+
+- bounded queues
+- bounded retries
+- asynchronous export
+- explicit drop policy
+- observable failures and queue pressure
+
+Avoid:
+
+- synchronous export
+- unbounded queues/retries
+- silent drops
+- startup network calls from ordinary auto-configuration
+- credential logging
+
+One layer should own retry policy to avoid retry multiplication.
+
+## No-Op and Disabled Behavior
+
+Disabled/no-op mode must:
+
+- preserve public API safety
+- avoid network calls
+- avoid state mutation
+- avoid false export diagnostics
+- remain independently tested
+- avoid unnecessary allocation where practical
+- preserve lifecycle and validation semantics that callers rely on
+
+## Performance and Volume
+
+For new high-volume telemetry, estimate:
+
+- signals per request/message
+- attributes/events/links per span
+- metric series cardinality
+- logs per failure loop
+- exporter queue impact
+- force-sampling amplification
+
+Avoid:
+
+- repeated regex compilation
+- per-span temporary collections where unnecessary
+- eager string formatting
+- unbounded warning caches
+- global synchronization
+- reflection in hot paths
+
+Correctness and privacy have priority over micro-optimization.
+
+## Testing
+
+Use layered verification:
+
+- unit tests for policy, mapping, and invariants
+- Spring tests for conditions/properties/diagnostics
+- architecture tests for ownership and public surface
+- integration/E2E for real propagation, export, sampling, scrubbing, JMX, agent, servlet, and WebFlux behavior
+
+A test that only checks “some span exists” is insufficient when relationships, attributes, sampling, or duplicates matter.
+
+A skipped required E2E is `INSUFFICIENT_EVIDENCE`, not `PASS`.
+
+## Architecture Fitness
+
+Protect where practical:
+
+- no OTel SDK implementation types in public API
+- no JMX/OpenMBean types in public API
+- no custom W3C parser when official implementation is required
+- no duplicate instrumentation path
+- no runtime mutation enabled by default
+- no unvalidated control payload apply
+- no unsafe labels/attributes where statically detectable
+- no legacy tracing symbols or packages
+- servlet/WebFlux isolation
+
+Do not weaken observability architecture gates to make generated code compile.
+
+## Pre-Production Policy
+
+Breaking observability changes are allowed when they materially improve:
+
+- span semantics
+- naming/cardinality
+- privacy
+- duplicate suppression
+- runtime safety
+- diagnostics
+- architecture ownership
+- performance
+
+Prefer direct migration and deletion of obsolete telemetry paths over compatibility aliases or dual emission.
+
+Do not use pre-production status to justify arbitrary telemetry churn.
+
+## Verification and Report
+
+Run the narrowest affected tests first, then architecture, build, and E2E gates required by the changed boundary.
+
+A final report must include:
+
+```text
+Operational question:
+Signals changed:
+Owner module:
+Names and dimensions:
+Cardinality budget:
+Sensitive-data assessment:
+Sampling/scrubbing behavior:
+Disabled/no-op behavior:
+Failure/degradation:
+Tests and E2E:
+Architecture fitness:
+Performance/volume impact:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` based on executed evidence.

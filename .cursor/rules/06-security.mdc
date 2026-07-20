@@ -1,0 +1,728 @@
+---
+description: Security and privacy guardrails for tracing data, propagation, runtime control, JMX, exporters, Spring configuration, and external integrations.
+globs:
+  - "**/*Security*.java"
+  - "**/*Auth*.java"
+  - "**/*Secret*.java"
+  - "**/*Credential*.java"
+  - "**/*Tls*.java"
+  - "**/*Ssl*.java"
+  - "**/*Trust*.java"
+  - "**/*Scrubb*.java"
+  - "**/*Sensitive*.java"
+  - "**/*Pii*.java"
+  - "**/*Propagation*.java"
+  - "**/*Baggage*.java"
+  - "**/*RuntimeControl*.java"
+  - "**/*Jmx*.java"
+  - "**/*MBean*.java"
+  - "**/*Exporter*.java"
+  - "**/*Endpoint*.java"
+  - "**/*security*/**/*.java"
+  - "**/*scrubbing*/**/*.java"
+  - "**/*control*/**/*.java"
+  - "**/*application*.yml"
+  - "**/*application*.yaml"
+  - "**/*values*.yml"
+  - "**/*values*.yaml"
+alwaysApply: false
+---
+
+# Security Rules
+
+## Applicability
+
+Apply this rule when changing:
+
+- propagation headers, baggage, request IDs, or correlation IDs
+- span attributes, events, links, resources, logs, or metrics
+- scrubbing, masking, or PII handling
+- runtime control or mutation
+- JMX/OpenMBean
+- Actuator or admin endpoints
+- exporter/collector endpoints
+- TLS, credentials, Secrets, or authentication metadata
+- custom SPI/ServiceLoader providers
+- serialization or wire protocols
+- Spring Boot security-sensitive configuration
+- Kubernetes exposure or Helm values
+
+Before editing, identify the trust boundary, external controls, sensitive data, and failure mode.
+
+## Priority
+
+When concerns conflict, prefer:
+
+1. prevention of secret and PII disclosure
+2. prevention of unauthorized mutation
+3. correctness of untrusted input validation
+4. runtime-state integrity
+5. least privilege
+6. fail-closed behavior for privileged actions
+7. auditability
+8. availability and graceful degradation
+9. convenience
+10. compatibility with pre-production behavior
+
+Do not preserve insecure behavior for compatibility.
+
+## Core Principles
+
+Use:
+
+- least privilege
+- secure by default
+- explicit trust boundaries
+- defense in depth
+- bounded input
+- explicit validation
+- immutable state
+- safe diagnostics
+- narrow public surface
+- approved external security mechanisms
+
+Do not use:
+
+- security through obscurity
+- permissive fallback
+- hidden trust assumptions
+- tracing metadata as authorization
+- custom authentication inside tracing modules
+- secrets in source or telemetry
+- broad admin exposure
+
+## Threat Model
+
+Treat as untrusted:
+
+- `traceparent`
+- `tracestate`
+- baggage
+- request and correlation IDs
+- force-sampling headers
+- trace-control headers
+- HTTP/RPC/Kafka metadata
+- JMX/OpenMBean payloads
+- `Map<String, Object>` control payloads
+- Spring properties and environment variables
+- exporter endpoints
+- custom provider implementations
+- application-supplied span attributes
+- route maps and ratio maps
+
+Assume inputs may be malformed, oversized, forged, stale, duplicated, or injected by an unintended intermediary.
+
+Assume application and agent code may use different classloaders.
+
+## Trust Boundaries
+
+The main boundary is:
+
+```text
+external request/message
+    -> propagation or control extraction
+    -> public API
+    -> core validation and policy
+    -> Spring / OTel / JMX adapter
+    -> exporter / collector / backend
+```
+
+Each boundary must have one owner.
+
+Do not let transport code own domain policy.
+
+Do not let API contracts expose adapter implementation types.
+
+## Secure Defaults
+
+Risky capabilities must be disabled by default.
+
+Examples:
+
+- runtime mutation
+- unrestricted force sampling
+- arbitrary exporter endpoint changes
+- unsafe attribute escape hatches
+- verbose payload logging
+- sensitive diagnostics
+- unrestricted custom providers
+
+Read-only diagnostics may remain available only when they expose bounded, safe state.
+
+Do not use permissive defaults merely because a framework provides them.
+
+## Runtime Control Security
+
+Runtime mutation is privileged.
+
+Required behavior:
+
+- mutation disabled by default
+- explicit startup enablement
+- validation-only operations never apply
+- read operations never mutate
+- decode-invalid requests never reach apply
+- domain-invalid requests never reach apply
+- mutation-policy rejection never reaches apply
+- rejected requests preserve snapshot, version, source, timestamps, and last-known-good state
+- apply is atomic from readers' perspective
+- partial failure does not leave mixed state
+- rollback is tested where multiple resources are involved
+
+The mutation-enabling property must:
+
+- default to `false`
+- be strongly typed
+- appear in configuration metadata
+- be documented as security-sensitive
+- have negative tests
+- not be mutable through the same control path it protects
+
+## Control Protocol Security
+
+Preserve:
+
+```text
+wire payload
+    -> structural decode
+    -> domain validation
+    -> mutation policy
+    -> apply or read
+```
+
+The structural decoder must enforce:
+
+- required envelope fields
+- supported contract version
+- recognized operation
+- operation-specific keys
+- strict unknown-key rejection
+- String-only map keys
+- supported JDK-safe value shapes
+- deterministic normalization
+- bounded strings, maps, and arrays
+- enum-instance rejection where String wire values are required
+- immutable decode result
+
+An invalid result must not expose a usable apply payload.
+
+Core must enforce:
+
+- ratio bounds
+- route-map bounds
+- allowed validation modes
+- empty-mutation rejection
+- cross-field invariants
+- force-control and kill-switch conflicts
+
+Do not reintroduce:
+
+- public `schema()`
+- public `validator()`
+- `READ_SCHEMA`
+- legacy validation packages
+- raw wire-map apply
+- Java native serialization
+
+## Propagation Security
+
+Tracing metadata is correlation data, not identity or authorization.
+
+Never use:
+
+- trace ID
+- span ID
+- request ID
+- correlation ID
+- baggage
+- `traceparent`
+- `tracestate`
+- force-sampling header
+
+as proof of authentication, tenant ownership, or authorization.
+
+Use the approved OpenTelemetry W3C implementation where possible.
+
+Malformed input must:
+
+- be rejected or ignored according to contract
+- not create invalid context
+- not mutate unrelated state
+- not expose the full raw header in logs or exceptions
+- be bounded before parsing
+
+## Baggage
+
+Baggage may cross service or organizational boundaries.
+
+Rules:
+
+- allowlist platform-owned keys
+- impose entry count and total size limits
+- do not place secrets or raw PII in baggage
+- do not copy arbitrary baggage into logs, spans, or metrics
+- do not trust baggage for authorization
+- do not create metric labels from baggage
+- remove or ignore disallowed keys
+- avoid high-cardinality propagation
+
+## Request and Correlation IDs
+
+Request and correlation IDs are untrusted external strings.
+
+They must be:
+
+- bounded
+- character-restricted
+- safe for headers and logs
+- generated when absent or invalid according to policy
+- independent from trace IDs
+- not used as metric labels
+
+Do not reflect raw invalid IDs into response headers, logs, or diagnostics.
+
+## Force Sampling
+
+Force sampling can amplify:
+
+- telemetry volume
+- backend cost
+- PII exposure
+- denial-of-service risk
+
+Rules:
+
+- disabled or gateway-controlled by default
+- strict accepted values
+- bounded header length
+- no arbitrary truthy strings
+- no bypass of scrubbing
+- no bypass of export kill switch
+- no bypass of mutation policy
+- bounded metrics for accepted/rejected requests
+- documented ingress trust assumptions
+- deterministic tests
+
+Possession of a force-sampling header is not authorization.
+
+## Telemetry Data Safety
+
+Every telemetry field needs a safety classification.
+
+Potentially sensitive:
+
+- user/account IDs
+- emails
+- phone numbers
+- IP addresses
+- full URLs and query strings
+- database statements
+- message payloads
+- headers
+- cookies
+- tokens
+- exception messages
+- stack traces
+- baggage
+- cloud/runtime resource attributes
+
+Do not export sensitive data without an explicit approved policy, transformation, and test evidence.
+
+## Span and Metric Safety
+
+Span names must not contain:
+
+- raw IDs
+- emails
+- query strings
+- payload values
+- timestamps
+- exception text
+
+Do not use user input as an attribute key.
+
+Do not use as metric labels:
+
+- trace ID
+- span ID
+- request ID
+- user/account ID
+- raw route/path
+- endpoint URL
+- exception message
+- arbitrary configuration value
+
+If a value can grow without a deployment, treat it as high cardinality.
+
+## Scrubbing and PII
+
+Scrubbing is a safety control, not formatting.
+
+State its exact scope.
+
+A span-attribute scrubber does not automatically protect:
+
+- events
+- links
+- baggage
+- resources
+- logs
+- metrics
+
+Required behavior:
+
+- deterministic rules
+- visible active/skipped rules
+- safe rule fingerprint
+- explicit critical failure mode
+- no raw sensitive values in diagnostics
+- scrubbing still applies to force-sampled spans
+- mandatory rules cannot be bypassed by custom providers
+
+Do not claim broad PII protection without signal-specific evidence.
+
+## Logging Security
+
+Never log:
+
+- passwords
+- API keys
+- access or refresh tokens
+- authorization headers
+- cookies
+- private keys
+- raw control payloads
+- raw baggage
+- full malformed propagation headers
+- exporter credentials
+- full environment dumps
+- raw PII
+
+Use bounded structured fields and machine-readable reason codes.
+
+Do not let untrusted input create unbounded warning deduplication state.
+
+## Exporter and Collector Security
+
+Exporter configuration can become an exfiltration or SSRF path.
+
+Rules:
+
+- prefer startup-owned endpoints
+- validate endpoint scheme and format
+- use TLS for external or untrusted networks
+- allow plaintext only for a documented trusted local/sidecar boundary
+- validate certificates and hostnames
+- never use trust-all TLS
+- never log credentials or auth headers
+- use bounded timeouts, queues, and retries
+- avoid startup network calls in ordinary auto-configuration
+
+Runtime endpoint mutation requires a separate threat model with:
+
+- explicit enablement
+- scheme/host allowlist
+- audit trail
+- rollback
+- SSRF analysis
+- negative tests
+
+## Secrets
+
+Secrets include:
+
+- exporter API keys
+- collector credentials
+- TLS private keys
+- trust-store passwords
+- JMX credentials
+- OAuth tokens
+- cloud credentials
+
+Secrets must:
+
+- be externalized
+- support rotation
+- be masked in diagnostics
+- not be persisted in runtime snapshots
+- not be included in telemetry
+- not be returned by Actuator or JMX
+- not be committed to Git
+- not be embedded in Docker images or test fixtures
+
+Environment variables may inject secrets, but code must not dump the environment.
+
+## Actuator Security
+
+Actuator endpoints are operational APIs.
+
+They must:
+
+- be read-only by default
+- expose bounded safe state
+- distinguish desired startup configuration from live applied state
+- avoid secrets, PII, raw payloads, and implementation objects
+- use explicit guards for mutation
+- have documented external security assumptions
+
+Do not assume obscurity or endpoint naming is a security boundary.
+
+## JMX Security
+
+JMX is privileged operational access.
+
+Required defense in depth:
+
+- mutation disabled by default
+- read and validate separated from apply
+- input structurally decoded and domain-validated
+- OpenMBean types isolated in adapter modules
+- no Java native serialization
+- no arbitrary deserialization
+- stable object names
+- idempotent registration
+- rollback on partial registration failure
+- no credentials or raw sensitive policy values in attributes
+
+The tracing code does not replace JVM/JMX authentication, network isolation, or RBAC.
+
+Historical unguarded MBeans must remain tracked as separate risk surfaces.
+
+## Spring Security-Sensitive Wiring
+
+Spring integration must:
+
+- use typed properties
+- validate startup configuration
+- avoid direct environment access in ordinary beans
+- avoid security-sensitive startup network calls
+- keep optional classpaths isolated
+- fail clearly when a mandatory safety component is missing
+- expose concise startup diagnostics
+
+`@ConditionalOnMissingBean` must not let a replacement bypass mandatory safety invariants.
+
+## Classloader Security
+
+Across application/agent classloaders:
+
+- use JDK-safe wire values
+- use explicit schemas
+- avoid implementation-class casts
+- avoid static holders
+- test ServiceLoader behavior deliberately
+- keep agent classes out of application-facing API
+
+Do not use Java native serialization across the boundary.
+
+## SPI and ServiceLoader
+
+Use SPI only for a real external extension point.
+
+Do not use ServiceLoader for:
+
+- deterministic utilities
+- one built-in implementation
+- hidden initialization order
+- mandatory safety components
+- package-access workarounds
+- static holder lookup
+
+For security-sensitive providers:
+
+- document trust assumptions
+- validate provider output
+- define ordering
+- define failure behavior
+- test missing, duplicate, and failing providers
+- prevent bypass of mandatory platform policy
+
+## Dependency and Supply Chain
+
+Dependencies must:
+
+- come from approved repositories
+- use pinned or centrally managed versions
+- support vulnerability scanning
+- use the narrowest artifact
+- have intentional Gradle scope
+
+Do not:
+
+- use dynamic versions
+- add untrusted repositories
+- bypass dependency verification
+- add broad runtimes for a narrow annotation need
+- add schema or serialization libraries without a proven boundary need
+
+## Serialization
+
+Never use:
+
+- Java native serialization
+- unrestricted polymorphic deserialization
+- arbitrary class names from input
+- reflection-based construction from untrusted maps
+- raw object graphs in JMX responses
+
+When JSON is used:
+
+- use explicit models
+- disable unsafe polymorphic typing
+- reject unknown fields where appropriate
+- bound size and nesting
+- separate structural decode from domain validation
+
+## Resource and DoS Limits
+
+Bound:
+
+- header lengths
+- baggage count and total size
+- ID lengths
+- attribute string and array lengths
+- route-map size
+- event/link counts
+- diagnostic list size
+- exporter queues
+- retry count and timeout
+- concurrent runtime mutations
+
+Avoid:
+
+- unbounded caches
+- user-controlled cache keys without limits
+- catastrophic regexes
+- attacker-controlled span names
+- unbounded payload capture
+
+## Concurrency and State Safety
+
+Security-sensitive runtime state must be:
+
+- immutable or safely published
+- atomically updated
+- versioned where needed
+- readable without partial state
+- recoverable through last-known-good state
+- protected from conflicting applies
+
+Test:
+
+- concurrent reads during apply
+- rejected apply preserving state
+- repeated identical apply
+- partial failure rollback
+- no static mutable test leakage
+
+## Failure Semantics
+
+Use fail closed for:
+
+- disabled or unauthorized mutation
+- invalid control payload
+- invalid policy
+- malformed security-sensitive configuration
+- invalid exporter endpoint mutation
+- mandatory scrubbing failure
+
+Fail startup when a mandatory safety invariant cannot be satisfied.
+
+Degrade safely only for optional capabilities where correctness and privacy remain intact.
+
+Never fall back silently to a permissive mode.
+
+## Kubernetes and Deployment
+
+Deployment guidance should include:
+
+- non-root containers
+- least-privilege RBAC
+- network policies
+- restricted JMX exposure
+- approved secret injection
+- no Docker socket mount
+- no cluster-admin requirement
+- trusted collector/exporter path
+- explicit runtime-mutation enablement only where approved
+
+Do not assume in-cluster traffic is automatically trusted.
+
+## Testing
+
+Security-sensitive behavior requires negative tests.
+
+Test applicable cases:
+
+- mutation disabled by default
+- mutation rejected without state change
+- validate does not apply
+- read does not mutate
+- malformed propagation rejected
+- unknown control keys rejected
+- oversized input rejected
+- force-sampling invalid values rejected
+- PII removed before export
+- secrets absent from diagnostics
+- provider failure handled safely
+- JMX/OpenMBean absent from API
+- trust-all TLS absent
+- Java native serialization absent
+
+Use real integration/E2E tests when the security property depends on a runtime boundary.
+
+A skipped required security E2E is `INSUFFICIENT_EVIDENCE`.
+
+## Architecture Fitness
+
+Protect where practical:
+
+- API has no Spring/JMX/OpenMBean/OTel SDK implementation dependencies
+- core has no Spring dependency
+- internal schema/decoder helpers are not public
+- raw wire payload cannot reach apply
+- runtime mutation is disabled by default
+- no trust-all TLS or hostname-verification bypass
+- no Java native serialization
+- no secrets in committed configuration or docs
+- no forbidden telemetry keys or labels
+- no unsafe legacy mutation paths reintroduced
+
+Do not weaken security gates to make generated code compile.
+
+## Pre-Production Policy
+
+Breaking security changes are allowed when they materially improve:
+
+- trust boundaries
+- PII protection
+- mutation safety
+- dependency isolation
+- input validation
+- diagnostics
+- provider governance
+
+Prefer direct removal of unsafe APIs, aliases, serializers, and mutation paths over compatibility preservation.
+
+Do not use pre-production status to justify arbitrary security churn.
+
+## Verification and Report
+
+Run the narrowest affected tests first, then architecture, build, and E2E gates required by the changed boundary.
+
+A final security report must include:
+
+```text
+Threat addressed:
+Trust boundary:
+Default behavior:
+Failure mode:
+State behavior on rejection:
+Sensitive data handled:
+External controls required:
+Tests and E2E:
+Architecture fitness:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

@@ -1,0 +1,494 @@
+---
+description: Advanced governance for module taxonomy, dependency direction, root-build ownership, version alignment, and publication boundaries in the platform tracing multi-project build.
+globs:
+  - "settings.gradle"
+  - "settings.gradle.kts"
+  - "build.gradle"
+  - "build.gradle.kts"
+  - "*/build.gradle"
+  - "*/build.gradle.kts"
+  - "**/gradle/libs.versions.toml"
+  - "**/buildSrc/**/*.java"
+  - "**/buildSrc/**/*.kt"
+  - "**/build-logic/**/*.java"
+  - "**/build-logic/**/*.kt"
+  - "**/build-logic/**/*.gradle"
+  - "**/build-logic/**/*.gradle.kts"
+alwaysApply: false
+---
+
+# Multi-Module Gradle Governance
+
+## Purpose
+
+Use this rule for changes affecting:
+
+- module creation, removal, rename, or merge
+- project inclusion in `settings`
+- inter-module dependency direction
+- API/runtime classpath boundaries
+- BOM and version ownership
+- convention plugins
+- root build responsibilities
+- publication coordinates or metadata
+- starter dependency graphs
+- architecture fitness tasks
+
+This rule governs **module architecture**.
+
+For low-level Gradle DSL and task implementation details, also follow the main Gradle rule.
+
+## Repository Facts First
+
+Before changing the module graph, inspect:
+
+- `settings.gradle` or `settings.gradle.kts`
+- root build file
+- affected module build files
+- current project dependency graph
+- public API and runtime consumers
+- custom source sets
+- publications
+- architecture fitness tasks
+- CI references
+- current ADRs and module-taxonomy documentation
+
+Do not infer module ownership from names alone.
+
+Do not create a module or dependency edge solely because it makes compilation easier.
+
+## Module Boundary Test
+
+A module is justified only when it represents at least one real boundary:
+
+- independently published contract
+- distinct runtime or classloader
+- optional dependency isolation
+- servlet/reactive isolation
+- agent/application separation
+- independently reusable capability
+- independently testable adapter
+- meaningful reduction of consumer dependencies
+- separately governed lifecycle or release artifact
+
+Before adding a module, document:
+
+```text
+Owner:
+Consumers:
+Published or internal:
+Runtime/classloader:
+Public contracts:
+Dependencies exposed:
+Dependencies hidden:
+Why a package is insufficient:
+Tests:
+Publication:
+```
+
+Do not create a module merely to move packages around or increase architectural ceremony.
+
+## Current Platform Module Roles
+
+### `platform-tracing-api`
+
+Owns:
+
+- application-facing tracing contracts
+- intentional external SPIs
+- immutable value and specification types
+- classloader-neutral wire/control types
+- public result and violation models
+
+Must not depend on core, Spring, JMX/OpenMBean, or OTel SDK implementation.
+
+### `platform-tracing-core`
+
+Owns:
+
+- runtime implementation
+- domain validation
+- lifecycle and state
+- sampling and scrubbing policy
+- runtime-control handlers
+- last-known-good state
+- safety invariants
+
+May depend on API.
+
+Must not depend on Spring Boot auto-configuration, servlet, WebFlux, or deployment modules.
+
+### Spring Boot auto-configuration
+
+Owns:
+
+- wiring
+- typed properties
+- conditions
+- startup diagnostics
+- Actuator integration
+
+May depend on API/core.
+
+Must not own runtime algorithms or domain validation.
+
+### WebMVC and WebFlux adapters
+
+Remain independent.
+
+Neither adapter may depend on the other.
+
+### OTel extension
+
+Owns:
+
+- Java agent and SDK integration
+- sampler/processor/exporter glue
+- JMX/OpenMBean adapters
+- classloader-sensitive bridges
+
+Must not become an alternate domain core.
+
+### Starters
+
+Remain thin dependency aggregators.
+
+They must not contain runtime algorithms, domain policy, or duplicate auto-configuration.
+
+### Test, sample, benchmark, and E2E modules
+
+May depend on production modules.
+
+Production modules must not depend on them.
+
+## Allowed Dependency Direction
+
+```text
+platform-tracing-core
+    -> platform-tracing-api
+
+platform-tracing-spring-boot-autoconfigure
+    -> platform-tracing-api
+    -> platform-tracing-core
+
+platform-tracing-autoconfigure-webmvc
+    -> approved API/core/autoconfigure modules
+
+platform-tracing-autoconfigure-webflux
+    -> approved API/core/autoconfigure modules
+
+platform-tracing-otel-extension
+    -> approved API/core modules
+    -> OTel integration artifacts
+
+starters
+    -> matching auto-configuration/integration modules
+
+tests, samples, benchmarks, and E2E
+    -> production modules under test
+```
+
+## Forbidden Dependency Direction
+
+Do not introduce:
+
+- API -> core
+- core -> Spring Boot auto-configuration
+- WebMVC -> WebFlux
+- WebFlux -> servlet
+- production -> test/sample/benchmark/E2E
+- API -> JMX/OpenMBean implementation
+- API -> OTel SDK implementation without an approved public contract
+- runtime module -> starter
+- transport adapter -> ownership of domain policy
+- project cycles
+
+Do not solve a cycle by:
+
+- changing `implementation` to `api`
+- making helpers public
+- introducing static holders
+- duplicating contracts
+- moving domain logic into auto-configuration
+- adding a bridge module without a real boundary
+
+Fix ownership.
+
+## Root Project Governance
+
+The root project may own:
+
+- project inclusion
+- plugin and repository management
+- common group/version metadata
+- aggregate verification
+- architecture fitness registration
+- narrow shared conventions when no convention plugin exists
+
+The root project must not own:
+
+- production runtime logic
+- business/domain dependencies
+- application-specific configuration
+- module-specific dependency graphs
+- environment-specific behavior
+- network or Docker access during configuration
+
+Do not turn the root build into a giant imperative coordinator.
+
+Do not rewrite existing root logic as a side effect of an unrelated module change.
+
+## Settings Governance
+
+`settings.gradle` or `settings.gradle.kts` owns:
+
+- project inclusion
+- plugin management
+- dependency repository management where configured
+- version catalogs
+- included builds
+- feature previews
+
+Feature modules must not redefine repositories unless explicitly approved.
+
+When renaming or removing a project:
+
+1. update settings
+2. update all project dependencies
+3. update task and CI references
+4. update publications
+5. update docs and samples
+6. remove old project path
+7. scan for old coordinates
+8. run full verification
+
+Do not keep an empty compatibility project by default.
+
+## Version Governance
+
+Use the repository's current version-management mechanism.
+
+Allowed owners may include:
+
+- Spring Boot dependency management
+- platform BOM
+- version catalog
+- approved root or convention logic
+
+Do not require a version catalog if the repository does not use one.
+
+Forbidden:
+
+- dynamic versions
+- `latest.release`
+- duplicate version declarations
+- module-local overrides without documented reason
+- conflicting BOM ownership
+
+When overriding a centrally managed version, document:
+
+```text
+Artifact:
+Existing owner:
+Override reason:
+Security/compatibility evidence:
+Affected modules:
+Removal criteria:
+```
+
+## BOM Governance
+
+BOM modules own dependency alignment, not runtime logic.
+
+A BOM must not:
+
+- contain implementation code
+- add runtime behavior
+- depend on starters
+- hide incompatible dependency families
+- expose test-only artifacts
+
+Verify generated dependency constraints and publication metadata.
+
+Do not use `enforcedPlatform` casually in published libraries; it can constrain consumers beyond the intended contract.
+
+## Convention Plugin Governance
+
+A convention plugin should configure one coherent concern.
+
+It must:
+
+- be idempotent
+- use lazy configuration where practical
+- avoid unrelated plugin application
+- avoid hidden dependency injection
+- avoid network or filesystem mutation during `apply`
+- avoid eager task realization
+- keep module-specific logic out of generic conventions
+
+Do not introduce `afterEvaluate` for ordinary configuration.
+
+Do not create a convention plugin for one trivial line or one module-only setting.
+
+Do not migrate existing build logic into convention plugins inside an unrelated feature change.
+
+## Dependency Scope Governance
+
+Dependency scope is architecture.
+
+Use:
+
+- `api` only for intentionally exposed compile contracts
+- `implementation` for internal implementation
+- `compileOnly` only for a genuine provided-runtime contract
+- `runtimeOnly` for runtime-only dependencies
+- test scopes only for tests and fixtures
+
+For `compileOnly`, document who provides the dependency at runtime.
+
+Do not describe a module as runtime-independent if its executable main code references a compile-only type that consumers must provide.
+
+Inspect compile and runtime classpaths after scope changes.
+
+## Starter Governance
+
+Starters must:
+
+- aggregate only intended modules
+- preserve servlet/reactive separation
+- avoid optional integration leakage
+- expose correct runtime dependencies
+- avoid version ownership
+- remain free of runtime code
+
+Verify:
+
+- servlet starter does not pull WebFlux
+- reactive starter does not pull servlet stack
+- optional integrations remain optional
+- generated POM/module metadata is correct
+- starter dependency smoke remains green
+
+## Publication Governance
+
+For each published module, verify:
+
+- coordinates
+- artifact contents
+- generated POM
+- Gradle module metadata
+- API versus runtime scopes
+- sources JAR
+- Javadoc JAR where applicable
+- absence of test/internal classes
+- absence of obsolete ServiceLoader descriptors
+
+A successful local compile does not prove a correct consumer contract.
+
+Because the platform is pre-production, incorrect coordinates or publications may be removed or renamed directly when justified.
+
+Do not keep forwarding artifacts or duplicate old/new coordinates by default.
+
+## Generated Metadata and Source Sets
+
+Custom source sets and generated artifacts are part of the module contract.
+
+Inspect:
+
+- agent smoke applications
+- JMX/classloader fixtures
+- ServiceLoader provider JARs
+- E2E fixtures
+- benchmarks
+- generated descriptors
+- baseline files
+
+When APIs or module paths change, migrate these consumers too.
+
+Do not leave stale descriptors or generated baselines in unrelated working-tree changes.
+
+## Architecture Fitness
+
+Protect at least:
+
+- API does not depend on core
+- core does not depend on Spring
+- WebMVC and WebFlux remain isolated
+- starters remain thin
+- production modules do not depend on test modules
+- JMX/OpenMBean does not leak into API
+- OTel SDK implementation does not leak into API
+- forbidden project cycles fail the build
+- obsolete project paths and coordinates do not return
+- dependency scope regressions are detected where practical
+
+Do not weaken architecture gates to make generated code compile.
+
+## Pre-Production Policy
+
+Breaking module, coordinate, dependency, and publication changes are allowed when they materially improve:
+
+- ownership
+- dependency direction
+- classloader isolation
+- public API purity
+- consumer classpaths
+- publication correctness
+- verification quality
+
+Prefer direct repository-wide migration and deletion over:
+
+- compatibility projects
+- forwarding artifacts
+- deprecated module aliases
+- duplicate publications
+- dual dependency paths
+
+Do not use pre-production status to justify arbitrary module churn.
+
+## Verification
+
+For module-graph changes:
+
+1. compile affected production source sets
+2. compile affected test and custom source sets
+3. run focused tests
+4. inspect compile/runtime dependency reports
+5. run module taxonomy and architecture fitness
+6. verify Javadoc/publication when contracts changed
+7. run full build
+8. run E2E when runtime/classloader/integration boundaries changed
+
+Useful commands:
+
+```powershell
+.\gradlew.bat :<module>:dependencies --configuration compileClasspath --no-daemon
+.\gradlew.bat :<module>:dependencies --configuration runtimeClasspath --no-daemon
+.\gradlew.bat pr1ModuleTaxonomyVerify pr4ArchitectureFitnessVerify --no-daemon
+.\gradlew.bat build --warning-mode all --no-daemon
+```
+
+Verify a named task exists before relying on it.
+
+## Required Report
+
+A multi-module governance report must include:
+
+```text
+Decision:
+Modules added/removed/renamed:
+Old ownership:
+Target ownership:
+Dependency edges added/removed:
+Public API impact:
+Compile/runtime classpath impact:
+Version/BOM impact:
+Publication impact:
+Custom source sets and generated metadata:
+Architecture gates:
+Tests and E2E:
+Migration:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

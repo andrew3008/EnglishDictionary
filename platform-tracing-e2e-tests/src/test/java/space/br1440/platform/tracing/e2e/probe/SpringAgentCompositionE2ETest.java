@@ -22,15 +22,13 @@ class SpringAgentCompositionE2ETest {
 
     @Test
     void springAndDisabledFacadesRespectAgentOwnership() throws Exception {
-        String otelAgentJar = System.getProperty("otel.javaagent.jar");
-        String extensionJar = System.getProperty("smoke.otel.extension.jar");
+        String otelAgentJar = System.getProperty("smoke.controlled.agent.jar");
         String testRuntimeClasspath = System.getProperty("smoke.test.runtime.classpath");
 
-        assertThat(otelAgentJar).as("otel.javaagent.jar").isNotBlank();
-        assertThat(extensionJar).as("smoke.otel.extension.jar").isNotBlank();
+        assertThat(otelAgentJar).as("smoke.controlled.agent.jar").isNotBlank();
         assertThat(testRuntimeClasspath).as("smoke.test.runtime.classpath").isNotBlank();
 
-        String output = runProbe(otelAgentJar, extensionJar, testRuntimeClasspath);
+        String output = runProbe(otelAgentJar, testRuntimeClasspath);
 
         assertThat(output)
                 .contains(PREFIX + "auto.mode=AGENT")
@@ -48,12 +46,10 @@ class SpringAgentCompositionE2ETest {
 
     private static String runProbe(
             String otelAgentJar,
-            String extensionJar,
             String testRuntimeClasspath) throws Exception {
         Path javaBin = Path.of(System.getProperty("java.home"), "bin", "java");
         List<String> command = new ArrayList<>();
         command.add(javaBin.toString());
-        command.add("-Dotel.javaagent.extensions=" + extensionJar.replace('\\', '/'));
         command.add("-Dotel.service.name=spring-agent-composition-e2e");
         // Logging exporter активирует реальный export callback без внешней инфраструктуры.
         command.add("-Dotel.traces.exporter=logging");

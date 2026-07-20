@@ -27,6 +27,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Расширенные интеграционные тесты {@link PlatformAutoConfigurationCustomizer}:
@@ -234,9 +235,9 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
                 "platform.tracing.validation.enabled", "false",
                 "platform.tracing.watchdog.enabled", "false"
         );
-        recorder.primeWithConfig(new MapConfigProperties(disableAll));
-        SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
-        recorder.tracerProviderCustomizer.apply(builder, new MapConfigProperties(disableAll));
+        assertThatThrownBy(() -> recorder.primeWithConfig(new MapConfigProperties(disableAll)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("scrubbing.enabled=false is forbidden");
 
         // Без sampler-customizer.apply MBean не должен быть зарегистрирован.
         assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isFalse();

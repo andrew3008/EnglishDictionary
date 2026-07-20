@@ -1,0 +1,443 @@
+---
+description: Gradle DSL and build-logic guardrails for the platform tracing multi-project build.
+globs:
+  - "**/*.gradle"
+  - "**/*.gradle.kts"
+  - "**/settings.gradle"
+  - "**/settings.gradle.kts"
+  - "**/gradle.properties"
+  - "**/gradle/libs.versions.toml"
+  - "**/buildSrc/**/*.java"
+  - "**/buildSrc/**/*.kt"
+  - "**/build-logic/**/*.java"
+  - "**/build-logic/**/*.kt"
+  - "**/build-logic/**/*.gradle"
+  - "**/build-logic/**/*.gradle.kts"
+alwaysApply: false
+---
+
+# Gradle DSL Rules
+
+## Repository Facts First
+
+Before changing build logic, inspect:
+
+- `gradle/wrapper/gradle-wrapper.properties`
+- root settings and build files
+- the affected module build file
+- the current dependency-management model
+- `buildSrc`, `build-logic`, or included builds when present
+- existing custom tasks, source sets, publications, and architecture gates
+
+Use the repository's current Gradle version, DSL, plugins, and dependency model.
+
+Do not incidentally:
+
+- migrate Groovy DSL to Kotlin DSL
+- introduce a version catalog
+- reorganize convention plugins
+- upgrade the wrapper
+- redesign publications
+- replace existing build logic architecture
+
+Such migrations require a separate task, plan, and verification.
+
+## Priorities
+
+Prefer:
+
+1. correct artifacts and classpaths
+2. deterministic and reproducible verification
+3. architecture boundaries
+4. dependency and publication correctness
+5. lazy configuration
+6. configuration-cache compatibility
+7. build-cache correctness
+8. CI/local parity
+
+Do not trade correctness for a formally green cache result.
+
+## Lazy Configuration
+
+Prefer:
+
+```gradle
+tasks.register("taskName") {
+}
+
+tasks.named("test") {
+}
+
+providers.gradleProperty("name")
+providers.environmentVariable("NAME")
+layout.buildDirectory.dir("path")
+```
+
+Use `Provider`, `Property`, `ListProperty`, `MapProperty`, `RegularFileProperty`, and `DirectoryProperty`.
+
+Avoid:
+
+- eager `.get()` during configuration
+- realizing unrelated tasks or projects
+- configuring all tasks when only one type or name is relevant
+- hidden task creation
+
+Prefer `configureEach` where appropriate.
+
+## Task Registration
+
+Use `tasks.register(...)` for new tasks.
+
+Avoid new uses of:
+
+```gradle
+tasks.create("taskName")
+task taskName
+```
+
+when lazy registration is sufficient.
+
+User-facing tasks must have clear names, groups, descriptions, inputs, outputs, and actionable failures.
+
+Do not hide substantial filesystem, shell, Docker, GitHub, or network behavior inside opaque `doLast` closures.
+
+## `afterEvaluate`
+
+Do not introduce `afterEvaluate` for ordinary build configuration.
+
+Prefer:
+
+- plugin callbacks
+- provider-based wiring
+- lazy task configuration
+- convention plugins
+
+Do not mechanically rewrite existing `afterEvaluate` blocks during unrelated work. Remove them only with equivalent behavior and verification.
+
+## `allprojects` and `subprojects`
+
+Do not introduce broad new `allprojects {}` or `subprojects {}` mutation for convenience.
+
+Prefer:
+
+- convention plugins
+- `plugins.withId(...)`
+- explicit project groups
+- narrow shared configuration
+- settings-level repository governance
+
+Do not perform a repository-wide migration away from existing broad configuration inside an unrelated functional change.
+
+## Convention Plugins
+
+A convention plugin should configure one coherent concern.
+
+Examples:
+
+- Java compilation
+- testing
+- Javadoc
+- publication
+- architecture verification
+- Spring Boot library defaults
+
+Convention plugins must:
+
+- be composable
+- avoid unrelated plugin application
+- avoid hidden repositories
+- avoid network or filesystem mutation during `apply`
+- avoid eager task realization
+- keep project-specific behavior out of generic plugins
+
+Do not create a plugin for one trivial line or one module-only setting.
+
+## Dependency Scopes
+
+Use scopes according to the real consumer contract.
+
+### `api`
+
+Use only when dependency types are intentionally exposed in supported public signatures or required on consumer compile classpaths.
+
+### `implementation`
+
+Use for internal implementation details. This is the default.
+
+### `compileOnly`
+
+Use only for a genuine provided-runtime contract. Document who provides it at runtime.
+
+Executable main code referencing a `compileOnly` dependency still has a runtime requirement.
+
+### `runtimeOnly`
+
+Use when the code does not compile against the dependency but runtime execution requires it.
+
+Do not change `implementation` to `api` merely to make compilation pass or hide a module cycle.
+
+Fix ownership and verify generated publication metadata.
+
+## Dependency Versions
+
+Use the existing version owner:
+
+- Spring Boot BOM/dependency management
+- platform BOM
+- version catalog
+- approved root or convention logic
+
+Do not hard-code centrally managed versions.
+
+Forbidden:
+
+```gradle
+implementation "org.example:library:+"
+implementation "org.example:library:latest.release"
+```
+
+Before adding a dependency, identify:
+
+```text
+Artifact:
+Version owner:
+Scope:
+Public API exposure:
+Runtime provider:
+Transitive impact:
+Reason:
+```
+
+## Repositories and Security
+
+Repositories should be centrally governed.
+
+Do not add arbitrary repositories in feature modules.
+
+Never:
+
+- hard-code credentials
+- log secrets or full environment
+- add untrusted repositories
+- disable TLS verification
+- bypass dependency verification
+- embed tokens in generated metadata
+
+Use approved Gradle and CI credential mechanisms.
+
+## Configuration Cache
+
+Configuration-cache compatibility is a goal where technically applicable.
+
+Do not claim support without execution evidence.
+
+To verify:
+
+1. run a representative task with `--configuration-cache`
+2. run it again
+3. confirm the second run reuses the entry
+4. classify third-party plugin blockers honestly
+
+Avoid:
+
+- accessing `Project` during task execution
+- capturing non-serializable project state
+- undeclared environment or file reads
+- static mutable build state
+- runtime task mutation
+
+Do not add unsafe workarounds solely to claim compatibility.
+
+## Build Cache
+
+A cacheable task must declare all relevant inputs and outputs.
+
+Do not mark a task cacheable when it:
+
+- calls mutable external services
+- depends on Docker daemon state
+- reads undeclared environment or Git state
+- embeds timestamps
+- writes outside declared outputs
+- produces non-deterministic output
+
+Docker and Testcontainers tasks are generally not remote build-cache candidates.
+
+## Custom Tasks and Source Sets
+
+Use typed task classes for non-trivial behavior.
+
+Declare:
+
+- inputs and outputs
+- path sensitivity
+- normalization
+- optional inputs
+- cacheability or explicit non-cacheability
+- useful failure messages
+
+Custom source sets are allowed for real isolation, such as:
+
+- Java agent smoke applications
+- JMX/classloader fixtures
+- ServiceLoader provider JARs
+- E2E fixtures
+- benchmarks
+
+Each custom source set must have a documented purpose, classpath, producer, consumer, lifecycle integration, and publication status.
+
+Do not create a custom source set merely to avoid fixing module ownership.
+
+## Generated Files
+
+Generated files must have one owner.
+
+Rules:
+
+- write generated output under `build/`
+- declare the generating task
+- wire output lazily
+- keep generation deterministic
+- do not silently rewrite committed docs or baselines
+- remove obsolete ServiceLoader descriptors
+
+Inspect built artifacts when generated metadata affects runtime behavior.
+
+## Javadoc
+
+Fix Javadoc warnings at the correct source or classpath boundary.
+
+Do not:
+
+- suppress doclint globally
+- add a broad dependency for one annotation
+- link API docs to unavailable core implementation
+- rely on unresolved Lombok-generated method links
+
+Use the narrowest dependency that represents the actual compile/Javadoc contract.
+
+## Architecture Gates
+
+Architecture tasks are release gates.
+
+Examples may include:
+
+```text
+pr1ModuleTaxonomyVerify
+pr4ArchitectureFitnessVerify
+pr0StarterDependencySmoke
+```
+
+Verify a task exists before invoking it.
+
+Do not:
+
+- make required gates warn-only
+- weaken architecture checks to pass generated code
+- report success when a task was skipped
+- replace architecture checks with fragile broad regexes
+
+Fix false positives by narrowing scope or patterns.
+
+## Docker and E2E
+
+Do not access Docker during Gradle configuration.
+
+Docker-backed verification belongs in task execution or tests.
+
+A local environment may provide:
+
+```powershell
+$env:DOCKER_HOST = "tcp://192.168.100.70:2375"
+```
+
+Do not hard-code this endpoint in build logic or source.
+
+Do not mount Windows host paths into a remote Linux Docker daemon.
+
+For required E2E, verify:
+
+```text
+tests > 0
+skipped = 0
+failures = 0
+errors = 0
+```
+
+A skipped E2E task is `INSUFFICIENT_EVIDENCE`, not `PASS`.
+
+## Publishing
+
+For published modules, verify:
+
+- coordinates
+- artifact contents
+- sources JAR
+- Javadoc JAR where applicable
+- generated POM
+- Gradle module metadata
+- API versus runtime scopes
+- absence of test/internal classes
+- absence of obsolete descriptors
+
+A local compile does not prove a correct consumer contract.
+
+Because the tracing solution is pre-production, obsolete tasks, modules, coordinates, or publications may be removed directly when justified.
+
+Do not keep forwarding artifacts or aliases by default.
+
+## Scope Discipline
+
+Do not mix into a focused change:
+
+- DSL migration
+- wrapper upgrade
+- publication redesign
+- repository-wide build cleanup
+- unrelated formatting
+- unrelated baseline updates
+- unrelated import optimization
+
+Call out every necessary adjacent build fix explicitly.
+
+## Verification
+
+Run the narrowest applicable tasks first:
+
+```powershell
+.\gradlew.bat :<affected-module>:compileJava --no-daemon
+.\gradlew.bat :<affected-module>:compileTestJava --no-daemon
+.\gradlew.bat :<affected-module>:test --no-daemon
+```
+
+When dependency scopes change, inspect:
+
+```powershell
+.\gradlew.bat :<affected-module>:dependencies --configuration compileClasspath --no-daemon
+.\gradlew.bat :<affected-module>:dependencies --configuration runtimeClasspath --no-daemon
+```
+
+Then run required architecture, Javadoc, publication, full-build, configuration-cache, or E2E gates.
+
+## Required Report
+
+A non-trivial Gradle change report must include:
+
+```text
+Problem:
+Affected modules:
+Build contract changed:
+Tasks/configurations/modules added or removed:
+Dependency scope changes:
+Version owner:
+Publication/POM impact:
+Configuration-cache evidence:
+Build-cache impact:
+Environment assumptions:
+Tasks executed:
+Skipped tasks:
+Architecture fitness:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

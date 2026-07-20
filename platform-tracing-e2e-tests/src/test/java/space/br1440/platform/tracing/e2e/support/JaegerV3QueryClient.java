@@ -142,6 +142,18 @@ public final class JaegerV3QueryClient {
         return names;
     }
 
+    /** Возвращает максимальное число span links среди span'ов сервиса. */
+    public int maximumSpanLinkCount(String serviceName) throws Exception {
+        String body = fetchTracesBody(serviceName);
+        if (body == null || body.isBlank()) {
+            return 0;
+        }
+        return parseStreamingBody(body).stream()
+                .mapToInt(span -> span.path("links").size())
+                .max()
+                .orElse(0);
+    }
+
     /**
      * Возвращает resource-атрибуты (OTLP {@code resourceSpans[].resource.attributes}) первого
      * resourceSpan'а сервиса. Используется для assert'ов resource-идентичности (Фаза 9):

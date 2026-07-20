@@ -22,6 +22,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Регрессионные тесты точки входа платформенного расширения.
@@ -187,9 +188,9 @@ class PlatformAutoConfigurationCustomizerTest {
                 "platform.tracing.classification.enabled", "false",
                 "platform.tracing.metrics.enabled", "false"
         ));
-        recorder.primeWithConfig(props);
-        SdkTracerProviderBuilder builder = recorder.tracerProviderCustomizer.apply(null, props);
-        assertThat(builder).isNull();
+        assertThatThrownBy(() -> recorder.primeWithConfig(props))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("scrubbing.enabled=false is forbidden");
     }
 
     /**

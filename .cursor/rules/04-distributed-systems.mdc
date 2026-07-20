@@ -1,0 +1,608 @@
+---
+description: Distributed-systems guardrails for retries, idempotency, ordering, coordination, runtime control, messaging, and multi-instance behavior.
+globs:
+  - "**/*Retry*.java"
+  - "**/*Idempot*.java"
+  - "**/*Coordinator*.java"
+  - "**/*Lock*.java"
+  - "**/*Lease*.java"
+  - "**/*Leader*.java"
+  - "**/*Distributed*.java"
+  - "**/*Kafka*.java"
+  - "**/*Message*.java"
+  - "**/*Consumer*.java"
+  - "**/*Producer*.java"
+  - "**/*Outbox*.java"
+  - "**/*RuntimeControl*.java"
+  - "**/*Policy*.java"
+  - "**/*Cluster*.java"
+  - "**/*Failover*.java"
+  - "**/*Resilien*.java"
+  - "**/*distributed*/**/*.java"
+  - "**/*messaging*/**/*.java"
+alwaysApply: false
+---
+
+# Distributed Systems Rules
+
+## Applicability
+
+Apply this rule when a change affects:
+
+- cross-process or cross-node coordination
+- retries, backoff, or failover
+- idempotency or deduplication
+- ordering or delivery guarantees
+- runtime policy propagation
+- Redis/KeyDB coordination
+- Kafka or messaging
+- leader election or leases
+- multi-instance state
+- Kubernetes rollout or replica behavior
+- exporter/collector queues and retries
+- distributed locks or fencing
+
+Do not introduce distributed infrastructure merely because the service runs with multiple replicas.
+
+First prove the need, owner, consistency model, and failure policy.
+
+## Base Assumptions
+
+Assume:
+
+- partial failure
+- message duplication
+- message loss where the transport permits it
+- retries
+- timeout
+- reconnect
+- stale state
+- process crash
+- pod restart
+- rolling deployment
+- network partition
+- delayed delivery
+- out-of-order delivery
+- multiple concurrent instances
+- different application and agent classloaders
+
+Do not assume:
+
+- singleton deployment
+- stable pod identity
+- synchronized clocks
+- exactly-once behavior
+- one permanent primary
+- local memory coordination
+- implicit ordering
+- immediate consistency
+- all replicas update simultaneously
+
+## Required Design Record
+
+For a distributed change, define:
+
+```text
+Owner:
+State:
+Source of truth:
+Consistency model:
+Delivery/ordering guarantees:
+Idempotency model:
+Retry owner:
+Timeouts:
+Failure policy:
+Recovery:
+Concurrency model:
+Security:
+Observability:
+Rollout/rollback:
+Test evidence:
+```
+
+If these cannot be stated clearly, the design is not ready.
+
+## Ownership
+
+Every piece of distributed state must have one owner.
+
+Examples:
+
+- runtime tracing policy state → core/runtime-control owner
+- wire/control payload → API structural contract
+- JMX transport → OTel/JMX adapter
+- deployment coordination → Kubernetes/GitOps
+- durable business events → approved messaging infrastructure
+- cache/ephemeral coordination → approved Redis/KeyDB integration
+- local execution context → process-local runtime only
+
+Do not create a second source of truth in:
+
+- Spring property objects
+- local static holders
+- Redis caches
+- JMX attributes
+- diagnostics snapshots
+- duplicate config stores
+
+Diagnostics may describe state; they must not silently become the owner.
+
+## Consistency
+
+Choose the weakest consistency model that still preserves correctness, then document it.
+
+Possible models include:
+
+- strongly consistent source of truth
+- last-known-good local runtime state
+- eventual propagation
+- monotonic versioned updates
+- cache-aside
+- best-effort notification
+- lease-based coordination
+
+Do not describe a system as strongly consistent merely because operations are atomic inside one process.
+
+Do not rely on eventual consistency for a safety-critical invariant unless rejection and recovery behavior are explicit.
+
+## Idempotency
+
+Operations that may be retried or duplicated must be idempotent or protected by an explicit idempotency mechanism.
+
+Define:
+
+- idempotency key
+- key owner
+- scope
+- TTL/lifecycle
+- duplicate response behavior
+- concurrent duplicate behavior
+- persistence/recovery model
+
+Do not use trace ID, span ID, or request ID as an idempotency key unless the semantic relationship is explicitly correct and bounded.
+
+Do not add an idempotency store when the operation can be designed as naturally idempotent.
+
+## Retries
+
+One layer must own retries.
+
+Avoid retry multiplication across:
+
+- application code
+- client library
+- Spring Retry or Resilience4j
+- OTel exporter
+- collector
+- load balancer
+- Kubernetes restart
+
+Retries must be:
+
+- bounded
+- classified by error
+- safe for the operation
+- observable
+- jittered where appropriate
+- stopped for non-retryable errors
+
+Do not retry:
+
+- invalid input
+- authorization rejection
+- deterministic domain rejection
+- unsupported protocol version
+- non-idempotent mutation without protection
+
+Do not hide retries from callers and operators.
+
+## Backoff
+
+Use bounded backoff.
+
+Prefer:
+
+- exponential backoff
+- jitter
+- maximum delay
+- maximum attempts or deadline
+- retry budget
+
+Avoid synchronized retry storms.
+
+Do not use fixed rapid loops against unavailable infrastructure.
+
+## Timeouts and Deadlines
+
+Every remote or blocking operation must have a bounded timeout or deadline.
+
+Define separately where relevant:
+
+- connect timeout
+- read/command timeout
+- request deadline
+- lock/lease acquisition timeout
+- shutdown/flush timeout
+- retry budget
+
+Timeouts must align across layers.
+
+Do not let an inner retry loop outlive the caller deadline.
+
+Do not block application startup indefinitely on optional infrastructure.
+
+## Failure Policy
+
+Choose explicitly:
+
+- fail closed
+- fail open
+- degrade safely
+- reject without state change
+- use last-known-good state
+- queue for later
+- return partial result only when contract permits it
+
+Examples:
+
+### Runtime mutation
+
+Fail closed. Rejected or failed mutation must not change applied state.
+
+### Optional telemetry export
+
+Usually degrade while preserving business availability and emitting bounded diagnostics.
+
+### Security-sensitive rate limiting
+
+Usually fail closed unless architecture explicitly approves fail-open.
+
+### Cache
+
+Usually degrade to miss/recompute when safe.
+
+Do not use one generic fallback policy for all distributed capabilities.
+
+## Ordering
+
+Do not assume ordering unless the transport and partitioning model provide it.
+
+Document:
+
+- ordering scope
+- partition/key
+- producer guarantees
+- consumer concurrency
+- retry/replay effect
+- cross-partition behavior
+
+If ordering matters, encode a version/sequence and reject stale updates where appropriate.
+
+Do not depend on wall-clock timestamps alone for ordering when clocks may differ.
+
+## Versioning and Stale Updates
+
+Version mutable distributed state when stale updates are possible.
+
+Prefer:
+
+- monotonic version
+- compare-and-set
+- expected version
+- fencing token
+- generation number
+
+Reject or ignore stale updates deterministically.
+
+Do not let an older runtime-control policy overwrite a newer applied state without an explicit policy.
+
+## Atomicity
+
+Do not split one invariant across multiple remote operations unless partial execution is safe.
+
+Use:
+
+- atomic command
+- compare-and-set
+- transaction with understood semantics
+- bounded Lua script
+- database transaction
+- outbox/inbox pattern
+- application-level state machine
+
+Do not assume:
+
+- Redis `MULTI/EXEC` gives database rollback
+- Kafka transaction solves external side effects automatically
+- local synchronization protects remote resources
+
+## Distributed Locks and Leases
+
+A lock requires:
+
+- unique owner token
+- TTL/lease
+- bounded acquisition
+- safe release
+- crash behavior
+- renewal policy
+- stale-owner handling
+- contention observability
+
+Release must verify ownership atomically.
+
+Never use unconditional unlock/delete.
+
+For external side effects, use fencing when a stale owner could continue after lease expiry.
+
+A fencing token is effective only if the protected resource validates it.
+
+Do not introduce distributed locks when optimistic concurrency, idempotency, partitioning, or database constraints solve the problem more safely.
+
+## Messaging
+
+For each message flow, define:
+
+- delivery guarantee
+- ordering scope
+- key/partition strategy
+- retry policy
+- dead-letter behavior
+- poison-message handling
+- schema/versioning
+- idempotency
+- observability
+- replay behavior
+- retention
+
+Do not claim exactly-once end-to-end without proving every external side effect participates in the guarantee.
+
+Use at-least-once assumptions unless stronger evidence exists.
+
+## Outbox and Inbox
+
+Use an outbox when a database state change and message publication must be atomic from the business perspective.
+
+Use an inbox/deduplication model when consumers must tolerate duplicate delivery.
+
+Define:
+
+- cleanup
+- retention
+- retry
+- ordering
+- poison-message policy
+- idempotency
+- failure recovery
+
+Do not introduce outbox/inbox infrastructure for a tracing-only best-effort notification without a proven need.
+
+## Runtime Control
+
+Runtime control is distributed state mutation.
+
+Required pipeline:
+
+```text
+wire decode
+    -> domain validation
+    -> mutation policy
+    -> atomic apply
+    -> observable applied state
+```
+
+Required behavior:
+
+- mutation disabled by default
+- validation does not apply
+- read does not mutate
+- rejected mutation preserves snapshot, version, source, and last-known-good state
+- stale version behavior explicit
+- repeated identical apply is deterministic
+- partial failure rolls back or fails without mixed state
+
+Do not use best-effort pub/sub as the sole mechanism for critical runtime policy convergence without a documented recovery model.
+
+## Last-Known-Good State
+
+Use last-known-good state when continued operation is safer than applying invalid or partial updates.
+
+LKG must be:
+
+- immutable
+- safely published
+- versioned where needed
+- updated only after successful apply
+- unchanged after rejection or partial failure
+- observable through safe diagnostics
+
+Do not confuse desired startup configuration with live applied LKG state.
+
+## Classloader and Process Boundaries
+
+Across application/agent or process boundaries:
+
+- use JDK-safe wire types
+- use explicit schemas
+- avoid native Java serialization
+- avoid implementation-class casts
+- use String wire values instead of Java enum instances
+- test real classloader behavior
+
+Do not assume static state is shared across classloaders or processes.
+
+## Kubernetes and Rolling Deployment
+
+Changes must tolerate:
+
+- mixed versions during rollout
+- pod restart
+- temporary duplicate instances
+- DNS changes
+- delayed readiness
+- collector/exporter outage
+- partial rollout and rollback
+
+Pre-production breaking changes are allowed, but the rollout must still define:
+
+- version alignment
+- compatibility window or coordinated replacement
+- migration sequence
+- rollback
+- state recovery
+
+Do not assume all replicas restart at once.
+
+## Redis and Coordination
+
+Redis/KeyDB is not a default coordination mechanism.
+
+Before using it, prove:
+
+- distributed shared-state requirement
+- namespace and TTL
+- failure model
+- topology
+- retry owner
+- lock/fencing semantics
+- Testcontainers evidence
+
+Do not treat Redis as a strongly consistent source of truth or durable workflow system.
+
+Follow the Redis-specific rule for implementation details.
+
+## Security
+
+Distributed boundaries are trust boundaries.
+
+Require:
+
+- input validation
+- authentication/authorization in approved layers
+- TLS where required
+- secret safety
+- bounded payloads
+- no raw PII in coordination metadata
+- replay considerations
+- least privilege
+
+Do not use trace IDs, request IDs, baggage, or message headers as authorization proof.
+
+Do not expose JMX or admin/control endpoints publicly.
+
+## Observability
+
+Distributed behavior must make it possible to answer:
+
+- what operation failed?
+- which layer retried?
+- how many attempts?
+- what deadline remained?
+- was the operation applied, rejected, duplicated, or stale?
+- what state version is active?
+- did fallback occur?
+- is backlog/queue pressure growing?
+
+Use bounded dimensions.
+
+Do not use IDs, raw payloads, or high-cardinality keys as metric labels.
+
+Warning deduplication and retry telemetry must remain bounded.
+
+## Blocking and Reactive Safety
+
+Do not block reactive event-loop threads with:
+
+- remote calls
+- locks
+- sleeps
+- synchronous export
+- Redis/JMX/database calls
+- unbounded wait
+
+Use non-blocking clients or isolate blocking work explicitly.
+
+Do not hide asynchronous execution or create unmanaged threads.
+
+## Testing
+
+Tests must cover applicable distributed failure modes:
+
+- duplicate request/message
+- retry
+- timeout
+- partial failure
+- stale update
+- out-of-order update
+- concurrent mutation
+- process/pod restart
+- reconnect/failover
+- lock expiry and stale owner
+- repeated identical apply
+- rollback
+- no cross-test shared state
+
+Use deterministic clocks, versions, IDs, ratios, and bounded Awaitility.
+
+Use Testcontainers/E2E for real infrastructure boundaries.
+
+A skipped required E2E is `INSUFFICIENT_EVIDENCE`.
+
+## Architecture Fitness
+
+Protect where practical:
+
+- no local-memory implementation pretending to be distributed coordination
+- no static global owner for distributed state
+- no unbounded retries
+- no remote call without timeout in critical paths
+- no runtime mutation before validation
+- no public transport implementation types
+- no Java native serialization
+- no Redis/Kafka dependency in public tracing API
+- no deployment topology assumptions in application code
+
+Do not weaken architecture gates to pass generated code.
+
+## Pre-Production Policy
+
+Breaking distributed-system changes are allowed when they materially improve:
+
+- consistency
+- ownership
+- idempotency
+- failure handling
+- rollout safety
+- security
+- operability
+
+Prefer removing unsafe dual paths, legacy coordination, or ambiguous state ownership over preserving compatibility.
+
+A breaking change must still include migration, rollback, and verification.
+
+Do not use pre-production status to justify arbitrary distributed complexity.
+
+## Verification and Report
+
+Run the narrowest unit/integration tests first, then real-infrastructure and E2E gates for affected boundaries.
+
+A final report must include:
+
+```text
+Distributed use case:
+Owner and source of truth:
+Consistency model:
+Ordering/delivery:
+Idempotency:
+Retry owner and budget:
+Timeouts:
+Failure/degradation policy:
+Versioning/stale-update behavior:
+Security:
+Observability:
+Rollout/rollback:
+Tests and E2E:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

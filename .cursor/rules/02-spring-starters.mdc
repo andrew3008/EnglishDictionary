@@ -1,0 +1,488 @@
+---
+description: Spring Boot starter and auto-configuration guardrails for the platform tracing repository.
+globs:
+  - "**/*AutoConfiguration.java"
+  - "**/*Configuration.java"
+  - "**/*Properties.java"
+  - "**/*Condition.java"
+  - "**/*Registrar.java"
+  - "**/*ImportSelector.java"
+  - "**/*Endpoint.java"
+  - "**/*HealthIndicator.java"
+  - "**/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"
+  - "**/META-INF/spring.factories"
+  - "**/*spring-boot-autoconfigure*/**/*.java"
+  - "**/*starter*/**/*.gradle"
+  - "**/*starter*/**/*.gradle.kts"
+alwaysApply: false
+---
+
+# Spring Boot Starter Rules
+
+## Applicability
+
+Apply this rule when changing:
+
+- Spring Boot auto-configuration
+- starter modules
+- `@ConfigurationProperties`
+- conditional bean registration
+- Actuator endpoints or health indicators
+- servlet or WebFlux integration wiring
+- optional dependency activation
+- startup diagnostics
+- bean override behavior
+- auto-configuration imports and metadata
+
+Before changing Spring wiring, inspect the owning module, existing conditions, property metadata, tests, and the actual runtime dependency graph.
+
+## Ownership
+
+### Starters
+
+Starters are thin dependency aggregators.
+
+They may provide:
+
+- the intended auto-configuration module
+- dependency alignment
+- servlet or reactive integration selection
+- approved optional runtime dependencies
+
+They must not contain:
+
+- business logic
+- tracing runtime algorithms
+- domain validation
+- JMX/OpenMBean implementation
+- duplicate auto-configuration
+- environment-specific behavior
+- mutable global state
+- network calls
+- hidden runtime mutation
+
+### Auto-Configuration
+
+Spring Boot auto-configuration owns:
+
+- bean wiring
+- typed startup properties
+- conditional activation
+- startup diagnostics
+- Actuator integration
+- translation from startup configuration to core contracts
+
+It must not own:
+
+- tracing algorithms
+- wire decoding
+- sampling or scrubbing policy implementation
+- runtime-control state transitions
+- JMX transport logic
+- public API models that belong in `platform-tracing-api`
+
+### Core
+
+Core owns runtime behavior, domain policy, lifecycle, state, and safety invariants.
+
+Do not move core logic into Spring configuration classes.
+
+## Auto-Configuration Registration
+
+Use current Spring Boot conventions:
+
+- `@AutoConfiguration`
+- `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
+
+Do not add new legacy `spring.factories` auto-configuration registration unless a verified compatibility requirement explicitly demands it.
+
+If `spring.factories` still exists for another supported mechanism, do not remove it blindly.
+
+Each auto-configuration class should own one coherent capability.
+
+Avoid one large class that wires unrelated concerns such as:
+
+- tracing facade
+- web adapters
+- sampling
+- scrubbing
+- JMX
+- diagnostics
+
+Split only when ownership and testability materially improve.
+
+## Conditional Beans
+
+Choose conditions according to the actual contract.
+
+### `@ConditionalOnClass`
+
+Use when:
+
+- an optional dependency is required
+- servlet and reactive classpaths must remain isolated
+- a bean would otherwise reference an unavailable type
+
+### `@ConditionalOnMissingBean`
+
+Use when:
+
+- user/platform replacement is intentionally supported
+- there is one clear fallback implementation
+- replacement cannot bypass mandatory safety invariants
+
+Do not use it mechanically on every bean.
+
+Do not allow a required safety component to disappear silently.
+
+### `@ConditionalOnProperty`
+
+Use when:
+
+- capability enablement is explicitly configurable
+- the default is documented
+- disabled behavior is tested
+- property semantics are unambiguous
+
+Do not use `matchIfMissing = true` for risky runtime mutation or unsafe capabilities.
+
+### Other Conditions
+
+Use other Spring Boot conditions only when they express a real runtime or classpath requirement.
+
+Do not rely on bean registration order as hidden control flow.
+
+## Configuration Properties
+
+Use:
+
+- `@ConfigurationProperties`
+- strongly typed fields
+- explicit defaults
+- validation
+- immutable configuration where practical
+- generated configuration metadata
+- JavaDoc for public adoption properties
+
+Avoid:
+
+- scattered `@Value`
+- direct `Environment` reads in ordinary components
+- stringly typed booleans, enums, and numbers
+- hidden fallback values in implementation code
+- duplicate property models for the same capability
+
+Property objects represent desired startup configuration.
+
+They do not automatically represent current live state after runtime mutation.
+
+## Property Naming and Evolution
+
+Property names must:
+
+- use the approved platform prefix
+- reflect capability ownership
+- distinguish startup configuration from runtime state
+- distinguish read-only diagnostics from mutation enablement
+- avoid ambiguous generic names such as `enabled` without a clear owner
+
+Because the solution is pre-production:
+
+- justified property renames are allowed
+- old aliases are not required by default
+- dual binding paths are not required by default
+- obsolete metadata should be removed directly
+
+When changing a property:
+
+1. update the property model
+2. update metadata
+3. update tests
+4. update docs and samples
+5. update Helm/environment mappings
+6. remove the old path
+7. add a negative guard when regression risk is high
+
+## Safe Defaults
+
+Defaults are product behavior.
+
+Safe defaults include:
+
+- runtime mutation disabled
+- optional integrations absent unless their classpath/configuration is present
+- no startup network calls
+- no hidden global OTel mutation
+- read-only diagnostics available only when safe
+- invalid mandatory safety configuration fails clearly
+- disabled capabilities create no unnecessary beans
+
+Do not inherit a permissive framework default without reviewing its impact.
+
+## Runtime Control
+
+Runtime mutation is privileged.
+
+Spring configuration must ensure:
+
+- mutation is disabled by default
+- enablement is explicit
+- startup diagnostics expose the gate state
+- validation-only operations do not apply
+- read operations do not mutate
+- rejected mutations do not change applied state, version, source, or last-known-good state
+
+Do not let a user-replaceable bean bypass the mutation gate.
+
+Spring properties define startup policy; core/runtime owns live applied state.
+
+## Servlet and WebFlux Separation
+
+Servlet and WebFlux auto-configuration must remain independently conditional.
+
+Servlet modules must not require:
+
+- Reactor
+- WebFlux
+- reactive HTTP server types
+
+WebFlux modules must not require:
+
+- servlet APIs
+- servlet filters
+- servlet request context
+
+Shared framework-neutral behavior belongs in API/core/common auto-configuration only when genuinely neutral.
+
+Do not assume ThreadLocal or MDC propagation works automatically in reactive flows.
+
+## Optional Classpath
+
+Optional integrations must back off cleanly.
+
+Test with:
+
+- `ApplicationContextRunner`
+- `FilteredClassLoader`
+- focused classpath smoke tests
+
+Verify:
+
+- unrelated beans still start
+- no `NoClassDefFoundError`
+- optional types are not eagerly loaded
+- condition reports are understandable
+- servlet and WebFlux integrations do not activate together accidentally
+
+Do not reference optional classes in unconditional signatures or static initializers.
+
+## Bean Design
+
+Prefer:
+
+- constructor injection
+- immutable collaborators
+- singleton beans where lifecycle permits
+- explicit bean names only when they are a documented contract
+- narrow interfaces at real boundaries
+- final implementation classes where extension is unsupported
+
+Avoid:
+
+- field injection
+- static application-context holders
+- service locators
+- mutable singleton configuration
+- hidden bean lookup
+- raw `Object` for optional dependencies
+- broad `ObjectProvider` use to hide unclear graphs
+
+## Bean Override Policy
+
+Classify beans as:
+
+- platform-mandatory
+- intentionally user-replaceable
+- internal/test-only replaceable
+
+For user-replaceable beans:
+
+- document the contract
+- use `@ConditionalOnMissingBean`
+- test replacement
+- ensure mandatory safety invariants remain enforced
+
+Do not expose internal runtime components as override points merely because Spring can replace them.
+
+## Startup and Lifecycle
+
+Ordinary auto-configuration must not perform:
+
+- external network calls
+- Docker access
+- file writes
+- runtime-policy mutation
+- JMX mutation
+- hidden background-thread creation
+- system-property mutation
+- unbounded waits
+
+Registration side effects must be explicit, lifecycle-managed, idempotent where needed, and tested.
+
+Use eager initialization only to fail fast on a mandatory safety invariant.
+
+Do not mark everything `@Lazy` mechanically.
+
+## Actuator and Health
+
+Actuator endpoints are operational APIs.
+
+They must:
+
+- be read-only by default
+- expose bounded, safe state
+- distinguish desired startup configuration from live applied state
+- avoid raw secrets, PII, payloads, or implementation objects
+- use explicit guards for mutation
+- have a documented operator use case
+
+Liveness must not depend on optional exporter or collector availability.
+
+Readiness should include only dependencies required for correct service behavior.
+
+Use diagnostics for detailed tracing state instead of overloading health.
+
+## Diagnostics
+
+Safe diagnostics may expose:
+
+- tracing active/no-op
+- runtime/agent mode
+- active servlet/reactive adapters
+- sampling mode
+- mutation gate state
+- applied policy version/status
+- scrubbing rule summary or fingerprint
+- exporter/processor readiness
+- ignored or invalid configuration names
+- actionable warnings
+
+Do not expose:
+
+- credentials
+- raw control payloads
+- raw PII
+- full environment
+- mutable live collections
+- unbounded maps
+- implementation object dumps
+
+## Dependency Hygiene
+
+Starter and auto-configuration dependencies must be intentional.
+
+Use:
+
+- `api` only for types intentionally exposed to consumers
+- `implementation` for internal runtime details
+- `compileOnly` for genuine provided-runtime contracts
+- `runtimeOnly` for runtime-only artifacts
+
+Verify:
+
+- servlet starter does not pull WebFlux unintentionally
+- reactive starter does not pull servlet stack unintentionally
+- optional integrations remain optional
+- test dependencies do not leak
+- starter POM/module metadata is correct
+
+Do not add a broad dependency when a narrow artifact is sufficient.
+
+## Testing
+
+Use `ApplicationContextRunner` by default.
+
+Test:
+
+- default context
+- enabled context
+- disabled context
+- invalid property
+- missing optional class
+- supported user override
+- bean absence
+- no eager initialization
+- diagnostics
+- configuration metadata where relevant
+
+Use `@SpringBootTest` only when a complete lifecycle, web stack, or Actuator interaction is required.
+
+For risky properties, include negative tests.
+
+## Architecture Fitness
+
+Protect where practical:
+
+- API has no Spring dependency
+- core has no Spring dependency
+- webmvc and webflux modules remain isolated
+- starters remain thin
+- auto-configuration does not own domain validation
+- JMX/OpenMBean types do not leak into API
+- optional integrations do not load when absent
+- runtime mutation remains disabled by default
+- obsolete properties, bean aliases, and legacy registrations do not return
+
+Do not weaken architecture rules to pass generated code.
+
+## Pre-Production Policy
+
+Breaking Spring and starter changes are allowed when they materially improve:
+
+- ownership
+- safety
+- property taxonomy
+- optional classpath isolation
+- dependency graph
+- diagnostics
+- adoption simplicity
+
+Prefer direct migration and deletion over compatibility aliases, duplicate beans, or dual property binding.
+
+Do not use pre-production status to justify arbitrary Spring churn.
+
+## Verification
+
+Run the narrowest affected tasks first:
+
+```powershell
+.\gradlew.bat :platform-tracing-spring-boot-autoconfigure:compileJava --no-daemon
+.\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon
+```
+
+Run servlet/reactive tests when those adapters change.
+
+Run architecture, Javadoc, full-build, starter dependency smoke, or E2E gates when the changed boundary requires them.
+
+## Required Report
+
+A non-trivial Spring/starter change report must include:
+
+```text
+Capability:
+Owner module:
+Properties added/changed/removed:
+Default behavior:
+Beans added/changed/removed:
+Conditions:
+Override policy:
+Optional classpath behavior:
+Startup side effects:
+Actuator/diagnostics:
+Dependency/POM impact:
+Tests and E2E:
+Architecture fitness:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

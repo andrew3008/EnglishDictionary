@@ -104,6 +104,26 @@ public final class AgentHttpSpringSmokeProcessRunner {
             List<String> extraJvmSystemProperties,
             Duration processTimeout,
             long flushDelayMs) throws Exception {
+        return runMeasured(mainClassName, otelAgentJar, testRuntimeClasspath, otlpEndpoint,
+                serviceName, httpPort, extensionLocation, requestRoute, requestHeaders,
+                extraEnv, extraJvmSystemProperties, processTimeout, flushDelayMs, true);
+    }
+
+    public static RunResult runMeasured(
+            String mainClassName,
+            String otelAgentJar,
+            String testRuntimeClasspath,
+            String otlpEndpoint,
+            String serviceName,
+            int httpPort,
+            String extensionLocation,
+            String requestRoute,
+            Map<String, String> requestHeaders,
+            Map<String, String> extraEnv,
+            List<String> extraJvmSystemProperties,
+            Duration processTimeout,
+            long flushDelayMs,
+            boolean requireAgentStartup) throws Exception {
         Path javaBin = Path.of(System.getProperty("java.home"), "bin", "java");
 
         List<String> jvmProperties = buildJvmProperties(
@@ -179,9 +199,11 @@ public final class AgentHttpSpringSmokeProcessRunner {
         assertThat(process.exitValue())
                 .as("Smoke JVM exit code. Output:\n%s", fullOutput)
                 .isZero();
-        assertThat(fullOutput)
+        if (requireAgentStartup) {
+            assertThat(fullOutput)
                 .as("OTel Java Agent должен стартовать без ошибок")
-                .doesNotContain("OpenTelemetry Javaagent failed to start");
+                    .doesNotContain("OpenTelemetry Javaagent failed to start");
+        }
         return new RunResult(fullOutput, probeLatency);
     }
 

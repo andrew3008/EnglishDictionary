@@ -1,0 +1,466 @@
+---
+description: Redis and KeyDB guardrails for approved distributed cache, coordination, locking, rate-limiting, and ephemeral-state integrations.
+globs:
+  - "**/*Redis*.java"
+  - "**/*KeyDB*.java"
+  - "**/*Redisson*.java"
+  - "**/*Lettuce*.java"
+  - "**/*Cache*.java"
+  - "**/*Lock*.java"
+  - "**/*RateLimit*.java"
+  - "**/*redis*.gradle"
+  - "**/*redis*.yml"
+  - "**/*redis*.yaml"
+  - "**/*keydb*.yml"
+  - "**/*keydb*.yaml"
+alwaysApply: false
+---
+
+# Redis and KeyDB Rules
+
+## Applicability Gate
+
+Redis or KeyDB is not a default dependency of the tracing platform.
+
+Before adding or expanding Redis-backed behavior, verify:
+
+1. the task genuinely requires distributed shared state
+2. the owning module is clear
+3. local memory, database state, Kafka, Kubernetes Lease, or existing runtime state is not a better owner
+4. the behavior remains safe during Redis unavailability, failover, eviction, or reconnect
+5. the operational owner and supported topology are known
+6. integration behavior can be verified with real infrastructure
+
+Do not add Redis speculatively.
+
+Use `INSUFFICIENT_EVIDENCE` when the need, topology, or failure model cannot be verified.
+
+## Core Principles
+
+Treat Redis-compatible infrastructure as:
+
+- remote distributed infrastructure
+- failure-prone and latency-sensitive
+- usually ephemeral
+- subject to eviction, reconnect, failover, and partial availability
+- incapable of replacing a strongly consistent system by assumption
+
+Do not treat Redis as:
+
+- a local map
+- the source of truth for irreplaceable state
+- an exactly-once messaging system
+- an authorization system
+- unlimited storage
+- an invisible implementation detail
+
+## Ownership
+
+Redis client and infrastructure types must remain inside approved integration or infrastructure modules.
+
+Do not expose through public tracing API:
+
+- `RedisTemplate`
+- Lettuce types
+- Redisson types
+- Redis connection factories
+- Redis commands
+- key formats
+- serializer implementation types
+
+Core tracing domain code must not create connections, read Spring configuration directly, or depend on Redis client libraries.
+
+Spring auto-configuration may wire a Redis-backed implementation, but domain invariants and failure policy belong to the owning core/infrastructure capability.
+
+## Supported Engines and Topologies
+
+Do not claim support for Redis OSS, KeyDB, Sentinel, Cluster, active-active, managed services, or Valkey without executable evidence.
+
+For every supported engine/topology, define:
+
+- discovery
+- failover behavior
+- timeout behavior
+- retry ownership
+- read/write routing
+- health semantics
+- tested command subset
+
+Do not target individual nodes or assume a permanent primary.
+
+## Client Selection
+
+Use the client already standardized by the repository.
+
+Prefer Lettuce when Spring Data Redis or reactive command access is sufficient.
+
+Use Redisson only when a mature distributed primitive materially reduces correctness risk and its semantics have been reviewed.
+
+Do not:
+
+- add Redisson for trivial command access
+- implement a custom Redis client
+- create unmanaged native connections
+- create one connection per operation
+- hide connection ownership in static holders
+
+## Key Namespace
+
+Every key family must have one documented namespace.
+
+Recommended logical form:
+
+```text
+<platform>:<environment>:<service-or-owner>:<domain>:<entity>:<identifier>
+```
+
+The exact format must follow the repository-approved convention.
+
+Keys must be:
+
+- deterministic
+- bounded
+- collision-resistant by construction
+- stable across restarts
+- safe for multi-environment deployment
+- free of secrets and raw PII
+
+Do not place raw:
+
+- trace IDs
+- span IDs
+- request IDs
+- user/account IDs
+- emails
+- access tokens
+- arbitrary URLs
+- exception messages
+
+in key names without explicit security and cardinality approval.
+
+Avoid flat, global, random-prefix, or unbounded user-controlled keys.
+
+## TTL and Lifecycle
+
+Every ephemeral key must have an explicit lifecycle.
+
+TTL is required for:
+
+- locks
+- leases
+- caches
+- temporary coordination state
+- idempotency markers
+- deduplication markers
+- rate-limit windows
+- transient snapshots
+
+For each key family, define:
+
+- TTL
+- refresh policy
+- deletion policy
+- owner
+- behavior after expiry
+- behavior after eviction
+- maximum expected cardinality
+
+Do not create immortal temporary keys.
+
+Use TTL jitter when synchronized expiration can cause a stampede.
+
+## Atomicity
+
+Do not implement one correctness invariant as multiple commands unless partial execution is explicitly safe.
+
+Use one of:
+
+- a single atomic Redis command
+- `SET` with appropriate `NX`, `XX`, `EX`, or `PX`
+- a reviewed bounded Lua script
+- a transaction when its semantics are sufficient
+- a mature library primitive
+- a different system with the required consistency
+
+Do not assume `MULTI/EXEC` provides database rollback or isolation.
+
+Lua scripts must be deterministic, bounded, versioned with the caller, and free of unbounded key scans.
+
+## Distributed Locks and Leases
+
+A Redis lock is not automatically sufficient protection for an external resource.
+
+A lock design must define:
+
+- unique ownership token
+- TTL
+- acquisition timeout
+- renewal behavior
+- crash/failover behavior
+- maximum critical-section duration
+- stale-owner behavior
+- whether fencing is required
+
+Release must atomically compare the ownership token and delete only for the current owner.
+
+Never release a lock with unconditional `DEL`.
+
+For critical external side effects, use fencing tokens or another system that rejects stale owners.
+
+Do not introduce Redlock or a multi-node lock algorithm without a separate architecture review.
+
+## Fencing
+
+When stale owners may continue after lease expiry:
+
+- generate a monotonically increasing fencing token
+- pass the token to the protected resource
+- require that resource to reject stale tokens
+- test stale-owner rejection
+
+A generated token that is never validated by the protected resource is not fencing.
+
+## Caching
+
+A cache must not own correctness.
+
+The application must tolerate:
+
+- misses
+- eviction
+- stale data
+- partial invalidation
+- reconnects
+- Redis unavailability
+
+Define:
+
+- cache-aside/read-through ownership
+- key and value bounds
+- TTL
+- invalidation
+- recomputation
+- stampede protection
+- failure/degradation policy
+
+Do not store complete spans, logs, payloads, stack traces, or arbitrary baggage as a secondary tracing backend.
+
+## Serialization
+
+Java native serialization is forbidden.
+
+Use an explicitly selected and versioned format, such as:
+
+- UTF-8 strings
+- JSON with explicit models
+- an approved compact schema
+- Redis hashes for simple fields
+
+Define:
+
+- schema/version
+- size limits
+- required/optional fields
+- unknown-field behavior
+- migration policy
+- sensitive-data constraints
+
+Because the tracing solution is pre-production, prefer direct migration and deletion of obsolete readers/writers over indefinite dual-read/dual-write compatibility.
+
+Do not use unrestricted polymorphic deserialization or framework implementation classes as stored payloads.
+
+## Pub/Sub and Streams
+
+Redis Pub/Sub is ephemeral.
+
+Use it only for best-effort notifications and reconstructable events.
+
+Do not use Pub/Sub for:
+
+- durable workflow
+- audit trail
+- guaranteed delivery
+- critical policy application
+- exactly-once semantics
+
+If Redis Streams are used, define consumer groups, acknowledgment, pending-entry recovery, retry/dead-letter behavior, retention, duplicate handling, and observability.
+
+## Rate Limiting
+
+A Redis-backed rate limiter must define:
+
+- algorithm
+- atomicity
+- time-source assumptions
+- burst semantics
+- key cardinality
+- TTL
+- tenant isolation
+- failure policy
+- observability
+
+Choose fail-open or fail-closed explicitly.
+
+For privileged mutation/admin operations, fail-closed is normally required.
+
+## Timeouts, Retries, and Degradation
+
+Configure bounded:
+
+- connect timeout
+- command timeout
+- retry count
+- reconnect behavior
+- wait/acquisition timeout
+
+One layer must own retries.
+
+Avoid retry multiplication across the client, resilience library, application loop, and Kubernetes restart.
+
+Retry only operations that are safe or idempotent.
+
+Do not hide Redis outages behind success responses.
+
+Fallback behavior must be capability-specific; caches, locks, coordination, and rate limiting do not share the same safety model.
+
+## Reactive Safety
+
+Do not perform blocking Redis calls on Reactor event-loop threads.
+
+Use the approved reactive client path or isolate blocking calls explicitly.
+
+Test:
+
+- cancellation
+- timeout
+- error propagation
+- context preservation
+- reconnect
+- no hidden subscription
+- no duplicate tracing instrumentation
+
+## Security
+
+Redis integration must support:
+
+- authentication
+- TLS where required
+- certificate and hostname validation
+- credential rotation
+- least-privilege ACLs
+- restricted network exposure
+
+Never:
+
+- hard-code credentials
+- log connection URLs containing secrets
+- use trust-all TLS
+- disable hostname verification
+- dump full environment/configuration
+- expose credentials through traces, metrics, Actuator, JMX, or reports
+
+## Observability
+
+Do not duplicate approved client instrumentation.
+
+Do not emit full Redis keys, values, Lua scripts, credentials, IDs, or payloads as span attributes or metric labels.
+
+Use only bounded operational dimensions, such as:
+
+- command category
+- outcome
+- bounded namespace category
+- timeout/retry reason code
+- server endpoint according to platform policy
+
+The tracing platform must not depend on Redis observability to function.
+
+## Testing
+
+Use real Redis/KeyDB containers for integration behavior.
+
+Do not use embedded Redis.
+
+Use:
+
+- pinned images
+- dynamic ports
+- `container.getHost()`
+- `getMappedPort(...)`
+- explicit readiness
+- bounded Awaitility
+- isolated keys/namespaces
+
+Test applicable behavior:
+
+- TTL and expiry
+- serialization
+- namespace
+- reconnect/failover
+- lock ownership and release
+- stale-owner behavior
+- Lua script behavior
+- cache eviction/miss
+- rate-limit boundaries
+- disabled/optional integration
+
+Do not assume `localhost`, use fixed ports, or depend on container reuse.
+
+A skipped integration/E2E test is `INSUFFICIENT_EVIDENCE`.
+
+## Architecture Fitness
+
+Protect at least:
+
+- Redis client types absent from public API
+- tracing core does not depend directly on Redis clients
+- no Java native serialization
+- no hard-coded endpoints or credentials
+- no TTL-free lock/ephemeral path
+- no unmanaged connections
+- no production `KEYS *`, `FLUSHALL`, or `FLUSHDB`
+- no blocking Redis use in reactive adapters
+- no Redis dependency when the feature is disabled or absent
+
+Do not weaken architecture rules to pass generated code.
+
+## Pre-Production Policy
+
+Breaking Redis changes are allowed when they materially improve correctness, security, ownership, namespace design, serialization, or failure behavior.
+
+Prefer removing:
+
+- unsafe serializers
+- ambiguous key formats
+- hidden local fallbacks
+- false extension points
+- duplicate connection/retry ownership
+- unsafe lock implementations
+- unsupported topology claims
+
+Do not keep compatibility keys or serializers indefinitely without an approved bounded migration window.
+
+## Verification and Report
+
+Run the narrowest affected compile/test tasks, architecture gates, and real infrastructure tests.
+
+A final report must include:
+
+```text
+Use case:
+Why Redis/KeyDB is required:
+Owner module:
+Supported engine/topology:
+Key namespace:
+TTL/lifecycle:
+Serialization:
+Atomicity/locking:
+Failure and retry policy:
+Security:
+Observability:
+Tests and Testcontainers:
+Architecture fitness:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

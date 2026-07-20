@@ -1,0 +1,625 @@
+---
+description: Kubernetes and Helm guardrails for deploying the platform tracing solution, agents, collectors, and Spring Boot services.
+globs:
+  - "**/k8s/**/*.yml"
+  - "**/k8s/**/*.yaml"
+  - "**/kubernetes/**/*.yml"
+  - "**/kubernetes/**/*.yaml"
+  - "**/helm/**/*.yml"
+  - "**/helm/**/*.yaml"
+  - "**/charts/**/*.yml"
+  - "**/charts/**/*.yaml"
+  - "**/templates/**/*.yml"
+  - "**/templates/**/*.yaml"
+  - "**/values*.yml"
+  - "**/values*.yaml"
+  - "**/deployment*.yml"
+  - "**/deployment*.yaml"
+  - "**/statefulset*.yml"
+  - "**/statefulset*.yaml"
+  - "**/daemonset*.yml"
+  - "**/daemonset*.yaml"
+alwaysApply: false
+---
+
+# Kubernetes Rules
+
+## Applicability
+
+Apply this rule to:
+
+- Kubernetes manifests
+- Helm charts and values
+- Java agent injection
+- OpenTelemetry Collector deployment
+- ConfigMaps and Secrets references
+- probes and lifecycle hooks
+- resource limits
+- service discovery
+- network policies
+- rollout and rollback behavior
+- runtime-control exposure
+- deployment-specific tracing configuration
+
+Application/runtime code must not implement Kubernetes orchestration or depend on Kubernetes APIs unless a separately approved integration explicitly requires it.
+
+## Core Principles
+
+Prefer:
+
+- stateless application services
+- horizontal scalability
+- immutable deployments
+- explicit configuration
+- least privilege
+- graceful degradation
+- deterministic startup
+- rollout-safe defaults
+- bounded resource usage
+- platform-owned deployment concerns
+
+Avoid:
+
+- hidden infrastructure mutation
+- fixed topology assumptions
+- pod identity assumptions
+- local filesystem state
+- startup coupling to optional telemetry backends
+- deployment logic inside application code
+
+## Ownership
+
+Kubernetes deployment behavior belongs to:
+
+- Helm charts
+- manifests
+- GitOps workflows
+- deployment automation
+- platform infrastructure modules
+
+Application code must not:
+
+- create or mutate Kubernetes resources
+- assume a fixed replica count
+- assume stable pod names or IPs
+- self-manage sidecars, DaemonSets, or collectors
+- depend on cluster-admin privileges
+- read Kubernetes API state for ordinary tracing behavior
+
+Tracing runtime code should consume configuration, not own deployment orchestration.
+
+## Workload Selection
+
+Choose workload type deliberately.
+
+Use:
+
+- `Deployment` for stateless application and collector workloads where replicas are interchangeable
+- `DaemonSet` only when one agent/collector per node is required
+- `StatefulSet` only when stable identity or storage is a proven requirement
+- `Job` or `CronJob` for bounded batch or scheduled work
+
+Do not use `StatefulSet` merely to obtain stable pod names.
+
+Do not assume a sidecar or DaemonSet topology without documenting the operational reason.
+
+## Statelessness
+
+Application services and tracing integration should remain stateless where practical.
+
+Do not store required runtime state in:
+
+- container filesystem
+- emptyDir without an explicit ephemeral design
+- pod-local memory when distributed consistency is required
+- pod name or IP
+- local agent state that cannot be reconstructed
+
+Runtime policy state must have a clear owner and recovery model.
+
+A pod restart must not leave the tracing platform in an unsafe or ambiguous state.
+
+## Configuration
+
+Use externalized configuration.
+
+Prefer:
+
+- ConfigMaps for non-sensitive deployment configuration
+- Secrets or approved secret operators for credentials
+- Helm values for environment-specific composition
+- documented environment variables for OTel agent/runtime integration
+- immutable configuration per release where practical
+
+Do not:
+
+- hard-code hostnames, IPs, ports, cluster names, namespaces, or credentials
+- embed secrets in values files or manifests
+- dump full environment variables into logs or diagnostics
+- duplicate configuration ownership between Helm, Config Server, and runtime control without an explicit precedence model
+
+For each tracing property, identify:
+
+- startup owner
+- environment-variable mapping
+- default
+- security sensitivity
+- whether runtime mutation may override it
+- how applied state is observed
+
+## Secrets
+
+Secrets must not be committed to Git.
+
+Use:
+
+- Kubernetes Secrets
+- External Secrets Operator
+- Vault or approved secret-management integration
+- workload identity where supported
+
+Never place credentials in:
+
+- ConfigMaps
+- annotations
+- labels
+- pod names
+- command arguments visible in process listings
+- telemetry attributes
+- Actuator/JMX diagnostics
+- Helm default values
+
+Secret rotation must not require rebuilding the application image unless explicitly unavoidable.
+
+## Pod Security
+
+Use least privilege.
+
+Prefer:
+
+- non-root user
+- `runAsNonRoot: true`
+- read-only root filesystem where practical
+- dropped Linux capabilities
+- `allowPrivilegeEscalation: false`
+- seccomp profile
+- namespace-scoped service accounts
+- minimal RBAC
+- no host networking unless justified
+- no host PID/IPC unless justified
+
+Do not:
+
+- run privileged containers without a documented need
+- mount the Docker socket
+- grant cluster-admin
+- mount broad host paths
+- share credentials across unrelated workloads
+- use service-account tokens when not required
+
+Java agent injection must not require unnecessary privilege.
+
+## Resource Requests and Limits
+
+Define resource requests for all long-running containers.
+
+Define limits according to the operational model and workload behavior.
+
+Review separately:
+
+- application JVM
+- Java agent overhead
+- collector CPU/memory
+- exporter queues
+- sidecars
+- init containers
+
+Do not copy generic limits without load evidence.
+
+Avoid:
+
+- no memory request
+- no CPU request
+- collector queues that can exceed container memory
+- JVM heap settings that ignore container limits
+- probes that fail under normal GC or startup behavior
+
+Document expected tracing overhead and collector queue capacity.
+
+## Probes
+
+Use probes according to their semantics.
+
+### Liveness
+
+Liveness answers whether the process can continue making progress.
+
+Do not include:
+
+- collector reachability
+- exporter backend availability
+- optional tracing functionality
+- expensive external checks
+
+A telemetry backend outage must not normally restart the business application.
+
+### Readiness
+
+Readiness answers whether the workload can serve its intended responsibility.
+
+Only include dependencies that are truly mandatory for correct service behavior.
+
+Tracing export is usually degradable and should not make a business service unready unless the deployment contract explicitly requires it.
+
+### Startup probe
+
+Use a startup probe when JVM startup, class loading, agent initialization, or warm-up can legitimately exceed liveness thresholds.
+
+Do not solve slow startup by making liveness indefinitely permissive.
+
+## Graceful Shutdown
+
+Configure termination behavior so that:
+
+- inbound traffic stops before process exit
+- in-flight work can complete within a bounded grace period
+- exporters/processors can flush according to the approved shutdown policy
+- JMX/agent resources close cleanly
+- shutdown does not block indefinitely
+
+Review:
+
+- `terminationGracePeriodSeconds`
+- `preStop`
+- Spring graceful shutdown
+- exporter flush timeout
+- collector drain behavior
+
+Do not make business shutdown depend indefinitely on telemetry export.
+
+## Rolling Deployments
+
+Changes must tolerate mixed-version rollout unless the release plan explicitly requires coordinated replacement.
+
+Review:
+
+- API/wire compatibility between concurrently running versions
+- runtime-control protocol versioning
+- collector configuration compatibility
+- agent/application artifact alignment
+- property changes
+- old/new metrics or span semantics
+- rollback behavior
+
+Because the tracing solution is pre-production, breaking changes are allowed, but deployment manifests must still define how the coordinated rollout is performed.
+
+Do not rely on all pods restarting simultaneously.
+
+## Agent and Application Alignment
+
+When using the OpenTelemetry Java agent or platform extension, define:
+
+- agent artifact/version
+- extension artifact/version
+- application/starter version
+- injection mechanism
+- integrity verification
+- readiness diagnostics
+- mismatch behavior
+- rollback procedure
+
+Do not infer a working platform extension merely from an agent marker or MBean presence.
+
+Avoid mixed unmanaged versions across replicas.
+
+## Collector Topology
+
+Document the chosen topology:
+
+- central gateway
+- per-node agent
+- sidecar
+- direct application export
+- hybrid
+
+For the chosen topology, define:
+
+- service discovery
+- endpoint ownership
+- TLS/authentication
+- buffering and retry
+- failure/degradation behavior
+- network policy
+- scaling model
+- resource limits
+- rollout and rollback
+
+Do not hard-code collector pod IPs.
+
+Use stable Services or approved service discovery.
+
+Do not assume a local collector unless the deployment model guarantees it.
+
+## Networking
+
+Use explicit service discovery and bounded network access.
+
+Prefer:
+
+- Kubernetes Services
+- DNS names
+- NetworkPolicies
+- TLS/mTLS where required
+- explicit egress destinations
+
+Do not:
+
+- hard-code pod or node IPs
+- expose JMX publicly
+- expose collectors or admin endpoints without access control
+- assume all traffic inside the cluster is trusted
+- disable certificate or hostname verification
+
+Document plaintext OTLP only when it stays within an explicitly trusted local or sidecar boundary.
+
+## Runtime Control and JMX
+
+Runtime mutation is privileged.
+
+Requirements:
+
+- mutation disabled by default
+- explicit environment/Helm opt-in
+- read/validate separated from apply
+- JMX access restricted by network and JVM controls
+- no public Service or ingress for JMX
+- no assumption that code-level gates replace RBAC/network security
+- applied state observable through safe diagnostics
+
+Historical unguarded MBeans must remain tracked as separate risk surfaces.
+
+## Labels and Annotations
+
+Use stable, bounded labels.
+
+Do not place:
+
+- secrets
+- trace IDs
+- request IDs
+- user IDs
+- raw URLs
+- dynamic high-cardinality values
+
+in labels or annotations.
+
+Follow the organization’s standard labels for:
+
+- application
+- component
+- version
+- environment
+- ownership
+
+Avoid annotations that contain credentials or full runtime configuration.
+
+## Volumes and Filesystem
+
+Avoid local filesystem dependencies.
+
+Use volumes only for a defined purpose:
+
+- read-only configuration
+- certificates
+- temporary bounded scratch space
+- approved persistent storage
+
+Do not:
+
+- persist runtime control state to an arbitrary local path
+- assume writable root filesystem
+- depend on pod-local files after restart
+- mount broad host directories
+- mount Windows paths into remote Linux Docker environments
+
+Configuration mounted from ConfigMap/Secret must be treated according to its update and restart semantics.
+
+## Horizontal Scaling
+
+Scaling must not change correctness.
+
+Do not assume:
+
+- a singleton application instance
+- one active collector
+- one JMX endpoint
+- one runtime-control caller
+- sticky pod identity
+- synchronized startup
+
+When coordination is required, define the distributed consistency model and owner.
+
+Do not add Redis, leader election, or locking solely because multiple replicas exist.
+
+## Autoscaling
+
+If HPA/VPA is supported, identify metrics and limits deliberately.
+
+Do not autoscale on:
+
+- trace ID
+- arbitrary high-cardinality metrics
+- exporter failure counters alone
+- unstable custom metrics without ownership
+
+Collector autoscaling must consider:
+
+- queue depth
+- memory pressure
+- receive/export rate
+- backend throttling
+- retry amplification
+
+Avoid feedback loops where telemetry outages trigger uncontrolled scaling.
+
+## Observability
+
+Kubernetes deployment must provide enough visibility to determine:
+
+- agent/runtime mode
+- collector topology
+- tracing enabled/no-op
+- sampling mode
+- mutation gate status
+- exporter readiness
+- active application/agent versions
+- rollout warnings
+- resource pressure
+
+Do not expose secrets, raw payloads, or full environment state.
+
+Use structured container logs and approved metrics/trace collection.
+
+## Failure and Degradation
+
+Choose behavior deliberately.
+
+### Optional collector/exporter unavailable
+
+Normally degrade tracing export while preserving business availability and emitting bounded diagnostics.
+
+### Invalid mandatory tracing security configuration
+
+Fail startup clearly.
+
+### Agent/extension mismatch
+
+Fail or degrade explicitly according to the approved architecture; do not silently run conflicting runtimes.
+
+### Runtime-control rejection
+
+Reject without state change.
+
+Do not hide infrastructure failure behind a successful readiness signal when the dependency is mandatory.
+
+## Helm Design
+
+Charts must:
+
+- expose only supported values
+- use clear ownership and defaults
+- avoid hidden templates and implicit mutations
+- validate required values where practical
+- avoid duplicating application property defaults unnecessarily
+- document breaking value changes
+- keep secrets external
+
+Do not create multiple aliases for obsolete pre-production values by default.
+
+Prefer direct migration to the intended final values schema.
+
+Generated manifests must be reviewable and deterministic.
+
+## Environment Separation
+
+Do not branch application code by environment.
+
+Environment differences belong in:
+
+- values files
+- GitOps overlays
+- ConfigMaps/Secrets
+- approved deployment configuration
+
+Keep the same application artifact across environments.
+
+Do not embed production-specific topology into code or default manifests.
+
+## Testing and Validation
+
+Validate manifests/charts with the repository-approved tools.
+
+Where applicable, test:
+
+- Helm rendering
+- required/invalid values
+- probes
+- resource settings
+- security context
+- service discovery
+- agent injection
+- collector connectivity
+- rollout/rollback
+- network restrictions
+- startup without optional telemetry backend
+- configuration metadata alignment
+
+Do not claim Kubernetes compatibility from YAML syntax alone.
+
+Use ephemeral test namespaces or approved containerized validation where available.
+
+## Architecture Fitness
+
+Protect where practical:
+
+- application code does not depend on Kubernetes APIs
+- no hard-coded cluster addresses
+- no committed secrets
+- mutation remains disabled by default
+- JMX is not publicly exposed
+- no privileged workload without explicit allowlist
+- no Docker socket mount
+- no host-path dependency
+- no fixed pod identity assumptions
+- no optional telemetry dependency in liveness
+- starter/runtime code contains no deployment orchestration
+
+Do not weaken deployment checks to make generated manifests pass.
+
+## Pre-Production Policy
+
+Breaking deployment and Helm-value changes are allowed when they materially improve:
+
+- security
+- topology clarity
+- ownership
+- rollout safety
+- runtime diagnostics
+- resource governance
+- agent/application alignment
+
+Prefer direct migration over indefinite aliases or dual configuration paths.
+
+A breaking deployment change must still include:
+
+- migration steps
+- updated values/examples
+- rollback procedure
+- verification
+- affected environment inventory
+
+Do not use pre-production status to justify arbitrary manifest churn.
+
+## Verification and Report
+
+Run the narrowest applicable rendering, linting, schema, deployment, integration, and E2E checks.
+
+A final Kubernetes-related report must include:
+
+```text
+Workload/topology:
+Owner:
+Configuration and secret sources:
+Agent/application/collector versions:
+Probes:
+Resources:
+Security context/RBAC:
+Network exposure:
+Runtime-control exposure:
+Failure/degradation behavior:
+Rollout and rollback:
+Validation executed:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

@@ -42,19 +42,15 @@ class ReactorContextPropagationAgentE2ETest {
     private static String otlpEndpoint;
     private static String testRuntimeClasspath;
     private static String otelAgentJar;
-    private static String extensionJar;
 
     @BeforeAll
     static void setUpStack() {
-        otelAgentJar = System.getProperty("otel.javaagent.jar");
-        extensionJar = System.getProperty("smoke.otel.extension.jar");
+        otelAgentJar = System.getProperty("smoke.controlled.agent.jar");
         testRuntimeClasspath = System.getProperty("smoke.test.runtime.classpath");
 
         assertThat(otelAgentJar).isNotBlank();
-        assertThat(extensionJar).isNotBlank();
         assertThat(testRuntimeClasspath).isNotBlank();
         assertThat(new File(otelAgentJar)).exists().isFile();
-        assertThat(new File(extensionJar)).exists().isFile();
 
         jaeger = JaegerTestContainerSupport.newJaeger();
         jaeger.start();
@@ -83,7 +79,7 @@ class ReactorContextPropagationAgentE2ETest {
                 otlpEndpoint,
                 SERVICE_NAME,
                 httpPort,
-                extensionJar,
+                null,
                 Map.of(),
                 List.of(
                         "platform.tracing.sampling.ratio=1.0",

@@ -36,15 +36,18 @@ class AgentExtensionFailClosedSecurityE2ETest {
     private static String otlpEndpoint;
     private static String runtimeClasspath;
     private static String agentJar;
-    private static String extensionJar;
+    private static String controlledAgentJar;
+    private static String failureFixtureAgentJar;
 
     @BeforeAll
     static void startCollector() {
         agentJar = System.getProperty("otel.javaagent.jar");
-        extensionJar = System.getProperty("smoke.otel.extension.jar");
+        controlledAgentJar = System.getProperty("smoke.controlled.agent.jar");
+        failureFixtureAgentJar = System.getProperty("smoke.e2.failure.agent.jar");
         runtimeClasspath = System.getProperty("smoke.test.runtime.classpath");
         assertThat(new File(agentJar)).isFile();
-        assertThat(new File(extensionJar)).isFile();
+        assertThat(new File(controlledAgentJar)).isFile();
+        assertThat(new File(failureFixtureAgentJar)).isFile();
         jaeger = JaegerTestContainerSupport.newJaeger();
         jaeger.start();
         otlpEndpoint = JaegerTestContainerSupport.otlpHttpEndpoint(jaeger);
@@ -63,14 +66,14 @@ class AgentExtensionFailClosedSecurityE2ETest {
         String stockService = "e1-stock-agent-unprotected";
         String protectedService = "e1-platform-agent-protected";
 
-        runRequest(stockService, null, List.of("otel.traces.sampler=always_on"));
+        runRequest(agentJar, stockService, null, List.of("otel.traces.sampler=always_on"));
         Optional<Map<String, String>> stockSpan = awaitSpan(stockService);
         assertThat(stockSpan).isPresent();
         assertThat(stockSpan.orElseThrow().get(HEADER_ATTRIBUTE))
                 .as("Stock Agent без extension экспортирует захваченный sensitive header")
                 .contains(SECRET);
 
-        runRequest(protectedService, extensionJar, List.of(
+        runRequest(controlledAgentJar, protectedService, null, List.of(
                 "otel.traces.sampler=platform",
                 "platform.tracing.sampling.ratio=1"));
         Optional<Map<String, String>> protectedSpan = awaitSpan(protectedService);
@@ -82,7 +85,91 @@ class AgentExtensionFailClosedSecurityE2ETest {
                 .doesNotContain("e1-sensitive-value");
     }
 
-    private static void runRequest(String serviceName, String extension, List<String> samplerProperties)
+    @Test
+    void mandatorySanitizerFailureLeavesAgentExportPathClosed() throws Exception {
+        String serviceName = "e2-controlled-agent-sanitizer-failed";
+        int port;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            port = socket.getLocalPort();
+        }
+
+        AgentHttpSpringSmokeProcessRunner.RunResult result = AgentHttpSpringSmokeProcessRunner.runMeasured(
+                AgentSpringForceSamplingSmokeMain.class.getName(),
+                controlledAgentJar,
+                runtimeClasspath,
+                otlpEndpoint,
+                serviceName,
+                port,
+                null,
+                "/probe",
+                Map.of("Authorization", SECRET),
+                Map.of(),
+                List.of(
+                        "otel.traces.sampler=always_on",
+                        "otel.instrumentation.http.server.capture-request-headers=authorization",
+                        "platform.tracing.scrubbing.enabled=false",
+                        "platform.tracing.suppression.suppress-micrometer-tracing=true"),
+                PROCESS_TIMEOUT,
+                2_000L,
+                false);
+
+        assertThat(result.output())
+                .contains("scrubbing.enabled=false is forbidden by the secure Agent profile");
+        await().during(Duration.ofSeconds(5))
+                .atMost(Duration.ofSeconds(8))
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() -> assertThat(jaegerClient.findFirstSpanAttributes(
+                        serviceName, attributes -> true)).isEmpty());
+    }
+
+    @Test
+    void everyMandatoryAutoconfigureCallbackFailureLeavesExportPathClosed() throws Exception {
+        for (String stage : List.of(
+                "extension-initialization",
+                "configuration",
+                "sanitizer",
+                "sampler",
+                "span-processor",
+                "propagation",
+                "exporter",
+                "protected-export-path")) {
+            String serviceName = "e2-failed-" + stage;
+            int port;
+            try (ServerSocket socket = new ServerSocket(0)) {
+                port = socket.getLocalPort();
+            }
+
+            AgentHttpSpringSmokeProcessRunner.RunResult result = AgentHttpSpringSmokeProcessRunner.runMeasured(
+                    AgentSpringForceSamplingSmokeMain.class.getName(),
+                    failureFixtureAgentJar,
+                    runtimeClasspath,
+                    otlpEndpoint,
+                    serviceName,
+                    port,
+                    null,
+                    "/probe",
+                    Map.of("Authorization", SECRET),
+                    Map.of(),
+                    List.of(
+                            "platform.tracing.e2.failure-stage=" + stage,
+                            "otel.traces.sampler=always_on",
+                            "otel.instrumentation.http.server.capture-request-headers=authorization",
+                            "platform.tracing.suppression.suppress-micrometer-tracing=true"),
+                    PROCESS_TIMEOUT,
+                    500L,
+                    false);
+
+            assertThat(result.output()).contains("E2_TEST_ONLY_MANDATORY_PIPELINE_FAILURE:" + stage);
+            await().during(Duration.ofSeconds(2))
+                    .atMost(Duration.ofSeconds(4))
+                    .pollInterval(Duration.ofMillis(250))
+                    .untilAsserted(() -> assertThat(jaegerClient.findFirstSpanAttributes(
+                            serviceName, attributes -> true)).isEmpty());
+        }
+    }
+
+    private static void runRequest(String selectedAgentJar, String serviceName, String extension,
+                                   List<String> samplerProperties)
             throws Exception {
         int port;
         try (ServerSocket socket = new ServerSocket(0)) {
@@ -95,7 +182,7 @@ class AgentExtensionFailClosedSecurityE2ETest {
 
         AgentHttpSpringSmokeProcessRunner.run(
                 AgentSpringForceSamplingSmokeMain.class.getName(),
-                agentJar,
+                selectedAgentJar,
                 runtimeClasspath,
                 otlpEndpoint,
                 serviceName,

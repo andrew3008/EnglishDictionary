@@ -1,0 +1,578 @@
+---
+description: Testcontainers orchestration rules for real infrastructure, remote Docker, Spring Boot integration, networking, lifecycle, diagnostics, and E2E evidence.
+globs:
+  - "**/src/test/**/*.java"
+  - "**/src/integrationTest/**/*.java"
+  - "**/src/e2eTest/**/*.java"
+  - "**/*Container*.java"
+  - "**/*Testcontainer*.java"
+  - "**/*IntegrationTest.java"
+  - "**/*IT.java"
+  - "**/*E2ETest.java"
+  - "**/docker-compose*.yml"
+  - "**/docker-compose*.yaml"
+  - "**/testcontainers*.properties"
+  - "**/*collector*.yml"
+  - "**/*collector*.yaml"
+alwaysApply: false
+---
+
+# Testcontainers Orchestration Rules
+
+## Applicability
+
+Apply this rule when a test depends on real external infrastructure, including:
+
+- OpenTelemetry Collector
+- Jaeger or another trace backend
+- PostgreSQL
+- Kafka
+- Redis or KeyDB
+- MinIO
+- gRPC servers
+- HTTP services
+- JMX/agent child processes
+- multi-container networking
+- failover, reconnect, timeout, or recovery behavior
+
+Do not use Testcontainers mechanically when a deterministic unit test, `ApplicationContextRunner`, or focused in-process test proves the behavior more directly.
+
+## Core Principles
+
+Testcontainers tests must be:
+
+- deterministic
+- isolated
+- reproducible
+- bounded in time
+- explicit about readiness
+- independent from developer-local infrastructure
+- honest about execution and skips
+- compatible with the supported local and CI Docker environments
+
+A containerized test must prove runtime behavior that cannot be established reliably through a lower-level test.
+
+## Image Governance
+
+Use pinned image versions.
+
+Do not use:
+
+```text
+latest
+edge
+snapshot
+```
+
+unless the task explicitly validates an unreleased image.
+
+For every image, identify:
+
+```text
+Image:
+Version owner:
+Why required:
+Supported engine/runtime claim:
+Security/governance status:
+```
+
+Do not claim Redis, KeyDB, Kafka, PostgreSQL, Collector, or Jaeger compatibility without executing the corresponding containerized behavior.
+
+## Container Reuse
+
+Container reuse is an optimization, not a correctness requirement.
+
+Tests must pass when reuse is disabled.
+
+Do not require developers or CI to enable reusable containers.
+
+Use reuse only when:
+
+- the image and state model are safe for reuse
+- test data is isolated and reset
+- configuration is deterministic
+- no secrets or stale state persist
+- the optimization is documented
+
+Do not annotate or configure every container as reusable mechanically.
+
+A reused container must never make tests order-dependent.
+
+## Lifecycle Ownership
+
+Choose lifecycle according to isolation and cost.
+
+### Static class-level container
+
+Use when:
+
+- one test class can safely share one container
+- test methods isolate their data
+- startup cost is significant
+- state reset is deterministic
+
+### Per-test container
+
+Use when:
+
+- tests mutate global service state
+- failure isolation requires a fresh instance
+- lifecycle itself is under test
+- reuse would hide defects
+
+### Shared suite/container singleton
+
+Use only with a deliberate, thread-safe test-infrastructure design.
+
+Do not use an ad hoc singleton container holder.
+
+Do not let one test class depend on another class starting infrastructure.
+
+## Isolation
+
+Each test must own or isolate its data.
+
+Use:
+
+- unique database/schema names
+- unique Kafka topics or consumer groups
+- unique Redis key prefixes
+- unique object-store buckets
+- unique trace/correlation identifiers
+- explicit cleanup when required
+
+Do not rely on:
+
+- execution order
+- previous test cleanup
+- shared mutable static state
+- a clean developer machine
+- container restart between methods unless explicitly configured
+
+Parallel execution must not cause collisions.
+
+## Networking Model
+
+Distinguish network boundaries explicitly.
+
+### Host JVM -> container
+
+Use:
+
+- `container.getHost()`
+- `container.getMappedPort(...)`
+- framework helpers returning mapped endpoints
+
+Do not assume `localhost`.
+
+### Container -> container
+
+Use:
+
+- a shared Testcontainers `Network`
+- stable network aliases
+- internal container ports
+
+Do not use host-mapped ports for normal container-to-container traffic.
+
+### Known remote-Docker exception
+
+In the known Gentoo remote-Docker environment, Docker DNS/network-alias behavior may require a verified container network IP for specific Collector -> Jaeger communication.
+
+Treat that as a documented environment-specific workaround, not a general networking rule.
+
+Do not hard-code the remote daemon address or container IP in Java source.
+
+### Application/agent direct export
+
+When a JVM process running on the host exports to a container, use the mapped host endpoint.
+
+Do not confuse:
+
+```text
+host JVM -> mapped host/port
+container -> network alias/internal port
+```
+
+## Ports
+
+Never bind fixed host ports unless a separately approved external-system test requires it.
+
+Use:
+
+- dynamic mapped ports
+- `getMappedPort(...)`
+- `container.getHost()`
+- generated endpoint properties
+
+Internal container ports may remain fixed because they belong to the image contract.
+
+Do not hard-code `localhost:<port>` in Spring properties or test clients.
+
+## Remote Docker
+
+Known local environment may use:
+
+```powershell
+$env:DOCKER_HOST = "tcp://192.168.100.70:2375"
+```
+
+Rules:
+
+- do not hard-code this value in test source or build defaults
+- resolve Docker availability through Testcontainers
+- do not mount Windows paths into the remote Linux daemon
+- prefer classpath resources copied into containers
+- use `MountableFile` or `withCopyToContainer(...)`
+- do not assume the container can reach host-local filesystem paths
+- report Docker/environment failures separately from code failures
+
+The remote Docker daemon runs on Linux; path and permission assumptions must match the daemon, not the Windows client.
+
+## Configuration Files
+
+For Collector, Jaeger, Kafka, or other configured containers:
+
+- keep test configuration in repository resources
+- copy it into the container
+- pin the image version that interprets it
+- validate the generated/configured path
+- avoid developer-specific absolute paths
+- avoid host bind mounts for remote Docker
+- make environment substitutions explicit
+
+Do not silently use a different fallback configuration when the intended file is unavailable.
+
+## Startup Ordering
+
+Containers must be ready before dependent application behavior executes.
+
+Use explicit orchestration when one container depends on another.
+
+Examples:
+
+- Collector requires Jaeger/export backend
+- application requires PostgreSQL/Kafka
+- child JVM requires Collector mapped endpoint
+
+Do not encode ordering through arbitrary sleeps.
+
+Do not start Spring context before required dynamic properties and endpoints are available.
+
+## Readiness
+
+Use a readiness strategy that proves the required capability.
+
+Possible strategies:
+
+- `Wait.forListeningPort()`
+- `Wait.forHttp(...)`
+- log-message wait with a stable image contract
+- health endpoint
+- custom bounded check
+- actual client-level probe when port readiness is insufficient
+
+Do not use port-open readiness when the tested service needs a stronger condition.
+
+Every wait must have a bounded timeout.
+
+Do not use `Thread.sleep(...)`.
+
+## Spring Boot Integration
+
+Use the narrowest suitable integration:
+
+- `@DynamicPropertySource`
+- `DynamicPropertyRegistry`
+- `ApplicationContextInitializer`
+- Spring Boot service connections if already adopted and appropriate
+- `ApplicationContextRunner` for auto-configuration without a full server lifecycle
+
+Register container-derived properties before context initialization.
+
+Do not:
+
+- set global system properties without cleanup
+- use hard-coded ports
+- rely on static local configuration
+- start unrelated containers for a focused context test
+- use broad `@SpringBootTest` when `ApplicationContextRunner` is sufficient
+
+## Servlet and WebFlux Tests
+
+Keep servlet and reactive test infrastructure isolated.
+
+Do not pull both web stacks into one test unless interoperability itself is under test.
+
+Verify:
+
+- correct application type
+- correct server/client
+- propagation
+- error behavior
+- context cleanup
+- no duplicate spans
+
+Do not use blocking clients on Reactor event-loop threads.
+
+## Tracing E2E
+
+For exported tracing behavior, use a unique test identifier and query only matching telemetry.
+
+Verify where applicable:
+
+- exact span count
+- span names
+- trace ID continuity
+- parent/child relationships
+- links
+- resource identity
+- attributes
+- status and events
+- sampling result
+- scrubbing result
+- absence of duplicate spans
+
+Do not assert only that “some span exists”.
+
+Account for backend ingestion delay with bounded polling, not sleeps.
+
+## Sampling Determinism
+
+For tests that require export, configure deterministic sampling, normally ratio `1.0`.
+
+For tests that require dropping, configure deterministic drop behavior, normally ratio `0.0` or an explicit deny policy.
+
+Do not depend on probabilistic sampling outcomes.
+
+Force-sampling tests must prove that:
+
+- ratio-zero baseline drops
+- valid force input changes the decision where allowed
+- invalid force input is rejected
+- scrubbing/export controls are not bypassed
+
+## Runtime Control and JMX
+
+For JMX/control E2E, verify the complete path:
+
+```text
+external JMX/OpenMBean payload
+    -> transport conversion
+    -> structural decode
+    -> domain validation
+    -> mutation policy
+    -> apply/read
+    -> observable applied state
+```
+
+Test:
+
+- mutation disabled by default
+- validate does not apply
+- read does not mutate
+- invalid payload cannot apply
+- rejected mutation preserves state/version/source/LKG
+- successful apply is observable
+- classloader-neutral values cross the boundary
+- no Java native serialization
+
+A unit test of the handler alone does not prove the JMX/classloader path.
+
+## Failover and Recovery
+
+Use Testcontainers for failure behavior only when the test can be deterministic and bounded.
+
+Possible scenarios:
+
+- container stop/restart
+- network interruption
+- dependency unavailability
+- reconnect
+- exporter failure
+- lock expiry
+- stale owner
+- delayed backend availability
+
+Define:
+
+- expected failure
+- retry owner
+- timeout
+- recovery condition
+- state invariant during failure
+
+Do not create flaky chaos tests without a deterministic orchestration model.
+
+## Resource Limits
+
+Container tests must avoid unbounded host/CI resource use.
+
+Define where appropriate:
+
+- memory
+- CPU
+- queue sizes
+- topic/stream retention
+- startup timeout
+- test timeout
+- log capture size
+
+Do not start unnecessary containers.
+
+Reuse a container inside a class only when data isolation is proven.
+
+## Logs and Diagnostics
+
+On failure, capture bounded useful diagnostics:
+
+- container state
+- image
+- mapped endpoints
+- relevant recent logs
+- wait strategy result
+- test identifier
+- external dependency state
+
+Do not print:
+
+- credentials
+- tokens
+- full environment
+- sensitive payloads
+- unbounded container logs
+
+Make infrastructure failure distinguishable from assertion failure.
+
+## Cleanup
+
+Testcontainers should own container cleanup.
+
+Explicit resource cleanup may still be required for:
+
+- database schemas
+- Kafka topics/groups
+- Redis keys
+- buckets
+- temporary files
+- child JVM processes
+- JMX registrations
+- executors
+
+Do not depend on container shutdown alone when a shared container remains alive.
+
+Always terminate child processes and executors in `finally` or test lifecycle hooks.
+
+## CI Behavior
+
+Containerized tests must run in the approved CI Docker environment.
+
+Do not claim CI compatibility solely from local success.
+
+CI must fail when a required container test:
+
+- cannot access Docker
+- executes zero tests
+- is skipped unexpectedly
+- cannot produce required reports
+- fails readiness
+- times out
+- leaves a required runtime boundary unverified
+
+Archive bounded test reports and diagnostics where appropriate.
+
+## Opt-In E2E
+
+Expensive E2E may remain opt-in through a documented property such as:
+
+```powershell
+.\gradlew.bat :platform-tracing-e2e-tests:test `
+  -PrunE2e `
+  --rerun-tasks `
+  --no-build-cache `
+  --no-daemon
+```
+
+When explicitly requested, the test must execute or fail.
+
+Verify reports show:
+
+```text
+tests > 0
+skipped = 0
+failures = 0
+errors = 0
+```
+
+`BUILD SUCCESSFUL` with a skipped E2E task is `INSUFFICIENT_EVIDENCE`, not `PASS`.
+
+## Forbidden Patterns
+
+Do not use:
+
+- embedded Redis as proof of Redis/KeyDB behavior
+- mocked infrastructure in a test claiming integration semantics
+- fixed host ports
+- hard-coded `localhost`
+- `Thread.sleep(...)`
+- unbounded polling
+- `latest` images
+- shared external infrastructure
+- developer-specific filesystem paths
+- Windows bind mounts to remote Linux Docker
+- test-order dependence
+- cross-class mutable singleton container state
+- production credentials
+- skipped required E2E reported as pass
+
+## Architecture Fitness
+
+Protect where practical:
+
+- integration tests use approved real infrastructure
+- no embedded Redis dependency
+- no fixed host ports
+- no hard-coded Docker endpoint in source
+- no production dependency on Testcontainers
+- no test infrastructure type in public API
+- remote-Docker-safe configuration paths
+- E2E opt-in cannot silently skip when requested
+
+Do not weaken test orchestration rules to pass generated code.
+
+## Pre-Production Policy
+
+Breaking test-harness and container-orchestration changes are allowed when they materially improve:
+
+- determinism
+- isolation
+- runtime evidence
+- remote-Docker compatibility
+- diagnostics
+- lifecycle ownership
+- execution speed without weakening correctness
+
+Prefer direct migration and deletion of obsolete harnesses over compatibility wrappers.
+
+Do not use pre-production status to justify arbitrary test infrastructure churn.
+
+## Verification and Report
+
+A final Testcontainers-related report must include:
+
+```text
+Runtime behavior tested:
+Containers and pinned images:
+Network paths:
+Host/container endpoint mapping:
+Remote-Docker considerations:
+Readiness:
+Isolation and cleanup:
+Failure/recovery behavior:
+Tests executed:
+Test counts and skips:
+Diagnostics:
+Residual risks:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to executed evidence.

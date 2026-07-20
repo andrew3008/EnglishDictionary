@@ -1,0 +1,231 @@
+---
+description: Testing guardrails for unit, Spring, integration, architecture, and E2E tests in the platform tracing repository.
+globs:
+  - "**/src/test/**/*.java"
+  - "**/src/integrationTest/**/*.java"
+  - "**/src/e2eTest/**/*.java"
+  - "**/*Test.java"
+  - "**/*Tests.java"
+  - "**/*IT.java"
+  - "**/*E2ETest.java"
+alwaysApply: false
+---
+
+# Testing Rules
+
+## Test Strategy
+
+Use the narrowest test level that proves the behavior.
+
+Prefer:
+
+- unit tests for pure logic, invariants, policies, parsing, and state transitions
+- `ApplicationContextRunner` for Spring Boot auto-configuration
+- focused integration tests for module/framework boundaries
+- Testcontainers for behavior that depends on real external infrastructure
+- architecture fitness tests for dependency and public-surface rules
+- E2E tests for agent, JMX, collector/exporter, servlet, WebFlux, sampling, scrubbing, and classloader boundaries
+
+Do not use Testcontainers mechanically when a deterministic unit or Spring context test is sufficient.
+
+## Required Test Stack
+
+Use:
+
+- JUnit 5
+- AssertJ
+- Mockito only when a real collaborator boundary must be isolated
+- Awaitility for asynchronous eventual conditions
+- Testcontainers for real infrastructure boundaries
+
+Follow existing repository conventions and test utilities.
+
+## Determinism
+
+Tests must be deterministic and reproducible.
+
+Control explicitly:
+
+- clocks
+- random values
+- sampling ratios
+- UUIDs or correlation identifiers where assertions depend on them
+- executor completion
+- container readiness
+- environment-dependent configuration
+
+Use deterministic sampling values such as `0.0` or `1.0` when testing drop/export behavior.
+
+Do not rely on probability, timing luck, execution order, or previous test state.
+
+## Forbidden
+
+Do not use:
+
+- `Thread.sleep(...)`
+- fixed host ports
+- fixed `localhost` assumptions for container services
+- unbounded waits or retries
+- real shared infrastructure
+- embedded Redis as a substitute for Redis/KeyDB integration behavior
+- production credentials
+- order-dependent tests
+- mutable static test state
+- broad exception swallowing
+- disabled tests without an explicit tracked reason
+
+Use mapped ports, dynamic properties, explicit readiness, and bounded Awaitility conditions.
+
+## Unit Tests
+
+Unit tests should:
+
+- isolate one behavior
+- cover valid, invalid, boundary, and disabled paths
+- assert observable contract rather than private implementation
+- use descriptive names
+- preserve root-cause evidence
+- avoid copying production algorithms into expected-value code
+
+Mock interfaces or external collaborators, not value objects or the class under test.
+
+Do not add an interface solely to make mocking easier.
+
+## Spring Boot Tests
+
+Use `ApplicationContextRunner` by default for auto-configuration.
+
+Test:
+
+- default behavior
+- enabled behavior
+- disabled behavior
+- invalid properties
+- missing optional classes
+- supported user overrides
+- bean absence
+- no eager initialization
+- diagnostics where part of the contract
+
+Use `@SpringBootTest` only when a complete application lifecycle or real web/Actuator interaction is required.
+
+## Tracing Tests
+
+Do not assert only that a span exists.
+
+Where relevant, verify:
+
+- exact span count
+- span name
+- parent/root/link relationship
+- trace continuity
+- attributes
+- resource identity
+- status and events
+- sampling outcome
+- scrubbing outcome
+- absence of duplicate spans
+- context cleanup and no cross-request leakage
+
+Test active and no-op/disabled behavior separately.
+
+## Runtime-Control Tests
+
+For privileged runtime control, verify:
+
+- mutation disabled by default
+- invalid decode cannot apply
+- domain-invalid request cannot apply
+- validation-only request does not mutate
+- read request does not mutate
+- rejected mutation preserves snapshot, version, source, and last-known-good state
+- successful apply is atomic
+- partial failure rollback when applicable
+
+Negative tests are mandatory for privileged paths.
+
+## Integration and Testcontainers
+
+Use pinned container images and dynamic ports.
+
+Test real behavior for supported infrastructure claims, such as:
+
+- collector/exporter connectivity
+- JMX wire round trip
+- Redis/KeyDB TTL or lock semantics
+- Kafka/database integration
+- servlet/WebFlux propagation
+- Java agent and classloader behavior
+
+Do not infer runtime compatibility from compilation alone.
+
+## Asynchronous and Reactive Tests
+
+For asynchronous or reactive behavior, test:
+
+- completion
+- timeout
+- cancellation
+- error path
+- retry behavior
+- thread/context switch
+- context restoration
+- MDC cleanup
+- no duplicate instrumentation
+
+Do not block Reactor event-loop threads in production or test code.
+
+## Architecture Tests
+
+Add or update architecture fitness rules when a change affects:
+
+- module direction
+- public API surface
+- package ownership
+- forbidden dependencies
+- classloader-neutral protocol types
+- removed legacy symbols
+- starter dependency isolation
+- servlet/WebFlux separation
+
+Do not weaken an architecture rule merely to make new code pass.
+
+## E2E Evidence
+
+A required E2E test must actually execute.
+
+Verify reports show:
+
+```text
+tests > 0
+skipped = 0
+failures = 0
+errors = 0
+```
+
+`BUILD SUCCESSFUL` with an E2E task skipped is `INSUFFICIENT_EVIDENCE`, not `PASS`.
+
+Use unique identifiers when querying exported telemetry to avoid cross-test contamination.
+
+## Scope and Maintenance
+
+When changing production behavior:
+
+- update the narrowest relevant tests
+- remove stale tests for deleted pre-production APIs
+- do not add compatibility shims only to keep old tests compiling
+- inspect custom source sets, fixtures, samples, benchmarks, and E2E consumers
+- avoid unrelated test formatting or import churn
+
+## Verification
+
+Run the narrowest affected test task first:
+
+```powershell
+.\gradlew.bat :<affected-module>:compileTestJava --no-daemon
+.\gradlew.bat :<affected-module>:test --no-daemon
+```
+
+Then run architecture, full-build, or opt-in E2E gates when the change crosses those boundaries.
+
+Report commands, execution status, test counts, skips, failures, and remaining unverified behavior.

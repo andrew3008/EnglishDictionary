@@ -68,9 +68,10 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
                 extensionConfig.compareAndSet(null, new ExtensionConfig(config));
                 readiness.markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
                 if (!extensionConfig.get().scrubbing().enabled()) {
-                    readiness.fail(
-                            "SANITIZER_DISABLED_FOR_SECURE_PROFILE",
-                            new IllegalStateException("platform.tracing.scrubbing.enabled=false"));
+                    IllegalStateException failure = new IllegalStateException(
+                            "platform.tracing.scrubbing.enabled=false is forbidden by the secure Agent profile");
+                    readiness.fail("SANITIZER_DISABLED_FOR_SECURE_PROFILE", failure);
+                    throw failure;
                 }
             } catch (RuntimeException | Error failure) {
                 readiness.fail("CONFIGURATION_INITIALIZATION_FAILED", failure);

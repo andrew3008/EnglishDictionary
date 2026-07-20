@@ -39,6 +39,14 @@ sourceSets {
             srcDir 'src/readinessFixtureExtension/resources'
         }
     }
+    e2FailureExtension {
+        java {
+            srcDir 'src/e2FailureExtension/java'
+        }
+        resources {
+            srcDir 'src/e2FailureExtension/resources'
+        }
+    }
     e1Consumer {
         java {
             srcDir 'src/e1Consumer/java'
@@ -85,6 +93,9 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.springframework.kafka:spring-kafka'
+    testImplementation 'org.springframework.boot:spring-boot-starter-aop'
 
     // JDBC + OTel Java Agent для DbSemconvAgentSmokeTest (Agent 2.28.x, см. gradle.properties).
     testImplementation 'org.postgresql:postgresql'
@@ -151,6 +162,10 @@ dependencies {
     // Test-only extension, публикующий управляемые состояния readiness для packaged E1 matrix.
     readinessFixtureExtensionImplementation platform(project(':platform-tracing-bom'))
     readinessFixtureExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+
+    // Изолированный E2 fixture: моделирует исключения на callback-стадиях Agent SDK autoconfigure.
+    e2FailureExtensionImplementation platform(project(':platform-tracing-bom'))
+    e2FailureExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
 
     // Минимальный consumer graph: ровно servlet starter, без test SDK и Actuator.
     e1ConsumerImplementation platform(project(':platform-tracing-bom'))
@@ -225,10 +240,44 @@ tasks.named('processReadinessFixtureExtensionResources') {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
+tasks.register('testE2FailureExtensionJar', Jar) {
+    archiveClassifier.set('e2-failure-extension')
+    from sourceSets.e2FailureExtension.output
+}
+
+tasks.named('processE2FailureExtensionResources') {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.register('testE2FailureAgentJar', Jar) {
+    dependsOn ':platform-tracing-otel-extension:platformExtendedAgentJar', testE2FailureExtensionJar
+    archiveFileName.set('opentelemetry-javaagent-e2-failure-fixture.jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    from {
+        zipTree(project(':platform-tracing-otel-extension').tasks.named('platformExtendedAgentJar')
+                .get().archiveFile.get().asFile)
+    }
+    from(testE2FailureExtensionJar.archiveFile) {
+        into 'extensions'
+    }
+    doFirst {
+        manifest.from(
+                zipTree(project(':platform-tracing-otel-extension').tasks.named('platformExtendedAgentJar')
+                        .get().archiveFile.get().asFile)
+                        .matching { include 'META-INF/MANIFEST.MF' }
+                        .singleFile
+        )
+    }
+}
+
 test {
     useJUnitPlatform()
     dependsOn verifyExtensionDeps, ':platform-tracing-otel-extension:agentExtensionJar', customRuleJar,
-              testClassLoaderProbeJar, testJmxWireExtensionJar, testReadinessFixtureExtensionJar
+              ':platform-tracing-otel-extension:platformExtendedAgentJar',
+              testClassLoaderProbeJar, testJmxWireExtensionJar, testReadinessFixtureExtensionJar,
+              testE2FailureAgentJar
     // E2E-тесты тяжёлые: даём им полный таймаут и не запускаем параллельно.
     maxParallelForks = 1
     // По умолчанию e2e-тесты исключаются из обычного gradle test, чтобы не замедлять CI без Docker.
@@ -236,6 +285,11 @@ test {
     onlyIf { project.hasProperty('runE2e') }
     doFirst {
         systemProperty 'otel.javaagent.jar', configurations.otelJavaAgent.singleFile.absolutePath
+        systemProperty 'smoke.controlled.agent.jar',
+                project(':platform-tracing-otel-extension').tasks.named('platformExtendedAgentJar')
+                        .get().archiveFile.get().asFile.absolutePath
+        systemProperty 'smoke.e2.failure.agent.jar',
+                testE2FailureAgentJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.test.runtime.classpath', sourceSets.test.runtimeClasspath.asPath
         systemProperty 'smoke.e1.consumer.runtime.classpath', sourceSets.e1Consumer.runtimeClasspath.asPath
         systemProperty 'smoke.otel.extension.jar',
