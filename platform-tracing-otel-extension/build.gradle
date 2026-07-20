@@ -9,6 +9,13 @@ description = 'Расширение для OpenTelemetry Java Agent. ' +
 // agentExtensionJar — self-contained артефакт для otel.javaagent.extensions (api + slf4j-api внутри):
 // у Agent изолированный classloader на один URL, внешние JAR из каталога не подмешиваются.
 
+configurations {
+    platformAgentBinary {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
 dependencies {
     api platform(project(':platform-tracing-bom'))
 
@@ -62,6 +69,8 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // Binding for ThreadLocal MDC tests and log-capture tests (e.g. PR-9J startup strict WARN).
     testImplementation 'ch.qos.logback:logback-classic'
+
+    platformAgentBinary "io.opentelemetry.javaagent:opentelemetry-javaagent:${openTelemetryInstrumentationBomVersion}"
 }
 
 jar {
@@ -138,8 +147,75 @@ tasks.register('verifyExtensionSpiRegistration') {
     }
 }
 
+def platformAgentDistributionDir = layout.buildDirectory.dir('platform-agent-distribution')
+
+tasks.register('preparePlatformAgentDistribution') {
+    dependsOn agentExtensionJar, configurations.platformAgentBinary
+    outputs.dir platformAgentDistributionDir
+    doLast {
+        def outputDir = platformAgentDistributionDir.get().asFile
+        delete outputDir
+        outputDir.mkdirs()
+
+        copy {
+            from configurations.platformAgentBinary.singleFile
+            into outputDir
+            rename { 'opentelemetry-javaagent.jar' }
+        }
+        copy {
+            from agentExtensionJar.archiveFile
+            into outputDir
+            rename { 'platform-tracing-extension.jar' }
+        }
+        copy {
+            from 'src/main/distribution/platform-agent-launcher.sh'
+            into outputDir
+        }
+
+        def digest = { File file ->
+            def md = java.security.MessageDigest.getInstance('SHA-256')
+            file.withInputStream { stream ->
+                byte[] buffer = new byte[8192]
+                int read
+                while ((read = stream.read(buffer)) != -1) {
+                    md.update(buffer, 0, read)
+                }
+            }
+            md.digest().collect { String.format('%02x', it) }.join()
+        }
+        def agentFile = new File(outputDir, 'opentelemetry-javaagent.jar')
+        def extensionFile = new File(outputDir, 'platform-tracing-extension.jar')
+        new File(outputDir, 'SHA256SUMS').text =
+                "${digest(agentFile)}  ${agentFile.name}\n${digest(extensionFile)}  ${extensionFile.name}\n"
+        new File(outputDir, 'distribution.properties').text =
+                "distribution.version=${project.version}\n" +
+                "otel.javaagent.version=${openTelemetryInstrumentationBomVersion}\n" +
+                "attestation.protocol.version=1\n" +
+                "attestation.profile=platform-agent-secure-v1\n"
+    }
+}
+
+tasks.register('platformAgentDistribution', Zip) {
+    dependsOn preparePlatformAgentDistribution
+    archiveClassifier.set('platform-agent-distribution')
+    from platformAgentDistributionDir
+}
+
+tasks.register('verifyPlatformAgentDistribution') {
+    dependsOn preparePlatformAgentDistribution
+    doLast {
+        def outputDir = platformAgentDistributionDir.get().asFile
+        ['opentelemetry-javaagent.jar', 'platform-tracing-extension.jar',
+         'platform-agent-launcher.sh', 'SHA256SUMS', 'distribution.properties'].each { name ->
+            assert new File(outputDir, name).isFile() : "Missing controlled Agent distribution file: ${name}"
+        }
+        assert new File(outputDir, 'SHA256SUMS').readLines().size() == 2
+    }
+}
+
 check.dependsOn verifyAgentJarContents
 check.dependsOn verifyExtensionSpiRegistration
+check.dependsOn verifyPlatformAgentDistribution
 
 // Публикация self-contained agentExtensionJar (classifier agent) вместе со standard jar.
 afterEvaluate {

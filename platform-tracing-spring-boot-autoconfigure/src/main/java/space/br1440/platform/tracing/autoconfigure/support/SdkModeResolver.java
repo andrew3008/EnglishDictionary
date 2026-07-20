@@ -16,7 +16,15 @@ public final class SdkModeResolver {
      * @param globalFunctional {@code GlobalOpenTelemetry} в функциональном (не no-op) состоянии
      * @param userBeanPresent  в контексте есть пользовательский {@code OpenTelemetry} bean
      */
-    public record Inputs(boolean agentPresent, boolean globalFunctional, boolean userBeanPresent) {
+    public record Inputs(
+            boolean agentReady,
+            boolean agentRuntimePresent,
+            boolean globalFunctional,
+            boolean userBeanPresent) {
+
+        public Inputs(boolean agentPresent, boolean globalFunctional, boolean userBeanPresent) {
+            this(agentPresent, agentPresent, globalFunctional, userBeanPresent);
+        }
     }
 
     private SdkModeResolver() {
@@ -28,13 +36,13 @@ public final class SdkModeResolver {
      */
     public static SdkMode resolve(SdkMode configured, Inputs inputs) {
         SdkMode requested = configured == null ? SdkMode.AUTO : configured;
-        if (requested == SdkMode.DISABLED) {
-            return SdkMode.DISABLED;
-        }
-        if (inputs.agentPresent() && inputs.userBeanPresent()) {
+        if (inputs.agentRuntimePresent() && inputs.userBeanPresent()) {
             throw new IllegalStateException(
                     "OpenTelemetry bean and active Java Agent detected simultaneously; "
                             + "remove the bean or disable the Agent");
+        }
+        if (requested == SdkMode.DISABLED) {
+            return SdkMode.DISABLED;
         }
 
         return switch (requested) {
@@ -47,7 +55,7 @@ public final class SdkModeResolver {
     }
 
     private static SdkMode resolveAutomatically(Inputs inputs) {
-        if (inputs.agentPresent()) {
+        if (inputs.agentReady()) {
             return SdkMode.AGENT;
         }
         if (inputs.globalFunctional() || inputs.userBeanPresent()) {
@@ -57,15 +65,15 @@ public final class SdkModeResolver {
     }
 
     private static SdkMode requireAgent(Inputs inputs) {
-        if (!inputs.agentPresent()) {
+        if (!inputs.agentReady()) {
             throw new IllegalStateException(
-                    "platform.tracing.sdk.mode=AGENT requires an active OpenTelemetry Java Agent marker");
+                    "platform.tracing.sdk.mode=AGENT requires a READY compatible platform Java Agent extension");
         }
         return SdkMode.AGENT;
     }
 
     private static SdkMode requireStarterOwnership(Inputs inputs) {
-        if (inputs.agentPresent()) {
+        if (inputs.agentRuntimePresent()) {
             throw new IllegalStateException(
                     "platform.tracing.sdk.mode=STARTER conflicts with an active OpenTelemetry Java Agent; "
                             + "use AUTO or AGENT");
@@ -79,7 +87,7 @@ public final class SdkModeResolver {
     }
 
     private static SdkMode requireExternalRuntime(Inputs inputs) {
-        if (inputs.agentPresent()) {
+        if (inputs.agentRuntimePresent()) {
             throw new IllegalStateException(
                     "platform.tracing.sdk.mode=EXTERNAL conflicts with an active OpenTelemetry Java Agent; "
                             + "use AUTO or AGENT");

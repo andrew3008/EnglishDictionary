@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
+import space.br1440.platform.tracing.autoconfigure.reactive.RemoteServiceReactorContext;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -38,7 +38,6 @@ class ReactorPropagationSmokeController {
     @GetMapping("/propagation-test")
     Mono<String> propagationTest() {
         String callerTraceId = currentTraceId();
-        RemoteServiceMdc.putIfPresent(E2E_REMOTE_SERVICE, callerTraceId);
 
         return Mono.just(callerTraceId)
                 .publishOn(Schedulers.parallel())
@@ -48,6 +47,7 @@ class ReactorPropagationSmokeController {
                     String workerThread = Thread.currentThread().getName();
                     return id + '|' + workerTraceId + '|' + workerRemoteService + '|' + workerThread;
                 })
+                .contextWrite(RemoteServiceReactorContext.contextWrite(E2E_REMOTE_SERVICE))
                 .doOnSuccess(ignored -> servedLatch.countDown());
     }
 

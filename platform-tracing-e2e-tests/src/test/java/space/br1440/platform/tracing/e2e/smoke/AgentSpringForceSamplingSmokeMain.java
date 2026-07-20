@@ -24,7 +24,13 @@ import java.util.concurrent.TimeUnit;
 @SpringBootConfiguration
 @EnableAutoConfiguration(excludeName = {
         "space.br1440.platform.logging.configuration.LoggingAutoConfiguration",
-        "space.br1440.platform.logging.configuration.GrpcLoggingConfiguration"
+        "space.br1440.platform.logging.configuration.GrpcLoggingConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.opentelemetry.OpenTelemetryAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.logging.OpenTelemetryLoggingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.logging.otlp.OtlpLoggingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryTracingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpTracingAutoConfiguration"
 })
 @Import(ProbeSmokeController.class)
 public class AgentSpringForceSamplingSmokeMain {

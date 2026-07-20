@@ -24,7 +24,7 @@ class SdkModeFailFastContextTest {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
                             .hasRootCauseMessage(
-                                    "platform.tracing.sdk.mode=AGENT requires an active OpenTelemetry Java Agent marker");
+                                    "platform.tracing.sdk.mode=AGENT requires a READY compatible platform Java Agent extension");
                 });
     }
 

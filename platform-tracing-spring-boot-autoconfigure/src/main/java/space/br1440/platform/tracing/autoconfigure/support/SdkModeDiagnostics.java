@@ -10,5 +10,17 @@ package space.br1440.platform.tracing.autoconfigure.support;
  * @param mode          эффективный режим (после {@link SdkModeResolver})
  * @param agentDetected обнаружен ли OTel Java Agent в текущей JVM
  */
-public record SdkModeDiagnostics(SdkMode mode, boolean agentDetected) {
+public record SdkModeDiagnostics(
+        SdkMode mode,
+        boolean agentDetected,
+        AgentRuntimeState runtimeState,
+        AgentExtensionDescriptor extensionDescriptor) {
+
+    public SdkModeDiagnostics(SdkMode mode, boolean agentDetected) {
+        this(
+                mode,
+                agentDetected,
+                agentDetected ? AgentRuntimeState.AGENT_READY : AgentRuntimeState.AGENT_MISSING,
+                null);
+    }
 }

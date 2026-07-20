@@ -20,7 +20,13 @@ import java.util.concurrent.TimeUnit;
 @EnableAutoConfiguration(excludeName = {
         "space.br1440.platform.logging.configuration.LoggingAutoConfiguration",
         "space.br1440.platform.logging.configuration.GrpcLoggingConfiguration",
-        "org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration"
+        "org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.opentelemetry.OpenTelemetryAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.logging.OpenTelemetryLoggingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.logging.otlp.OtlpLoggingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryTracingAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpAutoConfiguration",
+        "org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpTracingAutoConfiguration"
 })
 @Import(ReactorPropagationSmokeController.class)
 public class AgentWebFluxReactorPropagationSmokeMain {

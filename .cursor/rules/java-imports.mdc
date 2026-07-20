@@ -1,0 +1,110 @@
+---
+description: Java import policy for Cursor, Codex, and other generated Java changes.
+globs:
+  - "**/*.java"
+alwaysApply: true
+---
+
+# Java Import Rules
+
+Use the repository `.editorconfig` as the source of truth for Java import layout and ordering.
+
+## Required
+
+- Use explicit single-class imports only.
+- Use explicit static imports only.
+- Keep static imports in a separate block.
+- Preserve the repository-defined import group order.
+- Resolve ambiguous type names deliberately.
+- Ensure imports are compile-clean after editing.
+- Use fully qualified names only when an ambiguity cannot be resolved cleanly through imports.
+
+Explicit static imports are allowed in tests for JUnit, AssertJ, Mockito, and other approved test libraries.
+
+## Forbidden
+
+Do not use:
+
+```java
+import java.util.*;
+import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.*;
+```
+
+Do not:
+
+- introduce wildcard imports
+- introduce static wildcard imports
+- reorder imports in unrelated files
+- modify a file only to optimize or reformat imports
+- create import-only churn
+- accept generated imports without compilation verification
+- guess between ambiguous classes based only on a simple name
+
+## Ambiguous Types
+
+Pay special attention to names such as:
+
+- `Context`
+- `Span`
+- `Scope`
+- `Attributes`
+- `Date`
+- `Duration`
+- `Configuration`
+- `Status`
+- `TraceContext`
+- `ValidationResult`
+- `ControlResult`
+- `RuntimePolicy`
+
+Inspect the owning package and existing module conventions before choosing an import.
+
+Do not replace a correct domain type merely to avoid an import conflict.
+
+## Expected Grouping
+
+Follow `.editorconfig`. The intended high-level grouping is:
+
+```java
+import static ...;
+
+import java...;
+import javax...;
+import jakarta...;
+
+import org...;
+
+import com...;
+
+import space...;
+
+import ...;
+```
+
+Do not force this example over a different layout explicitly configured by the repository.
+
+## Scope Discipline
+
+When editing a Java file:
+
+- update imports only as required by the semantic change
+- remove imports made unused by that change
+- preserve unrelated import ordering
+- do not run repository-wide import optimization as part of a focused task
+- do not include import-only changes in unrelated files
+
+## Verification
+
+After editing Java files, run the narrowest relevant tasks:
+
+```powershell
+.\gradlew.bat :<affected-module>:compileJava --no-daemon
+.\gradlew.bat :<affected-module>:compileTestJava --no-daemon
+```
+
+Run the affected tests when test or production behavior changed.
+
+If the repository has a wildcard-import or formatting gate, run it as well.
+
+Do not report import cleanup as complete when the affected source set has not compiled.

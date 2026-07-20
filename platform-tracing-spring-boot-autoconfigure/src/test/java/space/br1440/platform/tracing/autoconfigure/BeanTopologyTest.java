@@ -100,14 +100,15 @@ class BeanTopologyTest {
     }
 
     @Test
-    void userPrimaryTracingRuntime_replacesDefaultWithoutHiddenBypass() {
+    void userPrimaryTracingRuntime_isRejectedAsUnsupportedSdkOwnershipBypass() {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class, CustomPrimaryTracingRuntimeConfig.class)
                 .run(context -> {
-                    assertThat(context.getBeansOfType(TracingRuntime.class)).hasSize(1);
-                    assertThat(context.getBean(TracingRuntime.class))
-                            .isInstanceOf(MarkerTracingRuntime.class);
-                    assertThat(context).doesNotHaveBean("meteredTraceOperations");
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasMessage(
+                                    "Custom TracingRuntime bean is not a supported production extension point: "
+                                            + "customTracingRuntime");
                 });
     }
 

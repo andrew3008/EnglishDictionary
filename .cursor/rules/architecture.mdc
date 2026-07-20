@@ -1,0 +1,416 @@
+---
+description: Apply when a task affects module ownership, dependency direction, public API or SPI, package taxonomy, classloader boundaries, Spring/OTel/JMX integration, runtime control, wire protocols, starters, or architectural refactoring.
+alwaysApply: false
+---
+
+# Architecture Rules
+
+## Scope
+
+Use this rule for changes involving:
+
+- module creation, removal, rename, or dependency direction
+- public API, SPI, package, bean, property, or wire-contract changes
+- Spring Boot auto-configuration ownership
+- servlet versus WebFlux separation
+- OpenTelemetry agent/SDK integration
+- JMX/OpenMBean or classloader boundaries
+- runtime control, sampling, scrubbing, or applied-state ownership
+- architecture fitness rules
+- non-cosmetic refactoring plans and audits
+
+Before making an architectural decision, read `@../project-context.md` and inspect the current repository state, call sites, module dependencies, tests, ADRs, and active documentation.
+
+## Decision Standard
+
+Architecture changes must solve a concrete problem in at least one of:
+
+- correctness
+- security or privacy
+- runtime-state safety
+- ownership
+- dependency direction
+- public API clarity
+- classloader isolation
+- operability
+- testability
+- measurable performance
+
+Do not present package moves, class splits, interfaces, factories, or renames as architecture unless they materially improve ownership, contracts, safety, or the system mental model.
+
+## Pre-Production Policy
+
+The tracing solution is pre-production.
+
+Breaking source, binary, package, bean, property, SPI, wire, module, and build changes are allowed when they materially improve the final architecture.
+
+Do not add by default:
+
+- compatibility aliases
+- deprecated bridges
+- forwarding types or modules
+- dual old/new execution paths
+- legacy property bindings
+- speculative extension points
+
+A breaking change must still be justified, scoped, migrated across all repository consumers, documented, and protected by tests or architecture rules.
+
+## Module Ownership
+
+### API
+
+`platform-tracing-api` owns:
+
+- application-facing tracing contracts
+- intentional external SPIs
+- immutable value objects and specifications
+- public annotations
+- classloader-neutral wire/control vocabulary
+- public result and violation models
+
+It must not own:
+
+- runtime implementation
+- Spring Boot wiring
+- domain validation
+- sampling or scrubbing algorithms
+- JMX/OpenMBean implementation
+- OpenTelemetry SDK implementation
+- exporters, processors, or mutable live state
+
+The API module must not depend on core.
+
+### Core
+
+`platform-tracing-core` owns:
+
+- implementation of public contracts
+- tracing runtime behavior and lifecycle
+- domain validation
+- sampling and scrubbing policies
+- runtime-control handlers
+- atomic applied state
+- last-known-good state
+- no-op behavior
+- safety invariants
+
+Core must not depend on Spring Boot, servlet, WebFlux, or application-context APIs.
+
+### Spring Boot Auto-Configuration
+
+Spring Boot modules own:
+
+- bean wiring
+- typed configuration properties
+- conditional registration
+- startup diagnostics
+- Actuator integration
+- mapping desired startup configuration into core contracts
+
+They must not own tracing algorithms, wire schemas, domain policy, or JMX transport behavior.
+
+### Web Adapters
+
+Servlet and WebFlux adapters must remain isolated.
+
+- Servlet modules must not depend on WebFlux or Reactor-specific adapters.
+- WebFlux modules must not depend on servlet APIs or servlet adapters.
+- Shared framework-neutral behavior belongs in API, core, or common auto-configuration only when genuinely neutral.
+
+### OTel and JMX Integration
+
+OTel/JMX modules own:
+
+- Java agent and SDK bridges
+- sampler, processor, exporter, and provider integration
+- JMX/OpenMBean adapters
+- classloader-sensitive behavior
+
+They must not become a second domain core or expose implementation types through the application-facing API.
+
+### Starters
+
+Starters must remain thin dependency aggregators.
+
+They must not contain runtime algorithms, domain policy, duplicate auto-configuration, or environment-specific behavior.
+
+## Dependency Direction
+
+Expected direction:
+
+```text
+platform-tracing-core
+    -> platform-tracing-api
+
+platform-tracing-spring-boot-autoconfigure
+    -> platform-tracing-api
+    -> platform-tracing-core
+
+platform-tracing-autoconfigure-webmvc
+    -> approved API/core/autoconfigure modules
+
+platform-tracing-autoconfigure-webflux
+    -> approved API/core/autoconfigure modules
+
+platform-tracing-otel-extension
+    -> approved API/core modules
+
+starters
+    -> matching integration and auto-configuration modules
+
+tests, samples, benchmarks, and E2E
+    -> production modules under test
+```
+
+Forbidden:
+
+- API -> core
+- core -> Spring
+- WebMVC -> WebFlux
+- WebFlux -> servlet
+- production -> test/sample/E2E
+- API -> JMX/OpenMBean implementation
+- API -> OpenTelemetry SDK implementation without an explicitly approved contract
+- dependency cycles
+- solving cycles by changing `implementation` to `api`
+
+Fix ownership instead of hiding the dependency problem.
+
+## Public Surface
+
+Every public type must be one of:
+
+1. application-facing API
+2. external SPI
+3. wire/control contract
+4. public-for-compilation internal bridge
+5. accidental public type to remove
+
+The default for a new type is not public.
+
+Before adding public surface, identify:
+
+- concrete consumer
+- stable domain role
+- lifecycle
+- thread-safety
+- failure model
+- third-party types exposed
+- Gradle dependency contract
+- misuse risks
+- required JavaDoc
+- architecture guard
+
+Do not add speculative registries, schema accessors, query APIs, providers, or extension points.
+
+A public-for-compilation bridge must be documented as internal and restricted with an architecture rule.
+
+## Root API
+
+Keep the application-facing root API small and capability-oriented.
+
+Preferred shape:
+
+```java
+traceOperations.traceContext();
+traceOperations.spans().operation("payment.process");
+traceOperations.spans().transport();
+traceOperations.spans().fromSpec(spec);
+```
+
+Do not add Spring, JMX, exporter, sampler implementation, runtime mutation, or mutable state operations to the root API.
+
+Avoid redundant names inside a capability namespace.
+
+## Classloader Boundary
+
+Application and Java agent code may run in different classloaders.
+
+Across classloader boundaries:
+
+- use JDK-only wire values
+- use explicit schemas
+- avoid implementation-class casts
+- use String wire values instead of Java enum instances
+- avoid static holders that assume one classloader
+- isolate JMX/OpenMBean types in adapters
+- do not use Java native serialization
+- test the real boundary when behavior depends on it
+
+Do not pass Spring or OTel SDK implementation objects across the boundary.
+
+## Control Protocol
+
+Preserve this pipeline:
+
+```text
+wire payload
+    -> structural decode
+    -> domain validation
+    -> mutation policy
+    -> apply or read
+```
+
+API owns structural wire validation.
+
+Core owns domain validation and runtime state transitions.
+
+Adapters own JMX/OpenMBean conversion and external transport.
+
+Required invariants:
+
+- invalid decode has no usable apply payload
+- domain-invalid requests cannot apply
+- mutation-rejected requests cannot apply
+- READ does not mutate
+- VALIDATE does not apply
+- rejected requests preserve snapshot, version, source, and last-known-good state
+- mutation is disabled by default
+
+Do not reintroduce:
+
+- public `schema()`
+- public `validator()`
+- `READ_SCHEMA`
+- legacy validation packages
+- dual decoder paths
+- domain rules in the API decoder
+- raw wire-map application
+
+## Runtime State
+
+Runtime state must be:
+
+- immutable or safely published
+- atomically updated
+- readable without partial state
+- versioned when needed
+- protected from conflicting mutation
+- recoverable through last-known-good state where applicable
+
+Tests must cover rejection, repeated apply, concurrent reads, partial failure, rollback, and idempotency when relevant.
+
+Spring property objects describe desired startup configuration, not necessarily live applied state.
+
+## Spring and Runtime Boundaries
+
+Do not put domain logic in auto-configuration.
+
+Do not use:
+
+- static `ApplicationContext` holders
+- service locators
+- direct environment access in ordinary components
+- unconditional optional infrastructure beans
+- startup network calls
+- user overrides that bypass mandatory safety invariants
+
+Risky runtime mutation must be explicitly enabled and fail closed by default.
+
+## OpenTelemetry Boundary
+
+Use official OpenTelemetry APIs and propagators where they correctly implement the standard.
+
+Do not:
+
+- reimplement W3C parsing without a demonstrated gap
+- duplicate agent spans with manual spans
+- expose SDK implementation types through application API
+- create platform wrappers that only rename OTel types without adding policy or isolation
+
+Manual instrumentation requires a proven semantic gap, safe cardinality, and duplicate-span tests.
+
+## Security and Privacy
+
+Architecture must make unsafe behavior difficult.
+
+Do not:
+
+- use tracing metadata for authentication or authorization
+- allow force sampling to bypass scrubbing or export controls
+- expose raw PII or secrets through telemetry or diagnostics
+- enable privileged mutation by default
+- introduce trust-all TLS or Java native serialization
+- allow custom providers to bypass mandatory platform policies
+
+Code-level mutation gates do not replace JVM, JMX, network, or RBAC controls.
+
+## New Modules and Abstractions
+
+Create a module only for a real boundary such as:
+
+- distinct publication
+- distinct runtime or classloader
+- optional dependency isolation
+- servlet/reactive isolation
+- agent/application separation
+- independently reusable contract
+- independently testable adapter
+
+Before adding a module, state:
+
+- owner
+- consumers
+- public or internal status
+- runtime/classloader
+- dependencies exposed and hidden
+- why a package is insufficient
+- tests and publication impact
+
+Do not add one-interface/one-implementation abstractions, managers, helpers, registries, factories, or SPIs without a real stable boundary.
+
+## Architecture Fitness
+
+Encode important decisions as executable rules where practical.
+
+Protect at least:
+
+- API does not depend on core
+- core does not depend on Spring
+- servlet and WebFlux modules remain isolated
+- JMX/OpenMBean types do not leak into API
+- OTel SDK implementation types do not leak into API
+- internal helpers are not public
+- legacy packages and symbols do not return
+- raw wire payload cannot reach apply
+- domain validation remains in core
+- mutation remains disabled by default
+- starters remain thin
+- forbidden dependency directions fail the build
+
+Do not weaken an architecture gate to make generated code compile.
+
+## Verification and Reporting
+
+For an architectural change:
+
+1. run the narrowest affected compile and tests
+2. run architecture fitness gates
+3. run API Javadoc when public contracts change
+4. run full build when module or dependency contracts change
+5. run E2E when behavior crosses agent, JMX, collector, servlet, WebFlux, sampling, or scrubbing boundaries
+6. verify required E2E executed with zero skipped tests
+
+A final report must include:
+
+```text
+Decision:
+Problem:
+Why non-cosmetic:
+Old architecture:
+Target architecture:
+Module ownership:
+Public API/SPI diff:
+Dependency direction:
+Classloader/runtime boundary:
+Failure and state behavior:
+Security/privacy impact:
+Migration:
+Tests and E2E:
+Architecture fitness:
+Docs/ADR:
+Residual risks:
+Merge readiness:
+```
+
+Use `PASS`, `PASS_WITH_WARNINGS`, `INSUFFICIENT_EVIDENCE`, or `FAIL` according to actual executed evidence.

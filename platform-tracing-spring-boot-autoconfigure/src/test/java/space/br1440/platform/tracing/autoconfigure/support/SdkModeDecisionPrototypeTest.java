@@ -32,7 +32,7 @@ class SdkModeDecisionPrototypeTest {
         assertFailure(
                 SdkMode.AGENT,
                 inputs(false, false, false),
-                "platform.tracing.sdk.mode=AGENT requires an active OpenTelemetry Java Agent marker");
+                "platform.tracing.sdk.mode=AGENT requires a READY compatible platform Java Agent extension");
         assertThat(resolve(SdkMode.AGENT, inputs(true, true, false))).isEqualTo(SdkMode.AGENT);
     }
 

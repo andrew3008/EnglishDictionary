@@ -93,7 +93,29 @@ bootstrap plane и делает отсутствие telemetry явной startu
 5. заменить characterization `STARTER -> NoOp` на startup-failure test;
 6. повторить Spring context matrix, packaged Agent E2E, build и architecture gates.
 
-## 7. Approval Form
+## 7. Spike E1 executable evidence (2026-07-20)
+
+**Gate verdict: `E1 PARTIAL — CONTROLLED DISTRIBUTION REQUIRED`.** Полный evidence ledger:
+`docs/analysis/platform-tracing-slice-e-spike-e1-evidence.md`.
+
+Подтверждено packaged child-JVM тестами:
+
+- versioned readiness protocol отличает готовый platform extension от отсутствующего,
+  несовместимого, `INITIALIZING`, `FAILED` и endpoint-only неполного extension;
+- application и Agent classloaders обмениваются только JMX-neutral значениями;
+- dual SDK завершается fail-fast даже при configured `DISABLED`;
+- реальный compatible extension достигает `READY` только после sampler, processors, sanitizer,
+  propagation и protected export path;
+- stock Agent без extension экспортирует автоматически захваченный `Authorization` без platform
+  sanitization, хотя application facade является NoOp;
+- настоящий extension удаляет чувствительное значение до OTLP export.
+
+Следствие для решения: вариант agent-first допустим только вместе с обязательным controlled
+distribution/pre-JVM gate. Реализован минимальный ZIP prototype с pinned Agent, extension,
+`SHA256SUMS` и launcher. Он не является fleet-wide approval: до решения архитекторов произвольный
+stock Agent считается подтверждённым compliance bypass, а переход `E -> F` остаётся заблокирован.
+
+## 8. Approval Form
 
 Архитектор должен выбрать одну формулировку:
 

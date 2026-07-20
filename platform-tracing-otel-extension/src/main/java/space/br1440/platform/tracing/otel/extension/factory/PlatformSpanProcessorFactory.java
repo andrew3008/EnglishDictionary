@@ -26,6 +26,7 @@ import space.br1440.platform.tracing.otel.extension.processor.PlatformCompositeS
 import space.br1440.platform.tracing.otel.extension.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.extension.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingRulesLoader;
 import space.br1440.platform.tracing.otel.extension.scrubbing.diagnostics.StartupDiagnostics;
@@ -86,6 +87,8 @@ public final class PlatformSpanProcessorFactory {
                             new ScrubbingSpanProcessor(rules, hmacKey, failFast);
                     delegates.add(scrubbing);
                     jmxRegistrar.setScrubbing(scrubbing);
+                    jmxRegistrar.extensionReadiness().markInstalled(
+                            PlatformExtensionCapability.SANITIZER_INSTALLED);
                 }
             }
 
@@ -149,6 +152,8 @@ public final class PlatformSpanProcessorFactory {
                         new PlatformCompositeSpanProcessor(delegates);
                 tpBuilder.addSpanProcessor(composite);
                 jmxRegistrar.setComposite(composite);
+                jmxRegistrar.extensionReadiness().markInstalled(
+                        PlatformExtensionCapability.REQUIRED_SPAN_PROCESSORS_INSTALLED);
             }
 
             jmxRegistrar.tryRegisterMBeans();

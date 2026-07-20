@@ -1,0 +1,172 @@
+---
+description: Global engineering guardrails for all work in the pre-production platform tracing repository.
+alwaysApply: true
+---
+
+# Global Engineering Rules
+
+These rules apply to every repository task and every generated or modified file.
+
+## Project Context
+
+This repository contains an enterprise platform tracing solution.
+
+The solution is currently **pre-production**.
+
+Before substantial work, read `@../project-context.md` and inspect the current repository state.
+
+## Decision Priority
+
+When requirements conflict, prefer:
+
+1. correctness
+2. security and privacy
+3. runtime-state safety
+4. architecture and classloader boundaries
+5. intentional public API
+6. deterministic behavior
+7. executable verification
+8. operability and maintainability
+9. performance
+10. compatibility with current pre-production behavior
+
+## Pre-Production Policy
+
+Breaking source, binary, package, bean, property, SPI, wire, module, and build changes are allowed when they materially improve the final architecture, safety, or maintainability.
+
+Do not add by default:
+
+- compatibility aliases
+- deprecated bridges
+- forwarding types or modules
+- dual old/new execution paths
+- legacy property bindings
+- speculative extension points
+
+A breaking change must still be justified, scoped, fully migrated across the repository, and protected by tests or architecture rules.
+
+Do not use pre-production status to justify arbitrary churn.
+
+## Engineering Principles
+
+Prefer:
+
+- explicit over implicit
+- deterministic behavior
+- minimal and intentional public surface
+- immutable state
+- constructor injection
+- package-private implementation
+- safe defaults
+- bounded resource usage
+- actionable diagnostics
+- simple ownership and dependency direction
+- repository facts over assumptions
+
+Avoid:
+
+- hidden runtime behavior
+- framework magic
+- accidental public API
+- duplicate sources of truth
+- mutable global state
+- service locators
+- hidden retries
+- hidden background threads
+- silent fallback
+- speculative abstractions
+- unrelated formatting or import churn
+
+## Architecture Boundaries
+
+Preserve these ownership rules:
+
+- API owns public contracts and classloader-neutral value/wire types.
+- Core owns runtime behavior, domain validation, policies, lifecycle, and state.
+- Spring Boot modules own wiring, properties, conditions, and diagnostics.
+- Servlet and WebFlux adapters remain isolated from each other.
+- OTel/JMX modules own agent, SDK, OpenMBean, and classloader-sensitive integration.
+- Starters remain thin dependency aggregators.
+- Test, sample, benchmark, and E2E modules must not be production dependencies.
+
+Never solve a dependency cycle by exposing implementation details or changing `implementation` to `api`.
+
+## Hard Prohibitions
+
+Do not introduce:
+
+- static mutable global state
+- reflection in ordinary core flows
+- Java native serialization
+- trust-all TLS or disabled hostname verification
+- secrets or raw PII in logs, metrics, traces, diagnostics, or test reports
+- wildcard Java imports
+- blocking calls on reactive event-loop threads
+- runtime mutation enabled by default
+- raw unvalidated wire payload application
+- production code that depends on test fixtures
+- network, Docker, or filesystem mutation during ordinary auto-configuration
+- compatibility code without a verified migration requirement
+
+## Repository and Scope Discipline
+
+Before editing:
+
+- inspect actual call sites and module dependencies
+- distinguish current code from historical documents
+- preserve unrelated user changes
+- identify generated files and custom source sets
+- define the intended scope
+
+Do not invent consumers, contracts, defaults, supported environments, or test results.
+
+Do not modify unrelated files merely to simplify implementation.
+
+## Toolchain
+
+Use the versions and DSL configured by the repository.
+
+Do not upgrade or migrate Java, Spring Boot, Gradle, build DSL, dependency management, or publication structure as a side effect of an unrelated task.
+
+Follow `.editorconfig`.
+
+Use explicit imports and avoid import-only churn.
+
+## Verification
+
+Run the narrowest affected compile and test tasks first, then the required architecture, Javadoc, build, or E2E gates.
+
+Never report a skipped test as passed.
+
+Use:
+
+- `PASS` only when required gates executed and passed
+- `PASS_WITH_WARNINGS` when only documented non-blocking risk remains
+- `INSUFFICIENT_EVIDENCE` when required runtime verification did not execute
+- `FAIL` when a required invariant or gate fails
+
+State verified facts separately from assumptions.
+
+## Change Quality
+
+Substantial refactoring must be non-cosmetic.
+
+It must improve at least one of:
+
+- ownership
+- dependency direction
+- invalid-state prevention
+- runtime safety
+- API clarity
+- operability
+- privacy/security
+- testability
+- measurable performance
+
+Do not add interfaces, modules, factories, managers, helpers, registries, or SPIs unless they represent a real boundary or stable domain concept.
+
+## Specialized Rules
+
+When a more specific repository rule or skill applies, follow it for domain details while preserving this global policy.
+
+Architecture decisions and ADRs in `docs/` remain the source of truth. Cursor rules and skills guide how agents apply them.

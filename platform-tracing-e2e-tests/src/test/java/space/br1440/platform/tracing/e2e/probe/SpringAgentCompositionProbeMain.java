@@ -40,6 +40,12 @@ public class SpringAgentCompositionProbeMain {
             SdkModeDiagnostics diagnostics = context.getBean(SdkModeDiagnostics.class);
             TraceOperations traceOperations = context.getBean(TraceOperations.class);
 
+            emit("auto.runtimeState=" + diagnostics.runtimeState());
+            if (diagnostics.extensionDescriptor() != null) {
+                emit("auto.extensionLifecycle=" + diagnostics.extensionDescriptor().lifecycle());
+                emit("auto.extensionCapabilities=" + diagnostics.extensionDescriptor().capabilities());
+            }
+
             require(diagnostics.mode() == SdkMode.AGENT, "AUTO должен разрешаться в AGENT");
             require(diagnostics.agentDetected(), "agent marker должен быть обнаружен");
             require(!(traceOperations instanceof NoopTraceOperations), "AGENT facade не должен быть no-op");

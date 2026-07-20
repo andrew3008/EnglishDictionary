@@ -170,10 +170,10 @@ class PlatformTracingJmxRegistrarTest {
         assertThat(done.await(10, TimeUnit.SECONDS)).isTrue();
         pool.shutdownNow();
 
-        // Идемпотентность: ровно 6 регистраций (по одной на домен), не больше
+        // Readiness регистрируется в конструкторе, затем единым batch регистрируются 7 domain MBeans.
         assertThat(registerCallCount.get())
-                .as("registerMBean должен быть вызван ровно 6 раз, независимо от числа потоков")
-                .isEqualTo(7);
+                .as("readiness + 7 domain MBeans должны регистрироваться ровно один раз")
+                .isEqualTo(8);
     }
 
     @Test

@@ -53,10 +53,14 @@ class SdkModeResolverTest {
     }
 
     @Test
-    @DisplayName("DISABLED разрешён независимо от agent marker")
-    void disabled_mode_wins() {
-        assertThat(SdkModeResolver.resolve(SdkMode.DISABLED, inputs(true, true, true)))
+    @DisplayName("DISABLED разрешён с Agent, но не скрывает второй application SDK")
+    void disabled_mode_does_not_hide_dual_runtime() {
+        assertThat(SdkModeResolver.resolve(SdkMode.DISABLED, inputs(true, true, false)))
                 .isEqualTo(SdkMode.DISABLED);
+        assertThatIllegalStateException()
+                .isThrownBy(() -> SdkModeResolver.resolve(
+                        SdkMode.DISABLED, inputs(true, true, true)))
+                .withMessageContaining("OpenTelemetry bean and active Java Agent");
     }
 
     @Test

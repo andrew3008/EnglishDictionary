@@ -31,6 +31,22 @@ sourceSets {
             srcDir 'src/jmxWireExtension/resources'
         }
     }
+    readinessFixtureExtension {
+        java {
+            srcDir 'src/readinessFixtureExtension/java'
+        }
+        resources {
+            srcDir 'src/readinessFixtureExtension/resources'
+        }
+    }
+    e1Consumer {
+        java {
+            srcDir 'src/e1Consumer/java'
+        }
+        resources {
+            srcDir 'src/e1Consumer/resources'
+        }
+    }
 }
 
 configurations {
@@ -132,8 +148,17 @@ dependencies {
     jmxWireExtensionCompileOnly project(':platform-tracing-core')
     jmxWireExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
 
+    // Test-only extension, публикующий управляемые состояния readiness для packaged E1 matrix.
+    readinessFixtureExtensionImplementation platform(project(':platform-tracing-bom'))
+    readinessFixtureExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+
+    // Минимальный consumer graph: ровно servlet starter, без test SDK и Actuator.
+    e1ConsumerImplementation platform(project(':platform-tracing-bom'))
+    e1ConsumerImplementation project(':platform-tracing-spring-boot-starter-servlet')
+
     // App-CL сторона E2E (MapWireRoundTripMain) использует константы MBean и маркеры харнесса.
     testImplementation sourceSets.jmxWireExtension.output
+    testImplementation sourceSets.e1Consumer.output
 }
 
 tasks.register('verifyExtensionDeps') {
@@ -191,10 +216,19 @@ tasks.named('processJmxWireExtensionResources') {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
+tasks.register('testReadinessFixtureExtensionJar', Jar) {
+    archiveClassifier.set('readiness-fixture')
+    from sourceSets.readinessFixtureExtension.output
+}
+
+tasks.named('processReadinessFixtureExtensionResources') {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
 test {
     useJUnitPlatform()
     dependsOn verifyExtensionDeps, ':platform-tracing-otel-extension:agentExtensionJar', customRuleJar,
-              testClassLoaderProbeJar, testJmxWireExtensionJar
+              testClassLoaderProbeJar, testJmxWireExtensionJar, testReadinessFixtureExtensionJar
     // E2E-тесты тяжёлые: даём им полный таймаут и не запускаем параллельно.
     maxParallelForks = 1
     // По умолчанию e2e-тесты исключаются из обычного gradle test, чтобы не замедлять CI без Docker.
@@ -203,6 +237,7 @@ test {
     doFirst {
         systemProperty 'otel.javaagent.jar', configurations.otelJavaAgent.singleFile.absolutePath
         systemProperty 'smoke.test.runtime.classpath', sourceSets.test.runtimeClasspath.asPath
+        systemProperty 'smoke.e1.consumer.runtime.classpath', sourceSets.e1Consumer.runtimeClasspath.asPath
         systemProperty 'smoke.otel.extension.jar',
                 project(':platform-tracing-otel-extension').tasks.named('agentExtensionJar').get().archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.custom.rule.jar', customRuleJar.archiveFile.get().asFile.absolutePath
@@ -210,5 +245,7 @@ test {
                 testClassLoaderProbeJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.jmx.wire.extension.jar',
                 testJmxWireExtensionJar.archiveFile.get().asFile.absolutePath
+        systemProperty 'smoke.readiness.fixture.extension.jar',
+                testReadinessFixtureExtensionJar.archiveFile.get().asFile.absolutePath
     }
 }

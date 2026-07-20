@@ -28,6 +28,8 @@ public final class PlatformTracingObjectNames {
             "space.br1440.platform.tracing:type=Diagnostics,name=PlatformDiagnosticsControl";
     public static final String CONTROL_PROTOCOL_OBJECT_NAME_STR =
             "space.br1440.platform.tracing:type=Control,name=PlatformControlProtocol";
+    public static final String EXTENSION_READINESS_OBJECT_NAME_STR =
+            "space.br1440.platform.tracing:type=Readiness,name=PlatformExtension";
 
     public static final ObjectName SAMPLING         = name(SAMPLING_OBJECT_NAME_STR);
     public static final ObjectName SCRUBBING        = name(SCRUBBING_OBJECT_NAME_STR);
@@ -36,6 +38,7 @@ public final class PlatformTracingObjectNames {
     public static final ObjectName PROCESSOR_METRICS = name(PROCESSOR_METRICS_OBJECT_NAME_STR);
     public static final ObjectName DIAGNOSTICS      = name(DIAGNOSTICS_OBJECT_NAME_STR);
     public static final ObjectName CONTROL_PROTOCOL = name(CONTROL_PROTOCOL_OBJECT_NAME_STR);
+    public static final ObjectName EXTENSION_READINESS = name(EXTENSION_READINESS_OBJECT_NAME_STR);
 
     private PlatformTracingObjectNames() {}
 

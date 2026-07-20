@@ -55,7 +55,8 @@ class SpringAgentCompositionE2ETest {
         command.add(javaBin.toString());
         command.add("-Dotel.javaagent.extensions=" + extensionJar.replace('\\', '/'));
         command.add("-Dotel.service.name=spring-agent-composition-e2e");
-        command.add("-Dotel.traces.exporter=none");
+        // Logging exporter активирует реальный export callback без внешней инфраструктуры.
+        command.add("-Dotel.traces.exporter=logging");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
         command.add("-Dplatform.tracing.queue.overflow-policy=UPSTREAM");

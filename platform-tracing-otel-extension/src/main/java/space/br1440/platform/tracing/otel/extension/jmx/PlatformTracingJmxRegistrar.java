@@ -11,6 +11,8 @@ import space.br1440.platform.tracing.otel.extension.jmx.control.PlatformControlP
 import space.br1440.platform.tracing.otel.extension.jmx.diagnostics.PlatformDiagnosticsControl;
 import space.br1440.platform.tracing.otel.extension.jmx.export.PlatformExportControl;
 import space.br1440.platform.tracing.otel.extension.jmx.metrics.PlatformProcessorMetricsControl;
+import space.br1440.platform.tracing.otel.extension.jmx.readiness.PlatformExtensionReadinessControl;
+import space.br1440.platform.tracing.otel.extension.jmx.readiness.PlatformExtensionReadinessMBean;
 import space.br1440.platform.tracing.otel.extension.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.extension.jmx.scrubbing.PlatformScrubbingControl;
 import space.br1440.platform.tracing.otel.extension.jmx.validation.PlatformValidationControl;
@@ -20,6 +22,7 @@ import space.br1440.platform.tracing.otel.extension.processor.PlatformDropOldest
 import space.br1440.platform.tracing.otel.extension.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.extension.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.extension.readiness.PlatformExtensionReadiness;
 import space.br1440.platform.tracing.otel.extension.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
 
@@ -30,6 +33,7 @@ import javax.management.StandardMBean;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -56,6 +60,8 @@ import java.util.concurrent.atomic.LongAdder;
 public final class PlatformTracingJmxRegistrar {
 
     private final MBeanServer mbeanServer;
+    private final PlatformExtensionReadiness extensionReadiness;
+    private final AtomicBoolean shutdownHookInstalled = new AtomicBoolean();
     final         LongAdder   sharedInvalidConfigCounter = new LongAdder();
 
     private final AtomicReference<SamplerStateHolder>                    registeredConfigHolder    = new AtomicReference<>();
@@ -72,11 +78,17 @@ public final class PlatformTracingJmxRegistrar {
     private volatile boolean mbeansRegistered;
 
     public PlatformTracingJmxRegistrar() {
-        this(ManagementFactory.getPlatformMBeanServer());
+        this(ManagementFactory.getPlatformMBeanServer(), new PlatformExtensionReadiness());
     }
 
     public PlatformTracingJmxRegistrar(MBeanServer mbeanServer) {
+        this(mbeanServer, new PlatformExtensionReadiness());
+    }
+
+    PlatformTracingJmxRegistrar(MBeanServer mbeanServer, PlatformExtensionReadiness extensionReadiness) {
         this.mbeanServer = mbeanServer;
+        this.extensionReadiness = extensionReadiness;
+        registerReadinessMBean();
     }
 
     // =========================================================================
@@ -167,6 +179,21 @@ public final class PlatformTracingJmxRegistrar {
         return sharedInvalidConfigCounter;
     }
 
+    public PlatformExtensionReadiness extensionReadiness() {
+        return extensionReadiness;
+    }
+
+    public void installShutdownCleanup() {
+        if (!shutdownHookInstalled.compareAndSet(false, true)) {
+            return;
+        }
+        Thread cleanup = new Thread(() -> {
+            unregisterAllMBeans();
+            log.info("Platform tracing JMX resources unregistered on JVM shutdown");
+        }, "platform-tracing-jmx-shutdown");
+        Runtime.getRuntime().addShutdownHook(cleanup);
+    }
+
     /**
      * Builds a fresh {@link PlatformSamplingControl} backed by the
      * currently-held {@link SamplerStateHolder} and shared counter.
@@ -204,6 +231,7 @@ public final class PlatformTracingJmxRegistrar {
             unregisterSilently(server, PlatformTracingObjectNames.PROCESSOR_METRICS);
             unregisterSilently(server, PlatformTracingObjectNames.DIAGNOSTICS);
             unregisterSilently(server, PlatformTracingObjectNames.CONTROL_PROTOCOL);
+            unregisterSilently(server, PlatformTracingObjectNames.EXTENSION_READINESS);
             mbeansRegistered = false;
         }
     }
@@ -283,6 +311,22 @@ public final class PlatformTracingJmxRegistrar {
 
     private static StandardMBean standardControlMBean(PlatformControlProtocolMBean mbean) {
         return new StandardMBean(mbean, PlatformControlProtocolMXBean.class, false);
+    }
+
+    private void registerReadinessMBean() {
+        try {
+            replaceExisting(
+                    mbeanServer,
+                    new StandardMBean(
+                            new PlatformExtensionReadinessControl(extensionReadiness),
+                            PlatformExtensionReadinessMBean.class,
+                            false),
+                    PlatformTracingObjectNames.EXTENSION_READINESS);
+        } catch (Exception e) {
+            extensionReadiness.fail("READINESS_MBEAN_REGISTRATION_FAILED", e);
+            throw new PlatformTracingJmxRegistrationException(
+                    "Extension readiness MBean registration failed: " + e.getMessage(), e);
+        }
     }
 
     private boolean refreshControlProtocolMBeanIfReady() {

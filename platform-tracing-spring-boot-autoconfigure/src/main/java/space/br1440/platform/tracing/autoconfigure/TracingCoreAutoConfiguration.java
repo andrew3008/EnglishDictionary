@@ -11,12 +11,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
+import space.br1440.platform.tracing.autoconfigure.support.AgentExtensionDescriptor;
+import space.br1440.platform.tracing.autoconfigure.support.AgentExtensionObserver;
+import space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
@@ -36,11 +41,9 @@ import space.br1440.platform.tracing.core.runtime.state.TracingMode;
  * Slice 2: registers {@link TracingRuntime} as the internal span-creation boundary and
  * {@link TraceOperations} as a thin facade over it.
  * <p>
- * <b>Extension point note (B10):</b> if the application supplies its own
- * {@code TracingRuntime} bean (via {@code @ConditionalOnMissingBean}), platform
- * autoconfiguration will <b>not</b> wrap it with {@link MeteredTracingRuntime}. This is
- * an advanced extension path, not the default application wiring, and is covered by
- * {@code BeanTopologyTest#userPrimaryTracingRuntime_replacesDefaultWithoutHiddenBypass}.
+ * Platform runtime и facade принадлежат этому composition root. Пользовательский runtime не
+ * является production extension point: конкурирующие beans должны приводить к явной ошибке
+ * Spring wiring, а не к скрытому второму SDK.
  */
 @AutoConfiguration
 @ConditionalOnClass(OpenTelemetry.class)
@@ -51,25 +54,55 @@ public class TracingCoreAutoConfiguration {
     private static final Logger log = LoggerFactory.getLogger(TracingCoreAutoConfiguration.class);
 
     @Bean
-    @ConditionalOnMissingBean
+    public static BeanFactoryPostProcessor rejectCustomTracingRuntimeBeans() {
+        return beanFactory -> {
+            String[] runtimeBeans = beanFactory.getBeanNamesForType(TracingRuntime.class, false, false);
+            for (String beanName : runtimeBeans) {
+                if (!"tracingImplementation".equals(beanName)) {
+                    if (beanFactory instanceof BeanDefinitionRegistry registry
+                            && registry.containsBeanDefinition(beanName)) {
+                        throw new IllegalStateException(
+                                "Custom TracingRuntime bean is not a supported production extension point: "
+                                        + beanName);
+                    }
+                }
+            }
+        };
+    }
+
+    @Bean
     public SdkModeDiagnostics platformSdkModeDiagnostics(
             org.springframework.beans.factory.ObjectProvider<OpenTelemetry> openTelemetryProvider,
             TracingProperties properties) {
         boolean agentPresent = OtelAgentDetector.isAgentPresent();
         boolean userBeanPresent = openTelemetryProvider.getIfAvailable() != null;
-        boolean globalFunctional = !userBeanPresent && isGlobalFunctional();
+        boolean configuredDisabled = properties.getSdk().getMode() == SdkMode.DISABLED;
+        AgentExtensionDescriptor extension = new AgentExtensionObserver().observe(
+                configuredDisabled, agentPresent, userBeanPresent);
+        boolean agentReady = extension.state() == AgentRuntimeState.AGENT_READY;
+        boolean agentRuntimePresent = agentPresent || extension.readinessEndpointPresent();
+        boolean globalFunctional = !userBeanPresent
+                && !agentRuntimePresent
+                && isGlobalFunctional();
 
         SdkMode resolved = SdkModeResolver.resolve(
                 properties.getSdk().getMode(),
-                new SdkModeResolver.Inputs(agentPresent, globalFunctional, userBeanPresent));
+                new SdkModeResolver.Inputs(
+                        agentReady, agentRuntimePresent, globalFunctional, userBeanPresent));
 
-        log.info("Платформенная трассировка: SDK mode={} (agentDetected={}, globalFunctional={}, userOpenTelemetryBean={})",
-                resolved, agentPresent, globalFunctional, userBeanPresent);
-        return new SdkModeDiagnostics(resolved, agentPresent);
+        if (extension.state() != AgentRuntimeState.AGENT_READY
+                && extension.state() != AgentRuntimeState.DISABLED
+                && extension.state() != AgentRuntimeState.AGENT_MISSING) {
+            log.error("Platform tracing Agent runtime is not ready: state={}, failureCode={}, failureMessage={}",
+                    extension.state(), extension.failureCode(), extension.failureMessage());
+        }
+        log.info("Платформенная трассировка: SDK mode={} (runtimeState={}, agentMarker={}, "
+                        + "globalFunctional={}, userOpenTelemetryBean={})",
+                resolved, extension.state(), agentPresent, globalFunctional, userBeanPresent);
+        return new SdkModeDiagnostics(resolved, agentPresent, extension.state(), extension);
     }
 
     @Bean
-    @ConditionalOnMissingBean
     public TracingRuntime tracingImplementation(
             org.springframework.beans.factory.ObjectProvider<OpenTelemetry> openTelemetryProvider,
             org.springframework.beans.factory.ObjectProvider<
@@ -101,6 +134,17 @@ public class TracingCoreAutoConfiguration {
             log.info("platform.tracing.sdk.mode=DISABLED — TracingRuntime DISABLED_BY_CONFIGURATION");
             return NoOpTracingRuntime.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED");
         }
+        if (sdkModeDiagnostics.mode() == SdkMode.STARTER) {
+            String reason = "Platform Agent runtime is not ready: " + sdkModeDiagnostics.runtimeState();
+            log.error(reason);
+            return NoOpTracingRuntime.unavailable(reason);
+        }
+        if (sdkModeDiagnostics.mode() == SdkMode.AGENT
+                && sdkModeDiagnostics.runtimeState() != AgentRuntimeState.AGENT_READY) {
+            throw new IllegalStateException(
+                    "AGENT mode resolved without READY compatible platform extension: "
+                            + sdkModeDiagnostics.runtimeState());
+        }
 
         space.br1440.platform.tracing.core.semconv.policy.AttributePolicy policy =
                 policyProvider.getIfAvailable(space.br1440.platform.tracing.core.semconv.policy.AttributePolicy::new);
@@ -130,7 +174,6 @@ public class TracingCoreAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean
     public TraceOperations traceOperations(TracingRuntime tracingImplementation) {
         TracingMode mode = tracingImplementation.state().mode();
         if (mode != TracingMode.ENABLED) {
@@ -143,7 +186,8 @@ public class TracingCoreAutoConfiguration {
 
     private static boolean isGlobalFunctional() {
         try {
-            return isFunctional(GlobalOpenTelemetry.get());
+            return GlobalOpenTelemetry.isSet()
+                    && isFunctional(GlobalOpenTelemetry.getOrNoop());
         } catch (RuntimeException e) {
             return false;
         }

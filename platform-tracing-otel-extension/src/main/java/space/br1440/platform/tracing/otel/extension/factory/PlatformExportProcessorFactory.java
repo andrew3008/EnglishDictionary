@@ -10,6 +10,7 @@ import space.br1440.platform.tracing.otel.extension.configuration.QueueExtension
 import space.br1440.platform.tracing.otel.extension.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.extension.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.extension.processor.PlatformDropOldestExportSpanProcessor;
+import space.br1440.platform.tracing.otel.extension.readiness.PlatformExtensionCapability;
 
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +46,8 @@ public final class PlatformExportProcessorFactory {
 
             if (jmxRegistrar != null) {
                 jmxRegistrar.setSafeExporter(safeExporter);
+                jmxRegistrar.extensionReadiness().markInstalled(
+                        PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED);
             }
         }
 
@@ -55,6 +58,7 @@ public final class PlatformExportProcessorFactory {
                                                      QueueExtensionConfig queueConfig,
                                                      ConfigProperties config) {
         if (isExplicitUpstream(queueConfig)) {
+            markExportPathProtected();
             return processor;
         }
 
@@ -65,6 +69,7 @@ public final class PlatformExportProcessorFactory {
                     Falling back to stock BatchSpanProcessor (UPSTREAM).
                     For fan-out scenarios use OTel Collector.""",
                     exporterCount.get());
+            markExportPathProtected();
             return processor;
         }
 
@@ -81,6 +86,7 @@ public final class PlatformExportProcessorFactory {
                     Platform DROP_OLDEST: pipeline processor is {} (not a BatchSpanProcessor).
                     Falling back — passthrough.""",
                     processor.getClass().getName());
+            markExportPathProtected();
             return processor;
         }
 
@@ -101,6 +107,7 @@ public final class PlatformExportProcessorFactory {
         if (jmxRegistrar != null) {
             jmxRegistrar.setExportProcessor(replacement);
         }
+        markExportPathProtected();
 
         if (dropOldestEnabledLogged.compareAndSet(false, true)) {
             log.info("""
@@ -110,6 +117,13 @@ public final class PlatformExportProcessorFactory {
         }
 
         return replacement;
+    }
+
+    private void markExportPathProtected() {
+        if (jmxRegistrar != null && capturedExporter.get() != null) {
+            jmxRegistrar.extensionReadiness().markInstalled(
+                    PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
+        }
     }
 
     private static boolean isExplicitUpstream(QueueExtensionConfig queueConfig) {

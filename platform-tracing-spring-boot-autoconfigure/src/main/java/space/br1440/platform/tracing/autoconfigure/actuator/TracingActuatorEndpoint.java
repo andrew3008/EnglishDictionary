@@ -98,6 +98,18 @@ public class TracingActuatorEndpoint {
         sdkInfo.put("agentDetected", sdkModeDiagnostics != null
                 ? sdkModeDiagnostics.agentDetected()
                 : OtelAgentDetector.isAgentPresent());
+        if (sdkModeDiagnostics != null) {
+            sdkInfo.put("runtimeState", sdkModeDiagnostics.runtimeState().name());
+            if (sdkModeDiagnostics.extensionDescriptor() != null) {
+                sdkInfo.put("extensionVersion", sdkModeDiagnostics.extensionDescriptor().extensionVersion());
+                sdkInfo.put("attestationProtocolVersion",
+                        sdkModeDiagnostics.extensionDescriptor().protocolVersion());
+                sdkInfo.put("extensionLifecycle", sdkModeDiagnostics.extensionDescriptor().lifecycle());
+                sdkInfo.put("extensionFailureCode", sdkModeDiagnostics.extensionDescriptor().failureCode());
+                sdkInfo.put("extensionFailureMessage", sdkModeDiagnostics.extensionDescriptor().failureMessage());
+                sdkInfo.put("extensionCapabilities", sdkModeDiagnostics.extensionDescriptor().capabilities());
+            }
+        }
         info.put("sdk", sdkInfo);
         info.put("currentTraceId", traceOperations.traceContext().traceId().orElse(null));
         info.put("currentSpanId", traceOperations.traceContext().spanId().orElse(null));
