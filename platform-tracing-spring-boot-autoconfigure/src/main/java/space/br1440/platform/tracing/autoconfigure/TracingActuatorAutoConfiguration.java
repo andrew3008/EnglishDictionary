@@ -15,6 +15,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
+import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 
@@ -33,8 +34,10 @@ public class TracingActuatorAutoConfiguration {
     @Bean(name = "tracingHealthIndicator")
     @ConditionalOnMissingBean(name = "tracingHealthIndicator")
     @ConditionalOnEnabledHealthIndicator("tracing")
-    public TracingHealthIndicator tracingHealthIndicator(TraceOperations traceOperations) {
-        return new TracingHealthIndicator(traceOperations);
+    public TracingHealthIndicator tracingHealthIndicator(
+            TraceOperations traceOperations,
+            SdkModeDiagnostics sdkModeDiagnostics) {
+        return new TracingHealthIndicator(traceOperations, sdkModeDiagnostics);
     }
 
     @Bean

@@ -2,15 +2,19 @@
 
 > Дата: 2026-07-20  
 > Ветка: `feature/runtime-control-hardening`, HEAD `56fed4b` до незакоммиченных E2-изменений  
-> Статус: `E2 PARTIAL — EXTERNAL DEPLOYMENT ENFORCEMENT REQUIRED`
+> Исторический E2 evidence. Repository-часть superseded итоговым `CP-E PASS` в
+> `platform-tracing-slice-e-evidence.md`. Формулировка `E2 PARTIAL` означает только открытый
+> внешний release gate `RG-CONTROLLED-AGENT`; она не блокирует Slice F.
+> Статус: `CP-E PASS / RG-CONTROLLED-AGENT OPEN`
 
 ## 1. Вердикт
 
-**E2 PARTIAL — EXTERNAL DEPLOYMENT ENFORCEMENT REQUIRED.** В репозитории реализованы
+**CP-E PASS; RG-CONTROLLED-AGENT OPEN.** В репозитории реализованы
 атомарный дистрибутив, исполняемый pre-JVM verifier и runtime fail-closed proof. Fresh packaged
 WebMVC/WebFlux/composition проверки прошли. Kafka runtime через remote Gentoo Docker и IP endpoints
 подтвердил producer `send|publish`, delivery/retry/batch/consumer spans/manual links без Spring SDK
-bean. До внешнего enforcement launcher/admission/signing rollout приложений небезопасен.
+bean. До внешнего enforcement launcher/admission/signing pilot и production rollout запрещены,
+но внутренняя разработка может перейти к Slice F.
 
 ## 2. Pre-flight E1
 
@@ -140,7 +144,9 @@ Kafka arbitrary sensitive-header export не доказан: upstream Kafka inst
 | Stock Agent bypasses launcher | repository cannot prevent external command | EXTERNAL BLOCKER |
 | Kafka consumer/retry/batch/manual-links parity | remote packaged test through IP endpoints | GREEN |
 | Kafka producer span | `send|publish`, stock и controlled Agent | GREEN |
-| Gradle configuration cache | fat-JAR/prepare tasks используют execution-time project/task state | NOT SUPPORTED |
+| Production distribution configuration cache | build/prepare/verifier entry stored и reused | GREEN |
+| Existing production `agentExtensionJar` cache debt | pre-existing execution-time `project` | P2 / `TD-SLICE-E-CC-01` |
+| New Slice E opt-in failure fixture cache limitation | `testE2FailureAgentJar` execution-time task access | P2 / `TD-SLICE-E-CC-01` |
 
 ## 11. Supply chain and rollback
 

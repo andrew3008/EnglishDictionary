@@ -7,6 +7,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
+import io.opentelemetry.api.OpenTelemetry;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -36,10 +38,13 @@ public class AgentWebFluxReactorPropagationSmokeMain {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 2) {
-            throw new IllegalArgumentException("Usage: AgentWebFluxReactorPropagationSmokeMain <port> <flushDelayMs>");
+            throw new IllegalArgumentException(
+                    "Usage: AgentWebFluxReactorPropagationSmokeMain <port> <flushDelayMs> [requestCount]");
         }
         int port = Integer.parseInt(args[0]);
         long flushDelayMs = Long.parseLong(args[1]);
+        int requestCount = args.length >= 3 ? Integer.parseInt(args[2]) : 1;
+        System.setProperty("e2.webflux.request-count", Integer.toString(requestCount));
 
         SpringApplication application = new SpringApplication(AgentWebFluxReactorPropagationSmokeMain.class);
         application.setRegisterShutdownHook(false);
@@ -51,6 +56,7 @@ public class AgentWebFluxReactorPropagationSmokeMain {
 
         CountDownLatch served = context.getBean(CountDownLatch.class);
 
+        System.out.println("WEBFLUX_E2:openTelemetryBeans=" + context.getBeansOfType(OpenTelemetry.class).size());
         System.out.println(READY_MARKER);
         System.out.flush();
 
@@ -66,6 +72,6 @@ public class AgentWebFluxReactorPropagationSmokeMain {
 
     @Bean
     CountDownLatch servedLatch() {
-        return new CountDownLatch(1);
+        return new CountDownLatch(Integer.getInteger("e2.webflux.request-count", 1));
     }
 }

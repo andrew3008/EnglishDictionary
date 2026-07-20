@@ -2,7 +2,10 @@
 
 > Дата: 2026-07-20  
 > Ветка: `feature/runtime-control-hardening`  
-> Статус: `E1 PARTIAL — CONTROLLED DISTRIBUTION REQUIRED`
+> Исторический E1 evidence. Требование Controlled Distribution реализовано в E2 и проверено
+> итоговым Slice E gate. Текущий нормативный статус: `CP-E PASS / RG-CONTROLLED-AGENT OPEN`;
+> внешний release gate не блокирует Slice F.
+> Статус: `SUPERSEDED AS DECISION INPUT`
 
 ## 1. E1 verdict
 

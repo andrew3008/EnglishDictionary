@@ -26,27 +26,34 @@ GET /actuator/tracing
 ```json
 "sdk": {
   "mode": "AGENT",
-  "configuredMode": "AUTO",
-  "agentDetected": true
+  "configuredMode": "AGENT",
+  "configuredEnabled": true,
+  "agentDetected": true,
+  "runtimeState": "AGENT_READY",
+  "extensionFailureCode": ""
 }
 ```
 
 | Поле | Значение |
 |------|----------|
-| `mode` | эффективный режим: `AGENT` / `EXTERNAL` / `STARTER` / `DISABLED` (после резолва) |
-| `configuredMode` | значение `platform.tracing.sdk.mode` как задал оператор (`AUTO` = авто-детект) |
+| `mode` | production mode: `AGENT` или `DISABLED` |
+| `configuredMode` | значение `platform.tracing.sdk.mode` как задал оператор |
+| `configuredEnabled` | значение `platform.tracing.enabled`; обязано согласовываться с mode |
 | `agentDetected` | обнаружен ли OTel Java Agent в JVM |
+| `runtimeState` | проверенное startup-состояние Controlled Agent |
+| `extensionFailureCode` | безопасный машинный код; полный Agent failure message не раскрывается |
 
 **Назначение — диагностика, не создание SDK** (agent-first): starter не создаёт собственный SDK ни в одном
-режиме. `NoopTraceOperations` активен только при `mode=DISABLED`; в остальных режимах фасад `TraceOperations`
-делегирует в `GlobalOpenTelemetry`/пользовательский `OpenTelemetry` bean. Подробности —
+режиме. `AGENT` требует compatible `READY` и полный mandatory capability profile.
+`NoopTraceOperations` активен только при корректном `DISABLED` и полном отсутствии Agent/runtime.
+Application `OpenTelemetry` bean запрещён. Подробности —
 [ADR-sdk-mode-detection.md](../decisions/ADR-sdk-mode-detection.md).
 
 **Типичная диагностика:**
 
-- `mode=STARTER` + ждали `AGENT` → агент не подключён (`-javaagent` отсутствует или `GlobalOpenTelemetry`
-  в no-op) → span'ы не пишутся, фасад no-op. Проверить запуск JVM.
-- `mode=DISABLED` → выставлен `platform.tracing.sdk.mode=DISABLED`; это единственный режим с `NoopTraceOperations`.
+- startup failure `AGENT_MISSING`/`EXTENSION_MISSING` → проверить Controlled Agent distribution и verifier.
+- `CAPABILITY_MISSING`/`EXTENSION_FAILED` → deployment не готов; не обходить ошибку stock Agent'ом.
+- `mode=DISABLED` → одновременно нужны `enabled=false`, отсутствие Agent и любого application SDK.
 - `agentDetected=false` при ожидаемом агенте → проверить путь `-javaagent` и `otel.javaagent.extensions`.
 
 ## Иерархия приоритетов (`otelEffective.source`)

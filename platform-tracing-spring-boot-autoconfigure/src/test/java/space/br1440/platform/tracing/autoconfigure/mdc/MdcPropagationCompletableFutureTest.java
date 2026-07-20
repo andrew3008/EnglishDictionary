@@ -36,7 +36,13 @@ import static org.assertj.core.api.Assertions.assertThat;
                 MdcPropagationCompletableFutureTest.CfTestApp.class,
                 MdcPropagationCompletableFutureTest.CompletableFuturePropagationConfig.class
         },
-        properties = "spring.application.name=mdc-cf-propagation-test")
+        properties = {
+                "spring.application.name=mdc-cf-propagation-test",
+                "spring.autoconfigure.exclude="
+                        + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+                "platform.tracing.enabled=false",
+                "platform.tracing.sdk.mode=DISABLED"
+        })
 class MdcPropagationCompletableFutureTest {
 
     @Autowired

@@ -18,7 +18,7 @@ public class MinimalStarterAttestationProbeMain {
 
     public static void main(String[] args) {
         AgentRuntimeState expectedState = AgentRuntimeState.valueOf(args[0]);
-        String configuredMode = args.length > 1 ? args[1] : "AUTO";
+        String configuredMode = args.length > 1 ? args[1] : "AGENT";
 
         try (ConfigurableApplicationContext context = start(configuredMode)) {
             SdkModeDiagnostics diagnostics = context.getBean(SdkModeDiagnostics.class);
@@ -35,8 +35,7 @@ public class MinimalStarterAttestationProbeMain {
         } catch (RuntimeException failure) {
             String message = rootMessage(failure);
             emit("startupFailure=" + message);
-            if (expectedState == AgentRuntimeState.EXTENSION_MISSING
-                    && message.contains("READY compatible platform Java Agent extension")) {
+            if (message.contains(expectedState.name())) {
                 emit("runtimeState=" + expectedState);
                 emit("COMPLETE");
                 return;

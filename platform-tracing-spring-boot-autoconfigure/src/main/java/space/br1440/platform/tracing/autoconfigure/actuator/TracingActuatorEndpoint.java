@@ -95,6 +95,7 @@ public class TracingActuatorEndpoint {
                 ? sdkModeDiagnostics.mode().name()
                 : properties.getSdk().getMode().name());
         sdkInfo.put("configuredMode", properties.getSdk().getMode().name());
+        sdkInfo.put("configuredEnabled", properties.isEnabled());
         sdkInfo.put("agentDetected", sdkModeDiagnostics != null
                 ? sdkModeDiagnostics.agentDetected()
                 : OtelAgentDetector.isAgentPresent());
@@ -106,7 +107,6 @@ public class TracingActuatorEndpoint {
                         sdkModeDiagnostics.extensionDescriptor().protocolVersion());
                 sdkInfo.put("extensionLifecycle", sdkModeDiagnostics.extensionDescriptor().lifecycle());
                 sdkInfo.put("extensionFailureCode", sdkModeDiagnostics.extensionDescriptor().failureCode());
-                sdkInfo.put("extensionFailureMessage", sdkModeDiagnostics.extensionDescriptor().failureMessage());
                 sdkInfo.put("extensionCapabilities", sdkModeDiagnostics.extensionDescriptor().capabilities());
             }
         }
@@ -252,14 +252,6 @@ public class TracingActuatorEndpoint {
         result.put("requestedValue", value);
 
         switch (property) {
-            case "enabled" -> {
-                boolean enabled = Boolean.parseBoolean(value);
-                boolean previous = properties.isEnabled();
-                properties.setEnabled(enabled);
-                log.info("Платформенная трассировка {} -> {} через actuator endpoint", previous, enabled);
-                result.put("previousValue", previous);
-                result.put("appliedValue", enabled);
-            }
             case "samplerEnabled" -> {
                 boolean enabled = Boolean.parseBoolean(value);
                 try {
@@ -337,7 +329,7 @@ public class TracingActuatorEndpoint {
             default -> throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Unsupported tracing property: " + property
-                            + ". Supported: enabled, samplerEnabled, samplingRatio, exportEnabled, propagationEnabled, logLevel");
+                            + ". Supported: samplerEnabled, samplingRatio, exportEnabled, propagationEnabled, logLevel");
         }
         return result;
     }

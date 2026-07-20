@@ -1,27 +1,18 @@
 package space.br1440.platform.tracing.autoconfigure.support;
 
 /**
- * Режим работы платформенного starter'а относительно OpenTelemetry SDK (Фаза 15).
+ * Production-режим платформенного starter'а относительно OpenTelemetry SDK.
  * <p>
- * Назначение — <b>диагностика и явность</b>, а не создание SDK. Платформа остаётся agent-first
- * ({@code ADR-otel-direct-integration}): starter никогда не создаёт собственный
- * {@code SdkTracerProvider}, а потребляет {@code OpenTelemetry}/{@code GlobalOpenTelemetry}.
+ * Starter никогда не создаёт и не принимает application-owned SDK. В режиме {@link #AGENT}
+ * единственным владельцем SDK является Controlled Platform Agent Distribution. Режим
+ * {@link #DISABLED} допустим только при полном отсутствии Agent и application runtime.
  *
  * <ul>
- *   <li>{@link #AUTO} — режим определяется автоматически (см. {@link SdkModeResolver});</li>
- *   <li>{@link #AGENT} — подтверждён runtime marker OTel Java Agent;
- *       starter поднимает фасад поверх agent-owned global;</li>
- *   <li>{@link #EXTERNAL} — в контексте есть пользовательский {@code OpenTelemetry} bean либо
- *       без agent marker обнаружен функциональный {@code GlobalOpenTelemetry}; starter поднимает фасад поверх него;</li>
- *   <li>{@link #STARTER} — нет ни агента, ни пользовательского SDK (consume-mode без создания SDK);</li>
- *   <li>{@link #DISABLED} — платформенный фасад явно отключён ({@code NoopTraceOperations});
- *       единственный режим, где используется NoOp.</li>
+ *   <li>{@link #AGENT} — активен совместимый Controlled Platform Agent с полным READY-профилем;</li>
+ *   <li>{@link #DISABLED} — tracing намеренно отключён; единственный успешный NoOp-режим.</li>
  * </ul>
  */
 public enum SdkMode {
-    AUTO,
     AGENT,
-    STARTER,
-    EXTERNAL,
     DISABLED
 }

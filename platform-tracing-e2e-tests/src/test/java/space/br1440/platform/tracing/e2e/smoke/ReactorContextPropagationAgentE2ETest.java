@@ -15,7 +15,7 @@ import java.net.ServerSocket;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -36,6 +36,7 @@ class ReactorContextPropagationAgentE2ETest {
     private static final Duration TRACE_VISIBILITY_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration AGENT_PROCESS_TIMEOUT = Duration.ofMinutes(3);
     private static final String E2E_REMOTE_SERVICE = "upstream-e2e-g205";
+    private static final int CONCURRENT_REQUESTS = 4;
 
     private static GenericContainer<?> jaeger;
     private static JaegerV3QueryClient jaegerClient;
@@ -73,7 +74,7 @@ class ReactorContextPropagationAgentE2ETest {
             httpPort = socket.getLocalPort();
         }
 
-        String responseBody = AgentWebFluxProcessRunner.runPropagationTest(
+        List<String> responseBodies = AgentWebFluxProcessRunner.runConcurrentPropagationTest(
                 otelAgentJar,
                 testRuntimeClasspath,
                 otlpEndpoint,
@@ -87,31 +88,30 @@ class ReactorContextPropagationAgentE2ETest {
                         "spring.reactor.context-propagation=AUTO",
                         "otel.bsp.schedule.delay=200"),
                 AGENT_PROCESS_TIMEOUT,
-                8_000L);
+                8_000L,
+                CONCURRENT_REQUESTS);
 
-        String[] parts = responseBody.split("\\|", -1);
-        assertThat(parts).as("Формат ответа /propagation-test").hasSize(4);
-
-        String callerTraceId = parts[0];
-        String workerTraceId = parts[1];
-        String workerRemoteService = parts[2];
-        String workerThread = parts[3];
-
-        assertThat(callerTraceId).isNotBlank();
-        assertThat(workerTraceId).isEqualTo(callerTraceId);
-        assertThat(workerRemoteService).isEqualTo(E2E_REMOTE_SERVICE);
-        assertThat(workerThread).contains("parallel");
+        assertThat(responseBodies).hasSize(CONCURRENT_REQUESTS);
+        Set<String> responseTraceIds = new java.util.LinkedHashSet<>();
+        for (String responseBody : responseBodies) {
+            String[] parts = responseBody.split("\\|", -1);
+            assertThat(parts).as("Формат ответа /propagation-test").hasSize(4);
+            assertThat(parts[0]).isNotBlank().isEqualTo(parts[1]);
+            assertThat(parts[2]).isEqualTo(E2E_REMOTE_SERVICE);
+            assertThat(parts[3]).contains("parallel");
+            responseTraceIds.add(parts[0]);
+        }
+        assertThat(responseTraceIds).hasSize(CONCURRENT_REQUESTS);
 
         await().atMost(TRACE_VISIBILITY_TIMEOUT)
                 .pollInterval(Duration.ofSeconds(1))
                 .untilAsserted(() -> {
-                    Optional<Map<String, String>> httpSpan = jaegerClient.findFirstSpanAttributes(
-                            SERVICE_NAME,
-                            attrs -> attrs.containsKey("url.path")
-                                    || attrs.containsKey("http.route"));
-                    assertThat(httpSpan)
-                            .as("HTTP span WebFlux должен попасть в Jaeger; response=%s", responseBody)
-                            .isPresent();
+                    List<String> serverTraceIds = jaegerClient.serverTraceIdsForRoute(
+                            SERVICE_NAME, "/propagation-test");
+                    assertThat(serverTraceIds)
+                            .as("На каждый WebFlux запрос должен экспортироваться ровно один SERVER span")
+                            .hasSize(CONCURRENT_REQUESTS)
+                            .containsExactlyInAnyOrderElementsOf(responseTraceIds);
                 });
     }
 }

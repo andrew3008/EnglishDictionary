@@ -44,7 +44,9 @@ class DiagnosticsBoundaryTest {
     @Test
     void actuatorEndpoint_exposesStablespanFactorySection() {
         contextRunner
-                .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
                             context.getBean(TraceOperations.class),
@@ -145,13 +147,10 @@ class DiagnosticsBoundaryTest {
     }
 
     @Test
-    void unavailableState_exposesReasonAndApprovedMode() {
+    void missingControlledAgent_doesNotPublishDegradedDiagnostics() {
         contextRunner.run(context -> {
-            SpanFactoryDiagnostics diagnostics = context.getBean(SpanFactoryDiagnostics.class);
-            TracingDiagnosticsView view = diagnostics.view();
-
-            assertThat(view.mode()).isIn("UNAVAILABLE", "NOOP");
-            assertThat(APPROVED_MODES).contains(view.mode());
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure()).hasMessageContaining("CONTROLLED_AGENT_MISSING");
         });
     }
 }

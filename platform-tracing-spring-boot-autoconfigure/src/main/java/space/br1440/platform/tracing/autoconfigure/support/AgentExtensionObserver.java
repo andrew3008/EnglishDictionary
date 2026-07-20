@@ -5,9 +5,11 @@ import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxObjectN
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Валидирует versioned readiness descriptor, опубликованный extension classloader'ом через JMX.
@@ -16,6 +18,9 @@ public final class AgentExtensionObserver {
 
     static final int SUPPORTED_PROTOCOL_VERSION = 1;
     static final String SUPPORTED_PROFILE = "platform-agent-secure-v1";
+
+    private static final Duration STARTUP_READINESS_TIMEOUT = Duration.ofSeconds(2);
+    private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(25);
 
     private static final Set<String> REQUIRED_CAPABILITIES = Set.of(
             "CONFIGURATION_LOADED",
@@ -39,21 +44,28 @@ public final class AgentExtensionObserver {
     public AgentExtensionDescriptor observe(
             boolean configuredDisabled,
             boolean agentMarkerVisible,
-            boolean userOpenTelemetryBeanPresent) {
+            boolean userOpenTelemetryBeanPresent,
+            boolean globalOpenTelemetrySet) {
         ObjectName readinessName = PlatformTracingJmxObjectNames.EXTENSION_READINESS;
         boolean endpointPresent = server.isRegistered(readinessName);
 
-        if (userOpenTelemetryBeanPresent && (agentMarkerVisible || endpointPresent)) {
-            return empty(AgentRuntimeState.DUAL_SDK_DETECTED, agentMarkerVisible, endpointPresent);
+        if (userOpenTelemetryBeanPresent
+                || (globalOpenTelemetrySet && !agentMarkerVisible && !endpointPresent)) {
+            return empty(
+                    AgentRuntimeState.DUAL_SDK_DETECTED,
+                    agentMarkerVisible,
+                    endpointPresent,
+                    "APPLICATION_RUNTIME_DETECTED");
         }
-        if (configuredDisabled && !agentMarkerVisible && !endpointPresent) {
-            return empty(AgentRuntimeState.DISABLED, agentMarkerVisible, endpointPresent);
+        if (configuredDisabled && !agentMarkerVisible && !endpointPresent && !globalOpenTelemetrySet) {
+            return empty(AgentRuntimeState.DISABLED, false, false, "");
         }
         if (!endpointPresent) {
             return empty(
                     agentMarkerVisible ? AgentRuntimeState.EXTENSION_MISSING : AgentRuntimeState.AGENT_MISSING,
                     agentMarkerVisible,
-                    false);
+                    false,
+                    agentMarkerVisible ? "PLATFORM_EXTENSION_MISSING" : "CONTROLLED_AGENT_MISSING");
         }
 
         try {
@@ -62,7 +74,7 @@ public final class AgentExtensionObserver {
             String profile = stringAttribute(readinessName, "Profile");
             String lifecycle = stringAttribute(readinessName, "LifecycleState");
             String failureCode = stringAttribute(readinessName, "FailureCode");
-            String failureMessage = stringAttribute(readinessName, "FailureMessage");
+            stringAttribute(readinessName, "FailureMessage");
             Set<String> capabilities = stringSetAttribute(readinessName, "Capabilities");
 
             AgentRuntimeState state = classify(
@@ -76,7 +88,6 @@ public final class AgentExtensionObserver {
                     profile,
                     lifecycle,
                     failureCode,
-                    failureMessage,
                     capabilities);
         } catch (Exception malformedDescriptor) {
             return new AgentExtensionDescriptor(
@@ -88,9 +99,36 @@ public final class AgentExtensionObserver {
                     "",
                     "",
                     "MALFORMED_READINESS_DESCRIPTOR",
-                    safeMessage(malformedDescriptor),
                     Set.of());
         }
+    }
+
+    /**
+     * Ожидает только переход из INITIALIZING и принимает решение по монотонному deadline.
+     * Для всех остальных состояний возвращается немедленно.
+     */
+    public AgentExtensionDescriptor awaitStartupDecision(
+            boolean configuredDisabled,
+            boolean agentMarkerVisible,
+            boolean userOpenTelemetryBeanPresent,
+            boolean globalOpenTelemetrySet) {
+        long deadline = System.nanoTime() + STARTUP_READINESS_TIMEOUT.toNanos();
+        AgentExtensionDescriptor descriptor;
+        do {
+            descriptor = observe(
+                    configuredDisabled,
+                    agentMarkerVisible,
+                    userOpenTelemetryBeanPresent,
+                    globalOpenTelemetrySet);
+            if (descriptor.state() != AgentRuntimeState.EXTENSION_INITIALIZING) {
+                return descriptor;
+            }
+            long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) {
+                return withFailureCode(descriptor, "EXTENSION_READINESS_TIMEOUT");
+            }
+            LockSupport.parkNanos(Math.min(remaining, READINESS_POLL_INTERVAL.toNanos()));
+        } while (true);
     }
 
     private AgentRuntimeState classify(
@@ -117,14 +155,16 @@ public final class AgentExtensionObserver {
                     : AgentRuntimeState.EXTENSION_INCOMPATIBLE;
         }
         if (!"READY".equals(lifecycle)
-                || !failureCode.isBlank()
-                || !capabilities.containsAll(REQUIRED_CAPABILITIES)
+                || !failureCode.isBlank()) {
+            return AgentRuntimeState.EXTENSION_INCOMPATIBLE;
+        }
+        if (!capabilities.containsAll(REQUIRED_CAPABILITIES)
                 || !booleanAttribute(readinessName, "SanitizerInstalled")
                 || !booleanAttribute(readinessName, "SamplerInstalled")
                 || !booleanAttribute(readinessName, "RequiredSpanProcessorsInstalled")
                 || !booleanAttribute(readinessName, "PropagationHooksInstalled")
                 || !booleanAttribute(readinessName, "ExportPathProtected")) {
-            return AgentRuntimeState.EXTENSION_INCOMPATIBLE;
+            return AgentRuntimeState.CAPABILITY_MISSING;
         }
         return AgentRuntimeState.AGENT_READY;
     }
@@ -132,9 +172,25 @@ public final class AgentExtensionObserver {
     private static AgentExtensionDescriptor empty(
             AgentRuntimeState state,
             boolean agentMarkerVisible,
-            boolean endpointPresent) {
+            boolean endpointPresent,
+            String failureCode) {
         return new AgentExtensionDescriptor(
-                state, agentMarkerVisible, endpointPresent, "", -1, "", "", "", "", Set.of());
+                state, agentMarkerVisible, endpointPresent, "", -1, "", "", failureCode, Set.of());
+    }
+
+    private static AgentExtensionDescriptor withFailureCode(
+            AgentExtensionDescriptor descriptor,
+            String failureCode) {
+        return new AgentExtensionDescriptor(
+                descriptor.state(),
+                descriptor.agentMarkerVisible(),
+                descriptor.readinessEndpointPresent(),
+                descriptor.extensionVersion(),
+                descriptor.protocolVersion(),
+                descriptor.profile(),
+                descriptor.lifecycle(),
+                failureCode,
+                descriptor.capabilities());
     }
 
     private String stringAttribute(ObjectName name, String attribute) throws Exception {
@@ -181,10 +237,4 @@ public final class AgentExtensionObserver {
         return version == null || version.isBlank() ? "development" : version;
     }
 
-    private static String safeMessage(Exception failure) {
-        String message = failure.getMessage();
-        String value = failure.getClass().getSimpleName()
-                + (message == null || message.isBlank() ? "" : ": " + message);
-        return value.length() <= 512 ? value : value.substring(0, 512);
-    }
 }

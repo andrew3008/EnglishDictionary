@@ -33,6 +33,9 @@ class KafkaBatchAspectMigrationTest {
             "00-0102030405060708090a0b0c0d0e0f10-0102030405060708-01";
     private static final String TRACE_ID = "0102030405060708090a0b0c0d0e0f10";
     private static final String SPAN_ID = "0102030405060708";
+    private static final String SECOND_TRACEPARENT =
+            "00-1112131415161718191a1b1c1d1e1f20-1112131415161718-01";
+    private static final String SECOND_TRACE_ID = "1112131415161718191a1b1c1d1e1f20";
 
     private InMemorySpanExporter exporter;
     private SdkTracerProvider tracerProvider;
@@ -106,6 +109,21 @@ class KafkaBatchAspectMigrationTest {
 
         SpanData span = exporter.getFinishedSpanItems().getFirst();
         assertThat(span.getLinks()).isEmpty();
+    }
+
+    @Test
+    void batchLinksUseDistinctValidW3cContextsAndIgnoreMissingOrMalformedHeaders() {
+        ConsumerRecord<String, String> first = recordWithHeaders("orders", TRACEPARENT, null);
+        ConsumerRecord<String, String> second = recordWithHeaders("orders", SECOND_TRACEPARENT, null);
+        ConsumerRecord<String, String> missing = new ConsumerRecord<>("orders", 0, 2L, "k", "missing");
+        ConsumerRecord<String, String> malformed = recordWithHeaders("orders", "not-a-traceparent", null);
+
+        invokeBatchListener(new BatchListenerStub(), List.of(first, second, missing, malformed));
+
+        SpanData span = exporter.getFinishedSpanItems().getFirst();
+        assertThat(span.getLinks())
+                .extracting(link -> link.getSpanContext().getTraceId())
+                .containsExactlyInAnyOrder(TRACE_ID, SECOND_TRACE_ID);
     }
 
     @Test

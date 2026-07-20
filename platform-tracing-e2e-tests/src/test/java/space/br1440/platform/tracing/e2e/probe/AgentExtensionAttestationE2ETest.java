@@ -25,18 +25,16 @@ class AgentExtensionAttestationE2ETest {
 
     @Test
     void noAgentIsDistinguishedFromMissingExtension() throws Exception {
-        String output = run(false, null, AgentRuntimeState.AGENT_MISSING, "AUTO", false, List.of());
+        String output = run(false, null, AgentRuntimeState.AGENT_MISSING, "AGENT", false, List.of());
         assertCompleted(output, AgentRuntimeState.AGENT_MISSING)
-                .contains(PREFIX + "facadeNoop=true")
-                .contains(PREFIX + "endpointPresent=false");
+                .contains(PREFIX + "startupFailure=");
     }
 
     @Test
     void stockAgentWithoutPlatformExtensionIsNotReady() throws Exception {
-        String output = run(true, null, AgentRuntimeState.EXTENSION_MISSING, "AUTO", false, List.of());
+        String output = run(true, null, AgentRuntimeState.EXTENSION_MISSING, "AGENT", false, List.of());
         assertCompleted(output, AgentRuntimeState.EXTENSION_MISSING)
-                .contains(PREFIX + "facadeNoop=true")
-                .contains(PREFIX + "endpointPresent=false");
+                .contains(PREFIX + "startupFailure=");
     }
 
     @Test
@@ -49,59 +47,59 @@ class AgentExtensionAttestationE2ETest {
     void failedSanitizerInitializationIsNotReady() throws Exception {
         String output = runWithFixture(
                 AgentRuntimeState.EXTENSION_FAILED,
-                "AUTO",
+                "AGENT",
                 false,
                 List.of(
                         "-De1.fixture.lifecycle=FAILED",
                         "-De1.fixture.failure.code=SANITIZER_INITIALIZATION_FAILED",
                         "-De1.fixture.failure.message=safe-fixture-message"));
         assertCompleted(output, AgentRuntimeState.EXTENSION_FAILED)
-                .contains(PREFIX + "failureCode=SANITIZER_INITIALIZATION_FAILED")
-                .contains(PREFIX + "facadeNoop=true");
+                .contains("SANITIZER_INITIALIZATION_FAILED")
+                .contains(PREFIX + "startupFailure=");
     }
 
     @Test
     void incompatibleProtocolIsRejected() throws Exception {
         String output = runWithFixture(
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "AUTO",
+                "AGENT",
                 false,
                 List.of(
                         "-De1.fixture.lifecycle=READY",
                         "-De1.fixture.complete=true",
                         "-De1.fixture.protocol.version=99"));
         assertCompleted(output, AgentRuntimeState.EXTENSION_INCOMPATIBLE)
-                .contains(PREFIX + "facadeNoop=true");
+                .contains(PREFIX + "startupFailure=");
     }
 
     @Test
     void managementEndpointWithoutRequiredProcessorIsRejected() throws Exception {
         String output = runWithFixture(
-                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "AUTO",
+                AgentRuntimeState.CAPABILITY_MISSING,
+                "AGENT",
                 false,
                 List.of("-De1.fixture.lifecycle=READY"));
-        assertCompleted(output, AgentRuntimeState.EXTENSION_INCOMPATIBLE)
-                .contains(PREFIX + "facadeNoop=true");
+        assertCompleted(output, AgentRuntimeState.CAPABILITY_MISSING)
+                .contains(PREFIX + "startupFailure=");
     }
 
     @Test
     void explicitAgentWithoutCompatibleExtensionFailsClearly() throws Exception {
         String output = run(true, null, AgentRuntimeState.EXTENSION_MISSING, "AGENT", false, List.of());
         assertCompleted(output, AgentRuntimeState.EXTENSION_MISSING)
-                .contains("requires a READY compatible platform Java Agent extension");
+                .contains("EXTENSION_MISSING");
     }
 
     @Test
     void agentAndApplicationSdkAreRejectedEvenWhenFacadeIsDisabled() throws Exception {
         String output = run(true, null, AgentRuntimeState.DUAL_SDK_DETECTED, "DISABLED", true, List.of());
         assertCompleted(output, AgentRuntimeState.DUAL_SDK_DETECTED)
-                .contains("OpenTelemetry bean and active Java Agent detected simultaneously");
+                .contains("Application-owned OpenTelemetry bean is not supported");
     }
 
     private static void assertFixtureState(AgentRuntimeState state, String property) throws Exception {
-        String output = runWithFixture(state, "AUTO", false, List.of(property));
-        assertCompleted(output, state).contains(PREFIX + "facadeNoop=true");
+        String output = runWithFixture(state, "AGENT", false, List.of(property));
+        assertCompleted(output, state).contains(PREFIX + "startupFailure=");
     }
 
     private static String runWithFixture(

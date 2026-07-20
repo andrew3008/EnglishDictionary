@@ -2,17 +2,16 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.PlatformContextPropagation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
@@ -47,64 +46,67 @@ import space.br1440.platform.tracing.core.runtime.state.TracingMode;
  */
 @AutoConfiguration
 @ConditionalOnClass(OpenTelemetry.class)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(TracingProperties.class)
 public class TracingCoreAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(TracingCoreAutoConfiguration.class);
 
     @Bean
-    public static BeanFactoryPostProcessor rejectCustomTracingRuntimeBeans() {
+    public static BeanFactoryPostProcessor rejectCompetingTracingRuntimeBeans() {
         return beanFactory -> {
-            String[] runtimeBeans = beanFactory.getBeanNamesForType(TracingRuntime.class, false, false);
-            for (String beanName : runtimeBeans) {
-                if (!"tracingImplementation".equals(beanName)) {
-                    if (beanFactory instanceof BeanDefinitionRegistry registry
-                            && registry.containsBeanDefinition(beanName)) {
-                        throw new IllegalStateException(
-                                "Custom TracingRuntime bean is not a supported production extension point: "
-                                        + beanName);
-                    }
-                }
-            }
+            rejectCompetingBeans(beanFactory, TracingRuntime.class, "tracingImplementation");
+            rejectCompetingBeans(beanFactory, TraceOperations.class, "traceOperations");
+            rejectCompetingBeans(beanFactory, OpenTelemetry.class, null);
         };
+    }
+
+    private static void rejectCompetingBeans(
+            ConfigurableListableBeanFactory beanFactory,
+            Class<?> type,
+            String platformBeanName) {
+        for (String beanName : beanFactory.getBeanNamesForType(type, false, false)) {
+            if ((platformBeanName == null || !platformBeanName.equals(beanName))
+                    && beanFactory instanceof BeanDefinitionRegistry registry
+                    && registry.containsBeanDefinition(beanName)) {
+                throw new IllegalStateException(
+                        "Application-owned " + type.getSimpleName()
+                                + " bean is not supported with Controlled Agent ownership: " + beanName);
+            }
+        }
     }
 
     @Bean
     public SdkModeDiagnostics platformSdkModeDiagnostics(
-            org.springframework.beans.factory.ObjectProvider<OpenTelemetry> openTelemetryProvider,
+            ConfigurableListableBeanFactory beanFactory,
             TracingProperties properties) {
         boolean agentPresent = OtelAgentDetector.isAgentPresent();
-        boolean userBeanPresent = openTelemetryProvider.getIfAvailable() != null;
+        boolean userBeanPresent = beanFactory.getBeanNamesForType(OpenTelemetry.class, false, false).length > 0;
+        boolean globalOpenTelemetrySet = GlobalOpenTelemetry.isSet();
         boolean configuredDisabled = properties.getSdk().getMode() == SdkMode.DISABLED;
-        AgentExtensionDescriptor extension = new AgentExtensionObserver().observe(
-                configuredDisabled, agentPresent, userBeanPresent);
-        boolean agentReady = extension.state() == AgentRuntimeState.AGENT_READY;
-        boolean agentRuntimePresent = agentPresent || extension.readinessEndpointPresent();
-        boolean globalFunctional = !userBeanPresent
-                && !agentRuntimePresent
-                && isGlobalFunctional();
-
+        AgentExtensionDescriptor extension = new AgentExtensionObserver().awaitStartupDecision(
+                configuredDisabled, agentPresent, userBeanPresent, globalOpenTelemetrySet);
         SdkMode resolved = SdkModeResolver.resolve(
                 properties.getSdk().getMode(),
-                new SdkModeResolver.Inputs(
-                        agentReady, agentRuntimePresent, globalFunctional, userBeanPresent));
+                properties.isEnabled(),
+                extension);
 
         if (extension.state() != AgentRuntimeState.AGENT_READY
-                && extension.state() != AgentRuntimeState.DISABLED
-                && extension.state() != AgentRuntimeState.AGENT_MISSING) {
-            log.error("Platform tracing Agent runtime is not ready: state={}, failureCode={}, failureMessage={}",
-                    extension.state(), extension.failureCode(), extension.failureMessage());
+                && extension.state() != AgentRuntimeState.DISABLED) {
+            log.error("Platform tracing runtime rejected: state={}, failureCode={}",
+                    extension.state(), extension.failureCode());
         }
-        log.info("Платформенная трассировка: SDK mode={} (runtimeState={}, agentMarker={}, "
-                        + "globalFunctional={}, userOpenTelemetryBean={})",
-                resolved, extension.state(), agentPresent, globalFunctional, userBeanPresent);
-        return new SdkModeDiagnostics(resolved, agentPresent, extension.state(), extension);
+        log.info("Платформенная трассировка: SDK mode={} (enabled={}, runtimeState={}, agentMarker={})",
+                resolved, properties.isEnabled(), extension.state(), agentPresent);
+        return new SdkModeDiagnostics(
+                resolved,
+                properties.isEnabled(),
+                agentPresent,
+                extension.state(),
+                extension);
     }
 
     @Bean
     public TracingRuntime tracingImplementation(
-            org.springframework.beans.factory.ObjectProvider<OpenTelemetry> openTelemetryProvider,
             org.springframework.beans.factory.ObjectProvider<
                     space.br1440.platform.tracing.core.semconv.policy.AttributePolicy> policyProvider,
             org.springframework.beans.factory.ObjectProvider<
@@ -112,7 +114,6 @@ public class TracingCoreAutoConfiguration {
             org.springframework.beans.factory.ObjectProvider<PlatformTracingMetrics> metricsProvider,
             SdkModeDiagnostics sdkModeDiagnostics) {
         TracingRuntime base = resolveTracingRuntime(
-                openTelemetryProvider,
                 policyProvider,
                 exceptionRecorderProvider,
                 sdkModeDiagnostics);
@@ -124,7 +125,6 @@ public class TracingCoreAutoConfiguration {
     }
 
     private TracingRuntime resolveTracingRuntime(
-            org.springframework.beans.factory.ObjectProvider<OpenTelemetry> openTelemetryProvider,
             org.springframework.beans.factory.ObjectProvider<
                     space.br1440.platform.tracing.core.semconv.policy.AttributePolicy> policyProvider,
             org.springframework.beans.factory.ObjectProvider<
@@ -134,15 +134,9 @@ public class TracingCoreAutoConfiguration {
             log.info("platform.tracing.sdk.mode=DISABLED — TracingRuntime DISABLED_BY_CONFIGURATION");
             return NoOpTracingRuntime.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED");
         }
-        if (sdkModeDiagnostics.mode() == SdkMode.STARTER) {
-            String reason = "Platform Agent runtime is not ready: " + sdkModeDiagnostics.runtimeState();
-            log.error(reason);
-            return NoOpTracingRuntime.unavailable(reason);
-        }
-        if (sdkModeDiagnostics.mode() == SdkMode.AGENT
-                && sdkModeDiagnostics.runtimeState() != AgentRuntimeState.AGENT_READY) {
+        if (sdkModeDiagnostics.runtimeState() != AgentRuntimeState.AGENT_READY) {
             throw new IllegalStateException(
-                    "AGENT mode resolved without READY compatible platform extension: "
+                    "AGENT mode cannot start without READY Controlled Platform Agent: "
                             + sdkModeDiagnostics.runtimeState());
         }
 
@@ -152,63 +146,26 @@ public class TracingCoreAutoConfiguration {
                 exceptionRecorderProvider.getIfAvailable(
                         space.br1440.platform.tracing.core.exception.ExceptionRecorder::secureDefault);
 
-        OpenTelemetry openTelemetry = openTelemetryProvider.getIfAvailable();
-        if (openTelemetry != null) {
-            log.debug("TracingRuntime: OpenTelemetry bean from application context");
-            return new OtelTracingRuntime(openTelemetry, policy, exceptionRecorder);
+        if (!GlobalOpenTelemetry.isSet()) {
+            throw new IllegalStateException(
+                    "Controlled Platform Agent reported READY but GlobalOpenTelemetry is not registered");
         }
-        OpenTelemetry global;
-        try {
-            global = GlobalOpenTelemetry.get();
-        } catch (RuntimeException e) {
-            log.warn("TracingRuntime: GlobalOpenTelemetry unavailable ({}); UNAVAILABLE mode",
-                    e.getMessage());
-            return NoOpTracingRuntime.unavailable("GlobalOpenTelemetry unavailable: " + e.getMessage());
-        }
-        if (!isFunctional(global)) {
-            log.info("TracingRuntime: GlobalOpenTelemetry no-op; UNAVAILABLE mode");
-            return NoOpTracingRuntime.unavailable("GlobalOpenTelemetry not functional");
-        }
-        log.debug("TracingRuntime: functional GlobalOpenTelemetry for SDK mode={}", sdkModeDiagnostics.mode());
-        return new OtelTracingRuntime(global, policy, exceptionRecorder);
+        log.debug("TracingRuntime: READY Controlled Platform Agent global");
+        return new OtelTracingRuntime(GlobalOpenTelemetry.get(), policy, exceptionRecorder);
     }
 
     @Bean
     public TraceOperations traceOperations(TracingRuntime tracingImplementation) {
         TracingMode mode = tracingImplementation.state().mode();
-        if (mode != TracingMode.ENABLED) {
-            log.info("TraceOperations facade: {} — NoopTraceOperations", mode);
+        if (mode == TracingMode.DISABLED_BY_CONFIGURATION) {
+            log.info("TraceOperations facade: DISABLED_BY_CONFIGURATION — NoopTraceOperations");
             return NoopTraceOperations.backedBy(tracingImplementation);
+        }
+        if (mode != TracingMode.ENABLED) {
+            throw new IllegalStateException("Unexpected tracing runtime state after strict resolution: " + mode);
         }
         log.debug("TraceOperations facade: ENABLED — DefaultTraceOperations");
         return new DefaultTraceOperations(tracingImplementation);
-    }
-
-    private static boolean isGlobalFunctional() {
-        try {
-            return GlobalOpenTelemetry.isSet()
-                    && isFunctional(GlobalOpenTelemetry.getOrNoop());
-        } catch (RuntimeException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Probes whether the supplied {@link OpenTelemetry} instance can create valid spans.
-     * <p>
-     * Creates a short-lived probe span ({@code __probe}), ends it immediately, and checks
-     * {@code SpanContext.isValid()}. Depending on SDK/exporter configuration, the probe span may
-     * appear in local exporters; this side effect is expected (B09).
-     */
-    private static boolean isFunctional(OpenTelemetry openTelemetry) {
-        Span probe = openTelemetry.getTracer("space.br1440.platform.tracing.probe")
-                .spanBuilder("__probe")
-                .startSpan();
-        try {
-            return probe.getSpanContext().isValid();
-        } finally {
-            probe.end();
-        }
     }
 
     @Bean

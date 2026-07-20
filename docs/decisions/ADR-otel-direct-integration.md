@@ -2,7 +2,7 @@
 
 | Поле | Значение |
 |------|----------|
-| Статус | **Принято** |
+| Статус | **Принято; уточнено B1-C 2026-07-20** |
 | Дата | 2026-05-25 |
 | Контекст | Architecture sign-off, guardrails P0 |
 | Стек | OTel SDK BOM **1.61.0**, OTel instrumentation BOM **2.27.0**, OTel Java Agent **2.27.0** |
@@ -16,10 +16,15 @@
 ## Решение
 
 1. **OTel BOM + API + SDK + autoconfigure SPI** — единственная extension surface для platform policy layer.
-2. **Agent-first production model** — bytecode-инструментация через OTel Java Agent; `opentelemetry-spring-boot-starter` **не** подключаем.
+2. **Controlled Agent-first production model** — bytecode-инструментация и SDK принадлежат
+   подписываемой Controlled Platform Agent Distribution; произвольный stock Agent,
+   application SDK и `opentelemetry-spring-boot-starter` не являются поддерживаемыми runtime.
 3. **Platform-компоненты** реализуют официальные SPI (`SpanProcessor`, `Sampler`, `ResourceProvider`, `AutoConfigurationCustomizerProvider`) в модуле `platform-tracing-otel-extension`.
 4. **Upstream-компоненты не форкаем:** `BatchSpanProcessor`, OTLP exporter, W3C propagators, `SdkTracerProvider` — только через официальный SDK/Agent.
 5. **Guardrails на CI:** ArchUnit (`OtelDirectIntegrationArchTest`) + Gradle task `verifyOtelBomAlignment`.
+6. Spring starter предоставляет facade/adapters/diagnostics и не создаёт `SdkTracerProvider`.
+   Production mode surface и gate separation определены
+   [ADR-sdk-mode-detection.md](ADR-sdk-mode-detection.md).
 
 ## Version governance
 
@@ -55,7 +60,8 @@ expectedJavaAgentVersion = openTelemetryInstrumentationBomVersion
 - ~~`SafeSpanExporter` — после e2e/load validation.~~ **Реализован (Фаза 10)** — см. [ADR-safe-span-exporter-v1.md](./ADR-safe-span-exporter-v1.md).
 - ~~`DropOldestQueueSpanProcessor` — только при подтверждённом gap стандартного BSP.~~ **Реализован** как `PlatformDropOldestExportSpanProcessor` — см. [ADR-drop-oldest-export-processor-v1.md](./ADR-drop-oldest-export-processor-v1.md).
 - `PrioritySpanProcessor` — **отклонён** (Фаза 10): приоритизация на Collector tail-sampling во избежание orphaned spans, см. [ADR-safe-span-exporter-v1.md](./ADR-safe-span-exporter-v1.md).
-- SDK-only path без Java Agent.
+- SDK-only path без Java Agent отклонён решением B1-C для production starter; test-only SDK
+  допустим только в непубликуемых fixtures/source sets.
 
 ## Audit evidence
 

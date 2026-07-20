@@ -43,7 +43,13 @@ import static org.assertj.core.api.Assertions.assertThat;
                 MdcPropagationAsyncIntegrationTest.AsyncTestApp.class,
                 MdcPropagationAsyncIntegrationTest.AsyncPropagationTestConfig.class
         },
-        properties = "spring.application.name=mdc-async-propagation-test")
+        properties = {
+                "spring.application.name=mdc-async-propagation-test",
+                "spring.autoconfigure.exclude="
+                        + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+                "platform.tracing.enabled=false",
+                "platform.tracing.sdk.mode=DISABLED"
+        })
 class MdcPropagationAsyncIntegrationTest {
 
     @Autowired

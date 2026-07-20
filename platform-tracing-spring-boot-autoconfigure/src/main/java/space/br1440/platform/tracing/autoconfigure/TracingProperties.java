@@ -29,7 +29,10 @@ public class TracingProperties {
 
     public static final String PREFIX = "platform.tracing";
 
-    /** Глобальный выключатель платформенной трассировки. */
+    /**
+     * Глобальный переключатель. Значение {@code true} требует {@code sdk.mode=AGENT},
+     * значение {@code false} требует {@code sdk.mode=DISABLED}.
+     */
     private boolean enabled = true;
 
     private final Sdk sdk = new Sdk();
@@ -57,26 +60,23 @@ public class TracingProperties {
     private final Control control = new Control();
 
     /**
-     * Режим работы относительно OpenTelemetry SDK (Фаза 15).
+     * Production-режим владения OpenTelemetry SDK.
      * <p>
-     * Платформа agent-first: starter не создаёт собственный SDK, а потребляет
-     * {@code OpenTelemetry}/{@code GlobalOpenTelemetry}. Свойство — диагностика и явность режима,
-     * а не переключатель создания SDK. См. {@code ADR-sdk-mode-detection}.
+     * Starter не создаёт SDK и не принимает application-owned SDK. Единственный активный режим
+     * использует READY Controlled Platform Agent; единственный NoOp-режим — DISABLED.
      */
     @Getter
     @Setter
     @Accessors(chain = true)
     public static class Sdk {
         /**
-         * Режим: {@code AUTO} (детект), {@code AGENT}, {@code STARTER}, {@code EXTERNAL},
-         * {@code DISABLED}. По умолчанию {@code AUTO}. {@code DISABLED} — единственный режим,
-         * в котором фасад становится {@code NoopTraceOperations}.
+         * Режим: {@code AGENT} или {@code DISABLED}. По умолчанию {@code AGENT}.
          * <p>
          * Дублируется в agent-канал ({@code platform.tracing.sdk.mode} в {@code ConfigProperties})
          * только для диагностики на стороне расширения (см. {@code ADR-dual-channel-properties}).
          */
         private space.br1440.platform.tracing.autoconfigure.support.SdkMode mode =
-                space.br1440.platform.tracing.autoconfigure.support.SdkMode.AUTO;
+                space.br1440.platform.tracing.autoconfigure.support.SdkMode.AGENT;
     }
 
     @Getter

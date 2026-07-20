@@ -2,8 +2,12 @@
 
 > Дата: 2026-07-19  
 > Ветка: `feature/runtime-control-hardening`  
-> Статус: `OPEN / ARCHITECTURE DECISION REQUIRED`  
-> Блокирует: завершение Slice E и переход `E -> F`
+> Статус: `CLOSED / B1-C APPROVED AND IMPLEMENTED`
+> Development gate: `CP-E`; production release gate: `RG-CONTROLLED-AGENT` (`OPEN`)
+
+> **Нормативное уточнение 2026-07-20.** Разделы 1–6 ниже сохранены как история входного
+> арбитража. Их предложения про `AUTO` и certified `EXTERNAL` superseded решением B1-C.
+> Действующая модель зафиксирована в §10 и `ADR-sdk-mode-detection.md`.
 
 ## 1. Решение, которое требуется
 
@@ -115,7 +119,7 @@ distribution/pre-JVM gate. Реализован минимальный ZIP proto
 `SHA256SUMS` и launcher. Он не является fleet-wide approval: до решения архитекторов произвольный
 stock Agent считается подтверждённым compliance bypass, а переход `E -> F` остаётся заблокирован.
 
-## 8. Approval Form
+## 8. Approval Form (historical)
 
 Архитектор должен выбрать одну формулировку:
 
@@ -138,5 +142,26 @@ Kafka runtime через IP endpoints подтвердил delivery, retry, batc
 без Spring SDK bean. Producer span подтверждён для текущего semantic-convention имени
 `send|publish` на stock и controlled Agent. Signing/immutable registry/admission/launcher
 enforcement находятся вне репозитория. До внешнего enforcement произвольный stock Agent остаётся
-операционным bypass, а переход `E -> F` запрещён. Полный ledger:
+операционным bypass для production rollout. Полный ledger:
 `docs/analysis/platform-tracing-slice-e2-controlled-agent-evidence.md`.
+
+## 10. Locked resolution B1-C (2026-07-20)
+
+Архитектурно утверждена модель **Controlled Agent-first, fail-closed**:
+
+- production modes: только `AGENT`, `DISABLED`; default = `AGENT`;
+- `AUTO`, `STARTER`, `EXTERNAL` удалены без aliases;
+- application/external SDK не является production extension point;
+- `AGENT` требует compatible `READY` и полный mandatory capability profile;
+- любое отсутствующее, incomplete, incompatible, failed или duplicate состояние завершает startup;
+- `DISABLED` является единственным успешным NoOp и требует отсутствия любого Agent/runtime;
+- недоступный Collector после валидного protected pipeline является observable degradation.
+
+`CP-E` закрывается repository evidence: implementation audit, strict Spring matrix, packaged
+Controlled Agent E2E, build/architecture gates и согласованные ADR/plan. После `CP-E` разрешён
+переход к Slice F.
+
+`RG-CONTROLLED-AGENT` остаётся **OPEN** и блокирует pilot/production, но не Slice F. Внешние
+требования: signing, SBOM/provenance, immutable registry, обязательный pre-JVM verifier,
+Helm/init-container wiring, admission policy, stock Agent/external extension override prohibition,
+fleet rollout/rollback proof. Repository changes не объявляют этот gate выполненным.

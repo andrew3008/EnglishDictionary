@@ -154,6 +154,43 @@ public final class JaegerV3QueryClient {
                 .orElse(0);
     }
 
+    /** Возвращает максимальное число различных traceId в links одного span. */
+    public int maximumDistinctSpanLinkTraceCount(String serviceName) throws Exception {
+        String body = fetchTracesBody(serviceName);
+        if (body == null || body.isBlank()) {
+            return 0;
+        }
+        return parseStreamingBody(body).stream()
+                .mapToInt(span -> {
+                    java.util.Set<String> traceIds = new java.util.LinkedHashSet<>();
+                    for (JsonNode link : span.path("links")) {
+                        traceIds.add(link.path("traceId").asText());
+                    }
+                    return traceIds.size();
+                })
+                .max()
+                .orElse(0);
+    }
+
+    /** Возвращает traceId SERVER-span'ов заданного HTTP route. */
+    public java.util.List<String> serverTraceIdsForRoute(String serviceName, String route) throws Exception {
+        String body = fetchTracesBody(serviceName);
+        if (body == null || body.isBlank()) {
+            return java.util.List.of();
+        }
+        java.util.List<String> traceIds = new java.util.ArrayList<>();
+        for (JsonNode span : parseStreamingBody(body)) {
+            if (!isServerSpanKind(span.path("kind").asText())) {
+                continue;
+            }
+            Map<String, String> attributes = extractStringAttributes(span);
+            if (matchesRoute(attributes, route) || matchesHttpSpanName(span, route)) {
+                traceIds.add(span.path("traceId").asText());
+            }
+        }
+        return traceIds;
+    }
+
     /**
      * Возвращает resource-атрибуты (OTLP {@code resourceSpans[].resource.attributes}) первого
      * resourceSpan'а сервиса. Используется для assert'ов resource-идентичности (Фаза 9):
@@ -280,6 +317,10 @@ public final class JaegerV3QueryClient {
     private static boolean isHttpRelatedSpanKind(String kind) {
         return "SPAN_KIND_SERVER".equals(kind) || "2".equals(kind)
                 || "SPAN_KIND_INTERNAL".equals(kind) || "1".equals(kind);
+    }
+
+    private static boolean isServerSpanKind(String kind) {
+        return "SPAN_KIND_SERVER".equals(kind) || "2".equals(kind);
     }
 
     private static boolean matchesHttpSpanName(JsonNode span, String route) {

@@ -14,7 +14,6 @@ public record AgentExtensionDescriptor(
         String profile,
         String lifecycle,
         String failureCode,
-        String failureMessage,
         Set<String> capabilities) {
 
     public AgentExtensionDescriptor {
@@ -23,7 +22,6 @@ public record AgentExtensionDescriptor(
         profile = nullSafe(profile);
         lifecycle = nullSafe(lifecycle);
         failureCode = nullSafe(failureCode);
-        failureMessage = nullSafe(failureMessage);
     }
 
     private static String nullSafe(String value) {

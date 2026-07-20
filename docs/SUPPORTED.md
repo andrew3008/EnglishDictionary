@@ -144,10 +144,10 @@ Additional `OTEL_*` / `platform.tracing.*` — see [runbook/mdc-logging-producti
 | `otel.traces.sampler` | не задан → compose-over-existing | `platform` — явный opt-in; рантайм существующих деплоев не меняется |
 | `otel.propagators` | `tracecontext,baggage` → дописывается `platform-trace-control` | `none` → платформенный не добавляется; дубль не создаётся |
 
-`platform.tracing.sdk.mode` (`AUTO|AGENT|STARTER|EXTERNAL|DISABLED`, дефолт `AUTO`) — **диагностика и явность**,
-не создание SDK (agent-first). `NoopTraceOperations` — только в `DISABLED`; в остальных режимах фасад делегирует
-в `GlobalOpenTelemetry`/пользовательский `OpenTelemetry` bean. Эффективный режим виден в `/actuator/tracing` →
-секция `sdk` (`mode`/`configuredMode`/`agentDetected`). Подробности:
+`platform.tracing.sdk.mode` (`AGENT|DISABLED`, default `AGENT`) задаёт strict ownership.
+`AGENT` требует READY Controlled Platform Agent; application SDK запрещён. `NoopTraceOperations` допустим
+только при `enabled=false`, `mode=DISABLED` и отсутствии Agent/runtime. `AUTO`, `STARTER`, `EXTERNAL`
+удалены без aliases. Состояние видно в `/actuator/tracing` → секция `sdk`.
 [ADR-named-spi-sampler-propagator.md](./decisions/ADR-named-spi-sampler-propagator.md),
 [ADR-sdk-mode-detection.md](./decisions/ADR-sdk-mode-detection.md),
 [ADR-config-precedence.md](./decisions/ADR-config-precedence.md),

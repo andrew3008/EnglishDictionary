@@ -2,11 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -17,6 +13,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,9 +26,8 @@ class MeteredMetricsCountTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingCoreAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class))
-            .withUserConfiguration(
-                    MetricsCountTestConfiguration.class,
-                    MeterRegistryConfiguration.class);
+            .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
+            .withUserConfiguration(MeterRegistryConfiguration.class);
 
     @Test
     void startSpan_incrementsSpansStartedByCategory() {
@@ -97,23 +93,6 @@ class MeteredMetricsCountTest {
                 assertThat(counter.getId().getTags().getFirst().getKey()).isEqualTo("category");
             }
         });
-    }
-
-    @Configuration
-    static class MetricsCountTestConfiguration {
-
-        @Bean
-        InMemorySpanExporter spanExporter() {
-            return InMemorySpanExporter.create();
-        }
-
-        @Bean
-        OpenTelemetry openTelemetry(InMemorySpanExporter spanExporter) {
-            SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                    .addSpanProcessor(SimpleSpanProcessor.create(spanExporter))
-                    .build();
-            return OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build();
-        }
     }
 
     @Configuration

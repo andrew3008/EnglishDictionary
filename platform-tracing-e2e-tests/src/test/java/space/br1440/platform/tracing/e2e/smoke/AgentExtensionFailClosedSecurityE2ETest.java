@@ -66,16 +66,18 @@ class AgentExtensionFailClosedSecurityE2ETest {
         String stockService = "e1-stock-agent-unprotected";
         String protectedService = "e1-platform-agent-protected";
 
-        runRequest(agentJar, stockService, null, List.of("otel.traces.sampler=always_on"));
+        String stockOutput = runRequest(agentJar, stockService, null, List.of("otel.traces.sampler=always_on"));
+        assertThat(stockOutput).contains("WEBMVC_E2:openTelemetryBeans=0");
         Optional<Map<String, String>> stockSpan = awaitSpan(stockService);
         assertThat(stockSpan).isPresent();
         assertThat(stockSpan.orElseThrow().get(HEADER_ATTRIBUTE))
                 .as("Stock Agent без extension экспортирует захваченный sensitive header")
                 .contains(SECRET);
 
-        runRequest(controlledAgentJar, protectedService, null, List.of(
+        String protectedOutput = runRequest(controlledAgentJar, protectedService, null, List.of(
                 "otel.traces.sampler=platform",
                 "platform.tracing.sampling.ratio=1"));
+        assertThat(protectedOutput).contains("WEBMVC_E2:openTelemetryBeans=0");
         Optional<Map<String, String>> protectedSpan = awaitSpan(protectedService);
         assertThat(protectedSpan).isPresent();
         assertThat(protectedSpan.orElseThrow())
@@ -83,6 +85,8 @@ class AgentExtensionFailClosedSecurityE2ETest {
                 .doesNotContainValue(SECRET);
         assertThat(protectedSpan.orElseThrow().getOrDefault(HEADER_ATTRIBUTE, ""))
                 .doesNotContain("e1-sensitive-value");
+        assertThat(jaegerClient.serverTraceIdsForRoute(stockService, "/probe")).hasSize(1);
+        assertThat(jaegerClient.serverTraceIdsForRoute(protectedService, "/probe")).hasSize(1);
     }
 
     @Test
@@ -111,6 +115,7 @@ class AgentExtensionFailClosedSecurityE2ETest {
                         "platform.tracing.suppression.suppress-micrometer-tracing=true"),
                 PROCESS_TIMEOUT,
                 2_000L,
+                false,
                 false);
 
         assertThat(result.output())
@@ -157,6 +162,7 @@ class AgentExtensionFailClosedSecurityE2ETest {
                             "platform.tracing.suppression.suppress-micrometer-tracing=true"),
                     PROCESS_TIMEOUT,
                     500L,
+                    false,
                     false);
 
             assertThat(result.output()).contains("E2_TEST_ONLY_MANDATORY_PIPELINE_FAILURE:" + stage);
@@ -168,19 +174,22 @@ class AgentExtensionFailClosedSecurityE2ETest {
         }
     }
 
-    private static void runRequest(String selectedAgentJar, String serviceName, String extension,
-                                   List<String> samplerProperties)
+    private static String runRequest(String selectedAgentJar, String serviceName, String extension,
+                                     List<String> samplerProperties)
             throws Exception {
         int port;
         try (ServerSocket socket = new ServerSocket(0)) {
             port = socket.getLocalPort();
         }
         List<String> properties = new java.util.ArrayList<>(samplerProperties);
+        if (selectedAgentJar.equals(agentJar)) {
+            properties.add("e2.stock.agent.baseline=true");
+        }
         properties.add("otel.instrumentation.http.server.capture-request-headers=authorization");
         properties.add("platform.tracing.suppression.suppress-micrometer-tracing=true");
         properties.add("otel.bsp.schedule.delay=200");
 
-        AgentHttpSpringSmokeProcessRunner.run(
+        return AgentHttpSpringSmokeProcessRunner.run(
                 AgentSpringForceSamplingSmokeMain.class.getName(),
                 selectedAgentJar,
                 runtimeClasspath,

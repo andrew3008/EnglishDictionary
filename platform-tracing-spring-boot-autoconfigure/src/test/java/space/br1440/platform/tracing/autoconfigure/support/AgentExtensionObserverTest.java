@@ -27,9 +27,9 @@ class AgentExtensionObserverTest {
     void absenceDistinguishesNoAgentFromAgentWithoutExtension() {
         AgentExtensionObserver observer = new AgentExtensionObserver(MBeanServerFactory.createMBeanServer());
 
-        assertThat(observer.observe(false, false, false).state())
+        assertThat(observer.observe(false, false, false, false).state())
                 .isEqualTo(AgentRuntimeState.AGENT_MISSING);
-        assertThat(observer.observe(false, true, false).state())
+        assertThat(observer.observe(false, true, false, true).state())
                 .isEqualTo(AgentRuntimeState.EXTENSION_MISSING);
     }
 
@@ -38,7 +38,7 @@ class AgentExtensionObserverTest {
         MBeanServer server = serverWith(new ReadinessView("READY", 1, COMPLETE_CAPABILITIES, "", true));
         AgentExtensionObserver observer = new AgentExtensionObserver(server);
 
-        assertThat(observer.observe(true, true, true).state())
+        assertThat(observer.observe(true, true, true, true).state())
                 .isEqualTo(AgentRuntimeState.DUAL_SDK_DETECTED);
     }
 
@@ -49,11 +49,11 @@ class AgentExtensionObserverTest {
         AgentExtensionObserver readyEndpoint = new AgentExtensionObserver(
                 serverWith(new ReadinessView("READY", 1, COMPLETE_CAPABILITIES, "", true)));
 
-        assertThat(withoutEndpoint.observe(true, false, false).state())
+        assertThat(withoutEndpoint.observe(true, false, false, false).state())
                 .isEqualTo(AgentRuntimeState.DISABLED);
-        assertThat(withoutEndpoint.observe(true, true, false).state())
+        assertThat(withoutEndpoint.observe(true, true, false, true).state())
                 .isEqualTo(AgentRuntimeState.EXTENSION_MISSING);
-        assertThat(readyEndpoint.observe(true, true, false).state())
+        assertThat(readyEndpoint.observe(true, true, false, true).state())
                 .isEqualTo(AgentRuntimeState.AGENT_READY);
     }
 
@@ -66,7 +66,7 @@ class AgentExtensionObserverTest {
         assertThat(observe(new ReadinessView("READY", 999, COMPLETE_CAPABILITIES, "", true)).state())
                 .isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
         assertThat(observe(new ReadinessView("READY", 1, Set.of("CONFIGURATION_LOADED"), "", true)).state())
-                .isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
+                .isEqualTo(AgentRuntimeState.CAPABILITY_MISSING);
         assertThat(observe(new ReadinessView("FAILED", 1, Set.of(), "", false)).state())
                 .isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
         assertThat(observe(new ReadinessView(
@@ -84,7 +84,7 @@ class AgentExtensionObserverTest {
     }
 
     private static AgentExtensionDescriptor observe(ReadinessView view) throws Exception {
-        return new AgentExtensionObserver(serverWith(view)).observe(false, true, false);
+        return new AgentExtensionObserver(serverWith(view)).observe(false, true, false, true);
     }
 
     private static MBeanServer serverWith(ReadinessView view) throws Exception {

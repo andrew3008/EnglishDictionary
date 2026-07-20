@@ -19,13 +19,15 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
+import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
 
 import java.util.List;
 import java.util.Set;
@@ -44,9 +46,7 @@ class ObservationCoexistenceTest {
                     OpenTelemetryAutoConfiguration.class,
                     ObservationAutoConfiguration.class,
                     OpenTelemetryTracingAutoConfiguration.class,
-                    MicrometerTracingAutoConfiguration.class,
-                    TracingCoreAutoConfiguration.class,
-                    TracingMetricsAutoConfiguration.class))
+                    MicrometerTracingAutoConfiguration.class))
             .withUserConfiguration(ObservationCoexistenceTestConfiguration.class)
             .withPropertyValues("spring.application.name=observation-coexistence");
 
@@ -101,7 +101,9 @@ class ObservationCoexistenceTest {
     @Test
     void disabledPlatformspanFactory_doesNotDisableSpringObservation() {
         contextRunner
-                .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
                     TraceOperations tracing = context.getBean(TraceOperations.class);
@@ -178,6 +180,35 @@ class ObservationCoexistenceTest {
         @Bean
         MeterRegistry meterRegistry() {
             return new SimpleMeterRegistry();
+        }
+
+        @Bean
+        TracingRuntime tracingRuntime(
+                OpenTelemetry openTelemetry,
+                MeterRegistry meterRegistry,
+                Environment environment) {
+            if (!environment.getProperty("platform.tracing.enabled", Boolean.class, true)) {
+                return NoOpTracingRuntime.disabledByConfiguration("test-disabled");
+            }
+            return new MeteredTracingRuntime(
+                    new OtelTracingRuntime(
+                            openTelemetry,
+                            new space.br1440.platform.tracing.core.semconv.policy.AttributePolicy(),
+                            space.br1440.platform.tracing.core.exception.ExceptionRecorder.secureDefault()),
+                    new PlatformTracingMetrics(meterRegistry));
+        }
+
+        @Bean
+        TraceOperations traceOperations(TracingRuntime tracingRuntime) {
+            if (tracingRuntime instanceof NoOpTracingRuntime) {
+                return NoopTraceOperations.backedBy(tracingRuntime);
+            }
+            return new DefaultTraceOperations(tracingRuntime);
+        }
+
+        @Bean
+        SpanFactoryDiagnostics spanFactoryDiagnostics(TracingRuntime tracingRuntime) {
+            return new SpanFactoryDiagnostics(tracingRuntime);
         }
     }
 }

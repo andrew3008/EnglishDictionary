@@ -136,7 +136,7 @@ platform:
 |----------------------------|----------------------|---------|-------|-------|----------|
 | — | `SPRING_APPLICATION_NAME` | — | **Prod: да** | Spring | Fallback для `service.name` |
 | `enabled` | `PLATFORM_TRACING_ENABLED` | `true` | Нет | Spring | Глобальный выключатель |
-| `sdk.mode` | `PLATFORM_TRACING_SDK_MODE` | `AUTO` | Нет | Spring (диагностика) | `AUTO\|AGENT\|STARTER\|EXTERNAL\|DISABLED` |
+| `sdk.mode` | `PLATFORM_TRACING_SDK_MODE` | `AGENT` | Нет | Spring (ownership) | `AGENT\|DISABLED`; обязано согласовываться с `enabled` |
 | **service** | | | | | |
 | `service.name` | `PLATFORM_TRACING_SERVICE_NAME` | — | **Prod: да*** | Spring + Agent bridge | Логическое имя сервиса |
 | `service.version` | `PLATFORM_TRACING_SERVICE_VERSION` | — | Рек. | Spring + Agent bridge | `service.version` в resource |

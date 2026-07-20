@@ -1,0 +1,8 @@
+---
+description: Mandatory project context
+alwaysApply: true
+---
+
+Before performing repository work, read:
+
+@../project-context.md

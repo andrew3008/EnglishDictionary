@@ -102,9 +102,14 @@ class KafkaControlledAgentE2ETest {
 
         await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(1)).untilAsserted(() -> {
             List<String> names = jaegerClient.listSpanNames(SERVICE_NAME);
-            assertThat(names).anyMatch(name -> name.contains("send") || name.contains("publish"));
-            assertThat(names).anyMatch(name -> name.contains("process"));
+            System.out.println("KAFKA_E2:spanNames=" + names);
+            assertThat(names).hasSize(7);
+            assertThat(names.stream().filter(name -> name.contains("single") && name.contains("publish"))).hasSize(1);
+            assertThat(names.stream().filter(name -> name.contains("batch") && name.contains("publish"))).hasSize(2);
+            assertThat(names.stream().filter(name -> name.contains("single") && name.contains("process"))).hasSize(2);
+            assertThat(names.stream().filter(name -> name.contains("batch") && name.contains("process"))).hasSize(2);
             assertThat(jaegerClient.maximumSpanLinkCount(SERVICE_NAME)).isGreaterThanOrEqualTo(2);
+            assertThat(jaegerClient.maximumDistinctSpanLinkTraceCount(SERVICE_NAME)).isGreaterThanOrEqualTo(2);
         });
     }
 }

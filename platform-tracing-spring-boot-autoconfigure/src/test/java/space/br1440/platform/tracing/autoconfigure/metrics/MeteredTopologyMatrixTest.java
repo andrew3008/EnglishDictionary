@@ -2,13 +2,9 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -21,6 +17,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
@@ -42,9 +39,8 @@ class MeteredTopologyMatrixTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingCoreAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class))
-            .withUserConfiguration(
-                    MeteredTopologyTestConfiguration.class,
-                    MeterRegistryConfiguration.class);
+            .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
+            .withUserConfiguration(MeterRegistryConfiguration.class);
 
     @Test
     void meteredChain_wrapsDefaultImplementation() {
@@ -185,23 +181,6 @@ class MeteredTopologyMatrixTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Span not found: " + name
                         + "; exported=" + spans.stream().map(SpanData::getName).toList()));
-    }
-
-    @Configuration
-    static class MeteredTopologyTestConfiguration {
-
-        @Bean
-        InMemorySpanExporter spanExporter() {
-            return InMemorySpanExporter.create();
-        }
-
-        @Bean
-        OpenTelemetry openTelemetry(InMemorySpanExporter spanExporter) {
-            SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-                    .addSpanProcessor(SimpleSpanProcessor.create(spanExporter))
-                    .build();
-            return OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build();
-        }
     }
 
     @Configuration

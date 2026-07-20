@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +45,24 @@ public final class AgentWebFluxProcessRunner {
             List<String> extraJvmSystemProperties,
             Duration processTimeout,
             long flushDelayMs) throws Exception {
+        return runConcurrentPropagationTest(
+                otelAgentJar, testRuntimeClasspath, otlpEndpoint, serviceName, httpPort,
+                extensionLocation, extraEnv, extraJvmSystemProperties, processTimeout, flushDelayMs, 1).get(0);
+    }
+
+    public static List<String> runConcurrentPropagationTest(
+            String otelAgentJar,
+            String testRuntimeClasspath,
+            String otlpEndpoint,
+            String serviceName,
+            int httpPort,
+            String extensionLocation,
+            Map<String, String> extraEnv,
+            List<String> extraJvmSystemProperties,
+            Duration processTimeout,
+            long flushDelayMs,
+            int requestCount) throws Exception {
+        assertThat(requestCount).isPositive();
         Path javaBin = Path.of(System.getProperty("java.home"), "bin", "java");
 
         List<String> jvmProperties = buildJvmProperties(
@@ -60,6 +79,7 @@ public final class AgentWebFluxProcessRunner {
         command.add(AgentWebFluxReactorPropagationSmokeMain.class.getName());
         command.add(Integer.toString(httpPort));
         command.add(Long.toString(flushDelayMs));
+        command.add(Integer.toString(requestCount));
 
         ProcessBuilder builder = new ProcessBuilder(command);
         if (extraEnv != null) {
@@ -89,18 +109,11 @@ public final class AgentWebFluxProcessRunner {
                 .as("Agent WebFlux JVM должна вывести READY за %s. Output:\n%s", processTimeout, output)
                 .isTrue();
 
-        String responseBody;
-        Request request = new Request.Builder()
-                .url("http://127.0.0.1:" + httpPort + "/propagation-test")
-                .get()
-                .build();
-        try (Response response = HTTP_CLIENT.newCall(request).execute()) {
-            assertThat(response.isSuccessful())
-                    .as("HTTP probe к /propagation-test. Output:\n%s", output)
-                    .isTrue();
-            assertThat(response.body()).isNotNull();
-            responseBody = response.body().string();
+        List<CompletableFuture<String>> requests = new ArrayList<>();
+        for (int index = 0; index < requestCount; index++) {
+            requests.add(CompletableFuture.supplyAsync(() -> executeRequest(httpPort, output)));
         }
+        List<String> responseBodies = requests.stream().map(CompletableFuture::join).toList();
 
         boolean finished = process.waitFor(processTimeout.toSeconds(), TimeUnit.SECONDS);
         reader.join(5_000L);
@@ -114,8 +127,25 @@ public final class AgentWebFluxProcessRunner {
                 .isZero();
         assertThat(fullOutput)
                 .as("OTel Java Agent должен стартовать без ошибок")
+                .contains("WEBFLUX_E2:openTelemetryBeans=0")
                 .doesNotContain("OpenTelemetry Javaagent failed to start");
-        return responseBody;
+        return responseBodies;
+    }
+
+    private static String executeRequest(int httpPort, StringBuilder output) {
+        Request request = new Request.Builder()
+                .url("http://127.0.0.1:" + httpPort + "/propagation-test")
+                .get()
+                .build();
+        try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+            assertThat(response.isSuccessful())
+                    .as("HTTP probe к /propagation-test. Output:\n%s", output)
+                    .isTrue();
+            assertThat(response.body()).isNotNull();
+            return response.body().string();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Не удалось выполнить WebFlux E2E запрос", exception);
+        }
     }
 
     private static List<String> buildJvmProperties(

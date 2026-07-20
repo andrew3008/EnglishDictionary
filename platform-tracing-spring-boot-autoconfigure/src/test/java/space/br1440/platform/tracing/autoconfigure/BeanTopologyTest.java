@@ -2,8 +2,6 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Test;
@@ -17,6 +15,7 @@ import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
+import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
@@ -40,10 +39,12 @@ class BeanTopologyTest {
                     TracingCoreAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class));
 
+    private final ApplicationContextRunner controlledAgentRunner = contextRunner
+            .withInitializer(ControlledAgentTestRuntime::initialize);
+
     @Test
     void exactlyOneTraceOperationsAndTracingRuntime() {
-        contextRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class)
+        controlledAgentRunner
                 .run(context -> {
                     assertThat(context.getBeansOfType(TraceOperations.class)).hasSize(1);
                     assertThat(context.getBeansOfType(TracingRuntime.class)).hasSize(1);
@@ -56,8 +57,7 @@ class BeanTopologyTest {
 
     @Test
     void facadeBackedBySingleImplementationChain() {
-        contextRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class)
+        controlledAgentRunner
                 .run(context -> {
                     DefaultTraceOperations facade = context.getBean(DefaultTraceOperations.class);
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
@@ -67,8 +67,8 @@ class BeanTopologyTest {
 
     @Test
     void withMicrometer_wrapsTracingRuntimeWithoutPublicFacadeDecorator() {
-        contextRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class, MeterRegistryConfiguration.class)
+        controlledAgentRunner
+                .withUserConfiguration(MeterRegistryConfiguration.class)
                 .run(context -> {
                     assertThat(context).doesNotHaveBean("meteredTraceOperations");
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
@@ -82,7 +82,9 @@ class BeanTopologyTest {
     @Test
     void disabledSdkMode_exposesNonEnabledTracingState() {
         contextRunner
-                .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
                     assertThat(impl.state().mode()).isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
@@ -91,33 +93,25 @@ class BeanTopologyTest {
     }
 
     @Test
-    void unavailableOpenTelemetry_exposesUnavailableState() {
+    void missingControlledAgent_failsStartup() {
         contextRunner.run(context -> {
-            TracingRuntime impl = context.getBean(TracingRuntime.class);
-            assertThat(impl.state().mode()).isIn(TracingMode.UNAVAILABLE, TracingMode.NOOP);
-            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure()).hasMessageContaining("CONTROLLED_AGENT_MISSING");
         });
     }
 
     @Test
     void userPrimaryTracingRuntime_isRejectedAsUnsupportedSdkOwnershipBypass() {
         contextRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class, CustomPrimaryTracingRuntimeConfig.class)
+                .withUserConfiguration(CustomPrimaryTracingRuntimeConfig.class)
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
                             .hasMessage(
-                                    "Custom TracingRuntime bean is not a supported production extension point: "
+                                    "Application-owned TracingRuntime bean is not supported "
+                                            + "with Controlled Agent ownership: "
                                             + "customTracingRuntime");
                 });
-    }
-
-    @Configuration
-    static class OpenTelemetryConfiguration {
-        @Bean
-        OpenTelemetry openTelemetry() {
-            return OpenTelemetrySdk.builder().build();
-        }
     }
 
     @Configuration

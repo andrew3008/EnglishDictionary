@@ -21,7 +21,7 @@ class SpringAgentCompositionE2ETest {
     private static final String PREFIX = "SPRING_AGENT_COMPOSITION:";
 
     @Test
-    void springAndDisabledFacadesRespectAgentOwnership() throws Exception {
+    void springFacadeUsesControlledAgentAndDisabledRejectsLiveAgent() throws Exception {
         String otelAgentJar = System.getProperty("smoke.controlled.agent.jar");
         String testRuntimeClasspath = System.getProperty("smoke.test.runtime.classpath");
 
@@ -31,16 +31,12 @@ class SpringAgentCompositionE2ETest {
         String output = runProbe(otelAgentJar, testRuntimeClasspath);
 
         assertThat(output)
-                .contains(PREFIX + "auto.mode=AGENT")
-                .contains(PREFIX + "auto.agentDetected=true")
-                .contains(PREFIX + "auto.facadeNoop=false")
-                .contains(PREFIX + "auto.openTelemetryBeans=0")
-                .contains(PREFIX + "auto.currentContextVisible=true")
-                .contains(PREFIX + "disabled.mode=DISABLED")
-                .contains(PREFIX + "disabled.agentDetected=true")
-                .contains(PREFIX + "disabled.facadeNoop=true")
-                .contains(PREFIX + "disabled.agentSpanValid=true")
-                .contains(PREFIX + "disabled.openTelemetryBeans=0")
+                .contains(PREFIX + "agent.mode=AGENT")
+                .contains(PREFIX + "agent.agentDetected=true")
+                .contains(PREFIX + "agent.facadeNoop=false")
+                .contains(PREFIX + "agent.openTelemetryBeans=0")
+                .contains(PREFIX + "agent.currentContextVisible=true")
+                .contains(PREFIX + "disabled.liveAgentRejected=true")
                 .contains(PREFIX + "COMPLETE");
     }
 

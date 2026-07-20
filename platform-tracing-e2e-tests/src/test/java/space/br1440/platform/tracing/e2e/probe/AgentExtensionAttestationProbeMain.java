@@ -30,7 +30,7 @@ public class AgentExtensionAttestationProbeMain {
 
     public static void main(String[] args) {
         AgentRuntimeState expectedState = AgentRuntimeState.valueOf(args[0]);
-        String configuredMode = args.length > 1 ? args[1] : "AUTO";
+        String configuredMode = args.length > 1 ? args[1] : "AGENT";
         boolean dualRuntime = args.length > 2 && Boolean.parseBoolean(args[2]);
 
         try (ConfigurableApplicationContext context = start(configuredMode, dualRuntime)) {
@@ -49,7 +49,7 @@ public class AgentExtensionAttestationProbeMain {
             AgentRuntimeState observed = findRuntimeState(failure);
             emit("startupFailure=" + rootMessage(failure));
             if (expectedState == AgentRuntimeState.DUAL_SDK_DETECTED
-                    && rootMessage(failure).contains("OpenTelemetry bean and active Java Agent")) {
+                    && rootMessage(failure).contains("Application-owned OpenTelemetry bean")) {
                 emit("runtimeState=" + AgentRuntimeState.DUAL_SDK_DETECTED);
                 emit("COMPLETE");
                 return;
@@ -82,8 +82,10 @@ public class AgentExtensionAttestationProbeMain {
 
     private static AgentRuntimeState findRuntimeState(Throwable failure) {
         String message = rootMessage(failure);
-        if (message.contains("READY compatible platform Java Agent extension")) {
-            return AgentRuntimeState.EXTENSION_MISSING;
+        for (AgentRuntimeState state : AgentRuntimeState.values()) {
+            if (message.contains(state.name())) {
+                return state;
+            }
         }
         return null;
     }

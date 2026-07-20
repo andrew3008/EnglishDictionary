@@ -2,8 +2,6 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.health.HealthEndpointAutoConfiguration;
@@ -15,6 +13,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
+import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 
@@ -36,21 +35,21 @@ class TracingAutoConfigurationTest {
                     TracingActuatorAutoConfiguration.class
             ));
 
+    private final ApplicationContextRunner controlledAgentRunner = contextRunner
+            .withInitializer(ControlledAgentTestRuntime::initialize);
+
     @Test
     void регистрируетTraceOperationsПриОтсутствииOpenTelemetry() {
         contextRunner.run(context -> {
-            assertThat(context).hasSingleBean(TraceOperations.class);
-            // Без OpenTelemetry-бина и Java Agent'а активна безоперационная заглушка.
-            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure()).hasMessageContaining("CONTROLLED_AGENT_MISSING");
         });
     }
 
     @Test
     void регистрируетDefaultTraceOperationsПриНаличииOpenTelemetry() {
-        contextRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class)
+        controlledAgentRunner
                 .run(context -> {
-                    assertThat(context).hasSingleBean(OpenTelemetry.class);
                     TraceOperations traceOperations = context.getBean(TraceOperations.class);
                     assertThat(traceOperations).isNotNull();
                     assertThat(traceOperations).isNotInstanceOf(NoopTraceOperations.class);
@@ -60,17 +59,20 @@ class TracingAutoConfigurationTest {
     @Test
     void отключаетсяПриЯвномВыключении() {
         contextRunner
-                .withPropertyValues("platform.tracing.enabled=false")
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
-                    assertThat(context).doesNotHaveBean(TraceOperations.class);
+                    assertThat(context).hasSingleBean(TraceOperations.class);
+                    assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context).doesNotHaveBean(TracedAspect.class);
                 });
     }
 
     @Test
     void декорируетPlatformTracingMetricsПриНаличииMeterRegistry() {
-        contextRunner
-                .withUserConfiguration(MeterRegistryConfiguration.class, OpenTelemetryConfiguration.class)
+        controlledAgentRunner
+                .withUserConfiguration(MeterRegistryConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasSingleBean(PlatformTracingMetrics.class);
                     assertThat(context).doesNotHaveBean("meteredTraceOperations");
@@ -81,14 +83,14 @@ class TracingAutoConfigurationTest {
 
     @Test
     void регистрируетAspectДляAnnotation() {
-        contextRunner.run(context -> {
+        controlledAgentRunner.run(context -> {
             assertThat(context).hasSingleBean(TracedAspect.class);
         });
     }
 
     @Test
     void регистрируетHealthIndicatorИEndpoint() {
-        contextRunner
+        controlledAgentRunner
                 .withConfiguration(AutoConfigurations.of(
                         EndpointAutoConfiguration.class,
                         HealthEndpointAutoConfiguration.class
@@ -105,15 +107,6 @@ class TracingAutoConfigurationTest {
 
     // Тест регистрации Servlet WebFilter'ов вынесен в модуль platform-tracing-autoconfigure-webmvc,
     // вместе с самим ServletTracingAutoConfiguration. Аналогично — для WebFlux-аналога.
-
-    @Configuration
-    static class OpenTelemetryConfiguration {
-        @Bean
-        public OpenTelemetry openTelemetry() {
-            // Тестовый SDK без экспортёров — span'ы создаются, но не уходят за пределы JVM.
-            return OpenTelemetrySdk.builder().build();
-        }
-    }
 
     @Configuration
     static class MeterRegistryConfiguration {

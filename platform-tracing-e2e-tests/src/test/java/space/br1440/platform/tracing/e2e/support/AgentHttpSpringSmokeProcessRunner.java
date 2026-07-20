@@ -106,7 +106,7 @@ public final class AgentHttpSpringSmokeProcessRunner {
             long flushDelayMs) throws Exception {
         return runMeasured(mainClassName, otelAgentJar, testRuntimeClasspath, otlpEndpoint,
                 serviceName, httpPort, extensionLocation, requestRoute, requestHeaders,
-                extraEnv, extraJvmSystemProperties, processTimeout, flushDelayMs, true);
+                extraEnv, extraJvmSystemProperties, processTimeout, flushDelayMs, true, true);
     }
 
     public static RunResult runMeasured(
@@ -124,6 +124,28 @@ public final class AgentHttpSpringSmokeProcessRunner {
             Duration processTimeout,
             long flushDelayMs,
             boolean requireAgentStartup) throws Exception {
+        return runMeasured(mainClassName, otelAgentJar, testRuntimeClasspath, otlpEndpoint,
+                serviceName, httpPort, extensionLocation, requestRoute, requestHeaders,
+                extraEnv, extraJvmSystemProperties, processTimeout, flushDelayMs,
+                requireAgentStartup, true);
+    }
+
+    public static RunResult runMeasured(
+            String mainClassName,
+            String otelAgentJar,
+            String testRuntimeClasspath,
+            String otlpEndpoint,
+            String serviceName,
+            int httpPort,
+            String extensionLocation,
+            String requestRoute,
+            Map<String, String> requestHeaders,
+            Map<String, String> extraEnv,
+            List<String> extraJvmSystemProperties,
+            Duration processTimeout,
+            long flushDelayMs,
+            boolean requireAgentStartup,
+            boolean requireApplicationReady) throws Exception {
         Path javaBin = Path.of(System.getProperty("java.home"), "bin", "java");
 
         List<String> jvmProperties = buildJvmProperties(
@@ -169,6 +191,18 @@ public final class AgentHttpSpringSmokeProcessRunner {
         reader.start();
 
         boolean ready = waitForReady(process, output, processTimeout);
+        if (!ready && !requireApplicationReady) {
+            boolean finished = process.waitFor(processTimeout.toSeconds(), TimeUnit.SECONDS);
+            reader.join(5_000L);
+            String fullOutput = output.toString();
+            assertThat(finished)
+                    .as("Fail-closed JVM должна завершиться за %s. Output:\n%s", processTimeout, fullOutput)
+                    .isTrue();
+            assertThat(process.exitValue())
+                    .as("Fail-closed startup обязан завершиться non-zero. Output:\n%s", fullOutput)
+                    .isNotZero();
+            return new RunResult(fullOutput, Duration.ZERO);
+        }
         assertThat(ready)
                 .as("Smoke JVM должна вывести %s за %s. Output:\n%s", READY_MARKER, processTimeout, output)
                 .isTrue();

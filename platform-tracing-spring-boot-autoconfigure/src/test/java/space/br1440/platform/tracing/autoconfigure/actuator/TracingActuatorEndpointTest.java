@@ -102,11 +102,13 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_enabled_меняет_свойство() {
-        Map<String, Object> result = endpoint.updateTracing("enabled", "false");
-        assertThat(result.get("appliedValue")).isEqualTo(false);
-        assertThat(result.get("previousValue")).isEqualTo(true);
-        assertThat(properties.isEnabled()).isFalse();
+    void writeOperation_enabled_не_изменяет_startup_ownership() {
+        assertThatThrownBy(() -> endpoint.updateTracing("enabled", "false"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .hasMessageContaining("Unsupported tracing property: enabled");
+        assertThat(properties.isEnabled()).isTrue();
         verify(jmxClient, never()).setRatio(anyDouble());
     }
 

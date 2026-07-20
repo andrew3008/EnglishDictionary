@@ -2,8 +2,6 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -16,6 +14,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
+import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
@@ -36,10 +35,12 @@ class SpringBootContextMatrixTest {
                     TracingCoreAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class));
 
+    private final ApplicationContextRunner controlledAgentRunner = baseRunner
+            .withInitializer(ControlledAgentTestRuntime::initialize);
+
     @Test
     void enabledWithOpenTelemetry_exposesEnabledSpanFactoryDiagnostics() {
-        baseRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class)
+        controlledAgentRunner
                 .run(context -> {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class))
@@ -51,7 +52,9 @@ class SpringBootContextMatrixTest {
     @Test
     void disabledSdkMode_exposesDisabledDiagnosticsAndNoOpFacade() {
         baseRunner
-                .withPropertyValues("platform.tracing.sdk.mode=DISABLED")
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.sdk.mode=DISABLED")
                 .run(context -> {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class).state().mode())
@@ -64,16 +67,15 @@ class SpringBootContextMatrixTest {
     @Test
     void unavailableOpenTelemetry_exposesUnavailableOrNoopDiagnostics() {
         baseRunner.run(context -> {
-            assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
-            assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode())
-                    .isIn("UNAVAILABLE", "NOOP");
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure()).hasMessageContaining("CONTROLLED_AGENT_MISSING");
         });
     }
 
     @Test
     void micrometerPresent_wrapsTracingRuntimeWithMeteredDecorator() {
-        baseRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class, MeterRegistryConfiguration.class)
+        controlledAgentRunner
+                .withUserConfiguration(MeterRegistryConfiguration.class)
                 .run(context -> {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(MeteredTracingRuntime.class);
@@ -84,8 +86,7 @@ class SpringBootContextMatrixTest {
 
     @Test
     void micrometerAbsent_keepsOtelTracingRuntimeWithoutMeteredWrap() {
-        baseRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class)
+        controlledAgentRunner
                 .run(context -> {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
@@ -95,8 +96,7 @@ class SpringBootContextMatrixTest {
 
     @Test
     void actuatorEndpoint_includesspanFactorySectionInAllMatrixPaths() {
-        baseRunner
-                .withUserConfiguration(OpenTelemetryConfiguration.class)
+        controlledAgentRunner
                 .run(context -> {
                     TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
                             context.getBean(TraceOperations.class),
@@ -108,14 +108,6 @@ class SpringBootContextMatrixTest {
                             .get("spanFactory");
                     assertThat(spanFactory).containsKeys("mode", "details");
                 });
-    }
-
-    @Configuration
-    static class OpenTelemetryConfiguration {
-        @Bean
-        OpenTelemetry openTelemetry() {
-            return OpenTelemetrySdk.builder().build();
-        }
     }
 
     @Configuration

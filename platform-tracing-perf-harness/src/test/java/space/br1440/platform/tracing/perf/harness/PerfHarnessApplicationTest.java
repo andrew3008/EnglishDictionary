@@ -10,7 +10,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "platform.tracing.enabled=false",
+        "platform.tracing.sdk.mode=DISABLED"
+})
 @AutoConfigureMockMvc
 class PerfHarnessApplicationTest {
 

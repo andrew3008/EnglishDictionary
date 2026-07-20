@@ -26,7 +26,10 @@ import static org.assertj.core.api.Assertions.assertThat;
         classes = BridgeOtelReactorContextPropagationIntegrationTest.TestApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-                "platform.tracing.enabled=true",
+                "platform.tracing.enabled=false",
+                "platform.tracing.sdk.mode=DISABLED",
+                "spring.autoconfigure.exclude="
+                        + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
                 "platform.tracing.suppression.suppress-micrometer-tracing=false",
                 "spring.reactor.context-propagation=AUTO"
         })

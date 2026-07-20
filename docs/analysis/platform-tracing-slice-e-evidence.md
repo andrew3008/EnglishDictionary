@@ -1,86 +1,103 @@
 # Platform Tracing Slice E Evidence
 
-> Дата: 2026-07-19  
+> Дата: 2026-07-20
 > Ветка: `feature/runtime-control-hardening`  
-> Статус: `IN_PROGRESS / CLARIFICATION REQUIRED`
+> Статус: `CP-E PASS`; `RG-CONTROLLED-AGENT OPEN`
 
-## 1. Подтверждённый residual defect
+## 1. Implemented architecture
 
-Production `SdkModeResolver` не реализовывал утверждённую в Spike A mismatch-матрицу:
+Принято решение B1-C: Controlled Agent-first, fail-closed. Production `SdkMode` содержит ровно
+`AGENT` и `DISABLED`, default `AGENT`. `AUTO`, `STARTER`, `EXTERNAL` удалены без aliases.
+Application `OpenTelemetry`, `TracingRuntime` и `TraceOperations` beans отклоняются как второй
+runtime. Starter не создаёт SDK и после `READY` использует agent-owned global.
 
-- functional `GlobalOpenTelemetry` без agent marker ошибочно классифицировался как `AGENT`;
-- agent marker вместе с пользовательским `OpenTelemetry` bean не отклонялся;
-- explicit `AGENT`, `STARTER` и `EXTERNAL` не проверялись на совместимость со средой.
+`AGENT` успешен только при compatible readiness protocol, lifecycle `READY`, пустом failure code,
+полном capability set и согласованных component flags. `INITIALIZING` ожидается только до bounded
+monotonic deadline. Missing/incompatible/failed/capability-missing/dual-SDK не дают NoOp.
 
-Дефект исправлен без изменения `TracingRuntime`, control protocol или composition planes.
-Agent mode теперь определяется только доказанным runtime marker. Неоднозначные и
-несовместимые конфигурации завершают Spring startup диагностируемой ошибкой.
+`DISABLED` является единственным успешным NoOp и требует `enabled=false` плюс отсутствие Agent,
+extension, global и application SDK. Живой Agent при `DISABLED` отклоняется.
 
-## 2. Verification Gates
+## 2. Spring and architecture evidence
 
 | Gate | Результат |
 |---|---|
-| Spike A resolver matrix | PASS |
-| Spring fail-fast: `AGENT` без marker | PASS |
-| Spring fail-fast: `EXTERNAL` без runtime | PASS |
-| Spring fail-fast: `STARTER` + external bean | PASS |
-| Spring context matrix: external/disabled/custom/metered | PASS |
-| `TracingImplementationArchTest` | PASS |
-| Control `GoldenWireContractTest` | PASS |
-| Runtime policy control fail-closed tests | PASS |
-| `pr4ArchitectureFitnessVerify` | PASS |
-| `pr1ModuleTaxonomyVerify` | PASS |
-| Real-agent `ClassLoaderVisibilityE2ETest` | PASS, `tests=1`, `skipped=0`, `failures=0`, `errors=0` |
-| Spring+Agent / Disabled+Agent `SpringAgentCompositionE2ETest` | PASS, `tests=1`, `skipped=0`, `failures=0`, `errors=0` |
+| Strict resolver and property matrix | PASS |
+| Default/explicit AGENT with READY test contract | PASS |
+| Missing/marker-only/extension missing/INITIALIZING/incompatible/FAILED/capability missing | PASS, fail-closed |
+| Application SDK/custom runtime | PASS, startup rejected |
+| DISABLED absence/live Agent/application SDK and contradictory properties | PASS |
+| Removed property values | PASS, binding failure |
+| Full autoconfigure module | PASS, 291 tests before final broad build |
+| Architecture rule: exact mode surface/default/no SDK parameter/no Agent message leak | PASS |
 
-Real-agent команда:
+Test SDK используется только в `src/test` harness или изолированном behavior fixture. Он не
+публикуется как production bean/property/metadata.
 
-```powershell
-$env:DOCKER_HOST = "tcp://192.168.100.70:2375"
-.\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e `
-  --tests "*ClassLoaderVisibilityE2ETest" --rerun-tasks --no-daemon
+## 3. Packaged Agent evidence
 
-.\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e `
-  --tests "*SpringAgentCompositionE2ETest" --rerun-tasks --no-daemon
-```
+Fresh child-JVM attestation и composition:
 
-`SpringAgentCompositionE2ETest` запускает Spring application plane в дочерней JVM с
-реальным `-javaagent` и последовательно проверяет `AUTO -> AGENT` и явный `DISABLED`.
-Общий classpath E2E-модуля содержит OTel SDK и actuator только для других тестов, поэтому
-probe исключает Boot-owned OTel SDK/export auto-configuration. Это не маскирует product
-dependency: опубликованный servlet starter runtime graph содержит `opentelemetry-api`, но
-не содержит `opentelemetry-sdk`, actuator auto-configuration или platform OTel implementation.
-В обоих контекстах дополнительно проверяется отсутствие Spring `OpenTelemetry` bean.
+- stock Agent без platform extension завершается fail-closed;
+- incomplete, timed-out, failed, incompatible и capability-missing extension отклоняются;
+- dual application SDK отклоняется до runtime wiring;
+- final Controlled Agent distribution достигает `AGENT_READY`;
+- Spring создаёт ноль `OpenTelemetry` beans;
+- application facade видит agent-owned current OTel context через поддерживаемый OTel Context;
+- разные app/Agent class identities не пересекаются объектами;
+- `DISABLED` с живым Controlled Agent отклоняется.
 
-## 3. Deployment Matrix Status
+Security differential использует stock Agent только как изолированный контроль без platform
+autoconfiguration: stock export содержит Authorization, final Controlled Agent удаляет sensitive
+value до Collector. Это не объявляет stock Agent поддерживаемым runtime.
 
-| Режим | Evidence | Статус |
+Fresh closing suite через IP-based remote Docker выполнил 16 тестов: failures `0`, errors `0`,
+skipped `0`. Protected WebMVC экспортировал ровно один SERVER span на запрос и подтвердил ноль
+Spring `OpenTelemetry` beans; fixture не создаёт HTTP client/manual spans. WebFlux обслужил четыре
+конкурентных запроса: ровно четыре различных traceId, `caller == worker` после `publishOn`, ровно
+четыре SERVER span без duplicate и ноль Spring SDK beans.
+
+Kafka final distribution подтвердила producer `publish`, delivery, intentional retry/redelivery,
+single/batch consumer, manual batch links и отсутствие Spring SDK bean. Экспортировано ровно семь
+messaging spans: 3 producer, 2 single-process attempts и 2 batch-process spans (Agent delivery +
+platform manual linked span); linked span содержит минимум два различных upstream traceId.
+Invalid/missing traceparent и выбор только валидных различных W3C contexts закреплены
+детерминированным `KafkaBatchAspectMigrationTest`. Arbitrary Kafka sensitive-header assertion остаётся
+`NOT_APPLICABLE_TO_CURRENT_INSTRUMENTATION`: upstream instrumentation не экспортирует проверяемый
+header; security proof выполняется на реально экспортирующей HTTP boundary.
+
+## 4. Configuration cache
+
+| Область | Provenance | Статус |
 |---|---|---|
-| Spring без Agent | external SDK bean и mode ownership проверены; starter-owned SDK bootstrap отсутствует | PARTIAL |
-| Spring + Agent | real marker, разные class identities, isolation, отсутствие второго SDK bean и current OTel context проверены packaged E2E | PASS |
-| Direct SDK | `OtelTracingRuntimeFactory` и direct facade integration tests | PASS |
-| Agent-only | packaged Agent/extension запускается без app-side facade/reader injection | PASS |
-| Disabled без Agent | Spring context возвращает no-op facade | PASS |
-| Disabled facade + Agent | no-op facade, отсутствие Spring SDK bean и живой agent span проверены packaged E2E | PASS |
+| Production Controlled Agent distribution: `platformExtendedAgentJar`, `preparePlatformAgentDistribution`, verifier | Slice E; execution-time Gradle object capture исправлен | **GREEN**: cache entry stored и повторно использован |
+| Existing production `agentExtensionJar` (`platform-tracing-otel-extension/build.gradle:103-104`) | Pre-existing с исходного commit | **P2 existing production build debt** |
+| Existing opt-in E2 fixtures (`testClassLoaderProbeJar`, `testJmxWireExtensionJar`, `test.onlyIf`) | Pre-existing test infrastructure | **P2 existing test-infrastructure debt** |
+| `testE2FailureAgentJar` и его opt-in E2 wiring (`platform-tracing-e2e-tests/build.gradle:259` и связанные строки) | Добавлено в Slice E | **P2 new test-infrastructure limitation** |
 
-## 4. Blocking Clarification
+Основной build без configuration cache GREEN. Ограничения E2 находятся в opt-in test source/task
+plane, не входят в published production distribution и не блокируют Slice F. Полная repository-wide
+configuration-cache совместимость не заявляется. Техническая задача с владельцем и exit criteria:
+`TD-SLICE-E-CC-01` в `platform-tracing-slice-e-configuration-cache-debt.md`.
 
-Authoritative plan §7.1 требует для `Spring без Agent` SDK bootstrap в autoconfigure.
-Действующий `ADR-sdk-mode-detection.md` и production dependency model требуют обратное:
-starter является agent-first consumer и никогда не создаёт `SdkTracerProvider`.
+## 5. Gate separation
 
-До решения нельзя безопасно добавить «минимальный SDK»: необходимо определить ownership
-экспортера, resource/propagator/processor composition, shutdown lifecycle, global registration
-и конфигурационный source of truth. Создание SDK без exporter формально дало бы valid spans,
-но молча теряло бы telemetry и потому неприемлемо для production.
+`CP-E` закрыт: финальный build, architecture gates, packaged E2E и post-fix audit прошли.
+Внутренняя разработка может перейти к Slice F.
 
-Slice E остаётся `IN_PROGRESS`. Допустимые решения:
+`RG-CONTROLLED-AGENT` остаётся **OPEN** и блокирует pilot/production, но не Slice F после `CP-E`.
+Не выполнены repository-independent signing, SBOM/provenance, immutable registry, mandatory pre-JVM
+verifier wiring, Helm/init-container integration, admission policy, stock Agent/external extension
+override prohibition и fleet rollout/rollback proof.
 
-1. утвердить starter-owned SDK bootstrap и exact lifecycle/configuration contract, supersede ADR;
-2. сохранить agent-first ADR и скорректировать §7.1: Spring без Agent требует external
-   `OpenTelemetry` runtime, а отсутствие runtime является fail-fast либо явно degraded mode.
+**Production rollout запрещён, пока `RG-CONTROLLED-AGENT` открыт.**
 
-Точный decision packet с evidence, сравнением вариантов и рекомендуемой fail-fast семантикой:
-[`platform-tracing-slice-e-spring-sdk-decision-packet.md`](platform-tracing-slice-e-spring-sdk-decision-packet.md).
+## 6. Closing verification
 
-Slice G по-прежнему отдельно заблокирован: `CP-2 = CLARIFICATION REQUIRED`.
+- `pr4ArchitectureFitnessVerify pr1ModuleTaxonomyVerify pr0StarterDependencySmoke build` — PASS,
+  129 tasks, `BUILD SUCCESSFUL`;
+- packaged closing suite — PASS, 16 tests, failures/errors/skipped = `0/0/0`;
+- strict Spring mode/configuration suite и полный autoconfigure test — PASS;
+- Controlled Agent distribution verifier — PASS, cache entry stored and reused;
+- `git diff --check`, production-mode scan, metadata inspection и Java BOM scan — обязательная
+  часть финального post-fix audit.
