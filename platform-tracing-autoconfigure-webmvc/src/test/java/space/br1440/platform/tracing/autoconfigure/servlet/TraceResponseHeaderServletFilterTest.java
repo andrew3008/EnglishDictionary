@@ -14,7 +14,10 @@ import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
+import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,6 +35,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TraceResponseHeaderServletFilterTest {
+
+    private static final String TRACE_ID = "0af7651916cd43dd8448eb211c80319c";
 
     private TraceOperations traceOperations;
     private ActiveTraceContextView traceContextView;
@@ -116,6 +121,21 @@ class TraceResponseHeaderServletFilterTest {
                 .isInstanceOf(ServletException.class);
 
         verify(response).setHeader(PlatformHeaders.X_TRACE_ID, "trace-during-error");
+    }
+
+    @Test
+    void exceptionBoundaryClearsRemoteServiceMirror() throws ServletException, java.io.IOException {
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-error");
+        when(traceContextView.traceId()).thenReturn(Optional.of(TRACE_ID));
+        when(response.isCommitted()).thenReturn(true);
+        doThrow(new ServletException("boom")).when(chain).doFilter(request, response);
+        RemoteServiceMdc.putIfPresent("billing", TRACE_ID);
+
+        assertThatThrownBy(() -> filter.doFilter(request, response, chain))
+                .isInstanceOf(ServletException.class);
+
+        assertThat(new RemoteServiceNameResolver(List.of()).resolve(TRACE_ID)).isEmpty();
+        assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isNull();
     }
 
     @Test

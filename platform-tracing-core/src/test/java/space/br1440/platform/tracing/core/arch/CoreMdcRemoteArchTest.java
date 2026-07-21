@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.core.arch;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -46,4 +48,12 @@ class CoreMdcRemoteArchTest {
     @ArchTest
     static final ArchRule noRemoteServiceContextReaders =
             ModuleTaxonomyArchRules.NO_REMOTE_SERVICE_CONTEXT_READERS;
+
+    /**
+     * Все операции с bounded mirror проходят через единый lifecycle-owner {@code RemoteServiceMdc}.
+     */
+    @ArchTest
+    static final ArchRule traceMirrorHasSingleOwner = noClasses()
+            .that().doNotHaveSimpleName("RemoteServiceMdc")
+            .should().dependOnClassesThat().haveSimpleName("RemoteServiceTraceMirror");
 }
