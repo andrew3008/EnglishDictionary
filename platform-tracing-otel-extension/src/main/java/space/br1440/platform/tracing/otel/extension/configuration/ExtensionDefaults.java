@@ -48,8 +48,9 @@ public final class ExtensionDefaults {
     public static final String DEFAULT_QUEUE_OVERFLOW_POLICY = "DROP_OLDEST";
     public static final Duration DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT = Duration.ofSeconds(10);
 
-    public static final boolean DEFAULT_BAGGAGE_ENABLED = false;
-    public static final List<String> DEFAULT_BAGGAGE_ALLOWLIST = List.of();
+    public static final boolean DEFAULT_BAGGAGE_ENABLED = true;
+    public static final List<String> DEFAULT_BAGGAGE_ALLOWLIST =
+            List.of("traffic_source", "tenant_class", "platform.correlation.id");
     public static final List<String> DEFAULT_BAGGAGE_DENY_PATTERNS = List.of("password", "secret", "token");
 
     public static final boolean DEFAULT_ENABLED = true;
