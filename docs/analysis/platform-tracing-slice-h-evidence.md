@@ -4,7 +4,7 @@
 > Base: `master` at `a8e10cf46588b45e536ad601467a85fc69eeda70`
 > Date: 2026-07-21
 > Status: `SLICE H IMPLEMENTATION COMPLETE`; `SLICE H VERIFICATION GREEN`;
-> `SLICE H COMMITTED`; `SLICE H PUSH/PR PENDING`; `SLICE H NOT YET MERGED`
+> `SLICE H COMMITTED/PUSHED`; `SLICE H PR PENDING`; `SLICE H NOT YET MERGED`
 > `CP-1 REQUIRED`; `SLICE M BLOCKED`; `RG-CONTROLLED-AGENT OPEN`;
 > `PRODUCTION ROLLOUT FORBIDDEN`
 
@@ -80,7 +80,7 @@ and are not hidden by this evidence.
 ## Gate result
 
 `SLICE H IMPLEMENTATION COMPLETE`; `SLICE H VERIFICATION GREEN`;
-`SLICE H COMMITTED`; `SLICE H PUSH/PR PENDING`; `SLICE H NOT YET MERGED`.
+`SLICE H COMMITTED/PUSHED`; `SLICE H PR PENDING`; `SLICE H NOT YET MERGED`.
 
 Slice H does not approve any identity decision. `CP-1(a-d,f)` remains mandatory and Slice M remains
 NO-GO until Slice H is merged and CP-1 is explicitly approved. Slice G remains independently blocked
