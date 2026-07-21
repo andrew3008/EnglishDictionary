@@ -213,8 +213,9 @@ class ExtensionConfigTest {
     void baggage_returns_defaults_when_config_is_empty() {
         ExtensionConfig config = new ExtensionConfig(emptyConfig());
 
-        assertThat(config.baggage().enabled()).isFalse();
-        assertThat(config.baggage().allowlistKeys()).isEmpty();
+        assertThat(config.baggage().enabled()).isTrue();
+        assertThat(config.baggage().allowlistKeys())
+                .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
         assertThat(config.baggage().denyPatterns()).containsExactly("password", "secret", "token");
     }
 
