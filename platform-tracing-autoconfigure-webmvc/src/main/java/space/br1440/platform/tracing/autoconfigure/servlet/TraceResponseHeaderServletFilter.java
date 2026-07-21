@@ -8,23 +8,24 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.slf4j.MDC;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import io.opentelemetry.api.trace.Span;
 
+import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.support.RemoteServiceMdcBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.support.RequestIdBoundarySupport;
 
 /**
- * Сервлет-фильтр, добавляющий correlation/trace заголовки в HTTP-ответ.
+ * Сервлет-фильтр, добавляющий request/trace заголовки в HTTP-ответ.
  * <p>
  * {@code X-Request-Id} (имя — {@code platform.tracing.response.header-name}) — это
- * <b>edge-stable correlation id</b> (НЕ trace-id, см. ADR-request-id-correlation-id): входящий
+ * <b>edge-stable requestId</b> (НЕ traceId и НЕ business correlationId): входящий
  * валидируется и переиспользуется, при отсутствии генерируется UUIDv4. Авторитетный trace-id
  * возвращается отдельно в {@link PlatformHeaders#X_TRACE_ID} (только для валидного span context).
  * Инвариант: {@code request_id != trace_id}.
@@ -55,10 +56,14 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
 
     private final TraceOperations traceOperations;
     private final TracingProperties properties;
+    private final RequestIdentityBoundarySupport identityBoundary;
 
-    public TraceResponseHeaderServletFilter(TraceOperations traceOperations, TracingProperties properties) {
+    public TraceResponseHeaderServletFilter(TraceOperations traceOperations,
+                                            TracingProperties properties,
+                                            RequestIdentityBoundarySupport identityBoundary) {
         this.traceOperations = traceOperations;
         this.properties = properties;
+        this.identityBoundary = identityBoundary;
     }
 
     @Override
@@ -66,45 +71,39 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         final Optional<String> capturedTraceId = safeCurrentTraceId();
 
-        // X-Request-Id = edge-stable correlation id (НЕ trace-id): входящий валидируется и
+        // X-Request-Id = edge-stable request id (НЕ trace-id): входящий валидируется и
         // переиспользуется (forward unchanged), при отсутствии/невалидности — генерируется UUIDv4.
-        final TracingProperties.Propagation.Mdc mdcConfig = properties.getPropagation().getMdc();
         final String incomingRequestId = request.getHeader(
                 properties.getPropagation().getPlatformHeaders().getRequestIdHeader());
-        final String correlationId = RequestIdBoundarySupport.resolve(incomingRequestId);
+        final String requestId = RequestIdBoundarySupport.resolve(incomingRequestId);
 
-        if (mdcConfig.isPutRequestId()) {
-            MDC.put(mdcConfig.getRequestIdKey(), correlationId);
-        }
-        try {
+        try (CorrelationScope ignored = identityBoundary.openRequestScope(requestId)) {
             // platform.request_id в текущий span (только при валидном контексте).
-            Span span = Span.current();
-            if (span.getSpanContext().isValid()) {
-                span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, correlationId);
-            }
-        } catch (RuntimeException ignored) {
-            // Ошибки трассировки не влияют на обработку запроса.
-        }
-
-        try {
-            filterChain.doFilter(request, response);
-        } finally {
-            RemoteServiceMdcBoundarySupport.clear(capturedTraceId.orElse(null));
-
-            if (mdcConfig.isPutRequestId()) {
-                MDC.remove(mdcConfig.getRequestIdKey());
+            try {
+                Span span = Span.current();
+                if (span.getSpanContext().isValid()) {
+                    span.setAttribute(PlatformAttributes.PLATFORM_REQUEST_ID, requestId);
+                }
+            } catch (RuntimeException ignoredFailure) {
+                // Ошибки трассировки не влияют на обработку запроса.
             }
 
-            if (!response.isCommitted()) {
-                try {
-                    // X-Request-Id = correlation id (всегда присутствует — сгенерирован при отсутствии входящего).
-                    if (properties.getResponse().isExposeRequestIdHeader()) {
-                        response.setHeader(properties.getResponse().getHeaderName(), correlationId);
+            try {
+                filterChain.doFilter(request, response);
+            } finally {
+                RemoteServiceMdcBoundarySupport.clear(capturedTraceId.orElse(null));
+
+                if (!response.isCommitted()) {
+                    try {
+                        // X-Request-Id всегда присутствует: при отсутствии входящего он сгенерирован.
+                        if (properties.getResponse().isExposeRequestIdHeader()) {
+                            response.setHeader(properties.getResponse().getHeaderName(), requestId);
+                        }
+                        capturedTraceId.ifPresent(traceId ->
+                                response.setHeader(PlatformHeaders.X_TRACE_ID, traceId));
+                    } catch (RuntimeException ignoredFailure) {
+                        // Любые ошибки трассировки не должны влиять на обработку запроса.
                     }
-                    // X-Trace-Id = trace-id, только для валидного span context (не all-zeros).
-                    capturedTraceId.ifPresent(traceId -> response.setHeader(PlatformHeaders.X_TRACE_ID, traceId));
-                } catch (RuntimeException ignored) {
-                    // Любые ошибки трассировки не должны влиять на обработку запроса.
                 }
             }
         }

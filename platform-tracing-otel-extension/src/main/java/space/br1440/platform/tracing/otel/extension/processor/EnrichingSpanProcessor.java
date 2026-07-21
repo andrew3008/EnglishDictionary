@@ -27,7 +27,6 @@ public final class EnrichingSpanProcessor implements ExtendedSpanProcessor {
     private static final AttributeKey<String> PLATFORM_TYPE_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE);
     private static final AttributeKey<String> PLATFORM_RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
     private static final AttributeKey<String> PLATFORM_REMOTE_SERVICE_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REMOTE_SERVICE);
-    private static final AttributeKey<String> PLATFORM_REQUEST_ID_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID);
     private static final AttributeKey<String> PLATFORM_POLICY_VERSION_KEY = AttributeKey.stringKey("platform.policy.version");
 
     /**
@@ -78,11 +77,6 @@ public final class EnrichingSpanProcessor implements ExtendedSpanProcessor {
         }
 
         Baggage baggage = Baggage.fromContext(parentContext);
-        String reqId = baggage.getEntryValue(PlatformAttributes.PLATFORM_REQUEST_ID);
-        if (reqId != null && !reqId.isEmpty()) {
-            span.setAttribute(PLATFORM_REQUEST_ID_KEY, reqId);
-        }
-
         String policyVer = baggage.getEntryValue("platform.policy.version");
         if (policyVer != null && !policyVer.isEmpty()) {
             span.setAttribute(PLATFORM_POLICY_VERSION_KEY, policyVer);

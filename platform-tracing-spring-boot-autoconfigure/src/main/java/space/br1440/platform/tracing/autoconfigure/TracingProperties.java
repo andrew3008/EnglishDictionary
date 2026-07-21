@@ -658,7 +658,7 @@ public class TracingProperties {
             private boolean propagateForceTrace = false;
             /** Пробрасывать ли {@code X-QA-Trace} наружу (по умолчанию {@code false}). */
             private boolean propagateQaTrace = false;
-            /** Пробрасывать ли {@code X-Request-Id} (correlation id) наружу (по умолчанию {@code true}). */
+            /** Пробрасывать ли технический {@code X-Request-Id} наружу (по умолчанию {@code true}). */
             private boolean propagateRequestId = true;
         }
 
@@ -668,7 +668,7 @@ public class TracingProperties {
         public static class Mdc {
             /** Сохранять ли входящий X-Request-Id в MDC (logs). */
             private boolean putRequestId = true;
-            private String requestIdKey = "correlation_id";
+            private String requestIdKey = "requestId";
         }
 
         /**
@@ -680,7 +680,8 @@ public class TracingProperties {
         @Accessors(chain = true)
         public static class Baggage {
             private boolean enabled = true;
-            private List<String> allowedKeys = new ArrayList<>(List.of("traffic_source", "tenant_class", "correlation-id"));
+            private List<String> allowedKeys =
+                    new ArrayList<>(List.of("traffic_source", "tenant_class", "platform.correlation.id"));
             private List<String> denyPatterns = new ArrayList<>(List.of("password", "secret", "token"));
         }
     }

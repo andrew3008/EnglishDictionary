@@ -31,7 +31,8 @@ public final class PropagationDefaults {
     public static final boolean DEFAULT_OUTBOUND_PROPAGATE_REQUEST_ID = true;
 
     public static final boolean DEFAULT_BAGGAGE_ENABLED = true;
-    public static final List<String> DEFAULT_BAGGAGE_ALLOWED_KEYS = List.of("traffic_source", "tenant_class", "correlation-id");
+    public static final List<String> DEFAULT_BAGGAGE_ALLOWED_KEYS =
+            List.of("traffic_source", "tenant_class", "platform.correlation.id");
     public static final List<String> DEFAULT_BAGGAGE_DENY_PATTERNS = List.of("password", "secret", "token");
 
     public static final String DEFAULT_FORCE_HEADER = "X-Trace-On";

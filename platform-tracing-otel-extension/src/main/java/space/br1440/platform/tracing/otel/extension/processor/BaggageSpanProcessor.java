@@ -11,6 +11,7 @@ import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.extension.utils.Strings;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public final class BaggageSpanProcessor implements SpanProcessor {
 
     private static final String ATTRIBUTE_PREFIX = "baggage.";
+    private static final String CORRELATION_BAGGAGE_KEY = "platform.correlation.id";
 
     private final Set<String> allowlist;
     private final List<Pattern> denyPatterns;
@@ -67,7 +69,32 @@ public final class BaggageSpanProcessor implements SpanProcessor {
             return;
         }
 
+        if (CORRELATION_BAGGAGE_KEY.equals(normalizedKey)) {
+            if (isCanonicalCorrelationId(value)) {
+                attributes.put(AttributeKey.stringKey(PlatformAttributes.PLATFORM_CORRELATION_ID), value);
+            }
+            return;
+        }
+
         attributes.put(AttributeKey.stringKey(ATTRIBUTE_PREFIX + key), value);
+    }
+
+    private static boolean isCanonicalCorrelationId(String value) {
+        if (value.length() > 128) {
+            return false;
+        }
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            boolean canonical = character >= 'A' && character <= 'Z'
+                    || character >= 'a' && character <= 'z'
+                    || character >= '0' && character <= '9'
+                    || character == '_'
+                    || character == '-';
+            if (!canonical) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean matchesDeny(String key) {

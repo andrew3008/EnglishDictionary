@@ -14,8 +14,11 @@ import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
 import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
+import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +48,7 @@ class TraceResponseHeaderServletFilterTest {
     private HttpServletResponse response;
     private FilterChain chain;
     private TraceResponseHeaderServletFilter filter;
+    private TracingRuntime runtime;
 
     @BeforeEach
     void setUp() {
@@ -56,7 +60,12 @@ class TraceResponseHeaderServletFilterTest {
         request = mock(HttpServletRequest.class);
         response = mock(HttpServletResponse.class);
         chain = mock(FilterChain.class);
-        filter = new TraceResponseHeaderServletFilter(traceOperations, properties);
+        runtime = NoOpTracingRuntime.noop();
+        filter = new TraceResponseHeaderServletFilter(
+                traceOperations,
+                properties,
+                new RequestIdentityBoundarySupport(runtime)
+        );
     }
 
     @AfterEach
@@ -97,6 +106,24 @@ class TraceResponseHeaderServletFilterTest {
 
         verify(response, never()).setHeader(eq(PlatformHeaders.X_TRACE_ID), anyString());
         verify(response, times(1)).setHeader(eq(properties.getResponse().getHeaderName()), eq("req-2"));
+    }
+
+    @Test
+    void bindsRequestIdOnlyForListenerExecution() throws ServletException, java.io.IOException {
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("request-42");
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(true);
+        doAnswer(invocation -> {
+            assertThat(runtime.currentRequestId()).contains("request-42");
+            assertThat(MDC.get(TracingMdcKeys.REQUEST_ID)).isEqualTo("request-42");
+            assertThat(runtime.currentCorrelationId()).isEmpty();
+            return null;
+        }).when(chain).doFilter(request, response);
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(runtime.currentRequestId()).isEmpty();
+        assertThat(MDC.get(TracingMdcKeys.REQUEST_ID)).isNull();
     }
 
     @Test

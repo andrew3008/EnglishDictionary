@@ -19,6 +19,7 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 
 /**
  * Авто-конфигурация Servlet-уровня платформенного модуля трассировки.
@@ -57,8 +58,11 @@ public class ServletTracingAutoConfiguration {
     @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".response", name = "expose-request-id-header",
             havingValue = "true", matchIfMissing = true)
     public FilterRegistrationBean<TraceResponseHeaderServletFilter> platformTraceResponseHeaderServletFilterRegistration(
-            TraceOperations traceOperations, TracingProperties properties) {
-        TraceResponseHeaderServletFilter filter = new TraceResponseHeaderServletFilter(traceOperations, properties);
+            TraceOperations traceOperations,
+            TracingProperties properties,
+            RequestIdentityBoundarySupport identityBoundary) {
+        TraceResponseHeaderServletFilter filter =
+                new TraceResponseHeaderServletFilter(traceOperations, properties, identityBoundary);
         FilterRegistrationBean<TraceResponseHeaderServletFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setName("platformTraceResponseHeaderServletFilter");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 50);
