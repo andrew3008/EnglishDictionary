@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.core.propagation.control;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
@@ -54,9 +55,14 @@ public final class DefaultTraceControlHeaderInjector
 
         OutboundPropagationDecision decision = context.get(PlatformTraceContextKeys.PROPAGATION_DECISION);
         OutboundPropagationHeaders headers = resolve(context, decision);
-        headers.forceTrace().ifPresent(header -> setter.set(carrier, header.name(), header.value()));
-        headers.qaTrace().ifPresent(header -> setter.set(carrier, header.name(), header.value()));
-        headers.requestId().ifPresent(header -> setter.set(carrier, header.name(), header.value()));
+        headers.forceTrace().ifPresent(header -> injectHeader(setter, carrier, header));
+        headers.qaTrace().ifPresent(header -> injectHeader(setter, carrier, header));
+        headers.requestId().ifPresent(header -> injectHeader(setter, carrier, header));
+    }
+
+    private static <C> void injectHeader(TextMapSetter<C> setter, C carrier, OutboundPropagationHeaders.Header header) {
+        Objects.requireNonNull(header.value(), "value");
+        setter.set(carrier, header.name(), header.value());
     }
 
     private OutboundPropagationHeaders resolve(Context context, OutboundPropagationDecision decision) {

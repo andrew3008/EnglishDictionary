@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import java.util.Objects;
+
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -55,8 +57,13 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
     }
 
     private static void apply(ClientRequest.Builder builder, OutboundPropagationHeaders headers) {
-        headers.forceTrace().ifPresent(header -> builder.header(header.name(), header.value()));
-        headers.qaTrace().ifPresent(header -> builder.header(header.name(), header.value()));
-        headers.requestId().ifPresent(header -> builder.header(header.name(), header.value()));
+        headers.forceTrace().ifPresent(header -> setHeader(builder, header));
+        headers.qaTrace().ifPresent(header -> setHeader(builder, header));
+        headers.requestId().ifPresent(header -> setHeader(builder, header));
+    }
+
+    private static void setHeader(ClientRequest.Builder builder, OutboundPropagationHeaders.Header header) {
+        Objects.requireNonNull(header.value(), "value");
+        builder.header(header.name(), header.value());
     }
 }

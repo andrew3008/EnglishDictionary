@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.kafka;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -83,7 +84,8 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
     }
 
     private static void set(Headers carrier, OutboundPropagationHeaders.Header header) {
+        String value = Objects.requireNonNull(header.value(), "value");
         carrier.remove(header.name())
-                .add(header.name(), header.value().getBytes(StandardCharsets.UTF_8));
+                .add(header.name(), value.getBytes(StandardCharsets.UTF_8));
     }
 }
