@@ -7,11 +7,6 @@ import java.util.HashSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 
-import io.opentelemetry.sdk.OpenTelemetrySdk;
-import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +15,12 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
+
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 class SpanHandleLifecycleVerificationTest {
 
@@ -59,7 +60,7 @@ class SpanHandleLifecycleVerificationTest {
         parent.close();
         assertThat(tracing.traceContext().spanId()).isEmpty();
         assertThat(exporter.getFinishedSpanItems())
-                .extracting(span -> span.getName())
+                .extracting(SpanData::getName)
                 .containsExactly("child", "parent");
     }
 
