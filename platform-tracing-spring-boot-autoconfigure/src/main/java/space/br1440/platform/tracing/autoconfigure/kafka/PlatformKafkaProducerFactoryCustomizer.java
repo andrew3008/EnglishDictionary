@@ -1,16 +1,18 @@
 package space.br1440.platform.tracing.autoconfigure.kafka;
 
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
-import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+
+import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
+import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 
 /**
  * Регистрирует {@link PlatformKafkaProducerInterceptor} во всех {@link DefaultKafkaProducerFactory}
@@ -24,11 +26,14 @@ public final class PlatformKafkaProducerFactoryCustomizer implements DefaultKafk
 
     private final OutboundPropagationPolicy policy;
     private final PlatformOutboundPropagation propagation;
+    private final RequestIdentityBoundarySupport identityBoundary;
 
     public PlatformKafkaProducerFactoryCustomizer(OutboundPropagationPolicy policy,
-                                                  PlatformOutboundPropagation propagation) {
+                                                   PlatformOutboundPropagation propagation,
+                                                   RequestIdentityBoundarySupport identityBoundary) {
         this.policy = policy;
         this.propagation = propagation;
+        this.identityBoundary = identityBoundary;
     }
 
     @Override
@@ -45,6 +50,7 @@ public final class PlatformKafkaProducerFactoryCustomizer implements DefaultKafk
         updates.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
         updates.put(PlatformKafkaProducerInterceptor.CONFIG_POLICY, policy);
         updates.put(PlatformKafkaProducerInterceptor.CONFIG_PROPAGATION, propagation);
+        updates.put(PlatformKafkaProducerInterceptor.CONFIG_IDENTITY, identityBoundary);
         producerFactory.updateConfigs(updates);
     }
 
