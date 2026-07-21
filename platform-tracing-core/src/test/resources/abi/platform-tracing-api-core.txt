@@ -1,6 +1,11 @@
+TYPE public abstract interface space.br1440.platform.tracing.api.CorrelationScope extends java.lang.AutoCloseable
+  METHOD public abstract void close()
 TYPE public abstract interface space.br1440.platform.tracing.api.TraceOperations
+  METHOD public abstract T withCorrelationId(java.lang.String,space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
+  METHOD public abstract space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
   METHOD public abstract space.br1440.platform.tracing.api.span.SpanFactory spans()
   METHOD public abstract space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
+  METHOD public abstract void withCorrelationId(java.lang.String,java.lang.Runnable)
 TYPE public abstract annotation space.br1440.platform.tracing.api.annotation.SuppressAgentInstrumentation extends java.lang.annotation.Annotation
   METHOD public abstract java.lang.String value() default=
 TYPE public abstract annotation space.br1440.platform.tracing.api.annotation.Traced extends java.lang.annotation.Annotation
@@ -21,6 +26,7 @@ TYPE public final class space.br1440.platform.tracing.api.attributes.PlatformAtt
   FIELD public static final java.lang.String HTTP_REQUEST_METHOD_ORIGINAL
   FIELD public static final java.lang.String HTTP_RESPONSE_STATUS_CODE
   FIELD public static final java.lang.String NETWORK_PROTOCOL_NAME
+  FIELD public static final java.lang.String PLATFORM_CORRELATION_ID
   FIELD public static final java.lang.String PLATFORM_C_GROUP
   FIELD public static final java.lang.String PLATFORM_ENVIRONMENT
   FIELD public static final java.lang.String PLATFORM_HOST
@@ -57,11 +63,12 @@ TYPE public final class space.br1440.platform.tracing.api.attributes.PlatformSam
   FIELD public static final java.util.Set<java.lang.String> EXPORTED
   CTOR public space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons()
 TYPE public final record space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot
-  CTOR public space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot(java.lang.String,java.lang.String,java.lang.String)
+  CTOR public space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot(java.lang.String,java.lang.String,java.lang.String,java.lang.String)
   METHOD public final boolean equals(java.lang.Object)
   METHOD public final int hashCode()
   METHOD public final java.lang.String toString()
   METHOD public java.lang.String correlationId()
+  METHOD public java.lang.String requestId()
   METHOD public java.lang.String spanId()
   METHOD public java.lang.String traceId()
 TYPE public final class space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
@@ -141,6 +148,7 @@ TYPE public abstract interface space.br1440.platform.tracing.api.mdc.RemoteServi
 TYPE public final class space.br1440.platform.tracing.api.mdc.TracingMdcKeys
   FIELD public static final java.lang.String CORRELATION_ID
   FIELD public static final java.lang.String REMOTE_SERVICE
+  FIELD public static final java.lang.String REQUEST_ID
   FIELD public static final java.lang.String SPAN_ID
   FIELD public static final java.lang.String TRACE_FLAGS
   FIELD public static final java.lang.String TRACE_ID
@@ -150,6 +158,7 @@ TYPE public abstract interface space.br1440.platform.tracing.api.propagation.Pla
   METHOD public abstract java.util.concurrent.ExecutorService contextAware(java.util.concurrent.ExecutorService)
   METHOD public abstract space.br1440.platform.tracing.api.util.ThrowingSupplier<T> wrap(space.br1440.platform.tracing.api.util.ThrowingSupplier<T>)
 TYPE public final class space.br1440.platform.tracing.api.propagation.PlatformHeaders
+  FIELD public static final java.lang.String X_CORRELATION_ID
   FIELD public static final java.lang.String X_QA_TRACE
   FIELD public static final java.lang.String X_REQUEST_ID
   FIELD public static final java.lang.String X_TRACE_ID
@@ -263,6 +272,7 @@ TYPE public final enum space.br1440.platform.tracing.api.span.SpanResult
   METHOD public static space.br1440.platform.tracing.api.span.SpanResult[] values()
 TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView
   METHOD public abstract java.util.Optional<java.lang.String> correlationId()
+  METHOD public abstract java.util.Optional<java.lang.String> requestId()
   METHOD public abstract java.util.Optional<java.lang.String> spanId()
   METHOD public abstract java.util.Optional<java.lang.String> traceId()
 TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder>
@@ -472,8 +482,9 @@ TYPE public abstract interface space.br1440.platform.tracing.api.spi.SpanAttribu
 TYPE public abstract interface space.br1440.platform.tracing.api.util.ThrowingSupplier
   METHOD public abstract T get() throws java.lang.Exception
 TYPE public final class space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView implements space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView
-  CTOR public space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView(java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>)
+  CTOR public space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView(java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>)
   METHOD public java.util.Optional<java.lang.String> correlationId()
+  METHOD public java.util.Optional<java.lang.String> requestId()
   METHOD public java.util.Optional<java.lang.String> spanId()
   METHOD public java.util.Optional<java.lang.String> traceId()
 TYPE public final record space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationDecision
@@ -547,16 +558,22 @@ TYPE public final class space.br1440.platform.tracing.core.exception.ExceptionRe
   METHOD public void result(space.br1440.platform.tracing.api.span.SpanResult)
 TYPE public class space.br1440.platform.tracing.core.facade.DefaultTraceOperations implements space.br1440.platform.tracing.api.TraceOperations
   CTOR public space.br1440.platform.tracing.core.facade.DefaultTraceOperations(space.br1440.platform.tracing.core.runtime.TracingRuntime)
+  METHOD public T withCorrelationId(java.lang.String,space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
   METHOD public boolean isFacadeEnabled()
+  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.SpanFactory spans()
   METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
   METHOD public space.br1440.platform.tracing.core.runtime.TracingRuntime tracingRuntime()
   METHOD public void setFacadeEnabled(boolean)
+  METHOD public void withCorrelationId(java.lang.String,java.lang.Runnable)
 TYPE public final class space.br1440.platform.tracing.core.facade.NoopTraceOperations implements space.br1440.platform.tracing.api.TraceOperations
   FIELD public static final space.br1440.platform.tracing.core.facade.NoopTraceOperations INSTANCE
+  METHOD public T withCorrelationId(java.lang.String,space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
+  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.SpanFactory spans()
   METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
   METHOD public static space.br1440.platform.tracing.core.facade.NoopTraceOperations backedBy(space.br1440.platform.tracing.core.runtime.TracingRuntime)
+  METHOD public void withCorrelationId(java.lang.String,java.lang.Runnable)
 TYPE public final class space.br1440.platform.tracing.core.manual.DefaultSpanFactory implements space.br1440.platform.tracing.api.span.SpanFactory
   CTOR public space.br1440.platform.tracing.core.manual.DefaultSpanFactory(space.br1440.platform.tracing.core.runtime.TracingRuntime,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy)
   METHOD public space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder operation(java.lang.String)
@@ -636,6 +653,11 @@ TYPE public final class space.br1440.platform.tracing.core.runtime.NoOpSpanHandl
   METHOD public void close()
   METHOD public void recordException(java.lang.Throwable)
 TYPE public final class space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime implements space.br1440.platform.tracing.core.runtime.TracingRuntime
+  METHOD public java.lang.String requireCanonicalCorrelationId(java.lang.String)
+  METHOD public java.util.Optional<java.lang.String> currentCorrelationId()
+  METHOD public java.util.Optional<java.lang.String> currentRequestId()
+  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
   METHOD public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
   METHOD public space.br1440.platform.tracing.core.runtime.state.TracingState state()
@@ -649,6 +671,11 @@ TYPE public final class space.br1440.platform.tracing.core.runtime.SpanHandleImp
   METHOD public void close()
   METHOD public void recordException(java.lang.Throwable)
 TYPE public abstract interface space.br1440.platform.tracing.core.runtime.TracingRuntime
+  METHOD public abstract java.lang.String requireCanonicalCorrelationId(java.lang.String)
+  METHOD public abstract java.util.Optional<java.lang.String> currentCorrelationId()
+  METHOD public abstract java.util.Optional<java.lang.String> currentRequestId()
+  METHOD public abstract space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(java.lang.String)
   METHOD public abstract space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
   METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
   METHOD public abstract space.br1440.platform.tracing.core.runtime.state.TracingState state()
@@ -657,6 +684,11 @@ TYPE public abstract interface space.br1440.platform.tracing.core.runtime.Tracin
 TYPE public final class space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime implements space.br1440.platform.tracing.core.runtime.TracingRuntime
   FIELD public static final java.lang.String INSTRUMENTATION_NAME
   CTOR public space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime(io.opentelemetry.api.OpenTelemetry,space.br1440.platform.tracing.core.semconv.policy.AttributePolicy,space.br1440.platform.tracing.core.exception.ExceptionRecorder)
+  METHOD public java.lang.String requireCanonicalCorrelationId(java.lang.String)
+  METHOD public java.util.Optional<java.lang.String> currentCorrelationId()
+  METHOD public java.util.Optional<java.lang.String> currentRequestId()
+  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
   METHOD public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
   METHOD public space.br1440.platform.tracing.core.runtime.state.TracingState state()

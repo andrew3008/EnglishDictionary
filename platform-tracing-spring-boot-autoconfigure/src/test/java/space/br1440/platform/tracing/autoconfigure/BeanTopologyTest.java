@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -124,6 +125,9 @@ class BeanTopologyTest {
 
     static final class MarkerTracingRuntime implements TracingRuntime {
 
+        private final TracingRuntime identityDelegate = NoOpTracingRuntime.noop();
+
+
         private static final TracingState STATE = new TracingState() {
             @Override
             public TracingMode mode() {
@@ -150,8 +154,34 @@ class BeanTopologyTest {
         @Override
         @Nonnull
         public ActiveTraceContextView currentTraceContext() {
-            return NoOpTracingRuntime.noop().currentTraceContext();
+            return identityDelegate.currentTraceContext();
         }
+
+        @Override
+        public CorrelationScope openCorrelationScope(String correlationId) {
+            return identityDelegate.openCorrelationScope(correlationId);
+        }
+
+        @Override
+        public CorrelationScope openRequestIdentityScope(String requestId) {
+            return identityDelegate.openRequestIdentityScope(requestId);
+        }
+
+        @Override
+        public String requireCanonicalCorrelationId(String correlationId) {
+            return identityDelegate.requireCanonicalCorrelationId(correlationId);
+        }
+
+        @Override
+        public Optional<String> currentRequestId() {
+            return identityDelegate.currentRequestId();
+        }
+
+        @Override
+        public Optional<String> currentCorrelationId() {
+            return identityDelegate.currentCorrelationId();
+        }
+
 
         @Override
         public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {

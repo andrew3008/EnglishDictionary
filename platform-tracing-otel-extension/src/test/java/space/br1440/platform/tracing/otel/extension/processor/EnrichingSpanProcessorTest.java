@@ -358,7 +358,8 @@ class EnrichingSpanProcessorTest {
     }
 
     @Test
-    void extractsRequestIdAndPolicyVersionFromBaggageOnStart(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void neverExtractsRequestIdFromBaggageButKeepsPolicyProjection(
+            OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         // given
         Baggage baggage = Baggage.builder()
                 .put(PlatformAttributes.PLATFORM_REQUEST_ID, "req-123")
@@ -375,7 +376,7 @@ class EnrichingSpanProcessorTest {
 
         // then
         var data = exporter.getFinishedSpanItems().getFirst();
-        assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID))).isEqualTo("req-123");
+        assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_REQUEST_ID))).isNull();
         assertThat(data.getAttributes().get(AttributeKey.stringKey("platform.policy.version"))).isEqualTo("v2");
     }
 }

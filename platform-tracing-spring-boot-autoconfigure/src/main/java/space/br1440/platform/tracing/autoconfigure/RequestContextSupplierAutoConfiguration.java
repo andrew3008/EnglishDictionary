@@ -2,7 +2,10 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
+
+import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
 import space.br1440.platform.tracing.autoconfigure.errorhandling.RequestTraceContextSnapshotSupplier;
 
@@ -21,15 +24,12 @@ import java.util.function.Supplier;
  * отдельной авто-конфигурацией {@code error-handling-core} (см. документацию к модулю).
  * <p>
  * При {@code platform.tracing.enabled=false} bean {@link RequestTraceContextSnapshotSupplier} продолжает
- * работать корректно: {@code Span.current()} вернёт {@code Span.getInvalid()}, supplier отдаст
- * {@link RequestTraceContextSnapshot} с пустыми trace/span и {@code correlationId} из MDC — ожидаемое
- * поведение при отключённой трассировке.
+ * работать и возвращает пустой снимок, не создавая частичный tracing facade.
  *
  * <h2>Внимание разработчику</h2>
  * <p><b>Намеренно не имеет зависимостей от tracing-core бинов:</b>
  * атрибут {@code after = TracingCoreAutoConfiguration.class} не указан осознанно —
- * {@link RequestTraceContextSnapshotSupplier} не требует {@link space.br1440.platform.tracing.api.TraceOperations}
- * и работает напрямую с {@code Span.current()} и {@link org.slf4j.MDC}. <b>Не добавлять</b>
+ * {@link RequestTraceContextSnapshotSupplier} получает optional public facade через provider. <b>Не добавлять</b>
  * {@code after}/{@code before} «по аналогии с соседними классами»: это сделает регистрацию
  * supplier'а зависимой от {@code platform.tracing.enabled} и сломает контракт «errorhandling
  * всегда получает снимок контекста, даже при выключенном tracing».
@@ -39,7 +39,8 @@ public class RequestContextSupplierAutoConfiguration {
 
     @Bean(name = "platformRequestTraceContextSnapshotSupplier")
     @ConditionalOnMissingBean(name = "platformRequestTraceContextSnapshotSupplier")
-    public Supplier<RequestTraceContextSnapshot> platformRequestTraceContextSnapshotSupplier() {
-        return new RequestTraceContextSnapshotSupplier();
+    public Supplier<RequestTraceContextSnapshot> platformRequestTraceContextSnapshotSupplier(
+            ObjectProvider<TraceOperations> traceOperationsProvider) {
+        return new RequestTraceContextSnapshotSupplier(traceOperationsProvider::getIfAvailable);
     }
 }

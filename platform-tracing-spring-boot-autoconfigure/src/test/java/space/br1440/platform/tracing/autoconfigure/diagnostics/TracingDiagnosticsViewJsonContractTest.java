@@ -75,6 +75,10 @@ class TracingDiagnosticsViewJsonContractTest {
     }
 
     private static final class TestModeTracingRuntime implements space.br1440.platform.tracing.core.runtime.TracingRuntime {
+
+        private final space.br1440.platform.tracing.core.runtime.TracingRuntime identityDelegate =
+                NoOpTracingRuntime.noop();
+
         @Override
         public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(
                 space.br1440.platform.tracing.api.span.spec.SpanSpec spec) {
@@ -83,8 +87,34 @@ class TracingDiagnosticsViewJsonContractTest {
 
         @Override
         public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext() {
-            return NoOpTracingRuntime.noop().currentTraceContext();
+            return identityDelegate.currentTraceContext();
         }
+
+        @Override
+        public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(String correlationId) {
+            return identityDelegate.openCorrelationScope(correlationId);
+        }
+
+        @Override
+        public space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(String requestId) {
+            return identityDelegate.openRequestIdentityScope(requestId);
+        }
+
+        @Override
+        public String requireCanonicalCorrelationId(String correlationId) {
+            return identityDelegate.requireCanonicalCorrelationId(correlationId);
+        }
+
+        @Override
+        public Optional<String> currentRequestId() {
+            return identityDelegate.currentRequestId();
+        }
+
+        @Override
+        public Optional<String> currentCorrelationId() {
+            return identityDelegate.currentCorrelationId();
+        }
+
 
         @Override
         public void recordException(

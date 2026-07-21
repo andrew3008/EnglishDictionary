@@ -72,7 +72,7 @@ class RequestContextSupplierAutoConfigurationTest {
 
         @Bean(name = "platformRequestTraceContextSnapshotSupplier")
         public Supplier<RequestTraceContextSnapshot> platformRequestTraceContextSnapshotSupplier() {
-            return () -> new RequestTraceContextSnapshot("custom-correlation", null, null);
+            return () -> new RequestTraceContextSnapshot(null, "custom-correlation", null, null);
         }
     }
 }

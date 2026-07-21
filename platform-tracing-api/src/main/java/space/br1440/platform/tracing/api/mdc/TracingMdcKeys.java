@@ -11,12 +11,8 @@ import lombok.experimental.UtilityClass;
  * чтобы обеспечить совместимость со стандартным logback-pattern'ом Spring Boot 3.x вида
  * {@code %X{traceId} %X{spanId}} и не требовать кастомного формата на стороне logging-стартера.
  * <p>
- * Корреляционный идентификатор {@code correlation_id} оставлен в snake_case для совместимости
- * с {@code ErrorHandlingMdcKeys#CORRELATION_ID} платформенного стартера.
- * <p>
- * Единый источник правды для трассировки и согласованного с ним корреляционного идентификатора в логах:
- * прикладной код и стартеры ссылаются только на константы этого класса (или на реэкспорт в {@code ErrorHandlingMdcKeys}),
- * без дублирования строковых литералов.
+ * Идентификаторы запроса и бизнес-корреляции разделены и используют camelCase. MDC является
+ * только проекцией внутреннего execution-контекста, а не источником истины.
  */
 @UtilityClass
 public final class TracingMdcKeys {
@@ -30,12 +26,11 @@ public final class TracingMdcKeys {
     /** Флаги trace context (W3C trace flags), 2 шестнадцатеричных символа. */
     public static final String TRACE_FLAGS = "traceFlags";
 
-    /**
-     * Корреляционный идентификатор запроса в MDC (snake_case). Должен совпадать с
-     * {@code space.br1440.platform.errorhandling.core.constants.ErrorHandlingMdcKeys#CORRELATION_ID}
-     * на стороне error-handling-стартеров.
-     */
-    public static final String CORRELATION_ID = "correlation_id";
+    /** Технический идентификатор запроса в MDC. */
+    public static final String REQUEST_ID = "requestId";
+
+    /** Бизнес-идентификатор корреляции в MDC. */
+    public static final String CORRELATION_ID = "correlationId";
 
     /**
      * Логическое имя upstream-сервиса, вызов которого завершился ошибкой в рамках текущего запроса.

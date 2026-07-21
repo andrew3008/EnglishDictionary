@@ -8,7 +8,7 @@ package space.br1440.platform.tracing.test.characterization;
  */
 public enum KnownDefectId {
 
-    LEGACY_REQUEST_ID_CORRELATION_KEY("IDENT-1/IDENT-5", "Slice M");
+    ;
 
     private final String id;
     private final String owner;

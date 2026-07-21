@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import space.br1440.platform.tracing.test.junit.OtelSdkExtension;
 import space.br1440.platform.tracing.test.junit.internal.ScopeMode;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
 import java.util.List;
 import java.util.Set;
@@ -26,7 +27,7 @@ class BaggageSpanProcessorTest {
     static OtelSdkExtension otel = OtelSdkExtension.builder()
             .scope(ScopeMode.METHOD)
             .addSpanProcessor(new BaggageSpanProcessor(
-                    Set.of("tenant-id", "correlation-id"),
+                    Set.of("tenant-id", "platform.correlation.id"),
                     List.of("secret", "password", "token")
             ))
             .build();
@@ -35,7 +36,10 @@ class BaggageSpanProcessorTest {
     void copies_allowlisted_baggage_to_span_attributes(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         Tracer tracer = sdk.getTracer("test");
         Context parent = Context.current().with(
-                Baggage.builder().put("tenant-id", "billing").put("correlation-id", "req-42").build()
+                Baggage.builder()
+                        .put("tenant-id", "billing")
+                        .put("platform.correlation.id", "workflow-42")
+                        .build()
         );
 
         try (var scope = parent.makeCurrent()) {
@@ -45,7 +49,9 @@ class BaggageSpanProcessorTest {
 
         var attrs = exporter.getFinishedSpanItems().getFirst().getAttributes();
         assertThat(attrs.get(TENANT)).isEqualTo("billing");
-        assertThat(attrs.get(AttributeKey.stringKey("baggage.correlation-id"))).isEqualTo("req-42");
+        assertThat(attrs.get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_CORRELATION_ID)))
+                .isEqualTo("workflow-42");
+        assertThat(attrs.get(AttributeKey.stringKey("baggage.platform.correlation.id"))).isNull();
     }
 
     @Test

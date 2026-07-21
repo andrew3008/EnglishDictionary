@@ -5,6 +5,9 @@ import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.CorrelationScope;
+
+import java.util.Optional;
 import space.br1440.platform.tracing.core.runtime.DelegatingTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
@@ -40,6 +43,37 @@ public final class MeteredTracingRuntime implements DelegatingTracingRuntime {
     public ActiveTraceContextView currentTraceContext() {
         return delegate.currentTraceContext();
     }
+
+    @Override
+    @Nonnull
+    public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
+        return delegate.openCorrelationScope(correlationId);
+    }
+
+    @Override
+    @Nonnull
+    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId) {
+        return delegate.openRequestIdentityScope(requestId);
+    }
+
+    @Override
+    @Nonnull
+    public String requireCanonicalCorrelationId(@Nonnull String correlationId) {
+        return delegate.requireCanonicalCorrelationId(correlationId);
+    }
+
+    @Override
+    @Nonnull
+    public Optional<String> currentRequestId() {
+        return delegate.currentRequestId();
+    }
+
+    @Override
+    @Nonnull
+    public Optional<String> currentCorrelationId() {
+        return delegate.currentCorrelationId();
+    }
+
 
     /**
      * Delegates exception recording to the wrapped implementation without incrementing

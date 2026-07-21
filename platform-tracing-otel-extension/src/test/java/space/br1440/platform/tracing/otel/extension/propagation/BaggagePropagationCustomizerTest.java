@@ -1,19 +1,20 @@
 package space.br1440.platform.tracing.otel.extension.propagation;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("BaggagePropagationCustomizer")
 class BaggagePropagationCustomizerTest {
@@ -21,21 +22,21 @@ class BaggagePropagationCustomizerTest {
     private final BaggagePropagationCustomizer customizer = new BaggagePropagationCustomizer();
 
     @Test
-    @DisplayName("W3C baggage + baggage enabled → возвращает SafeTextMapPropagator")
+    @DisplayName("W3C baggage + baggage enabled → возвращает единственную F0-границу")
     void w3cBaggage_enabled_returnsWrapped() {
         TextMapPropagator propagator = W3CBaggagePropagator.getInstance();
         TextMapPropagator result = customizer.apply(propagator, configWithBaggageEnabled(true));
 
-        assertThat(result).isInstanceOf(SafeTextMapPropagator.class);
+        assertThat(result).isInstanceOf(FailClosedCorrelationBaggagePropagator.class);
     }
 
     @Test
-    @DisplayName("W3C baggage + baggage disabled → возвращает тот же экземпляр")
-    void w3cBaggage_disabled_returnsSameInstance() {
+    @DisplayName("W3C baggage + baggage disabled → сохраняет обязательную F0-границу")
+    void w3cBaggage_disabled_keepsFailClosedBoundary() {
         TextMapPropagator propagator = W3CBaggagePropagator.getInstance();
         TextMapPropagator result = customizer.apply(propagator, configWithBaggageEnabled(false));
 
-        assertThat(result).isSameAs(propagator);
+        assertThat(result).isInstanceOf(FailClosedCorrelationBaggagePropagator.class);
     }
 
     @Test

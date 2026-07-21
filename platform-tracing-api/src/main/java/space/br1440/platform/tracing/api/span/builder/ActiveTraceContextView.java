@@ -16,6 +16,9 @@ public interface ActiveTraceContextView {
     Optional<String> spanId();
 
     @Nonnull
+    Optional<String> requestId();
+
+    @Nonnull
     Optional<String> correlationId();
 
 }
