@@ -43,12 +43,12 @@ Standard MBeans, each with its own `ObjectName`:
 
 | Domain | MBean interface | Implementation | ObjectName |
 |--------|-----------------|----------------|------------|
-| Sampling | `PlatformSamplingControlMBean` | `PlatformSamplingControl` | `space.br1440.platform.tracing:type=SamplingControl,name=PlatformSamplingControl` |
-| Scrubbing | `PlatformScrubbingControlMBean` | `PlatformScrubbingControl` | `space.br1440.platform.tracing:type=ScrubbingControl,name=PlatformScrubbingControl` |
-| Validation | `PlatformValidationControlMBean` | `PlatformValidationControl` | `space.br1440.platform.tracing:type=ValidationControl,name=PlatformValidationControl` |
-| Export | `PlatformExportControlMBean` | `PlatformExportControl` | `space.br1440.platform.tracing:type=ExportControl,name=PlatformExportControl` |
-| Processor metrics | `PlatformProcessorMetricsControlMBean` | `PlatformProcessorMetricsControl` | `space.br1440.platform.tracing:type=ProcessorMetricsControl,name=PlatformProcessorMetricsControl` |
-| Diagnostics | `PlatformDiagnosticsControlMBean` | `PlatformDiagnosticsControl` | `space.br1440.platform.tracing:type=DiagnosticsControl,name=PlatformDiagnosticsControl` |
+| Sampling | `PlatformSamplingControlMBean` | `PlatformSamplingControl` | `space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl` |
+| Scrubbing | `PlatformScrubbingControlMBean` | `PlatformScrubbingControl` | `space.br1440.platform.tracing:type=Scrubbing,name=PlatformScrubbingControl` |
+| Validation | `PlatformValidationControlMBean` | `PlatformValidationControl` | `space.br1440.platform.tracing:type=Validation,name=PlatformValidationControl` |
+| Export | `PlatformExportControlMBean` | `PlatformExportControl` | `space.br1440.platform.tracing:type=Export,name=PlatformExportControl` |
+| Processor metrics | `PlatformProcessorMetricsControlMBean` | `PlatformProcessorMetricsControl` | `space.br1440.platform.tracing:type=Metrics,name=PlatformProcessorMetricsControl` |
+| Diagnostics | `PlatformDiagnosticsControlMBean` | `PlatformDiagnosticsControl` | `space.br1440.platform.tracing:type=Diagnostics,name=PlatformDiagnosticsControl` |
 
 **Old monolith ObjectName** (`type=Control,name=PlatformTracingControl`) is **no longer registered**.
 

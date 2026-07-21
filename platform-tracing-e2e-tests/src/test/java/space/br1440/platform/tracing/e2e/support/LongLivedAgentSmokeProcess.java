@@ -98,7 +98,8 @@ public final class LongLivedAgentSmokeProcess implements AutoCloseable {
         boolean ready = false;
         while (System.nanoTime() < deadline) {
             synchronized (output) {
-                if (output.indexOf(AgentHttpSpringSmokeProcessRunner.READY_MARKER) >= 0) {
+                if (ControlledAgentSpringFixture.containsOutputLine(
+                        output, AgentHttpSpringSmokeProcessRunner.READY_MARKER)) {
                     ready = true;
                     break;
                 }

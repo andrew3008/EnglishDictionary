@@ -274,6 +274,7 @@ public final class AgentHttpSpringSmokeProcessRunner {
                 jvmProperties.add("otel.javaagent.extensions=" + String.join(java.io.File.pathSeparator, normalizedPaths));
             }
         }
+        ControlledAgentSpringFixture.addSdkAutoConfigurationExclusion(jvmProperties, extensionLocation);
         jvmProperties.add("otel.service.name=" + serviceName);
         String tracesEndpoint = JaegerTestContainerSupport.resolveOtlpHttpTracesEndpoint(otlpEndpoint);
         jvmProperties.add("otel.traces.exporter=otlp");
@@ -304,7 +305,7 @@ public final class AgentHttpSpringSmokeProcessRunner {
             throws InterruptedException {
         long deadline = System.nanoTime() + timeout.toNanos();
         while (System.nanoTime() < deadline) {
-            if (output.indexOf(READY_MARKER) >= 0) {
+            if (ControlledAgentSpringFixture.containsOutputLine(output, READY_MARKER)) {
                 return true;
             }
             if (!process.isAlive()) {
@@ -312,6 +313,6 @@ public final class AgentHttpSpringSmokeProcessRunner {
             }
             Thread.sleep(100L);
         }
-        return output.indexOf(READY_MARKER) >= 0;
+        return ControlledAgentSpringFixture.containsOutputLine(output, READY_MARKER);
     }
 }

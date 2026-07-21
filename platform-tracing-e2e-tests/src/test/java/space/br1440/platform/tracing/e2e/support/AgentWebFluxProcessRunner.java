@@ -239,7 +239,8 @@ public final class AgentWebFluxProcessRunner {
             throws InterruptedException {
         long deadline = System.nanoTime() + timeout.toNanos();
         while (System.nanoTime() < deadline) {
-            if (output.indexOf(AgentWebFluxReactorPropagationSmokeMain.READY_MARKER) >= 0) {
+            if (ControlledAgentSpringFixture.containsOutputLine(
+                    output, AgentWebFluxReactorPropagationSmokeMain.READY_MARKER)) {
                 return true;
             }
             if (!process.isAlive()) {
@@ -247,6 +248,7 @@ public final class AgentWebFluxProcessRunner {
             }
             Thread.sleep(100L);
         }
-        return output.indexOf(AgentWebFluxReactorPropagationSmokeMain.READY_MARKER) >= 0;
+        return ControlledAgentSpringFixture.containsOutputLine(
+                output, AgentWebFluxReactorPropagationSmokeMain.READY_MARKER);
     }
 }

@@ -85,7 +85,7 @@ public class RuntimeSamplingControlSmokeMain {
     static class SmokeController {
 
         private static final String MBEAN_OBJECT_NAME =
-                "space.br1440.platform.tracing:type=SamplingControl,name=PlatformSamplingControl";
+                "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl";
 
         private final CountDownLatch shutdownLatch;
         private final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
