@@ -8,16 +8,21 @@ import java.util.HashSet;
 public final class BaggagePropagationCustomizer {
 
     public TextMapPropagator apply(TextMapPropagator propagator, ConfigProperties config) {
-        if (BaggagePropagatorTypeDetector.isW3cBaggagePropagator(propagator)
-                && PropagationDefaults.isBaggageEnabled(config)) {
-            return new SafeTextMapPropagator(
-                    new FilteringBaggagePropagator(
-                            propagator,
-                            new HashSet<>(PropagationDefaults.getBaggageAllowedKeys(config)),
-                            PropagationDefaults.getBaggageDenyPatterns(config)
-                    ));
+        if (!BaggagePropagatorTypeDetector.isW3cBaggagePropagator(propagator)) {
+            return propagator;
         }
 
-        return propagator;
+        TextMapPropagator outboundPolicy = propagator;
+        if (PropagationDefaults.isBaggageEnabled(config)) {
+            outboundPolicy = new FilteringBaggagePropagator(
+                    propagator,
+                    new HashSet<>(PropagationDefaults.getBaggageAllowedKeys(config)),
+                    PropagationDefaults.getBaggageDenyPatterns(config)
+            );
+        }
+
+        return new FailClosedCorrelationBaggagePropagator(
+                new SafeTextMapPropagator(outboundPolicy)
+        );
     }
 }
