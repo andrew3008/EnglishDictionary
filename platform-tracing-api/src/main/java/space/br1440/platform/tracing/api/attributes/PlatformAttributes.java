@@ -94,6 +94,12 @@ public final class PlatformAttributes {
      */
     public static final String PLATFORM_REQUEST_ID = "platform.request_id";
 
+    /**
+     * Бизнес-идентификатор корреляции. Значение является high-cardinality и не должно
+     * использоваться как dimension/tag метрик.
+     */
+    public static final String PLATFORM_CORRELATION_ID = "platform.correlation_id";
+
 
     // *********************************************************************************************************
     // Атрибуты OpenTelemetry semantic conventions (string literals; без зависимости на semconv-jar / SDK)

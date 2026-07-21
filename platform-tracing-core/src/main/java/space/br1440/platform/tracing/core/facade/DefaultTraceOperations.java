@@ -1,15 +1,18 @@
 package space.br1440.platform.tracing.core.facade;
 
+import java.util.Objects;
+
 import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanFactory;
 import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.core.manual.DefaultSpanFactory;
 import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.core.runtime.TracingRuntime;
 import space.br1440.platform.tracing.core.runtime.state.TracingMode;
-
-import java.util.Objects;
 
 public class DefaultTraceOperations implements TraceOperations {
 
@@ -34,13 +37,36 @@ public class DefaultTraceOperations implements TraceOperations {
     @Override
     @Nonnull
     public ActiveTraceContextView traceContext() {
-        return active.runtime().currentTraceContext();
+        return original.runtime().currentTraceContext();
     }
 
     @Override
     @Nonnull
     public SpanFactory spans() {
         return active.spans();
+    }
+
+    @Override
+    @Nonnull
+    public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
+        return original.runtime().openCorrelationScope(correlationId);
+    }
+
+    @Override
+    public void withCorrelationId(@Nonnull String correlationId, @Nonnull Runnable action) {
+        Objects.requireNonNull(action, "action");
+        try (CorrelationScope ignored = openCorrelationScope(correlationId)) {
+            action.run();
+        }
+    }
+
+    @Override
+    public <T> T withCorrelationId(@Nonnull String correlationId,
+                                   @Nonnull ThrowingSupplier<T> action) throws Exception {
+        Objects.requireNonNull(action, "action");
+        try (CorrelationScope ignored = openCorrelationScope(correlationId)) {
+            return action.get();
+        }
     }
 
     public boolean isFacadeEnabled() {

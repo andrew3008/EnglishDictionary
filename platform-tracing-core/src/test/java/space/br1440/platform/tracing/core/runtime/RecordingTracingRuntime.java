@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.core.runtime;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
 import space.br1440.platform.tracing.core.runtime.state.ImmutableTracingState;
 import space.br1440.platform.tracing.core.runtime.state.TracingState;
 import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
@@ -13,6 +13,7 @@ import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Test double recording {@link SpanSpec} passed to {@link #startSpan(SpanSpec)}.
@@ -23,6 +24,7 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     private static final AttributePolicy PERMISSIVE = new AttributePolicy();
 
     private final List<SpanSpec> receivedSpecs = new ArrayList<>();
+    private final TracingRuntime identityDelegate = NoOpTracingRuntime.noop();
     private TracingState state = ImmutableTracingState.enabled();
 
     @Override
@@ -35,8 +37,34 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     @Override
     @Nonnull
     public ActiveTraceContextView currentTraceContext() {
-        return NoOpTracingRuntime.noop().currentTraceContext();
+        return identityDelegate.currentTraceContext();
     }
+
+    @Override
+    public CorrelationScope openCorrelationScope(String correlationId) {
+        return identityDelegate.openCorrelationScope(correlationId);
+    }
+
+    @Override
+    public CorrelationScope openRequestIdentityScope(String requestId) {
+        return identityDelegate.openRequestIdentityScope(requestId);
+    }
+
+    @Override
+    public String requireCanonicalCorrelationId(String correlationId) {
+        return identityDelegate.requireCanonicalCorrelationId(correlationId);
+    }
+
+    @Override
+    public Optional<String> currentRequestId() {
+        return identityDelegate.currentRequestId();
+    }
+
+    @Override
+    public Optional<String> currentCorrelationId() {
+        return identityDelegate.currentCorrelationId();
+    }
+
 
     @Override
     public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {

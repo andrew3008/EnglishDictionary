@@ -10,6 +10,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -80,6 +81,8 @@ class DiagnosticsBoundaryTest {
     @Test
     void SpanFactoryDiagnostics_mapsInternalTestModeToUnknown() {
         TracingRuntime testPrimary = new TracingRuntime() {
+            private final TracingRuntime identityDelegate =
+                    space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime.noop();
             private final TracingState state = new TracingState() {
                 @Override
                 public TracingMode mode() {
@@ -116,11 +119,42 @@ class DiagnosticsBoundaryTest {
                     }
 
                     @Override
+                    public Optional<String> requestId() {
+                        return Optional.empty();
+                    }
+
+                    @Override
                     public Optional<String> correlationId() {
                         return Optional.empty();
                     }
                 };
             }
+
+            @Override
+            public CorrelationScope openCorrelationScope(String correlationId) {
+                return identityDelegate.openCorrelationScope(correlationId);
+            }
+
+            @Override
+            public CorrelationScope openRequestIdentityScope(String requestId) {
+                return identityDelegate.openRequestIdentityScope(requestId);
+            }
+
+            @Override
+            public String requireCanonicalCorrelationId(String correlationId) {
+                return identityDelegate.requireCanonicalCorrelationId(correlationId);
+            }
+
+            @Override
+            public Optional<String> currentRequestId() {
+                return identityDelegate.currentRequestId();
+            }
+
+            @Override
+            public Optional<String> currentCorrelationId() {
+                return identityDelegate.currentCorrelationId();
+            }
+
 
             @Override
             public void recordException(SpanHandle span, Throwable throwable) {

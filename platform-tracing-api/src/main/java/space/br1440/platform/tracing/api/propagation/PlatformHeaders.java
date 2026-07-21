@@ -37,6 +37,13 @@ public final class PlatformHeaders {
     public static final String X_REQUEST_ID = "X-Request-Id";
 
     /**
+     * Опциональный boundary bridge для business correlationId.
+     * По умолчанию платформа не читает и не пишет этот заголовок: канонический транспорт
+     * утверждается отдельно release gate {@code RG-IDENTITY-TRUST}.
+     */
+    public static final String X_CORRELATION_ID = "X-Correlation-ID";
+
+    /**
      * Заголовок с идентификатором распределённого trace'а в ответе ({@code traceId} текущего span'а).
      * <p>
      * Устанавливается только при наличии валидного span context —

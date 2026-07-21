@@ -22,6 +22,7 @@ import space.br1440.platform.tracing.autoconfigure.support.AgentExtensionDescrip
 import space.br1440.platform.tracing.autoconfigure.support.AgentExtensionObserver;
 import space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeResolver;
@@ -166,6 +167,11 @@ public class TracingCoreAutoConfiguration {
         }
         log.debug("TraceOperations facade: ENABLED — DefaultTraceOperations");
         return new DefaultTraceOperations(tracingImplementation);
+    }
+
+    @Bean
+    public RequestIdentityBoundarySupport requestIdentityBoundarySupport(TracingRuntime tracingImplementation) {
+        return new RequestIdentityBoundarySupport(tracingImplementation);
     }
 
     @Bean

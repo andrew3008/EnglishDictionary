@@ -1,20 +1,27 @@
 package space.br1440.platform.tracing.core.context;
 
-import jakarta.annotation.Nonnull;
-import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
-
 import java.util.Optional;
 import java.util.function.Supplier;
+
+import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 
 public final class DefaultActiveTraceContextView implements ActiveTraceContextView {
 
     private final Supplier<Optional<String>> traceIdSupplier;
     private final Supplier<Optional<String>> spanIdSupplier;
+    private final Supplier<Optional<String>> requestIdSupplier;
+    private final Supplier<Optional<String>> correlationIdSupplier;
 
     public DefaultActiveTraceContextView(@Nonnull Supplier<Optional<String>> traceIdSupplier,
-                                   @Nonnull Supplier<Optional<String>> spanIdSupplier) {
+                                         @Nonnull Supplier<Optional<String>> spanIdSupplier,
+                                         @Nonnull Supplier<Optional<String>> requestIdSupplier,
+                                         @Nonnull Supplier<Optional<String>> correlationIdSupplier) {
         this.traceIdSupplier = traceIdSupplier;
         this.spanIdSupplier = spanIdSupplier;
+        this.requestIdSupplier = requestIdSupplier;
+        this.correlationIdSupplier = correlationIdSupplier;
     }
 
     @Override
@@ -31,7 +38,13 @@ public final class DefaultActiveTraceContextView implements ActiveTraceContextVi
 
     @Override
     @Nonnull
+    public Optional<String> requestId() {
+        return requestIdSupplier.get();
+    }
+
+    @Override
+    @Nonnull
     public Optional<String> correlationId() {
-        return Optional.empty();
+        return correlationIdSupplier.get();
     }
 }

@@ -4,6 +4,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.core.context.DefaultActiveTraceContextView;
@@ -21,11 +22,16 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     private static final AttributePolicy PERMISSIVE = new AttributePolicy();
 
     private final TracingState state;
+    private final ThreadLocalIdentityStorage identityStorage = new ThreadLocalIdentityStorage();
     private final ActiveTraceContextView traceContextView;
 
     private NoOpTracingRuntime(@Nonnull TracingState state) {
         this.state = Objects.requireNonNull(state, "state");
-        this.traceContextView = new DefaultActiveTraceContextView(this::currentTraceId, this::currentSpanId);
+        this.traceContextView = new DefaultActiveTraceContextView(
+                this::currentTraceId,
+                this::currentSpanId,
+                this::currentRequestId,
+                this::currentCorrelationId);
     }
 
     public static NoOpTracingRuntime disabledByConfiguration(@Nonnull String reason) {
@@ -61,6 +67,37 @@ public final class NoOpTracingRuntime implements TracingRuntime {
     public ActiveTraceContextView currentTraceContext() {
         return traceContextView;
     }
+
+    @Override
+    @Nonnull
+    public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
+        return identityStorage.openCorrelationScope(correlationId);
+    }
+
+    @Override
+    @Nonnull
+    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId) {
+        return identityStorage.openRequestScope(requestId);
+    }
+
+    @Override
+    @Nonnull
+    public String requireCanonicalCorrelationId(@Nonnull String correlationId) {
+        return identityStorage.requireCanonicalCorrelationId(correlationId);
+    }
+
+    @Override
+    @Nonnull
+    public Optional<String> currentRequestId() {
+        return identityStorage.requestId();
+    }
+
+    @Override
+    @Nonnull
+    public Optional<String> currentCorrelationId() {
+        return identityStorage.correlationId();
+    }
+
 
     @Override
     public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {

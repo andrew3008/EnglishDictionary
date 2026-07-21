@@ -23,6 +23,8 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.webflux.ReactiveCorrelationOperations;
 
 import java.util.Optional;
 
@@ -57,6 +59,18 @@ import java.util.Optional;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
 @ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
 public class ReactiveTracingAutoConfiguration {
+
+    @Bean
+    public ReactiveCorrelationOperations reactiveCorrelationOperations(
+            RequestIdentityBoundarySupport boundarySupport) {
+        return new DefaultReactiveCorrelationOperations(boundarySupport);
+    }
+
+    @Bean
+    ReactiveIdentityContextPropagation reactiveIdentityContextPropagation(
+            RequestIdentityBoundarySupport boundarySupport) {
+        return new ReactiveIdentityContextPropagation(boundarySupport);
+    }
 
     /**
      * Регистрация реактивного {@link WebFilter}, добавляющего trace-заголовки в HTTP-ответ.

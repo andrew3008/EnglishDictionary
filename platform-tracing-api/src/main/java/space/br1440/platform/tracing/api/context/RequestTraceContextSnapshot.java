@@ -12,7 +12,8 @@ import jakarta.annotation.Nullable;
  * <p>
  * При сбое трассировки или MDC возвращается снимок с {@code null} в соответствующих полях.
  */
-public record RequestTraceContextSnapshot(@Nullable String correlationId,
+public record RequestTraceContextSnapshot(@Nullable String requestId,
+                                          @Nullable String correlationId,
                                           @Nullable String traceId,
                                           @Nullable String spanId) {
 }
