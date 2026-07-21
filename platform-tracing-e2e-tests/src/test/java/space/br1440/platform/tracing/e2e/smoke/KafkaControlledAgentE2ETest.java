@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.e2e.smoke;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -22,9 +25,6 @@ import org.testcontainers.utility.DockerImageName;
 
 import space.br1440.platform.tracing.e2e.support.JaegerTestContainerSupport;
 import space.br1440.platform.tracing.e2e.support.JaegerV3QueryClient;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
 @Testcontainers
 @DisabledIfSystemProperty(named = "skipE2e", matches = "true")
@@ -95,6 +95,11 @@ class KafkaControlledAgentE2ETest {
         assertThat(output.toString())
                 .contains("KAFKA_E2:singleAttempts=2")
                 .contains("KAFKA_E2:batchRecords=2")
+                .contains("KAFKA_E2:singleRequestIdStable=true")
+                .contains("KAFKA_E2:spoofedCorrelationRejected=true")
+                .contains("KAFKA_E2:localCorrelationVisible=true")
+                .contains("KAFKA_E2:batchRequestIdsDistinct=true")
+                .contains("KAFKA_E2:batchCurrentIdentityEmpty=true")
                 .contains("KAFKA_E2:openTelemetryBeans=0")
                 .contains("KAFKA_E2:samplerDecisions=")
                 .contains("KAFKA_E2:COMPLETE")
