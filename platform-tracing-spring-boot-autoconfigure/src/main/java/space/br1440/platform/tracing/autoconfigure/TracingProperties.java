@@ -624,7 +624,6 @@ public class TracingProperties {
 
         private final PlatformHeadersConfig platformHeaders = new PlatformHeadersConfig();
         private final Outbound outbound = new Outbound();
-        private final Mdc mdc = new Mdc();
         private final Baggage baggage = new Baggage();
 
         @Getter
@@ -660,15 +659,6 @@ public class TracingProperties {
             private boolean propagateQaTrace = false;
             /** Пробрасывать ли технический {@code X-Request-Id} наружу (по умолчанию {@code true}). */
             private boolean propagateRequestId = true;
-        }
-
-        @Getter
-        @Setter
-        @Accessors(chain = true)
-        public static class Mdc {
-            /** Сохранять ли входящий X-Request-Id в MDC (logs). */
-            private boolean putRequestId = true;
-            private String requestIdKey = "requestId";
         }
 
         /**

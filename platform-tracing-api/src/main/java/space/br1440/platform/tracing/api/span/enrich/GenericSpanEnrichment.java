@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.api.span.SpanResult;
  */
 public interface GenericSpanEnrichment {
 
-    /** {@code platform.request_id} — correlation id (high-cardinality, не для метрик). */
+    /** {@code platform.request_id} — технический request id (high-cardinality, не для метрик). */
     @Nonnull
     GenericSpanEnrichment requestId(@Nonnull String requestId);
 

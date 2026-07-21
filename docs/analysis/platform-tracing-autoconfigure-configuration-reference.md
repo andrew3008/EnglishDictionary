@@ -224,9 +224,6 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `propagation.outbound.propagate-force-trace` | `PLATFORM_TRACING_PROPAGATION_OUTBOUND_PROPAGATE_FORCE_TRACE` | `false` | Нет | Spring | Проброс `X-Trace-On` |
 | `propagation.outbound.propagate-qa-trace` | `PLATFORM_TRACING_PROPAGATION_OUTBOUND_PROPAGATE_QA_TRACE` | `false` | Нет | Spring | Проброс `X-QA-Trace` |
 | `propagation.outbound.propagate-request-id` | `PLATFORM_TRACING_PROPAGATION_OUTBOUND_PROPAGATE_REQUEST_ID` | `true` | Нет | Spring | Проброс `X-Request-Id` |
-| **propagation.mdc** | | | | | |
-| `propagation.mdc.put-request-id` | `PLATFORM_TRACING_PROPAGATION_MDC_PUT_REQUEST_ID` | `true` | Нет | Spring | X-Request-Id → MDC |
-| `propagation.mdc.request-id-key` | `PLATFORM_TRACING_PROPAGATION_MDC_REQUEST_ID_KEY` | `correlation_id` | Нет | Spring | MDC key |
 | **propagation.baggage** | | | | | |
 | `propagation.baggage.enabled` | `PLATFORM_TRACING_PROPAGATION_BAGGAGE_ENABLED` | `true` | Нет | Agent (mirror) | Baggage filter |
 | `propagation.baggage.allowed-keys` | `PLATFORM_TRACING_PROPAGATION_BAGGAGE_ALLOWED_KEYS` | 3 keys | Нет | Agent (mirror) | Allowlist |
