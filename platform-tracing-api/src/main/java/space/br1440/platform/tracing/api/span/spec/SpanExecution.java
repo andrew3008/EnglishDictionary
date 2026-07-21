@@ -21,12 +21,16 @@ public interface SpanExecution {
      *
      * <pre>{@code
      * try (SpanHandle handle = execution.start()) {
-     *     // ...
-     * } catch (Exception e) {
-     *     handle.recordException(e);
-     *     throw e;
+     *     try {
+     *         // работа в активном span
+     *     } catch (Exception e) {
+     *         handle.recordException(e);
+     *         throw e;
+     *     }
      * }
      * }</pre>
+     *
+     * Handle должен быть закрыт в том же потоке, в котором был получен.
      *
      * @return handle открытого span'а; никогда не {@code null}
      */

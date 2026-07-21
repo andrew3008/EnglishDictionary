@@ -49,7 +49,8 @@ class AbiSnapshotTest {
             assertThat(input)
                     .as("ABI baseline отсутствует; actual записан в %s", ACTUAL_REPORT)
                     .isNotNull();
-            String expected = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            String expected = new String(input.readAllBytes(), StandardCharsets.UTF_8)
+                    .replace("\r\n", "\n");
             assertThat(actual)
                     .as("Незапланированный ABI delta. Actual: %s", ACTUAL_REPORT)
                     .isEqualTo(expected);
