@@ -27,7 +27,7 @@ public final class RemoteServiceNameResolver {
 
     public Optional<String> resolve(String traceId) {
         return resolveFromMdcAndSources()
-                .or(() -> RemoteServiceTraceMirror.get(traceId));
+                .or(() -> RemoteServiceMdc.findForTrace(traceId));
     }
 
     private Optional<String> resolveFromMdcAndSources() {
