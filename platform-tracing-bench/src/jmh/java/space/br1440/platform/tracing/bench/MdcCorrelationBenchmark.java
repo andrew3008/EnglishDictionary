@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Стоимость MDC-корреляции (Фаза 17, PR-1; скрытый источник аллокаций hot-path).
  * <p>
- * MDC put/remove выполняется на каждом запросе (traceId/spanId/correlation_id) и при
+ * MDC put/remove выполняется на каждом запросе (traceId/spanId/correlationId) и при
  * enrichment'е ({@code platform.remote.service}). Реализация MDC (logback {@code LogbackMDCAdapter}
  * на runtime-classpath бенча, как в проде) копирует map при модификации — это
  * аллокационная статья, не видимая в span-бенчмарках.
