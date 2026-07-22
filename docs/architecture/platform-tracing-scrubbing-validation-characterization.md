@@ -6,7 +6,7 @@ Freeze **current** scrubbing, validation, and enrichment processor behavior befo
 
 ## Scope of PR-5B
 
-- Test-only changes in `platform-tracing-otel-extension` and `platform-tracing-test`
+- Test-only changes in `platform-tracing-otel-javaagent-extension` and `platform-tracing-test`
 - Harness helpers for scrubbing, validation, enrichment matrices
 - Pipeline ordering characterization (factory + composite observable behavior)
 - No production code moves or behavior changes

@@ -47,7 +47,7 @@ Not for direct application dependency:
 | Module | Role |
 |--------|------|
 | `platform-tracing-otel` | TraceOperations facade over OTel API (current state: OTel-coupled) |
-| `platform-tracing-otel-extension` | OTel Java Agent extension (Sampler, SpanProcessor, scrubbing runtime) |
+| `platform-tracing-otel-javaagent-extension` | OTel Java Agent extension (Sampler, SpanProcessor, scrubbing runtime) |
 | `platform-tracing-spring-boot-autoconfigure` | Spring Boot autoconfigure (properties, actuator, MDC, core wiring) |
 | `platform-tracing-autoconfigure-webmvc` | Servlet-specific autoconfigure |
 | `platform-tracing-autoconfigure-webflux` | Reactive-specific autoconfigure |
@@ -94,7 +94,7 @@ WebFlux / Reactive    → platform-tracing-spring-boot-starter-reactive
 
 Application teams must NOT directly depend on internal runtime modules:
   platform-tracing-otel
-  platform-tracing-otel-extension
+  platform-tracing-otel-javaagent-extension
   platform-tracing-spring-boot-autoconfigure
   platform-tracing-autoconfigure-webmvc
   platform-tracing-autoconfigure-webflux
@@ -115,14 +115,14 @@ Application
     → spring-boot-starter-web OR spring-boot-starter-webflux
 
 Agent (separate CL)
-  → platform-tracing-otel-extension (via javaagent.extensions)
+  → platform-tracing-otel-javaagent-extension (via javaagent.extensions)
 
 Verification modules
   → may depend on production modules for testing (testImplementation)
   → must not become transitive runtime deps of starters
 ```
 
-Starters must not expose `platform-tracing-otel-extension` on application compile/runtime classpath (verified by `pr0StarterDependencySmoke`).
+Starters must not expose `platform-tracing-otel-javaagent-extension` on application compile/runtime classpath (verified by `pr0StarterDependencySmoke`).
 
 ---
 
@@ -131,8 +131,8 @@ Starters must not expose `platform-tracing-otel-extension` on application compil
 | From | To | Reason |
 |------|-----|--------|
 | Application | `otel-extension`, `core`, `autoconfigure*` directly | Use starter + BOM only |
-| `platform-tracing-spring-boot-autoconfigure` main | `platform-tracing-otel-extension` impl classes | App CL vs Agent CL boundary |
-| `platform-tracing-otel-extension` main | `org.springframework.*` | Extension loads without Spring |
+| `platform-tracing-spring-boot-autoconfigure` main | `platform-tracing-otel-javaagent-extension` impl classes | App CL vs Agent CL boundary |
+| `platform-tracing-otel-javaagent-extension` main | `org.springframework.*` | Extension loads without Spring |
 | `platform-tracing-autoconfigure-webmvc` main | WebFlux / Reactor types | Stack isolation |
 | `platform-tracing-autoconfigure-webflux` main | Servlet / MVC types | Stack isolation |
 | Future `core.{sampling,scrubbing,validation,enrichment}` | `io.opentelemetry.*`, `org.springframework.*`, `javax.management.*` | Clean Core Hybrid pure policy target (PR-9B: `core.sampling` active; JMX added) |
@@ -199,8 +199,8 @@ Documented; **not** fixed in PR-1. Forward guardrails prevent **new** violations
 
 Do not add:
 
-- `platform-tracing-spring-boot-autoconfigure` → `platform-tracing-otel-extension` on **main** runtime classpath
-- Spring dependencies in `platform-tracing-otel-extension` main sources
+- `platform-tracing-spring-boot-autoconfigure` → `platform-tracing-otel-javaagent-extension` on **main** runtime classpath
+- Spring dependencies in `platform-tracing-otel-javaagent-extension` main sources
 - Direct application dependencies on internal runtime modules
 
 ---

@@ -210,7 +210,7 @@ Rules:
 - shared framework-neutral behavior belongs in API/core/autoconfigure
 - reactive behavior must not rely on ordinary thread-local semantics
 
-### `platform-tracing-otel-extension`
+### `platform-tracing-otel-javaagent-extension`
 
 Owns:
 
@@ -256,7 +256,7 @@ platform-tracing-autoconfigure-webmvc
 platform-tracing-autoconfigure-webflux
     -> approved api/core/autoconfigure modules
 
-platform-tracing-otel-extension
+platform-tracing-otel-javaagent-extension
     -> approved api/core modules
 
 starters

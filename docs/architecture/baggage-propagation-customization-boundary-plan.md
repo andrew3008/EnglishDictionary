@@ -14,7 +14,7 @@
 ## 2. Current Evidence
 
 **Расположение:**
-`platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/PlatformPropagatorFactory.java`
+`platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/PlatformPropagatorFactory.java`
 
 **Метод:**
 ```java
@@ -111,7 +111,7 @@ propagator.getClass().getName().contains("W3CBaggagePropagator")
 
 ## 9. Architecture Guardrail Plan
 
-ArchUnit уже используется в проекте (7 тест-файлов в `platform-tracing-otel-extension`).
+ArchUnit уже используется в проекте (7 тест-файлов в `platform-tracing-otel-javaagent-extension`).
 
 Добавлен новый `PropagationBoundaryArchTest` с двумя правилами:
 
@@ -150,13 +150,13 @@ noClasses()
 ## 11. Validation Commands
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --continue
 ./gradlew pr4ArchitectureFitnessVerify --continue
 ```
 
 Целевые тест-классы:
 ```bash
-./gradlew :platform-tracing-otel-extension:test \
+./gradlew :platform-tracing-otel-javaagent-extension:test \
   --tests "*.BaggagePropagatorTypeDetectorTest" \
   --tests "*.BaggagePropagationCustomizerTest" \
   --tests "*.PropagationBoundaryArchTest"
@@ -166,8 +166,8 @@ noClasses()
 
 ```bash
 rg "PlatformPropagatorFactory" .
-rg "\"W3CBaggagePropagator\"" platform-tracing-otel-extension/src/main/java
-rg "getClass\(\)\.getName\(\).*contains|getName\(\)\.contains" platform-tracing-otel-extension/src/main/java
+rg "\"W3CBaggagePropagator\"" platform-tracing-otel-javaagent-extension/src/main/java
+rg "getClass\(\)\.getName\(\).*contains|getName\(\)\.contains" platform-tracing-otel-javaagent-extension/src/main/java
 rg "BaggagePropagationCustomizer|BaggagePropagatorTypeDetector" .
 ```
 

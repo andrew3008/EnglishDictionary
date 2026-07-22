@@ -86,7 +86,7 @@ dependencies {
 jar {
     manifest {
         attributes(
-                'Implementation-Title': 'platform-tracing-otel-extension',
+                'Implementation-Title': 'platform-tracing-otel-javaagent-extension',
                 'Implementation-Version': project.version,
                 'OpenTelemetry-Extension': 'true'
         )
@@ -105,7 +105,7 @@ def agentExtensionJarTask = tasks.register('agentExtensionJar', Jar) {
     from { zipTree(configurations.runtimeClasspath.find { it.name.startsWith('slf4j-api') }) }
     manifest {
         attributes(
-                'Implementation-Title': 'platform-tracing-otel-extension',
+                'Implementation-Title': 'platform-tracing-otel-javaagent-extension',
                 'Implementation-Version': project.version,
                 'OpenTelemetry-Extension': 'true'
         )

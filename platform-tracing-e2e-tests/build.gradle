@@ -79,7 +79,7 @@ dependencies {
     // Платформенные модули — для запуска SDK с CompositeSampler и SpanProcessor'ами в test-режиме.
     testImplementation project(':platform-tracing-api')
     testImplementation project(':platform-tracing-otel')
-    testImplementation project(':platform-tracing-otel-extension')
+    testImplementation project(':platform-tracing-otel-javaagent-extension')
     testImplementation project(':platform-tracing-collector-config')
 
     // OpenTelemetry SDK + OTLP exporter.
@@ -103,7 +103,7 @@ dependencies {
 
     // Extension smoke: non-transitive classpath — Agent не подтягивает transitive deps автоматически.
     otelExtensionClasspath platform(project(':platform-tracing-bom'))
-    otelExtensionClasspath(project(path: ':platform-tracing-otel-extension', configuration: 'runtimeElements')) {
+    otelExtensionClasspath(project(path: ':platform-tracing-otel-javaagent-extension', configuration: 'runtimeElements')) {
         transitive = false
     }
     otelExtensionClasspath(project(path: ':platform-tracing-api', configuration: 'runtimeElements')) {
@@ -179,7 +179,7 @@ dependencies {
 tasks.register('verifyExtensionDeps') {
     dependsOn configurations.otelExtensionClasspath
     doLast {
-        def allowed = ['platform-tracing-otel-extension', 'platform-tracing-api', 'slf4j-api'] as Set
+        def allowed = ['platform-tracing-otel-javaagent-extension', 'platform-tracing-api', 'slf4j-api'] as Set
         def artifacts = configurations.otelExtensionClasspath.resolvedConfiguration.resolvedArtifacts
         def unexpected = artifacts.findAll { !allowed.contains(it.moduleVersion.id.name) }
         if (!unexpected.isEmpty()) {
@@ -250,13 +250,13 @@ tasks.named('processE2FailureExtensionResources') {
 }
 
 tasks.register('testE2FailureAgentJar', Jar) {
-    dependsOn ':platform-tracing-otel-extension:platformExtendedAgentJar', testE2FailureExtensionJar
+    dependsOn ':platform-tracing-otel-javaagent-extension:platformExtendedAgentJar', testE2FailureExtensionJar
     archiveFileName.set('opentelemetry-javaagent-e2-failure-fixture.jar')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     preserveFileTimestamps = false
     reproducibleFileOrder = true
     from {
-        zipTree(project(':platform-tracing-otel-extension').tasks.named('platformExtendedAgentJar')
+        zipTree(project(':platform-tracing-otel-javaagent-extension').tasks.named('platformExtendedAgentJar')
                 .get().archiveFile.get().asFile)
     }
     from(testE2FailureExtensionJar.archiveFile) {
@@ -264,7 +264,7 @@ tasks.register('testE2FailureAgentJar', Jar) {
     }
     doFirst {
         manifest.from(
-                zipTree(project(':platform-tracing-otel-extension').tasks.named('platformExtendedAgentJar')
+                zipTree(project(':platform-tracing-otel-javaagent-extension').tasks.named('platformExtendedAgentJar')
                         .get().archiveFile.get().asFile)
                         .matching { include 'META-INF/MANIFEST.MF' }
                         .singleFile
@@ -274,8 +274,8 @@ tasks.register('testE2FailureAgentJar', Jar) {
 
 test {
     useJUnitPlatform()
-    dependsOn verifyExtensionDeps, ':platform-tracing-otel-extension:agentExtensionJar', customRuleJar,
-              ':platform-tracing-otel-extension:platformExtendedAgentJar',
+    dependsOn verifyExtensionDeps, ':platform-tracing-otel-javaagent-extension:agentExtensionJar', customRuleJar,
+              ':platform-tracing-otel-javaagent-extension:platformExtendedAgentJar',
               testClassLoaderProbeJar, testJmxWireExtensionJar, testReadinessFixtureExtensionJar,
               testE2FailureAgentJar
     // E2E-тесты тяжёлые: даём им полный таймаут и не запускаем параллельно.
@@ -286,14 +286,14 @@ test {
     doFirst {
         systemProperty 'otel.javaagent.jar', configurations.otelJavaAgent.singleFile.absolutePath
         systemProperty 'smoke.controlled.agent.jar',
-                project(':platform-tracing-otel-extension').tasks.named('platformExtendedAgentJar')
+                project(':platform-tracing-otel-javaagent-extension').tasks.named('platformExtendedAgentJar')
                         .get().archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.e2.failure.agent.jar',
                 testE2FailureAgentJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.test.runtime.classpath', sourceSets.test.runtimeClasspath.asPath
         systemProperty 'smoke.e1.consumer.runtime.classpath', sourceSets.e1Consumer.runtimeClasspath.asPath
         systemProperty 'smoke.otel.extension.jar',
-                project(':platform-tracing-otel-extension').tasks.named('agentExtensionJar').get().archiveFile.get().asFile.absolutePath
+                project(':platform-tracing-otel-javaagent-extension').tasks.named('agentExtensionJar').get().archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.custom.rule.jar', customRuleJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.test.classloader.probe.extension.jar',
                 testClassLoaderProbeJar.archiveFile.get().asFile.absolutePath

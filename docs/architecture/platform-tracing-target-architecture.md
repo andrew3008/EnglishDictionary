@@ -110,7 +110,7 @@ flowchart LR
 |--------|-----|------------------|-----------------|
 | `platform-tracing-api` | Shared | ~70 (existing) | Public contracts, wire schema, semconv |
 | `platform-tracing-otel` | Shared | TBD (extract) | Pure policy engine |
-| `platform-tracing-otel-extension` | Agent | **Thin target: adapters + JMX** | OTel SPI glue |
+| `platform-tracing-otel-javaagent-extension` | Agent | **Thin target: adapters + JMX** | OTel SPI glue |
 | `platform-tracing-spring-boot-autoconfigure` | App | ~46 → thinner | Spring wiring, Actuator |
 | `platform-tracing-e2e-tests` | Test | — | Cross-CL, smoke, contract |
 
@@ -119,7 +119,7 @@ flowchart LR
 ```text
 platform-tracing-api          → JDK only
 platform-tracing-otel         → platform-tracing-api + JDK
-platform-tracing-otel-extension → core + api + OTel SPI/SDK (compileOnly)
+platform-tracing-otel-javaagent-extension → core + api + OTel SPI/SDK (compileOnly)
 platform-tracing-spring-boot-autoconfigure → core + api + Spring Boot
 platform-tracing-e2e-tests    → all modules (test)
 
@@ -166,7 +166,7 @@ platform-tracing-otel/
   core/enrichment/              — DefaultSpanEnricher (OTel-backed implementation)
   core/semconv/                 — internal typed SemconvKeys
 
-platform-tracing-otel-extension/
+platform-tracing-otel-javaagent-extension/
   otel/extension/spi/           — PlatformAutoConfigurationCustomizer (orchestration)
   otel/extension/adapter/       — SamplerAdapter, ProcessorAdapter, ResourceAdapter
   otel/extension/jmx/internal/  — PlatformTracingControl (private)

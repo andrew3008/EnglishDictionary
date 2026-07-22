@@ -42,7 +42,7 @@ package "Доменная реализация" as domain #FFF3E0 {
 }
 
 package "OpenTelemetry Java Agent (bootstrap CL)" as agent #F3E5F5 {
-  component [platform-tracing-otel-extension] as otel_ext <<Agent Extension>>
+  component [platform-tracing-otel-javaagent-extension] as otel_ext <<Agent Extension>>
   component [OpenTelemetry Java Agent 2.27.x] as javaagent
 }
 
@@ -365,7 +365,7 @@ end note
 skinparam backgroundColor #FEFEFE
 skinparam defaultFontName "Segoe UI"
 
-title platform-tracing-otel-extension — расширение OpenTelemetry Java Agent
+title platform-tracing-otel-javaagent-extension — расширение OpenTelemetry Java Agent
 
 package "META-INF/services" as meta #F3E5F5 {
   file "AutoConfigurationCustomizerProvider" as acp

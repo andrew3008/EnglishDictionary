@@ -31,7 +31,7 @@ import java.util.Set;
  * <p>
  * Формат файла — стандартный Java Properties; YAML-формат намеренно <b>не поддерживается</b>:
  * SnakeYAML недоступен в classloader'е расширения OTel Java Agent (нет shadow jar
- * в {@code platform-tracing-otel-extension/build.gradle}), а добавление SnakeYAML только ради
+ * в {@code platform-tracing-otel-javaagent-extension/build.gradle}), а добавление SnakeYAML только ради
  * YAML-варианта (~200 KB shadow) не оправдано в v1. Properties-формат — нулевые внешние
  * зависимости.
  *

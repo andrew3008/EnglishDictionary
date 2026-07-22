@@ -42,7 +42,7 @@
 
 ### 2.1 Production-классы (3 шт.) в `src/main`
 
-Пакет `platform-tracing-otel-extension/src/main/java/.../jmx/spike/`:
+Пакет `platform-tracing-otel-javaagent-extension/src/main/java/.../jmx/spike/`:
 
 - `TracingControlWireSpikeMBean` — JMX-контракт; константа
   `OBJECT_NAME = "space.br1440.platform.tracing:type=WireSpike,name=TracingControlWireSpike"`,
@@ -56,7 +56,7 @@
 
 ### 2.2 Production bootstrap call-site
 
-`platform-tracing-otel-extension/src/main/java/.../PlatformAutoConfigurationCustomizer.java`, строки **93-97**:
+`platform-tracing-otel-javaagent-extension/src/main/java/.../PlatformAutoConfigurationCustomizer.java`, строки **93-97**:
 
 ```java
 // PR-3 spike-only JMX wire MBean (property-gated; no production control-plane impact).
@@ -78,7 +78,7 @@ customizer.addTracerProviderCustomizer((builder, config) -> {
 
 ### 2.4 Тесты, зависящие от spike
 
-Unit (`platform-tracing-otel-extension/src/test/.../jmx/spike/`):
+Unit (`platform-tracing-otel-javaagent-extension/src/test/.../jmx/spike/`):
 
 - `PlatformTracingControlWireSpikeTest` — in-process JMX round-trip через `registerSafely()` + `MBeanServer.invoke`.
 - `MapWireRoundTripSpikeTest` — focused round-trip proof через `registerSafely()`.
@@ -97,7 +97,7 @@ E2E (`platform-tracing-e2e-tests/src/test/.../e2e/spike/`):
 - `SPIKE_MBEAN_VALIDATION_ONLY` (FF-08) — запрещает зависимости пакета `...jmx.spike..` на sampler/processor/exporter/autoconfigure.
 - `PRODUCTION_AUTOCONFIGURE_NO_SPIKE_MBEAN` (FF-09b) — запрещает production autoconfigure зависеть на `...jmx.spike..`.
 
-`platform-tracing-otel-extension/src/test/.../arch/SafeBoundaryArchTest.java`:
+`platform-tracing-otel-javaagent-extension/src/test/.../arch/SafeBoundaryArchTest.java`:
 
 - `no_factory_spike_package_in_production` — уже фиксирует **прецедент** покончившего purge: «`factory.spike` пакет удалён; classloader visibility probe перенесён в test-only extension JAR (`platform-tracing-e2e-tests/src/testExtension`)».
 
@@ -172,7 +172,7 @@ platform-tracing-e2e-tests/src/testExtension, а НЕ java-test-fixtures, пот
 
 ### Текущие source sets
 
-- `platform-tracing-otel-extension`: стандартные `main` / `test`. Плагин `java-test-fixtures` **не применяется**.
+- `platform-tracing-otel-javaagent-extension`: стандартные `main` / `test`. Плагин `java-test-fixtures` **не применяется**.
 - `platform-tracing-e2e-tests` (`build.gradle`): кастомные sourceSets `customRule`, `testExtension`, `test`.
 - Поиск `java-test-fixtures|testFixtures` по всем `*.gradle*` — **0 совпадений** во всём репозитории.
 
@@ -206,7 +206,7 @@ platform-tracing-e2e-tests/src/testExtension, а НЕ java-test-fixtures, пот
 | `.../jmx/spike/TracingControlWireSpike.java` (src/main) | Move → testExtension | MBean impl validation-only, не production control plane | Medium | test-only impl + `registerSafely()` |
 | `.../jmx/spike/TracingControlWireSpikeProbe.java` (src/main) | Move → testExtension (без production gate) | gate/маркеры только для E2E | Medium | test-only provider-driven регистрация |
 | `PlatformAutoConfigurationCustomizer.java:93-97` | Edit (удалить call-site) | снять production reachability | Medium | нет (provider в тест-JAR) |
-| `platform-tracing-otel-extension/build.gradle` | Возможен edit | возможна проверка `verifyAgentJarContents` на отсутствие spike | Low | guard на чистоту JAR |
+| `platform-tracing-otel-javaagent-extension/build.gradle` | Возможен edit | возможна проверка `verifyAgentJarContents` на отсутствие spike | Low | guard на чистоту JAR |
 | `platform-tracing-e2e-tests/build.gradle` | Edit | sourceSet/Jar-task/systemProperty для wire-spike extension JAR | Medium | `wireSpikeProbeJar` по образцу `testClassLoaderProbeJar` |
 | `PlatformTracingControlWireSpikeTest` | Move/Rewrite | сейчас зависит от production spike | Medium | relocated harness или validator-direct |
 | `MapWireRoundTripSpikeTest` | Rewrite | сохранить wire round-trip coverage | Medium | relocated harness или validator-direct |
@@ -325,7 +325,7 @@ platform.tracing.spike.jmx.wire is not a production runtime property anymore.
 Targeted + полная валидация:
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --continue
 ./gradlew :platform-tracing-e2e-tests:test -PrunE2e --tests "*MapWireRoundTripE2ETest*" --continue
 ./gradlew pr4ArchitectureFitnessVerify --continue
 ```
@@ -333,15 +333,15 @@ Targeted + полная валидация:
 Проверки чистоты production:
 
 ```bash
-rg "space\.br1440\.platform\.tracing\.otel\.extension\.jmx\.spike" platform-tracing-otel-extension/src/main
-rg "TracingControlWireSpike|platform\.tracing\.spike\.jmx\.wire|SPIKE_JMX_WIRE|WireSpike" platform-tracing-otel-extension/src/main
-rg "registerIfEnabled" platform-tracing-otel-extension/src/main
+rg "space\.br1440\.platform\.tracing\.otel\.extension\.jmx\.spike" platform-tracing-otel-javaagent-extension/src/main
+rg "TracingControlWireSpike|platform\.tracing\.spike\.jmx\.wire|SPIKE_JMX_WIRE|WireSpike" platform-tracing-otel-javaagent-extension/src/main
+rg "registerIfEnabled" platform-tracing-otel-javaagent-extension/src/main
 ```
 
 Инспекция production JAR (отсутствие spike-классов):
 
 ```bash
-./gradlew :platform-tracing-otel-extension:verifyAgentJarContents
+./gradlew :platform-tracing-otel-javaagent-extension:verifyAgentJarContents
 # дополнительно: убедиться, что в agentExtensionJar нет
 # entry space/br1440/platform/tracing/otel/extension/jmx/spike/*.class
 ```

@@ -124,7 +124,7 @@ ext.buildK6SmokeImage = { Project p ->
 tasks.register('preparePerfAppDockerContext', Sync) {
     group = 'perf'
     description = 'Builds Docker context for perf-app (bootJar + javaagent + extension; remote Docker safe).'
-    dependsOn bootJar, ':platform-tracing-otel-extension:agentExtensionJar'
+    dependsOn bootJar, ':platform-tracing-otel-javaagent-extension:agentExtensionJar'
     into layout.buildDirectory.dir('docker/perf-app')
     from(bootJar) {
         rename { 'sut-app.jar' }
@@ -132,8 +132,8 @@ tasks.register('preparePerfAppDockerContext', Sync) {
     from(configurations.otelJavaAgent) {
         rename { 'opentelemetry-javaagent.jar' }
     }
-    from(project(':platform-tracing-otel-extension').tasks.named('agentExtensionJar')) {
-        rename { 'platform-tracing-otel-extension-agent.jar' }
+    from(project(':platform-tracing-otel-javaagent-extension').tasks.named('agentExtensionJar')) {
+        rename { 'platform-tracing-otel-javaagent-extension-agent.jar' }
     }
     from('docker/perf-app/Dockerfile')
 }

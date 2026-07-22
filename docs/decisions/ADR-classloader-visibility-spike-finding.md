@@ -63,7 +63,7 @@ found rule = custom-e2e-rule
 ### F3. Рекомендуемая архитектура: **Вариант B**
 
 ```
-otel.javaagent.extensions = platform-tracing-otel-extension-agent.jar   # только platform extension
+otel.javaagent.extensions = platform-tracing-otel-javaagent-extension-agent.jar   # только platform extension
 platform.tracing.scrubbing.rules.extensions = /path/to/custom-rules.jar   # только custom rules
 ```
 
@@ -134,7 +134,7 @@ SPIKE_RESULT recommendation=USE_PLATFORM_RULES_EXTENSIONS
 
 ## Migration (2026-06-17)
 
-`ClassLoaderVisibilitySpikeProbe` удалён из `platform-tracing-otel-extension/src/main`.
+`ClassLoaderVisibilitySpikeProbe` удалён из `platform-tracing-otel-javaagent-extension/src/main`.
 Пакет `factory.spike` удалён. Свойство `platform.tracing.spike.classloader.visibility` и
 маркер-prefix `SPIKE_CLASSLOADER:` удалены из активного кода.
 

@@ -9,7 +9,7 @@ import java.util.Objects;
 /**
  * Actuator-facing diagnostics for manual platform tracing (Slice 7).
  * <p>
- * Distinct from {@code platform-tracing-otel-extension} safety counters named
+ * Distinct from {@code platform-tracing-otel-javaagent-extension} safety counters named
  * {@code TracingDiagnostics}.
  */
 public final class SpanFactoryDiagnostics {

@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Запуск дочерней JVM с OTel Java Agent + {@code platform-tracing-otel-extension} и
+ * Запуск дочерней JVM с OTel Java Agent + {@code platform-tracing-otel-javaagent-extension} и
  * {@link ResourceIdentityAgentSmokeMain} для проверки resource-идентичности (Фаза 9).
  * <p>
  * Идентичность задаётся через {@code -Dplatform.tracing.service.*} (а не {@code otel.service.name}),

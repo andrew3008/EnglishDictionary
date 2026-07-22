@@ -110,5 +110,5 @@ JMH-прогон был частью hot-path safety gate (после перен
 
 - Чёткие, машинно-проверяемые границы слоёв; нормализация и валидация имеют единственный дом.
 - Удалено дублирование нормализации между core и otel-extension.
-- Ломающее изменение FQN классов `core.sampling.*` (допустимо в pre-production). Внешние ссылки обновлены только в `platform-tracing-otel-extension`.
+- Ломающее изменение FQN классов `core.sampling.*` (допустимо в pre-production). Внешние ссылки обновлены только в `platform-tracing-otel-javaagent-extension`.
 - `ProductionSamplingPolicyChain` остаётся `public` fixed-chain фасадом как осознанный cross-package компромисс под контролем ArchUnit; sampling rule SPI закрыт решением CP-2.

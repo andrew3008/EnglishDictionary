@@ -172,7 +172,7 @@ It must not own tracing domain rules.
 
 ### OTel/JMX boundary
 
-`platform-tracing-otel-extension` owns:
+`platform-tracing-otel-javaagent-extension` owns:
 
 - JMX/OpenMBean adapters
 - agent/SDK integration

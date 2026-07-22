@@ -38,10 +38,10 @@
 ## 2. Current Class Snapshot
 
 - **Package:** `space.br1440.platform.tracing.otel.extension.jmx`
-- **Файл:** [platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControl.java](platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControl.java) — 669 строк.
-- **Реализует:** `PlatformTracingControlMBean` ([.../jmx/PlatformTracingControlMBean.java](platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlMBean.java), 376 строк, `OBJECT_NAME = "space.br1440.platform.tracing:type=Control,name=PlatformTracingControl"`).
+- **Файл:** [platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControl.java](platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControl.java) — 669 строк.
+- **Реализует:** `PlatformTracingControlMBean` ([.../jmx/PlatformTracingControlMBean.java](platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlMBean.java), 376 строк, `OBJECT_NAME = "space.br1440.platform.tracing:type=Control,name=PlatformTracingControl"`).
 - **Конструктор:** один, **package-private**, 9-arg (результат предыдущего `AGGRESSIVE_FULL_BOUNDARY_CLEANUP`).
-- **Владелец регистрации:** `PlatformTracingJmxRegistrar` ([.../jmx/PlatformTracingJmxRegistrar.java](platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingJmxRegistrar.java)) — в том же пакете `jmx`, вызывает package-private конструктор напрямую.
+- **Владелец регистрации:** `PlatformTracingJmxRegistrar` ([.../jmx/PlatformTracingJmxRegistrar.java](platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingJmxRegistrar.java)) — в том же пакете `jmx`, вызывает package-private конструктор напрямую.
 
 ### 2.1 Поля (12)
 
@@ -88,15 +88,15 @@ TracingDiagnostics.shared()         — getSafeWrapperMetrics
 
 ### 3.2 Test usage
 
-Тесты создают экземпляры **только** через `PlatformTracingControlTestBuilder` ([.../jmx/PlatformTracingControlTestBuilder.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlTestBuilder.java)) — прямого `new PlatformTracingControl` в тестах нет. Файлы:
+Тесты создают экземпляры **только** через `PlatformTracingControlTestBuilder` ([.../jmx/PlatformTracingControlTestBuilder.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlTestBuilder.java)) — прямого `new PlatformTracingControl` в тестах нет. Файлы:
 
-- [.../jmx/PlatformTracingControlTest.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlTest.java) — sampling CRUD, валидация, registrar-регистрация/идемпотентность, watchdog-stats null-tolerant, processor-errors агрегация, export late-binding.
-- [.../sampler/SamplingPolicyRuntimeUpdateJmxTest.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/sampler/SamplingPolicyRuntimeUpdateJmxTest.java)
-- [.../scrubbing/ScrubbingPolicyRuntimeUpdateJmxTest.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/scrubbing/ScrubbingPolicyRuntimeUpdateJmxTest.java)
-- [.../processor/ValidationPolicyRuntimeUpdateJmxTest.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/ValidationPolicyRuntimeUpdateJmxTest.java)
-- [.../processor/ValidationStrictRuntimeGuardTest.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/ValidationStrictRuntimeGuardTest.java)
-- [.../PlatformAutoConfigurationCustomizerProcessorsTest.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/PlatformAutoConfigurationCustomizerProcessorsTest.java) — production bootstrap guard.
-- [.../PlatformSpiAutoconfigureIntegrationTest.java](platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/PlatformSpiAutoconfigureIntegrationTest.java) — SPI/registration интеграция.
+- [.../jmx/PlatformTracingControlTest.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlTest.java) — sampling CRUD, валидация, registrar-регистрация/идемпотентность, watchdog-stats null-tolerant, processor-errors агрегация, export late-binding.
+- [.../sampler/SamplingPolicyRuntimeUpdateJmxTest.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/sampler/SamplingPolicyRuntimeUpdateJmxTest.java)
+- [.../scrubbing/ScrubbingPolicyRuntimeUpdateJmxTest.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/scrubbing/ScrubbingPolicyRuntimeUpdateJmxTest.java)
+- [.../processor/ValidationPolicyRuntimeUpdateJmxTest.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/ValidationPolicyRuntimeUpdateJmxTest.java)
+- [.../processor/ValidationStrictRuntimeGuardTest.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/ValidationStrictRuntimeGuardTest.java)
+- [.../PlatformAutoConfigurationCustomizerProcessorsTest.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/PlatformAutoConfigurationCustomizerProcessorsTest.java) — production bootstrap guard.
+- [.../PlatformSpiAutoconfigureIntegrationTest.java](platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/PlatformSpiAutoconfigureIntegrationTest.java) — SPI/registration интеграция.
 
 ### 3.3 JMX / external usage
 
@@ -463,8 +463,8 @@ Hard rules: no public delegates; no reflection; no changes to PlatformTracingJmx
 PlatformTracingControlMBean / PlatformTracingControlTestBuilder signatures; do not fix early-registration timing.
 
 Validation:
-- ./gradlew :platform-tracing-otel-extension:test --tests "*PlatformTracingControlTest*" --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --tests "*ValidationStrictRuntimeGuardTest*" --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
-- ./gradlew :platform-tracing-otel-extension:test --continue
+- ./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformTracingControlTest*" --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --tests "*ValidationStrictRuntimeGuardTest*" --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
+- ./gradlew :platform-tracing-otel-javaagent-extension:test --continue
 - ./gradlew pr4ArchitectureFitnessVerify --continue
 - grep: PlatformTracingControlMBean unchanged; no public *Operations; OBJECT_NAME unchanged.
 ```

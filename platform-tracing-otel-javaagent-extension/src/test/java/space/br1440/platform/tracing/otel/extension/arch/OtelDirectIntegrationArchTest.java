@@ -7,7 +7,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import space.br1440.platform.tracing.test.arch.OtelDirectIntegrationRules;
 
 /**
- * ArchUnit guardrails direct OTel integration для {@code platform-tracing-otel-extension}.
+ * ArchUnit guardrails direct OTel integration для {@code platform-tracing-otel-javaagent-extension}.
  * <p>
  * Import scope ограничен {@code space.br1440.platform.tracing.otel} без test-классов —
  * см. Javadoc {@link OtelDirectIntegrationRules}.

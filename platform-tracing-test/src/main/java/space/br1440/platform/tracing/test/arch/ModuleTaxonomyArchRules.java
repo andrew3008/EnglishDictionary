@@ -103,7 +103,7 @@ public final class ModuleTaxonomyArchRules {
      * Autoconfigure приложения не должен зависеть от реализации agent-extension.
      * <p>
      * Agent extension загружается в ExtensionClassLoader; App CL не должен импортировать
-     * production-классы {@code platform-tracing-otel-extension} напрямую.
+     * production-классы {@code platform-tracing-otel-javaagent-extension} напрямую.
      */
     public static final ArchRule AUTOCONFIGURE_MAIN_NO_OTEL_EXTENSION_IMPL = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.autoconfigure..")
@@ -112,7 +112,7 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel.extension..")
             .allowEmptyShould(true)
             .because("platform-tracing-spring-boot-autoconfigure (App CL) не должен зависеть от "
-                    + "platform-tracing-otel-extension (Agent CL) implementation-классов");
+                    + "platform-tracing-otel-javaagent-extension (Agent CL) implementation-классов");
 
     /**
      * Web-модули компилируются только против API и публичной границы autoconfigure.

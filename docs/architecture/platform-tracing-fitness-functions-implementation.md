@@ -61,13 +61,13 @@ PR-4 formalizes **architecture fitness functions** that protect decisions from P
 | **FF-02** | API protocol no implementation deps | `platform-tracing-api` | `API_PROTOCOL_NO_IMPLEMENTATION_MODULES` → `ApiProtocolPackagePurityArchTest`, `ApiProtocolNoImplementationDependencyArchTest` | **ENFORCED** |
 | **FF-01b** | Protocol API unified naming prefix | `platform-tracing-api` | `PROTOCOL_API_TYPES_USE_UNIFIED_PREFIX` → `ApiProtocolPackagePurityArchTest` | **ENFORCED** |
 | **FF-01c** | Protocol API no Wire in type names | `platform-tracing-api` | `PROTOCOL_API_TYPES_DO_NOT_USE_WIRE_NAMING` → `ApiProtocolPackagePurityArchTest` | **ENFORCED** |
-| **FF-03** | No Spring in otel-extension | `platform-tracing-otel-extension` | `ExtensionNoSpringDependencyArchTest` (PR-1 era) | **ENFORCED** (reused) |
+| **FF-03** | No Spring in otel-extension | `platform-tracing-otel-javaagent-extension` | `ExtensionNoSpringDependencyArchTest` (PR-1 era) | **ENFORCED** (reused) |
 | **FF-04** | Autoconfigure → no otel-extension impl | `platform-tracing-spring-boot-autoconfigure` | `ModuleTaxonomyArchRules.AUTOCONFIGURE_MAIN_NO_OTEL_EXTENSION_IMPL` → `AutoconfigureNoOtelExtensionMainDepArchTest` | **ENFORCED** (reused) |
 | **FF-05** | WebMVC / WebFlux isolation | webmvc, webflux | `WEBMVC_MAIN_NO_WEBFLUX_STACK`, `WEBFLUX_MAIN_NO_SERVLET_STACK` → PR-1 ArchTests | **ENFORCED** (reused) |
 | **FF-06** | Core future policy purity | `platform-tracing-core` | `CORE_POLICY_PACKAGES_NO_OTEL_OR_SPRING` → `CorePolicyPackagePurityArchTest` | **FORWARD_LOOKING** |
-| **FF-07** | ~~Spike MBean property-gated~~ | `platform-tracing-otel-extension` | ~~`SpikeMBeanPropertyGateArchTest`~~ | **RETIRED** (production spike removed; gate `platform.tracing.spike.jmx.wire` deleted) |
-| **FF-08** | ~~Spike MBean validation-only~~ | `platform-tracing-otel-extension` | ~~`SPIKE_MBEAN_VALIDATION_ONLY` → `SpikeMBeanValidationOnlyArchTest`~~ | **RETIRED** (production spike MBean removed) |
-| **FF-08b** | No spike code in production | `platform-tracing-otel-extension` | `SafeBoundaryArchTest.no_jmx_spike_package_in_production`, `no_spike_named_classes_in_production` | **ENFORCED** (replaces FF-07/FF-08 with a production ban) |
+| **FF-07** | ~~Spike MBean property-gated~~ | `platform-tracing-otel-javaagent-extension` | ~~`SpikeMBeanPropertyGateArchTest`~~ | **RETIRED** (production spike removed; gate `platform.tracing.spike.jmx.wire` deleted) |
+| **FF-08** | ~~Spike MBean validation-only~~ | `platform-tracing-otel-javaagent-extension` | ~~`SPIKE_MBEAN_VALIDATION_ONLY` → `SpikeMBeanValidationOnlyArchTest`~~ | **RETIRED** (production spike MBean removed) |
+| **FF-08b** | No spike code in production | `platform-tracing-otel-javaagent-extension` | `SafeBoundaryArchTest.no_jmx_spike_package_in_production`, `no_spike_named_classes_in_production` | **ENFORCED** (replaces FF-07/FF-08 with a production ban) |
 | **FF-09** | Production not on Map wire validator | `platform-tracing-spring-boot-autoconfigure` | `ProductionControlPlaneNotMigratedArchTest` (`PRODUCTION_AUTOCONFIGURE_NO_WIRE_VALIDATOR`) | **ENFORCED** |
 | **FF-10** | Starters expose no otel-extension | starters | `pr0StarterDependencySmoke` | **ENFORCED** (reused) |
 | **FF-11** | No module collapse | repo | [platform-tracing-module-taxonomy.md](platform-tracing-module-taxonomy.md) | **DOCUMENTED_ONLY** |

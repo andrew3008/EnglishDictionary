@@ -43,7 +43,7 @@ Dev/staging без Agent: явный opt-in bridge — [MIGRATION.md](../MIGRATI
 env:
   JAVA_TOOL_OPTIONS: >-
     -javaagent:/otel/opentelemetry-javaagent.jar
-    -Dotel.javaagent.extensions=/otel/platform-tracing-otel-extension-agent.jar
+    -Dotel.javaagent.extensions=/otel/platform-tracing-otel-javaagent-extension-agent.jar
     -Dotel.instrumentation.http.server.capture-request-headers=X-Trace-On,X-QA-Trace
     -Dotel.instrumentation.logback-mdc.enabled=false
 ```

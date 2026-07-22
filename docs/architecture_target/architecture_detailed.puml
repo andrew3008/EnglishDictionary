@@ -103,7 +103,7 @@ package "Actuator Boundary" as ActuatorLayer {
 frame "OpenTelemetry Java Agent\nAgent / Extension CL" as AgentCL {
 
 package "OTel Extension Entry Points" as ExtensionEntry {
-  component "platform-tracing-otel-extension\nPlatformAutoConfigurationCustomizer\nOTel SPI registration" as Extension
+  component "platform-tracing-otel-javaagent-extension\nPlatformAutoConfigurationCustomizer\nOTel SPI registration" as Extension
   component "PlatformSamplerProvider\nPlatformSamplerBuilder\nOTel Sampler SPI" as SamplerProvider
   component "PlatformSpanProcessorFactory\nProcessor chain wiring" as ProcessorFactory
   component "PlatformExportProcessorFactory\nExport safety wiring" as ExportFactory
@@ -299,7 +299,7 @@ note bottom of CleanCore
 Clean Core invariant:
 core.sampling / core.scrubbing / core.validation / core.enrichment
 must not import Spring or OpenTelemetry.
-OTel-specific callbacks stay in platform-tracing-otel-extension.
+OTel-specific callbacks stay in platform-tracing-otel-javaagent-extension.
 end note
 
 ' Data plane

@@ -52,7 +52,7 @@ include 'platform-tracing-spring-boot-starter-servlet'
 include 'platform-tracing-spring-boot-starter-reactive'
 
 // Расширение для OpenTelemetry Java Agent: Sampler, SpanProcessor, ResourceProvider.
-include 'platform-tracing-otel-extension'
+include 'platform-tracing-otel-javaagent-extension'
 
 // Версионируемые YAML-конфигурации для OpenTelemetry Collector (tail_sampling, маршрутизация в Jaeger).
 include 'platform-tracing-collector-config'

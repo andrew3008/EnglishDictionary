@@ -60,7 +60,7 @@ Application `OpenTelemetry` bean запрещён. Подробности —
 
 1. `system-property` — `-Dotel.bsp.max.queue.size=8192`
 2. `env-var` — `OTEL_BSP_MAX_QUEUE_SIZE=8192`
-3. `default-platform` — дефолт из `platform-tracing-otel-extension` (`PlatformTracingDefaultsProvider`)
+3. `default-platform` — дефолт из `platform-tracing-otel-javaagent-extension` (`PlatformTracingDefaultsProvider`)
 4. `default-otel-sdk` — встроенный дефолт OTel SDK (значение `null` в JSON)
 
 Секреты (`headers`, `token`, `password`, …) маскируются как `***`.

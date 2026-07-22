@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-- **Расположение контракта ключей:** `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/SpanExporterMetrics.java` — `@UtilityClass` с 9 `public static final String` константами.
+- **Расположение контракта ключей:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/SpanExporterMetrics.java` — `@UtilityClass` с 9 `public static final String` константами.
 - **Текущие metric keys (значения строк):** `batches`, `failures`, `exported`, `dropped`, `flush_failures`, `shutdown_failures`, `last_export_duration_nanos`, `gated`, `export_enabled`.
 - **Тип метрик по фактам репозитория:** это **не** зарегистрированные OpenTelemetry metric instruments и **не** Micrometer/Prometheus meters для этих ключей. Это **internal snapshot keys** в `Map<String, Long>`, формируемые `SafeSpanExporter.metricsSnapshot()` и читаемые через JMX/actuator.
 - **Главный producer:** `space.br1440.platform.tracing.otel.extension.exporter.SafeSpanExporter` — поля `LongAdder` / `AtomicLong` / `AtomicBoolean`, агрегация в `metricsSnapshot()` через константы `SpanExporterMetrics`.
@@ -20,15 +20,15 @@
 
 | Module | Path | Role |
 |--------|------|------|
-| `platform-tracing-otel-extension` | `src/main/java`, `src/test/java` | Producer, JMX bridge, unit/integration tests |
+| `platform-tracing-otel-javaagent-extension` | `src/main/java`, `src/test/java` | Producer, JMX bridge, unit/integration tests |
 | `platform-tracing-spring-boot-autoconfigure` | `src/main/java`, `src/test/java` | Actuator/JMX client exposure |
 | `docs` | `docs/**` | ADR, runbooks, dropped-span taxonomy |
 
 ### Inspected source roots
 
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/`
 - `platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/sampling/`
 - `platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/`
 - `platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/` (проверка отсутствия binder для SafeSpanExporter keys)
@@ -42,10 +42,10 @@ rg "SpanExporterMetrics" .
 rg "metricsSnapshot\(" .
 rg "BATCHES|FAILURES|EXPORTED|DROPPED|FLUSH_FAILURES|SHUTDOWN_FAILURES|LAST_EXPORT_DURATION_NANOS|GATED|EXPORT_ENABLED" .
 rg "\"batches\"|\"failures\"|\"exported\"|\"dropped\"|\"flush_failures\"|\"shutdown_failures\"|\"last_export_duration_nanos\"|\"gated\"|\"export_enabled\"" .
-rg "SafeSpanExporter" platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java docs
-rg "SpanExporter|exporter|exportFailures|exportedSpans|droppedSpans|gatedSpans|exportEnabled" platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java
-rg "ObservableGauge|LongCounter|Counter|Gauge|Meter|meter|metric|Metric" platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java
-rg "JMX|MBean|ControlMBean|snapshot|actuator|diagnostic|diagnostics" platform-tracing-otel-extension/src/main/java platform-tracing-spring-boot-autoconfigure/src/main/java docs
+rg "SafeSpanExporter" platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java docs
+rg "SpanExporter|exporter|exportFailures|exportedSpans|droppedSpans|gatedSpans|exportEnabled" platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java
+rg "ObservableGauge|LongCounter|Counter|Gauge|Meter|meter|metric|Metric" platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java
+rg "JMX|MBean|ControlMBean|snapshot|actuator|diagnostic|diagnostics" platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-spring-boot-autoconfigure/src/main/java docs
 ```
 
 Дополнительно: поиск `getSafeExporterMetrics`, `SafeExporterMetrics`, `PlatformTracingSafeWrapperMetricsBinder` (для отделения SafeWrapper vs SafeExporter метрик).
@@ -382,8 +382,8 @@ Future names (any variant) should satisfy:
 ### 15.1 `SpanExporterMetrics` usages
 
 ```text
-platform-tracing-otel-extension/.../exporter/SpanExporterMetrics.java  (definition)
-platform-tracing-otel-extension/.../exporter/SafeSpanExporter.java:166-174  (only consumer of constants)
+platform-tracing-otel-javaagent-extension/.../exporter/SpanExporterMetrics.java  (definition)
+platform-tracing-otel-javaagent-extension/.../exporter/SafeSpanExporter.java:166-174  (only consumer of constants)
 ```
 
 ### 15.2 `metricsSnapshot()` usages

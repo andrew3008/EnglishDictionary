@@ -67,13 +67,13 @@
 
 ### 3.1. Описание
 
-Agent-first модель: `platform-tracing-otel-extension` в Agent CL настраивает OTel SDK через SPI; `platform-tracing-spring-boot-autoconfigure` в Application CL предоставляет `TracingProperties`, фасад `TraceOperations`, JMX client и Actuator endpoint. Runtime policy (sampling, scrubbing, validation toggles) мутирует через JMX atomic domain updates в `SamplerStateHolder` и sibling holders. Topology (exporter endpoint, BSP queue, processor chain composition) — startup-only.
+Agent-first модель: `platform-tracing-otel-javaagent-extension` в Agent CL настраивает OTel SDK через SPI; `platform-tracing-spring-boot-autoconfigure` в Application CL предоставляет `TracingProperties`, фасад `TraceOperations`, JMX client и Actuator endpoint. Runtime policy (sampling, scrubbing, validation toggles) мутирует через JMX atomic domain updates в `SamplerStateHolder` и sibling holders. Topology (exporter endpoint, BSP queue, processor chain composition) — startup-only.
 
 ### 3.2. Диаграмма
 
 ```mermaid
 flowchart TB
-  subgraph agentCL ["Agent CL — platform-tracing-otel-extension"]
+  subgraph agentCL ["Agent CL — platform-tracing-otel-javaagent-extension"]
     PAC["PlatformAutoConfigurationCustomizer"]
     CS["CompositeSampler / SamplerStateHolder"]
     PCP["PlatformCompositeSpanProcessor"]
@@ -913,7 +913,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  subgraph agentCL ["Agent CL — platform-tracing-otel-extension"]
+  subgraph agentCL ["Agent CL — platform-tracing-otel-javaagent-extension"]
     PAC["PlatformAutoConfigurationCustomizer"]
     CS["CompositeSampler ← SamplerStateHolder"]
     PCP["PlatformCompositeSpanProcessor"]
@@ -950,7 +950,7 @@ flowchart TB
 |--------|-----|----------------|
 | `platform-tracing-api` | Both | Public API, control DTOs, `DomainConfigHolder`, semconv |
 | `platform-tracing-core` | App (optional both for pure logic) | Domain helpers, mappers without OTel/Spring |
-| `platform-tracing-otel-extension` | Agent | OTel SPI adapters only |
+| `platform-tracing-otel-javaagent-extension` | Agent | OTel SPI adapters only |
 | `platform-tracing-spring-boot-autoconfigure` | App | Spring wiring, JMX client, Actuator |
 | `platform-tracing-e2e-tests` | Test | Smoke, contract, agent processes |
 

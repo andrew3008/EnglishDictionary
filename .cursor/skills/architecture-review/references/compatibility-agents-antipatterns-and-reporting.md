@@ -151,7 +151,7 @@ Typical:
 .\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon
 .\gradlew.bat :platform-tracing-autoconfigure-webmvc:test --no-daemon
 .\gradlew.bat :platform-tracing-autoconfigure-webflux:test --no-daemon
-.\gradlew.bat :platform-tracing-otel-extension:test --no-daemon
+.\gradlew.bat :platform-tracing-otel-javaagent-extension:test --no-daemon
 .\gradlew.bat :platform-tracing-api:javadoc --warning-mode all --no-daemon
 .\gradlew.bat pr4ArchitectureFitnessVerify pr1ModuleTaxonomyVerify --no-daemon
 .\gradlew.bat build --warning-mode all --no-daemon

@@ -220,7 +220,7 @@ Runtime (не связан с ExtensionConfig после bootstrap):
 
 **Тест:** `ExtensionConfigBootstrapGuardrailsArchTest.нет_descriptor_registry_классов`  
 **Правило:** ни один production-класс в otel-extension не должен иметь имя, оканчивающееся на `PropertyKey` или содержащее `PropertyRegistry`, поскольку это запрещённые паттерны A3' архитектуры.  
-**Дополнительный grep-гард:** `rg "PropertyKey|codegen|generated metadata|reflection config" platform-tracing-otel-extension/src/main/java` — ожидается: 0 matches (только javadoc комментарий в `ExtensionConfigReader` допустим).
+**Дополнительный grep-гард:** `rg "PropertyKey|codegen|generated metadata|reflection config" platform-tracing-otel-javaagent-extension/src/main/java` — ожидается: 0 matches (только javadoc комментарий в `ExtensionConfigReader` допустим).
 
 ### G4 — Конструктор ExtensionConfig только в разрешённых местах
 
@@ -233,8 +233,8 @@ Runtime (не связан с ExtensionConfig после bootstrap):
 
 ```bash
 rg "ExtensionPropertyNames\.(SAMPLING|SCRUBBING|QUEUE|METRICS|ENRICHING|BAGGAGE|SDK|CLASSIFICATION|WATCHDOG|VALIDATION)" \
-  platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory \
-  platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/sampler
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory \
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/sampler
 ```
 
 **Ожидаемый результат:** 0 matches. Верифицирован по состоянию на PR-5.
@@ -250,33 +250,33 @@ rg "ExtensionPropertyNames\.(SAMPLING|SCRUBBING|QUEUE|METRICS|ENRICHING|BAGGAGE|
 
 ```bash
 # Запустить все тесты otel-extension
-./gradlew :platform-tracing-otel-extension:test
+./gradlew :platform-tracing-otel-javaagent-extension:test
 
 # Запустить architecture fitness suite
 ./gradlew pr4ArchitectureFitnessVerify
 
 # G4: new ExtensionConfig только в двух разрешённых местах
-rg "new ExtensionConfig" platform-tracing-otel-extension/src/main
+rg "new ExtensionConfig" platform-tracing-otel-javaagent-extension/src/main
 # Ожидается: PlatformAutoConfigurationCustomizer + PlatformSamplerProvider
 
 # G1: domain config классы не держат ConfigProperties
-rg "ConfigProperties" platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration
+rg "ConfigProperties" platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration
 # Ожидается: только ExtensionConfig, ExtensionConfigReader, SamplingExtensionConfig (в javadoc), etc.
 
 # G5: мигрированные фабрики не читают мигрированные domain-свойства
 rg "ExtensionPropertyNames\.(SAMPLING|SCRUBBING|QUEUE|METRICS|ENRICHING|BAGGAGE|SDK|CLASSIFICATION|WATCHDOG|VALIDATION)" \
-  platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory \
-  platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/sampler
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory \
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/sampler
 # Ожидается: 0 matches
 
 # Runtime API не изменился
 rg "RuntimeConfigApplier|updateSamplingPolicy|PlatformTracingControlMBean|TracingProperties" \
-  platform-tracing-otel-extension platform-tracing-spring-boot-autoconfigure
+  platform-tracing-otel-javaagent-extension platform-tracing-spring-boot-autoconfigure
 # Ожидается: только существующие определения и тесты, без новых production call sites
 
 # G3: нет descriptor/codegen классов
 rg "PropertyKey|codegen|generated metadata|reflection config" \
-  platform-tracing-otel-extension/src/main/java
+  platform-tracing-otel-javaagent-extension/src/main/java
 # Ожидается: только javadoc комментарий в ExtensionConfigReader (не класс-имя)
 ```
 

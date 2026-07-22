@@ -168,7 +168,7 @@ platform-tracing-autoconfigure-webmvc
 platform-tracing-autoconfigure-webflux
     -> approved API/core/autoconfigure modules
 
-platform-tracing-otel-extension
+platform-tracing-otel-javaagent-extension
     -> approved API/core modules
     -> OTel integration artifacts
 

@@ -12,7 +12,7 @@
 | `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, авто-конфигурации, фильтры, observation conventions. |
 | `platform-tracing-autoconfigure-webmvc` / `-webflux` | Servlet / WebFlux adapters. |
 | `platform-tracing-spring-boot-starter-servlet` / `-reactive` | Точки подключения для сервисов. |
-| `platform-tracing-otel-extension` | Agent extension: `CompositeSampler`, `SpanProcessor`'ы, `ResourceProvider`. |
+| `platform-tracing-otel-javaagent-extension` | Agent extension: `CompositeSampler`, `SpanProcessor`'ы, `ResourceProvider`. |
 | `platform-tracing-collector-config` | YAML для OTel Collector (tail sampling, routing). |
 | `platform-tracing-e2e-tests` | E2E: SDK/Agent → Collector → Jaeger (+ MDC smokes). |
 | `platform-tracing-test` | JUnit 5 test utilities. |
@@ -21,7 +21,7 @@
 
 - Java **21**, Spring Boot **3.5.5**
 - OpenTelemetry Java Agent **2.28.x**, SDK **1.62.0**
-- Production path: Agent + `platform-tracing-otel-extension` + `suppress-micrometer-tracing=true`
+- Production path: Agent + `platform-tracing-otel-javaagent-extension` + `suppress-micrometer-tracing=true`
 
 Подробнее: [docs/SUPPORTED.md](docs/SUPPORTED.md).
 

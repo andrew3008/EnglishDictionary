@@ -189,7 +189,48 @@ Production-код для этого transient cleanup не менялся.
 
 ### J-commit-2
 
-PENDING.
+Выполнен artifact/project rename без package rename:
+
+```text
+Gradle project: :platform-tracing-otel-extension
+             -> :platform-tracing-otel-javaagent-extension
+Maven artifact: platform-tracing-otel-extension
+             -> platform-tracing-otel-javaagent-extension
+Java packages:  space.br1440.platform.tracing.otel.extension.* (временно сохранены)
+```
+
+Обновлены project dependencies, E2E/perf/benchmark wiring, classpath guards,
+manifest `Implementation-Title`, publication metadata и controlled-Agent distribution.
+Логические JMX ObjectNames, wire protocol и SPI implementation FQNs не менялись.
+
+Проверки до коммита:
+
+| Проверка | Результат |
+|---|---|
+| `gradlew projects` | GREEN: присутствует только `:platform-tracing-otel-javaagent-extension` |
+| generated POM / Gradle module metadata | GREEN: новый artifactId |
+| isolated C3 Maven publication | GREEN: новый artifact и classifiers опубликованы; старые координаты отсутствуют |
+| `:platform-tracing-otel-javaagent-extension:test` | GREEN |
+| `verifyAgentJarContents` | GREEN |
+| `verifyExtensionSpiRegistration` | GREEN; FQNs пока намеренно старые до J-commit-3 |
+| `verifyPlatformAgentDistribution` | GREEN |
+| `c3PublishedMetadataConsumerVerify` | GREEN |
+| `pr1ModuleTaxonomyVerify` | GREEN |
+| `pr4ArchitectureFitnessVerify` | GREEN |
+| `build` | GREEN |
+| active Gradle/source scan старого extension artifact | 0 совпадений |
+| package declaration scan | 286 `...otel.extension.*`; 0 `...otel.javaagent.*` |
+
+Controlled distribution archive содержит `platform-tracing-otel-javaagent-extension.jar`
+и не содержит старого имени. Два последовательных `--rerun-tasks` rebuild дали одинаковый
+SHA-256:
+
+```text
+FFCC7D4C28430864FB117C90F0853E3BB6B0D9935D19FA9B9B067EA86ABD15BD
+```
+
+Удалённый Docker endpoint оставался недоступен; обязательный opt-in E2E по-прежнему
+не заявляется как выполненный на этом этапе.
 
 ### J-commit-3
 

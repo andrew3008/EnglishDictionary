@@ -230,7 +230,7 @@ gradle.projectsEvaluated {
 def pr0SnapshotModules = [
         'platform-tracing-api',
         'platform-tracing-otel',
-        'platform-tracing-otel-extension',
+        'platform-tracing-otel-javaagent-extension',
         'platform-tracing-spring-boot-autoconfigure',
         'platform-tracing-autoconfigure-webmvc',
         'platform-tracing-autoconfigure-webflux',
@@ -360,14 +360,14 @@ tasks.register('pr0StarterDependencySmoke') {
         assertStarter(
                 'platform-tracing-spring-boot-starter-servlet',
                 ['platform-tracing-spring-boot-autoconfigure', 'platform-tracing-autoconfigure-webmvc'] as Set,
-                ['platform-tracing-autoconfigure-webflux', 'platform-tracing-otel-extension'] as Set,
-                ['platform-tracing-otel-extension'] as Set
+                ['platform-tracing-autoconfigure-webflux', 'platform-tracing-otel-javaagent-extension'] as Set,
+                ['platform-tracing-otel-javaagent-extension'] as Set
         )
         assertStarter(
                 'platform-tracing-spring-boot-starter-reactive',
                 ['platform-tracing-spring-boot-autoconfigure', 'platform-tracing-autoconfigure-webflux'] as Set,
-                ['platform-tracing-autoconfigure-webmvc', 'platform-tracing-otel-extension'] as Set,
-                ['platform-tracing-otel-extension'] as Set
+                ['platform-tracing-autoconfigure-webmvc', 'platform-tracing-otel-javaagent-extension'] as Set,
+                ['platform-tracing-otel-javaagent-extension'] as Set
         )
 
         def reportDir = layout.projectDirectory.dir('docs/architecture/baselines/pr-0').asFile
@@ -380,7 +380,7 @@ Git: ${pr0GitShaProvider.get()}
 Expectations verified:
 - platform-tracing-spring-boot-starter-servlet → autoconfigure + webmvc (not webflux, not otel-extension)
 - platform-tracing-spring-boot-starter-reactive → autoconfigure + webflux (not webmvc, not otel-extension)
-- platform-tracing-otel-extension not on application classpath via either starter
+- platform-tracing-otel-javaagent-extension not on application classpath via either starter
 
 Consumer rule (documented, not enforced here):
 - Application teams: BOM + exactly one starter
@@ -426,7 +426,7 @@ tasks.register('pr1ModuleTaxonomyVerify') {
     dependsOn ':platform-tracing-autoconfigure-webmvc:test'
     dependsOn ':platform-tracing-autoconfigure-webflux:test'
     dependsOn ':platform-tracing-otel:test'
-    dependsOn ':platform-tracing-otel-extension:test'
+    dependsOn ':platform-tracing-otel-javaagent-extension:test'
     dependsOn ':platform-tracing-test:test'
 }
 

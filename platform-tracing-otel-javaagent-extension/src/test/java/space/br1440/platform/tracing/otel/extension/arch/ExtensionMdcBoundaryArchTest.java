@@ -7,7 +7,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 
 /**
- * PR-3 ArchUnit guardrail для MDC-границы {@code platform-tracing-otel-extension}.
+ * PR-3 ArchUnit guardrail для MDC-границы {@code platform-tracing-otel-javaagent-extension}.
  * <p>
  * otel-extension грузится в {@code ExtensionClassLoader} без Spring-контекста;
  * MDC-операции идут через {@code core.mdc.remote.RemoteServiceMdc}.

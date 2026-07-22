@@ -29,7 +29,7 @@
 
 | Module | Root inspected |
 |---|---|
-| `platform-tracing-otel-extension` | `src/main/java`, `src/test/java` |
+| `platform-tracing-otel-javaagent-extension` | `src/main/java`, `src/test/java` |
 | `platform-tracing-spring-boot-autoconfigure` | `src/main/java`, `src/test/java` |
 | Documentation | `docs/` |
 
@@ -44,8 +44,8 @@ rg "QueueOverflowPolicy" .
 rg "DROP_OLDEST" .
 rg "UPSTREAM" .
 rg "queue.overflow-policy|QUEUE_OVERFLOW_POLICY|DEFAULT_QUEUE_OVERFLOW_POLICY" .
-rg "PlatformExportProcessorFactory" platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java
-rg "PlatformDropOldestExportSpanProcessor|DropOldestExportProcessorDefaults|BatchSpanProcessor" platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java docs
+rg "PlatformExportProcessorFactory" platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java
+rg "PlatformDropOldestExportSpanProcessor|DropOldestExportProcessorDefaults|BatchSpanProcessor" platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java docs
 rg "platform.tracing.queue.overflow-policy" .
 rg "configuration.enums.QueueOverflowPolicy" .
 ```
@@ -62,7 +62,7 @@ Git unavailable; used rg-based repository search.
 
 ## 3. Current Enum Contract
 
-**Файл:** `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/enums/QueueOverflowPolicy.java`
+**Файл:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/enums/QueueOverflowPolicy.java`
 
 | Constant | `value()` | Current Comment | Behavioral Meaning From Code | Rename Risk |
 |---|---|---|---|---|
@@ -334,10 +334,10 @@ Changing `value()` strings **would** be breaking for: `platform.tracing.queue.ov
 ### 14.1 `QueueOverflowPolicy` usages (src only)
 
 ```text
-platform-tracing-otel-extension/src/main/java/.../configuration/enums/QueueOverflowPolicy.java
-platform-tracing-otel-extension/src/main/java/.../factory/PlatformExportProcessorFactory.java (import + lines 151,154,159-161)
-platform-tracing-otel-extension/src/test/java/.../configuration/enums/QueueOverflowPolicyTest.java
-platform-tracing-otel-extension/src/test/java/.../configuration/spi/PlatformTracingDefaultsProviderTest.java (import + line 69)
+platform-tracing-otel-javaagent-extension/src/main/java/.../configuration/enums/QueueOverflowPolicy.java
+platform-tracing-otel-javaagent-extension/src/main/java/.../factory/PlatformExportProcessorFactory.java (import + lines 151,154,159-161)
+platform-tracing-otel-javaagent-extension/src/test/java/.../configuration/enums/QueueOverflowPolicyTest.java
+platform-tracing-otel-javaagent-extension/src/test/java/.../configuration/spi/PlatformTracingDefaultsProviderTest.java (import + line 69)
 ```
 
 `platform-tracing-spring-boot-autoconfigure/src`: **0 matches** for `QueueOverflowPolicy`.

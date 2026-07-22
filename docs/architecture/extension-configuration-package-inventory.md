@@ -19,7 +19,7 @@
 
 **Package-private ограничения существенны:** конструкторы всех 11 domain config-классов, весь класс `ExtensionConfigReader`, а также `ExtensionEnvironmentVariables` и `OtelSdkDefaults` доступны только внутри пакета. Перенос domain config или reader в подпакет без изменения видимости **сломает** `ExtensionConfig` и потребует widening visibility или module-internal API.
 
-**Внешние потребители (cross-module):** модуль `platform-tracing-spring-boot-autoconfigure` импортирует `DropOldestExportProcessorDefaults` и `PlatformTracingDefaultsProvider` **только из тестов**. Production cross-package imports идут из `platform-tracing-otel-extension` (`factory`, `sampler`, `resource`, `processor`, `scrubbing`, bootstrap SPI).
+**Внешние потребители (cross-module):** модуль `platform-tracing-spring-boot-autoconfigure` импортирует `DropOldestExportProcessorDefaults` и `PlatformTracingDefaultsProvider` **только из тестов**. Production cross-package imports идут из `platform-tracing-otel-javaagent-extension` (`factory`, `sampler`, `resource`, `processor`, `scrubbing`, bootstrap SPI).
 
 Перенос пакета рискован из-за: (1) package-private якорей, (2) ArchUnit guardrails с hard-coded package path `..configuration..`, (3) same-package tests, обращающихся к package-private типам, (4) cross-module alignment-тестов на публичные defaults API.
 
@@ -38,42 +38,42 @@ space.br1440.platform.tracing.otel.extension.configuration
 **Путь в репозитории:**
 
 ```text
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/
 ```
 
 **Инспектированные модули (production + test imports):**
 
 | Модуль | Путь |
 |--------|------|
-| `platform-tracing-otel-extension` | `src/main/java`, `src/test/java` |
+| `platform-tracing-otel-javaagent-extension` | `src/main/java`, `src/test/java` |
 | `platform-tracing-spring-boot-autoconfigure` | `src/main/java`, `src/test/java` |
 
 **Команды / поиски (выполнены эквиваленты через Glob + Grep + Read; ОС Windows, shell PowerShell):**
 
 ```bash
 # Glob эквивалент find ... -name "*.java" | sort
-Glob: platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/**/*.java
+Glob: platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/**/*.java
 
-rg "package space\.br1440\.platform\.tracing\.otel\.extension\.configuration" platform-tracing-otel-extension/src/main/java
+rg "package space\.br1440\.platform\.tracing\.otel\.extension\.configuration" platform-tracing-otel-javaagent-extension/src/main/java
 rg "import space\.br1440\.platform\.tracing\.otel\.extension\.configuration\." \
-   platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java \
+   platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java \
    platform-tracing-spring-boot-autoconfigure/src/main/java platform-tracing-spring-boot-autoconfigure/src/test/java
 
-rg "new ExtensionConfig|new [A-Za-z]+ExtensionConfig|ExtensionConfig\(" platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java
+rg "new ExtensionConfig|new [A-Za-z]+ExtensionConfig|ExtensionConfig\(" platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java
 
 rg "ExtensionPropertyNames|ExtensionDefaults|ExtensionEnums|ExtensionConfigReader|PlatformTracingDefaultsProvider|OtelSdkDefaults|JavaAgentExtensionPaths|AutoConfigurationCustomizerOrdering|DropOldestExportProcessorDefaults" \
-   platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java
+   platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java
 
-rg "ConfigProperties" platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration \
-   platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension
+rg "ConfigProperties" platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration \
+   platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension
 
 rg "public final class .*ExtensionConfig|final class .*ExtensionConfig|class ExtensionConfigReader|class ExtensionPropertyNames|class ExtensionDefaults|enum ExtensionEnums" \
-   platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration
+   platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration
 
-rg "platform\.tracing\." platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration
+rg "platform\.tracing\." platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration
 
 git status --short
-git ls-files "platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/*.java"
+git ls-files "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/*.java"
 ```
 
 **Git:** `NOT FOUND IN REPOSITORY` — команды `git status` / `git ls-files` завершились с `fatal: not a git repository`.
@@ -117,7 +117,7 @@ git ls-files "platform-tracing-otel-extension/src/main/java/space/br1440/platfor
 
 ### ExtensionConfig
 
-- **File:** `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfig.java`
+- **File:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfig.java`
 - **Kind:** facade DTO
 - **Visibility:** public final class
 - **Constructor visibility:** public `ExtensionConfig(ConfigProperties config)`
@@ -932,28 +932,28 @@ Neutral axes only — no scoring:
 ### Sorted file list (Glob equivalent)
 
 ```text
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/AutoConfigurationCustomizerOrdering.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/BaggageExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ClassificationExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/DropOldestExportProcessorDefaults.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/EnrichingExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfigReader.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionDefaults.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionEnums.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionEnvironmentVariables.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionPropertyNames.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/JavaAgentExtensionPaths.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/MetricsExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/OtelSdkDefaults.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/PlatformTracingDefaultsProvider.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/QueueExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ResourceExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/SamplingExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ScrubbingExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/SdkExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ValidationExtensionConfig.java
-platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/WatchdogExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/AutoConfigurationCustomizerOrdering.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/BaggageExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ClassificationExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/DropOldestExportProcessorDefaults.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/EnrichingExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfigReader.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionDefaults.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionEnums.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionEnvironmentVariables.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionPropertyNames.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/JavaAgentExtensionPaths.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/MetricsExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/OtelSdkDefaults.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/PlatformTracingDefaultsProvider.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/QueueExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ResourceExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/SamplingExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ScrubbingExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/SdkExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ValidationExtensionConfig.java
+platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/WatchdogExtensionConfig.java
 ```
 
 ### External explicit imports (full grep, all modules in scope)

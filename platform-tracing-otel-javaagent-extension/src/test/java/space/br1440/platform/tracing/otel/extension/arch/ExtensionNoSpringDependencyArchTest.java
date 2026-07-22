@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Архитектурный инвариант Фазы 15: {@code platform-tracing-otel-extension} не зависит от Spring.
+ * Архитектурный инвариант Фазы 15: {@code platform-tracing-otel-javaagent-extension} не зависит от Spring.
  * <p>
  * Расширение грузится изолированным ExtensionClassLoader'ом OTel Java Agent — до и независимо от
  * Spring-контекста. Любая зависимость от {@code org.springframework..} в продакшен-классах

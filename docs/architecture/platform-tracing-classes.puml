@@ -24,7 +24,7 @@ package "platform-tracing-core" as M_CORE #FFE0B2 {
   class NoopTraceOperations
 }
 
-package "platform-tracing-otel-extension" as M_OTEL #E1BEE7 {
+package "platform-tracing-otel-javaagent-extension" as M_OTEL #E1BEE7 {
   class PlatformAutoConfigurationCustomizer
   class CompositeSampler
   class EnrichingSpanProcessor
@@ -314,7 +314,7 @@ skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontName "Segoe UI"
 
-title platform-tracing-otel-extension — классы и связи
+title platform-tracing-otel-javaagent-extension — классы и связи
 
 package "space.br1440.platform.tracing.otel.extension" {
   class PlatformAutoConfigurationCustomizer {

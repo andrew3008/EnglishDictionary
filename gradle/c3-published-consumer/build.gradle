@@ -41,9 +41,9 @@ tasks.register('verifyPublishedMetadata') {
 
         assert compileModules.contains('opentelemetry-api')
         assert !compileModules.contains('platform-tracing-otel')
-        assert !compileModules.contains('platform-tracing-otel-extension')
+        assert !compileModules.contains('platform-tracing-otel-javaagent-extension')
         assert runtimeModules.contains('platform-tracing-otel')
-        assert !runtimeModules.contains('platform-tracing-otel-extension')
+        assert !runtimeModules.contains('platform-tracing-otel-javaagent-extension')
 
         File versionDirectory = file("${c3Repository}/space/br1440/platform/tracing/"
                 + "platform-tracing-spring-boot-autoconfigure/${platformTracingVersion}")

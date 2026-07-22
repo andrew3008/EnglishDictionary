@@ -8,7 +8,7 @@ import java.util.Map;
  * SPI for applying a normalised, domain-validated control-protocol payload
  * to the platform runtime state.
  *
- * <p>Implementations live in {@code platform-tracing-otel-extension} (or any
+ * <p>Implementations live in {@code platform-tracing-otel-javaagent-extension} (or any
  * other runtime module) and are injected into
  * {@link RuntimePolicyControlHandler}.  This inversion of control keeps
  * {@code platform-tracing-otel} free from any dependency on the extension

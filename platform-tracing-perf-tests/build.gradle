@@ -55,7 +55,7 @@ dependencies {
 tasks.register('prepareSutDockerContext', Sync) {
     group = 'perf'
     description = 'Собирает Docker build context SUT: bootJar + javaagent + extension + Dockerfile.'
-    dependsOn bootJar, ':platform-tracing-otel-extension:agentExtensionJar'
+    dependsOn bootJar, ':platform-tracing-otel-javaagent-extension:agentExtensionJar'
 
     into layout.buildDirectory.dir('docker')
     from(bootJar) {
@@ -64,8 +64,8 @@ tasks.register('prepareSutDockerContext', Sync) {
     from(configurations.otelJavaAgent) {
         rename { 'opentelemetry-javaagent.jar' }
     }
-    from(project(':platform-tracing-otel-extension').tasks.named('agentExtensionJar')) {
-        rename { 'platform-tracing-otel-extension-agent.jar' }
+    from(project(':platform-tracing-otel-javaagent-extension').tasks.named('agentExtensionJar')) {
+        rename { 'platform-tracing-otel-javaagent-extension-agent.jar' }
     }
     from('docker/sut/Dockerfile')
 }

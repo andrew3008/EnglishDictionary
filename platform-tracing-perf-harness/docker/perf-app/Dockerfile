@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf 
 WORKDIR /app
 COPY sut-app.jar /app/sut-app.jar
 COPY opentelemetry-javaagent.jar /otel/opentelemetry-javaagent.jar
-COPY platform-tracing-otel-extension-agent.jar /otel/platform-tracing-otel-extension-agent.jar
+COPY platform-tracing-otel-javaagent-extension-agent.jar /otel/platform-tracing-otel-javaagent-extension-agent.jar
 
 ENV PERF_BASE_JVM_OPTS="-Xms256m -Xmx512m"
 EXPOSE 8080

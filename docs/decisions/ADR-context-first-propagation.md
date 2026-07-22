@@ -4,7 +4,7 @@
 |------|----------|
 | Статус | **Принято** |
 | Дата | 2026-06-04 |
-| Компоненты | `platform-tracing-api`, `platform-tracing-otel-extension`, `platform-tracing-spring-boot-autoconfigure` |
+| Компоненты | `platform-tracing-api`, `platform-tracing-otel-javaagent-extension`, `platform-tracing-spring-boot-autoconfigure` |
 | Связанные ADR | `ADR-sampler-compose.md`, `ADR-baggage-filtering-spike-finding.md` |
 
 ## Контекст и Проблема

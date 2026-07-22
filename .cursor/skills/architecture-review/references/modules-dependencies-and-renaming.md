@@ -98,7 +98,7 @@ It must not depend on servlet adapter types.
 
 Shared framework-neutral behavior belongs in API/core/autoconfigure only when it is genuinely neutral.
 
-### `platform-tracing-otel-extension`
+### `platform-tracing-otel-javaagent-extension`
 
 Owns:
 
@@ -152,7 +152,7 @@ platform-tracing-autoconfigure-webmvc
 platform-tracing-autoconfigure-webflux
     -> approved api/core/autoconfigure modules
 
-platform-tracing-otel-extension
+platform-tracing-otel-javaagent-extension
     -> approved api/core modules
     -> OTel integration artifacts
 

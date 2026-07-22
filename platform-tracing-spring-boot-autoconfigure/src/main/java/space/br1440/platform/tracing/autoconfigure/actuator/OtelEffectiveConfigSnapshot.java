@@ -46,7 +46,7 @@ final class OtelEffectiveConfigSnapshot {
 
     /**
      * Платформенные дефолты для свойств OTel SDK, поставляемые расширением
-     * {@code platform-tracing-otel-extension} через {@code addPropertiesSupplier()}.
+     * {@code platform-tracing-otel-javaagent-extension} через {@code addPropertiesSupplier()}.
      * <p>
      * Значения продублированы здесь, чтобы actuator-эндпоинт мог показать их оператору в случае
      * {@code source=default}, не вытягивая в classpath сборки modular extension. Это намеренно
@@ -163,7 +163,7 @@ final class OtelEffectiveConfigSnapshot {
                 if (platformDefault != null) {
                     // Источник «default-platform» помечает свойство, у которого есть платформенный
                     // дефолт через extension SPI. Оператор по этому source понимает, что значение
-                    // не из ENV, не из -D, а из supplier'а platform-tracing-otel-extension.
+                    // не из ENV, не из -D, а из supplier'а platform-tracing-otel-javaagent-extension.
                     source = "default-platform";
                     rawValue = platformDefault;
                 } else {

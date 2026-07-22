@@ -72,7 +72,7 @@ Reflection на поле `textMapPropagators` — работает для intros
 
 ## Решение для PR-2
 
-1. Production `FilteringBaggagePropagator` в `platform-tracing-otel-extension/.../propagation/`.
+1. Production `FilteringBaggagePropagator` в `platform-tracing-otel-javaagent-extension/.../propagation/`.
 2. Регистрация через `PlatformPropagatorFactory` → `addPropagatorCustomizer` с **REPLACE** W3CBaggage (F3).
 3. Allowlist/deny из `platform.tracing.propagation.baggage.*`.
 4. E2E: outbound `baggage` без `password` (DoD #8).
@@ -86,7 +86,7 @@ Reflection на поле `textMapPropagators` — работает для intros
 ## Audit
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --tests "space.br1440.platform.tracing.otel.extension.spike.BaggageFilteringSpikeTest"
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "space.br1440.platform.tracing.otel.extension.spike.BaggageFilteringSpikeTest"
 ```
 
 ## Связанные артефакты

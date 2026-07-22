@@ -7,7 +7,7 @@ import io.opentelemetry.api.trace.Tracer;
 /**
  * Минимальный эмиттер одного span'а для smoke-теста resource-идентичности (Фаза 9).
  * <p>
- * Запускается в отдельной JVM под {@code -javaagent} + {@code platform-tracing-otel-extension}.
+ * Запускается в отдельной JVM под {@code -javaagent} + {@code platform-tracing-otel-javaagent-extension}.
  * Идентичность ({@code service.name}/{@code version}/{@code environment}/{@code c_group}) задаётся
  * через {@code -Dplatform.tracing.service.*} и собирается {@code PlatformResourceProvider};
  * этот main лишь создаёт span, чтобы Resource долетел до Jaeger.

@@ -53,7 +53,7 @@ Phase 1 перенёс доменную логику из `PlatformTracingContro
 
 | Метрика | Значение (факт) |
 |---|---|
-| Файл | `platform-tracing-otel-extension/src/main/java/.../jmx/PlatformTracingControl.java` |
+| Файл | `platform-tracing-otel-javaagent-extension/src/main/java/.../jmx/PlatformTracingControl.java` |
 | Строк | **354** |
 | Модификатор | `public final class` |
 | Интерфейс | `implements PlatformTracingControlMBean` |
@@ -181,7 +181,7 @@ space.br1440.platform.tracing.otel.extension.jmx
 **`SamplingControlClient`** (`platform-tracing-spring-boot-autoconfigure`):
 
 - `OBJECT_NAME` = `"space.br1440.platform.tracing:type=Control,name=PlatformTracingControl"` (дублирует константу MBean).
-- **Не зависит** от `platform-tracing-otel-extension` (javadoc, строки 25–26).
+- **Не зависит** от `platform-tracing-otel-javaagent-extension` (javadoc, строки 25–26).
 - Вызовы: `server.invoke(objectName, "<operationName>", ...)` и `server.getAttribute(objectName, "<AttributeName>")`.
 
 **Примеры string-based операций/атрибутов (production client):**
@@ -700,14 +700,14 @@ Stop and escalate if:
 ### Tests (Gradle)
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformTracingControlTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ValidationStrictRuntimeGuardTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformSpiAutoconfigureIntegrationTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformTracingControlTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ValidationStrictRuntimeGuardTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformSpiAutoconfigureIntegrationTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --continue
 ./gradlew pr4ArchitectureFitnessVerify --continue
 ```
 
@@ -715,16 +715,16 @@ Stop and escalate if:
 
 ```bash
 # No public operation delegates
-rg "public final class .*Operations|public class .*Operations" platform-tracing-otel-extension/src/main/java
+rg "public final class .*Operations|public class .*Operations" platform-tracing-otel-javaagent-extension/src/main/java
 
 # MBean contract anchors unchanged
-rg "interface PlatformTracingControlMBean|OBJECT_NAME" platform-tracing-otel-extension/src/main/java/.../jmx
+rg "interface PlatformTracingControlMBean|OBJECT_NAME" platform-tracing-otel-javaagent-extension/src/main/java/.../jmx
 
 # Registration ownership unchanged
-rg "registerMBean|new PlatformTracingControl" platform-tracing-otel-extension/src/main/java
+rg "registerMBean|new PlatformTracingControl" platform-tracing-otel-javaagent-extension/src/main/java
 
 # Subpackage removed (if Option A/H)
-rg "jmx\.operations" platform-tracing-otel-extension/src/main/java
+rg "jmx\.operations" platform-tracing-otel-javaagent-extension/src/main/java
 ```
 
 ### Docs sync (required) — ✅ DONE 2026-06-18

@@ -54,7 +54,7 @@ Standard MBeans, each with its own `ObjectName`:
 
 Constants are duplicated across classloaders:
 
-- Agent: `PlatformTracingObjectNames` (`platform-tracing-otel-extension`)
+- Agent: `PlatformTracingObjectNames` (`platform-tracing-otel-javaagent-extension`)
 - Spring: `PlatformTracingJmxObjectNames` (`platform-tracing-spring-boot-autoconfigure`)
 
 Equality is enforced by `ObjectNameConstantsConsistencyTest`.
@@ -168,7 +168,7 @@ Production JMX access must be restricted by JVM JMX configuration, firewall, res
 | Module | Responsibility | Must not |
 |--------|----------------|----------|
 | `platform-tracing-otel` | Pure Java domain/policy logic (sampling engine, scrubbing merge, enrichers, …) | Spring, JMX, OTel agent runtime |
-| `platform-tracing-otel-extension` | OTel adapters: samplers, span processors, six domain MBeans, `PlatformTracingJmxRegistrar`, agent-side holders/snapshots | Spring imports on hot path |
+| `platform-tracing-otel-javaagent-extension` | OTel adapters: samplers, span processors, six domain MBeans, `PlatformTracingJmxRegistrar`, agent-side holders/snapshots | Spring imports on hot path |
 | `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, `RuntimeConfigApplier`, `*RuntimeConfig` views, `PlatformTracingJmxClient`, Actuator, refresh listener | Second authoritative runtime snapshot |
 
 Shared primitive: `DomainConfigHolder` in `platform-tracing-api` (CAS + LKG, visible to both classloaders).
