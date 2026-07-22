@@ -4,7 +4,7 @@ import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
 
-public interface SamplingPolicyRule {
+interface SamplingPolicyRule {
 
     String ruleName();
 

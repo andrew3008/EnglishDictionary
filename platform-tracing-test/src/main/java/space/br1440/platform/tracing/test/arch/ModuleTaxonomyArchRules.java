@@ -313,14 +313,13 @@ public final class ModuleTaxonomyArchRules {
     /**
      * Реализации {@code SamplingPolicyRule} живут только в {@code core.sampling.policy}.
      * <p>
-     * Делает статус «public, но не extension API» машинно-проверяемым: новый rule-класс
-     * нельзя добавить вне policy-пакета. Сам интерфейс себя не реализует.
+     * Дополняет package-private visibility машинной проверкой: platform rule нельзя
+     * перенести из policy-пакета или незаметно заменить внешней реализацией.
      */
     public static final ArchRule SAMPLING_RULE_IMPLS_ONLY_IN_POLICY = classes()
             .that().implement("space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule")
             .should().resideInAPackage("..core.sampling.policy..")
-            .allowEmptyShould(true)
-            .because("реализации SamplingPolicyRule — не extension API; допустимы только в core.sampling.policy");
+            .because("SamplingPolicyRule является внутренним контрактом; реализации допустимы только в core.sampling.policy");
 
     /**
      * {@code ProductionSamplingPolicyChain} публичен только по необходимости компиляции

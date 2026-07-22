@@ -54,10 +54,8 @@ public final class PlatformSamplerBuilder {
                 enabled, sampling.dropPaths(), sampling.forceRecordValues(), routeRatios, ratio);
         CompositeSampler compositeSampler = new CompositeSampler(configHolder);
 
-        // Safe-обёртка (Фаза 11): изоляция hot-path shouldSample от падений кастомных правил.
-        // Fallback — консервативный parentBased(traceIdRatioBased(ratio)).
-        Sampler fallback = Sampler.parentBased(Sampler.traceIdRatioBased(ratio));
-        return new SafeSampler(compositeSampler, fallback);
+        // Ошибка platform policy не может ослабить sampling governance: fallback всегда DROP.
+        return new SafeSampler(compositeSampler);
     }
 
     /**

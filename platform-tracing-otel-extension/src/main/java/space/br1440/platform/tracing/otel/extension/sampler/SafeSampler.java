@@ -31,10 +31,8 @@ import java.util.Objects;
  *   <li><b>last-known-good</b> — основной путь: {@link CompositeSampler} уже принимает решения на
  *       базе последнего валидного {@link SamplerState} из {@link SamplerStateHolder}; пока делегат
  *       работает, действует именно он;</li>
- *   <li><b>conservative fallback</b> — если делегат бросил исключение или вернул {@code null},
- *       решение принимает заранее заданный безопасный {@code fallback} (обычно parentBased ratio);</li>
- *   <li><b>последний рубеж</b> — если и fallback упал, возвращаем {@link SamplingDecision#DROP}:
- *       лучше потерять трассу, чем уронить бизнес-операцию.</li>
+ *   <li><b>fail-closed fallback</b> — если делегат бросил исключение или вернул {@code null},
+ *       возвращается {@link SamplingDecision#DROP}; policy failure не может увеличить sampling;</li>
  * </ol>
  *
  * <p><b>Наблюдаемость:</b> каждое падение делегата инкрементит {@code sampler.failures} в
@@ -45,23 +43,21 @@ import java.util.Objects;
 public final class SafeSampler implements Sampler, PlatformManagedSampler {
 
     private final Sampler delegate;
-    private final Sampler fallback;
     private final TracingDiagnostics diagnostics;
     private final DegradedModeController degradedController;
     private final RateLimitedLogger log;
 
-    public SafeSampler(Sampler delegate, Sampler fallback) {
-        this(delegate, fallback, TracingDiagnostics.shared());
+    SafeSampler(Sampler delegate) {
+        this(delegate, TracingDiagnostics.shared());
     }
 
-    public SafeSampler(Sampler delegate, Sampler fallback, TracingDiagnostics diagnostics) {
-        this(delegate, fallback, diagnostics, new DegradedModeController(diagnostics));
+    SafeSampler(Sampler delegate, TracingDiagnostics diagnostics) {
+        this(delegate, diagnostics, new DegradedModeController(diagnostics));
     }
 
-    public SafeSampler(Sampler delegate, Sampler fallback, TracingDiagnostics diagnostics,
-                       DegradedModeController degradedController) {
+    SafeSampler(Sampler delegate, TracingDiagnostics diagnostics,
+                DegradedModeController degradedController) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
-        this.fallback = Objects.requireNonNull(fallback, "fallback");
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
         this.degradedController = Objects.requireNonNull(degradedController, "degradedController");
         this.log = new RateLimitedLogger(LoggerFactory.getLogger(SafeSampler.class));
@@ -94,24 +90,7 @@ public final class SafeSampler implements Sampler, PlatformManagedSampler {
                 log.warn("SafeSampler: делегат shouldSample упал ({}) — применяю fallback", ex.toString());
             }
         }
-        return fallbackDecision(parentContext, traceId, name, spanKind, attributes, parentLinks);
-    }
-
-    private SamplingResult fallbackDecision(Context parentContext, String traceId, String name,
-                                            SpanKind spanKind, Attributes attributes,
-                                            List<LinkData> parentLinks) {
-        try {
-            SamplingResult result = fallback.shouldSample(
-                    parentContext, traceId, name, spanKind, attributes, parentLinks);
-            if (result != null) {
-                return result;
-            }
-        } catch (Throwable ex) {
-            PlatformThrowables.propagateIfFatal(ex);
-            diagnostics.recordSamplerFailure();
-            log.warn("SafeSampler: fallback shouldSample упал ({}) — решение DROP", ex.toString());
-        }
-        // Последний рубеж: исключение не должно покинуть hot-path создания span'а.
+        // Ошибка policy не должна приводить к permissive sampling или покидать application hot-path.
         return SamplingResult.create(SamplingDecision.DROP);
     }
 
