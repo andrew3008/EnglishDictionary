@@ -13,8 +13,8 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 
 public class TraceOperationsTestExtension implements BeforeEachCallback, ParameterResolver {
 

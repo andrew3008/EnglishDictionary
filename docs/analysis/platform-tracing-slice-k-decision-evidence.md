@@ -1,5 +1,9 @@
 # Slice K: CP-3 / CP-4 Decision Evidence
 
+> **HISTORICAL DECISION EVIDENCE.** CP-3 KEEP was later superseded by
+> [CP-3 R2 package migration](./platform-tracing-package-rename-evidence.md). This document preserves
+> the repository evidence and reasoning available at Slice K. CP-4 KEEP void remains active.
+
 > Date: 2026-07-22  
 > Branch: `feature/slice-k-optional-verification`  
 > Base: `ca78567e57fa454b5e44a0959de974afd4fbc270` (merge PR #22 / Slice J)  

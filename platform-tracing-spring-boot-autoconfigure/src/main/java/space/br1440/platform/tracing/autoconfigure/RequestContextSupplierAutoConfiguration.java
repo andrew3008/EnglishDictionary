@@ -16,7 +16,7 @@ import java.util.function.Supplier;
  * <p>
  * Регистрирует bean {@code Supplier<RequestTraceContextSnapshot>} с именем
  * {@code platformRequestTraceContextSnapshotSupplier} <b>всегда</b> при наличии модуля на classpath:
- * без property-gating, без {@code @ConditionalOnBean}, без {@code @ConditionalOnClass} на tracing-core.
+ * без property-gating, без {@code @ConditionalOnBean}, без {@code @ConditionalOnClass} на tracing-otel.
  * Это сделано осознанно, чтобы модуль трассировки не тянул {@code web-error-model}, а ошибка по-прежнему
  * обогащалась корреляцией при {@code platform.tracing.enabled=false}.
  * <p>

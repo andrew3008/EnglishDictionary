@@ -10,7 +10,7 @@ import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
  * PR-3 ArchUnit guardrail для MDC-границы {@code platform-tracing-otel-javaagent-extension}.
  * <p>
  * otel-extension грузится в {@code ExtensionClassLoader} без Spring-контекста;
- * MDC-операции идут через {@code core.mdc.remote.RemoteServiceMdc}.
+ * MDC-операции идут через {@code otel.mdc.remote.RemoteServiceMdc}.
  * Из {@code api.mdc} разрешены только {@code TracingMdcKeys} и {@code RemoteServiceNameSource}.
  * Любой другой api.mdc-тип означает регресс к pre-PR-1 состоянию.
  *
@@ -23,7 +23,7 @@ import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 class ExtensionMdcBoundaryArchTest {
 
     /**
-     * otel-extension MDC-зависимости: только {@code core.mdc.remote.RemoteServiceMdc};
+     * otel-extension MDC-зависимости: только {@code otel.mdc.remote.RemoteServiceMdc};
      * из {@code api.mdc} — только {@code TracingMdcKeys} и {@code RemoteServiceNameSource}.
      */
     @ArchTest

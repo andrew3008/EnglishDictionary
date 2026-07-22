@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect;
-import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 
 /**
  * Авто-конфигурация AOP-обработки аннотации {@code @Traced}.

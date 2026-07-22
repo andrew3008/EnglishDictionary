@@ -10,7 +10,7 @@ import java.util.List;
  * <p>
  * Separates policy selection (input names → known built-in identifiers) from agent-side
  * execution ({@code SpanAttributeScrubbingRule} instantiation, {@code RuleExecutionWrapper} compile).
- * Intended for future move to {@code core.scrubbing} with a JDK-only built-in name registry.
+ * Intended for future move to {@code otel.scrubbing} with a JDK-only built-in name registry.
  * <p>
  * No OTel, Spring, JMX, or logging dependencies.
  */

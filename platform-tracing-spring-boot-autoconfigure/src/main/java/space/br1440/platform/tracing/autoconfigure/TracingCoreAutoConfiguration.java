@@ -26,14 +26,14 @@ import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBounda
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeResolver;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.core.propagation.NoOpPlatformContextPropagation;
-import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
-import space.br1440.platform.tracing.core.propagation.OtelPlatformContextPropagation;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
-import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
-import space.br1440.platform.tracing.core.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.propagation.NoOpPlatformContextPropagation;
+import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.otel.propagation.OtelPlatformContextPropagation;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
 
 /**
  * Базовая авто-конфигурация платформенного модуля трассировки.
@@ -109,9 +109,9 @@ public class TracingCoreAutoConfiguration {
     @Bean
     public TracingRuntime tracingImplementation(
             org.springframework.beans.factory.ObjectProvider<
-                    space.br1440.platform.tracing.core.semconv.policy.AttributePolicy> policyProvider,
+                    space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy> policyProvider,
             org.springframework.beans.factory.ObjectProvider<
-                    space.br1440.platform.tracing.core.exception.ExceptionRecorder> exceptionRecorderProvider,
+                    space.br1440.platform.tracing.otel.exception.ExceptionRecorder> exceptionRecorderProvider,
             org.springframework.beans.factory.ObjectProvider<PlatformTracingMetrics> metricsProvider,
             SdkModeDiagnostics sdkModeDiagnostics) {
         TracingRuntime base = resolveTracingRuntime(
@@ -127,9 +127,9 @@ public class TracingCoreAutoConfiguration {
 
     private TracingRuntime resolveTracingRuntime(
             org.springframework.beans.factory.ObjectProvider<
-                    space.br1440.platform.tracing.core.semconv.policy.AttributePolicy> policyProvider,
+                    space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy> policyProvider,
             org.springframework.beans.factory.ObjectProvider<
-                    space.br1440.platform.tracing.core.exception.ExceptionRecorder> exceptionRecorderProvider,
+                    space.br1440.platform.tracing.otel.exception.ExceptionRecorder> exceptionRecorderProvider,
             SdkModeDiagnostics sdkModeDiagnostics) {
         if (sdkModeDiagnostics.mode() == SdkMode.DISABLED) {
             log.info("platform.tracing.sdk.mode=DISABLED — TracingRuntime DISABLED_BY_CONFIGURATION");
@@ -141,11 +141,11 @@ public class TracingCoreAutoConfiguration {
                             + sdkModeDiagnostics.runtimeState());
         }
 
-        space.br1440.platform.tracing.core.semconv.policy.AttributePolicy policy =
-                policyProvider.getIfAvailable(space.br1440.platform.tracing.core.semconv.policy.AttributePolicy::new);
-        space.br1440.platform.tracing.core.exception.ExceptionRecorder exceptionRecorder =
+        space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy policy =
+                policyProvider.getIfAvailable(space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy::new);
+        space.br1440.platform.tracing.otel.exception.ExceptionRecorder exceptionRecorder =
                 exceptionRecorderProvider.getIfAvailable(
-                        space.br1440.platform.tracing.core.exception.ExceptionRecorder::secureDefault);
+                        space.br1440.platform.tracing.otel.exception.ExceptionRecorder::secureDefault);
 
         if (!GlobalOpenTelemetry.isSet()) {
             throw new IllegalStateException(

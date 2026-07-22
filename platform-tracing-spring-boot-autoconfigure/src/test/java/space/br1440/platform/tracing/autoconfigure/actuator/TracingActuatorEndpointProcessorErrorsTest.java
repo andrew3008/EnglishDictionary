@@ -6,8 +6,8 @@ import org.mockito.Mockito;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
-import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

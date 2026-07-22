@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.core.runtime.DelegatingTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.DelegatingTracingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;

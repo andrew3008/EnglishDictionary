@@ -4,7 +4,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.core.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 

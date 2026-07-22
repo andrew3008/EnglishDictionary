@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

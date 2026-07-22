@@ -8,8 +8,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
 
 import java.util.List;
 import java.util.Optional;

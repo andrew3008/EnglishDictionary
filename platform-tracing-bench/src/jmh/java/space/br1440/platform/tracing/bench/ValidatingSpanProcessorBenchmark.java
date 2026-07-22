@@ -16,7 +16,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.core.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidationPolicyHolder;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;

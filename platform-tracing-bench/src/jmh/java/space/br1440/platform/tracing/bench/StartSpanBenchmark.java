@@ -14,8 +14,8 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 
 import java.util.concurrent.TimeUnit;
 

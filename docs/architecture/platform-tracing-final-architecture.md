@@ -6,6 +6,11 @@
 
 Platform Tracing is an agent-first tracing stack for Spring Boot services. A service adds exactly one stack-specific starter. The application plane provides the OTel-free facade, adapters and diagnostics. The Controlled Agent plane owns telemetry runtime and export.
 
+The OTel-specific implementation artifact is `platform-tracing-otel` and its implementation
+namespace is `space.br1440.platform.tracing.otel.*`. The former
+`space.br1440.platform.tracing.core.*` namespace is forbidden after CP-3 R2; no compatibility
+package or aliases are retained. `platform-tracing-api` remains OTel-free.
+
 ```mermaid
 flowchart TB
   APP[Service application classloader]

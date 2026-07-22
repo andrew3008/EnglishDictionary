@@ -14,8 +14,8 @@ import space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

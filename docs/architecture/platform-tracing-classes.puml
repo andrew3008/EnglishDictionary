@@ -231,7 +231,7 @@ skinparam defaultFontName "Segoe UI"
 
 title platform-tracing-otel — классы и связи
 
-package "space.br1440.platform.tracing.core" {
+package "space.br1440.platform.tracing.otel" {
   class DefaultTraceOperations {
     {static} +INSTRUMENTATION_NAME: String
     -tracer: Tracer «OTel»

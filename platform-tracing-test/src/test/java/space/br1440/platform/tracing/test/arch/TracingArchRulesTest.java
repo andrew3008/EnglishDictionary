@@ -90,7 +90,7 @@ class TracingArchRulesTest {
         JavaClasses classes = new ClassFileImporter()
                 .importPackages(
                         "space.br1440.platform.tracing.api",
-                        "space.br1440.platform.tracing.core");
+                        "space.br1440.platform.tracing.otel");
 
         ModuleTaxonomyArchRules.API_PROPAGATION_HAS_NO_PUBLIC_PARSERS.check(classes);
         ModuleTaxonomyArchRules.OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED.check(classes);

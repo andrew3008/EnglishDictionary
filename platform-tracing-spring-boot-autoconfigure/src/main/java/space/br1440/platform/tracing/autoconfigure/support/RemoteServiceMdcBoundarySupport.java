@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.support;
 
 import jakarta.annotation.Nullable;
 
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc;
 
 /**
  * Implementation bridge для очистки remote-service MDC и связанного trace mirror на web-boundary.

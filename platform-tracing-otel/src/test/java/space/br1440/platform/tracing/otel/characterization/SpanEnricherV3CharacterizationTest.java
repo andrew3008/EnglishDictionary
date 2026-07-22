@@ -1,0 +1,66 @@
+package space.br1440.platform.tracing.otel.characterization;
+
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.api.span.SpanResult;
+import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
+import space.br1440.platform.tracing.otel.enrichment.DefaultSpanEnricher;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * PR-0: параллельные тесты {@link SpanEnricher} через v3 {@code traceOperations.spans()},
+ * без прямой зависимости от {@code InternalSpanBuilderImpl}.
+ */
+class SpanEnricherV3CharacterizationTest {
+
+    private InMemorySpanExporter exporter;
+    private SdkTracerProvider tracerProvider;
+    private DefaultTraceOperations tracing;
+    private SpanEnricher enricher;
+
+    @BeforeEach
+    void setUp() {
+        exporter = InMemorySpanExporter.create();
+        tracerProvider = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+                .build();
+        tracing = new DefaultTraceOperations(OtelTracingRuntimeFactory.create(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build()));
+        enricher = new DefaultSpanEnricher();
+    }
+
+    @AfterEach
+    void tearDown() {
+        tracerProvider.shutdown();
+    }
+
+    @Test
+    void enrichCurrentSpan_наV3ManualSpan_пишетPlatformSafeАтрибуты() {
+        try (var ignored = tracing.spans().operation("checkout").start()) {
+            enricher.enrichCurrentSpan(scope -> scope
+                    .requestId("req-v3")
+                    .userHash("hash-v3")
+                    .result(SpanResult.SUCCESS));
+        }
+
+        SpanData data = exporter.getFinishedSpanItems().getFirst();
+        assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_REQUEST_ID)).isEqualTo("req-v3");
+        assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_USER_HASH)).isEqualTo("hash-v3");
+        assertThat(data.getAttributes().get(SemconvKeys.PLATFORM_RESULT)).isEqualTo("success");
+    }
+
+    @Test
+    void enrichCurrentSpan_внеАктивногоSpan_noOp() {
+        enricher.enrichCurrentSpan(scope -> scope.requestId("orphan"));
+        assertThat(exporter.getFinishedSpanItems()).isEmpty();
+    }
+}

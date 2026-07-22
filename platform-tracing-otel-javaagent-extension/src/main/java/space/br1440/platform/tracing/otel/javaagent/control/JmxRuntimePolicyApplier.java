@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
-import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyApplier;
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyApplier;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 

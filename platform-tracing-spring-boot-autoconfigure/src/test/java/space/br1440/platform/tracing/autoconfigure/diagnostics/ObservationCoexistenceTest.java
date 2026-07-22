@@ -23,11 +23,11 @@ import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
-import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntime;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 
 import java.util.List;
 import java.util.Set;
@@ -193,8 +193,8 @@ class ObservationCoexistenceTest {
             return new MeteredTracingRuntime(
                     new OtelTracingRuntime(
                             openTelemetry,
-                            new space.br1440.platform.tracing.core.semconv.policy.AttributePolicy(),
-                            space.br1440.platform.tracing.core.exception.ExceptionRecorder.secureDefault()),
+                            new space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy(),
+                            space.br1440.platform.tracing.otel.exception.ExceptionRecorder.secureDefault()),
                     new PlatformTracingMetrics(meterRegistry));
         }
 

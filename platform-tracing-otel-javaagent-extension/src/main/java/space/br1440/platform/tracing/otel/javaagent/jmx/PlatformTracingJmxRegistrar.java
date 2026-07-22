@@ -2,8 +2,8 @@ package space.br1440.platform.tracing.otel.javaagent.jmx;
 
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
-import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyApplier;
-import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyApplier;
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
 import space.br1440.platform.tracing.otel.javaagent.control.ReadAppliedStateHandler;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean;

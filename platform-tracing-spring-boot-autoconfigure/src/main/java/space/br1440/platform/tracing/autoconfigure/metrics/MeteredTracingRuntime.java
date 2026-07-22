@@ -8,9 +8,9 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.CorrelationScope;
 
 import java.util.Optional;
-import space.br1440.platform.tracing.core.runtime.DelegatingTracingRuntime;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
-import space.br1440.platform.tracing.core.runtime.state.TracingState;
+import space.br1440.platform.tracing.otel.runtime.DelegatingTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.TracingState;
 
 import java.util.Objects;
 

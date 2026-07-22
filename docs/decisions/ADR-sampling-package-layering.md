@@ -8,7 +8,7 @@
 
 ## Context
 
-Пакет `space.br1440.platform.tracing.core.sampling` был «плоским»: модель состояния, правила (chain-of-responsibility), движок исполнения и компиляция/валидация конфигурации лежали в одном пакете. Дополнительно нормализация route-ratio / drop / force дублировалась в двух местах:
+Пакет `space.br1440.platform.tracing.otel.sampling` был «плоским»: модель состояния, правила (chain-of-responsibility), движок исполнения и компиляция/валидация конфигурации лежали в одном пакете. Дополнительно нормализация route-ratio / drop / force дублировалась в двух местах:
 
 - `SamplingPolicySnapshot` (core) — нормализация при построении снимка;
 - `SamplerState` (otel-extension) — собственные копии `normalizeDropPaths/normalizeForceValues/normalizeRouteRatios`, после чего вызывался `SamplingPolicySnapshot.fromConfiguration`.

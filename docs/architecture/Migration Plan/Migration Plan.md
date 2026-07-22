@@ -1,5 +1,9 @@
 <img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
 
+> **HISTORICAL / SUPERSEDED PLAN.** Документ сохранён как исходный planning snapshot. Текущие
+> package taxonomy и архитектурные границы определены в
+> [финальной архитектуре](../platform-tracing-final-architecture.md).
+
 # You are acting as a senior ML Engineer, principal Java platform engineer, and migration planning specialist.
 
 Your task is to analyze the attached Platform Tracing documents and produce a conservative, evidence-driven, preservation-first migration plan.

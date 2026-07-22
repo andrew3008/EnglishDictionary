@@ -11,9 +11,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecisionType;
-import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecisionType;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.test.harness.SamplingContextFactory;
 import space.br1440.platform.tracing.test.harness.SamplingDecisionCase;
 

@@ -94,7 +94,7 @@ public final class GenerateTestsLiveSmoke {
         Map<String, Object> args = new HashMap<>();
         args.put("task", "Generate JUnit test class DefaultPlatformTracingBaselineTest for Slice 0A");
         args.put("language", "java");
-        args.put("code", "package space.br1440.platform.tracing.core;"
+        args.put("code", "package space.br1440.platform.tracing.otel;"
                 + " public class DefaultPlatformTracing { public static String name() { return \"v1\"; } }");
         args.put("context", "Plan Slice 0A: Baseline GREEN tests locking v1 behavior");
         args.put("constraints", "No production code. No Gradle.");

@@ -1,5 +1,9 @@
 <img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
 
+> **HISTORICAL / SUPERSEDED REVIEW.** Документ фиксирует guardrails прежнего migration plan.
+> Текущие package taxonomy и архитектурные границы определены в
+> [финальной архитектуре](../platform-tracing-final-architecture.md).
+
 ## 11. Implementation guardrails for Cursor Composer
 
 ### 11.1. Глобальные правила

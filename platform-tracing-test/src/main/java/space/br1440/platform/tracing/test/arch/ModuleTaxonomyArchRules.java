@@ -40,7 +40,7 @@ public final class ModuleTaxonomyArchRules {
      */
     public static final ArchRule OTEL_TRACEPARENT_READER_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.core.propagation.OtelTraceparentReaderImpl")
+                    "space.br1440.platform.tracing.otel.propagation.OtelTraceparentReaderImpl")
             .should().onlyHaveDependentClassesThat(allowedOtelTraceparentReaderDependent())
             .allowEmptyShould(true)
             .because("OtelTraceparentReaderImpl — внутренний bridge в core, а не extension API");
@@ -52,7 +52,7 @@ public final class ModuleTaxonomyArchRules {
             .that(requestIdSupportApiTypes())
             .should().resideInAPackage("..api..")
             .allowEmptyShould(true)
-            .because("RequestIdSupport SPI/holder удалены; request-id sanitization живёт в core.propagation");
+            .because("RequestIdSupport SPI/holder удалены; request-id sanitization живёт в otel.propagation");
 
     /**
      * API не должен разрешать implementation через ServiceLoader.
@@ -68,7 +68,7 @@ public final class ModuleTaxonomyArchRules {
     public static final ArchRule API_MAIN_NO_IMPLEMENTATION_DEPENDENCY = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.api..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "space.br1440.platform.tracing.core..",
+                    "space.br1440.platform.tracing.otel..",
                     "space.br1440.platform.tracing.otel..",
                     "space.br1440.platform.tracing.autoconfigure..")
             .because("platform-tracing-api содержит только стабильные контракты и value types");
@@ -93,7 +93,7 @@ public final class ModuleTaxonomyArchRules {
      */
     public static final ArchRule REQUEST_ID_SUPPORT_CORE_UTILITY_IS_DEPENDENCY_LIGHT = noClasses()
             .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.core.propagation.RequestIdSupport")
+                    "space.br1440.platform.tracing.otel.propagation.RequestIdSupport")
             .should().dependOnClassesThat(requestIdSupportForbiddenDependencies())
             .allowEmptyShould(true)
             .because("RequestIdSupport is a pure sanitizer/generator utility without OTel, Spring, Servlet, "
@@ -121,7 +121,7 @@ public final class ModuleTaxonomyArchRules {
             .that().resideInAnyPackage(
                     "space.br1440.platform.tracing.autoconfigure.servlet..",
                     "space.br1440.platform.tracing.autoconfigure.reactive..")
-            .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.core..")
+            .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel..")
             .allowEmptyShould(true)
             .because("web autoconfigure не должен раскрывать platform-tracing-otel на compile classpath потребителя");
 
@@ -134,7 +134,7 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.autoconfigure.reactive..",
                     "space.br1440.platform.tracing.webflux..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "space.br1440.platform.tracing.core..",
+                    "space.br1440.platform.tracing.otel..",
                     "space.br1440.platform.tracing.otel..")
             .because("web integration использует public API и approved autoconfigure boundary-support");
 
@@ -184,62 +184,62 @@ public final class ModuleTaxonomyArchRules {
      */
     public static final ArchRule CORE_POLICY_PACKAGES_NO_OTEL_OR_SPRING = noClasses()
             .that().resideInAnyPackage(
-                    "space.br1440.platform.tracing.core.sampling..",
-                    "space.br1440.platform.tracing.core.scrubbing..",
-                    "space.br1440.platform.tracing.core.validation..")
+                    "space.br1440.platform.tracing.otel.sampling..",
+                    "space.br1440.platform.tracing.otel.scrubbing..",
+                    "space.br1440.platform.tracing.otel.validation..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "io.opentelemetry..",
                     "org.springframework..",
                     "javax.management..")
             .allowEmptyShould(true)
-            .because("pure policy-пакеты core.{sampling,scrubbing,validation,enrichment} "
+            .because("pure policy-пакеты otel.{sampling,scrubbing,validation,enrichment} "
                     + "не должны зависеть от OTel, Spring или JMX (граница PR-9B)");
 
     /**
      * PR-9B: main-sources всего core-модуля не должны использовать JMX.
      */
     public static final ArchRule CORE_MAIN_NO_JMX = noClasses()
-            .that().resideInAPackage("space.br1440.platform.tracing.core..")
+            .that().resideInAPackage("space.br1440.platform.tracing.otel..")
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAnyPackage("javax.management..")
             .because("platform-tracing-otel не должен зависеть от JMX — управление runtime является agent-side");
 
-    // -- Слоистые границы пакета core.sampling: model / policy / engine / config -------------------
+    // -- Слоистые границы пакета otel.sampling: model / policy / engine / config -------------------
 
-    /** {@code core.sampling.model} — чистый слой состояния: не зависит от policy/engine/config. */
+    /** {@code otel.sampling.model} — чистый слой состояния: не зависит от policy/engine/config. */
     public static final ArchRule SAMPLING_MODEL_IS_PURE = noClasses()
-            .that().resideInAPackage("..core.sampling.model..")
+            .that().resideInAPackage("..otel.sampling.model..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..core.sampling.policy..",
-                    "..core.sampling.engine..",
-                    "..core.sampling.properties..")
-            .because("core.sampling.model — чистый слой состояния, без зависимостей на policy/engine/properties");
+                    "..otel.sampling.policy..",
+                    "..otel.sampling.engine..",
+                    "..otel.sampling.properties..")
+            .because("otel.sampling.model — чистый слой состояния, без зависимостей на policy/engine/properties");
 
-    /** {@code core.sampling.properties} зависит только от model (нормализация/валидация в compile-time). */
+    /** {@code otel.sampling.properties} зависит только от model (нормализация/валидация в compile-time). */
     public static final ArchRule SAMPLING_PROPERTIES_DEPENDS_ONLY_ON_MODEL = noClasses()
-            .that().resideInAPackage("..core.sampling.properties..")
+            .that().resideInAPackage("..otel.sampling.properties..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..core.sampling.policy..",
-                    "..core.sampling.engine..")
-            .because("core.sampling.properties — compile-time нормализация/валидация; зависит только от model");
+                    "..otel.sampling.policy..",
+                    "..otel.sampling.engine..")
+            .because("otel.sampling.properties — compile-time нормализация/валидация; зависит только от model");
 
-    /** {@code core.sampling.policy} — семантический слой правил: зависит от model, но не от engine/properties. */
+    /** {@code otel.sampling.policy} — семантический слой правил: зависит от model, но не от engine/properties. */
     public static final ArchRule SAMPLING_POLICY_NO_ENGINE_OR_CONFIG = noClasses()
-            .that().resideInAPackage("..core.sampling.policy..")
+            .that().resideInAPackage("..otel.sampling.policy..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..core.sampling.engine..",
-                    "..core.sampling.properties..")
-            .because("core.sampling.policy — семантический слой правил; зависит только от model");
+                    "..otel.sampling.engine..",
+                    "..otel.sampling.properties..")
+            .because("otel.sampling.policy — семантический слой правил; зависит только от model");
 
-    /** {@code core.sampling.model} не зависит от holder-managed runtime-state инфраструктуры. */
+    /** {@code otel.sampling.model} не зависит от holder-managed runtime-state инфраструктуры. */
     public static final ArchRule SAMPLING_MODEL_NOT_DEPEND_ON_VERSIONED_STATE = noClasses()
-            .that().resideInAPackage("..core.sampling.model..")
-            .should().dependOnClassesThat().resideInAnyPackage("..core.runtime.versioned..")
-            .because("core.sampling.model — чистый domain compile state; не зависит от core.runtime.versioned");
+            .that().resideInAPackage("..otel.sampling.model..")
+            .should().dependOnClassesThat().resideInAnyPackage("..otel.runtime.versioned..")
+            .because("otel.sampling.model — чистый domain compile state; не зависит от otel.runtime.versioned");
 
     /** Только holder-managed production-снимки могут реализовывать {@code VersionedState}. */
     public static final ArchRule VERSIONED_STATE_IMPLS_ALLOWLIST = classes()
-            .that().implement("space.br1440.platform.tracing.core.runtime.versioned.VersionedState")
+            .that().implement("space.br1440.platform.tracing.otel.runtime.versioned.VersionedState")
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
             .should().haveFullyQualifiedName(
@@ -247,7 +247,7 @@ public final class ModuleTaxonomyArchRules {
             .orShould().haveFullyQualifiedName(
                     "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot")
             .orShould().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.core.validation.ValidationSnapshot")
+                    "space.br1440.platform.tracing.otel.validation.ValidationSnapshot")
             .because("VersionedState — контракт holder-managed runtime state, а не generic HasVersion-маркер");
 
     /** Autoconfigure/starter приложения не должен зависеть от holder-managed versioned runtime-state. */
@@ -256,30 +256,30 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.autoconfigure..",
                     "space.br1440.platform.tracing.starter..")
             .and().resideOutsideOfPackage("..test..")
-            .should().dependOnClassesThat().resideInAnyPackage("..core.runtime.versioned..")
+            .should().dependOnClassesThat().resideInAnyPackage("..otel.runtime.versioned..")
             .allowEmptyShould(true)
-            .because("core.runtime.versioned — agent/runtime инфраструктура, а не SDK для autoconfigure");
+            .because("otel.runtime.versioned — agent/runtime инфраструктура, а не SDK для autoconfigure");
 
     /** Regression guard: пакет {@code api.config} удалён; запрет любых зависимостей (cherry-pick / copy-paste). */
     public static final ArchRule NO_API_CONFIG_PACKAGE = noClasses()
             .that().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAPackage("..api.config..")
-            .because("api.config удалён; используйте core.runtime.versioned.VersionedState/VersionedStateHolder");
+            .because("api.config удалён; используйте otel.runtime.versioned.VersionedState/VersionedStateHolder");
 
     /** Regression guard: пакет {@code api.runtime.state} удалён; запрет любых зависимостей. */
     public static final ArchRule NO_API_RUNTIME_STATE_PACKAGE = noClasses()
             .that().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAPackage("..api.runtime.state..")
-            .because("api.runtime.state удалён; CAS-примитив живёт в core.runtime.versioned");
+            .because("api.runtime.state удалён; CAS-примитив живёт в otel.runtime.versioned");
 
-    /** {@code VersionedState} и {@code VersionedStateHolder} — только в {@code core.runtime.versioned}. */
+    /** {@code VersionedState} и {@code VersionedStateHolder} — только в {@code otel.runtime.versioned}. */
     public static final ArchRule VERSIONED_STATE_PRIMITIVE_ONLY_IN_CORE = classes()
             .that().haveSimpleName("VersionedState")
             .or().haveSimpleName("VersionedStateHolder")
             .and().resideOutsideOfPackage("..test..")
-            .should().resideInAPackage("..core.runtime.versioned..")
+            .should().resideInAPackage("..otel.runtime.versioned..")
             .allowEmptyShould(true)
-            .because("VersionedState/VersionedStateHolder — agent-internal CAS primitive; только core.runtime.versioned");
+            .because("VersionedState/VersionedStateHolder — agent-internal CAS primitive; только otel.runtime.versioned");
 
     /**
      * Запрет возврата удалённого пакета {@code api.manual.*}.
@@ -311,15 +311,15 @@ public final class ModuleTaxonomyArchRules {
             .because("VersionedState snapshots должны оставаться иммутабельными (ValidationSnapshot)");
 
     /**
-     * Реализации {@code SamplingPolicyRule} живут только в {@code core.sampling.policy}.
+     * Реализации {@code SamplingPolicyRule} живут только в {@code otel.sampling.policy}.
      * <p>
      * Дополняет package-private visibility машинной проверкой: platform rule нельзя
      * перенести из policy-пакета или незаметно заменить внешней реализацией.
      */
     public static final ArchRule SAMPLING_RULE_IMPLS_ONLY_IN_POLICY = classes()
-            .that().implement("space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule")
-            .should().resideInAPackage("..core.sampling.policy..")
-            .because("SamplingPolicyRule является внутренним контрактом; реализации допустимы только в core.sampling.policy");
+            .that().implement("space.br1440.platform.tracing.otel.sampling.policy.SamplingPolicyRule")
+            .should().resideInAPackage("..otel.sampling.policy..")
+            .because("SamplingPolicyRule является внутренним контрактом; реализации допустимы только в otel.sampling.policy");
 
     /**
      * {@code ProductionSamplingPolicyChain} публичен только по необходимости компиляции
@@ -328,42 +328,42 @@ public final class ModuleTaxonomyArchRules {
      */
     public static final ArchRule PRODUCTION_CHAIN_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain")
+                    "space.br1440.platform.tracing.otel.sampling.policy.ProductionSamplingPolicyChain")
             .should().onlyHaveDependentClassesThat().resideInAnyPackage(
-                    "..core.sampling.policy..",
-                    "..core.sampling.engine..")
+                    "..otel.sampling.policy..",
+                    "..otel.sampling.engine..")
             .because("ProductionSamplingPolicyChain публичен только ради cross-package компиляции движка; "
                     + "не является публичным extension API");
 
     // -- PR-1: границы пакетов enrichment / naming / semconv.policy ------------------------------
 
-    /** {@code core.enrichment} не зависит от legacy builders и v3 manual transport. */
+    /** {@code otel.enrichment} не зависит от legacy builders и v3 manual transport. */
     public static final ArchRule CORE_ENRICHMENT_NO_MANUAL_OR_LEGACY = noClasses()
-            .that().resideInAPackage("..core.enrichment..")
+            .that().resideInAPackage("..otel.enrichment..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..core.span.legacy..",
-                    "..core.manual..")
+                    "..otel.span.legacy..",
+                    "..otel.manual..")
             .allowEmptyShould(true)
-            .because("core.enrichment — agent-first обогащение; не зависит от manual/legacy builders");
+            .because("otel.enrichment — agent-first обогащение; не зависит от manual/legacy builders");
 
-    /** {@code core.naming} — чистое именование span'ов: только OTel common, без trace/context. */
+    /** {@code otel.naming} — чистое именование span'ов: только OTel common, без trace/context. */
     public static final ArchRule CORE_NAMING_NO_OTEL_TRACE_CONTEXT = noClasses()
-            .that().resideInAPackage("..core.naming..")
+            .that().resideInAPackage("..otel.naming..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "io.opentelemetry.api.trace..",
                     "io.opentelemetry.context..")
             .allowEmptyShould(true)
-            .because("core.naming не импортирует OTel trace/context API");
+            .because("otel.naming не импортирует OTel trace/context API");
 
-    /** {@code core.semconv.policy} — политика атрибутов: только OTel common, без trace/context/sdk. */
+    /** {@code otel.semconv.policy} — политика атрибутов: только OTel common, без trace/context/sdk. */
     public static final ArchRule CORE_SEMCONV_POLICY_OTEL_COMMON_ONLY = noClasses()
-            .that().resideInAPackage("..core.semconv.policy..")
+            .that().resideInAPackage("..otel.semconv.policy..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "io.opentelemetry.api.trace..",
                     "io.opentelemetry.context..",
                     "io.opentelemetry.sdk..")
             .allowEmptyShould(true)
-            .because("core.semconv.policy допускает только io.opentelemetry.api.common");
+            .because("otel.semconv.policy допускает только io.opentelemetry.api.common");
 
     // -- Граница публичного span API ---------------------------------------------------------------
 
@@ -378,7 +378,7 @@ public final class ModuleTaxonomyArchRules {
             .that().resideInAPackage("space.br1440.platform.tracing.api.span..")
             .and().arePublic()
             .should().dependOnClassesThat().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.core.propagation.OtelTraceparentReader")
+                    "space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader")
             .because("OtelTraceparentReader внедряется только во внутреннюю DefaultSpanFactory composition");
 
     /** CP-C2 propagation port остаётся интерфейсом в API. */
@@ -387,7 +387,7 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation")
             .should().beInterfaces()
             .andShould().resideInAPackage("space.br1440.platform.tracing.api.propagation.control")
-            .because("CP-C2 contract принадлежит API, а concrete implementations — core.propagation.control");
+            .because("CP-C2 contract принадлежит API, а concrete implementations — otel.propagation.control");
 
     /** Запрещённые identity infrastructure types не становятся публичной поверхностью. */
     public static final ArchRule IDENTITY_INTERNAL_TYPES_NOT_PUBLIC = noClasses()
@@ -404,11 +404,11 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("санитайзеры являются implementation utility и живут рядом с internal caller");
 
-    /** URL sanitizer допустим только рядом с единственным caller в {@code core.manual}. */
+    /** URL sanitizer допустим только рядом с единственным caller в {@code otel.manual}. */
     public static final ArchRule URL_SANITIZER_ONLY_IN_CORE_MANUAL = classes()
             .that().haveSimpleName("UrlSanitizer")
             .and().resideOutsideOfPackage("..test..")
-            .should().resideInAPackage("..core.manual..")
+            .should().resideInAPackage("..otel.manual..")
             .allowEmptyShould(true)
             .because("UrlSanitizer не является публичным API или extension point");
 
@@ -434,10 +434,10 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("category marker path удалён вместе с category-specific enrichment");
 
-    // -- PR-3: api.propagation.control / core.propagation.control guardrails -----------------------
+    // -- PR-3: api.propagation.control / otel.propagation.control guardrails -----------------------
 
     /**
-     * Реализации control-интерфейсов propagation живут только в {@code core.propagation.control}.
+     * Реализации control-интерфейсов propagation живут только в {@code otel.propagation.control}.
      * <p>
      * Исключены анонимные и вложенные классы (inline test doubles), а также тестовые пакеты.
      */
@@ -450,16 +450,16 @@ public final class ModuleTaxonomyArchRules {
             .and().areNotMemberClasses()
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
-            .should().resideInAPackage("..core.propagation.control..")
+            .should().resideInAPackage("..otel.propagation.control..")
             .because("реализации OutboundPropagationPolicy / TrustedDestinationMatcher / "
-                    + "PlatformOutboundPropagation / InboundTraceControlExtractor — только в core.propagation.control");
+                    + "PlatformOutboundPropagation / InboundTraceControlExtractor — только в otel.propagation.control");
 
     /**
      * {@code TrustedDestinationMatchers} — public factory для wiring; не для starter'ов и бизнес-модулей.
      */
     public static final ArchRule CONTROL_IMPL_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers")
+                    "space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers")
             .should().onlyHaveDependentClassesThat(allowedTrustedDestinationMatchersDependent())
             .allowEmptyShould(true)
             .because("TrustedDestinationMatchers — wiring factory; допустима только из core, autoconfigure, "
@@ -503,7 +503,7 @@ public final class ModuleTaxonomyArchRules {
             .should().beInterfaces()
             .allowEmptyShould(true)
             .because("api.mdc — только контракты: интерфейсы/@FunctionalInterface и utility *Keys/*Constants. "
-                    + "SLF4J-мост, TraceMirror и конкретные реализации живут в core.mdc.remote");
+                    + "SLF4J-мост, TraceMirror и конкретные реализации живут в otel.mdc.remote");
 
     /**
      * {@code RemoteServiceTraceMirror} — package-private инфраструктура; не должен быть public.
@@ -520,7 +520,7 @@ public final class ModuleTaxonomyArchRules {
 
     /**
      * {@code RemoteServiceMdc} и {@code RemoteServiceNameResolver} живут только в
-     * {@code core.mdc.remote}. Запрещает случайный возврат implementation-типов в api.mdc.
+     * {@code otel.mdc.remote}. Запрещает случайный возврат implementation-типов в api.mdc.
      */
     public static final ArchRule REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE = classes()
             .that(new DescribedPredicate<>("be RemoteServiceMdc or RemoteServiceNameResolver outside tests") {
@@ -531,10 +531,10 @@ public final class ModuleTaxonomyArchRules {
                             && !input.getPackageName().contains(".test");
                 }
             })
-            .should().resideInAPackage("..core.mdc.remote..")
+            .should().resideInAPackage("..otel.mdc.remote..")
             .allowEmptyShould(true)
             .because("RemoteServiceMdc и RemoteServiceNameResolver — implementation; "
-                    + "только core.mdc.remote (не api.mdc)");
+                    + "только otel.mdc.remote (не api.mdc)");
 
     /**
      * Запрет возврата удалённого anti-pattern {@code RemoteServiceContextReaders}
@@ -561,7 +561,7 @@ public final class ModuleTaxonomyArchRules {
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat(apiMdcExceptAllowed())
             .allowEmptyShould(true)
-            .because("otel-extension использует MDC только через core.mdc.remote.RemoteServiceMdc; "
+            .because("otel-extension использует MDC только через otel.mdc.remote.RemoteServiceMdc; "
                     + "из api.mdc разрешены только TracingMdcKeys и RemoteServiceNameSource");
 
     private static DescribedPredicate<JavaClass> allowedOtelTraceparentReaderDependent() {
@@ -569,8 +569,8 @@ public final class ModuleTaxonomyArchRules {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return name.startsWith("space.br1440.platform.tracing.core.propagation.")
-                        || name.equals("space.br1440.platform.tracing.core.manual.DefaultSpanFactory")
+                return name.startsWith("space.br1440.platform.tracing.otel.propagation.")
+                        || name.equals("space.br1440.platform.tracing.otel.manual.DefaultSpanFactory")
                         || name.contains(".test.")
                         || name.endsWith("Test");
             }
@@ -607,11 +607,11 @@ public final class ModuleTaxonomyArchRules {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return "space.br1440.platform.tracing.core.propagation.control.TraceControlHeaderInjector"
+                return "space.br1440.platform.tracing.otel.propagation.control.TraceControlHeaderInjector"
                                 .equals(name)
-                        || "space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys"
+                        || "space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys"
                                 .equals(name)
-                        || "space.br1440.platform.tracing.core.propagation.OtelTraceparentReader"
+                        || "space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader"
                                 .equals(name);
             }
         };
@@ -622,7 +622,7 @@ public final class ModuleTaxonomyArchRules {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return name.startsWith("space.br1440.platform.tracing.core.")
+                return name.startsWith("space.br1440.platform.tracing.otel.")
                         || name.startsWith("space.br1440.platform.tracing.autoconfigure.")
                         || name.startsWith("space.br1440.platform.tracing.otel.javaagent.")
                         || name.contains(".test.")

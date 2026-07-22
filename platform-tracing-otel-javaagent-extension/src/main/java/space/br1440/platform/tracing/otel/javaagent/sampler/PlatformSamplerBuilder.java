@@ -61,8 +61,8 @@ public final class PlatformSamplerBuilder {
     /**
      * Парсит стартовые route-ratios из {@code SamplingExtensionConfig#routeRatios} (значения — строки).
      * Невалидные/непарсящиеся значения пропускаются; валидация диапазона {@code defaultRatio}
-     * выполняется в {@link space.br1440.platform.tracing.core.sampling.properties.SamplingPolicySnapshotFactory}
-     * через {@link space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyPropertiesValidator}
+     * выполняется в {@link space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicySnapshotFactory}
+     * через {@link space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyPropertiesValidator}
      * при построении {@link SamplerState}.
      */
     static Map<String, Double> parseRouteRatios(Map<String, String> raw) {

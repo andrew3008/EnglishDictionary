@@ -2,8 +2,8 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.core.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
 
 import java.util.Map;
 import java.util.Optional;
@@ -74,15 +74,15 @@ class TracingDiagnosticsViewJsonContractTest {
         }
     }
 
-    private static final class TestModeTracingRuntime implements space.br1440.platform.tracing.core.runtime.TracingRuntime {
+    private static final class TestModeTracingRuntime implements space.br1440.platform.tracing.otel.runtime.TracingRuntime {
 
-        private final space.br1440.platform.tracing.core.runtime.TracingRuntime identityDelegate =
+        private final space.br1440.platform.tracing.otel.runtime.TracingRuntime identityDelegate =
                 NoOpTracingRuntime.noop();
 
         @Override
         public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(
                 space.br1440.platform.tracing.api.span.spec.SpanSpec spec) {
-            return space.br1440.platform.tracing.core.runtime.NoOpSpanHandle.INSTANCE;
+            return space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle.INSTANCE;
         }
 
         @Override
@@ -122,8 +122,8 @@ class TracingDiagnosticsViewJsonContractTest {
         }
 
         @Override
-        public space.br1440.platform.tracing.core.runtime.state.TracingState state() {
-            return new space.br1440.platform.tracing.core.runtime.state.TracingState() {
+        public space.br1440.platform.tracing.otel.runtime.state.TracingState state() {
+            return new space.br1440.platform.tracing.otel.runtime.state.TracingState() {
                 @Override
                 public TracingMode mode() {
                     return TracingMode.TEST;
@@ -142,8 +142,8 @@ class TracingDiagnosticsViewJsonContractTest {
         }
 
         @Override
-        public space.br1440.platform.tracing.core.semconv.policy.AttributePolicy attributePolicy() {
-            return new space.br1440.platform.tracing.core.semconv.policy.AttributePolicy();
+        public space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy attributePolicy() {
+            return new space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy();
         }
     }
 }

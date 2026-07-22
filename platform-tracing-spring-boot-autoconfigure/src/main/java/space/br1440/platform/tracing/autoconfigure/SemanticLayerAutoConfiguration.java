@@ -13,11 +13,11 @@ import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
-import space.br1440.platform.tracing.core.enrichment.DefaultSpanEnricher;
-import space.br1440.platform.tracing.core.exception.ExceptionMessagePolicy;
-import space.br1440.platform.tracing.core.exception.ExceptionRecorder;
-import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
+import space.br1440.platform.tracing.otel.enrichment.DefaultSpanEnricher;
+import space.br1440.platform.tracing.otel.exception.ExceptionMessagePolicy;
+import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
 
 /**
  * Авто-конфигурация платформенного semantic-слоя (Фаза 13): бин {@link AttributePolicy}.

@@ -17,7 +17,7 @@ import javax.management.openmbean.OpenDataException;
  * </ol>
  *
  * <p>The interface is intentionally thin: all business logic lives in
- * {@link space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler}
+ * {@link space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler}
  * (core) and {@link space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier}
  * (otel-extension). This MXBean is purely a wire-transport adapter.
  *

@@ -553,7 +553,7 @@ public final class ResearchWithPerplexityTool {
                     core = line;
                 }
             }
-            if (core.isEmpty()) {
+            if (otel.isEmpty()) {
                 continue;
             }
 

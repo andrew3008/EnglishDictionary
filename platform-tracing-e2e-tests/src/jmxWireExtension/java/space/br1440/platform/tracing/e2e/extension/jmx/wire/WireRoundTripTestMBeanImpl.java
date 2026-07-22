@@ -5,8 +5,8 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation;
-import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlDomainValidator;
-import space.br1440.platform.tracing.core.control.protocol.TracingControlDomainValidationResult;
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlDomainValidator;
+import space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanServer;

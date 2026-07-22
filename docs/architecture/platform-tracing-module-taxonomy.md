@@ -2,7 +2,7 @@
 
 ## Document status
 
-**CANONICAL.** Состояние master после Slice J и CP-3/CP-4 Slice K. Архитектурное решение: [final architecture ADR](../decisions/ADR-platform-tracing-final-architecture.md).
+**CANONICAL.** Состояние после Slice J, Slice L и CP-3 R2 package migration. Архитектурное решение: [final architecture ADR](../decisions/ADR-platform-tracing-final-architecture.md).
 
 ## Module categories
 
@@ -60,7 +60,9 @@ Starters do not bring the Java Agent extension onto application compile/runtime 
 
 ## Package taxonomy
 
-CP-3 closed with **KEEP**: `platform-tracing-otel` retains `space.br1440.platform.tracing.core.*`. The package name is historical internal taxonomy and does not imply technology neutrality or a planned core extraction.
+CP-3 R2 closed with **RENAME**: implementation artifact `platform-tracing-otel` owns
+`space.br1440.platform.tracing.otel.*`. The old `space.br1440.platform.tracing.core.*`
+namespace is forbidden and no compatibility package is retained.
 
 The Java Agent extension uses `space.br1440.platform.tracing.otel.javaagent.*`. CP-4 closed with **KEEP**: enrichment keeps its `void` contract; no `EnrichmentOutcome` type is planned or missing.
 
@@ -69,6 +71,7 @@ The Java Agent extension uses `space.br1440.platform.tracing.otel.javaagent.*`. 
 - `pr0StarterDependencySmoke`: published starter graph and forbidden transitive dependencies.
 - `pr1ModuleTaxonomyVerify`: module boundaries and package rules.
 - `pr4ArchitectureFitnessVerify`: aggregate architecture fitness.
+- `cp3LegacyPackageVerify`: old `space.br1440.platform.tracing.core` prefix is forbidden in active source and metadata.
 - `ApiModuleTaxonomyArchTest`: API purity, no static discovery, no forbidden identity infrastructure.
 - `PublicSurfaceAllowlistTest` and `AbiSnapshotTest`: exact implementation surface and ABI.
 - Extension packaging/SPI and controlled-distribution verification tasks.
@@ -76,7 +79,7 @@ The Java Agent extension uses `space.br1440.platform.tracing.otel.javaagent.*`. 
 
 ## Future changes
 
-Module split, artifact rename, package migration or public ABI expansion requires a separate architecture decision and failing evidence that justifies the change. `otel-runtime`, `platform-tracing-policy` and mass `core.* -> otel.*` repackaging are not backlog commitments.
+Future module split, artifact rename, package migration or public ABI expansion requires a separate architecture decision. The CP-3 R2 `core.* -> otel.*` migration is complete; `otel-runtime` and `platform-tracing-policy` remain rejected topology, not backlog commitments.
 
 ## Release status
 
