@@ -60,8 +60,33 @@ public final class ModuleTaxonomyArchRules {
     public static final ArchRule API_NO_SERVICE_LOADER = noClasses()
             .that().resideInAPackage("..api..")
             .should().dependOnClassesThat().haveFullyQualifiedName("java.util.ServiceLoader")
-            .allowEmptyShould(true)
             .because("implementation selection belongs to composition roots, not API class initialization");
+
+    /**
+     * API main-sources не зависят от implementation-модулей ни напрямую, ни через будущий package root.
+     */
+    public static final ArchRule API_MAIN_NO_IMPLEMENTATION_DEPENDENCY = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.api..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "space.br1440.platform.tracing.core..",
+                    "space.br1440.platform.tracing.otel..",
+                    "space.br1440.platform.tracing.autoconfigure..")
+            .because("platform-tracing-api содержит только стабильные контракты и value types");
+
+    /**
+     * API остаётся свободным от OTel и application-framework типов.
+     */
+    public static final ArchRule API_MAIN_NO_OTEL_OR_FRAMEWORK_TYPES = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.api..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "io.opentelemetry..",
+                    "org.springframework..",
+                    "reactor..",
+                    "jakarta.servlet..",
+                    "org.apache.kafka..",
+                    "io.grpc..",
+                    "org.slf4j..")
+            .because("public API должен оставаться OTel-free и framework-free");
 
     /**
      * The core request-id utility must stay dependency-light and framework-free.
@@ -99,6 +124,37 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.core..")
             .allowEmptyShould(true)
             .because("web autoconfigure не должен раскрывать platform-tracing-core на compile classpath потребителя");
+
+    /**
+     * Оба web-модуля зависят только от API и boundary-support autoconfigure, но не от implementation packages.
+     */
+    public static final ArchRule WEB_MAIN_NO_IMPLEMENTATION_DEPENDENCY = noClasses()
+            .that().resideInAnyPackage(
+                    "space.br1440.platform.tracing.autoconfigure.servlet..",
+                    "space.br1440.platform.tracing.autoconfigure.reactive..",
+                    "space.br1440.platform.tracing.webflux..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "space.br1440.platform.tracing.core..",
+                    "space.br1440.platform.tracing.otel..")
+            .because("web integration использует public API и approved autoconfigure boundary-support");
+
+    /** Web integration не управляет OTel Context напрямую. */
+    public static final ArchRule WEB_MAIN_NO_OTEL_CONTEXT = noClasses()
+            .that().resideInAnyPackage(
+                    "space.br1440.platform.tracing.autoconfigure.servlet..",
+                    "space.br1440.platform.tracing.autoconfigure.reactive..",
+                    "space.br1440.platform.tracing.webflux..")
+            .should().dependOnClassesThat().resideInAnyPackage("io.opentelemetry.context..")
+            .because("OTel Context ownership принадлежит implementation/composition layer");
+
+    /** Web integration не должна обходить OTel-free propagation port. */
+    public static final ArchRule WEB_MAIN_NO_INTERNAL_PROPAGATION_TYPES = noClasses()
+            .that().resideInAnyPackage(
+                    "space.br1440.platform.tracing.autoconfigure.servlet..",
+                    "space.br1440.platform.tracing.autoconfigure.reactive..",
+                    "space.br1440.platform.tracing.webflux..")
+            .should().dependOnClassesThat(internalPropagationType())
+            .because("web integration вызывает PlatformOutboundPropagation, а не internal OTel infrastructure");
 
     /**
      * Servlet web autoconfigure не должен тянуть типы WebFlux/Reactor в main-sources.
@@ -316,8 +372,31 @@ public final class ModuleTaxonomyArchRules {
     public static final ArchRule API_MAIN_NO_OTEL_API = noClasses()
             .that().resideInAPackage("..api..")
             .should().dependOnClassesThat().resideInAnyPackage("io.opentelemetry.api..")
-            .allowEmptyShould(true)
             .because("OTel API остаётся деталью core; публичные enrichment/semconv контракты platform-owned");
+
+    /** Public SpanFactory API и builders не раскрывают implementation-side reader type. */
+    public static final ArchRule SPAN_FACTORY_API_NO_TRACEPARENT_READER = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.api.span..")
+            .and().arePublic()
+            .should().dependOnClassesThat().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.core.propagation.OtelTraceparentReader")
+            .because("OtelTraceparentReader внедряется только во внутреннюю DefaultSpanFactory composition");
+
+    /** CP-C2 propagation port остаётся интерфейсом в API. */
+    public static final ArchRule PROPAGATION_PORT_OWNERSHIP = classes()
+            .that().haveFullyQualifiedName(
+                    "space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation")
+            .should().beInterfaces()
+            .andShould().resideInAPackage("space.br1440.platform.tracing.api.propagation.control")
+            .because("CP-C2 contract принадлежит API, а concrete implementations — core.propagation.control");
+
+    /** Запрещённые identity infrastructure types не становятся публичной поверхностью. */
+    public static final ArchRule IDENTITY_INTERNAL_TYPES_NOT_PUBLIC = noClasses()
+            .that().arePublic()
+            .should().haveNameMatching(
+                    ".*\\.(RequestContextAccessor|RequestIdentityAccessor|RequestIdentityContext|"
+                            + "RequestIdentityBinder|RequestIdentityScope)")
+            .because("CP-1 R2 оставляет identity store/binder infrastructure внутренней");
 
     /** Удалённый пакет санитайзеров не должен возвращаться в публичный API. */
     public static final ArchRule NO_API_SPAN_SANITIZE_PACKAGE = noClasses()
@@ -373,7 +452,6 @@ public final class ModuleTaxonomyArchRules {
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
             .should().resideInAPackage("..core.propagation.control..")
-            .allowEmptyShould(true)
             .because("реализации OutboundPropagationPolicy / TrustedDestinationMatcher / "
                     + "PlatformOutboundPropagation / InboundTraceControlExtractor — только в core.propagation.control");
 
@@ -521,6 +599,21 @@ public final class ModuleTaxonomyArchRules {
                         || pkg.startsWith("jakarta.servlet.")
                         || pkg.startsWith("reactor.")
                         || "java.util.ServiceLoader".equals(name);
+            }
+        };
+    }
+
+    private static DescribedPredicate<JavaClass> internalPropagationType() {
+        return new DescribedPredicate<>("быть internal propagation infrastructure") {
+            @Override
+            public boolean test(JavaClass input) {
+                String name = input.getName();
+                return "space.br1440.platform.tracing.core.propagation.control.TraceControlHeaderInjector"
+                                .equals(name)
+                        || "space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys"
+                                .equals(name)
+                        || "space.br1440.platform.tracing.core.propagation.OtelTraceparentReader"
+                                .equals(name);
             }
         };
     }

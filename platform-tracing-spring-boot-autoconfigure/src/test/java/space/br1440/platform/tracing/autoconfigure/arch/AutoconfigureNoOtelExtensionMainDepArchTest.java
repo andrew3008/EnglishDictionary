@@ -22,4 +22,8 @@ class AutoconfigureNoOtelExtensionMainDepArchTest {
     @ArchTest
     static final ArchRule appModulesNotDependOnCoreRuntimeVersioned =
             ModuleTaxonomyArchRules.APP_MODULES_NOT_DEPEND_ON_CORE_RUNTIME_VERSIONED;
+
+    @ArchTest
+    static final ArchRule identityInternalTypesNotPublic =
+            ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
 }

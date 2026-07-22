@@ -23,4 +23,19 @@ class WebFluxNoServletMainDepArchTest {
     @ArchTest
     static final ArchRule webFluxMainNoCoreImplementation =
             ModuleTaxonomyArchRules.WEB_AUTOCONFIGURE_MAIN_NO_CORE_IMPL;
+
+    @ArchTest
+    static final ArchRule webFluxMainNoImplementationDependency =
+            ModuleTaxonomyArchRules.WEB_MAIN_NO_IMPLEMENTATION_DEPENDENCY;
+
+    @ArchTest
+    static final ArchRule webFluxMainNoOtelContext = ModuleTaxonomyArchRules.WEB_MAIN_NO_OTEL_CONTEXT;
+
+    @ArchTest
+    static final ArchRule webFluxMainNoInternalPropagationTypes =
+            ModuleTaxonomyArchRules.WEB_MAIN_NO_INTERNAL_PROPAGATION_TYPES;
+
+    @ArchTest
+    static final ArchRule identityInternalTypesNotPublic =
+            ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
 }

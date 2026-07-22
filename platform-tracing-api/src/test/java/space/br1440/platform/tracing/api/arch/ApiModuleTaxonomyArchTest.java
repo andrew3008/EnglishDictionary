@@ -40,6 +40,14 @@ class ApiModuleTaxonomyArchTest {
     static final ArchRule apiNoServiceLoader = ModuleTaxonomyArchRules.API_NO_SERVICE_LOADER;
 
     @ArchTest
+    static final ArchRule apiMainNoImplementationDependency =
+            ModuleTaxonomyArchRules.API_MAIN_NO_IMPLEMENTATION_DEPENDENCY;
+
+    @ArchTest
+    static final ArchRule apiMainNoOtelOrFrameworkTypes =
+            ModuleTaxonomyArchRules.API_MAIN_NO_OTEL_OR_FRAMEWORK_TYPES;
+
+    @ArchTest
     static final ArchRule apiPropagationControlNoConcreteImpl =
             ModuleTaxonomyArchRules.API_PROPAGATION_CONTROL_NO_CONCRETE_IMPL;
 
@@ -48,6 +56,17 @@ class ApiModuleTaxonomyArchTest {
 
     @ArchTest
     static final ArchRule apiMainNoOtelApi = ModuleTaxonomyArchRules.API_MAIN_NO_OTEL_API;
+
+    @ArchTest
+    static final ArchRule spanFactoryApiNoTraceparentReader =
+            ModuleTaxonomyArchRules.SPAN_FACTORY_API_NO_TRACEPARENT_READER;
+
+    @ArchTest
+    static final ArchRule propagationPortOwnership = ModuleTaxonomyArchRules.PROPAGATION_PORT_OWNERSHIP;
+
+    @ArchTest
+    static final ArchRule identityInternalTypesNotPublic =
+            ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
 
     @ArchTest
     static final ArchRule noApiSpanSanitizePackage =
