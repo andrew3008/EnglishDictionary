@@ -4,7 +4,7 @@
 |------|----------|
 | Тип документа | Углублённое independent-исследование плана `phase_12_custom_propagation_b841cbc2.plan.md` |
 | Дата | 2026-06-09 |
-| Отношение к существующим документам | **Дополняет**, не дублирует: [research-phase12-custom-propagation-review.md](e:\Platform_Traces\docs\research-phase12-custom-propagation-review.md) и [phase-12-propagation-research-review.md](e:\Platform_Traces\docs\tracing\phase-12-propagation-research-review.md) |
+| Отношение к существующим документам | **Дополняет**, не дублирует: [research-phase12-custom-propagation-review.md](../research-phase12-custom-propagation-review.md) и [phase-12-propagation-research-review.md](./phase-12-propagation-research-review.md) |
 | Контекст версий | OTel BOM `1.62.0`, OTel instrumentation/agent `2.28.x`, Spring Boot `3.5.5`, Java 21 |
 | Статус | Отревьюено и применён безопасный минимум (2026-06-09) — см. раздел 10 «Диспозиция» |
 

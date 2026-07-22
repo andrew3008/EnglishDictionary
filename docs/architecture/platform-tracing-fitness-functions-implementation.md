@@ -1,5 +1,7 @@
 # Platform Tracing — Architecture fitness functions (PR-4)
 
+> **HISTORICAL IMPLEMENTATION EVIDENCE.** This PR-4 snapshot retains old module/package names. Current gates and topology are in [module taxonomy](./platform-tracing-module-taxonomy.md).
+
 ## Document status
 
 ```text

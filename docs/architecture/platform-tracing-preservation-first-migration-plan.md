@@ -1,5 +1,7 @@
 # Platform Tracing — Preservation-First Migration Plan
 
+> **HISTORICAL / SUPERSEDED PLAN.** Этот migration plan завершён или заменён решениями Slices E-M. Текущая topology: [final active architecture](./platform-tracing-final-architecture.md).
+
 ## Document status
 
 ```text

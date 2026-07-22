@@ -1,5 +1,7 @@
 # ADR: X-Request-Id равен trace-id
 
+> **SUPERSEDED.** Alias `requestId = traceId` запрещён. Каноническая модель: [ADR-identity-model-trace-request-correlation](./ADR-identity-model-trace-request-correlation.md).
+
 | Поле | Значение |
 |------|----------|
 | Статус | **Superseded by [ADR-request-id-correlation-id.md](./ADR-request-id-correlation-id.md)** (2026-06-09, Фаза 12) |

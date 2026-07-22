@@ -1,5 +1,7 @@
 # platform-tracing-core Architecture Discovery
 
+> **HISTORICAL EVIDENCE / SUPERSEDED INVENTORY.** Snapshot and findings below predate completion of the authoritative refactoring. Current architecture: [platform-tracing-final-architecture](../architecture/platform-tracing-final-architecture.md). Closed findings and final decisions are recorded in Slice J/K/M evidence; old module names remain here intentionally.
+
 ## Executive Summary
 
 **Снимок:** ветка `feature/runtime-control-hardening`, commit `809ce49cff24ca62433d0060da6754397c22f3ab` (`feat(control): fail closed for runtime policy mutations`, 2026-07-18).

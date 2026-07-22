@@ -1,5 +1,7 @@
 # Platform Tracing: Architectural Fitness Functions
 
+> **HISTORICAL DESIGN CATALOG.** Names and proposed PR ownership below reflect the 2026-06-11 design stage. Current enforced gates are summarized in [module taxonomy](./platform-tracing-module-taxonomy.md) and implemented by repository Gradle/ArchUnit tasks.
+
 | Поле | Значение |
 |------|----------|
 | Версия | 1.0 |

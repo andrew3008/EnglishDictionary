@@ -1,5 +1,7 @@
 # ADR: Platform Tracing Clean Core Hybrid Architecture
 
+> **SUPERSEDED / HISTORICAL.** Предложенный split не является текущей архитектурой. Каноническое решение: [ADR-platform-tracing-final-architecture](./ADR-platform-tracing-final-architecture.md). Original analysis ниже сохранён без ретроактивного переписывания.
+
 | Поле | Значение |
 |------|----------|
 | Статус | **Proposed** |

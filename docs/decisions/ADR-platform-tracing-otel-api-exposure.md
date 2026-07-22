@@ -1,5 +1,7 @@
 # ADR: exposure `opentelemetry-api` в `platform-tracing-otel`
 
+> **ACTIVE FOR IMPLEMENTATION MODULE, PARTIALLY SUPERSEDED FOR APPLICATION API.** `platform-tracing-otel` по-прежнему намеренно зависит от OTel API. OTel-free application facade и publication boundaries теперь определены [ADR-api-otel-free-facade](./ADR-api-otel-free-facade.md) и [module identity ADR](./ADR-platform-tracing-otel-module-identity.md).
+
 ## Статус
 
 Принято (PR-6, pre-production).
