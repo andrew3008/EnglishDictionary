@@ -1,5 +1,7 @@
 # TraceOperations v3 — Production Readiness
 
+> **Release status:** `RG-IDENTITY-TRUST OPEN`, `RG-CONTROLLED-AGENT OPEN`, **PRODUCTION ROLLOUT FORBIDDEN**. Green repository tests do not close these external hardening gates.
+
 Checklist for production sign-off after the v3 refactoring (Slices 0A–7, remediation B01–B10, post-Perplexity hardening). **Do not mark unchecked items as done** unless verified in your environment.
 
 ## Production readiness checklist
@@ -12,6 +14,8 @@ Checklist for production sign-off after the v3 refactoring (Slices 0A–7, remed
 - [ ] dashboard/alert owners notified about Kafka span semantic drift
 - [ ] suppress-micrometer-tracing fleet default decided
 - [ ] temporary workaround references audited (`SpanSpecReason.TEMPORARY_WORKAROUND`)
+- [ ] `RG-IDENTITY-TRUST` independently closed
+- [ ] `RG-CONTROLLED-AGENT` independently closed
 
 ## Build verification
 
@@ -24,13 +28,13 @@ Checklist for production sign-off after the v3 refactoring (Slices 0A–7, remed
 
 | Suite | Module | Purpose |
 |-------|--------|---------|
-| `TracingImplementationRoutingTest` | core | Single creation boundary |
+| `TracingImplementationRoutingTest` | `platform-tracing-otel` | Single creation boundary |
 | `BeanTopologyTest` | autoconfigure | One SPI chain, metered decoration |
 | `MeteredTopologyMatrixTest` | autoconfigure | ROOT/DETACHED/links + metering |
 | `ObservationCoexistenceTest` | autoconfigure | No duplicate unsynchronized roots |
 | `DiagnosticsBoundaryTest` | autoconfigure | Stable diagnostics DTO |
 | `KafkaBatchAspectMigrationTest` | autoconfigure | Aspect uses v3 batch API |
-| `KafkaBatchSpanBuilderIntegrationTest` | core | Exported batch span semantics |
+| `KafkaBatchSpanBuilderIntegrationTest` | `platform-tracing-otel` | Exported batch span semantics |
 
 ## E2E sign-off (`-PrunE2e`)
 
@@ -58,15 +62,18 @@ Search for `SpanSpecReason.TEMPORARY_WORKAROUND` usages and verify each has a tr
 
 ## Scope confirmation (v3 refactoring)
 
-- Public API: `traceContext()` + `spans()` only
+- Public API: `traceContext()`, `spans()` and approved Slice M synchronous correlation methods
 - No v1 API restored
 - No compatibility shim
 - No `MeteredPlatformTracing` public decorator
-- Single creation boundary: `TracingImplementation.startSpan(SpanSpec)`
+- Single creation boundary: internal `TracingRuntime.startSpan(SpanSpec)`
 - Kafka aspect boundary closed (B03)
 
 ## Related documents
 
+- [Final architecture](../architecture/platform-tracing-final-architecture.md)
+- [Controlled Agent gate](../architecture/rg-controlled-agent-release-gate.md)
+- [Identity trust gate](../architecture/rg-identity-trust-release-gate.md)
 - [Getting started](./platform-tracing-v3-getting-started.md)
 - [Observability and diagnostics](./platform-tracing-v3-observability-and-diagnostics.md)
 - [platform-tracing-refactoring-plan.md](../analysis/platform-tracing-refactoring-plan.md)

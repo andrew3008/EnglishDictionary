@@ -202,11 +202,11 @@ Startup-only examples: sampling header **names**, SPI scrubbing rules, semantic 
 2. **`config.lastUpdatedSource`** — legacy sampling-only; per-domain `configSource` preferred.
 3. **Route ratio longest-prefix-wins** — **PR-9G complete** (deterministic compile-time sort in `SamplingPolicySnapshot.normalizeRouteRatios`; see [platform-tracing-sampling-characterization.md](../architecture/platform-tracing-sampling-characterization.md)).
 4. **Enrichment runtime config** — not part of PR-6/7/8; separate future PR.
-5. **Core extraction** — sampling engine in `core.sampling` (PR-6B); validation snapshot/update in `core.validation` (PR-9C); scrubbing rule-name resolution prep in `otel-extension.scrubbing.policy` (PR-9D) → future `core.scrubbing`.
+5. **Implementation layering** - sampling engine remains in `platform-tracing-otel` under historical `core.sampling`; validation uses `core.validation`; Agent-specific scrubbing remains in `platform-tracing-otel-javaagent-extension`. No future module extraction is implied.
 
 ## PR-9B — Core extraction readiness
 
-Full inventory: [platform-tracing-otel-extraction-readiness.md](../architecture/platform-tracing-otel-extraction-readiness.md).
+Historical inventory: [platform-tracing-core-extraction-readiness.md](../architecture/platform-tracing-core-extraction-readiness.md).
 
 - No class moves in PR-9B; ArchUnit extended (`CORE_MAIN_NO_JMX`, JMX forbidden in core policy packages).
 - **In core today:** `core.sampling.*`, `core.validation.*` (pure Java, no OTel/Spring/JMX).
