@@ -9,7 +9,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc;
 
 import java.util.concurrent.TimeUnit;
 

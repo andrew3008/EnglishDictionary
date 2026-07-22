@@ -5,7 +5,7 @@ import org.springframework.boot.actuate.health.Health;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
-import space.br1440.platform.tracing.core.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
 /**
  * Health indicator платформенного модуля трассировки.

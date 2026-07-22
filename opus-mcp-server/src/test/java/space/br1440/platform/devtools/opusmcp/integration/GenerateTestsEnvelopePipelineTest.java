@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GenerateTestsEnvelopePipelineTest {
 
     private static final String SAMPLE_CLASS = """
-            package space.br1440.platform.tracing.core;
+            package space.br1440.platform.tracing.otel;
 
             import org.junit.jupiter.api.Test;
 
@@ -92,7 +92,7 @@ class GenerateTestsEnvelopePipelineTest {
         Map<String, Object> m = new HashMap<>();
         m.put("task", "Generate JUnit test class DefaultPlatformTracingBaselineTest for Slice 0A");
         m.put("language", "java");
-        m.put("code", "package space.br1440.platform.tracing.core; // v1 methods under test");
+        m.put("code", "package space.br1440.platform.tracing.otel; // v1 methods under test");
         m.put("context", "Plan Slice 0A: Baseline GREEN tests");
         m.put("constraints", "No production code. No Gradle.");
         m.put("testFramework", "junit5");
@@ -121,7 +121,7 @@ class GenerateTestsEnvelopePipelineTest {
 
         assertThat(envelopeClient.calls.get()).isEqualTo(1);
         assertThat(out.status()).isEqualTo(GenerateCodeStatus.OK);
-        assertThat(out.testCode()).contains("package space.br1440.platform.tracing.core;");
+        assertThat(out.testCode()).contains("package space.br1440.platform.tracing.otel;");
         assertThat(out.testCode()).contains("class DefaultPlatformTracingBaselineTest");
         assertThat(out.testCode()).doesNotContain("TEST_CODE");
         // Token estimates prove envelope parsing succeeded (non-zero, from usage block).

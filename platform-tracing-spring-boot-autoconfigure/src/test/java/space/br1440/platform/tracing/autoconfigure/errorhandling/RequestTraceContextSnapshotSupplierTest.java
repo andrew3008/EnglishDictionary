@@ -14,9 +14,9 @@ import org.slf4j.MDC;
 
 import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 
 class RequestTraceContextSnapshotSupplierTest {
 

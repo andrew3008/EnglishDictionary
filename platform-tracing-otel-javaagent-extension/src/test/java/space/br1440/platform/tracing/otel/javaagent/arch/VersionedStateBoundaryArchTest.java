@@ -12,7 +12,7 @@ import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 @AnalyzeClasses(
         packages = {
                 "space.br1440.platform.tracing.otel.javaagent",
-                "space.br1440.platform.tracing.core.validation"
+                "space.br1440.platform.tracing.otel.validation"
         },
         importOptions = ImportOption.DoNotIncludeTests.class
 )

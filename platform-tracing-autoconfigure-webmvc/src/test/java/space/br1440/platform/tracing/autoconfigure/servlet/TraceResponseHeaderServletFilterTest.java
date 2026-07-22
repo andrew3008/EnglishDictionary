@@ -15,10 +15,10 @@ import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
-import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 import java.util.List;
 import java.util.Optional;

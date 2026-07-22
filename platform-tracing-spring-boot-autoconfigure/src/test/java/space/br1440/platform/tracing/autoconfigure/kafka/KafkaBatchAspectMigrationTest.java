@@ -17,8 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;

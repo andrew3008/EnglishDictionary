@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.servicename;
 
 import io.opentelemetry.api.trace.Span;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
 
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -16,7 +16,7 @@ import java.util.function.Supplier;
  * ({@code space.br1440.platform.errorhandling.model.error_detail.dto.ErrorInfoDetailDTO#domain}).
  * <p>
  * Источник: {@link RemoteServiceNameResolver} (MDC → contributed sources → trace-scoped mirror).
- * Запись MDC выполняется {@link space.br1440.platform.tracing.core.mdc.remote.RemoteServiceMdc}
+ * Запись MDC выполняется {@link space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc}
  * из {@code EnrichingSpanProcessor} при завершении ERROR'ного CLIENT-span'а.
  * <p>
  * Бин создаётся через {@link space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration};

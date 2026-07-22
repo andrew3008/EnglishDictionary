@@ -14,8 +14,8 @@ import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationM
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
-import space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy;
-import space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers;
+import space.br1440.platform.tracing.otel.propagation.control.DefaultOutboundPropagationPolicy;
+import space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers;
 
 /**
  * Авто-конфигурация исходящей инжекции платформенных заголовков в Kafka producer (agent-compatible).

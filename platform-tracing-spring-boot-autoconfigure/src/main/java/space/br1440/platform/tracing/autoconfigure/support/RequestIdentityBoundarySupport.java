@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import space.br1440.platform.tracing.api.CorrelationScope;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 /**
  * Единственная application-plane граница привязки request identity инфраструктурными адаптерами.

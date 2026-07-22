@@ -7,9 +7,9 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
-import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandleResult;
-import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
-import space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy;
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult;
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;

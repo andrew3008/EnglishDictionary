@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties;
-import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyPropertiesValidator;
+import space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyProperties;
+import space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyPropertiesValidator;
 import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
 
 import java.time.Instant;

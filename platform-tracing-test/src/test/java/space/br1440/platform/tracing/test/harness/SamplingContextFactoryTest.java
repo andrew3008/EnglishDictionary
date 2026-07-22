@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.test.harness;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

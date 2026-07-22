@@ -166,10 +166,10 @@ tasks.register('verifyAgentJarContents') {
         ).entries().toList()*.name
         assert entries.any { it == 'org/slf4j/LoggerFactory.class' }  // slf4j-api embedded
         assert entries.any { it.contains('space/br1440/platform/tracing/api/') }  // platform-tracing-api classes
-        assert entries.any { it.contains('space/br1440/platform/tracing/core/sampling/') }  // core sampling policy
-        assert entries.any { it.contains('space/br1440/platform/tracing/core/propagation/control/') }  // core propagation control
-        assert entries.any { it.contains('space/br1440/platform/tracing/core/runtime/versioned/') }  // CAS versioned state primitive
-        assert entries.any { it.contains('space/br1440/platform/tracing/core/mdc/remote/') }  // MDC remote service bridge
+        assert entries.any { it.contains('space/br1440/platform/tracing/otel/sampling/') }  // Политика семплирования платформы
+        assert entries.any { it.contains('space/br1440/platform/tracing/otel/propagation/control/') }  // Управление propagation
+        assert entries.any { it.contains('space/br1440/platform/tracing/otel/runtime/versioned/') }  // Версионированное CAS-состояние
+        assert entries.any { it.contains('space/br1440/platform/tracing/otel/mdc/remote/') }  // Мост remote-service для MDC
     }
 }
 

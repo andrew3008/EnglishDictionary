@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.core.runtime.versioned.VersionedState;
-import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties;
-import space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix;
-import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
-import space.br1440.platform.tracing.core.sampling.properties.SamplingPolicySnapshotFactory;
+import space.br1440.platform.tracing.otel.runtime.versioned.VersionedState;
+import space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyProperties;
+import space.br1440.platform.tracing.otel.sampling.model.RouteRatioPrefix;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
+import space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicySnapshotFactory;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -16,7 +16,7 @@ import java.util.Set;
 /**
  * Иммутабельный снимок конфигурации для {@link CompositeSampler}.
  * <p>
- * PR-6C: ratio-решения вычисляются pure-Java {@code TraceIdRatioDecision} (core.sampling.policy)
+ * PR-6C: ratio-решения вычисляются pure-Java {@code TraceIdRatioDecision} (otel.sampling.policy)
  * через {@link SamplingPolicySnapshot}, скомпилированный один раз при построении снимка.
  * <p>
  * Нормализация и компиляция вынесены в единый core-слой {@link SamplingPolicySnapshotFactory}; локальные
@@ -28,7 +28,7 @@ import java.util.Set;
  * Реализует {@link VersionedState}: {@code version} — простое монотонное поле, публикуется через CAS в
  * {@code VersionedStateHolder}. Построение снимка side-effect-free (может выполняться несколько раз при
  * contention в CAS-цикле); валидация {@code defaultRatio} выполняется в
- * {@link SamplingPolicySnapshotFactory} через {@link space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyPropertiesValidator}
+ * {@link SamplingPolicySnapshotFactory} через {@link space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyPropertiesValidator}
  * до создания снимка.
  */
 public final class SamplerState implements VersionedState {

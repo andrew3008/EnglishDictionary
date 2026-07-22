@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.core.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidationPolicyHolder;
 
 import java.time.Instant;

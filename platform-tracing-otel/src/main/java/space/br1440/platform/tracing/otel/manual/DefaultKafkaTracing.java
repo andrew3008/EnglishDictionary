@@ -1,0 +1,163 @@
+package space.br1440.platform.tracing.otel.manual;
+
+import java.util.Objects;
+
+import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder;
+import space.br1440.platform.tracing.api.span.builder.KafkaTracing;
+import space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder;
+import space.br1440.platform.tracing.api.span.spec.SpanSpec;
+import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
+import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
+import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+
+final class DefaultKafkaTracing implements KafkaTracing {
+
+    private final TracingRuntime implementation;
+    private final AttributePolicy policy;
+    private final OtelTraceparentReader traceparentReader;
+
+    DefaultKafkaTracing(@Nonnull TracingRuntime implementation,
+                        @Nonnull AttributePolicy policy,
+                        @Nonnull OtelTraceparentReader traceparentReader) {
+        this.implementation = Objects.requireNonNull(implementation, "implementation");
+        this.policy = Objects.requireNonNull(policy, "policy");
+        this.traceparentReader = Objects.requireNonNull(traceparentReader, "traceparentReader");
+    }
+
+    @Override
+    @Nonnull
+    public KafkaProducerSpanBuilder producer() {
+        return new KafkaProducerSpanBuilderImpl(implementation, policy, traceparentReader);
+    }
+
+    @Override
+    @Nonnull
+    public KafkaConsumerSpanBuilder consumer() {
+        return new KafkaConsumerSpanBuilderImpl(implementation, policy, traceparentReader);
+    }
+
+    private static abstract class AbstractKafkaSpanBuilder<B extends ManualSpanBuilder<B>>
+            extends AbstractSemanticSpanBuilder<B> {
+
+        AbstractKafkaSpanBuilder(@Nonnull TracingRuntime implementation,
+                                 @Nonnull AttributePolicy policy,
+                                 @Nonnull OtelTraceparentReader traceparentReader,
+                                 @Nonnull SpanCategory category,
+                                 @Nonnull String builderName) {
+            super(implementation, policy, traceparentReader, category, category.value(), builderName);
+            putAttribute(SemconvKeys.MESSAGING_SYSTEM.getKey(), SpanSpecAttributeValue.of("kafka"));
+        }
+
+        @Nonnull
+        @Override
+        protected SpanSpec toSpanSpec() {
+            requireAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), "destination");
+            requireAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), "operation");
+            return super.toSpanSpec();
+        }
+
+        private void requireAttribute(@Nonnull String key, @Nonnull String label) {
+            if (!attributes.containsKey(key)) {
+                throw new IllegalArgumentException(label + " is required");
+            }
+        }
+    }
+
+    private static final class KafkaProducerSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaProducerSpanBuilder>
+            implements KafkaProducerSpanBuilder {
+
+        KafkaProducerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
+                                     @Nonnull AttributePolicy policy,
+                                     @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader,
+                    SpanCategory.KAFKA_PRODUCER, "KafkaProducerSpanBuilder");
+        }
+
+        @Override
+        protected KafkaProducerSpanBuilder self() {
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public KafkaProducerSpanBuilder destination(@Nonnull String topic) {
+            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanSpecAttributeValue.of(topic));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public KafkaProducerSpanBuilder operation(@Nonnull String operation) {
+            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanSpecAttributeValue.of(operation));
+            return this;
+        }
+    }
+
+    private static final class KafkaConsumerSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaConsumerSpanBuilder>
+            implements KafkaConsumerSpanBuilder {
+
+        KafkaConsumerSpanBuilderImpl(@Nonnull TracingRuntime implementation,
+                                     @Nonnull AttributePolicy policy,
+                                     @Nonnull OtelTraceparentReader traceparentReader) {
+            super(implementation, policy, traceparentReader,
+                    SpanCategory.KAFKA_CONSUMER, "KafkaConsumerSpanBuilder");
+        }
+
+        @Override
+        protected KafkaConsumerSpanBuilder self() {
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public KafkaConsumerSpanBuilder destination(@Nonnull String topic) {
+            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanSpecAttributeValue.of(topic));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public KafkaConsumerSpanBuilder operation(@Nonnull String operation) {
+            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanSpecAttributeValue.of(operation));
+            return this;
+        }
+
+        @Override
+        @Nonnull
+        public KafkaBatchSpanBuilder batch(@Nonnull String destination) {
+            Objects.requireNonNull(destination, "destination");
+
+            if (destination.isBlank()) {
+                throw new IllegalArgumentException("destination must not be blank");
+            }
+
+            return new KafkaBatchSpanBuilderImpl(implementation, policy, traceparentReader, destination);
+        }
+    }
+
+    private static final class KafkaBatchSpanBuilderImpl extends AbstractKafkaSpanBuilder<KafkaBatchSpanBuilder>
+            implements KafkaBatchSpanBuilder {
+
+        KafkaBatchSpanBuilderImpl(@Nonnull TracingRuntime implementation,
+                                  @Nonnull AttributePolicy policy,
+                                  @Nonnull OtelTraceparentReader traceparentReader,
+                                  @Nonnull String destination) {
+            super(implementation, policy, traceparentReader,
+                    SpanCategory.KAFKA_CONSUMER, "KafkaBatchSpanBuilder");
+            putAttribute(SemconvKeys.MESSAGING_DESTINATION_NAME.getKey(), SpanSpecAttributeValue.of(destination));
+            putAttribute(SemconvKeys.MESSAGING_OPERATION.getKey(), SpanSpecAttributeValue.of("process"));
+        }
+
+        @Override
+        protected KafkaBatchSpanBuilder self() {
+            return this;
+        }
+    }
+}

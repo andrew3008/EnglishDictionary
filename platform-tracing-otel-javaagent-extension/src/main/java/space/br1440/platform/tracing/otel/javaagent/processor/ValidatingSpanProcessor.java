@@ -9,7 +9,7 @@ import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.core.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 
 import java.time.Duration;

@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.support;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-import space.br1440.platform.tracing.core.propagation.RequestIdSupport;
+import space.br1440.platform.tracing.otel.propagation.RequestIdSupport;
 
 /**
  * Implementation bridge для обработки request-id на границе web-модулей.

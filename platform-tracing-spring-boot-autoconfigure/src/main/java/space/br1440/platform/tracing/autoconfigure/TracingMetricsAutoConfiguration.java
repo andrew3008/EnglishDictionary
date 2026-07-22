@@ -21,7 +21,7 @@ import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSample
  * вспомогательные MeterBinder'ы.
  * <p>
  * Slice 6: when {@link MeterRegistry} is present, {@link TracingCoreAutoConfiguration} wraps the
- * active {@link space.br1440.platform.tracing.core.runtime.TracingRuntime} with
+ * active {@link space.br1440.platform.tracing.otel.runtime.TracingRuntime} with
  * {@link MeteredTracingRuntime}.
  */
 @AutoConfiguration
@@ -42,8 +42,8 @@ public class TracingMetricsAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics.class)
-    public space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics platformSemconvMetrics(MeterRegistry meterRegistry) {
+    @ConditionalOnMissingBean(space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics.class)
+    public space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics platformSemconvMetrics(MeterRegistry meterRegistry) {
         return new space.br1440.platform.tracing.autoconfigure.metrics.MicrometerSemconvMetrics(meterRegistry);
     }
 

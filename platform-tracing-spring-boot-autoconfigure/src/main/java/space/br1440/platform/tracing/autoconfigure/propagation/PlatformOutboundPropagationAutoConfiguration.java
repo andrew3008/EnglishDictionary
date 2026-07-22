@@ -10,9 +10,9 @@ import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPro
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy;
-import space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector;
-import space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers;
+import space.br1440.platform.tracing.otel.propagation.control.DefaultOutboundPropagationPolicy;
+import space.br1440.platform.tracing.otel.propagation.control.DefaultTraceControlHeaderInjector;
+import space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers;
 
 /**
  * Общие (framework-agnostic) бины outbound-пропагации платформенных заголовков.

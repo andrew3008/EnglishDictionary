@@ -9,7 +9,7 @@ import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.autoconfigure.servicename.PlatformLocalServiceNameProvider;
 import space.br1440.platform.tracing.autoconfigure.servicename.PlatformRemoteServiceNameProvider;
-import space.br1440.platform.tracing.core.mdc.remote.RemoteServiceNameResolver;
+import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
 
 /**
  * Авто-конфигурация платформенных провайдеров имени сервиса для интеграции с внешним

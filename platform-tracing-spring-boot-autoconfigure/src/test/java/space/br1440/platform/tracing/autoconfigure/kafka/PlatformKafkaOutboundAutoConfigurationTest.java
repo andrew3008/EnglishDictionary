@@ -9,7 +9,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
-import space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 
 class PlatformKafkaOutboundAutoConfigurationTest {
 

@@ -5,10 +5,10 @@ import java.util.List;
 
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
-import space.br1440.platform.tracing.core.propagation.control.DefaultInboundTraceControlExtractor;
-import space.br1440.platform.tracing.core.propagation.control.DefaultTraceControlHeaderInjector;
-import space.br1440.platform.tracing.core.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.core.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.otel.propagation.control.DefaultInboundTraceControlExtractor;
+import space.br1440.platform.tracing.otel.propagation.control.DefaultTraceControlHeaderInjector;
+import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.otel.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
 
 import io.opentelemetry.context.Context;

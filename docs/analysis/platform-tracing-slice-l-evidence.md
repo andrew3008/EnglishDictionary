@@ -1,5 +1,8 @@
 # Slice L: architecture and documentation consolidation evidence
 
+> **HISTORICAL CONSOLIDATION EVIDENCE.** The CP-3 KEEP statements below describe Slice L's
+> baseline and are superseded by [CP-3 R2 package migration](./platform-tracing-package-rename-evidence.md).
+
 > Статус документа: FINAL, verification завершена.
 > Scope: documentation/ADR only; production, tests, Gradle and configuration не изменялись.
 

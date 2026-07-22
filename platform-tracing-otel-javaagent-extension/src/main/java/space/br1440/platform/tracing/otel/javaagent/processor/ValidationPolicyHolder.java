@@ -2,9 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.processor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder;
-import space.br1440.platform.tracing.core.validation.ValidationPolicyUpdate;
-import space.br1440.platform.tracing.core.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.runtime.versioned.VersionedStateHolder;
+import space.br1440.platform.tracing.otel.validation.ValidationPolicyUpdate;
+import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.safety.RateLimitedLogger;
 
 import java.util.function.UnaryOperator;

@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder;
+import space.br1440.platform.tracing.otel.runtime.versioned.VersionedStateHolder;
 import space.br1440.platform.tracing.otel.javaagent.safety.RateLimitedLogger;
 
 import java.time.Instant;
@@ -15,7 +15,7 @@ import java.util.function.UnaryOperator;
 /**
  * Holder для атомарного lock-free обновления конфигурации {@link CompositeSampler}.
  * <p>
- * Фаза 14: переиспользует общий примитив {@link VersionedStateHolder} ({@code core.runtime.versioned},
+ * Фаза 14: переиспользует общий примитив {@link VersionedStateHolder} ({@code otel.runtime.versioned},
  * embedded в agent extension jar) по композиции — единый CAS + last-known-good механизм на все домены,
  * без дублирования логики.
  * <p>
@@ -110,7 +110,7 @@ public final class SamplerStateHolder {
     /**
      * Безопасно строит и применяет новый снимок: если построение/валидация бросает исключение
      * (например, {@link IllegalArgumentException} при невалидном {@code defaultRatio} в
-     * {@link space.br1440.platform.tracing.core.sampling.properties.SamplingPolicySnapshotFactory}),
+     * {@link space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicySnapshotFactory}),
      * текущая (last-known-good) конфигурация остаётся без изменений, а сбой логируется
      * rate-limited способом.
      *

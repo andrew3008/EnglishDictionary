@@ -14,11 +14,11 @@ import space.br1440.platform.tracing.api.CorrelationScope;
 import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.core.runtime.TracingRuntime;
-import space.br1440.platform.tracing.core.runtime.state.TracingMode;
-import space.br1440.platform.tracing.core.runtime.state.TracingState;
-import space.br1440.platform.tracing.core.runtime.NoOpSpanHandle;
-import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingState;
+import space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle;
+import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
 import java.util.Map;
 import java.util.Optional;
@@ -82,7 +82,7 @@ class DiagnosticsBoundaryTest {
     void SpanFactoryDiagnostics_mapsInternalTestModeToUnknown() {
         TracingRuntime testPrimary = new TracingRuntime() {
             private final TracingRuntime identityDelegate =
-                    space.br1440.platform.tracing.core.runtime.NoOpTracingRuntime.noop();
+                    space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime.noop();
             private final TracingState state = new TracingState() {
                 @Override
                 public TracingMode mode() {

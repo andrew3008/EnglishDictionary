@@ -9,9 +9,9 @@ import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import lombok.NonNull;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.core.sampling.engine.SamplingPolicyEngine;
-import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest;
+import space.br1440.platform.tracing.otel.sampling.engine.SamplingPolicyEngine;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
 
 import java.util.Collections;
 import java.util.HashMap;

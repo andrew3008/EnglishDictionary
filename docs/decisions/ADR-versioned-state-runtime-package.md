@@ -13,8 +13,8 @@ Replace deleted package:
 
 With:
 
-- `space.br1440.platform.tracing.core.runtime.versioned.VersionedState`
-- `space.br1440.platform.tracing.core.runtime.versioned.VersionedStateHolder`
+- `space.br1440.platform.tracing.otel.runtime.versioned.VersionedState`
+- `space.br1440.platform.tracing.otel.runtime.versioned.VersionedStateHolder`
 
 Delete `api.runtime.state` entirely. No compatibility shims.
 
@@ -29,7 +29,7 @@ Prior ADR rationale («dual classloader visibility via api») is obsolete after 
 
 ## Why `core.runtime.versioned` (not `core.runtime.state`)
 
-[`core.runtime.state`](../../platform-tracing-otel/src/main/java/space/br1440/platform/tracing/core/runtime/state/) hosts SDK tracing runtime (`TracingState`, `TracingMode`, `ImmutableTracingState`) for `TracingRuntime` — a different domain. CAS policy snapshots use a dedicated sub-package to avoid confusion.
+[`core.runtime.state`](../../platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/runtime/state/) hosts SDK tracing runtime (`TracingState`, `TracingMode`, `ImmutableTracingState`) for `TracingRuntime` — a different domain. CAS policy snapshots use a dedicated sub-package to avoid confusion.
 
 ## Why `VersionedState` is intentionally closed (ArchUnit allowlist)
 

@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.core.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
 
 import java.time.Instant;
 

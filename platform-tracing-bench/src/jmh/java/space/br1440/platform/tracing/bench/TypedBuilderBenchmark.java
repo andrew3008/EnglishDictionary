@@ -13,10 +13,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
-import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
-import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.core.semconv.policy.AttributePolicy;
-import space.br1440.platform.tracing.core.semconv.policy.SemconvMetrics;
+import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
+import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
+import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
 
 import java.util.concurrent.TimeUnit;
 
