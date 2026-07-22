@@ -12,26 +12,25 @@ class ProductionSamplingPolicyChainTest {
 
     @Test
     void productionRules_haveNormativeOrder() {
-        SamplingPolicyRule[] rules = ProductionSamplingPolicyChain.productionRules();
+        ProductionSamplingPolicyChain chain = ProductionSamplingPolicyChain.production();
 
-        assertThat(rules).hasSize(7);
-        assertThat(rules[0].ruleName()).isEqualTo("kill_switch");
-        assertThat(rules[1].ruleName()).isEqualTo("hard_drop");
-        assertThat(rules[2].ruleName()).isEqualTo("force_header");
-        assertThat(rules[3].ruleName()).isEqualTo("qa_trace");
-        assertThat(rules[4].ruleName()).isEqualTo("parent_decision");
-        assertThat(rules[5].ruleName()).isEqualTo("route_ratio");
-        assertThat(rules[6].ruleName()).isEqualTo("default_ratio");
+        assertThat(chain.ruleCount()).isEqualTo(7);
+        assertThat(chain.ruleNameAt(0)).isEqualTo("kill_switch");
+        assertThat(chain.ruleNameAt(1)).isEqualTo("hard_drop");
+        assertThat(chain.ruleNameAt(2)).isEqualTo("force_header");
+        assertThat(chain.ruleNameAt(3)).isEqualTo("qa_trace");
+        assertThat(chain.ruleNameAt(4)).isEqualTo("parent_decision");
+        assertThat(chain.ruleNameAt(5)).isEqualTo("route_ratio");
+        assertThat(chain.ruleNameAt(6)).isEqualTo("default_ratio");
     }
 
     @Test
-    void productionRules_returnsFreshArrayEachCall() {
-        SamplingPolicyRule[] first = ProductionSamplingPolicyChain.productionRules();
-        SamplingPolicyRule[] second = ProductionSamplingPolicyChain.productionRules();
+    void production_returnsIndependentChains() {
+        ProductionSamplingPolicyChain first = ProductionSamplingPolicyChain.production();
+        ProductionSamplingPolicyChain second = ProductionSamplingPolicyChain.production();
 
-        // Разные массивы и разные экземпляры правил — никакого разделяемого состояния.
+        // Production factory не разделяет mutable chain state между sampler instances.
         assertThat(first).isNotSameAs(second);
-        assertThat(first[0]).isNotSameAs(second[0]);
     }
 
     @Test

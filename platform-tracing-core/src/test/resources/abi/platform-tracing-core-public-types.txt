@@ -54,7 +54,6 @@ space.br1440.platform.tracing.core.sampling.model.SamplingPolicyReason
 space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest
 space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot
 space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain
-space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule
 space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties
 space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyPropertiesValidator
 space.br1440.platform.tracing.core.sampling.properties.SamplingPolicySnapshotFactory

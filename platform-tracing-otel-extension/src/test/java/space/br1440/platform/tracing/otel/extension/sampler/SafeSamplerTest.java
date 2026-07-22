@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Failure-path тесты {@link SafeSampler}: падение делегата не уходит в application thread,
- * применяется fallback, degraded-mode перестаёт дёргать стабильно падающий делегат.
+ * применяется fail-closed DROP, degraded-mode перестаёт дёргать стабильно падающий делегат.
  */
 class SafeSamplerTest {
 
@@ -36,19 +36,19 @@ class SafeSamplerTest {
     };
 
     @Test
-    void падение_делегата_не_бросается_применяется_fallback() {
+    void падение_делегата_не_бросается_и_закрывается_drop() {
         TracingDiagnostics diagnostics = new TracingDiagnostics();
-        SafeSampler safe = new SafeSampler(ALWAYS_THROWS, Sampler.alwaysOn(), diagnostics);
+        SafeSampler safe = new SafeSampler(ALWAYS_THROWS, diagnostics);
 
         SamplingResult result = SamplerHarness.of(safe).sample();
 
-        assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
+        assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(diagnostics.getSamplerFailures()).isGreaterThanOrEqualTo(1);
     }
 
     @Test
     void getDescription_безопасен_при_падении_делегата() {
-        SafeSampler safe = new SafeSampler(ALWAYS_THROWS, Sampler.alwaysOff(), new TracingDiagnostics());
+        SafeSampler safe = new SafeSampler(ALWAYS_THROWS, new TracingDiagnostics());
         assertThat(safe.getDescription()).isEqualTo("SafeSampler{description_unavailable}");
     }
 
@@ -67,11 +67,11 @@ class SafeSamplerTest {
             }
         };
         TracingDiagnostics diagnostics = new TracingDiagnostics();
-        SafeSampler safe = new SafeSampler(returnsNull, Sampler.alwaysOn(), diagnostics);
+        SafeSampler safe = new SafeSampler(returnsNull, diagnostics);
 
         SamplingResult result = SamplerHarness.of(safe).sample();
 
-        assertThat(result.getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
+        assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
         assertThat(diagnostics.getSamplerFailures()).isGreaterThanOrEqualTo(1);
     }
 
@@ -92,11 +92,11 @@ class SafeSamplerTest {
             }
         };
         // Дефолтный DegradedModeController: порог 5 сбоев, cooldown 60с.
-        SafeSampler safe = new SafeSampler(counting, Sampler.alwaysOn(), new TracingDiagnostics());
+        SafeSampler safe = new SafeSampler(counting, new TracingDiagnostics());
         SamplerHarness harness = SamplerHarness.of(safe);
 
         for (int i = 0; i < 10; i++) {
-            assertThat(harness.sample().getDecision()).isEqualTo(SamplingDecision.RECORD_AND_SAMPLE);
+            assertThat(harness.sample().getDecision()).isEqualTo(SamplingDecision.DROP);
         }
 
         // После 5 сбоев breaker OPEN — делегат больше не вызывается (защита hot-path от лишней работы).

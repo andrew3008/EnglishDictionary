@@ -4,7 +4,7 @@
 
 **Accepted — реализовано (pre-production).**
 
-Решение не вышло в продакшен, поэтому ломающие изменения структуры пакетов и видимости допустимы без `@Deprecated`. Поведение сэмплирования сохранено байт-в-байт (см. раздел «Сохранённые инварианты»).
+Решение не вышло в продакшен, поэтому ломающие изменения структуры пакетов и видимости допустимы без `@Deprecated`. Нормативное поведение rule chain сохранено (см. раздел «Сохранённые инварианты»); permissive exception fallback отдельно исправлен решением CP-2 на fail-closed `DROP`.
 
 ## Context
 
@@ -31,7 +31,7 @@ core.sampling.config   — compile-time нормализация и доменн
 | Пакет | Классы | Зависит от |
 |-------|--------|-----------|
 | `model` | `SamplingPolicyRequest`, `SamplingPolicyDecision`, `SamplingPolicyDecisionType`, `SamplingPolicyReason`, `ParentContextState`, `RouteRatioPrefix`, `SamplingPolicySnapshot` | только `api` (`Versioned`, `PlatformSamplingReasons`) |
-| `policy` | `SamplingPolicyRule` (public), 7 правил (pkg-private), `TraceIdRatioDecision` (pkg-private), `SamplingPolicyRuleNames` (pkg-private), `ProductionSamplingPolicyChain` (public, assembly) | `model`, `api` |
+| `policy` | `SamplingPolicyRule` (pkg-private), 7 правил (pkg-private), `TraceIdRatioDecision` (pkg-private), `SamplingPolicyRuleNames` (pkg-private), `ProductionSamplingPolicyChain` (public fixed-chain facade) | `model`, `api` |
 | `engine` | `SamplingPolicyEngine` | `policy`, `model` |
 | `config` | `SamplingPolicyConfig`, `SamplingPolicyConfigValidator`, `SamplingPolicySnapshotFactory` | `model` |
 
@@ -47,13 +47,13 @@ core.sampling.config   — compile-time нормализация и доменн
 
 ### 3. Порядок цепочки и видимость движка
 
-- `ProductionSamplingPolicyChain` — единственный сборщик цепочек: `productionRules()` (нормативный порядок 7 правил) и `foundationRules()` (минимум kill-switch + hard-drop). Оба возвращают **свежий массив** новых stateless-экземпляров на каждый вызов.
-- Concrete rule-классы (`KillSwitchPolicyRule`, `HardDropPolicyRule`, `ForceHeaderPolicyRule`, `QaTracePolicyRule`, `ParentSampledPolicyRule`, `RouteRatioPolicyRule`, `DefaultRatioPolicyRule`) — **package-private** в `policy`. Собрать цепочку из них может только сборщик внутри `policy`; интерфейс `SamplingPolicyRule` остаётся `public` (его читает движок). «Not extension API»-статус правил теперь держится на Java visibility, а не на дисциплине.
-- `SamplingPolicyEngine`: `productionEngine()` — единственная публичная точка входа. Конструктор с varargs и `foundationEngine()` — **package-private**; `foundationEngine()` делегирует сборку в `ProductionSamplingPolicyChain.foundationRules()` (не инстанцирует правила сам, поэтому правила и могут быть package-private). Подтверждено grep'ом: production-кода, конструирующего движок напрямую или вызывающего `foundationEngine()`, нет (только тесты в пакете `engine`).
+- `ProductionSamplingPolicyChain` — единственный сборщик и исполнитель fixed chains: `production()` (нормативный порядок 7 правил) и `foundation()` (минимум kill-switch + hard-drop). Rule arrays и rule instances не покидают `policy`.
+- Concrete rule-классы (`KillSwitchPolicyRule`, `HardDropPolicyRule`, `ForceHeaderPolicyRule`, `QaTracePolicyRule`, `ParentSampledPolicyRule`, `RouteRatioPolicyRule`, `DefaultRatioPolicyRule`) и интерфейс `SamplingPolicyRule` — **package-private** в `policy`. Приложение не может реализовать, зарегистрировать или передать собственное правило.
+- `SamplingPolicyEngine`: `productionEngine()` — единственная публичная factory создания движка. Constructor — **private**, `foundationEngine()` — **package-private**. Engine делегирует fixed chain и не принимает rule type в своих сигнатурах.
 
 ### 4. `ProductionSamplingPolicyChain` — намеренный компромисс
 
-Класс `public`, потому что движок живёт в соседнем пакете `engine` и должен компилироваться против него. Но это **не** публичный extension API. «Железное правило ревью»: зависеть от него могут только пакеты `policy` и `engine` — это закреплено ArchUnit-правилом `PRODUCTION_CHAIN_ACCESS_RESTRICTED`. Путь выхода из компромисса (если в будущем движок и цепочка окажутся в одном пакете) — сделать класс package-private.
+Класс `public`, потому что движок живёт в соседнем пакете `engine` и должен компилироваться против него. Но это **не** публичный extension API: он создаёт только фиксированные platform-owned chains, не принимает custom rules и не раскрывает их тип/instances. «Железное правило ревью»: зависеть от него могут только пакеты `policy` и `engine` — это закреплено ArchUnit-правилом `PRODUCTION_CHAIN_ACCESS_RESTRICTED`. Путь выхода из компромисса (если в будущем движок и цепочка окажутся в одном пакете) — сделать класс package-private.
 
 ## Сохранённые инварианты (поведение не изменено)
 
@@ -75,7 +75,7 @@ core.sampling.config   — compile-time нормализация и доменн
 | `SAMPLING_RULE_IMPLS_ONLY_IN_POLICY` | реализации `SamplingPolicyRule` допустимы только в `core.sampling.policy` (enforcement «not extension API», а не imports) |
 | `CORE_POLICY_PACKAGES_NO_OTEL_OR_SPRING` | весь `core.sampling..` без OTel/Spring/JMX (без изменений) |
 
-«Not extension API»-статус правил защищён двумя независимыми барьерами: (1) сами concrete rule-классы **package-private** — внешний код не может ни инстанцировать `new DefaultRatioPolicyRule()`, ни наследоваться от них (Java visibility); (2) ArchUnit-правило `SAMPLING_RULE_IMPLS_ONLY_IN_POLICY` запрещает добавлять реализации `SamplingPolicyRule` вне `policy` даже внутри `core`. Интерфейс `SamplingPolicyRule` остаётся `public` (его читает движок), но реализовать его снаружи нельзя. Это закрывает SPI-утечку, которую imports-правила не ловят.
+«Not extension API»-статус правил защищён тремя независимыми барьерами: (1) interface и concrete rules **package-private**; (2) fixed chain не принимает и не возвращает rule objects; (3) ArchUnit-правило `SAMPLING_RULE_IMPLS_ONLY_IN_POLICY` без empty-set waiver запрещает реализации вне `policy` даже внутри `core`. Public-surface/ABI test дополнительно подтверждает отсутствие rule type и `ServiceLoader` descriptor.
 
 Паритет-тест `TraceIdRatioParityTest` (otel-extension) ходит через публичную `SamplingPolicyEngine.productionEngine()` со snapshot'ом (`defaultRatio`) и request'ом, который доходит до `default_ratio` — тест **не** конструирует правило/движок руками и не пересекает границу слоёв напрямую, уважая package-private видимость движка.
 
@@ -111,4 +111,4 @@ JMH-прогон был частью hot-path safety gate (после перен
 - Чёткие, машинно-проверяемые границы слоёв; нормализация и валидация имеют единственный дом.
 - Удалено дублирование нормализации между core и otel-extension.
 - Ломающее изменение FQN классов `core.sampling.*` (допустимо в pre-production). Внешние ссылки обновлены только в `platform-tracing-otel-extension`.
-- `ProductionSamplingPolicyChain` остаётся `public` как осознанный компромисс под контролем ArchUnit.
+- `ProductionSamplingPolicyChain` остаётся `public` fixed-chain фасадом как осознанный cross-package компромисс под контролем ArchUnit; sampling rule SPI закрыт решением CP-2.

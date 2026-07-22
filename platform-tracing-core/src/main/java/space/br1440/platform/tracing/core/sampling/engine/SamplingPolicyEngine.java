@@ -4,44 +4,32 @@ import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
 import space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain;
-import space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule;
 
 public final class SamplingPolicyEngine {
 
-    private final SamplingPolicyRule[] rules;
+    private final ProductionSamplingPolicyChain policyChain;
 
-    SamplingPolicyEngine(SamplingPolicyRule... rules) {
-        if (rules == null || rules.length == 0) {
-            throw new IllegalArgumentException("rules must not be empty");
-        }
-
-        this.rules = rules.clone();
+    private SamplingPolicyEngine(ProductionSamplingPolicyChain policyChain) {
+        this.policyChain = policyChain;
     }
 
     static SamplingPolicyEngine foundationEngine() {
-        return new SamplingPolicyEngine(ProductionSamplingPolicyChain.foundationRules());
+        return new SamplingPolicyEngine(ProductionSamplingPolicyChain.foundation());
     }
 
     public static SamplingPolicyEngine productionEngine() {
-        return new SamplingPolicyEngine(ProductionSamplingPolicyChain.productionRules());
+        return new SamplingPolicyEngine(ProductionSamplingPolicyChain.production());
     }
 
     public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
-        for (SamplingPolicyRule rule : rules) {
-            SamplingPolicyDecision decision = rule.evaluate(request, snapshot);
-            if (decision != null) {
-                return decision;
-            }
-        }
-
-        return SamplingPolicyDecision.abstain();
+        return policyChain.evaluate(request, snapshot);
     }
 
     public int ruleCount() {
-        return rules.length;
+        return policyChain.ruleCount();
     }
 
     public String ruleNameAt(int index) {
-        return rules[index].ruleName();
+        return policyChain.ruleNameAt(index);
     }
 }

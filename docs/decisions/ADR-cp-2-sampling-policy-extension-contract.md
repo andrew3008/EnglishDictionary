@@ -2,129 +2,95 @@
 
 ## Status
 
-**PROPOSED / CLARIFICATION REQUIRED — production-код не изменён.**
+**ACCEPTED — CP-2 CLOSED / SEALED INTERNAL.**
 
-Дата evidence review: 2026-07-19.
+Дата решения: 2026-07-22.
 
-## Decision Required
+## Decision
 
-Architecture committee должен уточнить техническую форму уже выбранного intent `sealed internal`:
+Sampling policy принадлежит исключительно платформе.
 
-- **A1 (recommended):** оставить `SamplingPolicyRule` публичным для cross-package компиляции, но сделать его `sealed` с исчерпывающим `permits` для семи package-private platform rules;
-- **A2:** сделать `SamplingPolicyRule` package-private и явно разрешить structural move, необходимый для совместного размещения engine и policy implementation;
-- **B:** признать контракт поддерживаемым OTel-free SPI и отдельно утвердить versioning, composition и compatibility semantics.
+- `SamplingPolicyRule` остаётся package-private контрактом пакета
+  `core.sampling.policy` и не входит в публичный ABI.
+- Приложения не могут регистрировать собственные sampling rules.
+- Не вводятся public SPI, `ServiceLoader` registration, Spring bean override или
+  произвольный выбор через `@Primary`.
+- `SamplingPolicyEngine` создаётся только через platform-owned factory
+  `SamplingPolicyEngine.productionEngine()`.
+- `ProductionSamplingPolicyChain` является фиксированным platform-owned фасадом:
+  наружу не передаются rule instances, массивы правил или тип `SamplingPolicyRule`.
+- OTel adapter только преобразует вход/результат и делегирует решение платформенному
+  engine. OTel `ConfigurableSamplerProvider` остаётся bootstrap SPI агента и не является
+  SPI расширения sampling policy.
 
-До явного выбора A1/A2/B запрещены изменения visibility, package topology, engine factory и extension wiring.
+## Package Boundary
 
-## HEAD Evidence
+Структура `core.sampling.{engine,model,policy,properties}` не меняется. Прежнее
+предположение, что package-private rule требует переноса engine, оказалось излишним:
+итерация по rules остаётся внутри `ProductionSamplingPolicyChain`, а engine вызывает
+его типизированный fixed-chain API. Публичные сигнатуры chain не содержат
+`SamplingPolicyRule`.
 
-Текущий контракт:
+Это не новый generic evaluator и не extension seam: consumer не может передать правило,
+изменить состав цепочки или создать engine через произвольный constructor.
 
-```java
-public interface SamplingPolicyRule {
-    String ruleName();
-    SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot);
-}
-```
+## Golden Contract
 
-Фактические свойства HEAD:
+Нормативный порядок production chain сохраняется:
 
-- `SamplingPolicyRule` — public, unsealed и входит в `platform-tracing-core` ABI snapshot;
-- все семь platform implementations package-private и находятся в `core.sampling.policy`;
-- `SamplingPolicyEngine` находится в соседнем `core.sampling.engine`, поэтому package-private rule type ему недоступен;
-- `ProductionSamplingPolicyChain` public исключительно для cross-package assembly;
-- production engine создаётся только через `SamplingPolicyEngine.productionEngine()`;
-- repository search не обнаружил реализаций `SamplingPolicyRule` вне platform policy package;
-- поддерживаемого registration/composition механизма для внешних правил нет;
-- `ModuleTaxonomyArchRules.SAMPLING_RULE_IMPLS_ONLY_IN_POLICY` контролирует только анализируемые классы репозитория и не может запретить внешнему consumer реализовать public unsealed interface.
+1. `kill_switch`;
+2. `hard_drop`;
+3. `force_header`;
+4. `qa_trace`;
+5. `parent_decision`;
+6. `route_ratio`;
+7. `default_ratio`.
 
-Последний пункт исправляет слишком сильное утверждение действующего `ADR-sampling-package-layering.md`: ArchUnit является repository boundary gate, но не Java-level запретом для external classpath.
+`hard_drop` сохраняет утверждённый приоритет над force/QA. Parent-sampled behavior
+сохраняет место перед route/default ratio согласно существующему golden contract.
+Reason strings и mapping в OTel decision остаются детерминированными.
 
-## Constraint Conflict
+## Failure Semantics
 
-Три текущих требования нельзя выполнить буквально одновременно:
+- Невалидная runtime-конфигурация отклоняется существующим control protocol и не
+  заменяет last-known-good snapshot.
+- Исключение или `null` от sampler delegate не может увеличить sampling: `SafeSampler`
+  возвращает `DROP`, регистрирует diagnostics и не выпускает исключение в application
+  hot path.
+- Открытый degraded-mode circuit breaker также возвращает `DROP`.
+- Application code не получает composition point, позволяющий обойти kill switch,
+  hard-drop или другие platform governance rules.
 
-1. `SamplingPolicyRule` package-private;
-2. `SamplingPolicyEngine` остаётся в соседнем пакете `core.sampling.engine`;
-3. структура `core.sampling.{engine,model,policy,properties}` остаётся без repackaging и обходных public bridge API.
+## Residual Defects Found by Slice G
 
-Java package visibility делает пункт 1 несовместимым с пунктами 2 и 3. Обход через public evaluator/function bridge лишь переносит accidental API на другой тип и не является sealing.
+Verification-first аудит обнаружил два расхождения с утверждённым решением:
 
-## Option A1 — Public Sealed Contract
+1. `SamplingPolicyRule` был public и присутствовал в ABI snapshots; chain возвращал
+   массивы этого типа.
+2. `SafeSampler` при исключении делегата использовал permissive ratio-based fallback,
+   который мог вернуть `RECORD_AND_SAMPLE`.
 
-Предлагаемая точная форма:
+Оба дефекта исправлены без изменения нормативного rule order, reason contract,
+runtime mutation protocol, package topology или модульной структуры.
 
-```java
-public sealed interface SamplingPolicyRule
-        permits KillSwitchPolicyRule,
-                HardDropPolicyRule,
-                ForceHeaderPolicyRule,
-                QaTracePolicyRule,
-                ParentSampledPolicyRule,
-                RouteRatioPolicyRule,
-                DefaultRatioPolicyRule {
+## Verification
 
-    String ruleName();
+Обязательные gates:
 
-    SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot);
-}
-```
+- golden order, deterministic reason и branch-precedence tests;
+- kill-switch/hard-drop/force/QA/parent/route/default characterization;
+- invalid configuration и fail-closed sampler tests;
+- concurrent snapshot/version tests;
+- OTel adapter compilation и tests;
+- public-surface/ABI tests, подтверждающие отсутствие `SamplingPolicyRule`;
+- ArchUnit gates и полный build.
 
-Свойства:
+## Consequences
 
-- package topology и hot path не меняются;
-- внешняя реализация запрещается Java compiler/runtime, а не только ArchUnit;
-- contract остаётся видимым как implementation boundary, но не становится supported extension SPI;
-- существующие platform rule classes уже `final` и удовлетворяют sealed hierarchy;
-- public methods, engine factory, rule order и reason codes не меняются;
-- breaking change для гипотетических external implementations намеренный и допустим до production.
-
-Необходимые gates после approval A1:
-
-- reflection test: `SamplingPolicyRule.class.isSealed()`;
-- exact permitted-subclass set из семи platform rules;
-- negative external-consumer compile test на custom `implements SamplingPolicyRule`;
-- public ABI snapshot review с единственным intentional modifier delta;
-- существующие golden, characterization, contention и OTel adapter tests.
-
-## Option A2 — Package-Private Rule
-
-Этот вариант соответствует буквальной формулировке плана, но требует отдельного разрешения на изменение package boundary или redesign engine/chain assembly. Он противоречит текущему `structure KEEP / no sampling repackage` и поэтому не может быть выбран implementation agent автоматически.
-
-## Option B — Supported Versioned SPI
-
-Вариант B допустим только при подтверждённой продуктовой потребности внешних правил для парка сервисов. До реализации должны быть утверждены:
-
-- exact OTel-free signatures и version contract;
-- registration/composition owner без static `ServiceLoader` в API;
-- deterministic placement относительно kill-switch, hard-drop и default-ratio;
-- duplicate identity, ordering и conflict semantics;
-- exception/fail-closed behavior;
-- thread-safety, allocation budget и lifecycle;
-- rollout/rollback и compatibility policy;
-- external-consumer compile/runtime fixture.
-
-Без этих решений public unsealed interface не считается SPI.
-
-## Golden Verification
-
-Команда:
-
-```powershell
-.\gradlew.bat :platform-tracing-core:test --tests "*ProductionSamplingPolicyChainTest" --tests "*SamplingPolicyEngineTest" --tests "*SamplingPolicyReasonTest" :platform-tracing-otel-extension:test --tests "*Sampling*CharacterizationTest" --tests "*SamplerRuntimeUpdateConcurrencyTest" --tests "*TraceIdRatioParityTest" --tests "*SamplingPolicyDecisionOtelAdapterTest" --no-daemon
-```
-
-Результат: **PASS**.
-
-Подтверждены normative rule order, reason-code mapping, branch precedence, trace-id ratio parity, runtime update contention и OTel adapter behavior.
-
-## Recommendation
-
-Утвердить **A1** как минимальное risk-reducing уточнение intent `sealed internal`. A1 устраняет фактическую внешнюю extensibility, сохраняет утверждённую topology и не вводит неподтверждённый product SPI.
-
-Допустимые ответы committee:
-
-- `CP-2 APPROVED A1 — public sealed, exact permits set as proposed`;
-- `CP-2 APPROVED A2 — package-private, structural exception to be designed`;
-- `CP-2 APPROVED B — supported SPI; prepare exact ABI decision packet`;
-- `CP-2 REJECTED — keep current public unsealed contract intentionally`.
+- Breaking ABI delta намеренный: случайно опубликованный `SamplingPolicyRule` удалён из
+  public surface до production rollout; compatibility shim и `@Deprecated` alias не
+  добавляются.
+- Добавление application-defined policy rule в будущем требует нового архитектурного
+  решения и отдельного versioned SPI design; CP-2 такого расширения не разрешает.
+- После зелёной верификации: `CP-2 CLOSED`, `SLICE G CLOSED`,
+  `SAMPLING SPI SEALED INTERNAL`.

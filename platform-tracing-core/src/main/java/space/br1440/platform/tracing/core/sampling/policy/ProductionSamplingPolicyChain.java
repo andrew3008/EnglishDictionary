@@ -1,12 +1,20 @@
 package space.br1440.platform.tracing.core.sampling.policy;
 
-import lombok.experimental.UtilityClass;
+import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest;
+import space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot;
 
-@UtilityClass
+/** Фиксированная platform-owned цепочка sampling rules без внешней точки расширения. */
 public final class ProductionSamplingPolicyChain {
 
-    public static SamplingPolicyRule[] productionRules() {
-        return new SamplingPolicyRule[] {
+    private final SamplingPolicyRule[] rules;
+
+    private ProductionSamplingPolicyChain(SamplingPolicyRule[] rules) {
+        this.rules = rules;
+    }
+
+    public static ProductionSamplingPolicyChain production() {
+        return new ProductionSamplingPolicyChain(new SamplingPolicyRule[] {
                 new KillSwitchPolicyRule(),
                 new HardDropPolicyRule(),
                 new ForceHeaderPolicyRule(),
@@ -14,13 +22,31 @@ public final class ProductionSamplingPolicyChain {
                 new ParentSampledPolicyRule(),
                 new RouteRatioPolicyRule(),
                 new DefaultRatioPolicyRule()
-        };
+        });
     }
 
-    public static SamplingPolicyRule[] foundationRules() {
-        return new SamplingPolicyRule[] {
+    public static ProductionSamplingPolicyChain foundation() {
+        return new ProductionSamplingPolicyChain(new SamplingPolicyRule[] {
                 new KillSwitchPolicyRule(),
                 new HardDropPolicyRule()
-        };
+        });
+    }
+
+    public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
+        for (SamplingPolicyRule rule : rules) {
+            SamplingPolicyDecision decision = rule.evaluate(request, snapshot);
+            if (decision != null) {
+                return decision;
+            }
+        }
+        return SamplingPolicyDecision.abstain();
+    }
+
+    public int ruleCount() {
+        return rules.length;
+    }
+
+    public String ruleNameAt(int index) {
+        return rules[index].ruleName();
     }
 }

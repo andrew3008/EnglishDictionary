@@ -810,11 +810,11 @@ TYPE public final class space.br1440.platform.tracing.core.sampling.model.Sampli
   METHOD public java.util.Set<java.lang.String> getForceRecordValues()
   METHOD public space.br1440.platform.tracing.core.sampling.model.RouteRatioPrefix[] getRouteRatios()
 TYPE public final class space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain
-  METHOD public static space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule[] foundationRules()
-  METHOD public static space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule[] productionRules()
-TYPE public abstract interface space.br1440.platform.tracing.core.sampling.policy.SamplingPolicyRule
-  METHOD public abstract java.lang.String ruleName()
-  METHOD public abstract space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest,space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot)
+  METHOD public int ruleCount()
+  METHOD public java.lang.String ruleNameAt(int)
+  METHOD public space.br1440.platform.tracing.core.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.core.sampling.model.SamplingPolicyRequest,space.br1440.platform.tracing.core.sampling.model.SamplingPolicySnapshot)
+  METHOD public static space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain foundation()
+  METHOD public static space.br1440.platform.tracing.core.sampling.policy.ProductionSamplingPolicyChain production()
 TYPE public final record space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties
   CTOR public space.br1440.platform.tracing.core.sampling.properties.SamplingPolicyProperties(boolean,double,java.util.List<java.lang.String>,java.util.Set<java.lang.String>,java.util.Map<java.lang.String,java.lang.Double>)
   METHOD public boolean enabled()
