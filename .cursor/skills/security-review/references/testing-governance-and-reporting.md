@@ -114,9 +114,9 @@ For non-trivial security changes, select the applicable gates:
 
 ```powershell
 .\gradlew.bat :platform-tracing-api:test --no-daemon
-.\gradlew.bat :platform-tracing-core:test --no-daemon
+.\gradlew.bat :platform-tracing-otel:test --no-daemon
 .\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon
-.\gradlew.bat :platform-tracing-otel-extension:test --no-daemon
+.\gradlew.bat :platform-tracing-otel-javaagent-extension:test --no-daemon
 .\gradlew.bat pr4ArchitectureFitnessVerify pr1ModuleTaxonomyVerify --no-daemon
 .\gradlew.bat build --warning-mode all --no-daemon
 ```

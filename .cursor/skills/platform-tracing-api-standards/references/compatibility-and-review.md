@@ -177,7 +177,7 @@ For a non-trivial API change, run the applicable gates:
 .\gradlew.bat :platform-tracing-api:compileTestJava --no-daemon
 .\gradlew.bat :platform-tracing-api:test --no-daemon
 .\gradlew.bat :platform-tracing-api:javadoc --warning-mode all --no-daemon
-.\gradlew.bat :platform-tracing-core:test --no-daemon
+.\gradlew.bat :platform-tracing-otel:test --no-daemon
 .\gradlew.bat pr4ArchitectureFitnessVerify pr1ModuleTaxonomyVerify --no-daemon
 .\gradlew.bat build --warning-mode all --no-daemon
 ```

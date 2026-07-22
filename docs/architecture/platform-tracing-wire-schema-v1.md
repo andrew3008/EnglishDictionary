@@ -58,7 +58,7 @@ The contract lives in `platform-tracing-api` so **both** classloaders can share 
 
 ## 4. Why raw DTOs across ClassLoader boundary are forbidden
 
-OpenTelemetry Java Agent loads `platform-tracing-otel-extension` in the **Extension ClassLoader**. Spring starter code runs in the **Application ClassLoader**. A `Map<String, Object>` containing a custom Java object from App CL cannot be safely consumed in Agent CL (`ClassCastException`, `instanceof` failures, silent data loss).
+OpenTelemetry Java Agent loads `platform-tracing-otel-javaagent-extension` in the **Extension ClassLoader**. Spring starter code runs in the **Application ClassLoader**. A `Map<String, Object>` containing a custom Java object from App CL cannot be safely consumed in Agent CL (`ClassCastException`, `instanceof` failures, silent data loss).
 
 Wire payloads must use **OpenMBean-compatible open types** only: primitives wrappers, `String`, `String[]`, and explicitly allowlisted maps (e.g. `sampling.routeRatios` as `Map<String, Double>`).
 

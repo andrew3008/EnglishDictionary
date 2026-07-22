@@ -66,7 +66,7 @@ It only proves or disproves whether **F3** is technically feasible within existi
 
 - Startup-only enablement via **agent extension startup config** (new agent property acceptable **only inside spike implementation PR**, not in this planning doc's scope)
 - Default **disabled** — absent property ⇒ behavior identical to today
-- Spike code confined to **`platform-tracing-core`** + **`platform-tracing-otel-extension`** (no new modules)
+- Spike code confined to **`platform-tracing-core`** + **`platform-tracing-otel-javaagent-extension`** (no new modules)
 - Unit tests, concurrency tests, JMH benchmarks **in spike PR** (planned here, not created now)
 - Existing JMX sampler decision counters (`getSamplerDecisionCount`, `getSamplerDecisionCounts`)
 - `winningRule = "rate_limit"` for DROP decisions (internal counter key; span attribute mapping TBD in spike)
@@ -121,7 +121,7 @@ Rule order when enabled (8 rules):
 
 Evidence for current baseline: `SamplingPolicyEngine.productionEngine()`; `CompositeSampler` constructor currently calls `productionEngine()` once.
 
-Evidence: `platform-tracing-core/.../SamplingPolicyEngine.java`; `platform-tracing-otel-extension/.../CompositeSampler.java`.
+Evidence: `platform-tracing-core/.../SamplingPolicyEngine.java`; `platform-tracing-otel-javaagent-extension/.../CompositeSampler.java`.
 
 **Note:** `ExtensionPropertyNames` today has **no** rate-limit key — **NOT FOUND IN REPOSITORY**. Spike may introduce a single agent property constant; must not wire Spring/dual-channel.
 
@@ -305,7 +305,7 @@ Reject F3 (do not proceed even to minimal production) if any occur:
 | `src/test/.../TokenBucketRateLimiterConcurrencyTest.java` | **New** |
 | `src/test/.../arch/CorePolicyPackagePurityArchTest.java` | Must stay green |
 
-### `platform-tracing-otel-extension`
+### `platform-tracing-otel-javaagent-extension`
 
 | File | Change type |
 |---|---|

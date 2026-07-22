@@ -23,12 +23,12 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.core.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.core.facade.DefaultTraceOperations;
-import space.br1440.platform.tracing.otel.extension.processor.ClassificationSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.processor.EnrichingSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.processor.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.processor.ScrubbingSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.EnrichingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.PlatformCompositeSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.BuiltInSpanAttributeScrubbingRules;
 
 import java.time.Duration;
 import java.util.ArrayList;

@@ -90,7 +90,7 @@ Platform policy:
 
 ## Extension SPI surface (Фаза 15)
 
-`platform-tracing-otel-extension` подключается к OTel Java Agent / SDK autoconfigure через `META-INF/services`.
+`platform-tracing-otel-javaagent-extension` подключается к OTel Java Agent / SDK autoconfigure через `META-INF/services`.
 Все интерфейсы — из артефакта `opentelemetry-sdk-extension-autoconfigure-spi` (версия из OTel SDK BOM **1.62.0**),
 загружаются `ExtensionClassLoader`'ом Агента из self-contained `agentExtensionJar` (classifier `agent`).
 

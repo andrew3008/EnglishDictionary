@@ -128,7 +128,7 @@ It must not own:
 - runtime mutation policy
 - collector configuration
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns:
 
@@ -163,7 +163,7 @@ Own framework-specific instrumentation and context bridging.
 
 They must not duplicate each other's implementation through cross-dependencies.
 
-### `platform-tracing-otel-extension`
+### `platform-tracing-otel-javaagent-extension`
 
 Owns:
 

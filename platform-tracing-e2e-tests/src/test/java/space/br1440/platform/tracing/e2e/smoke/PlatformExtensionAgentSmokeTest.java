@@ -48,7 +48,7 @@ import static org.awaitility.Awaitility.await;
 
 /**
 
- * Live smoke: OTel Java Agent + {@code platform-tracing-otel-extension} → {@code EnrichingSpanProcessor}.
+ * Live smoke: OTel Java Agent + {@code platform-tracing-otel-javaagent-extension} → {@code EnrichingSpanProcessor}.
 
  * <p>
 

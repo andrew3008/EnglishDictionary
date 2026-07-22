@@ -23,7 +23,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * не весь classpath с JAR OpenTelemetry, иначе Rule 2 может дать false positive.
  * <p>
  * Positive SPI assertions (Rule 4) — {@link OtelDirectIntegrationExtensionSpiRules}
- * в модуле {@code platform-tracing-otel-extension} (требует autoconfigure-spi в classpath).
+ * в модуле {@code platform-tracing-otel-javaagent-extension} (требует autoconfigure-spi в classpath).
  *
  * @see ADR-otel-direct-integration (docs/decisions)
  */

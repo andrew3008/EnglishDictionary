@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * Live smoke resource-идентичности (Фаза 9): OTel Java Agent + {@code platform-tracing-otel-extension}
+ * Live smoke resource-идентичности (Фаза 9): OTel Java Agent + {@code platform-tracing-otel-javaagent-extension}
  * → Resource в Jaeger.
  * <p>
  * Проверяет: identity собирается {@code PlatformResourceProvider} из {@code platform.tracing.service.*};

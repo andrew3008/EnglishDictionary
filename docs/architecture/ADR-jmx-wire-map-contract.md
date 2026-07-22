@@ -68,7 +68,7 @@ Raw Java DTOs across the boundary are **forbidden** — each side may load diffe
 
 ```powershell
 ./gradlew :platform-tracing-api:test
-./gradlew :platform-tracing-otel-extension:test --tests "*Wire*Test" --tests "*PlatformTracingControl*Test"
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*Wire*Test" --tests "*PlatformTracingControl*Test"
 ./gradlew :platform-tracing-spring-boot-autoconfigure:test --tests "*Wire*Test"
 ./gradlew :platform-tracing-e2e-tests:test -PrunE2e --tests "*MapWireRoundTripE2ETest*"
 ./gradlew :platform-tracing-e2e-tests:test -PrunE2e --tests "*RuntimeSamplingControlSmokeTest*"

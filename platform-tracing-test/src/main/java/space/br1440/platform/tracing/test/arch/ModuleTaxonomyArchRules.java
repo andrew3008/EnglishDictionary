@@ -11,7 +11,7 @@ import com.tngtech.archunit.lang.ArchRule;
  * Guardrails модульной таксономии PR-1 (migration-first стратегия сохранения границ).
  * <p>
  * Правила обеспечивают соблюдение <b>forward</b>-зависимостей. Известные pre-existing нарушения
- * вне их scope (например, {@code platform-tracing-core} с {@code api opentelemetry-api})
+ * вне их scope (например, {@code platform-tracing-otel} с {@code api opentelemetry-api})
  * задокументированы как MIGRATION_RISK в
  * {@code docs/architecture/platform-tracing-module-taxonomy.md} и не приводят к падению CI.
  *
@@ -103,16 +103,16 @@ public final class ModuleTaxonomyArchRules {
      * Autoconfigure приложения не должен зависеть от реализации agent-extension.
      * <p>
      * Agent extension загружается в ExtensionClassLoader; App CL не должен импортировать
-     * production-классы {@code platform-tracing-otel-extension} напрямую.
+     * production-классы {@code platform-tracing-otel-javaagent-extension} напрямую.
      */
     public static final ArchRule AUTOCONFIGURE_MAIN_NO_OTEL_EXTENSION_IMPL = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.autoconfigure..")
             .and().resideOutsideOfPackage("..test..")
             .and().resideOutsideOfPackage("..tests..")
-            .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel.extension..")
+            .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel.javaagent..")
             .allowEmptyShould(true)
             .because("platform-tracing-spring-boot-autoconfigure (App CL) не должен зависеть от "
-                    + "platform-tracing-otel-extension (Agent CL) implementation-классов");
+                    + "platform-tracing-otel-javaagent-extension (Agent CL) implementation-классов");
 
     /**
      * Web-модули компилируются только против API и публичной границы autoconfigure.
@@ -123,7 +123,7 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.autoconfigure.reactive..")
             .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.core..")
             .allowEmptyShould(true)
-            .because("web autoconfigure не должен раскрывать platform-tracing-core на compile classpath потребителя");
+            .because("web autoconfigure не должен раскрывать platform-tracing-otel на compile classpath потребителя");
 
     /**
      * Оба web-модуля зависят только от API и boundary-support autoconfigure, но не от implementation packages.
@@ -202,7 +202,7 @@ public final class ModuleTaxonomyArchRules {
             .that().resideInAPackage("space.br1440.platform.tracing.core..")
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAnyPackage("javax.management..")
-            .because("platform-tracing-core не должен зависеть от JMX — управление runtime является agent-side");
+            .because("platform-tracing-otel не должен зависеть от JMX — управление runtime является agent-side");
 
     // -- Слоистые границы пакета core.sampling: model / policy / engine / config -------------------
 
@@ -243,9 +243,9 @@ public final class ModuleTaxonomyArchRules {
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
             .should().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.otel.extension.sampler.SamplerState")
+                    "space.br1440.platform.tracing.otel.javaagent.sampler.SamplerState")
             .orShould().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingSnapshot")
+                    "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot")
             .orShould().haveFullyQualifiedName(
                     "space.br1440.platform.tracing.core.validation.ValidationSnapshot")
             .because("VersionedState — контракт holder-managed runtime state, а не generic HasVersion-маркер");
@@ -557,7 +557,7 @@ public final class ModuleTaxonomyArchRules {
      * Техника: {@code noClasses().should().dependOnClassesThat()} с предикатом-исключением.
      */
     public static final ArchRule OTEL_EXTENSION_MDC_FROM_CORE = noClasses()
-            .that().resideInAPackage("space.br1440.platform.tracing.otel.extension..")
+            .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat(apiMdcExceptAllowed())
             .allowEmptyShould(true)
@@ -624,7 +624,7 @@ public final class ModuleTaxonomyArchRules {
                 String name = input.getName();
                 return name.startsWith("space.br1440.platform.tracing.core.")
                         || name.startsWith("space.br1440.platform.tracing.autoconfigure.")
-                        || name.startsWith("space.br1440.platform.tracing.otel.extension.")
+                        || name.startsWith("space.br1440.platform.tracing.otel.javaagent.")
                         || name.contains(".test.")
                         || name.endsWith("Test");
             }

@@ -6,7 +6,7 @@ import jakarta.annotation.Nullable;
 /**
  * Извлечение {@link InboundTraceControl} из сырых значений carrier (HTTP/Kafka заголовков).
  * <p>
- * Каноническая реализация — {@code DefaultInboundTraceControlExtractor} в {@code platform-tracing-core}.
+ * Каноническая реализация — {@code DefaultInboundTraceControlExtractor} в {@code platform-tracing-otel}.
  * Реализации обязаны быть thread-safe и stateless.
  */
 public interface InboundTraceControlExtractor {

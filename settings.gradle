@@ -28,7 +28,7 @@ include 'platform-tracing-bom'
 include 'platform-tracing-api'
 
 // Реализация API поверх Micrometer Observation и OpenTelemetry API.
-include 'platform-tracing-core'
+include 'platform-tracing-otel'
 
 // Spring Boot autoconfigure: properties, общие авто-конфигурации (Core, Metrics, AOP, Actuator,
 // MDC bridge, OtelAgentDetector, RefreshScope, ServiceNameProvider). Web-специфичные авто-конфиги
@@ -52,7 +52,7 @@ include 'platform-tracing-spring-boot-starter-servlet'
 include 'platform-tracing-spring-boot-starter-reactive'
 
 // Расширение для OpenTelemetry Java Agent: Sampler, SpanProcessor, ResourceProvider.
-include 'platform-tracing-otel-extension'
+include 'platform-tracing-otel-javaagent-extension'
 
 // Версионируемые YAML-конфигурации для OpenTelemetry Collector (tail_sampling, маршрутизация в Jaeger).
 include 'platform-tracing-collector-config'

@@ -38,7 +38,7 @@ $env:DOCKER_HOST = "tcp://<docker-host>:2375"   # опционально, remote
 
 - `jaegertracing/all-in-one:1.62` — OTLP + v3 Query API (16686);
 - `otel/opentelemetry-collector-contrib:0.154.0` — tail_sampling (`e2e/otel-collector-e2e.yaml`, Track B+ pin);
-- Agent smokes: subprocess с `-javaagent` + `platform-tracing-otel-extension-*-agent.jar`.
+- Agent smokes: subprocess с `-javaagent` + `platform-tracing-otel-javaagent-extension-*-agent.jar`.
 
 ## G2-MDC-e2e артефакты
 

@@ -22,7 +22,7 @@
 Phase 1 перенёс доменную логику из `PlatformTracingControl` (~669 строк монолита) в шесть operation-делегатов, но **не решил проблему читаемости фасада**:
 
 - `PlatformTracingControl` по-прежнему содержит **56 `@Override`-методов** (почти полная поверхность `PlatformTracingControlMBean`) в **354 строках** — преимущественно однострочные делегирования и секционные комментарии.
-- Operation-делегаты перемещены в подпакет `space.br1440.platform.tracing.otel.extension.jmx.operations` и объявлены **`public final class`** с **`public` методами** — это **расширяет production API surface**, хотя Phase 1 планировал **package-private** internal delegates.
+- Operation-делегаты перемещены в подпакет `space.br1440.platform.tracing.otel.javaagent.jmx.operations` и объявлены **`public final class`** с **`public` методами** — это **расширяет production API surface**, хотя Phase 1 планировал **package-private** internal delegates.
 - Документация Phase 1 (`platform-tracing-control-refactoring-dossier.md`, UML, `runtime-policy-control-architecture.md`) **противоречит коду**: там указано «package-private delegates в пакете `jmx`», фактически — **public delegates в `jmx.operations`**.
 
 **Достаточно ли Phase 1**
@@ -53,7 +53,7 @@ Phase 1 перенёс доменную логику из `PlatformTracingContro
 
 | Метрика | Значение (факт) |
 |---|---|
-| Файл | `platform-tracing-otel-extension/src/main/java/.../jmx/PlatformTracingControl.java` |
+| Файл | `platform-tracing-otel-javaagent-extension/src/main/java/.../jmx/PlatformTracingControl.java` |
 | Строк | **354** |
 | Модификатор | `public final class` |
 | Интерфейс | `implements PlatformTracingControlMBean` |
@@ -106,7 +106,7 @@ private final DiagnosticsControlOperations diagnostics;
 ### 2.3 Package layout
 
 ```
-space.br1440.platform.tracing.otel.extension.jmx
+space.br1440.platform.tracing.otel.javaagent.jmx
 ├── PlatformTracingControl.java          (public, MBean impl)
 ├── PlatformTracingControlMBean.java    (public interface)
 ├── PlatformTracingJmxRegistrar.java    (public, registration owner)
@@ -124,7 +124,7 @@ space.br1440.platform.tracing.otel.extension.jmx
 
 | Consumer | Import |
 |---|---|
-| `PlatformTracingControl` | `import space.br1440.platform.tracing.otel.extension.jmx.operations.*;` |
+| `PlatformTracingControl` | `import space.br1440.platform.tracing.otel.javaagent.jmx.operations.*;` |
 | *(другие)* | **нет** (grep по репозиторию) |
 
 **Кто создаёт delegates (`new *Operations`):**
@@ -181,7 +181,7 @@ space.br1440.platform.tracing.otel.extension.jmx
 **`SamplingControlClient`** (`platform-tracing-spring-boot-autoconfigure`):
 
 - `OBJECT_NAME` = `"space.br1440.platform.tracing:type=Control,name=PlatformTracingControl"` (дублирует константу MBean).
-- **Не зависит** от `platform-tracing-otel-extension` (javadoc, строки 25–26).
+- **Не зависит** от `platform-tracing-otel-javaagent-extension` (javadoc, строки 25–26).
 - Вызовы: `server.invoke(objectName, "<operationName>", ...)` и `server.getAttribute(objectName, "<AttributeName>")`.
 
 **Примеры string-based операций/атрибутов (production client):**
@@ -231,7 +231,7 @@ space.br1440.platform.tracing.otel.extension.jmx
 
 **Java package-private visibility is per package name, not directory tree.**
 
-- `space.br1440.platform.tracing.otel.extension.jmx` and `space.br1440.platform.tracing.otel.extension.jmx.operations` are **different packages**.
+- `space.br1440.platform.tracing.otel.javaagent.jmx` and `space.br1440.platform.tracing.otel.javaagent.jmx.operations` are **different packages**.
 - `PlatformTracingControl` (in `jmx`) **cannot** access package-private types in `jmx.operations`.
 - Therefore delegates were made **`public final class`** with **`public` methods** (and Lombok `@RequiredArgsConstructor` → **public constructor**).
 
@@ -700,14 +700,14 @@ Stop and escalate if:
 ### Tests (Gradle)
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformTracingControlTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ValidationStrictRuntimeGuardTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformSpiAutoconfigureIntegrationTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformTracingControlTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ValidationStrictRuntimeGuardTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformSpiAutoconfigureIntegrationTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --continue
 ./gradlew pr4ArchitectureFitnessVerify --continue
 ```
 
@@ -715,16 +715,16 @@ Stop and escalate if:
 
 ```bash
 # No public operation delegates
-rg "public final class .*Operations|public class .*Operations" platform-tracing-otel-extension/src/main/java
+rg "public final class .*Operations|public class .*Operations" platform-tracing-otel-javaagent-extension/src/main/java
 
 # MBean contract anchors unchanged
-rg "interface PlatformTracingControlMBean|OBJECT_NAME" platform-tracing-otel-extension/src/main/java/.../jmx
+rg "interface PlatformTracingControlMBean|OBJECT_NAME" platform-tracing-otel-javaagent-extension/src/main/java/.../jmx
 
 # Registration ownership unchanged
-rg "registerMBean|new PlatformTracingControl" platform-tracing-otel-extension/src/main/java
+rg "registerMBean|new PlatformTracingControl" platform-tracing-otel-javaagent-extension/src/main/java
 
 # Subpackage removed (if Option A/H)
-rg "jmx\.operations" platform-tracing-otel-extension/src/main/java
+rg "jmx\.operations" platform-tracing-otel-javaagent-extension/src/main/java
 ```
 
 ### Docs sync (required) — ✅ DONE 2026-06-18

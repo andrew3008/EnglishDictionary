@@ -2,9 +2,9 @@
 
 ## 1. Executive Summary
 
-**Что такое spike:** `ClassLoaderVisibilitySpikeProbe` — утилитарный final-класс в `src/main` модуля `platform-tracing-otel-extension`, который при явной активации через system property печатает машиночитаемые маркеры `SPIKE_CLASSLOADER:...` в `System.err`. Класс реализует два независимых gated-контракта: (a) `emitExtensionLoadResultIfEnabled` — сводка загрузки custom scrubbing rules из production-пути фабрики; (b) `runIfEnabled` — полный probe видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в четырёх вариантах classloader.
+**Что такое spike:** `ClassLoaderVisibilitySpikeProbe` — утилитарный final-класс в `src/main` модуля `platform-tracing-otel-javaagent-extension`, который при явной активации через system property печатает машиночитаемые маркеры `SPIKE_CLASSLOADER:...` в `System.err`. Класс реализует два независимых gated-контракта: (a) `emitExtensionLoadResultIfEnabled` — сводка загрузки custom scrubbing rules из production-пути фабрики; (b) `runIfEnabled` — полный probe видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в четырёх вариантах classloader.
 
-**Где расположен:** `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/spike/ClassLoaderVisibilitySpikeProbe.java`.
+**Где расположен:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/spike/ClassLoaderVisibilitySpikeProbe.java`.
 
 **Откуда вызывается в production:** единственный production call-site — `PlatformSpanProcessorFactory.collectScrubbingRules(...)`, строка ~163, сразу после `StartupDiagnostics.emit(...)`.
 
@@ -12,7 +12,7 @@
 
 **Работает ли при отключении:** да, как no-op: только чтение `System.getProperty` и сравнение с `"true"`; allocations, logging, `System.err` — отсутствуют.
 
-**Какие тесты зависят:** основной E2E — `ClassLoaderVisibilitySpikeE2ETest` (модуль `platform-tracing-e2e-tests`); вспомогательный launcher `ClassLoaderVisibilitySpikeMain` (test-scope). Unit/integration тестов, напрямую вызывающих probe, в `platform-tracing-otel-extension/src/test/java` **не найдено**.
+**Какие тесты зависят:** основной E2E — `ClassLoaderVisibilitySpikeE2ETest` (модуль `platform-tracing-e2e-tests`); вспомогательный launcher `ClassLoaderVisibilitySpikeMain` (test-scope). Unit/integration тестов, напрямую вызывающих probe, в `platform-tracing-otel-javaagent-extension/src/test/java` **не найдено**.
 
 **Почему архитекторы обеспокоены:** production factory импортирует пакет `factory.spike`; в hot-path загрузки scrubbing rules присутствует test-only stderr-контракт; имя и комментарии явно маркируют «spike»/«spike-only»; ArchUnit-исключение для `factory.spike` от `ACCESS_STANDARD_STREAMS` фиксирует осознанное отступление от guardrail.
 
@@ -26,7 +26,7 @@
 
 | Модуль | Путь | Статус |
 |--------|------|--------|
-| `platform-tracing-otel-extension` | `src/main/java`, `src/test/java` | просмотрен |
+| `platform-tracing-otel-javaagent-extension` | `src/main/java`, `src/test/java` | просмотрен |
 | `platform-tracing-e2e-tests` | `src/test/java`, `src/customRule/java` | просмотрен |
 | `platform-tracing-e2e-tests` | `src/main/java` | **NOT FOUND IN REPOSITORY** (каталог отсутствует) |
 | `platform-tracing-test` | `src/main/java`, `src/test/java` | просмотрен — ссылок на spike нет |
@@ -39,12 +39,12 @@
 ```text
 rg "ClassLoaderVisibilitySpikeProbe" .
 rg "platform\.tracing\.spike\.classloader\.visibility|SPIKE_CLASSLOADER" .
-rg "factory\.spike|\.spike\." platform-tracing-otel-extension/src/main/java platform-tracing-otel-extension/src/test/java platform-tracing-e2e-tests/src/test/java docs
+rg "factory\.spike|\.spike\." platform-tracing-otel-javaagent-extension/src/main/java platform-tracing-otel-javaagent-extension/src/test/java platform-tracing-e2e-tests/src/test/java docs
 rg "emitExtensionLoadResultIfEnabled" .
 rg "ClassLoaderVisibilitySpikeE2ETest|classloader visibility|classloader-visibility|visibility spike" .
 rg "System\.err|stderr|error stream|process output|SPIKE_CLASSLOADER" .
-rg "otel\.javaagent\.extensions|OTEL_JAVAAGENT_EXTENSIONS|javaagent.extensions" platform-tracing-otel-extension/src platform-tracing-e2e-tests/src docs
-rg "ExtensionRuleLoader|ScrubbingRulesLoader|SpanAttributeScrubbingRule|customRules|loadingMode" platform-tracing-otel-extension/src platform-tracing-e2e-tests/src docs
+rg "otel\.javaagent\.extensions|OTEL_JAVAAGENT_EXTENSIONS|javaagent.extensions" platform-tracing-otel-javaagent-extension/src platform-tracing-e2e-tests/src docs
+rg "ExtensionRuleLoader|ScrubbingRulesLoader|SpanAttributeScrubbingRule|customRules|loadingMode" platform-tracing-otel-javaagent-extension/src platform-tracing-e2e-tests/src docs
 ```
 
 ### Git
@@ -66,7 +66,7 @@ Git unavailable; used rg-based repository search.
 
 | Class | Package | Source Root | Visibility | Public API | Purpose From Code | Risk |
 |-------|---------|-------------|------------|------------|-------------------|------|
-| `ClassLoaderVisibilitySpikeProbe` | `space.br1440.platform.tracing.otel.extension.factory.spike` | `platform-tracing-otel-extension/src/main/java` | `public final` | `ENABLE_PROPERTY`, `LINE_PREFIX`, `TARGET_RULE_NAME`, `TARGET_RULE_CLASS`, `emitExtensionLoadResultIfEnabled(int, String)`, `runIfEnabled()` | Gated stderr-диагностика видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в OTel Java Agent runtime; маркеры для E2E-парсинга; «не влияет на production-поведение» (Javadoc класса) | Production factory импортирует `factory.spike`; `System.err` при enable; имя «Spike»; hardcoded E2E rule id `custom-e2e-rule` |
+| `ClassLoaderVisibilitySpikeProbe` | `space.br1440.platform.tracing.otel.javaagent.factory.spike` | `platform-tracing-otel-javaagent-extension/src/main/java` | `public final` | `ENABLE_PROPERTY`, `LINE_PREFIX`, `TARGET_RULE_NAME`, `TARGET_RULE_CLASS`, `emitExtensionLoadResultIfEnabled(int, String)`, `runIfEnabled()` | Gated stderr-диагностика видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в OTel Java Agent runtime; маркеры для E2E-парсинга; «не влияет на production-поведение» (Javadoc класса) | Production factory импортирует `factory.spike`; `System.err` при enable; имя «Spike»; hardcoded E2E rule id `custom-e2e-rule` |
 
 **Дополнительные spike-классы в `factory/spike`:** NOT FOUND IN REPOSITORY (единственный файл в каталоге).
 
@@ -413,9 +413,9 @@ Agent bootstrap → PlatformSpanProcessorFactory.registerSpanProcessors(...)
 ### `ClassLoaderVisibilitySpikeProbe` usages (source, excluding build/)
 
 ```text
-platform-tracing-otel-extension/src/main/java/.../factory/PlatformSpanProcessorFactory.java:23  import
-platform-tracing-otel-extension/src/main/java/.../factory/PlatformSpanProcessorFactory.java:163 emitExtensionLoadResultIfEnabled(...)
-platform-tracing-otel-extension/src/main/java/.../factory/spike/ClassLoaderVisibilitySpikeProbe.java  definition
+platform-tracing-otel-javaagent-extension/src/main/java/.../factory/PlatformSpanProcessorFactory.java:23  import
+platform-tracing-otel-javaagent-extension/src/main/java/.../factory/PlatformSpanProcessorFactory.java:163 emitExtensionLoadResultIfEnabled(...)
+platform-tracing-otel-javaagent-extension/src/main/java/.../factory/spike/ClassLoaderVisibilitySpikeProbe.java  definition
 platform-tracing-e2e-tests/src/test/java/.../ClassLoaderVisibilitySpikeE2ETest.java  import, SPIKE_PROPERTY, assertions, parser
 platform-tracing-e2e-tests/src/test/java/.../ClassLoaderVisibilitySpikeMain.java  runIfEnabled()
 docs/decisions/ADR-classloader-visibility-spike-finding.md
@@ -482,7 +482,7 @@ SafeBoundaryArchTest.java (factory.spike exclusion comment)
 ```text
 Count: 1 file, 1 import, 1 method call
 File: PlatformSpanProcessorFactory.java
-Package imported: space.br1440.platform.tracing.otel.extension.factory.spike
+Package imported: space.br1440.platform.tracing.otel.javaagent.factory.spike
 ```
 
 ---
@@ -495,7 +495,7 @@ Package imported: space.br1440.platform.tracing.otel.extension.factory.spike
 - `package-info.java` в `factory/spike`
 - Environment variable activation для probe
 - `ConfigProperties` activation для probe
-- Unit/integration тесты probe в `platform-tracing-otel-extension/src/test/java`
+- Unit/integration тесты probe в `platform-tracing-otel-javaagent-extension/src/test/java`
 - Ссылки на `ClassLoaderVisibilitySpike*` в `platform-tracing-test`, `platform-tracing-spring-boot-autoconfigure`
 - Dedicated ArchRule «spike packages forbidden in production» (кроме javadoc carve-out)
 - Второй production call-site probe

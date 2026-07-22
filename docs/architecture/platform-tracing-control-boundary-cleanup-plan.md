@@ -161,11 +161,11 @@
 
 | File | Action | Reason | Risk | Validation |
 |------|--------|--------|------|------------|
-| `platform-tracing-otel-extension/.../jmx/PlatformTracingControl.java` | Удалить C1–C6; сделать C7 package-private; удалить R1–R8; (опц.) убрать/переместить `NULL_SUPPLIER` в билдер; добавить package-private registration helper если выбран вариант §3.2 | Класс становится чистой MBean-реализацией | High (компиляция тестов и registrar) | `:platform-tracing-otel-extension:test` |
-| `platform-tracing-otel-extension/.../factory/PlatformTracingJmxRegistrar.java` | Заменить вызов `PlatformTracingControl.registerSafely(...)` на вызов нового package-private registration helper в пакете `jmx`; перенести exception/log поведение туда | Registrar — владелец регистрации | High | targeted registrar тест отсутствует → через `PlatformAutoConfigurationCustomizerProcessorsTest` |
-| `platform-tracing-otel-extension/.../jmx/PlatformTracingControlRegistration.java` *(новый, опц.)* | Package-private terminal registration (MBeanServer/ObjectName/new C7/registerMBean/exceptions/logs) | Package-доступ к C7 | Medium | как выше |
-| `platform-tracing-otel-extension/src/test/.../jmx/PlatformTracingControlTestBuilder.java` *(новый)* | Public builder, вызывает package-private C7 | Замена convenience-конструкторов | Medium | компиляция всех JMX-тестов |
-| `platform-tracing-otel-extension/src/test/.../jmx/PlatformTracingControlTest.java` | Переписать C1/C2/C3/C6 + R1 на билдер; регистрацию — через registrar/ helper | Снять зависимость от удаляемого API | Medium | `--tests "*PlatformTracingControlTest*"` |
+| `platform-tracing-otel-javaagent-extension/.../jmx/PlatformTracingControl.java` | Удалить C1–C6; сделать C7 package-private; удалить R1–R8; (опц.) убрать/переместить `NULL_SUPPLIER` в билдер; добавить package-private registration helper если выбран вариант §3.2 | Класс становится чистой MBean-реализацией | High (компиляция тестов и registrar) | `:platform-tracing-otel-javaagent-extension:test` |
+| `platform-tracing-otel-javaagent-extension/.../factory/PlatformTracingJmxRegistrar.java` | Заменить вызов `PlatformTracingControl.registerSafely(...)` на вызов нового package-private registration helper в пакете `jmx`; перенести exception/log поведение туда | Registrar — владелец регистрации | High | targeted registrar тест отсутствует → через `PlatformAutoConfigurationCustomizerProcessorsTest` |
+| `platform-tracing-otel-javaagent-extension/.../jmx/PlatformTracingControlRegistration.java` *(новый, опц.)* | Package-private terminal registration (MBeanServer/ObjectName/new C7/registerMBean/exceptions/logs) | Package-доступ к C7 | Medium | как выше |
+| `platform-tracing-otel-javaagent-extension/src/test/.../jmx/PlatformTracingControlTestBuilder.java` *(новый)* | Public builder, вызывает package-private C7 | Замена convenience-конструкторов | Medium | компиляция всех JMX-тестов |
+| `platform-tracing-otel-javaagent-extension/src/test/.../jmx/PlatformTracingControlTest.java` | Переписать C1/C2/C3/C6 + R1 на билдер; регистрацию — через registrar/ helper | Снять зависимость от удаляемого API | Medium | `--tests "*PlatformTracingControlTest*"` |
 | `.../src/test/.../sampler/SamplingPolicyRuntimeUpdateJmxTest.java` | C1/C4 → builder | то же | Medium | `--tests "*SamplingPolicyRuntimeUpdateJmxTest*"` |
 | `.../src/test/.../scrubbing/ScrubbingPolicyRuntimeUpdateJmxTest.java` | C5 (×8) → builder | то же | Medium | `--tests "*ScrubbingPolicyRuntimeUpdateJmxTest*"` |
 | `.../src/test/.../processor/ValidationPolicyRuntimeUpdateJmxTest.java` | `controlWith()` C7 → builder | то же | Low | `--tests "*ValidationPolicyRuntimeUpdateJmxTest*"` |
@@ -181,8 +181,8 @@
 
 - **Имя класса:** `PlatformTracingControlTestBuilder`
 - **Видимость:** `public` (нужно для cross-package тестов из `sampler`/`scrubbing`/`processor`).
-- **Пакет:** `space.br1440.platform.tracing.otel.extension.jmx` — тот же, что у `PlatformTracingControl`, чтобы иметь доступ к package-private C7.
-- **Расположение:** `platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlTestBuilder.java`
+- **Пакет:** `space.br1440.platform.tracing.otel.javaagent.jmx` — тот же, что у `PlatformTracingControl`, чтобы иметь доступ к package-private C7.
+- **Расположение:** `platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/jmx/PlatformTracingControlTestBuilder.java`
 - **Поля** (соответствуют параметрам C7):
   - `SamplerStateHolder configHolder = null`
   - `CompositeSampler compositeSampler = null`
@@ -280,28 +280,28 @@ try {
 Полная валидация:
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --continue
 ./gradlew pr4ArchitectureFitnessVerify --continue
 ```
 
 Targeted:
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformTracingControlTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*ValidationStrictRuntimeGuardTest*" --continue
-./gradlew :platform-tracing-otel-extension:test --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformTracingControlTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*SamplingPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ScrubbingPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ValidationPolicyRuntimeUpdateJmxTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*ValidationStrictRuntimeGuardTest*" --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "*PlatformAutoConfigurationCustomizerProcessorsTest*" --continue
 ```
 
 Grep-проверки:
 
 ```bash
 rg "PlatformTracingControl\.registerSafely" .
-rg "registerSafely\(" platform-tracing-otel-extension/src/main
-rg "new PlatformTracingControl" platform-tracing-otel-extension/src/main
-rg "public PlatformTracingControl\(" platform-tracing-otel-extension/src/main
+rg "registerSafely\(" platform-tracing-otel-javaagent-extension/src/main
+rg "new PlatformTracingControl" platform-tracing-otel-javaagent-extension/src/main
+rg "public PlatformTracingControl\(" platform-tracing-otel-javaagent-extension/src/main
 ```
 
 Ожидаемо после реализации:

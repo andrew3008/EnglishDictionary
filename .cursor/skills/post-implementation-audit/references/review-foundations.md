@@ -7,7 +7,7 @@ This repository contains an enterprise platform tracing solution for Spring Boot
 The solution includes:
 
 - `platform-tracing-api`
-- `platform-tracing-core`
+- `platform-tracing-otel`
 - Spring Boot auto-configuration
 - servlet and WebFlux adapters
 - starters

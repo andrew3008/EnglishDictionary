@@ -6,7 +6,7 @@ dependencies {
     api platform(project(':platform-tracing-bom'))
 
     api project(':platform-tracing-api')
-    api project(':platform-tracing-core')
+    api project(':platform-tracing-otel')
 
     api 'io.opentelemetry:opentelemetry-sdk'
     api 'io.opentelemetry:opentelemetry-sdk-testing'

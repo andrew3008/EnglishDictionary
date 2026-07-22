@@ -12,7 +12,7 @@
 
 **Current need status:** **NOT PROVEN IN REPOSITORY.** No documented incident, no contractual SLO for traces/sec per service, and no load-test artifact showing that existing head-ratio + collector tail sampling + export/collector backpressure fail to protect backend during burst.
 
-**Current architecture fit:** **GOOD IF NEEDED.** Platform Tracing already has a pure-Java `SamplingPolicyEngine` with a fixed 7-rule chain (`platform-tracing-core`) delegated by `CompositeSampler` (`platform-tracing-otel-extension`). A rate-limit guard could be modeled as an 8th `SamplingPolicyRule`, but today all rules are **stateless** and the engine instance in `CompositeSampler` is **`final` and built once at startup** — introducing a stateful token-bucket rule or runtime limit changes requires explicit design work on engine lifecycle.
+**Current architecture fit:** **GOOD IF NEEDED.** Platform Tracing already has a pure-Java `SamplingPolicyEngine` with a fixed 7-rule chain (`platform-tracing-otel`) delegated by `CompositeSampler` (`platform-tracing-otel-javaagent-extension`). A rate-limit guard could be modeled as an 8th `SamplingPolicyRule`, but today all rules are **stateless** and the engine instance in `CompositeSampler` is **`final` and built once at startup** — introducing a stateful token-bucket rule or runtime limit changes requires explicit design work on engine lifecycle.
 
 **Biggest overengineering risks:**
 1. Duplicating protection already provided by ratio sampling, hard-drop paths, collector tail sampling, collector `memory_limiter`, and agent export queue (`PlatformDropOldestExportSpanProcessor`).
@@ -103,7 +103,7 @@ Production chain (7 rules), built by `SamplingPolicyEngine.productionEngine()`:
 | 6 | `RouteRatioPolicyRule` | `route_ratio` |
 | 7 | `DefaultRatioPolicyRule` | `default_ratio` |
 
-Evidence: `platform-tracing-core/.../SamplingPolicyEngine.java`, method `productionEngine()`; verified by `SamplingPolicyEngineTest.productionEngine_matchesCompositeSamplerRuleOrder()`.
+Evidence: `platform-tracing-otel/.../SamplingPolicyEngine.java`, method `productionEngine()`; verified by `SamplingPolicyEngineTest.productionEngine_matchesCompositeSamplerRuleOrder()`.
 
 Foundation subset (2 rules): `KillSwitchPolicyRule`, `HardDropPolicyRule` via `foundationEngine()`.
 
@@ -444,9 +444,9 @@ Evidence: `docs/tracing/performance-budgets.yaml`; `platform-tracing-preservatio
 
 | Module | Files/classes likely affected | Type of change | Risk | Notes |
 |---|---|---|---|---|
-| `platform-tracing-core` | `RateLimitPolicyRule` (new), token-bucket helper (new), `SamplingPolicyEngine.productionEngine()`, `SamplingPolicyReason`, `SamplingPolicyRuleNames`, `SamplingPolicySnapshot` | Feature + chain order change | **HIGH** | Core must stay OTel-free (`CorePolicyPackagePurityArchTest`) |
+| `platform-tracing-otel` | `RateLimitPolicyRule` (new), token-bucket helper (new), `SamplingPolicyEngine.productionEngine()`, `SamplingPolicyReason`, `SamplingPolicyRuleNames`, `SamplingPolicySnapshot` | Feature + chain order change | **HIGH** | Core must stay OTel-free (`CorePolicyPackagePurityArchTest`) |
 | `platform-tracing-api` | `PlatformSamplingReasons` (if exported reason code needed) | Contract extension | **MEDIUM** | Collector `EXPORTED` set is for sampled reasons only; rate-limit DROP may be metric-only like `kill_switch` |
-| `platform-tracing-otel-extension` | `CompositeSampler` (engine lifecycle?), `SamplerState`, `SamplerPolicyUpdate`, `SamplingPolicyOtelAdapter`, `PlatformTracingControl`/`MBean` | Adapter + JMX | **HIGH** | Engine rebuild or stateful rule decision |
+| `platform-tracing-otel-javaagent-extension` | `CompositeSampler` (engine lifecycle?), `SamplerState`, `SamplerPolicyUpdate`, `SamplingPolicyOtelAdapter`, `PlatformTracingControl`/`MBean` | Adapter + JMX | **HIGH** | Engine rebuild or stateful rule decision |
 | `platform-tracing-spring-boot-autoconfigure` | `TracingProperties.Sampling`, `SamplingRuntimeConfig`, `SamplingControlClient`, `RuntimeConfigApplier`, `PlatformTracingSamplerMetricsBinder`, actuator read models | Config + metrics | **MEDIUM** | Dual-channel alignment tests |
 | `platform-tracing-bench` | New JMH benchmark (plan); update gate baselines | Perf evidence | **MEDIUM** | Required if hot path changes |
 | `platform-tracing-test` | Harness cases for new rule | Test support | **LOW** | |
@@ -522,7 +522,7 @@ Evidence: `docs/tracing/performance-budgets.yaml`; `platform-tracing-preservatio
 
 - **Implement:** 8th rule + snapshot field; default disabled (null limit); stateful limiter inside rule; no Spring/JMX until needed.
 - **Avoid:** Dual-channel expansion initially; metrics binder changes.
-- **Affected modules:** `platform-tracing-core`, `platform-tracing-otel-extension` (minimal).
+- **Affected modules:** `platform-tracing-otel`, `platform-tracing-otel-javaagent-extension` (minimal).
 - **Why score:** Smallest code path if gate passes; startup-only enable via agent property.
 
 ### 5. Full dual-channel runtime-mutable RateLimitGuard
@@ -560,27 +560,27 @@ Evidence: `docs/tracing/performance-budgets.yaml`; `platform-tracing-preservatio
 
 | File | One-line note |
 |---|---|
-| `platform-tracing-core/.../SamplingPolicyEngine.java` | 7-rule production chain; `evaluate()` loop |
-| `platform-tracing-core/.../SamplingPolicyRule.java` | Rule SPI; null = pass |
-| `platform-tracing-core/.../SamplingPolicySnapshot.java` | Immutable policy inputs; no rate field |
-| `platform-tracing-core/.../SamplingPolicyDecision.java` | DROP/RECORD_AND_SAMPLE factories |
-| `platform-tracing-core/.../SamplingPolicyReason.java` | Enum of reasons; no RATE_LIMIT |
-| `platform-tracing-core/.../SamplingPolicyRuleNames.java` | winningRule string constants |
-| `platform-tracing-core/.../KillSwitchPolicyRule.java` | Example stateless rule |
-| `platform-tracing-core/.../DefaultRatioPolicyRule.java` | Terminal ratio rule |
-| `platform-tracing-core/.../ParentSampledPolicyRule.java` | Parent context rule |
-| `platform-tracing-core/.../SamplingPolicyEngineTest.java` | Chain order contract test |
-| `platform-tracing-otel-extension/.../CompositeSampler.java` | final `policyEngine`; hot path |
-| `platform-tracing-otel-extension/.../SamplerState.java` | Runtime snapshot + policySnapshot compile |
-| `platform-tracing-otel-extension/.../SamplerStateHolder.java` | CAS updates; tryApplyPolicyUpdate |
-| `platform-tracing-otel-extension/.../SamplerPolicyUpdate.java` | Validation + buildNext |
-| `platform-tracing-otel-extension/.../PlatformSamplerBuilder.java` | Agent startup sampler build |
-| `platform-tracing-otel-extension/.../SamplingPolicyOtelAdapter.java` | OTel mapping + metricRuleName |
-| `platform-tracing-otel-extension/.../PlatformDropOldestExportSpanProcessor.java` | Export queue drop-oldest |
-| `platform-tracing-otel-extension/.../configuration/ExtensionDefaults.java` | DEFAULT_SAMPLING_RATIO=0.1 |
-| `platform-tracing-otel-extension/.../configuration/ExtensionPropertyNames.java` | Dual-channel sampling keys |
-| `platform-tracing-otel-extension/.../configuration/OtelSdkDefaults.java` | BSP queue 2048 |
-| `platform-tracing-otel-extension/.../jmx/PlatformTracingControlMBean.java` | Sampling JMX API |
+| `platform-tracing-otel/.../SamplingPolicyEngine.java` | 7-rule production chain; `evaluate()` loop |
+| `platform-tracing-otel/.../SamplingPolicyRule.java` | Rule SPI; null = pass |
+| `platform-tracing-otel/.../SamplingPolicySnapshot.java` | Immutable policy inputs; no rate field |
+| `platform-tracing-otel/.../SamplingPolicyDecision.java` | DROP/RECORD_AND_SAMPLE factories |
+| `platform-tracing-otel/.../SamplingPolicyReason.java` | Enum of reasons; no RATE_LIMIT |
+| `platform-tracing-otel/.../SamplingPolicyRuleNames.java` | winningRule string constants |
+| `platform-tracing-otel/.../KillSwitchPolicyRule.java` | Example stateless rule |
+| `platform-tracing-otel/.../DefaultRatioPolicyRule.java` | Terminal ratio rule |
+| `platform-tracing-otel/.../ParentSampledPolicyRule.java` | Parent context rule |
+| `platform-tracing-otel/.../SamplingPolicyEngineTest.java` | Chain order contract test |
+| `platform-tracing-otel-javaagent-extension/.../CompositeSampler.java` | final `policyEngine`; hot path |
+| `platform-tracing-otel-javaagent-extension/.../SamplerState.java` | Runtime snapshot + policySnapshot compile |
+| `platform-tracing-otel-javaagent-extension/.../SamplerStateHolder.java` | CAS updates; tryApplyPolicyUpdate |
+| `platform-tracing-otel-javaagent-extension/.../SamplerPolicyUpdate.java` | Validation + buildNext |
+| `platform-tracing-otel-javaagent-extension/.../PlatformSamplerBuilder.java` | Agent startup sampler build |
+| `platform-tracing-otel-javaagent-extension/.../SamplingPolicyOtelAdapter.java` | OTel mapping + metricRuleName |
+| `platform-tracing-otel-javaagent-extension/.../PlatformDropOldestExportSpanProcessor.java` | Export queue drop-oldest |
+| `platform-tracing-otel-javaagent-extension/.../configuration/ExtensionDefaults.java` | DEFAULT_SAMPLING_RATIO=0.1 |
+| `platform-tracing-otel-javaagent-extension/.../configuration/ExtensionPropertyNames.java` | Dual-channel sampling keys |
+| `platform-tracing-otel-javaagent-extension/.../configuration/OtelSdkDefaults.java` | BSP queue 2048 |
+| `platform-tracing-otel-javaagent-extension/.../jmx/PlatformTracingControlMBean.java` | Sampling JMX API |
 | `platform-tracing-api/.../PlatformSamplingReasons.java` | Exported/dropped reason contract |
 | `platform-tracing-spring-boot-autoconfigure/.../TracingProperties.java` | Spring sampling schema v1 |
 | `platform-tracing-spring-boot-autoconfigure/.../SamplingRuntimeConfig.java` | Runtime-mutable field list |

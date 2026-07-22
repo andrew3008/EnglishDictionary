@@ -63,7 +63,7 @@ Regression gate:
 
 Live spike подтверждает вывод §1 (semconv flags) на реальной JDBC-инструментации Agent'а.
 
-Extension smoke: [`PlatformExtensionAgentSmokeTest`](../../platform-tracing-e2e-tests/src/test/java/space/br1440/platform/tracing/e2e/smoke/PlatformExtensionAgentSmokeTest.java) использует self-contained артефакт `:platform-tracing-otel-extension:agentExtensionJar` (внутри `platform-tracing-api` + `slf4j-api`): у Agent изолированный classloader на один URL, внешние JAR из каталога не подмешиваются автоматически.
+Extension smoke: [`PlatformExtensionAgentSmokeTest`](../../platform-tracing-e2e-tests/src/test/java/space/br1440/platform/tracing/e2e/smoke/PlatformExtensionAgentSmokeTest.java) использует self-contained артефакт `:platform-tracing-otel-javaagent-extension:agentExtensionJar` (внутри `platform-tracing-api` + `slf4j-api`): у Agent изолированный classloader на один URL, внешние JAR из каталога не подмешиваются автоматически.
 
 ## Решение
 
@@ -100,15 +100,15 @@ return span.getAttribute(DB_SYSTEM_NAME_KEY) != null
 
 - `EnrichingSpanProcessor.java` — константы `DB_SYSTEM_NAME_KEY`, `DB_SYSTEM_KEY`
 - `EnrichingSpanProcessorTest.java` — тесты обоих путей
-- `platform-tracing-otel-extension` — Gradle `agentExtensionJar` (classifier `agent`) для `otel.javaagent.extensions`
+- `platform-tracing-otel-javaagent-extension` — Gradle `agentExtensionJar` (classifier `agent`) для `otel.javaagent.extensions`
 - `docs/semconv-mapping.md` — таблица SpanCategory ↔ semconv
 
 ## Deploy: артефакты extension для Agent
 
 | Артефакт Maven | Назначение |
 |----------------|------------|
-| `platform-tracing-otel-extension-{version}.jar` | SDK / unit-тесты / compileOnly |
-| `platform-tracing-otel-extension-{version}-agent.jar` | **Production:** `-Dotel.javaagent.extensions=/path/to/*-agent.jar` |
+| `platform-tracing-otel-javaagent-extension-{version}.jar` | SDK / unit-тесты / compileOnly |
+| `platform-tracing-otel-javaagent-extension-{version}-agent.jar` | **Production:** `-Dotel.javaagent.extensions=/path/to/*-agent.jar` |
 
 **Почему `-agent`, а не thin JAR:** OTel Java Agent загружает extension в **изолированный classloader с одним URL**. Thin JAR без embedded deps → `NoClassDefFoundError` (spike: `org/slf4j/LoggerFactory`). Self-contained JAR — [официальный паттерн OTel extension examples](https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/main/examples/extension/README.md) (`-all.jar` в community); classifier `agent` — эквивалент с явной Maven-семантикой.
 

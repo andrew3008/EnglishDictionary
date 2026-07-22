@@ -10,7 +10,7 @@
 
 - Финальный целевой статус: **TEST_ONLY_PROBE** — probe живёт исключительно в `platform-tracing-e2e-tests`, не попадает в production artifact.
 - Старая совместимость **намеренно удаляется**: property `platform.tracing.spike.classloader.visibility`, маркер-prefix `SPIKE_CLASSLOADER:`, old E2E-тест, launcher, Gentoo-скрипт.
-- Production spike `ClassLoaderVisibilitySpikeProbe` и пакет `factory.spike` удаляются из `platform-tracing-otel-extension/src/main`.
+- Production spike `ClassLoaderVisibilitySpikeProbe` и пакет `factory.spike` удаляются из `platform-tracing-otel-javaagent-extension/src/main`.
 - **F1** переносится в отдельный test-only extension JAR, загружаемый через `otel.javaagent.extensions` внутри дочерней JVM E2E-теста; probe реализует `AutoConfigurationCustomizerProvider` → выполняется в `ExtensionClassLoader` агента.
 - **F3** — см. §17 (отклонение от первоначального плана).
 
@@ -25,7 +25,7 @@
 ## 3. Target Architecture
 
 ```
-platform-tracing-otel-extension/src/main  → НЕТ spike-классов; нет System.err side-channel
+platform-tracing-otel-javaagent-extension/src/main  → НЕТ spike-классов; нет System.err side-channel
 platform-tracing-e2e-tests/src/testExtension/  → ClassLoaderVisibilityTestProbe.java
                                                  → META-INF/services/AutoConfigurationCustomizerProvider
 platform-tracing-e2e-tests/src/test/           → ClassLoaderVisibilityE2ETest
@@ -237,7 +237,7 @@ ClassLoaderVisibilityE2ELauncher
 | Команда | Результат |
 |---------|-----------|
 | `:platform-tracing-e2e-tests:testClassLoaderProbeJar` | ✅ BUILD SUCCESSFUL |
-| `:platform-tracing-otel-extension:test` | ✅ BUILD SUCCESSFUL |
+| `:platform-tracing-otel-javaagent-extension:test` | ✅ BUILD SUCCESSFUL |
 | `pr4ArchitectureFitnessVerify` | ✅ BUILD SUCCESSFUL |
 | `:platform-tracing-e2e-tests:test -PrunE2e --tests "*ClassLoaderVisibilityE2ETest*"` | ✅ PASSED |
 | `:platform-tracing-e2e-tests:test -PrunE2e` (full suite) | ⚠️ 17 failures — Docker/Testcontainers недоступен (pre-existing) |

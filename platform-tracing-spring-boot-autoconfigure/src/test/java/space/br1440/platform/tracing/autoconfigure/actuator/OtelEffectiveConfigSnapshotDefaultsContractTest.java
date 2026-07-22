@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.actuator;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.extension.configuration.spi.PlatformTracingDefaultsProvider;
+import space.br1440.platform.tracing.otel.javaagent.configuration.spi.PlatformTracingDefaultsProvider;
 
 import java.util.Map;
 

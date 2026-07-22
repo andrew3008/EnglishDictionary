@@ -19,7 +19,7 @@
 
 ## 1. Executive Summary
 
-**Факты по классу** (`platform-tracing-otel-extension/src/main/java/.../jmx/PlatformTracingControl.java`):
+**Факты по классу** (`platform-tracing-otel-javaagent-extension/src/main/java/.../jmx/PlatformTracingControl.java`):
 
 | Метрика | Значение |
 |---------|----------|
@@ -53,8 +53,8 @@
 
 | Поле | Значение |
 |------|----------|
-| FQCN | `space.br1440.platform.tracing.otel.extension.jmx.PlatformTracingControl` |
-| Файл | `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControl.java` |
+| FQCN | `space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingControl` |
+| Файл | `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/jmx/PlatformTracingControl.java` |
 | Реализует | `PlatformTracingControlMBean` |
 | ObjectName | `space.br1440.platform.tracing:type=Control,name=PlatformTracingControl` (константа `PlatformTracingControlMBean.OBJECT_NAME`) |
 | Поля экземпляра | `configHolder`, `compositeSampler`, `watchdog`, `composite`, `metrics`, `scrubbing`, `validating`, `exportProcessorSupplier`, `safeExporterSupplier`, `invalidConfigCounter` |
@@ -77,11 +77,11 @@
 ```text
 rg "new PlatformTracingControl" .                    (excluding build/)
 rg "PlatformTracingControl\.registerSafely" .        (excluding build/)
-rg "registerSafely\(" platform-tracing-otel-extension/src ...
+rg "registerSafely\(" platform-tracing-otel-javaagent-extension/src ...
 rg "PlatformTracingControl" .                        (excluding build/)
 rg "PlatformTracingControlMBean" .
-rg "PlatformTracingJmxRegistrar|registerMBean|ObjectName" platform-tracing-otel-extension/src
-rg "SamplerStateHolder|CompositeSampler|...|SafeSpanExporter" platform-tracing-otel-extension/src
+rg "PlatformTracingJmxRegistrar|registerMBean|ObjectName" platform-tracing-otel-javaagent-extension/src
+rg "SamplerStateHolder|CompositeSampler|...|SafeSpanExporter" platform-tracing-otel-javaagent-extension/src
 rg "Supplier<PlatformDropOldestExportSpanProcessor>|NULL_SUPPLIER|exportProcessorSupplier" ...
 rg "PlatformTracingControl\.class|getDeclaredConstructor|Class\.forName.*PlatformTracingControl"
 ```

@@ -19,7 +19,7 @@
 2. **Controlled Agent-first production model** — bytecode-инструментация и SDK принадлежат
    подписываемой Controlled Platform Agent Distribution; произвольный stock Agent,
    application SDK и `opentelemetry-spring-boot-starter` не являются поддерживаемыми runtime.
-3. **Platform-компоненты** реализуют официальные SPI (`SpanProcessor`, `Sampler`, `ResourceProvider`, `AutoConfigurationCustomizerProvider`) в модуле `platform-tracing-otel-extension`.
+3. **Platform-компоненты** реализуют официальные SPI (`SpanProcessor`, `Sampler`, `ResourceProvider`, `AutoConfigurationCustomizerProvider`) в модуле `platform-tracing-otel-javaagent-extension`.
 4. **Upstream-компоненты не форкаем:** `BatchSpanProcessor`, OTLP exporter, W3C propagators, `SdkTracerProvider` — только через официальный SDK/Agent.
 5. **Guardrails на CI:** ArchUnit (`OtelDirectIntegrationArchTest`) + Gradle task `verifyOtelBomAlignment`.
 6. Spring starter предоставляет facade/adapters/diagnostics и не создаёт `SdkTracerProvider`.

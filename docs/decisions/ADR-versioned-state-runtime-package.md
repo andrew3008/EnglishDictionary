@@ -20,16 +20,16 @@ Delete `api.runtime.state` entirely. No compatibility shims.
 
 ## Why not `api`
 
-- **Single consumer module:** only `platform-tracing-otel-extension` domain holders instantiate `VersionedStateHolder` (`SamplerStateHolder`, `ScrubbingPolicyHolder`, `ValidationPolicyHolder`).
+- **Single consumer module:** only `platform-tracing-otel-javaagent-extension` domain holders instantiate `VersionedStateHolder` (`SamplerStateHolder`, `ScrubbingPolicyHolder`, `ValidationPolicyHolder`).
 - **Application code never uses it:** autoconfigure/starters are ArchUnit-forbidden from depending on `core.runtime.versioned`.
-- **Agent visibility:** `platform-tracing-otel-extension` already depends on `platform-tracing-core`; `agentExtensionJar` embeds core classes (same pattern as `core.propagation.control`).
+- **Agent visibility:** `platform-tracing-otel-javaagent-extension` already depends on `platform-tracing-otel`; `agentExtensionJar` embeds core classes (same pattern as `core.propagation.control`).
 - **Honest taxonomy:** `platform-tracing-api` = public contracts; CAS holder is runtime implementation detail.
 
 Prior ADR rationale («dual classloader visibility via api») is obsolete after embedding core in the agent extension jar.
 
 ## Why `core.runtime.versioned` (not `core.runtime.state`)
 
-[`core.runtime.state`](../../platform-tracing-core/src/main/java/space/br1440/platform/tracing/core/runtime/state/) hosts SDK tracing runtime (`TracingState`, `TracingMode`, `ImmutableTracingState`) for `TracingRuntime` — a different domain. CAS policy snapshots use a dedicated sub-package to avoid confusion.
+[`core.runtime.state`](../../platform-tracing-otel/src/main/java/space/br1440/platform/tracing/core/runtime/state/) hosts SDK tracing runtime (`TracingState`, `TracingMode`, `ImmutableTracingState`) for `TracingRuntime` — a different domain. CAS policy snapshots use a dedicated sub-package to avoid confusion.
 
 ## Why `VersionedState` is intentionally closed (ArchUnit allowlist)
 

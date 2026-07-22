@@ -81,11 +81,11 @@ It must not become:
 
 Owns contracts.
 
-It must not depend on `platform-tracing-core`.
+It must not depend on `platform-tracing-otel`.
 
 Application-facing code should compile against API contracts, not implementation classes.
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns:
 

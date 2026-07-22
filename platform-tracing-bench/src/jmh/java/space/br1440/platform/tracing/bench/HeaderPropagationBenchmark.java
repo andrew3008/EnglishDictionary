@@ -18,7 +18,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-import space.br1440.platform.tracing.otel.extension.propagation.InboundTraceControlPropagator;
+import space.br1440.platform.tracing.otel.javaagent.propagation.InboundTraceControlPropagator;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -46,8 +46,8 @@ drop-oldest, worker, timeouts, forceFlush/shutdown), OTLP retry (SDK 1.59+), Col
 *вызов* (batch); `transport_dropped_spans` — на `spans.size()` за тот же batch. Это разделяет «один упавший сетевой
 вызов» и «N потерянных span'ов».
 
-Реализация: [`SafeSpanExporter`](../../platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/SafeSpanExporter.java),
-обёртывание в [`PlatformExportProcessorFactory.captureExporter`](../../platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/PlatformExportProcessorFactory.java)
+Реализация: [`SafeSpanExporter`](../../platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/exporter/SafeSpanExporter.java),
+обёртывание в [`PlatformExportProcessorFactory.captureExporter`](../../platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformExportProcessorFactory.java)
 (применяется и к платформенному процессору, и к stock BSP в режиме UPSTREAM).
 
 ### 2. SDK-side CircuitBreaker / BackpressureAwareExporter — НЕ реализуем
@@ -110,10 +110,10 @@ delivery-policy — зона Collector/gateway, не SDK.
 
 ## Связанные артефакты
 
-- `platform-tracing-otel-extension/.../exporter/SafeSpanExporter.java`
-- `platform-tracing-otel-extension/.../factory/PlatformExportProcessorFactory.java`
-- `platform-tracing-otel-extension/.../factory/PlatformTracingJmxRegistrar.java`
-- `platform-tracing-otel-extension/.../jmx/PlatformTracingControl.java` / `PlatformTracingControlMBean.java`
+- `platform-tracing-otel-javaagent-extension/.../exporter/SafeSpanExporter.java`
+- `platform-tracing-otel-javaagent-extension/.../factory/PlatformExportProcessorFactory.java`
+- `platform-tracing-otel-javaagent-extension/.../factory/PlatformTracingJmxRegistrar.java`
+- `platform-tracing-otel-javaagent-extension/.../jmx/PlatformTracingControl.java` / `PlatformTracingControlMBean.java`
 - `platform-tracing-spring-boot-autoconfigure/.../actuator/TracingActuatorEndpoint.java` / `OtelEnvHintsBuilder.java`
 - `platform-tracing-collector-config/.../otel-collector-gateway-tail-sampling.yaml` (политика `platform-high-priority`)
 - Тесты: `SafeSpanExporterTest`, `PlatformExportProcessorFactorySafeWrapTest`, `PlatformTracingControlTest`, `TracingActuatorEndpointTest`

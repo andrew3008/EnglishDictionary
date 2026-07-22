@@ -24,8 +24,8 @@ dependencies {
 
     // Платформенные модули, поведение которых замеряется.
     jmh project(':platform-tracing-api')
-    jmh project(':platform-tracing-core')
-    jmh project(':platform-tracing-otel-extension')
+    jmh project(':platform-tracing-otel')
+    jmh project(':platform-tracing-otel-javaagent-extension')
 
     // OpenTelemetry SDK для построения тестового pipeline'а в бенчмарках.
     jmh 'io.opentelemetry:opentelemetry-sdk'
@@ -38,8 +38,8 @@ dependencies {
     // Контракт-тесты Фазы 17: performance-budgets.yaml (governance) и fixtures
     // ScrubbingEngineBenchmark (защита от тихого дрейфа hit-путей правил).
     testImplementation project(':platform-tracing-api')
-    testImplementation project(':platform-tracing-core')
-    testImplementation project(':platform-tracing-otel-extension')
+    testImplementation project(':platform-tracing-otel')
+    testImplementation project(':platform-tracing-otel-javaagent-extension')
     testImplementation 'org.yaml:snakeyaml'
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'

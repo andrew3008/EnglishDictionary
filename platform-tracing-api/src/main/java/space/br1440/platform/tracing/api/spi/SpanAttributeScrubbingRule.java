@@ -6,7 +6,7 @@ import jakarta.annotation.Nullable;
 /**
  * Правило обнаружения чувствительных данных в значениях атрибутов span'ов.
  * <p>
- * Применяется {@code ScrubbingSpanProcessor} в модуле {@code platform-tracing-otel-extension}
+ * Применяется {@code ScrubbingSpanProcessor} в модуле {@code platform-tracing-otel-javaagent-extension}
  * до экспорта span'а. Правила выполняются в порядке возрастания {@link #priority()} по модели
  * «накопить и свести» (accumulate-and-merge): расширение OpenTelemetry обходит все применимые правила и сводит их
  * решения по строгости (KEEP &lt; TRUNCATE &lt; HASH &lt; MASK &lt; DROP).

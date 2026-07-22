@@ -33,7 +33,7 @@ It must not own:
 
 The API module must not depend on core.
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns implementation and domain/runtime behavior.
 
@@ -98,7 +98,7 @@ It must not depend on servlet adapter types.
 
 Shared framework-neutral behavior belongs in API/core/autoconfigure only when it is genuinely neutral.
 
-### `platform-tracing-otel-extension`
+### `platform-tracing-otel-javaagent-extension`
 
 Owns:
 
@@ -139,12 +139,12 @@ Production modules must not depend on them.
 ## Expected Dependency Direction
 
 ```text
-platform-tracing-core
+platform-tracing-otel
     -> platform-tracing-api
 
 platform-tracing-spring-boot-autoconfigure
     -> platform-tracing-api
-    -> platform-tracing-core
+    -> platform-tracing-otel
 
 platform-tracing-autoconfigure-webmvc
     -> approved api/core/autoconfigure modules
@@ -152,7 +152,7 @@ platform-tracing-autoconfigure-webmvc
 platform-tracing-autoconfigure-webflux
     -> approved api/core/autoconfigure modules
 
-platform-tracing-otel-extension
+platform-tracing-otel-javaagent-extension
     -> approved api/core modules
     -> OTel integration artifacts
 
@@ -165,8 +165,8 @@ test/samples/bench/e2e
 
 Forbidden:
 
-- `platform-tracing-api -> platform-tracing-core`
-- `platform-tracing-core -> Spring Boot auto-configuration`
+- `platform-tracing-api -> platform-tracing-otel`
+- `platform-tracing-otel -> Spring Boot auto-configuration`
 - servlet adapter -> WebFlux adapter
 - WebFlux adapter -> servlet adapter
 - production module -> test/sample/e2e module

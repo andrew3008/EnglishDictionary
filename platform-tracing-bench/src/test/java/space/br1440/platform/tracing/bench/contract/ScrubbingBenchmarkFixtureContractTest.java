@@ -6,10 +6,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.extension.scrubbing.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingSnapshot;
-import space.br1440.platform.tracing.otel.extension.scrubbing.engine.MergeEngine;
-import space.br1440.platform.tracing.otel.extension.scrubbing.engine.RuleExecutionWrapper;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
 
 import java.util.ArrayList;
 import java.util.List;

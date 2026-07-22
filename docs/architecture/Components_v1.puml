@@ -1,11 +1,11 @@
-@startuml platform-tracing-otel-extension-architecture
-title platform-tracing-otel-extension — архитектура Gradle-модуля
+@startuml platform-tracing-otel-javaagent-extension-architecture
+title platform-tracing-otel-javaagent-extension — архитектура Gradle-модуля
 
 skinparam componentStyle rectangle
 skinparam defaultFontSize 12
 
 package "Сборка (Gradle)" {
-  [platform-tracing-otel-extension\nJAR artifact] as jar
+  [platform-tracing-otel-javaagent-extension\nJAR artifact] as jar
   note right of jar
     **Manifest**
     • OpenTelemetry-Extension: true
@@ -47,8 +47,8 @@ end note
 @enduml
 
 
-@startuml platform-tracing-otel-extension-classes
-title platform-tracing-otel-extension — основные классы и связи
+@startuml platform-tracing-otel-javaagent-extension-classes
+title platform-tracing-otel-javaagent-extension — основные классы и связи
 
 skinparam classAttributeIconSize 0
 
@@ -220,7 +220,7 @@ end note
 @enduml
 
 
-@startuml platform-tracing-otel-extension-sampling-flow
+@startuml platform-tracing-otel-javaagent-extension-sampling-flow
 title CompositeSampler — порядок решений shouldSample()
 
 start
@@ -247,7 +247,7 @@ end note
 @enduml
 
 
-@startuml platform-tracing-otel-extension-bootstrap-seq
+@startuml platform-tracing-otel-javaagent-extension-bootstrap-seq
 title Упрощённая последовательность инициализации (AutoConfigurationCustomizer)
 
 actor "Java Agent" as ja

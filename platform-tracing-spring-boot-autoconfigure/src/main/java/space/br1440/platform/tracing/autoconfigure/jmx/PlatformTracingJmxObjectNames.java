@@ -5,7 +5,7 @@ import javax.management.ObjectName;
 
 /**
  * Дублирует канонические строки ObjectName из {@code PlatformTracingObjectNames} модуля
- * {@code platform-tracing-otel-extension}. Модули работают в разных classloader'ах —
+ * {@code platform-tracing-otel-javaagent-extension}. Модули работают в разных classloader'ах —
  * дублирование намеренно; их совпадение гарантируется тестом {@code ObjectNameConsistencyTest}.
  */
 public final class PlatformTracingJmxObjectNames {

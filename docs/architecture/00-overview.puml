@@ -104,7 +104,7 @@ package "Application Plane  ·  Spring Boot 3.x  ·  Java 21" as APP {
 
   package "OpenTelemetry runtime" as OTEL_RT {
     component "**OpenTelemetry**\n**Java Agent**"                     as AGENT
-    component "**platform-tracing-otel-extension**\nbootstrap classloader" as EXT #DBEAFE
+    component "**platform-tracing-otel-javaagent-extension**\nbootstrap classloader" as EXT #DBEAFE
     component "**OpenTelemetryAppender**\nMDC writer (camelCase)"    as OTEL_MDC #DCFCE7
   }
 }

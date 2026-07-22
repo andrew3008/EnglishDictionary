@@ -36,7 +36,7 @@ The tracing platform uses explicit ownership boundaries:
 ```text
 application code
     -> platform-tracing-api
-    -> platform-tracing-core
+    -> platform-tracing-otel
     -> Spring / Web / OTel / JMX adapters
     -> external runtime and telemetry infrastructure
 ```
@@ -71,7 +71,7 @@ The API module must not depend on core.
 
 ## Core Boundary
 
-`platform-tracing-core` owns:
+`platform-tracing-otel` owns:
 
 - implementations of public contracts
 - runtime behavior
@@ -164,12 +164,12 @@ A starter may select the intended integration path and dependencies only.
 ## Expected Dependency Direction
 
 ```text
-platform-tracing-core
+platform-tracing-otel
     -> platform-tracing-api
 
 platform-tracing-spring-boot-autoconfigure
     -> platform-tracing-api
-    -> platform-tracing-core
+    -> platform-tracing-otel
 
 platform-tracing-autoconfigure-webmvc
     -> approved API/core/autoconfigure modules
@@ -177,7 +177,7 @@ platform-tracing-autoconfigure-webmvc
 platform-tracing-autoconfigure-webflux
     -> approved API/core/autoconfigure modules
 
-platform-tracing-otel-extension
+platform-tracing-otel-javaagent-extension
     -> approved API/core modules
 
 starters

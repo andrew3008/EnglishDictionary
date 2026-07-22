@@ -114,7 +114,7 @@ tasks.register("publishAllToMavenLocal") {
 def c3PublishedProjects = [
         ':platform-tracing-bom',
         ':platform-tracing-api',
-        ':platform-tracing-core',
+        ':platform-tracing-otel',
         ':platform-tracing-spring-boot-autoconfigure',
         ':platform-tracing-autoconfigure-webmvc',
         ':platform-tracing-spring-boot-starter-servlet'
@@ -229,8 +229,8 @@ gradle.projectsEvaluated {
 
 def pr0SnapshotModules = [
         'platform-tracing-api',
-        'platform-tracing-core',
-        'platform-tracing-otel-extension',
+        'platform-tracing-otel',
+        'platform-tracing-otel-javaagent-extension',
         'platform-tracing-spring-boot-autoconfigure',
         'platform-tracing-autoconfigure-webmvc',
         'platform-tracing-autoconfigure-webflux',
@@ -360,14 +360,14 @@ tasks.register('pr0StarterDependencySmoke') {
         assertStarter(
                 'platform-tracing-spring-boot-starter-servlet',
                 ['platform-tracing-spring-boot-autoconfigure', 'platform-tracing-autoconfigure-webmvc'] as Set,
-                ['platform-tracing-autoconfigure-webflux', 'platform-tracing-otel-extension'] as Set,
-                ['platform-tracing-otel-extension'] as Set
+                ['platform-tracing-autoconfigure-webflux', 'platform-tracing-otel-javaagent-extension'] as Set,
+                ['platform-tracing-otel-javaagent-extension'] as Set
         )
         assertStarter(
                 'platform-tracing-spring-boot-starter-reactive',
                 ['platform-tracing-spring-boot-autoconfigure', 'platform-tracing-autoconfigure-webflux'] as Set,
-                ['platform-tracing-autoconfigure-webmvc', 'platform-tracing-otel-extension'] as Set,
-                ['platform-tracing-otel-extension'] as Set
+                ['platform-tracing-autoconfigure-webmvc', 'platform-tracing-otel-javaagent-extension'] as Set,
+                ['platform-tracing-otel-javaagent-extension'] as Set
         )
 
         def reportDir = layout.projectDirectory.dir('docs/architecture/baselines/pr-0').asFile
@@ -380,7 +380,7 @@ Git: ${pr0GitShaProvider.get()}
 Expectations verified:
 - platform-tracing-spring-boot-starter-servlet → autoconfigure + webmvc (not webflux, not otel-extension)
 - platform-tracing-spring-boot-starter-reactive → autoconfigure + webflux (not webmvc, not otel-extension)
-- platform-tracing-otel-extension not on application classpath via either starter
+- platform-tracing-otel-javaagent-extension not on application classpath via either starter
 
 Consumer rule (documented, not enforced here):
 - Application teams: BOM + exactly one starter
@@ -413,6 +413,56 @@ tasks.register('pr0BaselineLock') {
     }
 }
 
+def sliceJActiveRenameFiles = files(fileTree(rootDir) {
+    include 'settings.gradle'
+    include 'build.gradle'
+    include 'gradle/**/*.gradle'
+    include 'gradle/**/*.java'
+    include '*/build.gradle'
+    include '*/src/**/*.java'
+    include '*/src/**/*.properties'
+    include '*/src/**/*.xml'
+    include '*/src/**/*.yml'
+    include '*/src/**/*.yaml'
+    include '*/src/**/*.json'
+    include '*/src/**/META-INF/services/*'
+    include 'README.md'
+    include 'docs/control-protocol-wire-spec-v1.md'
+    include 'docs/decisions/**'
+    include 'docs/architecture_target/**'
+    include 'platform-tracing-otel/docs/adr/**'
+    exclude '**/build/**'
+})
+
+tasks.register('sliceJStaleNameVerify') {
+    group = 'verification'
+    description = 'Rejects stale Slice J artifact, project and Agent package names in active files.'
+    inputs.files(sliceJActiveRenameFiles)
+
+    doLast {
+        // Строки собраны частями, чтобы проверка не находила собственные сигнатуры.
+        def staleNames = [
+                'platform-tracing-' + 'core',
+                'platform-tracing-otel-' + 'extension',
+                'space.br1440.platform.tracing.otel.' + 'extension',
+                'space/br1440/platform/tracing/otel/' + 'extension',
+        ]
+        def violations = []
+        inputs.files.files.findAll { it.isFile() }.sort { it.path }.each { file ->
+            String content = file.getText('UTF-8')
+            staleNames.each { staleName ->
+                if (content.contains(staleName)) {
+                    violations.add("${rootDir.toPath().relativize(file.toPath())}: ${staleName}")
+                }
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException("Slice J stale-name verification failed:\n${violations.join('\n')}")
+        }
+        logger.lifecycle('Slice J stale-name verification passed')
+    }
+}
+
 // ---------------------------------------------------------------------------------------------
 // PR-1 — Module taxonomy verification (docs/architecture/platform-tracing-module-taxonomy.md).
 // ArchUnit guardrails + starter smoke; no production code changes.
@@ -421,12 +471,13 @@ tasks.register('pr0BaselineLock') {
 tasks.register('pr1ModuleTaxonomyVerify') {
     group = 'pr1'
     description = 'Runs PR-1 module taxonomy ArchUnit guardrails and starter dependency smoke.'
+    dependsOn 'sliceJStaleNameVerify'
     dependsOn 'pr0StarterDependencySmoke'
     dependsOn ':platform-tracing-spring-boot-autoconfigure:test'
     dependsOn ':platform-tracing-autoconfigure-webmvc:test'
     dependsOn ':platform-tracing-autoconfigure-webflux:test'
-    dependsOn ':platform-tracing-core:test'
-    dependsOn ':platform-tracing-otel-extension:test'
+    dependsOn ':platform-tracing-otel:test'
+    dependsOn ':platform-tracing-otel-javaagent-extension:test'
     dependsOn ':platform-tracing-test:test'
 }
 

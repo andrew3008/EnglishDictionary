@@ -14,9 +14,9 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.otel.extension.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.extension.sampler.SamplerState;
-import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerState;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
 
 import java.time.Instant;
 import java.util.List;

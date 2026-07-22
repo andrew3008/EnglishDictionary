@@ -6,14 +6,14 @@
 | Дата | 2026-05-25 |
 | Версия | v1.x (opt-in) |
 | Связанный finding | [ADR-bsp-overflow-policy-finding.md](ADR-bsp-overflow-policy-finding.md) (v0.1.0 — stock BSP = drop-new) |
-| SPI spike | [`BspReplacementSpikeTest`](../../platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/spike/BspReplacementSpikeTest.java) |
+| SPI spike | [`BspReplacementSpikeTest`](../../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java) |
 | Plan | `bsp_drop_oldest_v1.x_d5717054.plan.md` |
 
 ## Контекст
 
 Платформа в v0.1.0 заявляет `TracingProperties.Queue.OverflowPolicy.DROP_OLDEST` как desired policy,
 но стандартный `BatchSpanProcessor` SDK 1.61.0 фактически реализует **drop-new** (подтверждено
-[`BatchSpanProcessorOverflowPolicyProbeTest`](../../platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/bsp/BatchSpanProcessorOverflowPolicyProbeTest.java)).
+[`BatchSpanProcessorOverflowPolicyProbeTest`](../../platform-tracing-otel/src/test/java/space/br1440/platform/tracing/core/bsp/BatchSpanProcessorOverflowPolicyProbeTest.java)).
 Это расхождение зафиксировано в [ADR-bsp-overflow-policy-finding.md](ADR-bsp-overflow-policy-finding.md)
 с переформулировкой требования до `bounded-queue-with-drop` для v0.1.0.
 

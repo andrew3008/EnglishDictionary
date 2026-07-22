@@ -56,7 +56,7 @@ Must not depend on:
 - OpenTelemetry SDK implementation
 - application runtime infrastructure
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns:
 
@@ -107,7 +107,7 @@ Do not introduce cross-dependencies between servlet and reactive adapters.
 
 Shared behavior belongs in API/core/autoconfigure only when it is genuinely framework-neutral.
 
-### `platform-tracing-otel-extension`
+### `platform-tracing-otel-javaagent-extension`
 
 Owns:
 

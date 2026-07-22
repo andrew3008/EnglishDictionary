@@ -2,7 +2,7 @@
 
 > **Статус:** Information gathering only — без рефакторинга, без изменений Java-кода  
 > **Дата:** 2026-06-16  
-> **Пакет:** `space.br1440.platform.tracing.otel.extension.configuration`  
+> **Пакет:** `space.br1440.platform.tracing.otel.javaagent.configuration`
 > **Фокус:** `ExtensionConfig` и смежные agent-side configuration types  
 > **Цель:** входные данные для Perplexity / Claude Sonnet Deep Research — сравнение 8 архитектурных вариантов со scoring
 
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-Пакет `space.br1440.platform.tracing.otel.extension.configuration` — agent-side слой конфигурации OTel Java Agent extension. Он содержит **11 production-классов** (constants, defaults, enums, env-bridge, OTel SDK defaults, facade) и **5 test-классов**.
+Пакет `space.br1440.platform.tracing.otel.javaagent.configuration` — agent-side слой конфигурации OTel Java Agent extension. Он содержит **11 production-классов** (constants, defaults, enums, env-bridge, OTel SDK defaults, facade) и **5 test-классов**.
 
 **Ключевое наблюдение (repository evidence):** `ExtensionConfig` — публичный typed facade над `ConfigProperties`, но **не используется ни одним production-классом**. Все factories (`PlatformSpanProcessorFactory`, `PlatformSamplerBuilder`, `PlatformExportProcessorFactory`, resource providers) читают `ExtensionPropertyNames` + `ExtensionDefaults` напрямую через `ConfigProperties`.
 
@@ -20,7 +20,7 @@
 
 **Runtime mutability:** большинство свойств, читаемых через `ExtensionConfig`, — **startup-only**. Runtime-mutable subset sampling/scrubbing/validation управляется через JMX/`RuntimeConfigApplier`, не через повторное чтение `ExtensionConfig`.
 
-**Arch constraint:** `platform-tracing-otel-extension` **не должен** зависеть от Spring (`ExtensionNoSpringDependencyArchTest`).
+**Arch constraint:** `platform-tracing-otel-javaagent-extension` **не должен** зависеть от Spring (`ExtensionNoSpringDependencyArchTest`).
 
 ---
 
@@ -49,7 +49,7 @@
 
 | Class | Path | Responsibility | Visibility | Main dependencies | Main users | Tests | Risk |
 |---|---|---|---|---|---|---|---|
-| `ExtensionConfig` | `platform-tracing-otel-extension/src/main/java/.../configuration/ExtensionConfig.java` | Typed facade: 11 nested sections читают `ConfigProperties` | public | `ConfigProperties`, `ExtensionPropertyNames`, `ExtensionDefaults` | **NOT FOUND IN REPOSITORY (production)**; только `ExtensionConfigTest` | `ExtensionConfigTest` | **HIGH** — facade drift vs factories |
+| `ExtensionConfig` | `platform-tracing-otel-javaagent-extension/src/main/java/.../configuration/ExtensionConfig.java` | Typed facade: 11 nested sections читают `ConfigProperties` | public | `ConfigProperties`, `ExtensionPropertyNames`, `ExtensionDefaults` | **NOT FOUND IN REPOSITORY (production)**; только `ExtensionConfigTest` | `ExtensionConfigTest` | **HIGH** — facade drift vs factories |
 | `ExtensionPropertyNames` | `.../ExtensionPropertyNames.java` | Stable string keys `platform.tracing.*` (+ `otel.javaagent.extensions`) | public | JDK only | All agent factories, tests, Spring actuator diagnostics | косвенно через integration tests | **HIGH** — external contract |
 | `ExtensionDefaults` | `.../ExtensionDefaults.java` | Platform default values for agent properties | public | `PlatformHeaders`, `BuiltInSpanAttributeScrubbingRules` | Factories, `ExtensionConfig`, tests | `ExtensionConfigTest`, `ExtensionEnumsTest`, `SharedDefaultsAlignmentTest` (partial) | **HIGH** — default drift breaks startup |
 | `ExtensionEnums` | `.../ExtensionEnums.java` | Typed string enums (queue, scrubbing, sdk mode) | public | JDK only | `PlatformSpanProcessorFactory`, `PlatformExportProcessorFactory` | `ExtensionEnumsTest` | MEDIUM |
@@ -411,7 +411,7 @@ public final class ExtensionConfig {
 
 **What would preserve:** Public `ExtensionConfig` API; test structure mostly intact.
 
-**Modules likely touched:** `platform-tracing-otel-extension` only.
+**Modules likely touched:** `platform-tracing-otel-javaagent-extension` only.
 
 **Expected complexity:** Low–medium.
 
@@ -575,14 +575,14 @@ Attach to Perplexity / Deep Research together with this dossier:
 
 **Primary source files:**
 
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfig.java`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionPropertyNames.java`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionDefaults.java`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/PlatformTracingDefaultsProvider.java`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/PlatformSpanProcessorFactory.java`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/sampler/PlatformSamplerBuilder.java`
-- `platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/PlatformExportProcessorFactory.java`
-- `platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/configuration/ExtensionConfigTest.java`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfig.java`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/PlatformTracingDefaultsProvider.java`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformSpanProcessorFactory.java`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/sampler/PlatformSamplerBuilder.java`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformExportProcessorFactory.java`
+- `platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java`
 
 **Spring / runtime boundary:**
 
@@ -596,7 +596,7 @@ Attach to Perplexity / Deep Research together with this dossier:
 - `docs/decisions/ADR-dual-channel-properties-v0.1.md`
 - `docs/tracing/runtime-policy-control-architecture.md`
 - `docs/architecture/platform-tracing-preservation-first-migration-plan.md` (configuration row)
-- `platform-tracing-otel-extension/src/test/java/space/br1440/platform/tracing/otel/extension/arch/ExtensionNoSpringDependencyArchTest.java`
+- `platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/arch/ExtensionNoSpringDependencyArchTest.java`
 
 ---
 
@@ -609,8 +609,8 @@ rg "ExtensionConfig" --glob "*.java"
 rg "new ExtensionConfig" --glob "*.java"
 rg "ExtensionPropertyNames" --glob "*.java"
 rg "ExtensionDefaults" --glob "*.java"
-rg "ConfigProperties" platform-tracing-otel-extension platform-tracing-core platform-tracing-spring-boot-autoconfigure
-rg "platform\.tracing\." platform-tracing-otel-extension/src/main/java
+rg "ConfigProperties" platform-tracing-otel-javaagent-extension platform-tracing-otel platform-tracing-spring-boot-autoconfigure
+rg "platform\.tracing\." platform-tracing-otel-javaagent-extension/src/main/java
 rg "updateSamplingPolicy|RuntimeConfigApplier|PlatformTracingControlMBean|SamplingRuntimeConfig" .
 rg "TracingProperties" platform-tracing-spring-boot-autoconfigure
 rg "ArchUnit|ArchitectureFitness|ExtensionNoSpring" .
@@ -621,7 +621,7 @@ glob "**/otel/extension/configuration/*.java"
 
 - `ExtensionConfig` production usages: **0 files** (only definition + test)
 - `ExtensionPropertyNames` production usages: **15+ files** across otel-extension and spring-autoconfigure diagnostics
-- Configuration package Java sources: **11 main + 6 test** files under `platform-tracing-otel-extension/.../configuration/`
+- Configuration package Java sources: **11 main + 6 test** files under `platform-tracing-otel-javaagent-extension/.../configuration/`
 
 ---
 

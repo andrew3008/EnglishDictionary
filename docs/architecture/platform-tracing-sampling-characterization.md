@@ -6,7 +6,7 @@ Freeze **current** `CompositeSampler` rule-chain behavior before PR-6 extraction
 
 ## Scope of PR-5A
 
-- Test-only changes in `platform-tracing-otel-extension` and `platform-tracing-test`
+- Test-only changes in `platform-tracing-otel-javaagent-extension` and `platform-tracing-test`
 - Reusable harness helpers (`SamplingDecisionCase`, `SamplingContextFactory`, `SamplingAssertions`)
 - Documentation of actual rule order and decision matrix
 - No production code moves or behavior changes

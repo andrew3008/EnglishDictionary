@@ -36,7 +36,7 @@ public final class ArchitectureFitnessArchRules {
             .that().resideInAPackage(PROTOCOL_PACKAGE)
             .should().dependOnClassesThat().resideInAnyPackage(
                     "space.br1440.platform.tracing.core..",
-                    "space.br1440.platform.tracing.otel.extension..",
+                    "space.br1440.platform.tracing.otel.javaagent..",
                     "space.br1440.platform.tracing.autoconfigure..")
             .because("control protocol in api must not reference core/otel-extension/autoconfigure implementation types");
 

@@ -14,7 +14,7 @@
 ## 2. Current Evidence
 
 **Расположение:**
-`platform-tracing-otel-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/PlatformPropagatorFactory.java`
+`platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformPropagatorFactory.java`
 
 **Метод:**
 ```java
@@ -38,13 +38,13 @@ propagator.getClass().getName().contains("W3CBaggagePropagator")
 
 **`BaggagePropagatorTypeDetector`**
 - Ответственность: единственная точка знания о конкретном типе `W3CBaggagePropagator`.
-- Пакет: `space.br1440.platform.tracing.otel.extension.propagation`
+- Пакет: `space.br1440.platform.tracing.otel.javaagent.propagation`
 - Видимость: package-private final (используется только из `BaggagePropagationCustomizer` в том же пакете).
 - Метод: `static boolean isW3cBaggagePropagator(TextMapPropagator propagator)` — `instanceof W3CBaggagePropagator`.
 
 **`BaggagePropagationCustomizer`**
 - Ответственность: решение «оборачивать или пропускать» на основе типа и конфигурации.
-- Пакет: `space.br1440.platform.tracing.otel.extension.propagation`
+- Пакет: `space.br1440.platform.tracing.otel.javaagent.propagation`
 - Видимость: public final.
 - Метод: `public TextMapPropagator apply(TextMapPropagator propagator, ConfigProperties config)`.
 - Не импортирует `W3CBaggagePropagator` напрямую — делегирует в `BaggagePropagatorTypeDetector`.
@@ -111,14 +111,14 @@ propagator.getClass().getName().contains("W3CBaggagePropagator")
 
 ## 9. Architecture Guardrail Plan
 
-ArchUnit уже используется в проекте (7 тест-файлов в `platform-tracing-otel-extension`).
+ArchUnit уже используется в проекте (7 тест-файлов в `platform-tracing-otel-javaagent-extension`).
 
 Добавлен новый `PropagationBoundaryArchTest` с двумя правилами:
 
 **G-PROP-1 — `no_class_getName_in_production`:**
 ```java
 noClasses()
-    .that().resideInAPackage("space.br1440.platform.tracing.otel.extension..")
+    .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
     .should().callMethodWhere(/* java.lang.Class.getName() */)
     .because("Class.getName().contains(...) — хрупкое строковое определение типа")
 ```
@@ -126,7 +126,7 @@ noClasses()
 **G-PROP-2 — `only_detector_depends_on_w3c_baggage_propagator`:**
 ```java
 noClasses()
-    .that().resideInAPackage("space.br1440.platform.tracing.otel.extension..")
+    .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
     .and().doNotHaveSimpleName("BaggagePropagatorTypeDetector")
     .should().dependOnClassesThat()
     .haveFullyQualifiedName("io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator")
@@ -150,13 +150,13 @@ noClasses()
 ## 11. Validation Commands
 
 ```bash
-./gradlew :platform-tracing-otel-extension:test --continue
+./gradlew :platform-tracing-otel-javaagent-extension:test --continue
 ./gradlew pr4ArchitectureFitnessVerify --continue
 ```
 
 Целевые тест-классы:
 ```bash
-./gradlew :platform-tracing-otel-extension:test \
+./gradlew :platform-tracing-otel-javaagent-extension:test \
   --tests "*.BaggagePropagatorTypeDetectorTest" \
   --tests "*.BaggagePropagationCustomizerTest" \
   --tests "*.PropagationBoundaryArchTest"
@@ -166,8 +166,8 @@ noClasses()
 
 ```bash
 rg "PlatformPropagatorFactory" .
-rg "\"W3CBaggagePropagator\"" platform-tracing-otel-extension/src/main/java
-rg "getClass\(\)\.getName\(\).*contains|getName\(\)\.contains" platform-tracing-otel-extension/src/main/java
+rg "\"W3CBaggagePropagator\"" platform-tracing-otel-javaagent-extension/src/main/java
+rg "getClass\(\)\.getName\(\).*contains|getName\(\)\.contains" platform-tracing-otel-javaagent-extension/src/main/java
 rg "BaggagePropagationCustomizer|BaggagePropagatorTypeDetector" .
 ```
 

@@ -56,7 +56,7 @@ Verification after the fix:
 
 ```powershell
 $env:DOCKER_HOST = "tcp://192.168.100.70:2375"
-.\gradlew.bat :platform-tracing-otel-extension:test --tests "space.br1440.platform.tracing.otel.extension.sampler.PlatformSamplerProviderTest" --tests "space.br1440.platform.tracing.otel.extension.sampler.SamplingPolicyDecisionOtelAdapterTest" --tests "space.br1440.platform.tracing.otel.extension.PlatformAutoConfigurationCustomizerTest" --no-daemon --info
+.\gradlew.bat :platform-tracing-otel-javaagent-extension:test --tests "space.br1440.platform.tracing.otel.javaagent.sampler.PlatformSamplerProviderTest" --tests "space.br1440.platform.tracing.otel.javaagent.sampler.SamplingPolicyDecisionOtelAdapterTest" --tests "space.br1440.platform.tracing.otel.javaagent.PlatformAutoConfigurationCustomizerTest" --no-daemon --info
 .\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --tests "space.br1440.platform.tracing.e2e.smoke.ForceSamplingAgentSmokeTest" --no-daemon --info --rerun-tasks
 .\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --tests "space.br1440.platform.tracing.e2e.smoke.ForceSamplingAgentSmokeTest" --tests "space.br1440.platform.tracing.e2e.smoke.PlatformSpiAgentSmokeTest" --tests "space.br1440.platform.tracing.e2e.smoke.RuntimeSamplingControlSmokeTest" --no-daemon --info --rerun-tasks
 .\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --tests "space.br1440.platform.tracing.e2e.smoke.DbSemconvAgentSmokeTest" --tests "space.br1440.platform.tracing.e2e.smoke.PlatformExtensionAgentSmokeTest" --tests "space.br1440.platform.tracing.e2e.smoke.ResourceIdentityAgentSmokeE2ETest" --tests "space.br1440.platform.tracing.e2e.smoke.ReactorContextPropagationAgentE2ETest" --no-daemon --info --rerun-tasks
@@ -279,7 +279,7 @@ docker run --rm hello-world
 Gradle передаёт в тестовую JVM (см. `platform-tracing-e2e-tests/build.gradle`):
 
 - `-Dotel.javaagent.jar=...` — OTel Java Agent 2.28.x
-- `-Dsmoke.otel.extension.jar=...` — `platform-tracing-otel-extension-*-agent.jar`
+- `-Dsmoke.otel.extension.jar=...` — `platform-tracing-otel-javaagent-extension-*-agent.jar`
 - `-Dsmoke.test.runtime.classpath=...` — classpath дочерних JVM smoke-тестов
 - `-Dsmoke.custom.rule.jar=...`, `-Dsmoke.test.classloader.probe.extension.jar=...`, `-Dsmoke.jmx.wire.extension.jar=...`
 
@@ -425,7 +425,7 @@ $env:DOCKER_HOST = "tcp://192.168.100.70:2375"
 | Поле | Значение |
 | --- | --- |
 | Метод | `agent_with_extension_выставляет_platform_type_database()` |
-| Цепочка | Agent + `platform-tracing-otel-extension` JAR → PostgreSQL JDBC → OTLP/HTTP → Jaeger |
+| Цепочка | Agent + `platform-tracing-otel-javaagent-extension` JAR → PostgreSQL JDBC → OTLP/HTTP → Jaeger |
 | Sampler | `OTEL_TRACES_SAMPLER=always_on` (env) |
 | Assert | JDBC span с `db.system`/`db.system.name` + `platform.trace.type=database` |
 | Ошибка | `Optional empty` — span не найден в Jaeger за 30 с |
@@ -438,7 +438,7 @@ $env:DOCKER_HOST = "tcp://192.168.100.70:2375"
 
 - `platform-tracing-e2e-tests/.../smoke/PlatformExtensionAgentSmokeTest.java`
 - `platform-tracing-e2e-tests/.../support/AgentJdbcSmokeProcessRunner.java`
-- `platform-tracing-otel-extension/` — `EnrichingSpanProcessor`, SPI sampler
+- `platform-tracing-otel-javaagent-extension/` — `EnrichingSpanProcessor`, SPI sampler
 
 ---
 
