@@ -2,10 +2,10 @@
 
 ## 1. Executive Summary
 
-- **Расположение контракта ключей:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/SpanExporterMetrics.java` — `@UtilityClass` с 9 `public static final String` константами.
+- **Расположение контракта ключей:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/exporter/SpanExporterMetrics.java` — `@UtilityClass` с 9 `public static final String` константами.
 - **Текущие metric keys (значения строк):** `batches`, `failures`, `exported`, `dropped`, `flush_failures`, `shutdown_failures`, `last_export_duration_nanos`, `gated`, `export_enabled`.
 - **Тип метрик по фактам репозитория:** это **не** зарегистрированные OpenTelemetry metric instruments и **не** Micrometer/Prometheus meters для этих ключей. Это **internal snapshot keys** в `Map<String, Long>`, формируемые `SafeSpanExporter.metricsSnapshot()` и читаемые через JMX/actuator.
-- **Главный producer:** `space.br1440.platform.tracing.otel.extension.exporter.SafeSpanExporter` — поля `LongAdder` / `AtomicLong` / `AtomicBoolean`, агрегация в `metricsSnapshot()` через константы `SpanExporterMetrics`.
+- **Главный producer:** `space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter` — поля `LongAdder` / `AtomicLong` / `AtomicBoolean`, агрегация в `metricsSnapshot()` через константы `SpanExporterMetrics`.
 - **Главные consumers (production):**
   - `PlatformTracingControl.getSafeExporterMetrics()` → JMX-атрибут `SafeExporterMetrics`;
   - `SamplingControlClient.getExportMetrics()` → вложенная карта `export.safeExporter` в `GET /actuator/tracing`.
@@ -26,9 +26,9 @@
 
 ### Inspected source roots
 
-- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/`
-- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/`
-- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/exporter/`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/jmx/`
+- `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/`
 - `platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/sampling/`
 - `platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/actuator/`
 - `platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/metrics/` (проверка отсутствия binder для SafeSpanExporter keys)

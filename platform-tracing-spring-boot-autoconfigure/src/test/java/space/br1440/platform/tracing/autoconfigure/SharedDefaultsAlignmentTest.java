@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.extension.configuration.spi.DropOldestExportProcessorDefaults;
+import space.br1440.platform.tracing.otel.javaagent.configuration.spi.DropOldestExportProcessorDefaults;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

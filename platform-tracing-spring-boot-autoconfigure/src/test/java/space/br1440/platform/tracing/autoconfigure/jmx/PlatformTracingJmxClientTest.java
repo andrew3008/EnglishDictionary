@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.autoconfigure.jmx;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.extension.jmx.PlatformTracingObjectNames;
-import space.br1440.platform.tracing.otel.extension.jmx.sampling.PlatformSamplingControl;
-import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
 
 import javax.management.MBeanServer;
 import javax.management.RuntimeMBeanException;

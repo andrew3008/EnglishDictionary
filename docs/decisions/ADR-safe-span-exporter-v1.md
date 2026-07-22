@@ -46,8 +46,8 @@ drop-oldest, worker, timeouts, forceFlush/shutdown), OTLP retry (SDK 1.59+), Col
 *вызов* (batch); `transport_dropped_spans` — на `spans.size()` за тот же batch. Это разделяет «один упавший сетевой
 вызов» и «N потерянных span'ов».
 
-Реализация: [`SafeSpanExporter`](../../platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/exporter/SafeSpanExporter.java),
-обёртывание в [`PlatformExportProcessorFactory.captureExporter`](../../platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/PlatformExportProcessorFactory.java)
+Реализация: [`SafeSpanExporter`](../../platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/exporter/SafeSpanExporter.java),
+обёртывание в [`PlatformExportProcessorFactory.captureExporter`](../../platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformExportProcessorFactory.java)
 (применяется и к платформенному процессору, и к stock BSP в режиме UPSTREAM).
 
 ### 2. SDK-side CircuitBreaker / BackpressureAwareExporter — НЕ реализуем

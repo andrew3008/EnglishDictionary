@@ -42,7 +42,7 @@ This document exists to prevent loss of existing implementation, tests, benchmar
 | Group | Modules |
 |-------|---------|
 | **Public consumption** | `platform-tracing-bom`, `platform-tracing-api`, `platform-tracing-spring-boot-starter-servlet`, `platform-tracing-spring-boot-starter-reactive` |
-| **Internal runtime** | `platform-tracing-core`, `platform-tracing-otel-javaagent-extension`, `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-autoconfigure-webmvc`, `platform-tracing-autoconfigure-webflux` |
+| **Internal runtime** | `platform-tracing-otel`, `platform-tracing-otel-javaagent-extension`, `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-autoconfigure-webmvc`, `platform-tracing-autoconfigure-webflux` |
 | **Verification / perf** | `platform-tracing-test`, `platform-tracing-e2e-tests`, `platform-tracing-bench`, `platform-tracing-perf-tests` |
 | **Supporting (non-Java runtime)** | `platform-tracing-collector-config` (versioned Collector YAML + contract test) |
 
@@ -51,7 +51,7 @@ This document exists to prevent loss of existing implementation, tests, benchmar
 | Concern | Current location |
 |---------|------------------|
 | **Public API / semconv / propagation contracts** | `platform-tracing-api` (59 main classes) |
-| **Application-facing facade (`TraceOperations`, typed span builders)** | `platform-tracing-core` (30 main classes) — **реализация поверх OTel API**, не pure policy core |
+| **Application-facing facade (`TraceOperations`, typed span builders)** | `platform-tracing-otel` (30 main classes) — **реализация поверх OTel API**, не pure policy core |
 | **OTel Java Agent extension (Sampler, SpanProcessor, JMX server, SPI)** | `platform-tracing-otel-javaagent-extension` (99 main classes) — **наиболее ценный production runtime** |
 | **Spring Boot common autoconfigure** | `platform-tracing-spring-boot-autoconfigure` (46 main classes) |
 | **WebMVC-specific autoconfigure** | `platform-tracing-autoconfigure-webmvc` (7 main classes) |
@@ -137,10 +137,10 @@ Notes: 0 Java classes — pure dependency aggregator
 
 ### 3.2. Internal runtime implementation modules
 
-#### `platform-tracing-core`
+#### `platform-tracing-otel`
 
 ```text
-Module: platform-tracing-core
+Module: platform-tracing-otel
 Public-facing: no (transitive via autoconfigure — teams should not declare directly)
 Internal role: DefaultTraceOperations facade, typed span builder implementations, AttributePolicy, exception recording
 Framework dependencies: api io.opentelemetry:opentelemetry-api; api platform-tracing-api
@@ -293,12 +293,12 @@ Application teams should not depend directly on autoconfigure/core/otel-extensio
 | **Spring MVC / Servlet** | `platform-tracing-spring-boot-starter-servlet` (+ platform BOM) |
 | **WebFlux / Reactive** | `platform-tracing-spring-boot-starter-reactive` (+ platform BOM) |
 | **Explicit tracing facade / semconv / propagation in app code** | `platform-tracing-api` only when needed |
-| **Never directly** | `platform-tracing-core`, `platform-tracing-otel-javaagent-extension`, `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-autoconfigure-webmvc`, `platform-tracing-autoconfigure-webflux` |
+| **Never directly** | `platform-tracing-otel`, `platform-tracing-otel-javaagent-extension`, `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-autoconfigure-webmvc`, `platform-tracing-autoconfigure-webflux` |
 
 **Platform Tracing team only:**
 
 ```text
-platform-tracing-core
+platform-tracing-otel
 platform-tracing-otel-javaagent-extension
 platform-tracing-spring-boot-autoconfigure
 platform-tracing-autoconfigure-webmvc
@@ -330,7 +330,7 @@ platform-tracing-otel-javaagent-extension agentExtensionJar (classifier: agent)
 |--------|------|---------|--------------|--------------|-----------|--------------|
 | `platform-tracing-bom` | `/platform-tracing-bom` | Dependency BOM | 0 | 0 | yes | HIGH |
 | `platform-tracing-api` | `/platform-tracing-api` | Public contracts | 59 | 8 | yes | HIGH |
-| `platform-tracing-core` | `/platform-tracing-core` | Facade impl over OTel API | 30 | 11 | yes | HIGH |
+| `platform-tracing-otel` | `/platform-tracing-otel` | Facade impl over OTel API | 30 | 11 | yes | HIGH |
 | `platform-tracing-otel-javaagent-extension` | `/platform-tracing-otel-javaagent-extension` | Agent extension | 99 | 78 | yes (+ agent jar) | HIGH |
 | `platform-tracing-spring-boot-autoconfigure` | `/platform-tracing-spring-boot-autoconfigure` | Common Spring adapter | 46 | 34 | yes | HIGH |
 | `platform-tracing-autoconfigure-webmvc` | `/platform-tracing-autoconfigure-webmvc` | Servlet autoconfigure | 7 | 8 | yes | HIGH |
@@ -365,11 +365,11 @@ Preservation priority: HIGH
 Notes: Implementation in core (propagation.control, mdc.remote, runtime.versioned); compileOnly OTel = MIGRATION_RISK
 ```
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 ```text
-Module: platform-tracing-core
-Path: platform-tracing-core/
+Module: platform-tracing-otel
+Path: platform-tracing-otel/
 Purpose: TraceOperations implementation, typed span builders, AttributePolicy, exception handling
 Main packages: core, core.span, core.semconv, core.exception, core.propagation.control
 Key dependencies: api platform-tracing-api; api opentelemetry-api
@@ -377,7 +377,7 @@ Published artifact: yes
 Runtime role: Application CL Spring beans
 ClassLoader assumption: Application CL
 Current architecture role: facade/runtime impl (NOT pure policy core today)
-Target architecture candidate: platform-tracing-core (requires extraction/refactor)
+Target architecture candidate: platform-tracing-otel (requires extraction/refactor)
 Public/internal/test/perf category: internal (transitive)
 Migration sensitivity: HIGH
 Preservation priority: HIGH
@@ -412,7 +412,7 @@ Notes: Largest test suite (78 classes); SPI registration verified at build time
 | Module | Depends on (runtime/api) | Test depends on | Problematic / notes | Matches target direction |
 |--------|--------------------------|-----------------|---------------------|--------------------------|
 | `platform-tracing-api` | BOM, slf4j-api, jakarta.annotation-api; compileOnly OTel | JUnit, AssertJ, OTel (tests) | compileOnly OTel in public API | **partial** — MIGRATION_RISK |
-| `platform-tracing-core` | BOM, **api** api, **api** otel-api | test, otel-sdk | OTel as api transitive dep | **no** — MIGRATION_RISK |
+| `platform-tracing-otel` | BOM, **api** api, **api** otel-api | test, otel-sdk | OTel as api transitive dep | **no** — MIGRATION_RISK |
 | `platform-tracing-otel-javaagent-extension` | BOM, implementation api; compileOnly OTel/agent | test, otel-sdk, **test test** | Correct agent isolation | **partial** |
 | `platform-tracing-spring-boot-autoconfigure` | BOM, **api** api, **api** core, Spring, Micrometer, otel-api | test, web, webflux, actuator, **otel-extension** | test pulls extension | **partial** |
 | `platform-tracing-autoconfigure-webmvc` | BOM, **api** autoconfigure, **api** api, Micrometer, otel-api | test, webflux (isolation test) | extra api api beyond autoconfigure | **partial** |
@@ -428,7 +428,7 @@ Notes: Largest test suite (78 classes); SPI registration verified at build time
 
 ```text
 platform-tracing-api -> JDK only                    CURRENT: partial (compileOnly OTel)     MIGRATION_RISK
-platform-tracing-core -> api + JDK                  CURRENT: no (api OTel)                  MIGRATION_RISK
+platform-tracing-otel -> api + JDK                  CURRENT: no (api OTel)                  MIGRATION_RISK
 platform-tracing-otel-javaagent-extension -> core + api + OTel CURRENT: no (missing core policy dep)  MIGRATION_RISK
 platform-tracing-spring-boot-autoconfigure -> core + api + Spring  CURRENT: yes shape, extra test deps on extension
 starters -> autoconfigure + web*                    CURRENT: yes
@@ -800,7 +800,7 @@ Config Server as authority: partial — RefreshScope binding exists; no dedicate
 | Boundary | Classes | Notes |
 |----------|---------|-------|
 | **Agent CL** | All `platform-tracing-otel-javaagent-extension` main classes; embedded `platform-tracing-api` inside agent jar | Isolated Agent CL |
-| **Application CL** | `platform-tracing-core`, autoconfigure, web*, starters, api (from app jar) | Standard Spring Boot CL |
+| **Application CL** | `platform-tracing-otel`, autoconfigure, web*, starters, api (from app jar) | Standard Spring Boot CL |
 | **Shared API** | `platform-tracing-api` — loaded in both CLs (duplicate definition in agent fat jar) | Must remain CL-neutral |
 | **JMX payload** | primitives, String[], Map via OpenMBean-compatible types | No shared Java DTO interface across CLs |
 | **Risky cross-CL** | None found for DTO passing — **by design** invoke-by-name | Preserve this property |
@@ -820,7 +820,7 @@ Evidence: ClassLoaderVisibilitySpikeE2ETest, verifyExtensionDeps Gradle task.
 | Smell | Evidence | Migration risk | Target rule | Handling |
 |-------|----------|----------------|-------------|----------|
 | **Mixed policy + adapter in otel-extension** | CompositeSampler, ScrubbingSpanProcessor co-locate OTel callbacks with rule logic | HIGH | policy → core | SPLIT_CORE_AND_ADAPTER |
-| **OTel types in core-like module** | `platform-tracing-core` api depends on otel-api | HIGH | core = pure Java | Extract policy; keep OTel in extension |
+| **OTel types in core-like module** | `platform-tracing-otel` api depends on otel-api | HIGH | core = pure Java | Extract policy; keep OTel in extension |
 | **OTel compileOnly in public api** | `platform-tracing-api` compileOnly otel-context/api | MEDIUM | api = JDK only | Move OTel-specific keys behind interfaces |
 | **Actuator mutation not prod-guarded** | `TracingActuatorEndpoint` @WriteOperation unconditional | HIGH | dev-only mutation | ADAPT — profile guard before removing code |
 | **No TracingConfigReconciler** | RefreshScope + RuntimeConfigApplier only | MEDIUM | Config Server authority | ADD in migration wave, preserve RefreshScope behavior |
@@ -843,7 +843,7 @@ First migration wave should clarify taxonomy, enforce dependency direction, pres
 |----------------|-------------|-----------------|-------------|--------------|---------|-----------|--------|------------------|-------|
 | `platform-tracing-bom` | BOM | BOM | version alignment | yes | no | no | yes | KEEP_PUBLIC | |
 | `platform-tracing-api` | public contracts | API | contracts/semconv/wire | yes | no | no | yes | KEEP_PUBLIC | |
-| `platform-tracing-core` | OTel facade impl | CORE | pure policy engine | yes | no | **DO_NOT_COLLAPSE_NOW** | no | KEEP_INTERNAL + SPLIT | behavior preserved |
+| `platform-tracing-otel` | OTel facade impl | CORE | pure policy engine | yes | no | **DO_NOT_COLLAPSE_NOW** | no | KEEP_INTERNAL + SPLIT | behavior preserved |
 | `platform-tracing-otel-javaagent-extension` | agent extension | OTEL_EXTENSION | thin adapter + JMX | yes | no | no | no | KEEP_INTERNAL | |
 | `platform-tracing-spring-boot-autoconfigure` | Spring common | SPRING_AUTOCONFIGURE | reconciler + actuator read | yes | no | no | no | KEEP_INTERNAL | add reconciler |
 | `platform-tracing-autoconfigure-webmvc` | Servlet | WEBMVC | stack-specific | yes | no | no | no | HIDE_BEHIND_STARTER | |
@@ -986,7 +986,7 @@ Operational: Actuator READ responses must remain shape-stable for SRE dashboards
 
 #### 4. Target architecture summary
 
-Clean Core Hybrid: pure Java `platform-tracing-core` policy; thin OTel adapter; thin Spring adapter with **TracingConfigReconciler**; Config Server = runtime policy authority; Helm/env = startup topology; Actuator READ in prod; Actuator MUTATION dev-only; JMX private Map wire; baseline = sampling + mandatory scrubbing + export.
+Clean Core Hybrid: pure Java `platform-tracing-otel` policy; thin OTel adapter; thin Spring adapter with **TracingConfigReconciler**; Config Server = runtime policy authority; Helm/env = startup topology; Actuator READ in prod; Actuator MUTATION dev-only; JMX private Map wire; baseline = sampling + mandatory scrubbing + export.
 
 #### 5. Non-negotiable preservation constraints
 
@@ -1007,7 +1007,7 @@ Given this current codebase inventory and the agreed Clean Core Hybrid target ar
 
 Which classes should be split first to minimize regression risk?
 
-Which tests must be duplicated or strengthened before extracting platform-tracing-core?
+Which tests must be duplicated or strengthened before extracting platform-tracing-otel?
 
 Which existing benchmarks are sufficient for PR-0 and PR-6/E6?
 
@@ -1030,7 +1030,7 @@ Which module collapses, if any, should be deferred until after first production 
 |---|--------|------|
 | 1 | `platform-tracing-bom` | `e:\Platform_Traces\platform-tracing-bom` |
 | 2 | `platform-tracing-api` | `e:\Platform_Traces\platform-tracing-api` |
-| 3 | `platform-tracing-core` | `e:\Platform_Traces\platform-tracing-core` |
+| 3 | `platform-tracing-otel` | `e:\Platform_Traces\platform-tracing-otel` |
 | 4 | `platform-tracing-otel-javaagent-extension` | `e:\Platform_Traces\platform-tracing-otel-javaagent-extension` |
 | 5 | `platform-tracing-spring-boot-autoconfigure` | `e:\Platform_Traces\platform-tracing-spring-boot-autoconfigure` |
 | 6 | `platform-tracing-autoconfigure-webmvc` | `e:\Platform_Traces\platform-tracing-autoconfigure-webmvc` |
@@ -1132,140 +1132,140 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / ServletTracingAutoConfiguration
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / TraceResponseHeaderServletFilter
     platform-tracing-autoconfigure-webmvc / space.br1440.platform.tracing.autoconfigure.servlet / WebMvcSuppressMicrometerTracingAutoConfiguration
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultInboundTraceControlExtractor
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultOutboundPropagationPolicy
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultTraceControlHeaderInjector
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / GlobTrustedDestinationMatcher
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / TrustedDestinationMatchers
-    platform-tracing-core / space.br1440.platform.tracing.core / DefaultTraceOperations
-    platform-tracing-core / space.br1440.platform.tracing.core / NoOpPlatformContextPropagation
-    platform-tracing-core / space.br1440.platform.tracing.core / NoopTraceOperations
-    platform-tracing-core / space.br1440.platform.tracing.core / OtelPlatformContextPropagation
-    platform-tracing-core / space.br1440.platform.tracing.core.exception / ExceptionMessagePolicy
-    platform-tracing-core / space.br1440.platform.tracing.core.exception / ExceptionRecorder
-    platform-tracing-core / space.br1440.platform.tracing.core.semconv / AttributePolicy
-    platform-tracing-core / space.br1440.platform.tracing.core.semconv / EagerOnlyKeys
-    platform-tracing-core / space.br1440.platform.tracing.core.semconv / SemconvMetrics
-    platform-tracing-core / space.br1440.platform.tracing.core.semconv / ValidatedAttributes
-    platform-tracing-core / space.br1440.platform.tracing.core.manual / AbstractSemanticSpanBuilder
-    platform-tracing-core / space.br1440.platform.tracing.core.span / AbstractTypedSpanBuilder
-    platform-tracing-core / space.br1440.platform.tracing.core.span / DatabaseSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / DefaultSpanEnrichment
-    platform-tracing-core / space.br1440.platform.tracing.core.span / DefaultGenericSpanEnrichment
-    platform-tracing-core / space.br1440.platform.tracing.core.span / HttpClientSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / HttpServerSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / InternalSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / KafkaConsumerSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / KafkaProducerSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / NonOwningSpanScope
-    platform-tracing-core / space.br1440.platform.tracing.core.span / NoOpSpanScope
-    platform-tracing-core / space.br1440.platform.tracing.core.span / OwningSpanScope
-    platform-tracing-core / space.br1440.platform.tracing.core.span / PlatformSpanContextKeys
-    platform-tracing-core / space.br1440.platform.tracing.core.span / PlatformSpanNameBuilder
-    platform-tracing-core / space.br1440.platform.tracing.core.span / RpcClientSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / RpcServerSpanBuilderImpl
-    platform-tracing-core / space.br1440.platform.tracing.core.span / SpanEnricher
-    platform-tracing-core / space.br1440.platform.tracing.core.span / SpanKinds
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension / PlatformAutoConfigurationCustomizer
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.configuration / AutoConfigurationCustomizerOrdering
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.configuration / ExtensionPropertyNames
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.configuration / ExtensionDefaults
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.configuration / PlatformTracingDefaultsProvider
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.exception / TracingValidationException
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.exporter / SafeSpanExporter
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.factory / FactoryUtils
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.factory / PlatformExportProcessorFactory
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.factory / PlatformPropagatorFactory
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.factory / PlatformSamplerFactory
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.factory / PlatformSpanProcessorFactory
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.factory / PlatformTracingJmxRegistrar
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / DefaultInboundTraceControlExtractor
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / DefaultOutboundPropagationPolicy
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / DefaultTraceControlHeaderInjector
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / GlobTrustedDestinationMatcher
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / TrustedDestinationMatchers
+    platform-tracing-otel / space.br1440.platform.tracing.core / DefaultTraceOperations
+    platform-tracing-otel / space.br1440.platform.tracing.core / NoOpPlatformContextPropagation
+    platform-tracing-otel / space.br1440.platform.tracing.core / NoopTraceOperations
+    platform-tracing-otel / space.br1440.platform.tracing.core / OtelPlatformContextPropagation
+    platform-tracing-otel / space.br1440.platform.tracing.core.exception / ExceptionMessagePolicy
+    platform-tracing-otel / space.br1440.platform.tracing.core.exception / ExceptionRecorder
+    platform-tracing-otel / space.br1440.platform.tracing.core.semconv / AttributePolicy
+    platform-tracing-otel / space.br1440.platform.tracing.core.semconv / EagerOnlyKeys
+    platform-tracing-otel / space.br1440.platform.tracing.core.semconv / SemconvMetrics
+    platform-tracing-otel / space.br1440.platform.tracing.core.semconv / ValidatedAttributes
+    platform-tracing-otel / space.br1440.platform.tracing.core.manual / AbstractSemanticSpanBuilder
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / AbstractTypedSpanBuilder
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / DatabaseSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / DefaultSpanEnrichment
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / DefaultGenericSpanEnrichment
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / HttpClientSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / HttpServerSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / InternalSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / KafkaConsumerSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / KafkaProducerSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / NonOwningSpanScope
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / NoOpSpanScope
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / OwningSpanScope
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / PlatformSpanContextKeys
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / PlatformSpanNameBuilder
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / RpcClientSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / RpcServerSpanBuilderImpl
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / SpanEnricher
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / SpanKinds
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent / PlatformAutoConfigurationCustomizer
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.configuration / AutoConfigurationCustomizerOrdering
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.configuration / ExtensionPropertyNames
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.configuration / ExtensionDefaults
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.configuration / PlatformTracingDefaultsProvider
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.exception / TracingValidationException
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.exporter / SafeSpanExporter
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.factory / FactoryUtils
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.factory / PlatformExportProcessorFactory
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.factory / PlatformPropagatorFactory
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.factory / PlatformSamplerFactory
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.factory / PlatformSpanProcessorFactory
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.factory / PlatformTracingJmxRegistrar
     platform-tracing-e2e-tests / space.br1440.platform.tracing.e2e.probe / ClassLoaderVisibilityTestProbe (test-only extension JAR; F1 — see classloader-visibility-test-only-probe-implementation-plan.md)
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.jmx / PlatformTracingControl
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.jmx / PlatformTracingControlMBean
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / BaggageSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ClassificationSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / EnrichingSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / MetricsSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / PlatformCompositeSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / PlatformDropOldestExportSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ScrubbingSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / SpanWatchdogProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ValidatingSpanProcessor
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ValidationPolicyHolder
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ValidationSnapshot
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / FilteringBaggagePropagator
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformPropagationGate
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformPropagatorsDefaultsCustomizer
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagator
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorBuilder
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorProvider
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / PropagationDefaults
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / PropagationPolicy
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / SafeTextMapPropagator
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / BuildInfoReader
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ClasspathResourceLoader
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / EnvironmentNormalizer
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / HostNameResolver
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ManifestVersionReader
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / PlatformResourceProvider
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ProcfsContainerIdDetector
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ResourceAttributeResolver
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ResourceStartupDiagnostics
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ResourceValidationDiagnostics
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ResourceValidationMode
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / SafeResourceProvider
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / CircuitBreaker
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / ConfigReloadDiagnostics
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / DegradedModeController
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / PlatformLogControl
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / PlatformThrowables
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / RateLimitedLogger
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / TokenBucketRateLimiter
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / TracingDiagnostics
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / CompositeSampler
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / DefaultRatioRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / ForceHeaderRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / ForwardingSamplingResult
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / HardDropRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / KillSwitchRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / ParentDecisionRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / PlatformManagedSampler
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / PlatformManagedSamplers
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / PlatformSamplerBuilder
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / PlatformSamplerProvider
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / QaTraceRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / RouteRatioRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SafeSampler
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplerState
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplerStateHolder
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplingRequest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplingRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / AbstractBuiltInRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / BuiltInSpanAttributeScrubbingRules
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / EmailRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / HardwareIdentityRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / InfraCredentialRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / IpAddressRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / IpPrefixTruncator
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / JwtRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / KeyMatcher
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / LocationRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / OAuthHeaderRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / PasswordKeyRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ScrubbingPolicyHolder
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ScrubbingRulesLoader
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ScrubbingSnapshot
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / SshCredentialRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / UserIdentityRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / WebhookTokenRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / XAuthHeaderRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker / RuleCircuitBreaker
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.diagnostics / FailedProviderReason
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.diagnostics / StartupDiagnostics
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.engine / MergeEngine
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.engine / PriorityHardening
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.engine / RuleExecutionWrapper
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.loader / ExtensionRuleLoader
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.jmx / PlatformTracingControl
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.jmx / PlatformTracingControlMBean
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / BaggageSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ClassificationSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / EnrichingSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / MetricsSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / PlatformCompositeSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / PlatformDropOldestExportSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ScrubbingSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / SpanWatchdogProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ValidatingSpanProcessor
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ValidationPolicyHolder
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ValidationSnapshot
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / FilteringBaggagePropagator
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / PlatformPropagationGate
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / PlatformPropagatorsDefaultsCustomizer
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / InboundTraceControlPropagator
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / InboundTraceControlPropagatorBuilder
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / InboundTraceControlPropagatorProvider
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / PropagationDefaults
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / PropagationPolicy
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / SafeTextMapPropagator
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / BuildInfoReader
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ClasspathResourceLoader
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / EnvironmentNormalizer
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / HostNameResolver
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ManifestVersionReader
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / PlatformResourceProvider
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ProcfsContainerIdDetector
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ResourceAttributeResolver
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ResourceStartupDiagnostics
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ResourceValidationDiagnostics
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ResourceValidationMode
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / SafeResourceProvider
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / CircuitBreaker
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / ConfigReloadDiagnostics
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / DegradedModeController
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / PlatformLogControl
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / PlatformThrowables
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / RateLimitedLogger
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / TokenBucketRateLimiter
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / TracingDiagnostics
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / CompositeSampler
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / DefaultRatioRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / ForceHeaderRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / ForwardingSamplingResult
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / HardDropRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / KillSwitchRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / ParentDecisionRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / PlatformManagedSampler
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / PlatformManagedSamplers
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / PlatformSamplerBuilder
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / PlatformSamplerProvider
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / QaTraceRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / RouteRatioRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SafeSampler
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SamplerState
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SamplerStateHolder
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SamplingRequest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SamplingRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / AbstractBuiltInRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / BuiltInSpanAttributeScrubbingRules
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / EmailRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / HardwareIdentityRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / InfraCredentialRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / IpAddressRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / IpPrefixTruncator
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / JwtRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / KeyMatcher
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / LocationRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / OAuthHeaderRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / PasswordKeyRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / ScrubbingPolicyHolder
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / ScrubbingRulesLoader
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / ScrubbingSnapshot
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / SshCredentialRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / UserIdentityRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / WebhookTokenRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / XAuthHeaderRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker / RuleCircuitBreaker
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics / FailedProviderReason
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics / StartupDiagnostics
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.engine / MergeEngine
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.engine / PriorityHardening
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.engine / RuleExecutionWrapper
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.loader / ExtensionRuleLoader
     platform-tracing-perf-tests / space.br1440.platform.tracing.perftests.sut / OrdersController
     platform-tracing-perf-tests / space.br1440.platform.tracing.perftests.sut / PerfAdminController
     platform-tracing-perf-tests / space.br1440.platform.tracing.perftests.sut / SutApplication
@@ -1348,13 +1348,13 @@ Which module collapses, if any, should be deferred until after first production 
 **Total: 213 entries.** Format: `Module / package / test class`
 
 ```text
-    platform-tracing-core / space.br1440.platform.tracing.core.mdc.remote / RemoteServiceMdcTest
-    platform-tracing-core / space.br1440.platform.tracing.core.runtime.versioned / VersionedStateHolderTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.mdc.remote / RemoteServiceMdcTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.runtime.versioned / VersionedStateHolderTest
     platform-tracing-api / space.br1440.platform.tracing.api.propagation / RequestIdSupportTest
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultInboundTraceControlExtractorTest
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultOutboundPropagationPolicyTest
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / DefaultTraceControlHeaderInjectorTest
-    platform-tracing-core / space.br1440.platform.tracing.core.propagation.control / TrustedDestinationMatchersTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / DefaultInboundTraceControlExtractorTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / DefaultOutboundPropagationPolicyTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / DefaultTraceControlHeaderInjectorTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.propagation.control / TrustedDestinationMatchersTest
     platform-tracing-api / space.br1440.platform.tracing.api.semconv / CategoryContractsTest
     platform-tracing-api / space.br1440.platform.tracing.api.span.sanitize / SanitizerTest
     platform-tracing-autoconfigure-webflux / space.br1440.platform.tracing.autoconfigure.reactive / BridgeOtelReactorContextPropagationIntegrationTest
@@ -1378,17 +1378,17 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-bench / space.br1440.platform.tracing.bench.contract / PerformanceReleaseGateTest
     platform-tracing-bench / space.br1440.platform.tracing.bench.contract / ScrubbingBenchmarkFixtureContractTest
     platform-tracing-collector-config / space.br1440.platform.tracing.collectorconfig / CollectorPolicyContractTest
-    platform-tracing-core / space.br1440.platform.tracing.core / DefaultTraceOperationsInSpanTest
-    platform-tracing-core / space.br1440.platform.tracing.core / DefaultTraceOperationsTest
-    platform-tracing-core / space.br1440.platform.tracing.core / NoOpPlatformContextPropagationTest
-    platform-tracing-core / space.br1440.platform.tracing.core / OtelPlatformContextPropagationTest
-    platform-tracing-core / space.br1440.platform.tracing.core.arch / OtelDirectIntegrationArchTest
-    platform-tracing-core / space.br1440.platform.tracing.core.bsp / BatchSpanProcessorOverflowPolicyProbeTest
-    platform-tracing-core / space.br1440.platform.tracing.core.exception / ExceptionRecorderTest
-    platform-tracing-core / space.br1440.platform.tracing.core.semconv / AttributePolicyTest
-    platform-tracing-core / space.br1440.platform.tracing.core.span / EscapeHatchSpanBuilderTest
-    platform-tracing-core / space.br1440.platform.tracing.core.span / InternalSpanBuilderImplTest
-    platform-tracing-core / space.br1440.platform.tracing.core.span / SpanEnricherTest
+    platform-tracing-otel / space.br1440.platform.tracing.core / DefaultTraceOperationsInSpanTest
+    platform-tracing-otel / space.br1440.platform.tracing.core / DefaultTraceOperationsTest
+    platform-tracing-otel / space.br1440.platform.tracing.core / NoOpPlatformContextPropagationTest
+    platform-tracing-otel / space.br1440.platform.tracing.core / OtelPlatformContextPropagationTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.arch / OtelDirectIntegrationArchTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.bsp / BatchSpanProcessorOverflowPolicyProbeTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.exception / ExceptionRecorderTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.semconv / AttributePolicyTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / EscapeHatchSpanBuilderTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / InternalSpanBuilderImplTest
+    platform-tracing-otel / space.br1440.platform.tracing.core.span / SpanEnricherTest
     platform-tracing-e2e-tests / space.br1440.platform.tracing.e2e / CollectorProductionPolicyE2ETest
     platform-tracing-e2e-tests / space.br1440.platform.tracing.e2e / ExceptionEventScrubbingE2ETest
     platform-tracing-e2e-tests / space.br1440.platform.tracing.e2e / TracingE2ETest
@@ -1431,84 +1431,84 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-e2e-tests / space.br1440.platform.tracing.e2e.support / LongLivedAgentSmokeProcess
     platform-tracing-e2e-tests / space.br1440.platform.tracing.e2e.support / OtelCollectorSpanExportReader
     platform-tracing-e2e-tests / space.br1440.platform.tracing.e2e.support / ResourceIdentityAgentSmokeProcessRunner
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension / BspDropOldestNoDoubleExportTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension / PlatformAutoConfigurationCustomizerExportProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension / PlatformAutoConfigurationCustomizerProcessorsTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension / PlatformAutoConfigurationCustomizerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension / PlatformSpiAutoconfigureIntegrationTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.arch / ExtensionNoSpringDependencyArchTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.arch / OtelDirectIntegrationArchTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.arch / OtelDirectIntegrationExtensionSpiRules
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.arch / ResourceKeysNotInSpanProcessorsArchTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.arch / SafeBoundaryArchTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.arch / SpiApiCompatibilityArchTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.configuration / ExtensionConfigTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.configuration / PlatformTracingDefaultsProviderResourceEnvTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.configuration / PlatformTracingDefaultsProviderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.exporter / SafeSpanExporterTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.factory / PlatformExportProcessorFactorySafeWrapTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.jmx / PlatformTracingControlTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / BaggageSpanProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ClassificationSpanProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / EnrichingSpanProcessorAdvancedTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / EnrichingSpanProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / MetricsSpanProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / PlatformCompositeSpanProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / PlatformDropOldestExportSpanProcessorBuilderValidationTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / PlatformDropOldestExportSpanProcessorLifecycleTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / PlatformDropOldestExportSpanProcessorOverflowPolicyTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ScrubbingPolicyRuntimeTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ScrubbingSecurityNegativeTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ScrubbingSpanProcessorAdvancedTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ScrubbingSpanProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / SpanLimitsVerificationTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / SpanWatchdogProcessorAdvancedTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / SpanWatchdogProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ValidatingSpanProcessorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.processor / ValidationPolicyRuntimeTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / FilteringBaggagePropagatorBaggageLimitsTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / PlatformPropagatorsDefaultsCustomizerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorProviderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / InboundTraceControlPropagatorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.propagation / SafeTextMapPropagatorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / BuildInfoReaderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / EnvironmentNormalizerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / HostNameResolverTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ManifestVersionReaderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / PlatformResourceProviderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ProcfsContainerIdDetectorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ResourceAttributeResolverTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ResourceMergeIntegrationTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / ResourceValidationDiagnosticsTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.resource / TestConfigProperties
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / CircuitBreakerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / ConfigReloadDiagnosticsTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / DegradedModeControllerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / PlatformLogControlTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / PlatformThrowablesTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / RateLimitedLoggerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / TokenBucketRateLimiterTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.safety / TracingDiagnosticsTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / CompositeSamplerEdgeCasesTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / CompositeSamplerRouteRatioTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / CompositeSamplerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / PlatformSamplerProviderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SafeSamplerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplerRuntimeUpdateConcurrencyTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.sampler / SamplerStateHolderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / BuiltInRulesTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ExampleMerchantAccountRule
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / IpPrefixTruncatorTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / KeyMatcherTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ScrubbingRulesLoaderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing / ServiceLoaderSpanAttributeScrubbingRuleTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.circuitbreaker / RuleCircuitBreakerTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.engine / MergeEngineTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.scrubbing.loader / ExtensionRuleLoaderTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.spike / BaggageFilteringSpikeTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.spike / BspReplacementSpikeTest
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.spike.baggage / RecordingTextMapSetter
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.extension.spike.baggage / SpikeFilteringBaggagePropagator
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent / BspDropOldestNoDoubleExportTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent / PlatformAutoConfigurationCustomizerExportProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent / PlatformAutoConfigurationCustomizerProcessorsTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent / PlatformAutoConfigurationCustomizerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent / PlatformSpiAutoconfigureIntegrationTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.arch / ExtensionNoSpringDependencyArchTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.arch / OtelDirectIntegrationArchTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.arch / OtelDirectIntegrationExtensionSpiRules
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.arch / ResourceKeysNotInSpanProcessorsArchTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.arch / SafeBoundaryArchTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.arch / SpiApiCompatibilityArchTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.configuration / ExtensionConfigTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.configuration / PlatformTracingDefaultsProviderResourceEnvTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.configuration / PlatformTracingDefaultsProviderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.exporter / SafeSpanExporterTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.factory / PlatformExportProcessorFactorySafeWrapTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.jmx / PlatformTracingControlTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / BaggageSpanProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ClassificationSpanProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / EnrichingSpanProcessorAdvancedTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / EnrichingSpanProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / MetricsSpanProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / PlatformCompositeSpanProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / PlatformDropOldestExportSpanProcessorBuilderValidationTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / PlatformDropOldestExportSpanProcessorLifecycleTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / PlatformDropOldestExportSpanProcessorOverflowPolicyTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ScrubbingPolicyRuntimeTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ScrubbingSecurityNegativeTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ScrubbingSpanProcessorAdvancedTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ScrubbingSpanProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / SpanLimitsVerificationTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / SpanWatchdogProcessorAdvancedTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / SpanWatchdogProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ValidatingSpanProcessorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.processor / ValidationPolicyRuntimeTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / FilteringBaggagePropagatorBaggageLimitsTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / PlatformPropagatorsDefaultsCustomizerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / InboundTraceControlPropagatorProviderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / InboundTraceControlPropagatorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / SafeTextMapPropagatorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / BuildInfoReaderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / EnvironmentNormalizerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / HostNameResolverTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ManifestVersionReaderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / PlatformResourceProviderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ProcfsContainerIdDetectorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ResourceAttributeResolverTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ResourceMergeIntegrationTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ResourceValidationDiagnosticsTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / TestConfigProperties
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / CircuitBreakerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / ConfigReloadDiagnosticsTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / DegradedModeControllerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / PlatformLogControlTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / PlatformThrowablesTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / RateLimitedLoggerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / TokenBucketRateLimiterTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.safety / TracingDiagnosticsTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / CompositeSamplerEdgeCasesTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / CompositeSamplerRouteRatioTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / CompositeSamplerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / PlatformSamplerProviderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SafeSamplerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SamplerRuntimeUpdateConcurrencyTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.sampler / SamplerStateHolderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / BuiltInRulesTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / ExampleMerchantAccountRule
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / IpPrefixTruncatorTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / KeyMatcherTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / ScrubbingRulesLoaderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing / ServiceLoaderSpanAttributeScrubbingRuleTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker / RuleCircuitBreakerTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.engine / MergeEngineTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.scrubbing.loader / ExtensionRuleLoaderTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.spike / BaggageFilteringSpikeTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.spike / BspReplacementSpikeTest
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.spike.baggage / RecordingTextMapSetter
+    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.spike.baggage / SpikeFilteringBaggagePropagator
     platform-tracing-semconv-lint / space.br1440.platform.tracing.semconv.lint / PlatformSpecLinterTest
     platform-tracing-semconv-lint / space.br1440.platform.tracing.semconv.lint.cli / CommandLineLinterTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure / RequestContextSupplierAutoConfigurationTest
@@ -1606,11 +1606,11 @@ Which module collapses, if any, should be deferred until after first production 
 | `platform-tracing-spring-boot-autoconfigure/.../actuator/TracingActuatorEndpoint.java` | WriteOperation exposed without prod guard | Actuator MUTATION dev-only | SRE + platform owner |
 | `platform-tracing-spring-boot-autoconfigure/.../TracingProperties.java` | 700+ lines; topology vs policy split non-obvious | Helm vs Config Server sources | Config/platform architect |
 | `platform-tracing-spring-boot-autoconfigure/.../RuntimeConfigApplier.java` | Precursor to reconciler; RefreshScope semantics | TracingConfigReconciler | Platform owner |
-| `platform-tracing-core/.../DefaultTraceOperations.java` | OTel-coupled "core" — split boundary unclear | pure Java core | Staff engineer |
+| `platform-tracing-otel/.../DefaultTraceOperations.java` | OTel-coupled "core" — split boundary unclear | pure Java core | Staff engineer |
 | `platform-tracing-otel-javaagent-extension/.../sampler/CompositeSampler.java` | SPLIT_CORE_AND_ADAPTER — policy/adapter interleaved | core vs otel-extension | Staff engineer |
 | `platform-tracing-otel-javaagent-extension/.../scrubbing/engine/*` | Mandatory baseline scrubbing engine | core scrubbing policy | Security + platform |
 | `platform-tracing-api/build.gradle` | compileOnly OTel deps in public API | api = JDK only | Architect |
-| `platform-tracing-core/build.gradle` | api OTel transitive to consumers | core dependency direction | Architect |
+| `platform-tracing-otel/build.gradle` | api OTel transitive to consumers | core dependency direction | Architect |
 | `platform-tracing-perf-tests/.../PerfAdminController.java` | Production-like JMX bridge pattern in perf SUT | private JMX only | SRE |
 | `platform-tracing-semconv-lint/*` | Excluded from build — future module or delete? | REVIEW_FOR_COLLAPSE_LATER | Architect |
 

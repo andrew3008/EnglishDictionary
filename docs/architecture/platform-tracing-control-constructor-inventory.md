@@ -53,8 +53,8 @@
 
 | Поле | Значение |
 |------|----------|
-| FQCN | `space.br1440.platform.tracing.otel.extension.jmx.PlatformTracingControl` |
-| Файл | `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControl.java` |
+| FQCN | `space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingControl` |
+| Файл | `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/jmx/PlatformTracingControl.java` |
 | Реализует | `PlatformTracingControlMBean` |
 | ObjectName | `space.br1440.platform.tracing:type=Control,name=PlatformTracingControl` (константа `PlatformTracingControlMBean.OBJECT_NAME`) |
 | Поля экземпляра | `configHolder`, `compositeSampler`, `watchdog`, `composite`, `metrics`, `scrubbing`, `validating`, `exportProcessorSupplier`, `safeExporterSupplier`, `invalidConfigCounter` |

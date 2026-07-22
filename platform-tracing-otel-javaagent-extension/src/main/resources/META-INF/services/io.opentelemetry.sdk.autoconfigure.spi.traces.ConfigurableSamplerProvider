@@ -1,1 +1,1 @@
-space.br1440.platform.tracing.otel.extension.sampler.PlatformSamplerProvider
+space.br1440.platform.tracing.otel.javaagent.sampler.PlatformSamplerProvider

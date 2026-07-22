@@ -48,7 +48,7 @@ node "Spring Boot Service JVM" {
 }
 
 package "Clean Core Policy Layer" as CoreLayer {
-  component "platform-tracing-core\npure Java policy engine" as Core
+  component "platform-tracing-otel\npure Java policy engine" as Core
   component "Sampling Policy\nPR-6 target" as SamplingPolicy
   component "Scrubbing Policy\nPR-7 target\nmandatory baseline" as ScrubbingPolicy
   component "Validation / Enrichment Policy\nPR-8 target\noptional tier" as ValidationPolicy

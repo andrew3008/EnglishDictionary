@@ -86,7 +86,7 @@ Reflection на поле `textMapPropagators` — работает для intros
 ## Audit
 
 ```bash
-./gradlew :platform-tracing-otel-javaagent-extension:test --tests "space.br1440.platform.tracing.otel.extension.spike.BaggageFilteringSpikeTest"
+./gradlew :platform-tracing-otel-javaagent-extension:test --tests "space.br1440.platform.tracing.otel.javaagent.spike.BaggageFilteringSpikeTest"
 ```
 
 ## Связанные артефакты

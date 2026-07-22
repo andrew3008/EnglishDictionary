@@ -4,7 +4,7 @@
 
 **Что такое spike:** `ClassLoaderVisibilitySpikeProbe` — утилитарный final-класс в `src/main` модуля `platform-tracing-otel-javaagent-extension`, который при явной активации через system property печатает машиночитаемые маркеры `SPIKE_CLASSLOADER:...` в `System.err`. Класс реализует два независимых gated-контракта: (a) `emitExtensionLoadResultIfEnabled` — сводка загрузки custom scrubbing rules из production-пути фабрики; (b) `runIfEnabled` — полный probe видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в четырёх вариантах classloader.
 
-**Где расположен:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory/spike/ClassLoaderVisibilitySpikeProbe.java`.
+**Где расположен:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory/spike/ClassLoaderVisibilitySpikeProbe.java`.
 
 **Откуда вызывается в production:** единственный production call-site — `PlatformSpanProcessorFactory.collectScrubbingRules(...)`, строка ~163, сразу после `StartupDiagnostics.emit(...)`.
 
@@ -66,7 +66,7 @@ Git unavailable; used rg-based repository search.
 
 | Class | Package | Source Root | Visibility | Public API | Purpose From Code | Risk |
 |-------|---------|-------------|------------|------------|-------------------|------|
-| `ClassLoaderVisibilitySpikeProbe` | `space.br1440.platform.tracing.otel.extension.factory.spike` | `platform-tracing-otel-javaagent-extension/src/main/java` | `public final` | `ENABLE_PROPERTY`, `LINE_PREFIX`, `TARGET_RULE_NAME`, `TARGET_RULE_CLASS`, `emitExtensionLoadResultIfEnabled(int, String)`, `runIfEnabled()` | Gated stderr-диагностика видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в OTel Java Agent runtime; маркеры для E2E-парсинга; «не влияет на production-поведение» (Javadoc класса) | Production factory импортирует `factory.spike`; `System.err` при enable; имя «Spike»; hardcoded E2E rule id `custom-e2e-rule` |
+| `ClassLoaderVisibilitySpikeProbe` | `space.br1440.platform.tracing.otel.javaagent.factory.spike` | `platform-tracing-otel-javaagent-extension/src/main/java` | `public final` | `ENABLE_PROPERTY`, `LINE_PREFIX`, `TARGET_RULE_NAME`, `TARGET_RULE_CLASS`, `emitExtensionLoadResultIfEnabled(int, String)`, `runIfEnabled()` | Gated stderr-диагностика видимости `SpanAttributeScrubbingRule` через `ServiceLoader` в OTel Java Agent runtime; маркеры для E2E-парсинга; «не влияет на production-поведение» (Javadoc класса) | Production factory импортирует `factory.spike`; `System.err` при enable; имя «Spike»; hardcoded E2E rule id `custom-e2e-rule` |
 
 **Дополнительные spike-классы в `factory/spike`:** NOT FOUND IN REPOSITORY (единственный файл в каталоге).
 
@@ -482,7 +482,7 @@ SafeBoundaryArchTest.java (factory.spike exclusion comment)
 ```text
 Count: 1 file, 1 import, 1 method call
 File: PlatformSpanProcessorFactory.java
-Package imported: space.br1440.platform.tracing.otel.extension.factory.spike
+Package imported: space.br1440.platform.tracing.otel.javaagent.factory.spike
 ```
 
 ---

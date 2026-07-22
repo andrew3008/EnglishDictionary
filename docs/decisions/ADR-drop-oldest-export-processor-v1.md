@@ -6,7 +6,7 @@
 | Дата | 2026-05-25 |
 | Версия | v1.x (opt-in) |
 | Связанный finding | [ADR-bsp-overflow-policy-finding.md](ADR-bsp-overflow-policy-finding.md) (v0.1.0 — stock BSP = drop-new) |
-| SPI spike | [`BspReplacementSpikeTest`](../../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/spike/BspReplacementSpikeTest.java) |
+| SPI spike | [`BspReplacementSpikeTest`](../../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java) |
 | Plan | `bsp_drop_oldest_v1.x_d5717054.plan.md` |
 
 ## Контекст

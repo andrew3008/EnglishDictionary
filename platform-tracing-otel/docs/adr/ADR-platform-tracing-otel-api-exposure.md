@@ -1,6 +1,6 @@
-# ADR: OpenTelemetry API Exposure in `platform-tracing-core`
+# ADR: OpenTelemetry API Exposure in `platform-tracing-otel`
 
-**ID:** ADR-platform-tracing-core-otel-api-exposure
+**ID:** ADR-platform-tracing-otel-api-exposure
 **Status:** Accepted
 **Date:** 2026-07-09
 **Deciders:** Platform Architect, Lead Platform Engineer
@@ -10,7 +10,7 @@
 
 ## Context
 
-`platform-tracing-core` implements `platform-tracing-api` on top of OpenTelemetry API.
+`platform-tracing-otel` implements `platform-tracing-api` on top of OpenTelemetry API.
 The module has `api` (transitive) dependency on `io.opentelemetry:opentelemetry-api` in
 `build.gradle`, making OTel types part of the compile-time surface of core.
 
@@ -26,7 +26,7 @@ blocks to resolve `attributePolicy()` and to invoke `setKillSwitchEnabled(boolea
 ## Decision
 
 **Outcome B** (as originally intended) is preserved: `opentelemetry-api` remains on the
-`api` configuration of `platform-tracing-core`. OTel types are part of the module's
+`api` configuration of `platform-tracing-otel`. OTel types are part of the module's
 public surface.
 
 However, the **exposure mechanism changes**:
@@ -73,12 +73,12 @@ However, the **exposure mechanism changes**:
 
 ### Neutral
 - `opentelemetry-api` remains `api`-scoped (transitive). Consumers of
-  `platform-tracing-core` still see OTel types on classpath. This is intentional:
+  `platform-tracing-otel` still see OTel types on classpath. This is intentional:
   enrichment, propagation, and bridge modules depend on OTel API.
 
 ## ArchUnit Enforcement
 
-`FacadeOtelIsolationArchTest` in `platform-tracing-core` test sources enforces:
+`FacadeOtelIsolationArchTest` in `platform-tracing-otel` test sources enforces:
 - `core.facade..` does not depend on `io.opentelemetry..`
 - `core.facade..` does not depend on `core.runtime.otel..`
 

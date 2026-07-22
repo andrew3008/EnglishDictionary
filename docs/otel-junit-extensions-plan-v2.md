@@ -73,7 +73,7 @@
 
 ### 2.2. Что не работает
 
-1. **Не используется в реальных тестах модуля.** Поиск `TraceOperationsTestExtension` по `platform-tracing-otel-javaagent-extension` и `platform-tracing-spring-boot-autoconfigure` даёт **0 ссылок**. Все 27 тестов SpanProcessor'ов и Sampler'ов вручную поднимают SDK (см. [`EnrichingSpanProcessorTest.java`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/EnrichingSpanProcessorTest.java) — 12-15 строк boilerplate на каждый тест).
+1. **Не используется в реальных тестах модуля.** Поиск `TraceOperationsTestExtension` по `platform-tracing-otel-javaagent-extension` и `platform-tracing-spring-boot-autoconfigure` даёт **0 ссылок**. Все 27 тестов SpanProcessor'ов и Sampler'ов вручную поднимают SDK (см. [`EnrichingSpanProcessorTest.java`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/processor/EnrichingSpanProcessorTest.java) — 12-15 строк boilerplate на каждый тест).
 2. **Нет `@Nested`-safe scope.** Per-method lifecycle вообще не страдает от бага #7919, но и не пригоден для тестов SpanProcessor — там нужен один SDK на класс.
 3. **Нет `TraceOperations` для сервисов, которые тестируют не сам стартер, а свой код.** Метод `getPlatformTracing()` есть, но цель модуля сейчас размыта: для unit-тестов SpanProcessor он избыточен, для интеграционных тестов прикладного кода — недостаточен.
 
@@ -81,9 +81,9 @@
 
 | Тест-класс | Boilerplate сейчас | После плана v2 |
 |---|---|---|
-| [`CompositeSamplerTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/sampler/CompositeSamplerTest.java) | `AttributesBuilder` + ручной `shouldSample()` вызов в каждом тесте (~6 строк × 10 тестов) | `harness.withHeader(...).sample("path", SERVER).assertSampled()` — 1 строка |
+| [`CompositeSamplerTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/sampler/CompositeSamplerTest.java) | `AttributesBuilder` + ручной `shouldSample()` вызов в каждом тесте (~6 строк × 10 тестов) | `harness.withHeader(...).sample("path", SERVER).assertSampled()` — 1 строка |
 | `CompositeSamplerEdgeCasesTest` | то же | то же |
-| [`EnrichingSpanProcessorTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/EnrichingSpanProcessorTest.java) и 7 других `*SpanProcessor*Test` | `InMemorySpanExporter.create() + SdkTracerProvider.builder() + SimpleSpanProcessor + OpenTelemetrySdk.builder() + tracer.spanBuilder(...).end() + tracerProvider.shutdown()` (~13 строк × ≥3 теста на класс) | `@RegisterExtension static OtelSdkExtension otel = OtelSdkExtension.withProcessor(new EnrichingSpanProcessor()); ... otel.tracer().spanBuilder("op").startSpan().end(); assertThat(otel.spans()).hasSize(1)` |
+| [`EnrichingSpanProcessorTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/processor/EnrichingSpanProcessorTest.java) и 7 других `*SpanProcessor*Test` | `InMemorySpanExporter.create() + SdkTracerProvider.builder() + SimpleSpanProcessor + OpenTelemetrySdk.builder() + tracer.spanBuilder(...).end() + tracerProvider.shutdown()` (~13 строк × ≥3 теста на класс) | `@RegisterExtension static OtelSdkExtension otel = OtelSdkExtension.withProcessor(new EnrichingSpanProcessor()); ... otel.tracer().spanBuilder("op").startSpan().end(); assertThat(otel.spans()).hasSize(1)` |
 | `PlatformAutoConfigurationCustomizerTest` | Ручная сборка `AutoConfigurationCustomizer` через моки | Остаётся как есть — это не «работа с SDK», а тестирование SPI-implementation. Extension не нужен. |
 | `TracingActuatorEndpointTest` | `@SpringBootTest` с моками | Остаётся как есть — `ApplicationContextRunner` уже даёт всё нужное. |
 
@@ -330,7 +330,7 @@ public final class SpanAssertions {
 |---|---|---|
 | 1.1 | Реализовать `OtelSdkExtension` (builder, `@Nested`-safe lookup, `AutoCloseable` SdkResource) | Unit-тесты: SDK переиспользуется в `@Nested`, exporter сбрасывается между методами, `close()` вызывается ровно один раз |
 | 1.2 | Реализовать `SpanAssertions.assertSpan(spans, name)` | Возвращает `SpanDataAssert`, поддерживает chain |
-| 1.3 | Переписать [`EnrichingSpanProcessorTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/processor/EnrichingSpanProcessorTest.java) и `EnrichingSpanProcessorAdvancedTest` | Сокращение строк ≥45 %, поведение тестов идентично |
+| 1.3 | Переписать [`EnrichingSpanProcessorTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/processor/EnrichingSpanProcessorTest.java) и `EnrichingSpanProcessorAdvancedTest` | Сокращение строк ≥45 %, поведение тестов идентично |
 | 1.4 | Перевести `SafeSpanProcessor*Test`, `ValidatingSpanProcessorTest` | Аналогично |
 | 1.5 | Документация в `docs/testing.md` с одним рабочим примером | Готовое руководство для команды |
 
@@ -342,7 +342,7 @@ public final class SpanAssertions {
 |---|---|---|
 | 2.1 | Реализовать `SamplerHarness` + `SamplerDecisionAssert` | Unit-тесты harness: headers, url.path, kind, parent context |
 | 2.2 | Реализовать `SamplerHarnessExtension` (тонкая обёртка с `ParameterResolver`) | Unit-тесты |
-| 2.3 | Переписать [`CompositeSamplerTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/sampler/CompositeSamplerTest.java), `CompositeSamplerEdgeCasesTest` | Boilerplate `AttributesBuilder + shouldSample(...)` → одна fluent-строка |
+| 2.3 | Переписать [`CompositeSamplerTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/sampler/CompositeSamplerTest.java), `CompositeSamplerEdgeCasesTest` | Boilerplate `AttributesBuilder + shouldSample(...)` → одна fluent-строка |
 | 2.4 | Реализовать `SpanProcessorHarness` + `SpanProcessorHarnessExtension` | Unit-тесты |
 | 2.5 | Перевести `ScrubbingSpanProcessor*Test`, `SpanWatchdogProcessor*Test` | Совместимость поведения |
 
@@ -497,7 +497,7 @@ dependencies {
     api platform(project(':platform-tracing-bom'))
 
     api project(':platform-tracing-api')
-    api project(':platform-tracing-core')
+    api project(':platform-tracing-otel')
 
     api 'io.opentelemetry:opentelemetry-sdk'
     api 'io.opentelemetry:opentelemetry-sdk-testing'   // даёт OpenTelemetryAssertions, InMemory exporters

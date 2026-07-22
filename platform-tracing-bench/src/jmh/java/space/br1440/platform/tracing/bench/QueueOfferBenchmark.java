@@ -19,7 +19,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.otel.extension.processor.PlatformDropOldestExportSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.PlatformDropOldestExportSpanProcessor;
 
 import java.time.Duration;
 import java.util.Collection;

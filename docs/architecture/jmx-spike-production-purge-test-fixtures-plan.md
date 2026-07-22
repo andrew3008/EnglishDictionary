@@ -26,7 +26,7 @@
 
 ## 1. Executive Summary
 
-- Финальный таргет — `NEW_HYBRID`: production-пакет `space.br1440.platform.tracing.otel.extension.jmx.spike` должен быть **полностью удалён из `src/main`**.
+- Финальный таргет — `NEW_HYBRID`: production-пакет `space.br1440.platform.tracing.otel.javaagent.jmx.spike` должен быть **полностью удалён из `src/main`**.
 - JMX spike / MBean / `ObjectName type=WireSpike` **не остаются** в production-артефакте (`agentExtensionJar`).
 - Production runtime gate `platform.tracing.spike.jmx.wire` и stderr-маркер `SPIKE_JMX_WIRE:` удаляются из production-логики.
 - Wire-schema **остаётся** стабильным production API: `TracingControlWireValidator.V1` в `platform-tracing-api`.
@@ -61,7 +61,7 @@
 ```java
 // PR-3 spike-only JMX wire MBean (property-gated; no production control-plane impact).
 customizer.addTracerProviderCustomizer((builder, config) -> {
-    space.br1440.platform.tracing.otel.extension.jmx.spike.TracingControlWireSpikeProbe.registerIfEnabled();
+    space.br1440.platform.tracing.otel.javaagent.jmx.spike.TracingControlWireSpikeProbe.registerIfEnabled();
     return builder;
 });
 ```
@@ -178,7 +178,7 @@ platform-tracing-e2e-tests/src/testExtension, а НЕ java-test-fixtures, пот
 
 ### Почему `testFixtures` не подходит
 
-- `agentExtensionJar` собирается `from sourceSets.main.output` (+ `platform-tracing-api.jar` + `platform-tracing-core.jar`). `testFixtures` отдельного модуля в этот JAR **не попадут** — значит MBean не окажется в Agent `ExtensionClassLoader`.
+- `agentExtensionJar` собирается `from sourceSets.main.output` (+ `platform-tracing-api.jar` + `platform-tracing-otel.jar`). `testFixtures` отдельного модуля в этот JAR **не попадут** — значит MBean не окажется в Agent `ExtensionClassLoader`.
 - `testFixtures(project(...))` подключаются на test/app classpath, что разрушает cross-classloader контракт E2E (App CL → JMX → Agent CL).
 - Добавление плагина `java-test-fixtures` ради сценария, который он архитектурно не закрывает, — лишний Gradle-риск.
 
@@ -193,7 +193,7 @@ platform-tracing-e2e-tests/src/testExtension, а НЕ java-test-fixtures, пот
 
 ### Доказательство чистоты production JAR
 
-- Задача `verifyAgentJarContents` уже инспектирует содержимое `agentExtensionJar`; дополнить/использовать проверку отсутствия `space/br1440/platform/tracing/otel/extension/jmx/spike/` в JAR.
+- Задача `verifyAgentJarContents` уже инспектирует содержимое `agentExtensionJar`; дополнить/использовать проверку отсутствия `space/br1440/platform/tracing/otel/javaagent/jmx/spike/` в JAR.
 - Grep по `src/main` после cleanup (см. §12).
 
 ---
@@ -343,7 +343,7 @@ rg "registerIfEnabled" platform-tracing-otel-javaagent-extension/src/main
 ```bash
 ./gradlew :platform-tracing-otel-javaagent-extension:verifyAgentJarContents
 # дополнительно: убедиться, что в agentExtensionJar нет
-# entry space/br1440/platform/tracing/otel/extension/jmx/spike/*.class
+# entry space/br1440/platform/tracing/otel/javaagent/jmx/spike/*.class
 ```
 
 Ожидаемые результаты: все три grep по `src/main` — 0 совпадений; `verifyAgentJarContents` — без spike-классов; targeted/E2E/ArchUnit — зелёные.

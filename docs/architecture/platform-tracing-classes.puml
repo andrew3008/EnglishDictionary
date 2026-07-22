@@ -19,7 +19,7 @@ package "platform-tracing-api" as M_API #FFF8E1 {
   interface SpanAttributeScrubbingRule <<SPI>>
 }
 
-package "platform-tracing-core" as M_CORE #FFE0B2 {
+package "platform-tracing-otel" as M_CORE #FFE0B2 {
   class DefaultTraceOperations
   class NoopTraceOperations
 }
@@ -229,7 +229,7 @@ skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontName "Segoe UI"
 
-title platform-tracing-core — классы и связи
+title platform-tracing-otel — классы и связи
 
 package "space.br1440.platform.tracing.core" {
   class DefaultTraceOperations {
@@ -316,7 +316,7 @@ skinparam defaultFontName "Segoe UI"
 
 title platform-tracing-otel-javaagent-extension — классы и связи
 
-package "space.br1440.platform.tracing.otel.extension" {
+package "space.br1440.platform.tracing.otel.javaagent" {
   class PlatformAutoConfigurationCustomizer {
     -registeredSampler: AtomicReference<MutableRatioSampler>
     -registeredWatchdog: AtomicReference<SpanWatchdogProcessor>

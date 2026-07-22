@@ -1,1 +1,1 @@
-space.br1440.platform.tracing.otel.extension.resource.SafeResourceProvider
+space.br1440.platform.tracing.otel.javaagent.resource.SafeResourceProvider

@@ -13,8 +13,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.infra.Blackhole;
-import space.br1440.platform.tracing.otel.extension.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
 
 import java.util.List;
 import java.util.Map;

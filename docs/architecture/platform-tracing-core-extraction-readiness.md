@@ -46,7 +46,7 @@ Behavior changes: none
 | Module | Current responsibility | Runtime policy role |
 |--------|------------------------|---------------------|
 | `platform-tracing-api` | Public API, SPI, `DomainConfigHolder` / `Versioned` shared CAS primitive | No runtime control logic; control protocol in `api.control.protocol` (JDK-only) |
-| `platform-tracing-core` | TraceOperations facade, typed span builders, **pure sampling policy** (`core.sampling.*`), **pure validation policy** (`core.validation.*`), semconv | Sampling **decision engine** extracted (PR-6B); validation snapshot/update extracted (PR-9C); facade still OTel API–coupled |
+| `platform-tracing-otel` | TraceOperations facade, typed span builders, **pure sampling policy** (`core.sampling.*`), **pure validation policy** (`core.validation.*`), semconv | Sampling **decision engine** extracted (PR-6B); validation snapshot/update extracted (PR-9C); facade still OTel API–coupled |
 | `platform-tracing-otel-javaagent-extension` | Agent SPI, samplers, processors, holders/snapshots, JMX `PlatformTracingControl`, scrubbing engine | Agent runtime source of truth for all three policy domains |
 | `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, `RuntimeConfigApplier`, `*RuntimeConfig`, `SamplingControlClient`, Actuator, refresh | Spring input/reconciliation only |
 | `platform-tracing-autoconfigure-webmvc` / `-webflux` | Stack-specific wiring | No policy holders |

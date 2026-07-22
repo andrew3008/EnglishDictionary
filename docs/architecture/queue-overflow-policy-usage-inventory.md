@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-`QueueOverflowPolicy` — top-level enum в пакете `space.br1440.platform.tracing.otel.extension.configuration.enums`. Содержит две константы с каноническими строковыми значениями через `value()`:
+`QueueOverflowPolicy` — top-level enum в пакете `space.br1440.platform.tracing.otel.javaagent.configuration.enums`. Содержит две константы с каноническими строковыми значениями через `value()`:
 
 | Constant | `value()` |
 |---|---|
@@ -62,7 +62,7 @@ Git unavailable; used rg-based repository search.
 
 ## 3. Current Enum Contract
 
-**Файл:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration/enums/QueueOverflowPolicy.java`
+**Файл:** `platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/enums/QueueOverflowPolicy.java`
 
 | Constant | `value()` | Current Comment | Behavioral Meaning From Code | Rename Risk |
 |---|---|---|---|---|

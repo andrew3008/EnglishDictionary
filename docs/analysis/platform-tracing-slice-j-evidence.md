@@ -234,11 +234,111 @@ FFCC7D4C28430864FB117C90F0853E3BB6B0D9935D19FA9B9B067EA86ABD15BD
 
 ### J-commit-3
 
-PENDING.
+Выполнен механический перенос корневого Java package только для Agent extension:
+
+```text
+space.br1440.platform.tracing.otel.extension.*
+    -> space.br1440.platform.tracing.otel.javaagent.*
+```
+
+Package declarations и imports обновлены в main/test/E2E/benchmark/perf source sets,
+ArchUnit roots, reflection/resource literals и активной документации. Package
+`space.br1440.platform.tracing.core.*` в `platform-tracing-otel` намеренно сохранён:
+92 main declarations, 0 ошибочных declarations под `space.br1440.platform.tracing.otel.*`.
+
+Финальный inventory Agent package:
+
+| Проверка | Результат |
+|---|---|
+| main declarations `...otel.javaagent.*` | 144 |
+| main declarations `...otel.extension.*` | 0 |
+| classes в Agent extension JAR под `otel/javaagent` | 165 |
+| classes в Agent extension JAR под `otel/extension` | 0 |
+
+Финальная SPI map:
+
+| Provider interface | Implementation after J-commit-3 | Class in JAR |
+|---|---|---|
+| `AutoConfigurationCustomizerProvider` | `space.br1440.platform.tracing.otel.javaagent.PlatformAutoConfigurationCustomizer` | yes |
+| `ResourceProvider` | `space.br1440.platform.tracing.otel.javaagent.resource.SafeResourceProvider` | yes |
+| `ConfigurableSamplerProvider` | `space.br1440.platform.tracing.otel.javaagent.sampler.PlatformSamplerProvider` | yes |
+| `ConfigurablePropagatorProvider` | `space.br1440.platform.tracing.otel.javaagent.propagation.InboundTraceControlPropagatorProvider` | yes |
+
+`verifyExtensionSpiRegistration` проверяет точное содержимое descriptors и наличие
+implementation classes в JAR. Дополнительно добавлен `sliceJStaleNameVerify`, который
+запрещает старые artifact/project/package names в active build, source, resources и
+нормативных ADR/target documents; исторические evidence/snapshots не входят в gate.
+
+JMX/wire audit подтвердил сохранение 9 logical ObjectName literals относительно
+J-commit-2 (`set equal = true`). Имена домена `space.br1440.platform.tracing`, Open-Type
+контракты, readiness capability names и control protocol не менялись.
+
+Mechanical-source audit: для 308 изменённых Java/resource файлов current content после
+обратной подстановки `otel.javaagent -> otel.extension` точно совпадает с J-commit-2;
+non-mechanical source/resource diffs = 0. Изменения вне sources ограничены package paths,
+SPI FQNs, ArchUnit roots, build verification и актуальными ссылками документации.
 
 ## 8. Final Verification
 
-PENDING.
+### Publication and controlled distribution
+
+- isolated C3 metadata consumer: GREEN;
+- `platform-tracing-otel` и `platform-tracing-otel-javaagent-extension` опубликованы под
+  новыми coordinates; каталоги старых artifacts отсутствуют;
+- extension POM artifactId и Gradle module component равны
+  `platform-tracing-otel-javaagent-extension`;
+- C3 compile/runtime boundary сохранён, implementation не утёк в consumer compile classpath;
+- controlled ZIP содержит ровно `VERSION`, `checksums.sha256`, `manifest.json`, pinned
+  `opentelemetry-javaagent.jar`, два launcher, verifier и
+  `platform-tracing-otel-javaagent-extension.jar`;
+- два forced distribution rebuild после package rename имеют одинаковый SHA-256
+  `86217F926ED3A776BCC9C6174767F4EE605904C0B3E1DCDB10245A756AAF62D9`;
+- production distribution configuration cache: первая сборка сохранила entry, повторная
+  сборка сообщила `Configuration cache entry reused`.
+
+### Packaged Agent E2E
+
+Docker подтверждён по `tcp://192.168.100.70:2375`: server 28.0.4, Linux/amd64.
+Полный canonical opt-in прогон выполнен командой:
+
+```powershell
+$env:DOCKER_HOST='tcp://192.168.100.70:2375'
+.\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --rerun-tasks --no-daemon
+```
+
+Результат: GREEN за 9m24s; 28 XML suites, 65 tests, 0 failures, 0 errors,
+0 skipped. До полного прогона также GREEN выбранный packaged subset classloader,
+attestation, Spring composition, Reactor, fail-closed security, WebMVC identity, Kafka и
+JMX/control wire roundtrip (3m35s).
+
+### Static and ABI checks
+
+| Проверка | Результат |
+|---|---|
+| focused API wire / CP-C2 propagation | GREEN |
+| `AbiSnapshotTest`, identity/public-surface allowlists | GREEN |
+| Slice G sampling sealed-public-surface / golden chain | GREEN |
+| extension adapter, JMX/readiness and full extension tests | GREEN |
+| `sliceJStaleNameVerify` | GREEN |
+| active code/build/resource stale-name scan | 0 (historical allowlist сохранён) |
+| Java BOM scan | 1163 files, 0 BOM |
+| wildcard imports | 27 before / 27 after, delta 0; pre-existing, cleanup вне Slice J |
+| `git diff --check` | GREEN |
+
+### Findings
+
+- P0: none.
+- P1: none.
+- P2: pre-existing 27 wildcard imports; Slice J не добавляет новые и не смешивает cleanup
+  с coordinated rename.
+- Один transient Windows/JUnit `@TempDir` cleanup failure на J-commit-1 был опровергнут
+  isolated rerun и последующими полными GREEN runs; production delta не потребовался.
+
+Финальный aggregate gate (`projects`, JAR/SPI/distribution verifiers, PR-0/PR-1/PR-4,
+C3 consumer и `build`) завершён GREEN: 149 actionable tasks, 0 failures. Обычная
+`build`-задача ожидаемо пропустила opt-in E2E; обязательный отдельный `-PrunE2e` прогон
+выше выполнен без skips. Clean-worktree status фиксируется после третьего commit;
+push/PR разрешены только при сохранении GREEN состояния.
 
 ## 9. Current Release Gates
 
@@ -247,3 +347,7 @@ RG-IDENTITY-TRUST OPEN
 RG-CONTROLLED-AGENT OPEN
 PRODUCTION ROLLOUT FORBIDDEN
 ```
+
+CP-3 сохраняет `KEEP space.br1440.platform.tracing.core.*`; CP-4 сохраняет `KEEP void`.
+По dependency graph Slice K является кандидатом на no-op closure, но не считается
+реализованным или закрытым без явного authoritative решения.

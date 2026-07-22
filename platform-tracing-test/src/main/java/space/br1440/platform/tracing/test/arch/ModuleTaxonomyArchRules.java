@@ -109,7 +109,7 @@ public final class ModuleTaxonomyArchRules {
             .that().resideInAPackage("space.br1440.platform.tracing.autoconfigure..")
             .and().resideOutsideOfPackage("..test..")
             .and().resideOutsideOfPackage("..tests..")
-            .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel.extension..")
+            .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel.javaagent..")
             .allowEmptyShould(true)
             .because("platform-tracing-spring-boot-autoconfigure (App CL) не должен зависеть от "
                     + "platform-tracing-otel-javaagent-extension (Agent CL) implementation-классов");
@@ -243,9 +243,9 @@ public final class ModuleTaxonomyArchRules {
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
             .should().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.otel.extension.sampler.SamplerState")
+                    "space.br1440.platform.tracing.otel.javaagent.sampler.SamplerState")
             .orShould().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.otel.extension.scrubbing.ScrubbingSnapshot")
+                    "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot")
             .orShould().haveFullyQualifiedName(
                     "space.br1440.platform.tracing.core.validation.ValidationSnapshot")
             .because("VersionedState — контракт holder-managed runtime state, а не generic HasVersion-маркер");
@@ -557,7 +557,7 @@ public final class ModuleTaxonomyArchRules {
      * Техника: {@code noClasses().should().dependOnClassesThat()} с предикатом-исключением.
      */
     public static final ArchRule OTEL_EXTENSION_MDC_FROM_CORE = noClasses()
-            .that().resideInAPackage("space.br1440.platform.tracing.otel.extension..")
+            .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat(apiMdcExceptAllowed())
             .allowEmptyShould(true)
@@ -624,7 +624,7 @@ public final class ModuleTaxonomyArchRules {
                 String name = input.getName();
                 return name.startsWith("space.br1440.platform.tracing.core.")
                         || name.startsWith("space.br1440.platform.tracing.autoconfigure.")
-                        || name.startsWith("space.br1440.platform.tracing.otel.extension.")
+                        || name.startsWith("space.br1440.platform.tracing.otel.javaagent.")
                         || name.contains(".test.")
                         || name.endsWith("Test");
             }

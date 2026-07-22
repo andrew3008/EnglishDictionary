@@ -6,13 +6,13 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.core.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.core.control.protocol.RuntimePolicyControlHandler;
-import space.br1440.platform.tracing.otel.extension.control.JmxRuntimePolicyApplier;
-import space.br1440.platform.tracing.otel.extension.control.ReadAppliedStateHandler;
-import space.br1440.platform.tracing.otel.extension.jmx.control.PlatformControlProtocolMBean;
-import space.br1440.platform.tracing.otel.extension.jmx.sampling.PlatformSamplingControl;
-import space.br1440.platform.tracing.otel.extension.jmx.validation.PlatformValidationControl;
-import space.br1440.platform.tracing.otel.extension.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.extension.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
+import space.br1440.platform.tracing.otel.javaagent.control.ReadAppliedStateHandler;
+import space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;

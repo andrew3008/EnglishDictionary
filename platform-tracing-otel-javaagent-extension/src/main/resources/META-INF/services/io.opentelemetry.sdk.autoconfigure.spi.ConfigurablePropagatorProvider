@@ -1,1 +1,1 @@
-space.br1440.platform.tracing.otel.extension.propagation.InboundTraceControlPropagatorProvider
+space.br1440.platform.tracing.otel.javaagent.propagation.InboundTraceControlPropagatorProvider

@@ -413,6 +413,56 @@ tasks.register('pr0BaselineLock') {
     }
 }
 
+def sliceJActiveRenameFiles = files(fileTree(rootDir) {
+    include 'settings.gradle'
+    include 'build.gradle'
+    include 'gradle/**/*.gradle'
+    include 'gradle/**/*.java'
+    include '*/build.gradle'
+    include '*/src/**/*.java'
+    include '*/src/**/*.properties'
+    include '*/src/**/*.xml'
+    include '*/src/**/*.yml'
+    include '*/src/**/*.yaml'
+    include '*/src/**/*.json'
+    include '*/src/**/META-INF/services/*'
+    include 'README.md'
+    include 'docs/control-protocol-wire-spec-v1.md'
+    include 'docs/decisions/**'
+    include 'docs/architecture_target/**'
+    include 'platform-tracing-otel/docs/adr/**'
+    exclude '**/build/**'
+})
+
+tasks.register('sliceJStaleNameVerify') {
+    group = 'verification'
+    description = 'Rejects stale Slice J artifact, project and Agent package names in active files.'
+    inputs.files(sliceJActiveRenameFiles)
+
+    doLast {
+        // Строки собраны частями, чтобы проверка не находила собственные сигнатуры.
+        def staleNames = [
+                'platform-tracing-' + 'core',
+                'platform-tracing-otel-' + 'extension',
+                'space.br1440.platform.tracing.otel.' + 'extension',
+                'space/br1440/platform/tracing/otel/' + 'extension',
+        ]
+        def violations = []
+        inputs.files.files.findAll { it.isFile() }.sort { it.path }.each { file ->
+            String content = file.getText('UTF-8')
+            staleNames.each { staleName ->
+                if (content.contains(staleName)) {
+                    violations.add("${rootDir.toPath().relativize(file.toPath())}: ${staleName}")
+                }
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException("Slice J stale-name verification failed:\n${violations.join('\n')}")
+        }
+        logger.lifecycle('Slice J stale-name verification passed')
+    }
+}
+
 // ---------------------------------------------------------------------------------------------
 // PR-1 — Module taxonomy verification (docs/architecture/platform-tracing-module-taxonomy.md).
 // ArchUnit guardrails + starter smoke; no production code changes.
@@ -421,6 +471,7 @@ tasks.register('pr0BaselineLock') {
 tasks.register('pr1ModuleTaxonomyVerify') {
     group = 'pr1'
     description = 'Runs PR-1 module taxonomy ArchUnit guardrails and starter dependency smoke.'
+    dependsOn 'sliceJStaleNameVerify'
     dependsOn 'pr0StarterDependencySmoke'
     dependsOn ':platform-tracing-spring-boot-autoconfigure:test'
     dependsOn ':platform-tracing-autoconfigure-webmvc:test'

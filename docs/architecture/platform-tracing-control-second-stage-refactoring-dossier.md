@@ -22,7 +22,7 @@
 Phase 1 перенёс доменную логику из `PlatformTracingControl` (~669 строк монолита) в шесть operation-делегатов, но **не решил проблему читаемости фасада**:
 
 - `PlatformTracingControl` по-прежнему содержит **56 `@Override`-методов** (почти полная поверхность `PlatformTracingControlMBean`) в **354 строках** — преимущественно однострочные делегирования и секционные комментарии.
-- Operation-делегаты перемещены в подпакет `space.br1440.platform.tracing.otel.extension.jmx.operations` и объявлены **`public final class`** с **`public` методами** — это **расширяет production API surface**, хотя Phase 1 планировал **package-private** internal delegates.
+- Operation-делегаты перемещены в подпакет `space.br1440.platform.tracing.otel.javaagent.jmx.operations` и объявлены **`public final class`** с **`public` методами** — это **расширяет production API surface**, хотя Phase 1 планировал **package-private** internal delegates.
 - Документация Phase 1 (`platform-tracing-control-refactoring-dossier.md`, UML, `runtime-policy-control-architecture.md`) **противоречит коду**: там указано «package-private delegates в пакете `jmx`», фактически — **public delegates в `jmx.operations`**.
 
 **Достаточно ли Phase 1**
@@ -106,7 +106,7 @@ private final DiagnosticsControlOperations diagnostics;
 ### 2.3 Package layout
 
 ```
-space.br1440.platform.tracing.otel.extension.jmx
+space.br1440.platform.tracing.otel.javaagent.jmx
 ├── PlatformTracingControl.java          (public, MBean impl)
 ├── PlatformTracingControlMBean.java    (public interface)
 ├── PlatformTracingJmxRegistrar.java    (public, registration owner)
@@ -124,7 +124,7 @@ space.br1440.platform.tracing.otel.extension.jmx
 
 | Consumer | Import |
 |---|---|
-| `PlatformTracingControl` | `import space.br1440.platform.tracing.otel.extension.jmx.operations.*;` |
+| `PlatformTracingControl` | `import space.br1440.platform.tracing.otel.javaagent.jmx.operations.*;` |
 | *(другие)* | **нет** (grep по репозиторию) |
 
 **Кто создаёт delegates (`new *Operations`):**
@@ -231,7 +231,7 @@ space.br1440.platform.tracing.otel.extension.jmx
 
 **Java package-private visibility is per package name, not directory tree.**
 
-- `space.br1440.platform.tracing.otel.extension.jmx` and `space.br1440.platform.tracing.otel.extension.jmx.operations` are **different packages**.
+- `space.br1440.platform.tracing.otel.javaagent.jmx` and `space.br1440.platform.tracing.otel.javaagent.jmx.operations` are **different packages**.
 - `PlatformTracingControl` (in `jmx`) **cannot** access package-private types in `jmx.operations`.
 - Therefore delegates were made **`public final class`** with **`public` methods** (and Lombok `@RequiredArgsConstructor` → **public constructor**).
 

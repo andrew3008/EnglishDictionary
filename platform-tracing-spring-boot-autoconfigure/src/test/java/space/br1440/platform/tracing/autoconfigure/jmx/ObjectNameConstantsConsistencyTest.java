@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.jmx;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.extension.jmx.PlatformTracingObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

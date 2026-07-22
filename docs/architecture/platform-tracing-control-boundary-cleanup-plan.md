@@ -181,8 +181,8 @@
 
 - **Имя класса:** `PlatformTracingControlTestBuilder`
 - **Видимость:** `public` (нужно для cross-package тестов из `sampler`/`scrubbing`/`processor`).
-- **Пакет:** `space.br1440.platform.tracing.otel.extension.jmx` — тот же, что у `PlatformTracingControl`, чтобы иметь доступ к package-private C7.
-- **Расположение:** `platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/extension/jmx/PlatformTracingControlTestBuilder.java`
+- **Пакет:** `space.br1440.platform.tracing.otel.javaagent.jmx` — тот же, что у `PlatformTracingControl`, чтобы иметь доступ к package-private C7.
+- **Расположение:** `platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/jmx/PlatformTracingControlTestBuilder.java`
 - **Поля** (соответствуют параметрам C7):
   - `SamplerStateHolder configHolder = null`
   - `CompositeSampler compositeSampler = null`

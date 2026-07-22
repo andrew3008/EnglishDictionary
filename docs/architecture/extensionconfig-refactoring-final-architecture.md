@@ -3,7 +3,7 @@
 > **Статус:** COMPLETED — A3' code refactoring завершён (PR-1 → PR-5). Architecture closure завершён (PR-6).  
 > **Решение:** `APPROVE_A3_PREPROD_CLEAN_TARGET_COMPLETED`  
 > **Дата:** 2026-06-16  
-> **Пакет:** `space.br1440.platform.tracing.otel.extension.configuration`
+> **Пакет:** `space.br1440.platform.tracing.otel.javaagent.configuration`
 
 ---
 
@@ -214,7 +214,7 @@ Runtime (не связан с ExtensionConfig после bootstrap):
 ### G2 — Нет Spring-зависимости в otel-extension
 
 **Тест:** `ExtensionNoSpringDependencyArchTest.расширение_не_зависит_от_spring`  
-**Правило:** ни один production-класс в `space.br1440.platform.tracing.otel.extension` не должен зависеть от `org.springframework..`.
+**Правило:** ни один production-класс в `space.br1440.platform.tracing.otel.javaagent` не должен зависеть от `org.springframework..`.
 
 ### G3 — Нет descriptor registry / codegen framework
 
@@ -233,8 +233,8 @@ Runtime (не связан с ExtensionConfig после bootstrap):
 
 ```bash
 rg "ExtensionPropertyNames\.(SAMPLING|SCRUBBING|QUEUE|METRICS|ENRICHING|BAGGAGE|SDK|CLASSIFICATION|WATCHDOG|VALIDATION)" \
-  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory \
-  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/sampler
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory \
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/sampler
 ```
 
 **Ожидаемый результат:** 0 matches. Верифицирован по состоянию на PR-5.
@@ -260,13 +260,13 @@ rg "new ExtensionConfig" platform-tracing-otel-javaagent-extension/src/main
 # Ожидается: PlatformAutoConfigurationCustomizer + PlatformSamplerProvider
 
 # G1: domain config классы не держат ConfigProperties
-rg "ConfigProperties" platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/configuration
+rg "ConfigProperties" platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration
 # Ожидается: только ExtensionConfig, ExtensionConfigReader, SamplingExtensionConfig (в javadoc), etc.
 
 # G5: мигрированные фабрики не читают мигрированные domain-свойства
 rg "ExtensionPropertyNames\.(SAMPLING|SCRUBBING|QUEUE|METRICS|ENRICHING|BAGGAGE|SDK|CLASSIFICATION|WATCHDOG|VALIDATION)" \
-  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/factory \
-  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/extension/sampler
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/factory \
+  platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/sampler
 # Ожидается: 0 matches
 
 # Runtime API не изменился

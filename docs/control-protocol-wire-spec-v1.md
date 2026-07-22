@@ -220,7 +220,7 @@ missing values are `MISSING_REQUIRED_KEY`.
 
 > **Note:** Domain violations (sampling ratio out of `[0,1]`, conflicting
 > flags, etc.) are **not** part of the decode result. They are produced
-> separately by domain validators in `platform-tracing-core` and carry their
+> separately by domain validators in `platform-tracing-otel` and carry their
 > own error types.
 
 ---
@@ -246,7 +246,7 @@ In-process Map     ─┴──►  TracingControlProtocolDecoder.decode(Map)
                                 │    violations }
                                 ▼
                     ┌───────────────────────────────────────────┐
-                    │  DOMAIN VALIDATION  (platform-tracing-core)│
+                    │  DOMAIN VALIDATION  (platform-tracing-otel) │
                     │  sampling ratio bounds [0.0, 1.0]          │
                     │  route-ratio semantics                     │
                     │  validation mode semantics                 │
@@ -279,7 +279,7 @@ In-process Map     ─┴──►  TracingControlProtocolDecoder.decode(Map)
 
 3. **Domain constraint changes do not affect wire schema.** Tightening or
    relaxing `[0,1]` bounds, allowed mode values, etc., is a domain change
-   and is handled independently in `platform-tracing-core` without touching
+   and is handled independently in `platform-tracing-otel` without touching
    the v1 wire schema.
 
 4. **Major version bump (v2).** A new `contractVersion: 2` requires a new

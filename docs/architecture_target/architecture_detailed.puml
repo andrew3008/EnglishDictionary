@@ -138,7 +138,7 @@ component "Validated Map<String,Object>\nTracingControlWire v1\nOpenMBean-compat
 }
 
 package "Clean Core Hybrid — Pure Java Policy Layer" as CleanCore {
-component "platform-tracing-core\nPure Java policy engine\nNo Spring\nNo OTel in policy packages" as Core
+component "platform-tracing-otel\nPure Java policy engine\nNo Spring\nNo OTel in policy packages" as Core
 
 package "core.sampling\nTarget after PR-6" as CoreSampling {
 component "SamplingPolicyEngine\nFixed 7-rule order" as SamplingPolicyEngine
