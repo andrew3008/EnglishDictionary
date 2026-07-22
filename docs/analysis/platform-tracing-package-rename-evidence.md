@@ -1,16 +1,17 @@
 # CP-3 R2: evidence атомарной миграции Java package `core` -> `otel`
 
-> Статус: PARTIAL - mandatory packaged Agent E2E заблокирован недоступным Docker API.
-> Решение: CP-3 R2 - RENAME APPROVED по прямому указанию владельца проекта.
+> **Статус: CLOSED / PASS** — CP-3 R2 package migration завершена; mandatory packaged Agent E2E зелёный.
+> **Решение:** CP-3 R2 — RENAME APPROVED по прямому указанию владельца проекта; Slice K KEEP `core.*` superseded.
 
 ## 1. Baseline
 
 | Поле | Значение |
 |---|---|
 | Base remote master | `dfeea89621d945595fae26e525497d75a4a55c5b` |
-| Verified content HEAD | pending closure commit after mandatory E2E |
-| Branch | `feature/rename-tracing-core-package-to-otel` |
-| Worktree | `E:\Platform_Traces_Package_Rename` |
+| Implementation HEAD | `83d54c0` — `Renaming core to otel` (merged to `master`) |
+| Evidence closure | docs commit on `master` (post-`83d54c0`) |
+| Branch (historical) | `feature/rename-tracing-core-package-to-otel` |
+| Worktree (historical) | `E:\Platform_Traces_Package_Rename` |
 | Old prefix | `space.br1440.platform.tracing.core` |
 | New prefix | `space.br1440.platform.tracing.otel` |
 
@@ -138,13 +139,15 @@ pre-production ABI break. Public API module types не перемещаются 
 Первый aggregate run также выявил четыре старых slash-path ожидания в
 `verifyAgentJarContents`; после их замены gate и полный build прошли.
 
-Mandatory packaged Agent E2E command был запущен с
-`DOCKER_HOST=tcp://192.168.100.70:2375`, `-PrunE2e` и `--rerun-tasks`. Test task выполнил
-43 теста: 25 прошли, 18 container-dependent suites завершились `initializationError`, skipped
-тестов не было. XML всех 18 failures указывает на единый root cause:
-`DOCKER_HOST tcp://192.168.100.70:2375 is not listening` / `Could not find a valid Docker
-environment`. Прямой `GET /_ping` после TCP connect также не получил ни одного байта за
-15 секунд. Поэтому текущий migration verdict остаётся `PARTIAL`; E2E нельзя считать PASS.
+### Mandatory packaged Agent E2E
+
+| Запуск | Команда | Результат |
+|---|---|---|
+| Blocked (2026-07-22, ранний) | `DOCKER_HOST=tcp://192.168.100.70:2375` `-PrunE2e` `--rerun-tasks` | 43 tests: 25 passed, 18 `initializationError` (Docker API unavailable) |
+| **Closure (2026-07-22)** | `:platform-tracing-e2e-tests:test -PrunE2e --rerun-tasks --no-daemon` | **PASS** — 28 suites, **65 tests**, 0 failures / 0 errors / 0 skipped; BUILD SUCCESSFUL (~9m 32s) |
+
+Closure run выполнен владельцем проекта после восстановления Gentoo Docker
+(`DOCKER_HOST=tcp://192.168.100.70:2375`). Migration verdict: **PASS**.
 
 ## 8. Packaged artifact inspection
 
@@ -192,14 +195,14 @@ application-side injection или cross-classloader cast не добавляли
 ### Findings
 
 - **P0 production/code:** не обнаружены.
-- **P1 architecture:** не обнаружены; focused gates и aggregate build зелёные.
+- **P1 architecture:** не обнаружены; focused gates, aggregate build и mandatory E2E зелёные.
 - **P2:** не обнаружены новые package-migration defects.
-- **ENV-1, closure blocker:** TCP endpoint `192.168.100.70:2375` принимает соединение, но
-  Docker API не отвечает на `GET /_ping`; mandatory packaged Agent E2E ожидает повторного
-  запуска после восстановления daemon/port-forward.
+- **ENV-1:** CLOSED — mandatory packaged Agent E2E PASS (28 suites / 65 tests / 0/0/0).
 
-До закрытия ENV-1 migration нельзя объявлять завершённой и нельзя публиковать completed
-final-review PR. Независимо от результата миграции:
+**CP-3 R2 verdict:** CLOSED — `space.br1440.platform.tracing.core.*` → `space.br1440.platform.tracing.otel.*`
+migration complete on `master@83d54c0`. Slice K KEEP decision superseded by owner-directed R2.
+
+Независимо от результата миграции:
 
 ```text
 RG-IDENTITY-TRUST OPEN
