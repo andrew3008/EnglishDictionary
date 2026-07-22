@@ -100,6 +100,10 @@ class CorePolicyPackagePurityArchTest {
             ModuleTaxonomyArchRules.CONTROL_IMPL_ACCESS_RESTRICTED;
 
     @ArchTest
+    static final ArchRule identityInternalTypesNotPublic =
+            ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
+
+    @ArchTest
     static final ArchRule rootPackageMustBeEmpty =
             noClasses()
                     .should().resideInAPackage("space.br1440.platform.tracing.core")
