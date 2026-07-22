@@ -254,19 +254,19 @@ class ExtensionConfigFacadeVsFactoryParityCharacterizationTest {
     class BaggageParity {
 
         @Test
-        @DisplayName("baggage.enabled absent → facade false == factory uses DEFAULT_BAGGAGE_ENABLED (false)")
+        @DisplayName("baggage.enabled absent → facade true == factory uses DEFAULT_BAGGAGE_ENABLED (true)")
         void baggage_enabled_parity() {
             assertThat(facade().baggage().enabled())
-                    .isFalse()
+                    .isTrue()
                     .isEqualTo(ExtensionDefaults.DEFAULT_BAGGAGE_ENABLED);
         }
 
         @Test
-        @DisplayName("baggage.allowlist-keys absent → facade empty == ExtensionDefaults.DEFAULT_BAGGAGE_ALLOWLIST")
+        @DisplayName("baggage.allowlist-keys absent → facade uses canonical platform allowlist")
         void baggage_allowlist_parity() {
             assertThat(facade().baggage().allowlistKeys())
                     .isEqualTo(ExtensionDefaults.DEFAULT_BAGGAGE_ALLOWLIST)
-                    .isEmpty();
+                    .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
         }
 
         @Test

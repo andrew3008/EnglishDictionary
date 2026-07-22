@@ -37,6 +37,7 @@ class ReactorContextPropagationAgentE2ETest {
     private static final Duration AGENT_PROCESS_TIMEOUT = Duration.ofMinutes(3);
     private static final String E2E_REMOTE_SERVICE = "upstream-e2e-g205";
     private static final int CONCURRENT_REQUESTS = 4;
+    private static final String IDENTITY_SERVICE_NAME = "slice-m-reactive-identity-e2e";
 
     private static GenericContainer<?> jaeger;
     private static JaegerV3QueryClient jaegerClient;
@@ -113,5 +114,76 @@ class ReactorContextPropagationAgentE2ETest {
                             .hasSize(CONCURRENT_REQUESTS)
                             .containsExactlyInAnyOrderElementsOf(responseTraceIds);
                 });
+    }
+
+    @Test
+    void agentWebFluxPreservesScopedIdentityAcrossConcurrentSchedulerBoundaries() throws Exception {
+        int httpPort;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            httpPort = socket.getLocalPort();
+        }
+        List<String> correlationIds = List.of("REACTIVE-0", "REACTIVE-1", "REACTIVE-2", "REACTIVE-3");
+
+        List<String> responseBodies = AgentWebFluxProcessRunner.runConcurrentIdentityTest(
+                otelAgentJar,
+                testRuntimeClasspath,
+                otlpEndpoint,
+                IDENTITY_SERVICE_NAME,
+                httpPort,
+                null,
+                Map.of(),
+                List.of(
+                        "platform.tracing.sampling.ratio=1.0",
+                        "platform.tracing.suppression.suppress-micrometer-tracing=true",
+                        "spring.reactor.context-propagation=AUTO",
+                        "otel.bsp.schedule.delay=200"),
+                AGENT_PROCESS_TIMEOUT,
+                8_000L,
+                correlationIds);
+
+        assertThat(responseBodies).hasSize(correlationIds.size());
+        for (String responseBody : responseBodies) {
+            String[] parts = responseBody.split("\\|", -1);
+            assertThat(parts).as("Формат ответа /identity-reactive").hasSize(8);
+            String correlationId = parts[0];
+            assertThat(correlationIds).contains(correlationId);
+            assertThat(parts[1]).isEqualTo("request-" + correlationId);
+            assertThat(parts[2]).isEqualTo("true");
+            assertThat(parts[3]).isEqualTo("empty");
+            assertSchedulerObservation(parts[4], correlationId);
+            assertSchedulerObservation(parts[5], correlationId + "-SIBLING");
+            assertThat(parts[6]).isEqualTo(correlationId + "-ERROR");
+            assertThat(parts[7]).isEqualTo("empty");
+        }
+
+        await().atMost(TRACE_VISIBILITY_TIMEOUT)
+                .pollInterval(Duration.ofSeconds(1))
+                .untilAsserted(() -> {
+                    assertThat(jaegerClient.serverTraceIdsForRoute(
+                            IDENTITY_SERVICE_NAME, "/identity-reactive"))
+                            .hasSize(correlationIds.size());
+                    for (String correlationId : correlationIds) {
+                        assertProjectedChild("identity-reactive-" + correlationId, correlationId);
+                        assertProjectedChild(
+                                "identity-reactive-" + correlationId + "-SIBLING",
+                                correlationId + "-SIBLING");
+                    }
+                });
+    }
+
+    private static void assertSchedulerObservation(String observation, String correlationId) {
+        String[] parts = observation.split("~", -1);
+        assertThat(parts).hasSize(3);
+        assertThat(parts[0]).isEqualTo(correlationId);
+        assertThat(parts[1]).isEqualTo(correlationId);
+        assertThat(parts[2]).contains("parallel");
+    }
+
+    private static void assertProjectedChild(String spanName, String correlationId) throws Exception {
+        Map<String, String> attributes = jaegerClient.findSpanAttributesByName(
+                IDENTITY_SERVICE_NAME, spanName).orElseThrow();
+        assertThat(attributes)
+                .containsEntry("platform.correlation_id", correlationId)
+                .doesNotContainKey("baggage.platform.correlation.id");
     }
 }

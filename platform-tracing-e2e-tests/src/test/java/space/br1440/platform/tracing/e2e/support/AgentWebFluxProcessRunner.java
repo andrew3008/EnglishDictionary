@@ -63,6 +63,53 @@ public final class AgentWebFluxProcessRunner {
             long flushDelayMs,
             int requestCount) throws Exception {
         assertThat(requestCount).isPositive();
+        List<RequestSpec> requests = new ArrayList<>();
+        for (int index = 0; index < requestCount; index++) {
+            requests.add(new RequestSpec("/propagation-test", Map.of()));
+        }
+        return runConcurrentRequests(
+                otelAgentJar, testRuntimeClasspath, otlpEndpoint, serviceName, httpPort,
+                extensionLocation, extraEnv, extraJvmSystemProperties, processTimeout, flushDelayMs, requests);
+    }
+
+    public static List<String> runConcurrentIdentityTest(
+            String otelAgentJar,
+            String testRuntimeClasspath,
+            String otlpEndpoint,
+            String serviceName,
+            int httpPort,
+            String extensionLocation,
+            Map<String, String> extraEnv,
+            List<String> extraJvmSystemProperties,
+            Duration processTimeout,
+            long flushDelayMs,
+            List<String> correlationIds) throws Exception {
+        List<RequestSpec> requests = correlationIds.stream()
+                .map(correlationId -> new RequestSpec(
+                        "/identity-reactive?correlationId=" + correlationId,
+                        Map.of(
+                                "X-Request-Id", "request-" + correlationId,
+                                "X-Correlation-ID", "spoofed-" + correlationId,
+                                "baggage", "platform.correlation.id=spoofed-" + correlationId)))
+                .toList();
+        return runConcurrentRequests(
+                otelAgentJar, testRuntimeClasspath, otlpEndpoint, serviceName, httpPort,
+                extensionLocation, extraEnv, extraJvmSystemProperties, processTimeout, flushDelayMs, requests);
+    }
+
+    private static List<String> runConcurrentRequests(
+            String otelAgentJar,
+            String testRuntimeClasspath,
+            String otlpEndpoint,
+            String serviceName,
+            int httpPort,
+            String extensionLocation,
+            Map<String, String> extraEnv,
+            List<String> extraJvmSystemProperties,
+            Duration processTimeout,
+            long flushDelayMs,
+            List<RequestSpec> requestSpecs) throws Exception {
+        assertThat(requestSpecs).isNotEmpty();
         Path javaBin = Path.of(System.getProperty("java.home"), "bin", "java");
 
         List<String> jvmProperties = buildJvmProperties(
@@ -79,7 +126,7 @@ public final class AgentWebFluxProcessRunner {
         command.add(AgentWebFluxReactorPropagationSmokeMain.class.getName());
         command.add(Integer.toString(httpPort));
         command.add(Long.toString(flushDelayMs));
-        command.add(Integer.toString(requestCount));
+        command.add(Integer.toString(requestSpecs.size()));
 
         ProcessBuilder builder = new ProcessBuilder(command);
         if (extraEnv != null) {
@@ -110,8 +157,8 @@ public final class AgentWebFluxProcessRunner {
                 .isTrue();
 
         List<CompletableFuture<String>> requests = new ArrayList<>();
-        for (int index = 0; index < requestCount; index++) {
-            requests.add(CompletableFuture.supplyAsync(() -> executeRequest(httpPort, output)));
+        for (RequestSpec requestSpec : requestSpecs) {
+            requests.add(CompletableFuture.supplyAsync(() -> executeRequest(httpPort, requestSpec, output)));
         }
         List<String> responseBodies = requests.stream().map(CompletableFuture::join).toList();
 
@@ -132,20 +179,24 @@ public final class AgentWebFluxProcessRunner {
         return responseBodies;
     }
 
-    private static String executeRequest(int httpPort, StringBuilder output) {
-        Request request = new Request.Builder()
-                .url("http://127.0.0.1:" + httpPort + "/propagation-test")
-                .get()
-                .build();
+    private static String executeRequest(int httpPort, RequestSpec requestSpec, StringBuilder output) {
+        Request.Builder requestBuilder = new Request.Builder()
+                .url("http://127.0.0.1:" + httpPort + requestSpec.path())
+                .get();
+        requestSpec.headers().forEach(requestBuilder::header);
+        Request request = requestBuilder.build();
         try (Response response = HTTP_CLIENT.newCall(request).execute()) {
             assertThat(response.isSuccessful())
-                    .as("HTTP probe к /propagation-test. Output:\n%s", output)
+                    .as("HTTP probe к %s. Output:\n%s", requestSpec.path(), output)
                     .isTrue();
             assertThat(response.body()).isNotNull();
             return response.body().string();
         } catch (Exception exception) {
             throw new IllegalStateException("Не удалось выполнить WebFlux E2E запрос", exception);
         }
+    }
+
+    private record RequestSpec(String path, Map<String, String> headers) {
     }
 
     private static List<String> buildJvmProperties(
@@ -188,7 +239,8 @@ public final class AgentWebFluxProcessRunner {
             throws InterruptedException {
         long deadline = System.nanoTime() + timeout.toNanos();
         while (System.nanoTime() < deadline) {
-            if (output.indexOf(AgentWebFluxReactorPropagationSmokeMain.READY_MARKER) >= 0) {
+            if (ControlledAgentSpringFixture.containsOutputLine(
+                    output, AgentWebFluxReactorPropagationSmokeMain.READY_MARKER)) {
                 return true;
             }
             if (!process.isAlive()) {
@@ -196,6 +248,7 @@ public final class AgentWebFluxProcessRunner {
             }
             Thread.sleep(100L);
         }
-        return output.indexOf(AgentWebFluxReactorPropagationSmokeMain.READY_MARKER) >= 0;
+        return ControlledAgentSpringFixture.containsOutputLine(
+                output, AgentWebFluxReactorPropagationSmokeMain.READY_MARKER);
     }
 }

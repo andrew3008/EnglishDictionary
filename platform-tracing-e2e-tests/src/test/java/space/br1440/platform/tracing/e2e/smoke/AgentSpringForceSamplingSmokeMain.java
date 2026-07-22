@@ -103,7 +103,7 @@ public class AgentSpringForceSamplingSmokeMain {
         try {
             MBeanServer server = ManagementFactory.getPlatformMBeanServer();
             ObjectName name = new ObjectName(
-                    "space.br1440.platform.tracing:type=SamplingControl,name=PlatformSamplingControl");
+                    "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
             System.out.println("SMOKE_PROPAGATORS=" + System.getProperty("otel.propagators"));
             System.out.println("SMOKE_SAMPLER=" + System.getProperty("otel.traces.sampler"));
             System.out.println("SMOKE_CAPTURE_HEADERS="

@@ -1,15 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.kafka;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.core.propagation.control.DefaultOutboundPropagationPolicy;
 import space.br1440.platform.tracing.core.propagation.control.TrustedDestinationMatchers;
 
@@ -21,6 +25,7 @@ import space.br1440.platform.tracing.core.propagation.control.TrustedDestination
  * но ничего не инжектит). Span'ы Kafka создаёт OTel Java Agent — платформа их не дублирует.
  */
 @AutoConfiguration
+@AutoConfigureAfter(PlatformOutboundPropagationAutoConfiguration.class)
 @ConditionalOnClass(name = {
         "org.springframework.kafka.core.DefaultKafkaProducerFactory",
         "org.apache.kafka.clients.producer.ProducerInterceptor"
@@ -32,7 +37,9 @@ public class PlatformKafkaOutboundAutoConfiguration {
     @ConditionalOnBean(PlatformOutboundPropagation.class)
     @ConditionalOnMissingBean
     public PlatformKafkaProducerFactoryCustomizer platformKafkaProducerFactoryCustomizer(
-            TracingProperties properties, PlatformOutboundPropagation propagation) {
+            TracingProperties properties,
+            PlatformOutboundPropagation propagation,
+            RequestIdentityBoundarySupport identityBoundary) {
         TracingProperties.Kafka kafka = properties.getKafka();
         TracingProperties.Propagation.Outbound outbound = properties.getPropagation().getOutbound();
 
@@ -46,6 +53,6 @@ public class PlatformKafkaOutboundAutoConfiguration {
                 outbound.isPropagateQaTrace(),
                 outbound.isPropagateRequestId());
 
-        return new PlatformKafkaProducerFactoryCustomizer(policy, propagation);
+        return new PlatformKafkaProducerFactoryCustomizer(policy, propagation, identityBoundary);
     }
 }

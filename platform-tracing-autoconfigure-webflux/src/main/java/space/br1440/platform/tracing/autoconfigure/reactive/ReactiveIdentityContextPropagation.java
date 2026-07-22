@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Objects;
 
 import org.springframework.beans.factory.DisposableBean;
@@ -38,7 +40,7 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
         if (ownsRegistration) {
             registry.removeThreadLocalAccessor(KEY);
         }
-        accessor.clearBridgeScope();
+        accessor.clearBridgeScopes();
     }
 
     record IdentityState(String requestId, String correlationId) {
@@ -55,7 +57,8 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
     private static final class IdentityThreadLocalAccessor implements ThreadLocalAccessor<IdentityState> {
 
         private final RequestIdentityBoundarySupport boundarySupport;
-        private final ThreadLocal<CorrelationScope> bridgeScope = new ThreadLocal<>();
+        private final ThreadLocal<Deque<BridgeFrame>> bridgeScopes =
+                ThreadLocal.withInitial(ArrayDeque::new);
 
         private IdentityThreadLocalAccessor(RequestIdentityBoundarySupport boundarySupport) {
             this.boundarySupport = Objects.requireNonNull(boundarySupport, "boundarySupport");
@@ -77,23 +80,22 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
 
         @Override
         public void setValue(IdentityState value) {
-            clearBridgeScope();
-            bridgeScope.set(openScope(value));
+            bridgeScopes.get().push(new BridgeFrame(openScope(value)));
         }
 
         @Override
         public void setValue() {
-            clearBridgeScope();
+            bridgeScopes.get().push(BridgeFrame.EMPTY);
         }
 
         @Override
         public void restore(IdentityState previousValue) {
-            setValue(previousValue);
+            closeBridgeScope();
         }
 
         @Override
         public void restore() {
-            clearBridgeScope();
+            closeBridgeScope();
         }
 
         private CorrelationScope openScope(IdentityState state) {
@@ -120,11 +122,33 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
             }
         }
 
-        private void clearBridgeScope() {
-            CorrelationScope scope = bridgeScope.get();
+        private void closeBridgeScope() {
+            Deque<BridgeFrame> scopes = bridgeScopes.get();
+            if (scopes.isEmpty()) {
+                return;
+            }
+            scopes.pop().close();
+            if (scopes.isEmpty()) {
+                bridgeScopes.remove();
+            }
+        }
+
+        private void clearBridgeScopes() {
+            Deque<BridgeFrame> scopes = bridgeScopes.get();
+            while (!scopes.isEmpty()) {
+                scopes.pop().close();
+            }
+            bridgeScopes.remove();
+        }
+    }
+
+    private record BridgeFrame(CorrelationScope scope) {
+
+        private static final BridgeFrame EMPTY = new BridgeFrame(null);
+
+        private void close() {
             if (scope != null) {
                 scope.close();
-                bridgeScope.remove();
             }
         }
     }

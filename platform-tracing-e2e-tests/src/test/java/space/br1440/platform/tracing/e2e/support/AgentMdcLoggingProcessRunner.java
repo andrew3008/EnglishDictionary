@@ -134,6 +134,7 @@ public final class AgentMdcLoggingProcessRunner {
                     .isTrue();
             jvmProperties.add("otel.javaagent.extensions=" + extensionPath.toString().replace('\\', '/'));
         }
+        ControlledAgentSpringFixture.addSdkAutoConfigurationExclusion(jvmProperties, extensionLocation);
         jvmProperties.add("otel.service.name=" + serviceName);
         jvmProperties.add("otel.traces.exporter=otlp");
         jvmProperties.add("otel.exporter.otlp.endpoint=" + otlpEndpoint);
@@ -161,7 +162,8 @@ public final class AgentMdcLoggingProcessRunner {
             throws InterruptedException {
         long deadline = System.nanoTime() + timeout.toNanos();
         while (System.nanoTime() < deadline) {
-            if (output.indexOf(AgentMdcPlatformLoggingSmokeMain.READY_MARKER) >= 0) {
+            if (ControlledAgentSpringFixture.containsOutputLine(
+                    output, AgentMdcPlatformLoggingSmokeMain.READY_MARKER)) {
                 return true;
             }
             if (!process.isAlive()) {
@@ -169,6 +171,7 @@ public final class AgentMdcLoggingProcessRunner {
             }
             Thread.sleep(100L);
         }
-        return output.indexOf(AgentMdcPlatformLoggingSmokeMain.READY_MARKER) >= 0;
+        return ControlledAgentSpringFixture.containsOutputLine(
+                output, AgentMdcPlatformLoggingSmokeMain.READY_MARKER);
     }
 }

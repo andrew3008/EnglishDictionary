@@ -94,7 +94,23 @@ class MicrometerStatusMappingE2ETest {
     }
 
     @SpringBootConfiguration
-    @EnableAutoConfiguration
+    @EnableAutoConfiguration(excludeName = {
+            "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.SemanticLayerAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingAopAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingObservationAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingActuatorAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.RequestContextSupplierAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingRefreshScopeAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.kafka.PlatformKafkaAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.kafka.PlatformKafkaOutboundAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.servlet.ServletTracingAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.servlet.WebMvcSuppressMicrometerTracingAutoConfiguration"
+    })
     @Import(MicrometerStatusMappingE2ETest.TestController.class)
     static class App {
         public static void main(String[] args) {

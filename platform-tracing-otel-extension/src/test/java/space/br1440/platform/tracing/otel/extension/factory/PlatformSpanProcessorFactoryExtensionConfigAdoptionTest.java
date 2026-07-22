@@ -251,6 +251,33 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     @DisplayName("Default config (no properties set) — watchdog not added")
     class DefaultConfig {
 
+        @Test
+        void factoryAddsBaggageProcessorWithCanonicalDefaults() throws Exception {
+            PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar();
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            ExtensionConfig defaultConfig = new ExtensionConfig(new ConfigProperties() {
+                @Override public String getString(String name) { return null; }
+                @Override public Boolean getBoolean(String name) {
+                    if ("platform.tracing.scrubbing.enabled".equals(name)) return false;
+                    return null;
+                }
+                @Override public Integer getInt(String name) { return null; }
+                @Override public Long getLong(String name) { return null; }
+                @Override public Double getDouble(String name) { return null; }
+                @Override public Duration getDuration(String name) { return null; }
+                @Override public List<String> getList(String name) { return null; }
+                @Override public Map<String, String> getMap(String name) { return null; }
+            });
+
+            factory.registerSpanProcessors(
+                    SdkTracerProvider.builder(),
+                    defaultConfig,
+                    scrubbingDisabledConfig());
+
+            assertThat(getComposite(registrar).getProcessorErrorCounts())
+                    .containsKey("BaggageSpanProcessor");
+        }
+
         /**
          * SP-01 / Factory Test.
          * Without any explicit watchdog configuration, the factory must not add
@@ -343,7 +370,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         }
 
         @Test
-        @DisplayName("Baggage defaults: disabled, empty allowlist, deny patterns set")
+        @DisplayName("Baggage defaults: enabled with canonical allowlist and deny patterns")
         void default_baggage_matches_extension_defaults() {
             ExtensionConfig cfg = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String n) { return null; }
@@ -356,8 +383,10 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public Map<String, String> getMap(String n) { return null; }
             });
 
-            assertThat(cfg.baggage().enabled()).as("baggage.enabled default").isFalse();
-            assertThat(cfg.baggage().allowlistKeys()).as("baggage.allowlistKeys default").isEmpty();
+            assertThat(cfg.baggage().enabled()).as("baggage.enabled default").isTrue();
+            assertThat(cfg.baggage().allowlistKeys())
+                    .as("baggage.allowlistKeys default")
+                    .containsExactly("traffic_source", "tenant_class", "platform.correlation.id");
             assertThat(cfg.baggage().denyPatterns())
                     .as("baggage.denyPatterns default")
                     .containsExactly("password", "secret", "token");

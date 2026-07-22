@@ -80,7 +80,9 @@ class AgentStatusMappingSmokeTest {
                 ERROR_ROUTE,
                 null, // no custom headers
                 Map.of("OTEL_TRACES_SAMPLER", "always_on", "PLATFORM_TRACING_SUPPRESSION_SUPPRESS_MICROMETER_TRACING", "true"),
-                List.of("otel.bsp.schedule.delay=200"),
+                List.of(
+                        "e2.stock.agent.baseline=true",
+                        "otel.bsp.schedule.delay=200"),
                 PROCESS_TIMEOUT,
                 3_000L);
 

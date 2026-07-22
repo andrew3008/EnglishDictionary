@@ -97,6 +97,7 @@ class RuntimeSamplingControlSmokeTest {
                 httpPort,
                 extensionJar,
                 List.of(
+                        "otel.traces.sampler=platform",
                         "platform.tracing.sampling.ratio=1.0",
                         "platform.tracing.suppression.suppress-micrometer-tracing=true",
                         "otel.bsp.schedule.delay=200"),
