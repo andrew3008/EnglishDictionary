@@ -1,0 +1,774 @@
+---
+description: Java 21 language, API, concurrency, and modernization policy for the platform tracing repository.
+globs:
+  - "**/*.java"
+alwaysApply: false
+---
+
+# Java 21 Rules
+
+## Purpose
+
+Use stable Java 21 features when they materially improve:
+
+- correctness
+- explicitness
+- type safety
+- immutability
+- exhaustive modeling
+- maintainability
+- runtime safety
+- verified performance
+
+Do not use modern syntax merely for novelty or line-count reduction.
+
+Do not modernize unrelated code during a focused change.
+
+Use the Java version configured by the repository toolchain as the source of truth.
+
+Do not increase the language level in one module independently.
+
+## Preview Features
+
+Do not use Java preview features.
+
+Do not add:
+
+- `--enable-preview`
+- preview compiler flags
+- preview runtime flags
+- preview-dependent source code
+- preview-only APIs
+
+unless all of the following are explicitly approved:
+
+1. an ADR justifies the preview dependency
+2. Gradle compilation enables the same preview version
+3. test tasks enable the same preview version
+4. Javadoc and IDE configuration are aligned
+5. CI and runtime environments use the same JDK
+6. publication and consumer implications are documented
+7. removal or migration strategy is defined
+
+Stable Java 21 language and runtime features are preferred.
+
+## Records
+
+Prefer records for small immutable value models when their component list is the intended contract.
+
+Good candidates:
+
+- snapshots
+- validation results
+- violations
+- immutable DTOs
+- bounded internal messages
+- operation results
+- immutable test fixtures
+
+Example:
+
+```java
+record RuntimePolicySnapshot(
+        long version,
+        String source,
+        RuntimePolicy policy) {
+
+    RuntimePolicySnapshot {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(policy, "policy");
+    }
+}
+```
+
+Use compact constructors to enforce invariants.
+
+Do not use records mechanically for:
+
+- Spring beans
+- runtime services
+- mutable state holders
+- lifecycle-managed objects
+- framework proxy targets
+- JPA entities
+- inheritance-based models
+- public contracts where record components would accidentally freeze an unstable API
+- objects requiring controlled hidden state
+
+Before introducing a public record, review:
+
+- source compatibility
+- binary/public surface
+- component names
+- constructor semantics
+- serialization implications
+- Javadoc
+- dependency exposure
+
+## Sealed Types
+
+Use sealed interfaces or classes for genuinely closed hierarchies.
+
+Good candidates:
+
+- internal state transitions
+- validation outcomes
+- apply results
+- control operation results
+- bounded domain alternatives
+- mutually exclusive strategy outcomes
+
+Example:
+
+```java
+sealed interface ApplyResult
+        permits Applied, Rejected, Failed {
+}
+```
+
+Use sealed types when exhaustive handling improves correctness.
+
+Do not seal a hierarchy when:
+
+- external implementations are a real SPI
+- future providers are intentionally open
+- framework-generated subclasses are required
+- proxying semantics are unclear
+- the hierarchy is only accidentally closed today
+
+Do not introduce a sealed hierarchy merely to replace an enum without a real modeling benefit.
+
+## Pattern Matching
+
+Use pattern matching for `instanceof` and `switch` when it makes type handling clearer and safer.
+
+Prefer exhaustive handling for sealed hierarchies.
+
+Example:
+
+```java
+return switch (result) {
+    case Applied applied -> toAppliedResponse(applied);
+    case Rejected rejected -> toRejectedResponse(rejected);
+    case Failed failed -> toFailureResponse(failed);
+};
+```
+
+Avoid a `default` branch when exhaustive handling should force the compiler to detect new variants.
+
+Use record patterns only when they improve readability.
+
+Do not use nested patterns that obscure control flow.
+
+Do not replace two simple and clear `if` statements with a complex pattern switch merely for concision.
+
+## Switch Expressions
+
+Prefer switch expressions when mapping a closed set of values to a result.
+
+Example:
+
+```java
+var status = switch (outcome) {
+    case APPLIED -> SUCCESS;
+    case REJECTED -> CLIENT_ERROR;
+    case FAILED -> SERVER_ERROR;
+};
+```
+
+Use exhaustive switches for enums and sealed types when possible.
+
+Avoid:
+
+- fall-through
+- hidden mutation inside switch branches
+- complex side effects
+- unnecessary `default` branches
+- large switches that indicate missing ownership or polymorphism
+
+## `var`
+
+Use `var` only for local variables when the type is obvious from the right-hand side and does not carry important architectural meaning.
+
+Acceptable:
+
+```java
+var decodeResult = protocol.decode(payload);
+var snapshot = state.current();
+```
+
+Prefer an explicit type when:
+
+- the factory method return type is not obvious
+- several related types share similar names
+- the type is important to understand ownership
+- generics are non-trivial
+- the code crosses API/core/OTel/JMX boundaries
+- the value is security or state sensitive
+- explicit type improves reviewability
+
+Avoid:
+
+```java
+var value = resolve();
+var result = process();
+var context = current();
+```
+
+when the type cannot be inferred immediately by a reviewer.
+
+Do not convert existing explicit local types to `var` in unrelated code.
+
+## Text Blocks
+
+Use text blocks for readable multi-line test and configuration data, such as:
+
+- JSON
+- YAML
+- SQL
+- expected diagnostics
+- wire examples
+- large text fixtures
+
+Example:
+
+```java
+var payload = """
+        {
+          "operation": "VALIDATE_RUNTIME_POLICY",
+          "contractVersion": "1"
+        }
+        """;
+```
+
+Do not use text blocks for short single-line strings.
+
+Keep indentation deterministic.
+
+Do not embed secrets or environment-specific credentials.
+
+## Sequenced Collections
+
+Use sequenced collection APIs only when first, last, or reversed encounter order is part of the intended contract.
+
+Do not replace `List`, `LinkedHashMap`, or `LinkedHashSet` mechanically.
+
+Before using a sequenced collection type in public API, review:
+
+- consumer compatibility
+- semantic need
+- implementation guarantees
+- dependency on encounter order
+
+Prefer the narrowest interface that expresses the actual contract.
+
+## Collection Immutability
+
+Prefer defensive copying for immutable boundaries:
+
+```java
+List.copyOf(values);
+Set.copyOf(values);
+Map.copyOf(values);
+```
+
+Use unmodifiable snapshots for:
+
+- public return values
+- runtime state
+- decode results
+- diagnostics
+- policy snapshots
+
+Remember:
+
+- copy factories reject `null`
+- encounter order may require deliberate handling
+- mutable nested values remain mutable
+- immutability of the collection does not imply immutability of its elements
+
+Do not expose internal mutable collections.
+
+## Streams
+
+Use Stream API for clear, side-effect-free transformations.
+
+Good uses:
+
+- mapping
+- filtering
+- grouping
+- bounded aggregation
+- immutable result construction
+
+Prefer an ordinary loop when it is clearer or safer, especially when code requires:
+
+- early return
+- multiple mutable conditions
+- explicit state transitions
+- exception handling
+- hot-path allocation control
+- complex branching
+- bounded side effects
+
+Do not convert every loop to a stream.
+
+Avoid:
+
+- streams with hidden mutation
+- deeply nested pipelines
+- parallel streams in platform runtime code without explicit performance and threading analysis
+- streams on latency-sensitive hot paths without evidence
+- `peek` for business logic
+
+Do not use parallel streams as a substitute for an explicit concurrency model.
+
+## Optional
+
+Use `Optional` only for genuinely optional return values.
+
+Do not use `Optional`:
+
+- as a field
+- as a method parameter
+- in records mechanically
+- as a replacement for a clear result model
+- for collections
+- for performance-sensitive hot-path state
+
+Prefer:
+
+- empty collections
+- explicit result types
+- domain-specific absence
+- nullable values only when the contract explicitly supports them
+
+Do not chain `Optional` operations when ordinary control flow is clearer.
+
+## Virtual Threads
+
+Virtual threads are allowed only when the workload and ownership model justify them.
+
+Suitable cases may include:
+
+- many independent blocking I/O operations
+- bounded request/task orchestration
+- child-process or integration-test coordination
+- blocking clients where reactive replacement is neither required nor beneficial
+
+Do not use virtual threads for:
+
+- CPU-bound parallelism
+- replacing Reactor/WebFlux architecture
+- blocking Reactor event-loop threads
+- hiding unbounded concurrency
+- unmanaged background processing
+- fire-and-forget work
+- exporter or runtime loops without lifecycle ownership
+
+Before introducing virtual threads, define:
+
+```text
+Workload:
+Blocking operations:
+Concurrency bound:
+Executor owner:
+Lifecycle:
+Shutdown:
+ThreadLocal usage:
+MDC propagation:
+OpenTelemetry context propagation:
+Backpressure:
+Failure handling:
+Test evidence:
+```
+
+Use structured ownership for executors.
+
+Always close explicitly owned executors.
+
+Do not create a new virtual-thread executor per request or operation.
+
+Do not assume ThreadLocal, MDC, security context, or OpenTelemetry context propagation is automatically correct.
+
+Test:
+
+- context visibility
+- MDC cleanup
+- trace continuity
+- cancellation
+- timeout
+- failure
+- shutdown
+- resource bounds
+- no duplicate spans
+
+## Platform Threads and Executors
+
+Use repository-approved executor ownership.
+
+Do not:
+
+- call `Executors.new...` in arbitrary runtime components
+- create unmanaged pools
+- hide threads in static initializers
+- use unbounded queues
+- rely on default shutdown hooks
+- swallow interruption
+
+Executors must have:
+
+- one owner
+- explicit lifecycle
+- bounded workload semantics
+- clear shutdown
+- observability when operationally important
+
+Preserve interruption status when catching `InterruptedException`.
+
+## Structured Concurrency
+
+Do not use preview structured-concurrency APIs.
+
+If a stable structured-concurrency API is not available in the configured Java version, use explicit executor/task ownership instead.
+
+Do not emulate structured concurrency through ad hoc unmanaged futures.
+
+## `CompletableFuture`
+
+Use `CompletableFuture` only when asynchronous ownership and executor are explicit.
+
+Do not rely on the common ForkJoinPool in platform infrastructure without an explicit decision.
+
+Specify the executor for asynchronous stages where execution policy matters.
+
+Handle:
+
+- exception propagation
+- cancellation
+- timeout
+- context propagation
+- executor shutdown
+- backpressure or concurrency bounds
+
+Do not use nested futures or blocking `join()` on reactive event-loop threads.
+
+## Date and Time
+
+Use `java.time`.
+
+Prefer:
+
+- `Instant` for machine timestamps
+- `Duration` for elapsed time or timeout
+- `Clock` for testable time
+- `OffsetDateTime` or `ZonedDateTime` only when offset or zone is part of the contract
+
+Avoid:
+
+- `java.util.Date`
+- `Calendar`
+- `System.currentTimeMillis()` scattered through domain logic
+- implicit system default time zone
+- timestamps as ordering guarantees in distributed state
+
+Inject or pass `Clock` when deterministic tests matter.
+
+Use monotonic time for elapsed-duration measurement where appropriate.
+
+## Randomness and Identifiers
+
+Use deterministic inputs in tests.
+
+Do not rely on random sampling or random delays for assertions.
+
+Use secure randomness only when the security contract requires it.
+
+Use UUIDs according to the domain policy.
+
+Do not use trace IDs, request IDs, or random values as:
+
+- authorization proof
+- metric labels
+- lock ownership without explicit semantics
+- ordering guarantees
+
+## Null Handling
+
+Use `Objects.requireNonNull(...)` for explicit programming-error invariants where appropriate.
+
+Do not scatter defensive null checks that hide an unclear contract.
+
+Prefer:
+
+- non-null collections
+- explicit optional result
+- constructor invariants
+- clear nullability annotations
+- domain result models
+
+Do not use `Optional.ofNullable(...)` to mask invalid state.
+
+## Exceptions
+
+Use explicit exception handling.
+
+Do not:
+
+- use Lombok `@SneakyThrows`
+- swallow exceptions
+- catch `Exception` broadly without justification
+- convert interruption into a generic runtime exception without restoring status
+- expose raw input or secrets in error messages
+- use exceptions as normal wire-validation flow
+
+Preserve root cause.
+
+Use explicit result models for untrusted control or validation input.
+
+## Resource Management
+
+Use try-with-resources for resources with ordinary close semantics.
+
+Use explicit `try/finally` when:
+
+- span or scope lifecycle must be restored
+- close order matters
+- failure during close needs handling
+- JMX registration requires rollback
+- executor shutdown is required
+- runtime state must remain consistent
+
+Do not use finalizers.
+
+Do not rely on garbage collection for cleanup.
+
+## Static Members
+
+Static constants and stateless deterministic utilities are allowed.
+
+Do not introduce:
+
+- static mutable state
+- global registries
+- service locators
+- runtime context holders
+- global caches without bounded lifecycle
+- static executors
+- classloader-sensitive singleton state
+
+A static utility must have no injected dependencies, hidden initialization, or lifecycle.
+
+## Reflection
+
+Avoid reflection in ordinary core flows.
+
+Reflection is acceptable only when:
+
+- required by a framework or integration boundary
+- isolated
+- bounded
+- tested
+- failure behavior is explicit
+- public API does not depend on reflected implementation details
+
+Do not use reflection to bypass:
+
+- visibility
+- module ownership
+- type-safe mapping
+- dependency design
+- classloader boundaries
+
+## Serialization
+
+Do not use Java native serialization.
+
+Do not use:
+
+- `ObjectInputStream`
+- `ObjectOutputStream`
+- unrestricted polymorphic deserialization
+- arbitrary class-name construction
+- opaque binary formats without governance
+
+Use explicit schemas and bounded models.
+
+## API Design
+
+Do not use Java 21 features in public API solely because they are available.
+
+Before exposing a record, sealed type, sequenced collection, or other Java 21 type, review:
+
+- concrete consumers
+- semantic stability
+- binary/source implications
+- public component names
+- Gradle dependency contract
+- Javadoc
+- framework compatibility
+- future evolution
+
+Prefer explicit and minimal public surface.
+
+## Spring Boot
+
+For Spring components:
+
+- prefer constructor injection
+- use records for configuration properties only when supported by the binding model
+- do not make beans records merely for immutability
+- do not use virtual threads to bypass reactive architecture
+- do not hide startup work in constructors
+- preserve proxying and lifecycle expectations
+
+## OpenTelemetry and Tracing
+
+Java 21 features must not change tracing semantics accidentally.
+
+Verify:
+
+- scope lifecycle
+- context propagation
+- ThreadLocal behavior
+- MDC cleanup
+- no duplicate spans
+- no context leakage
+- exporter and processor lifecycle
+- agent/application classloader behavior
+
+Pattern matching or records may simplify models, but must not leak OTel SDK implementation types into public API.
+
+## Lombok Interaction
+
+Follow the Lombok rule.
+
+General preference:
+
+- use `@Slf4j` for classes that log
+- use `@RequiredArgsConstructor` for straightforward internal constructor injection
+- prefer records over Lombok data carriers where appropriate
+- prefer explicit Java for public API, wire contracts, and invariant-heavy constructors
+
+Do not combine Lombok and Java 21 features in ways that obscure generated public surface.
+
+## Performance
+
+Do not assume newer syntax is faster.
+
+For hot paths, review:
+
+- allocations
+- boxing
+- stream pipelines
+- pattern-switch generated behavior
+- collection copies
+- lambda capture
+- synchronization
+- virtual-thread concurrency bounds
+
+Use JMH only when a focused performance question exists.
+
+Correctness and privacy take priority over micro-optimization.
+
+## Refactoring Scope
+
+When editing existing code:
+
+- modernize only code already in scope
+- preserve behavior unless the task changes it
+- do not create syntax-only diffs
+- do not convert all POJOs to records
+- do not convert all switches to pattern matching
+- do not replace all executors with virtual threads
+- do not replace all loops with streams
+- do not remove Lombok mechanically
+
+A Java 21 refactoring must improve clarity, safety, or performance materially.
+
+## Testing
+
+Add tests for behavior affected by Java 21 refactoring.
+
+Where applicable verify:
+
+- record invariants
+- exhaustive sealed hierarchy handling
+- switch behavior
+- context propagation
+- virtual-thread lifecycle
+- interruption
+- executor shutdown
+- public API surface
+- Javadoc
+- serialization contract
+- Spring binding or proxy behavior
+
+Do not test the Java language feature itself.
+
+Test the repository contract.
+
+## Architecture Fitness
+
+Protect where practical:
+
+- no preview flags
+- no Java native serialization
+- no static mutable state
+- no unmanaged executors
+- no common-pool dependency in architecture-sensitive code
+- no blocking calls on reactive event-loop threads
+- no accidental public record or sealed surface
+- no OTel SDK implementation leakage
+- no Lombok-generated mutable runtime state
+- no deprecated Java APIs newly introduced
+
+Do not weaken architecture gates to permit feature novelty.
+
+## Verification
+
+After Java changes, run:
+
+```powershell
+.\\gradlew.bat :<affected-module>:compileJava --no-daemon
+.\\gradlew.bat :<affected-module>:compileTestJava --no-daemon
+.\\gradlew.bat :<affected-module>:test --no-daemon
+```
+
+When public API, Javadoc, concurrency, classloader, or runtime behavior changes, also run the applicable:
+
+```powershell
+.\\gradlew.bat :platform-tracing-api:javadoc --warning-mode all --no-daemon
+.\\gradlew.bat pr1ModuleTaxonomyVerify pr4ArchitectureFitnessVerify --no-daemon
+.\\gradlew.bat build --warning-mode all --no-daemon
+```
+
+Run E2E when changes affect:
+
+- agent/application context propagation
+- servlet or WebFlux
+- virtual-thread behavior
+- JMX/classloader boundaries
+- exporter/processor lifecycle
+- sampling or scrubbing
+
+A skipped required E2E is `INSUFFICIENT_EVIDENCE`.
+
+## Decision Summary
+
+Prefer stable Java 21 features when they make the code:
+
+- safer
+- clearer
+- more explicit
+- easier to verify
+- less error-prone
+
+Do not use a Java 21 feature when it:
+
+- obscures ownership
+- hides concurrency
+- expands public API accidentally
+- complicates framework integration
+- creates syntax-only churn
+- weakens runtime or classloader safety
