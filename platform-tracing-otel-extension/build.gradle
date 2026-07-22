@@ -33,7 +33,7 @@ dependencies {
     implementation project(':platform-tracing-api')
 
     // Pure Java sampling policy (PR-6B): CompositeSampler delegates to core engine.
-    implementation project(':platform-tracing-core')
+    implementation project(':platform-tracing-otel')
 
     // SDK Auto-configuration SPI: контракт точки входа для Java Agent'а.
     compileOnly 'io.opentelemetry:opentelemetry-sdk'
@@ -95,13 +95,13 @@ jar {
 
 def agentExtensionJarTask = tasks.register('agentExtensionJar', Jar) {
     archiveClassifier.set('agent')
-    dependsOn classes, project(':platform-tracing-api').tasks.named('jar'), project(':platform-tracing-core').tasks.named('jar')
+    dependsOn classes, project(':platform-tracing-api').tasks.named('jar'), project(':platform-tracing-otel').tasks.named('jar')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     preserveFileTimestamps = false
     reproducibleFileOrder = true
     from sourceSets.main.output
     from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
-    from { zipTree(project(':platform-tracing-core').jar.archiveFile) }
+    from { zipTree(project(':platform-tracing-otel').jar.archiveFile) }
     from { zipTree(configurations.runtimeClasspath.find { it.name.startsWith('slf4j-api') }) }
     manifest {
         attributes(

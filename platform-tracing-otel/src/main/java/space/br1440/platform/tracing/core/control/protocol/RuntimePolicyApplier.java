@@ -11,7 +11,7 @@ import java.util.Map;
  * <p>Implementations live in {@code platform-tracing-otel-extension} (or any
  * other runtime module) and are injected into
  * {@link RuntimePolicyControlHandler}.  This inversion of control keeps
- * {@code platform-tracing-core} free from any dependency on the extension
+ * {@code platform-tracing-otel} free from any dependency on the extension
  * module.
  *
  * <p><b>Contract:</b> this method is called by

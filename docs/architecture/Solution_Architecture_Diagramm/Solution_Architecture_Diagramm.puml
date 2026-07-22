@@ -6,7 +6,7 @@ skinparam packageStyle rectangle
 
 package "Поставляемые платформенные артефакты" {
   component "platform-tracing-api\n(публичный контракт,\nбез зависимости на OTel)" as API
-  component "platform-tracing-core\n(runtime SPI + manual tracing\npipeline + policies + pure-Java\nsampling engine)" as CORE
+  component "platform-tracing-otel\n(runtime SPI + manual tracing\npipeline + policies + pure-Java\nsampling engine)" as CORE
   component "platform-tracing-otel-extension\n(OTel Java Agent extension:\nSampler / SpanProcessor /\nResourceProvider / Propagator +\nJMX control surface)" as EXT
   component "platform-tracing-spring-boot-\nstarter-mvc\n(Spring MVC / Tomcat)" as ST_SERVLET
   component "platform-tracing-spring-boot-\nstarter-webflux\n(Spring WebFlux / Netty)" as ST_REACTIVE
@@ -33,7 +33,7 @@ package "Микросервис — единственная продовая к
     component "Бизнес-код сервиса" as APP
     component "platform-tracing-api" as API_RT
     component "platform-tracing-spring-boot-\nstarter-{servlet|reactive}\n(SdkMode = AGENT)" as STARTER_RT
-    component "platform-tracing-core\n(manual span'ы, naming,\nenrichment, exception recording)" as CORE_RT
+    component "platform-tracing-otel\n(manual span'ы, naming,\nenrichment, exception recording)" as CORE_RT
     component "Actuator endpoint +\nJMX-клиент\n(runtime config control)" as JMXCLIENT
   }
 
@@ -57,7 +57,7 @@ note bottom of SERVICE
   Java Agent + platform-tracing-otel-extension —
   обязательны (ADR-otel-direct-integration,
   agent-first production model).
-  platform-tracing-core работает ПОВЕРХ SDK,
+  platform-tracing-otel работает ПОВЕРХ SDK,
   который поднял агент, а не вместо него —
   "агент или библиотека" здесь не альтернативы,
   а два слоя одного решения.

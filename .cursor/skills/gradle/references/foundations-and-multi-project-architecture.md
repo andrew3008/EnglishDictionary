@@ -156,11 +156,11 @@ Gradle project dependencies must reflect the intended architecture.
 Expected direction:
 
 ```text
-platform-tracing-core -> platform-tracing-api
+platform-tracing-otel -> platform-tracing-api
 
 platform-tracing-spring-boot-autoconfigure
     -> platform-tracing-api
-    -> platform-tracing-core
+    -> platform-tracing-otel
 
 platform-tracing-autoconfigure-webmvc
     -> approved API/core/autoconfigure modules
@@ -181,8 +181,8 @@ tests/samples/bench/e2e
 
 Forbidden directions include:
 
-- `platform-tracing-api -> platform-tracing-core`
-- `platform-tracing-core -> Spring Boot auto-configuration`
+- `platform-tracing-api -> platform-tracing-otel`
+- `platform-tracing-otel -> Spring Boot auto-configuration`
 - servlet adapter -> WebFlux adapter
 - WebFlux adapter -> servlet adapter
 - production modules -> test/e2e/sample modules

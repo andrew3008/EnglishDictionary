@@ -7,7 +7,7 @@ This repository contains an enterprise platform tracing solution for Spring Boot
 The solution includes:
 
 - `platform-tracing-api`
-- `platform-tracing-core`
+- `platform-tracing-otel`
 - Spring Boot auto-configuration
 - servlet and WebFlux adapters
 - starters
@@ -155,7 +155,7 @@ Must not own:
 - infrastructure clients
 - application context access
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns:
 
@@ -244,11 +244,11 @@ Do not move application/core domain policy into collector YAML merely for deploy
 Expected direction:
 
 ```text
-platform-tracing-core -> platform-tracing-api
+platform-tracing-otel -> platform-tracing-api
 
 platform-tracing-spring-boot-autoconfigure
     -> platform-tracing-api
-    -> platform-tracing-core
+    -> platform-tracing-otel
 
 platform-tracing-autoconfigure-webmvc
     -> approved api/core/autoconfigure modules

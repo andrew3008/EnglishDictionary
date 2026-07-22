@@ -37,7 +37,7 @@ package "Spring Boot интеграция" as spring #E3F2FD {
 }
 
 package "Доменная реализация" as domain #FFF3E0 {
-  component [platform-tracing-core] as core <<Library>>
+  component [platform-tracing-otel] as core <<Library>>
   component [platform-tracing-api] as api <<Library>>
 }
 
@@ -303,7 +303,7 @@ end note
 skinparam backgroundColor #FEFEFE
 skinparam defaultFontName "Segoe UI"
 
-title platform-tracing-core — адаптация TraceOperations → OpenTelemetry API
+title platform-tracing-otel — адаптация TraceOperations → OpenTelemetry API
 
 class DefaultTraceOperations {
   -tracer: Tracer

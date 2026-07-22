@@ -2,7 +2,7 @@
 
 ## Статус
 
-Принято (pre-production, PR-5 рефакторинга `platform-tracing-core`).
+Принято (pre-production, PR-5 рефакторинга `platform-tracing-otel`).
 
 > **Изменено 2026-07-16:** marker-based enrichment через `PLATFORM_SPAN_CATEGORY` удалён решением
 > [ADR-api-span-package-boundary](./ADR-api-span-package-boundary.md). Остальные решения ADR

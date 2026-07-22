@@ -167,7 +167,7 @@ Production JMX access must be restricted by JVM JMX configuration, firewall, res
 
 | Module | Responsibility | Must not |
 |--------|----------------|----------|
-| `platform-tracing-core` | Pure Java domain/policy logic (sampling engine, scrubbing merge, enrichers, …) | Spring, JMX, OTel agent runtime |
+| `platform-tracing-otel` | Pure Java domain/policy logic (sampling engine, scrubbing merge, enrichers, …) | Spring, JMX, OTel agent runtime |
 | `platform-tracing-otel-extension` | OTel adapters: samplers, span processors, six domain MBeans, `PlatformTracingJmxRegistrar`, agent-side holders/snapshots | Spring imports on hot path |
 | `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, `RuntimeConfigApplier`, `*RuntimeConfig` views, `PlatformTracingJmxClient`, Actuator, refresh listener | Second authoritative runtime snapshot |
 
@@ -206,7 +206,7 @@ Startup-only examples: sampling header **names**, SPI scrubbing rules, semantic 
 
 ## PR-9B — Core extraction readiness
 
-Full inventory: [platform-tracing-core-extraction-readiness.md](../architecture/platform-tracing-core-extraction-readiness.md).
+Full inventory: [platform-tracing-otel-extraction-readiness.md](../architecture/platform-tracing-otel-extraction-readiness.md).
 
 - No class moves in PR-9B; ArchUnit extended (`CORE_MAIN_NO_JMX`, JMX forbidden in core policy packages).
 - **In core today:** `core.sampling.*`, `core.validation.*` (pure Java, no OTel/Spring/JMX).

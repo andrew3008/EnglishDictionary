@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.api.propagation.control;
 /**
  * Allowlist-matcher для доверенных HTTP-хостов или Kafka-топиков.
  * <p>
- * Создание экземпляров — через {@code TrustedDestinationMatchers} в {@code platform-tracing-core}.
+ * Создание экземпляров — через {@code TrustedDestinationMatchers} в {@code platform-tracing-otel}.
  * Реализации обязаны быть thread-safe и immutable.
  */
 public interface TrustedDestinationMatcher {

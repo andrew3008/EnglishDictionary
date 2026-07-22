@@ -7,7 +7,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import space.br1440.platform.tracing.test.arch.OtelDirectIntegrationRules;
 
 /**
- * ArchUnit guardrails direct OTel integration для {@code platform-tracing-core}.
+ * ArchUnit guardrails direct OTel integration для {@code platform-tracing-otel}.
  */
 @AnalyzeClasses(
         packages = "space.br1440.platform.tracing.core",

@@ -7,7 +7,7 @@
 | Контекст | Wave R1+; backlog gate «BSP drop-oldest behavior validated on SDK 1.61.0» из `SUPPORTED.md` |
 | Стек | OpenTelemetry Java SDK **1.61.0** (pinned через `gradle.properties#openTelemetryBomVersion`) |
 | Re-validated | **SDK 1.62.0 / Agent 2.28.1** (train bump): probe перезапущен, политика drop-new подтверждена без изменений |
-| Probe | [`BatchSpanProcessorOverflowPolicyProbeTest`](../../platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/bsp/BatchSpanProcessorOverflowPolicyProbeTest.java) |
+| Probe | [`BatchSpanProcessorOverflowPolicyProbeTest`](../../platform-tracing-otel/src/test/java/space/br1440/platform/tracing/core/bsp/BatchSpanProcessorOverflowPolicyProbeTest.java) |
 | Related | [ADR-dual-channel-properties-v0.1.md](./ADR-dual-channel-properties-v0.1.md) |
 
 ## Контекст
@@ -105,7 +105,7 @@ Custom `SpanProcessor` с гарантированной политикой `DRO
 Полный дизайн, контракт, диагностика, тестовая стратегия и подтверждённые SPI-факты
 см. [ADR-drop-oldest-export-processor-v1.md](./ADR-drop-oldest-export-processor-v1.md).
 
-Probe-тест [`BatchSpanProcessorOverflowPolicyProbeTest`](../../platform-tracing-core/src/test/java/space/br1440/platform/tracing/core/bsp/BatchSpanProcessorOverflowPolicyProbeTest.java)
+Probe-тест [`BatchSpanProcessorOverflowPolicyProbeTest`](../../platform-tracing-otel/src/test/java/space/br1440/platform/tracing/core/bsp/BatchSpanProcessorOverflowPolicyProbeTest.java)
 **сохраняется** как guardrail на pinned SDK — он защищает оба контракта:
 v0.1.0 (stock BSP = drop-new) и v1.x default (тот же stock BSP, без замены).
 

@@ -6,7 +6,7 @@ import jakarta.annotation.Nullable;
 /**
  * Политика принятия решения об исходящей передаче платформенных заголовков на конкретный destination.
  * <p>
- * Каноническая реализация — {@code DefaultOutboundPropagationPolicy} в {@code platform-tracing-core}.
+ * Каноническая реализация — {@code DefaultOutboundPropagationPolicy} в {@code platform-tracing-otel}.
  * Реализации обязаны быть thread-safe и stateless.
  */
 public interface OutboundPropagationPolicy {

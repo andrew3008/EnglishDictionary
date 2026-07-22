@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PublicSurfaceAllowlistTest {
 
     private static final String CORE_PACKAGE = "space.br1440.platform.tracing.core";
-    private static final String ALLOWLIST_RESOURCE = "/abi/platform-tracing-core-public-types.txt";
+    private static final String ALLOWLIST_RESOURCE = "/abi/platform-tracing-otel-public-types.txt";
 
     @Test
     void PUBLIC_SURFACE_IS_EXACT() throws IOException {

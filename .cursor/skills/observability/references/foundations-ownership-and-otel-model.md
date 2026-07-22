@@ -128,7 +128,7 @@ It must not own:
 - runtime mutation policy
 - collector configuration
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns:
 

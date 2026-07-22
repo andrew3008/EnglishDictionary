@@ -54,7 +54,7 @@ flowchart TB
     DCH["DomainConfigHolder"]
   end
 
-  subgraph core ["platform-tracing-core"]
+  subgraph core ["platform-tracing-otel"]
     POL["Policy engine"]
   end
 
@@ -109,7 +109,7 @@ flowchart LR
 | Module | CL | Классов (target) | Ответственность |
 |--------|-----|------------------|-----------------|
 | `platform-tracing-api` | Shared | ~70 (existing) | Public contracts, wire schema, semconv |
-| `platform-tracing-core` | Shared | TBD (extract) | Pure policy engine |
+| `platform-tracing-otel` | Shared | TBD (extract) | Pure policy engine |
 | `platform-tracing-otel-extension` | Agent | **Thin target: adapters + JMX** | OTel SPI glue |
 | `platform-tracing-spring-boot-autoconfigure` | App | ~46 → thinner | Spring wiring, Actuator |
 | `platform-tracing-e2e-tests` | Test | — | Cross-CL, smoke, contract |
@@ -118,7 +118,7 @@ flowchart LR
 
 ```text
 platform-tracing-api          → JDK only
-platform-tracing-core         → platform-tracing-api + JDK
+platform-tracing-otel         → platform-tracing-api + JDK
 platform-tracing-otel-extension → core + api + OTel SPI/SDK (compileOnly)
 platform-tracing-spring-boot-autoconfigure → core + api + Spring Boot
 platform-tracing-e2e-tests    → all modules (test)
@@ -132,7 +132,7 @@ Forbidden:
 
 ### 4.4. Classloader note для core
 
-`platform-tracing-core` может загружаться в Agent CL и App CL как один bytecode, но **разные Class objects**. Core не должен полагаться на cross-CL object identity, mutable static shared state или прямую передачу объектов через границу CL. Межмодульная связь app↔agent — только через validated JMX Map wire format.
+`platform-tracing-otel` может загружаться в Agent CL и App CL как один bytecode, но **разные Class objects**. Core не должен полагаться на cross-CL object identity, mutable static shared state или прямую передачу объектов через границу CL. Межмодульная связь app↔agent — только через validated JMX Map wire format.
 
 ---
 
@@ -159,7 +159,7 @@ platform-tracing-api/
   api/semconv/                  — public validation modes/violations and version annotations
   api/span/enrich/              — SpanEnricher, GenericSpanEnrichment
 
-platform-tracing-core/
+platform-tracing-otel/
   core/policy/                  — SamplerState, policy merge, validators
   core/scrubbing/               — RuleEngine, RuleSet, CircuitBreaker logic
   core/validation/              — CategoryValidator, ValidationMode rules

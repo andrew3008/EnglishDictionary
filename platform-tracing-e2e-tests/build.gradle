@@ -78,7 +78,7 @@ dependencies {
 
     // Платформенные модули — для запуска SDK с CompositeSampler и SpanProcessor'ами в test-режиме.
     testImplementation project(':platform-tracing-api')
-    testImplementation project(':platform-tracing-core')
+    testImplementation project(':platform-tracing-otel')
     testImplementation project(':platform-tracing-otel-extension')
     testImplementation project(':platform-tracing-collector-config')
 
@@ -156,7 +156,7 @@ dependencies {
     // Test-only JMX wire round-trip extension JAR (harness for MapWireRoundTripE2ETest).
     // platform-tracing-api предоставляет TracingControlProtocol.current().decode(...); spi — для провайдера.
     jmxWireExtensionCompileOnly project(':platform-tracing-api')
-    jmxWireExtensionCompileOnly project(':platform-tracing-core')
+    jmxWireExtensionCompileOnly project(':platform-tracing-otel')
     jmxWireExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
 
     // Test-only extension, публикующий управляемые состояния readiness для packaged E1 matrix.
@@ -220,11 +220,11 @@ tasks.named('processTestExtensionResources') {
 tasks.register('testJmxWireExtensionJar', Jar) {
     archiveClassifier.set('jmx-wire')
     dependsOn project(':platform-tracing-api').tasks.named('jar')
-    dependsOn project(':platform-tracing-core').tasks.named('jar')
+    dependsOn project(':platform-tracing-otel').tasks.named('jar')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from sourceSets.jmxWireExtension.output
     from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
-    from { zipTree(project(':platform-tracing-core').jar.archiveFile) }
+    from { zipTree(project(':platform-tracing-otel').jar.archiveFile) }
 }
 
 tasks.named('processJmxWireExtensionResources') {

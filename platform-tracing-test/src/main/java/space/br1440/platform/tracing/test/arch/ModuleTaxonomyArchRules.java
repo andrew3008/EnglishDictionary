@@ -11,7 +11,7 @@ import com.tngtech.archunit.lang.ArchRule;
  * Guardrails модульной таксономии PR-1 (migration-first стратегия сохранения границ).
  * <p>
  * Правила обеспечивают соблюдение <b>forward</b>-зависимостей. Известные pre-existing нарушения
- * вне их scope (например, {@code platform-tracing-core} с {@code api opentelemetry-api})
+ * вне их scope (например, {@code platform-tracing-otel} с {@code api opentelemetry-api})
  * задокументированы как MIGRATION_RISK в
  * {@code docs/architecture/platform-tracing-module-taxonomy.md} и не приводят к падению CI.
  *
@@ -123,7 +123,7 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.autoconfigure.reactive..")
             .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.core..")
             .allowEmptyShould(true)
-            .because("web autoconfigure не должен раскрывать platform-tracing-core на compile classpath потребителя");
+            .because("web autoconfigure не должен раскрывать platform-tracing-otel на compile classpath потребителя");
 
     /**
      * Оба web-модуля зависят только от API и boundary-support autoconfigure, но не от implementation packages.
@@ -202,7 +202,7 @@ public final class ModuleTaxonomyArchRules {
             .that().resideInAPackage("space.br1440.platform.tracing.core..")
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAnyPackage("javax.management..")
-            .because("platform-tracing-core не должен зависеть от JMX — управление runtime является agent-side");
+            .because("platform-tracing-otel не должен зависеть от JMX — управление runtime является agent-side");
 
     // -- Слоистые границы пакета core.sampling: model / policy / engine / config -------------------
 

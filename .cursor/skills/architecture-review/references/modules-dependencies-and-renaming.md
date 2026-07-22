@@ -33,7 +33,7 @@ It must not own:
 
 The API module must not depend on core.
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns implementation and domain/runtime behavior.
 
@@ -139,12 +139,12 @@ Production modules must not depend on them.
 ## Expected Dependency Direction
 
 ```text
-platform-tracing-core
+platform-tracing-otel
     -> platform-tracing-api
 
 platform-tracing-spring-boot-autoconfigure
     -> platform-tracing-api
-    -> platform-tracing-core
+    -> platform-tracing-otel
 
 platform-tracing-autoconfigure-webmvc
     -> approved api/core/autoconfigure modules
@@ -165,8 +165,8 @@ test/samples/bench/e2e
 
 Forbidden:
 
-- `platform-tracing-api -> platform-tracing-core`
-- `platform-tracing-core -> Spring Boot auto-configuration`
+- `platform-tracing-api -> platform-tracing-otel`
+- `platform-tracing-otel -> Spring Boot auto-configuration`
 - servlet adapter -> WebFlux adapter
 - WebFlux adapter -> servlet adapter
 - production module -> test/sample/e2e module

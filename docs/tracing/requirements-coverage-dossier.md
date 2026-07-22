@@ -9,7 +9,7 @@
 
 > Легенда статуса: **OK** — реализовано в Java; **OK (Collector)** — закрыто YAML-конфигом Collector'а (в поставке `platform-tracing-collector-config`); **OK / нормализовано** — требование выполнено через осознанную замену буквы (ADR); **GAP** — явно отложено с обоснованием.
 >
-> Пути классов даны от корня репозитория. Модули: `platform-tracing-api` (без Spring/OTel-SDK), `platform-tracing-core` (OTel-aware), `platform-tracing-otel-extension` (Agent extension, без Spring), `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-collector-config` (YAML + JVM-тесты).
+> Пути классов даны от корня репозитория. Модули: `platform-tracing-api` (без Spring/OTel-SDK), `platform-tracing-otel` (OTel-aware), `platform-tracing-otel-extension` (Agent extension, без Spring), `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-collector-config` (YAML + JVM-тесты).
 
 ---
 
@@ -19,7 +19,7 @@
 
 | Аспект | Реализация | ADR | Проверка |
 |--------|-----------|-----|----------|
-| Программный фасад | `platform-tracing-api/.../api/TraceOperations.java` (интерфейс) + `platform-tracing-core/.../core/DefaultTraceOperations.java` (OTel-реализация) | [ADR-otel-direct-integration.md](../decisions/ADR-otel-direct-integration.md) | `DefaultTraceOperationsInSpanTest` |
+| Программный фасад | `platform-tracing-api/.../api/TraceOperations.java` (интерфейс) + `platform-tracing-otel/.../core/DefaultTraceOperations.java` (OTel-реализация) | [ADR-otel-direct-integration.md](../decisions/ADR-otel-direct-integration.md) | `DefaultTraceOperationsInSpanTest` |
 | High-level `inSpan()` (Runnable/Supplier) | default-методы на `TraceOperations` поверх `startSpan()` + `SpanScope.close()` | — | `DefaultTraceOperationsInSpanTest` |
 | Авто-инструментирование (без кода) | OTel Java Agent (Spring MVC/WebFlux/JDBC/Kafka) | [ADR-otel-direct-integration.md](../decisions/ADR-otel-direct-integration.md) | e2e smoke (`-PrunE2e`) |
 
@@ -43,9 +43,9 @@ ADR: [ADR-platform-resource-override.md](../decisions/ADR-platform-resource-over
 | Тип | Покрытие | Реализация |
 |-----|----------|-----------|
 | HTTP / DB / RPC (auto) | OTel Agent instrumentation по semconv | `http.*` / `db.*` / `rpc.*` |
-| Typed span API (вне покрытия Агента) | `httpServerSpan()`/`httpClientSpan()`/`databaseSpan()`/`rpcServerSpan()`/`kafkaProducerSpan()`/… фабрики на `TraceOperations` | builders в `platform-tracing-api/.../api/span/builder/` + `platform-tracing-core/.../span/*Impl` |
+| Typed span API (вне покрытия Агента) | `httpServerSpan()`/`httpClientSpan()`/`databaseSpan()`/`rpcServerSpan()`/`kafkaProducerSpan()`/… фабрики на `TraceOperations` | builders в `platform-tracing-api/.../api/span/builder/` + `platform-tracing-otel/.../span/*Impl` |
 | Семантика типов (allowlist/required/forbidden) | `platform-tracing-api/.../api/semconv/CategoryContracts.java` | — |
-| Exception span (sanitized) | `platform-tracing-core/.../core/exception/ExceptionRecorder.java` (`exception.message`/`stacktrace` off-by-default) | — |
+| Exception span (sanitized) | `platform-tracing-otel/.../core/exception/ExceptionRecorder.java` (`exception.message`/`stacktrace` off-by-default) | — |
 | Санитизация URL/SQL | `platform-tracing-api/.../api/span/sanitize/UrlSanitizer.java`, `SqlSanitizer.java` | — |
 
 ADR: [ADR-typed-span-api-semantic-layer.md](../decisions/ADR-typed-span-api-semantic-layer.md), [ADR-db-semconv-detection.md](../decisions/ADR-db-semconv-detection.md). Проверка: `EscapeHatchSpanBuilderTest`, `CategoryContractsTest`, `ExceptionRecorderTest`, `SanitizerTest`, e2e `DbSemconvAgentSmokeTest`.
@@ -133,7 +133,7 @@ Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links 
 | Ошибки **всегда** сэмплируются (желательно на Collector'е) | OK (Collector) | `tail_sampling.errors-always-sample` (status_code=ERROR) — **по явному пожеланию** | [ADR-collector-boundary.md](../decisions/ADR-collector-boundary.md) |
 | Общие запросы без сэмплирования / по % | OK | `DefaultRatioRule` (детерминированный `traceIdRatioBased`) | [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md) (§2.3) |
 | Кастомный header → 100% запись (для авто-тестов) | OK | `ForceHeaderRule` (`X-Trace-On`), значения настраиваются `forceRecordValues` | [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md) |
-| QA-ручка возвращает Request ID | OK | `QaTraceRule` (`X-QA-Trace`); response-заголовок `X-Request-Id`; `platform-tracing-core/.../propagation/RequestIdSupport.java` (reject-and-regenerate, CWE-113) | [ADR-request-id-correlation-id.md](../decisions/ADR-request-id-correlation-id.md), [ADR-response-headers.md](../decisions/ADR-response-headers.md) |
+| QA-ручка возвращает Request ID | OK | `QaTraceRule` (`X-QA-Trace`); response-заголовок `X-Request-Id`; `platform-tracing-otel/.../propagation/RequestIdSupport.java` (reject-and-regenerate, CWE-113) | [ADR-request-id-correlation-id.md](../decisions/ADR-request-id-correlation-id.md), [ADR-response-headers.md](../decisions/ADR-response-headers.md) |
 
 Контракт значений `platform.sampling.reason` (`platform-tracing-api/.../api/attributes/PlatformSamplingReasons.java`) машинно охраняется `CollectorPolicyContractTest` — Collector-политики не могут ссылаться на несуществующие причины.
 
@@ -154,7 +154,7 @@ Postgres/Kafka tracing — auto-instrumentation Агента; Kafka batch links 
 | Модуль | Роль | Ключевые классы из досье |
 |--------|------|--------------------------|
 | `platform-tracing-api` | контракты без Spring/OTel-SDK | `TraceOperations`, `PlatformAttributes`, `PlatformSamplingReasons`, `CategoryContracts`, `OutboundPropagationPolicy`, `UrlSanitizer`/`SqlSanitizer` |
-| `platform-tracing-core` | OTel-aware реализации и pure core utilities | `DefaultTraceOperations`, `ExceptionRecorder`, `AttributePolicy`, `RequestIdSupport` |
+| `platform-tracing-otel` | OTel-aware реализации и pure core utilities | `DefaultTraceOperations`, `ExceptionRecorder`, `AttributePolicy`, `RequestIdSupport` |
 | `platform-tracing-otel-extension` | Agent extension (без Spring) | `CompositeSampler`/`SamplerState`, `*SpanProcessor` (Scrubbing/Validating/Enriching/Classification/Watchdog/Composite/DropOldest), `SafeSpanExporter`, `PlatformResourceProvider`, SPI providers, JMX `PlatformTracingControl` |
 | `platform-tracing-spring-boot-autoconfigure` | Spring-интеграция | `TracingProperties`, `TracingActuatorEndpoint`, `SamplingControlClient` |
 | `platform-tracing-collector-config` | versioned YAML + JVM-контракт-тесты | `otel-collector-gateway-tail-sampling.yaml`, `CollectorPolicyContractTest` |

@@ -114,7 +114,7 @@ tasks.register("publishAllToMavenLocal") {
 def c3PublishedProjects = [
         ':platform-tracing-bom',
         ':platform-tracing-api',
-        ':platform-tracing-core',
+        ':platform-tracing-otel',
         ':platform-tracing-spring-boot-autoconfigure',
         ':platform-tracing-autoconfigure-webmvc',
         ':platform-tracing-spring-boot-starter-servlet'
@@ -229,7 +229,7 @@ gradle.projectsEvaluated {
 
 def pr0SnapshotModules = [
         'platform-tracing-api',
-        'platform-tracing-core',
+        'platform-tracing-otel',
         'platform-tracing-otel-extension',
         'platform-tracing-spring-boot-autoconfigure',
         'platform-tracing-autoconfigure-webmvc',
@@ -425,7 +425,7 @@ tasks.register('pr1ModuleTaxonomyVerify') {
     dependsOn ':platform-tracing-spring-boot-autoconfigure:test'
     dependsOn ':platform-tracing-autoconfigure-webmvc:test'
     dependsOn ':platform-tracing-autoconfigure-webflux:test'
-    dependsOn ':platform-tracing-core:test'
+    dependsOn ':platform-tracing-otel:test'
     dependsOn ':platform-tracing-otel-extension:test'
     dependsOn ':platform-tracing-test:test'
 }

@@ -37,8 +37,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class AbiSnapshotTest {
 
-    private static final String SNAPSHOT_RESOURCE = "/abi/platform-tracing-api-core.txt";
-    private static final Path ACTUAL_REPORT = Path.of("build", "reports", "abi", "platform-tracing-api-core.txt");
+    private static final String SNAPSHOT_RESOURCE = "/abi/platform-tracing-api-otel.txt";
+    private static final Path ACTUAL_REPORT = Path.of("build", "reports", "abi", "platform-tracing-api-otel.txt");
 
     @Test
     void publicAbiMatchesApprovedSnapshot() throws Exception {

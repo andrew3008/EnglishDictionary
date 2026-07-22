@@ -238,7 +238,7 @@ Select the applicable gates:
 
 ```powershell
 .\gradlew.bat :platform-tracing-api:test --no-daemon
-.\gradlew.bat :platform-tracing-core:test --no-daemon
+.\gradlew.bat :platform-tracing-otel:test --no-daemon
 .\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon
 .\gradlew.bat :platform-tracing-autoconfigure-webmvc:test --no-daemon
 .\gradlew.bat :platform-tracing-autoconfigure-webflux:test --no-daemon

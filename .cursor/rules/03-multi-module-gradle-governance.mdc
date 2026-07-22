@@ -102,7 +102,7 @@ Owns:
 
 Must not depend on core, Spring, JMX/OpenMBean, or OTel SDK implementation.
 
-### `platform-tracing-core`
+### `platform-tracing-otel`
 
 Owns:
 
@@ -164,12 +164,12 @@ Production modules must not depend on them.
 ## Allowed Dependency Direction
 
 ```text
-platform-tracing-core
+platform-tracing-otel
     -> platform-tracing-api
 
 platform-tracing-spring-boot-autoconfigure
     -> platform-tracing-api
-    -> platform-tracing-core
+    -> platform-tracing-otel
 
 platform-tracing-autoconfigure-webmvc
     -> approved API/core/autoconfigure modules

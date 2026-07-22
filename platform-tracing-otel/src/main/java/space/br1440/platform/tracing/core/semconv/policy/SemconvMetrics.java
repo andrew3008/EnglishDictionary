@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.core.semconv.policy;
 /**
  * Абстракция метрик semantic-слоя.
  * <p>
- * Модуль {@code platform-tracing-core} намеренно не зависит от Micrometer
+ * Модуль {@code platform-tracing-otel} намеренно не зависит от Micrometer
  * (инвариант: core работает поверх OTel API + slf4j). Поэтому {@code AttributePolicy} эмитит метрики через эту
  * абстракцию, а конкретную Micrometer-реализацию (счётчики/gauge) поставляет
  * {@code platform-tracing-spring-boot-autoconfigure}.

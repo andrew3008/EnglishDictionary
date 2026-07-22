@@ -106,7 +106,7 @@ Platform Tracing — production-grade Java tracing platform для крупно�
 
 ```
 platform-tracing-api          ← shared DTOs, DomainConfigHolder, semconv
-platform-tracing-core           ← pure domain (optional incremental extract)
+platform-tracing-otel           ← pure domain (optional incremental extract)
 platform-tracing-otel-extension ← Agent CL, OTel SPI adapters
 platform-tracing-spring-boot-autoconfigure ← App CL, Spring + JMX client
 ```
@@ -114,7 +114,7 @@ platform-tracing-spring-boot-autoconfigure ← App CL, Spring + JMX client
 ### 7.2. Allowed dependencies
 
 - `otel-extension` → `platform-tracing-api`
-- `spring-boot-autoconfigure` → `platform-tracing-api`, `platform-tracing-core`
+- `spring-boot-autoconfigure` → `platform-tracing-api`, `platform-tracing-otel`
 - `otel-extension` test → autoconfigure (test only)
 
 ### 7.3. Forbidden dependencies

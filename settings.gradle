@@ -28,7 +28,7 @@ include 'platform-tracing-bom'
 include 'platform-tracing-api'
 
 // Реализация API поверх Micrometer Observation и OpenTelemetry API.
-include 'platform-tracing-core'
+include 'platform-tracing-otel'
 
 // Spring Boot autoconfigure: properties, общие авто-конфигурации (Core, Metrics, AOP, Actuator,
 // MDC bridge, OtelAgentDetector, RefreshScope, ServiceNameProvider). Web-специфичные авто-конфиги

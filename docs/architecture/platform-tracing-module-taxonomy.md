@@ -46,7 +46,7 @@ Not for direct application dependency:
 
 | Module | Role |
 |--------|------|
-| `platform-tracing-core` | TraceOperations facade over OTel API (current state: OTel-coupled) |
+| `platform-tracing-otel` | TraceOperations facade over OTel API (current state: OTel-coupled) |
 | `platform-tracing-otel-extension` | OTel Java Agent extension (Sampler, SpanProcessor, scrubbing runtime) |
 | `platform-tracing-spring-boot-autoconfigure` | Spring Boot autoconfigure (properties, actuator, MDC, core wiring) |
 | `platform-tracing-autoconfigure-webmvc` | Servlet-specific autoconfigure |
@@ -93,7 +93,7 @@ Servlet / Spring MVC  → platform-tracing-spring-boot-starter-servlet
 WebFlux / Reactive    → platform-tracing-spring-boot-starter-reactive
 
 Application teams must NOT directly depend on internal runtime modules:
-  platform-tracing-core
+  platform-tracing-otel
   platform-tracing-otel-extension
   platform-tracing-spring-boot-autoconfigure
   platform-tracing-autoconfigure-webmvc
@@ -159,7 +159,7 @@ Starters must not expose `platform-tracing-otel-extension` on application compil
 | `CORE_POLICY_PACKAGES_NO_OTEL_OR_SPRING` | `CorePolicyPackagePurityArchTest` | `core` (`core.sampling` active; +JMX PR-9B) |
 | `CORE_MAIN_NO_JMX` | `CorePolicyPackagePurityArchTest` | `core` (PR-9B) |
 
-PR-9B extraction inventory: [platform-tracing-core-extraction-readiness.md](platform-tracing-core-extraction-readiness.md).
+PR-9B extraction inventory: [platform-tracing-otel-extraction-readiness.md](platform-tracing-otel-extraction-readiness.md).
 
 ### Existing guardrails (reused, not duplicated)
 
@@ -180,7 +180,7 @@ Documented; **not** fixed in PR-1. Forward guardrails prevent **new** violations
 
 | Violation | Location | PR-1 action |
 |-----------|----------|-------------|
-| `platform-tracing-core` has `api opentelemetry-api` | `platform-tracing-core/build.gradle` | Documented; extraction deferred to PR-6+ |
+| `platform-tracing-otel` has `api opentelemetry-api` | `platform-tracing-otel/build.gradle` | Documented; extraction deferred to PR-6+ |
 | `platform-tracing-api` may have `compileOnly` OTel | `platform-tracing-api` | Documented; not enforced globally yet |
 | Core facade is OTel-coupled, not pure policy | `DefaultTraceOperations`, span builders | Documented; `CorePolicyPackagePurityArchTest` applies only to **new** policy packages |
 | Actuator MUTATION without prod guard | `TracingActuatorEndpoint` | Documented; PR-11 |

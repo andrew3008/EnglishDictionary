@@ -15,7 +15,7 @@
 
 Это создавало два источника правды для нормализации и размывало границы ответственности. Доменная валидация runtime-обновлений (`SamplerPolicyUpdate.validateDomain`) и lenient-компиляция config-пути жили в разных модулях без явного контракта.
 
-`platform-tracing-core` не должен зависеть от OpenTelemetry, Spring или JMX (см. `platform-tracing-module-taxonomy.md`).
+`platform-tracing-otel` не должен зависеть от OpenTelemetry, Spring или JMX (см. `platform-tracing-module-taxonomy.md`).
 
 ## Decision
 

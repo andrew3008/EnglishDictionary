@@ -53,7 +53,7 @@
 | Артефакт | Модуль |
 |----------|--------|
 | Контракты: `ValidationMode`, `SemconvViolation(Exception)`, `SemconvKeys`, `CategoryContract`/`CategoryContracts` | `platform-tracing-api` (semconv-пакет) |
-| Движок: `AttributePolicy`, builder'ы, `SpanEnricher`, `ExceptionRecorder`, san-утилиты | `platform-tracing-core` |
+| Движок: `AttributePolicy`, builder'ы, `SpanEnricher`, `ExceptionRecorder`, san-утилиты | `platform-tracing-otel` |
 | Бины policy/mode + `TracingProperties.Semantic` + метрика | `platform-tracing-spring-boot-autoconfigure` |
 | STRICT auto-binding | `platform-tracing-test` |
 

@@ -7,7 +7,7 @@ Review dependency direction.
 Expected principles:
 
 ```text
-platform-tracing-core -> platform-tracing-api
+platform-tracing-otel -> platform-tracing-api
 
 spring-boot-autoconfigure
     -> api

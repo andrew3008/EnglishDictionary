@@ -1,4 +1,4 @@
-# ADR: exposure `opentelemetry-api` в `platform-tracing-core`
+# ADR: exposure `opentelemetry-api` в `platform-tracing-otel`
 
 ## Статус
 
@@ -6,7 +6,7 @@
 
 ## Контекст
 
-`platform-tracing-core/build.gradle` объявляет:
+`platform-tracing-otel/build.gradle` объявляет:
 
 ```gradle
 api 'io.opentelemetry:opentelemetry-api'

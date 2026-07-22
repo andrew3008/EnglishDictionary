@@ -147,7 +147,7 @@ It must not own:
 
 ### Core boundary
 
-`platform-tracing-core` owns:
+`platform-tracing-otel` owns:
 
 - domain validation
 - sampling and scrubbing policies
