@@ -46,7 +46,7 @@ Not for direct application dependency:
 
 | Module | Role |
 |--------|------|
-| `platform-tracing-otel` | TraceOperations facade over OTel API (current state: OTel-coupled) |
+| `platform-tracing-otel` | OTel-backed implementation runtime (facade, policy, propagation, control domain). **Artifact name reflects technology boundary; Java packages remain `space.br1440.platform.tracing.core.*` as internal semantic taxonomy (CP-3 KEEP, Slice K 2026-07-22).** Not a supported application API — consumers use `platform-tracing-api`. |
 | `platform-tracing-otel-javaagent-extension` | OTel Java Agent extension (Sampler, SpanProcessor, scrubbing runtime) |
 | `platform-tracing-spring-boot-autoconfigure` | Spring Boot autoconfigure (properties, actuator, MDC, core wiring) |
 | `platform-tracing-autoconfigure-webmvc` | Servlet-specific autoconfigure |
