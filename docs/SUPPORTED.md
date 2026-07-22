@@ -1,5 +1,7 @@
 # Supported Runtime Matrix — Platform Tracing v0.1.0
 
+> **Pre-production compatibility envelope, not rollout approval.** Current architecture: [final active architecture](./architecture/platform-tracing-final-architecture.md). `RG-IDENTITY-TRUST OPEN`, `RG-CONTROLLED-AGENT OPEN`, **PRODUCTION ROLLOUT FORBIDDEN**.
+
 | Поле | Значение |
 |------|----------|
 | **Product** | `spring-boot-platform-tracing` |
@@ -26,8 +28,8 @@ Java 21
 SDK-only / без Controlled Agent Distribution не является поддерживаемым runtime. Для локальной
 работы используется `DISABLED`; test-only SDK допустим только в непубликуемых fixtures/source sets.
 
-`RG-CONTROLLED-AGENT OPEN`; `PRODUCTION ROLLOUT FORBIDDEN`. Поставка в pilot/production разрешается
-только после выполнения [release gate](./architecture/rg-controlled-agent-release-gate.md).
+`RG-CONTROLLED-AGENT OPEN`; `RG-IDENTITY-TRUST OPEN`; `PRODUCTION ROLLOUT FORBIDDEN`. Поставка в pilot/production разрешается
+только после независимого закрытия [Controlled Agent gate](./architecture/rg-controlled-agent-release-gate.md) и [identity trust gate](./architecture/rg-identity-trust-release-gate.md).
 
 ---
 

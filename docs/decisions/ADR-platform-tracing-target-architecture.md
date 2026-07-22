@@ -1,5 +1,7 @@
 # ADR: Целевая архитектура Platform Tracing (Conservative Hardening Hybrid)
 
+> **SUPERSEDED / HISTORICAL.** Этот proposal сохранён как evidence выбора. Текущая topology определена [ADR-platform-tracing-final-architecture](./ADR-platform-tracing-final-architecture.md). Упоминания старых модулей и вариантов ниже не являются активным roadmap.
+
 | Поле | Значение |
 |------|----------|
 | Статус | **Superseded** → см. [ADR-platform-tracing-clean-core-hybrid](./ADR-platform-tracing-clean-core-hybrid.md) |

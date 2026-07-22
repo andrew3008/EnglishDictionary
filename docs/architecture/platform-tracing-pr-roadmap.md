@@ -1,5 +1,7 @@
 # Platform Tracing: PR Roadmap (Clean Core Hybrid)
 
+> **HISTORICAL / SUPERSEDED ROADMAP.** Этот PR sequence не является активным планом. Реализованная topology описана в [final architecture](./platform-tracing-final-architecture.md); Slice L закрывает документационный alignment, но production rollout остаётся запрещён.
+
 | Поле | Значение |
 |------|----------|
 | Версия | 1.0 |

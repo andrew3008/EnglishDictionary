@@ -1,5 +1,7 @@
 # Runbook: MDC трассировки в production (SRE / platform)
 
+> Документ описывает целевой формат логов, но не разрешает rollout: `RG-IDENTITY-TRUST OPEN`, `RG-CONTROLLED-AGENT OPEN`, **PRODUCTION ROLLOUT FORBIDDEN**.
+
 | Поле | Значение |
 |------|----------|
 | **Audience** | SRE, platform team, service owners |
@@ -15,6 +17,8 @@
 |------|-----------|----------|
 | **Writer** | OTel Java Agent + `OpenTelemetryAppender` | Пишет `traceId`, `spanId`, `traceFlags` (camelCase) в SLF4J MDC из `Span.current()` |
 | **Reader** | `spring-boot-starter-platform-logging` | Читает MDC через `%maskedMDC` / `LogstashEncoder`; **не** пишет trace-ключи |
+
+Канонические MDC keys: `traceId`, `spanId`, `traceFlags`, `requestId`, `correlationId`. MDC является проекцией per-execution identity, а не source of truth. `requestId` и `correlationId` имеют высокую cardinality и не должны использоваться как metric dimensions.
 | **Tracing** | `platform-tracing-*` | Span'ы, suppress, Reactor propagation; **не** пишет `traceId`/`spanId`/`traceFlags` при `suppress=true` |
 
 `micrometer-tracing-bridge-otel` **не** входит в transitive classpath стартера (Wave 2c). Production path **не** зависит от bridge.

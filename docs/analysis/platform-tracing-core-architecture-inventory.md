@@ -1,5 +1,6 @@
 # platform-tracing-core — архитектурный инвентарь
 
+> **HISTORICAL EVIDENCE / SUPERSEDED INVENTORY.** Current architecture: [platform-tracing-final-architecture](../architecture/platform-tracing-final-architecture.md).
 > **HISTORICAL — до рефакторинга Fable_5 v1.2 (snapshot pre-PR-5).**  
 > Этот документ описывает архитектуру `platform-tracing-core` **до** рефакторинга Fable_5 v1.2.
 > Упоминания `core.impl`, `TracingImplementation`, `api.span.builder.*` и `core.span.legacy`

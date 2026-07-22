@@ -1,5 +1,9 @@
 # spring-boot-platform-tracing
 
+> **Pre-production:** architecture refactoring is complete, but `RG-IDENTITY-TRUST` and
+> `RG-CONTROLLED-AGENT` remain open. **PRODUCTION ROLLOUT FORBIDDEN.** See the
+> [final architecture](docs/architecture/platform-tracing-final-architecture.md).
+
 Платформенный Spring Boot 3.x стартер распределённой трассировки: **OTel Java Agent first**, Micrometer Observation (suppress в production), platform extension JAR, OpenTelemetry Collector.
 
 ## Состав репозитория
@@ -64,4 +68,4 @@ $env:DOCKER_HOST = "tcp://<host>:2375"
 
 ## Статус
 
-Фаза 1 + Wave 2 (MDC / context propagation) — реализовано. Матрица трассируемости: [docs/tracing/traceability.md](docs/tracing/traceability.md).
+Архитектурный рефакторинг реализован. Production release hardening не завершён, rollout запрещён до закрытия обоих release gate. Матрица трассируемости: [docs/tracing/traceability.md](docs/tracing/traceability.md).

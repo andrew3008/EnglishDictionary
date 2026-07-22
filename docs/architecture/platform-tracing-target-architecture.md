@@ -1,5 +1,7 @@
 # Platform Tracing: целевая архитектура (Clean Core Hybrid)
 
+> **HISTORICAL / SUPERSEDED TARGET.** Clean Core Hybrid proposal не является текущей topology. См. [final active architecture](./platform-tracing-final-architecture.md). Текст ниже сохранён как decision evidence.
+
 | Поле | Значение |
 |------|----------|
 | Версия | 1.0 |

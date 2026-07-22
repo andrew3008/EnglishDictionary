@@ -1,5 +1,7 @@
 # TraceOperations v3 — Observability and Diagnostics
 
+> Current MDC keys are `traceId`, `spanId`, `traceFlags`, `requestId`, and `correlationId`. They are projections, not identity storage. Request and correlation IDs must not be metric dimensions. Production rollout remains forbidden while either release gate is open.
+
 How platform manual tracing coexists with Micrometer Observation, how metering works internally, and how to inspect runtime state.
 
 ## Three intentional telemetry paths
@@ -59,6 +61,8 @@ Do not mark production sign-off complete unless `-PrunE2e` was actually run in a
 
 ## Related documents
 
+- [Final architecture](../architecture/platform-tracing-final-architecture.md)
+- [MDC runbook](../runbook/mdc-logging-production.md)
 - [Getting started](./platform-tracing-v3-getting-started.md)
 - [Production readiness](./platform-tracing-v3-production-readiness.md)
 - [ADR — Metering SPI Boundary](../decisions/ADR-platform-tracing-metering-spi-boundary.md)

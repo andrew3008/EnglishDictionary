@@ -12,14 +12,16 @@ TraceOperations v1 exposed a wide facade: correlation helpers, many `startSpan*`
 
 ## Decision
 
-The v3 public `TraceOperations` interface exposes **exactly two** methods:
+The initial v3 public `TraceOperations` interface exposed two methods:
 
 ```text
-traceContext()  — read-only correlation
-manual()        — governed manual span creation
+traceContext()  — read-only identity view
+spans()         — governed manual span creation
 ```
 
-All span creation routes through `TracingImplementation.startSpan(SpanSpec)` internally. No v1 methods remain on the public interface. No compatibility shim.
+All span creation routes through internal `TracingRuntime.startSpan(SpanSpec)`. No v1 methods remain on the public interface. No compatibility shim.
+
+Slice M intentionally added `openCorrelationScope(String)` and two `withCorrelationId(...)` overloads under CP-1 R2. The exact current surface and approval policy are defined by [ADR-public-api-allowlist](./ADR-public-api-allowlist.md). Internal creation now routes through `TracingRuntime.startSpan(SpanSpec)`.
 
 ## Why `traceContext()` over `current()` / `currentContext()`
 
@@ -28,15 +30,15 @@ All span creation routes through `TracingImplementation.startSpan(SpanSpec)` int
 - **`currentContext()`** collides with Micrometer/OTel naming and blurs read vs write responsibilities.
 - The view returns `Optional` correlation fields only — no `Context`, `Span`, or `SpanContext` in public API.
 
-## Why `manual()` is acceptable next to auto-instrumentation
+## Why `spans()` is acceptable next to auto-instrumentation
 
-Auto-instrumentation (OTel Agent, Spring/Micrometer Observation, `@Traced`) remains the default. `manual()` is the **explicit, opt-in** counterpart for cases auto-instrumentation cannot cover (custom business operations, governed transport spans, batch links). Hybrid coexistence is defined in [ADR-platform-tracing-micrometer-observation-boundary.md](./ADR-platform-tracing-micrometer-observation-boundary.md) (Option C, Accepted).
+Auto-instrumentation (OTel Agent, Spring/Micrometer Observation, `@Traced`) remains the default. `spans()` is the **explicit, opt-in** counterpart for cases auto-instrumentation cannot cover (custom business operations, governed transport spans, batch links). Hybrid coexistence is defined in [ADR-platform-tracing-micrometer-observation-boundary.md](./ADR-platform-tracing-micrometer-observation-boundary.md) (Option C, Accepted).
 
 ## Why `operation(name)` replaced `internalSpan` / `businessSpan`
 
 - v1 category-split factories (`internalSpan()`, `businessSpan()`) duplicated entry points without adding topology or semconv value.
 - v3 uses a single **`operation(name)`** for generic manual work; semantic category defaults to `INTERNAL` at the implementation layer.
-- Transport-specific semconv is expressed through **`manual().transport()...`**, not parallel root-level factories.
+- Transport-specific semconv is expressed through **`spans().transport()...`**, not parallel root-level factories.
 
 ## Why transport builders are grouped under `transport()`
 
@@ -49,7 +51,7 @@ Auto-instrumentation (OTel Agent, Spring/Micrometer Observation, `@Traced`) rema
 ### Positive
 
 - Minimal public surface; hard to bypass governance accidentally.
-- Clear documentation story: auto by default, `manual()` when needed.
+- Clear documentation story: auto by default, `spans()` when needed.
 - Facade decorator anti-pattern eliminated.
 
 ### Negative

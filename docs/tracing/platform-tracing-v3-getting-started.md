@@ -1,5 +1,7 @@
 # TraceOperations v3 — Getting Started
 
+> The service dependency is one stack-specific starter. Production execution additionally requires the Controlled Agent distribution. `RG-IDENTITY-TRUST` and `RG-CONTROLLED-AGENT` are open; production rollout is forbidden.
+
 TraceOperations v3 is the public span-factory API for Spring Boot services on the platform tracing stack. Auto-instrumentation (OpenTelemetry Java Agent, Spring/Micrometer Observation conventions, `@Traced`) is the **default**. Use `traceOperations.spans()` **only** when automatic instrumentation does not cover your use case.
 
 ## Dependencies
@@ -14,12 +16,14 @@ implementation 'space.br1440.platform.tracing:platform-tracing-spring-boot-start
 
 ## Public API surface
 
-v3 exposes exactly two entry points on `TraceOperations`:
+The current `TraceOperations` surface contains governed tracing and synchronous business-correlation operations:
 
 | Method | Purpose |
 |--------|---------|
 | `traceContext()` | Read-only correlation IDs for logging and error models |
 | `spans()` | Governed span creation |
+| `openCorrelationScope(correlationId)` | Explicit synchronous correlation scope |
+| `withCorrelationId(correlationId, action)` | Scoped `Runnable` or checked-returning action |
 
 There is no v1 wide facade (`startSpan`, `inSpan`, `SpanRelation`, transport factory methods on the root interface). See the [migration guide](./platform-tracing-v3-migration-guide.md).
 
@@ -33,7 +37,9 @@ String traceId = traceOperations.traceContext()
         .orElse("unknown");
 ```
 
-Optional fields: `spanId()`, `correlationId()`.
+Optional fields: `spanId()`, `requestId()`, `correlationId()`.
+
+`traceId`, `requestId` and `correlationId` are distinct identities. Do not derive one from another. For WebFlux, use the injected `ReactiveCorrelationOperations`; synchronous scope methods must not be used as a ThreadLocal-only reactive propagation mechanism.
 
 ## Manual operation spans
 
@@ -101,6 +107,8 @@ Verify compilation:
 
 ## Related documents
 
+- [Final architecture](../architecture/platform-tracing-final-architecture.md)
+- [Identity model](../decisions/ADR-identity-model-trace-request-correlation.md)
 - [Migration guide](./platform-tracing-v3-migration-guide.md)
 - [SpanFactory API reference](./platform-tracing-v3-span-factory-api.md)
 - [Kafka batch links](./platform-tracing-v3-kafka-batch-links.md)

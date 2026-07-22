@@ -1,5 +1,7 @@
 # Runbook: диагностика через `/actuator/tracing`
 
+> `/actuator/tracing` is diagnostic only. It does not close `RG-CONTROLLED-AGENT` or `RG-IDENTITY-TRUST`; **PRODUCTION ROLLOUT FORBIDDEN** while either gate is open.
+
 Операторский гайд для SRE: как читать секции `otelEffective` и `otelEnvHints`, и что делать при расхождении Spring-конфига с фактическим OTel Agent.
 
 ## Эндпоинт
@@ -117,6 +119,8 @@ env:
 
 ## Связанные документы
 
+- [Final architecture](../architecture/platform-tracing-final-architecture.md)
+- [Identity model](../decisions/ADR-identity-model-trace-request-correlation.md)
 - [traceability.md](../tracing/traceability.md) — PR-1.A/B/C закрыты
 - [MIGRATION.md](../MIGRATION.md) — MDC / bridge-otel
 - [mdc-logging-production.md](./mdc-logging-production.md) — MDC rollout

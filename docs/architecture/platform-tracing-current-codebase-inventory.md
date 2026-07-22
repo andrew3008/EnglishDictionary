@@ -1,5 +1,7 @@
 # Platform Tracing: Current Codebase Inventory
 
+> **HISTORICAL SNAPSHOT.** Current architecture and module names are documented in [final active architecture](./platform-tracing-final-architecture.md). Facts below are retained at their original snapshot date.
+
 > **Snapshot date:** 2026-06-11
 > **Repository:** `spring-boot-platform-tracing` (`e:\Platform_Traces`)
 > **Scope:** factual inventory of existing Gradle modules, Java classes, tests, benchmarks and operational behavior — **без** migration plan и **без** нового architecture review.

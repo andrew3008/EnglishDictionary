@@ -8,23 +8,23 @@
 
 ## Context
 
-v1 escape hatches (`advanced()`, raw span builders, untyped attributes) became dumping grounds for ungoverned instrumentation. Risk R03 in the refactoring plan: uncontrolled `spanFromSpec` usage bypasses semconv validation.
+v1 escape hatches (`advanced()`, raw span builders, untyped attributes) became dumping grounds for ungoverned instrumentation. Risk R03 in the refactoring plan: uncontrolled `fromSpec` usage bypasses semconv validation.
 
 ## Decision
 
 Governed manual spans that semantic builders cannot express MUST use:
 
 ```text
-manual().spanFromSpec(SpanSpec spec)
+spans().fromSpec(SpanSpec spec)
 ```
 
 with mandatory governance metadata on every spec.
 
-## Why `spanFromSpec(spec)` replaced `advanced` / `rawSpan` / `escapeHatch`
+## Why `fromSpec(spec)` replaced `advanced` / `rawSpan` / `escapeHatch`
 
 - Single governed entry point instead of multiple ambiguous wide APIs.
 - Immutable `SpanSpec` validates **final state** before span creation.
-- All paths still route to `TracingImplementation.startSpan(SpanSpec)` — one creation boundary.
+- All paths still route to internal `TracingRuntime.startSpan(SpanSpec)` - one creation boundary.
 - ArchUnit and runtime validation can enforce reason/reference policy centrally.
 
 ## Why `reason(SpanSpecReason)` + `reference` replaced `justification`
@@ -58,5 +58,5 @@ with mandatory governance metadata on every spec.
 
 ## References
 
-- [platform-tracing-v3-manual-api.md](../tracing/platform-tracing-v3-manual-api.md)
+- [platform-tracing-v3-span-factory-api.md](../tracing/platform-tracing-v3-span-factory-api.md)
 - [platform-tracing-refactoring-plan.md](../analysis/platform-tracing-refactoring-plan.md) — R03

@@ -1,5 +1,7 @@
 # ADR: X-Request-Id как edge-stable correlation id (Вариант A)
 
+> **SUPERSEDED.** Этот ADR ввёл независимый `requestId`, но использовал слово correlation для technical request chain. Финальная модель различает `traceId`, `requestId` и business `correlationId`: [ADR-identity-model-trace-request-correlation](./ADR-identity-model-trace-request-correlation.md).
+
 | Поле | Значение |
 |------|----------|
 | Статус | **Принято** |
