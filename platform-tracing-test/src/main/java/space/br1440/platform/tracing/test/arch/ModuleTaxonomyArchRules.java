@@ -337,23 +337,24 @@ public final class ModuleTaxonomyArchRules {
 
     // -- PR-1: границы пакетов enrichment / naming / semconv.policy ------------------------------
 
-    /** {@code otel.enrichment} не зависит от legacy builders и v3 manual transport. */
+    /** {@code otel.span.enrich} не зависит от legacy builders и span builder transport. */
     public static final ArchRule CORE_ENRICHMENT_NO_MANUAL_OR_LEGACY = noClasses()
-            .that().resideInAPackage("..otel.enrichment..")
+            .that().resideInAPackage("..otel.span.enrich..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "..otel.span.legacy..",
-                    "..otel.manual..")
+                    "..otel.span.builder..")
             .allowEmptyShould(true)
-            .because("otel.enrichment — agent-first обогащение; не зависит от manual/legacy builders");
+            .because("otel.span.enrich — agent-first обогащение; не зависит от span.builder transport");
 
-    /** {@code otel.naming} — чистое именование span'ов: только OTel common, без trace/context. */
+    /** {@code otel.span.spec} — чистое именование span'ов: только OTel common, без trace/context. */
     public static final ArchRule CORE_NAMING_NO_OTEL_TRACE_CONTEXT = noClasses()
-            .that().resideInAPackage("..otel.naming..")
+            .that().resideInAPackage("..otel.span.spec..")
+            .and().haveSimpleName("PlatformSpanNameBuilder")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "io.opentelemetry.api.trace..",
                     "io.opentelemetry.context..")
             .allowEmptyShould(true)
-            .because("otel.naming не импортирует OTel trace/context API");
+            .because("PlatformSpanNameBuilder не импортирует OTel trace/context API");
 
     /** {@code otel.semconv.policy} — политика атрибутов: только OTel common, без trace/context/sdk. */
     public static final ArchRule CORE_SEMCONV_POLICY_OTEL_COMMON_ONLY = noClasses()
@@ -404,11 +405,11 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("санитайзеры являются implementation utility и живут рядом с internal caller");
 
-    /** URL sanitizer допустим только рядом с единственным caller в {@code otel.manual}. */
+    /** URL sanitizer допустим только рядом с единственным caller в {@code otel.span.builder}. */
     public static final ArchRule URL_SANITIZER_ONLY_IN_CORE_MANUAL = classes()
             .that().haveSimpleName("UrlSanitizer")
             .and().resideOutsideOfPackage("..test..")
-            .should().resideInAPackage("..otel.manual..")
+            .should().resideInAPackage("..otel.span.builder..")
             .allowEmptyShould(true)
             .because("UrlSanitizer не является публичным API или extension point");
 
@@ -570,7 +571,7 @@ public final class ModuleTaxonomyArchRules {
             public boolean test(JavaClass input) {
                 String name = input.getName();
                 return name.startsWith("space.br1440.platform.tracing.otel.propagation.")
-                        || name.equals("space.br1440.platform.tracing.otel.manual.DefaultSpanFactory")
+                        || name.equals("space.br1440.platform.tracing.otel.span.DefaultSpanFactory")
                         || name.contains(".test.")
                         || name.endsWith("Test");
             }

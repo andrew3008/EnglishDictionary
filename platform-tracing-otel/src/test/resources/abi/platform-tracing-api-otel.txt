@@ -541,9 +541,6 @@ TYPE public final class space.br1440.platform.tracing.otel.control.protocol.Vali
   FIELD public static final java.lang.String MODE_LOG_ONLY
   FIELD public static final java.lang.String MODE_STRICT
   METHOD public static space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult validate(java.util.Map<java.lang.String,java.lang.Object>)
-TYPE public final class space.br1440.platform.tracing.otel.enrichment.DefaultSpanEnricher implements space.br1440.platform.tracing.api.span.enrich.SpanEnricher
-  CTOR public space.br1440.platform.tracing.otel.enrichment.DefaultSpanEnricher()
-  METHOD public void enrichCurrentSpan(java.util.function.Consumer<space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment>)
 TYPE public final class space.br1440.platform.tracing.otel.exception.ExceptionMessagePolicy
   CTOR public space.br1440.platform.tracing.otel.exception.ExceptionMessagePolicy(boolean,boolean)
   METHOD public java.lang.String sanitizeOrNull(java.lang.Throwable)
@@ -574,21 +571,6 @@ TYPE public final class space.br1440.platform.tracing.otel.facade.NoopTraceOpera
   METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
   METHOD public static space.br1440.platform.tracing.otel.facade.NoopTraceOperations backedBy(space.br1440.platform.tracing.otel.runtime.TracingRuntime)
   METHOD public void withCorrelationId(java.lang.String,java.lang.Runnable)
-TYPE public final class space.br1440.platform.tracing.otel.manual.DefaultSpanFactory implements space.br1440.platform.tracing.api.span.SpanFactory
-  CTOR public space.br1440.platform.tracing.otel.manual.DefaultSpanFactory(space.br1440.platform.tracing.otel.runtime.TracingRuntime,space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy)
-  METHOD public space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder operation(java.lang.String)
-  METHOD public space.br1440.platform.tracing.api.span.builder.TransportTracing transport()
-  METHOD public space.br1440.platform.tracing.api.span.spec.SpanExecution fromSpec(space.br1440.platform.tracing.api.span.spec.SpanSpec)
-TYPE public final class space.br1440.platform.tracing.otel.manual.DefaultTransportTracing implements space.br1440.platform.tracing.api.span.builder.TransportTracing
-  CTOR public space.br1440.platform.tracing.otel.manual.DefaultTransportTracing(space.br1440.platform.tracing.otel.runtime.TracingRuntime,space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy)
-  METHOD public space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder database()
-  METHOD public space.br1440.platform.tracing.api.span.builder.HttpTracing http()
-  METHOD public space.br1440.platform.tracing.api.span.builder.KafkaTracing kafka()
-  METHOD public space.br1440.platform.tracing.api.span.builder.RpcTracing rpc()
-TYPE public final class space.br1440.platform.tracing.otel.manual.spec.OperationSpanSpecs
-  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpec from(java.lang.String,space.br1440.platform.tracing.api.span.SpanCategory,space.br1440.platform.tracing.api.span.spec.SpanRelationship,java.util.List<space.br1440.platform.tracing.api.span.RemoteSpanLink>)
-TYPE public final class space.br1440.platform.tracing.otel.manual.spec.SemanticSpanSpecs
-  METHOD public static space.br1440.platform.tracing.api.span.spec.SpanSpec build(space.br1440.platform.tracing.api.span.SpanCategory,java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanRelationship,java.util.List<space.br1440.platform.tracing.api.span.RemoteSpanLink>,java.util.Map<java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue>,space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy,java.lang.String)
 TYPE public final class space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc
   METHOD public static void clear()
   METHOD public static void clearForTrace(java.lang.String)
@@ -598,8 +580,6 @@ TYPE public final class space.br1440.platform.tracing.otel.mdc.remote.RemoteServ
   CTOR public space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver(java.util.List<space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource>)
   METHOD public java.util.Optional<java.lang.String> resolve()
   METHOD public java.util.Optional<java.lang.String> resolve(java.lang.String)
-TYPE public final class space.br1440.platform.tracing.otel.naming.PlatformSpanNameBuilder
-  METHOD public static java.lang.String forCategory(space.br1440.platform.tracing.api.span.SpanCategory,io.opentelemetry.api.common.Attributes,java.lang.String)
 TYPE public final class space.br1440.platform.tracing.otel.propagation.NoOpPlatformContextPropagation implements space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
   FIELD public static final space.br1440.platform.tracing.otel.propagation.NoOpPlatformContextPropagation INSTANCE
   METHOD public java.lang.Runnable wrap(java.lang.Runnable)
@@ -889,6 +869,23 @@ TYPE public final record space.br1440.platform.tracing.otel.semconv.policy.Valid
   METHOD public final java.lang.String toString()
   METHOD public io.opentelemetry.api.common.Attributes attributes()
   METHOD public java.util.List<space.br1440.platform.tracing.api.semconv.SemconvViolation> violations()
+TYPE public final class space.br1440.platform.tracing.otel.span.DefaultSpanFactory implements space.br1440.platform.tracing.api.span.SpanFactory
+  CTOR public space.br1440.platform.tracing.otel.span.DefaultSpanFactory(space.br1440.platform.tracing.otel.runtime.TracingRuntime,space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy)
+  METHOD public space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder operation(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.span.builder.TransportTracing transport()
+  METHOD public space.br1440.platform.tracing.api.span.spec.SpanExecution fromSpec(space.br1440.platform.tracing.api.span.spec.SpanSpec)
+TYPE public final class space.br1440.platform.tracing.otel.span.builder.DefaultSpanBuilderFactory
+  CTOR public space.br1440.platform.tracing.otel.span.builder.DefaultSpanBuilderFactory(space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory,space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader)
+  METHOD public space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder operation(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.span.builder.TransportTracing transport()
+TYPE public final class space.br1440.platform.tracing.otel.span.enrich.DefaultSpanEnricher implements space.br1440.platform.tracing.api.span.enrich.SpanEnricher
+  CTOR public space.br1440.platform.tracing.otel.span.enrich.DefaultSpanEnricher()
+  METHOD public void enrichCurrentSpan(java.util.function.Consumer<space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment>)
+TYPE public final class space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory
+  CTOR public space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory(space.br1440.platform.tracing.otel.runtime.TracingRuntime,space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy)
+  METHOD public space.br1440.platform.tracing.api.span.spec.SpanExecution fromBuilderRawSpec(space.br1440.platform.tracing.api.span.spec.SpanSpec,java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.span.spec.SpanExecution fromSemanticBuilder(space.br1440.platform.tracing.api.span.SpanCategory,java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanRelationship,java.util.List<space.br1440.platform.tracing.api.span.RemoteSpanLink>,java.util.Map<java.lang.String,space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue>,java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.span.spec.SpanExecution fromSpec(space.br1440.platform.tracing.api.span.spec.SpanSpec)
 TYPE public final class space.br1440.platform.tracing.otel.validation.ValidationPolicyUpdate
   METHOD public static java.lang.String normalizeSource(java.lang.String)
   METHOD public static space.br1440.platform.tracing.otel.validation.ValidationSnapshot buildNext(space.br1440.platform.tracing.otel.validation.ValidationSnapshot,boolean,boolean,java.lang.String)
