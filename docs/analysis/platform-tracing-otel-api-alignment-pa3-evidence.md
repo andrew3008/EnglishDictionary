@@ -42,7 +42,12 @@ Final hardening slice: `runtime.otel` boundary audit, alignment stale-package ga
 
 ## 5. E2E
 
-Inherited from PA-2 run on same lineage: **65 tests, 0/0/0** (~9m35s, Docker `192.168.100.70:2375`).
+**2026-07-23 (PA-3 HEAD):** `DOCKER_HOST=tcp://192.168.100.70:2375` — **65 tests, 0/0/0** (~9m24s).
+
+```powershell
+$env:DOCKER_HOST='tcp://192.168.100.70:2375'
+.\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --rerun-tasks --no-daemon
+```
 
 ## 6. PA-3 exit block
 
