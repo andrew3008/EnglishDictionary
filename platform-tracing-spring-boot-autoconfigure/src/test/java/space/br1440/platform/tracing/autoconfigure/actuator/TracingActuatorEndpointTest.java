@@ -91,14 +91,28 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void readOperation_validation_contains_strictRuntimeAllowed_drift_note() {
+    void readOperation_формирует_сокращённый_read_model() {
+        Map<String, Object> info = endpoint.tracing();
+
+        assertThat(info).containsKeys("enabled", "implementation", "sampling", "validation", "actuator",
+                "otelEffective", "resourceEffective", "export", "processors", "config");
+        assertThat(info).doesNotContainKeys("limits", "queue", "exporter", "enriching", "watchdog",
+                "control", "otelEnvHints", "resourceSpringConfig");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> service = (Map<String, Object>) info.get("service");
+        assertThat(service).containsOnlyKeys("name");
+    }
+
+    @Test
+    void readOperation_validation_не_содержит_strictRuntimeAllowedNote() {
         Map<String, Object> info = endpoint.tracing();
         @SuppressWarnings("unchecked")
         Map<String, Object> validation = (Map<String, Object>) info.get("validation");
 
-        assertThat(validation).containsKey("strictRuntimeAllowedNote");
-        assertThat((String) validation.get("strictRuntimeAllowedNote"))
-                .contains("liveStrictRuntimeAllowed");
+        assertThat(validation).doesNotContainKey("strictRuntimeAllowed");
+        assertThat(validation).doesNotContainKey("strictRuntimeAllowedNote");
+        assertThat(validation).containsKeys("enabled", "strict", "liveStrictRuntimeAllowed");
     }
 
     @Test
@@ -200,8 +214,7 @@ class TracingActuatorEndpointTest {
     @Test
     void readOperation_возвращает_текущее_состояние_включая_live_ratio() {
         Map<String, Object> info = endpoint.tracing();
-        assertThat(info).containsKeys("enabled", "implementation", "sampling", "limits", "queue", "exporter",
-                "enriching", "validation", "watchdog");
+        assertThat(info).containsKeys("enabled", "implementation", "sampling", "validation");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> sampling = (Map<String, Object>) info.get("sampling");
@@ -209,27 +222,18 @@ class TracingActuatorEndpointTest {
         assertThat(sampling).containsEntry("liveRatio", 0.1d);
         assertThat(sampling).containsEntry("controlAvailable", true);
         assertThat(sampling).containsKey("dropPaths");
+        assertThat(sampling).doesNotContainKeys("forceRecordHeader", "qaForceHeader");
     }
 
     @Test
-    void readOperation_содержит_секции_enriching_validation_watchdog_и_scrubbing() {
+    void readOperation_содержит_секции_validation_и_scrubbing() {
         Map<String, Object> info = endpoint.tracing();
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> enriching = (Map<String, Object>) info.get("enriching");
-        assertThat(enriching).containsEntry("enabled", true);
-        assertThat(enriching).containsKey("remoteServicePriority");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> validation = (Map<String, Object>) info.get("validation");
         assertThat(validation).containsEntry("enabled", true);
         assertThat(validation).containsEntry("strict", false);
         assertThat(validation).containsKeys("liveEnabled", "liveStrict", "configVersion", "configSource");
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> watchdog = (Map<String, Object>) info.get("watchdog");
-        assertThat(watchdog).containsEntry("enabled", true);
-        assertThat(watchdog).containsKeys("scanInterval", "spanTimeout", "traceTimeout");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> scrubbing = (Map<String, Object>) info.get("scrubbing");
@@ -239,6 +243,7 @@ class TracingActuatorEndpointTest {
         assertThat(scrubbing).containsEntry("customRulesVisible", false);
         assertThat(scrubbing).containsKey("builtInRules");
         assertThat(scrubbing).containsKey("note");
+        assertThat(scrubbing).doesNotContainKey("rulesConfig");
     }
 
     @Test
@@ -382,21 +387,5 @@ class TracingActuatorEndpointTest {
 
         assertThat(config.get("lastUpdatedSource")).isEqualTo("JMX");
         assertThat(validation.get("configSource")).isEqualTo("spring-runtime-config");
-    }
-
-    @Test
-    void readOperation_содержит_otelEnvHints_из_TracingProperties() {
-        properties.getQueue().setExportTimeout(java.time.Duration.ofMillis(100));
-
-        Map<String, Object> info = endpoint.tracing();
-
-        assertThat(info).containsKey("otelEnvHints");
-        @SuppressWarnings("unchecked")
-        Map<String, Map<String, Object>> hints =
-                (Map<String, Map<String, Object>>) info.get("otelEnvHints");
-
-        assertThat(hints.get("OTEL_BSP_EXPORT_TIMEOUT"))
-                .containsEntry("suggestedValue", "100")
-                .containsEntry("springProperty", "platform.tracing.queue.export-timeout");
     }
 }

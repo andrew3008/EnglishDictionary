@@ -21,13 +21,15 @@
 
 WebMvc/WebFlux **не добавляют** своих `@ConfigurationProperties` — только условные бины по тем же `platform.tracing.*`.
 
-Решение **agent-first**: Spring YAML управляет UX-слоем (фасад, фильтры, actuator), а OTel Agent читает **`OTEL_*` / `-Dotel.*`** в отдельном classloader. Spring-значения **не пробрасываются** в Agent автоматически (dual-channel, см. `OtelEnvHintsBuilder` и runbook `/actuator/tracing`).
+Решение **agent-first**: Spring YAML управляет только тем, что Spring применяет или реконсилит по JMX. SDK limits/queue/exporter/resource/enriching/watchdog/baggage — **только agent-канал** (`OTEL_*`, `PLATFORM_TRACING_*`). См. [ADR-spring-owns-only-what-spring-applies.md](../decisions/ADR-spring-owns-only-what-spring-applies.md).
+
+> **2026-07 purge:** группы `facade`, `resource`, `limits`, `queue`, `serviceNames`, `enriching`, `watchdog`, `control`, `propagation.baggage`, `exporter.otlp` удалены из `TracingProperties`. Секции ниже с пометкой *(удалено из Spring)* — справочно для agent-канала.
 
 Связанные документы:
 
 - [SUPPORTED.md](../SUPPORTED.md)
 - [runbook/actuator-tracing-diagnostics.md](../runbook/actuator-tracing-diagnostics.md)
-- [ADR-dual-channel-properties-v0.1.md](../decisions/ADR-dual-channel-properties-v0.1.md)
+- [ADR-spring-owns-only-what-spring-applies.md](../decisions/ADR-spring-owns-only-what-spring-applies.md)
 - [MIGRATION.md](../MIGRATION.md)
 
 ---

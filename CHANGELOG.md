@@ -4,6 +4,23 @@
 
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), версии — [Semantic Versioning](https://semver.org/lang/ru/).
 
+## [Unreleased] — Spring properties surface purge
+
+### Breaking Changes
+
+- **`TracingProperties` surface reduced** to Spring-applied (A) and JMX-reconciled (B) fields only.
+  Removed mirror groups: `facade`, `resource`, `limits`, `queue`, `serviceNames`, `enriching`,
+  `watchdog`, `control`, `propagation.baggage`, `exporter.otlp`; removed fields
+  `service.version/environment/c-group/container-id`, `sampling.force-record-header/qa-force-header`,
+  `scrubbing.rules-config`, `validation.strict-runtime-allowed`, drift diagnostics flags.
+  Agent channel keys (`OTEL_*`, `PLATFORM_TRACING_*`, `platform.tracing.queue.overflow-policy`, etc.)
+  unchanged. See ADR-spring-owns-only-what-spring-applies and MIGRATION.md.
+- **`GET /actuator/tracing` read-model** no longer exposes `limits`, `queue`, `exporter`,
+  `enriching`, `watchdog`, `control`, `otelEnvHints`, `resourceSpringConfig`. Use `otelEffective`
+  and `resourceEffective` for agent state.
+- Removed classes: `DualChannelDriftDiagnostics`, `DropOldestAspirationDiagnostics`,
+  `OtelEnvHintsBuilder`, `DurationToMillis` and their tests.
+
 ## [Unreleased] — Wave R1+ (dual-channel alignment)
 ### Breaking Changes
 

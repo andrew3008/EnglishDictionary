@@ -174,7 +174,7 @@ Notes: 99 production classes; verifyAgentJarContents + verifyExtensionSpiRegistr
 ```text
 Module: platform-tracing-spring-boot-autoconfigure
 Public-facing: no (transitive via starter)
-Internal role: TracingProperties, 13 AutoConfiguration classes, Actuator /actuator/tracing, SamplingControlClient (JMX client), RefreshScope integration
+Internal role: TracingProperties (A+B surface), 13 AutoConfiguration classes, Actuator /actuator/tracing, SamplingControlClient (JMX client), RefreshScope integration
 Framework dependencies: Spring Boot autoconfigure, Micrometer, compileOnly actuator/cloud-kafka
 Runtime role: Application CL
 ClassLoader assumption: Application CL
@@ -484,7 +484,7 @@ starters -> autoconfigure + web*                    CURRENT: yes
 | `PlatformTracingControlMBean` | otel-extension | jmx | MBean interface | JMX | no | no | via impl | API wire schema | **Preserve** | |
 | `SamplingControlClient` | autoconfigure | sampling | JMX client from Spring CL | JMX invoke | no | no | yes | SPRING_AUTOCONFIGURE | **Preserve** | no extension import by design |
 | `TracingActuatorEndpoint` | autoconfigure | actuator | GET/POST /actuator/tracing | Spring Actuator | partial | no | yes | SPRING_AUTOCONFIGURE | **Refactor** (dev-only mutation) | WriteOperation exists today |
-| `TracingProperties` | autoconfigure | autoconfigure | All platform.tracing.* binding | Spring | yes | no | yes | SPRING_AUTOCONFIGURE | **Preserve** | 700+ lines nested |
+| `TracingProperties` | autoconfigure | autoconfigure | platform.tracing.* (A+B surface) | Spring | yes | no | yes | SPRING_AUTOCONFIGURE | **Preserve** | ~280 lines nested |
 | `DualChannelDriftDiagnostics` | autoconfigure | actuator | Spring vs Agent property drift | Spring | yes | no | yes | SPRING_AUTOCONFIGURE | **Preserve** | target drift detection precursor |
 | `PlatformAutoConfigurationCustomizer` | otel-extension | extension | Agent SPI entry — wires sampler/processors/JMX | OTel SPI | yes | no | yes | OTEL_EXTENSION_ADAPTER | **Preserve** | |
 | `PlatformSamplerFactory` | otel-extension | factory | Builds CompositeSampler + state | OTel | no | no | yes | SPLIT_CORE_AND_ADAPTER | **Split** | |
@@ -609,7 +609,7 @@ Actuator endpoints: TracingActuatorEndpoint — GET read + POST write (enabled, 
 JMX client integration: SamplingControlClient wired into Actuator + RuntimeConfigApplier
 Config refresh support: TracingRefreshScopeAutoConfiguration + RuntimeConfigApplier → JMX batch apply
 Desired-state related classes: DualChannelDriftDiagnostics (drift detection); TracingConfigReconciler NOT FOUND
-Test coverage: TracingAutoConfigurationTest, TracingPropertiesBindingTest, TracingActuatorEndpointTest, DualChannelDriftDiagnosticsTest, RuntimeConfigApplierTest
+Test coverage: TracingAutoConfigurationTest, TracingPropertiesBindingTest, TracingActuatorEndpointTest, RuntimeConfigApplierTest
 Target role: common Spring adapter + reconciler (new)
 Preservation risk: HIGH
 ```
@@ -691,7 +691,7 @@ Preservation risk: CRITICAL
 | **WebFlux tests** | 9 | `TracingReactorEagerInitConfigurationTest`, `ReactorContextPropagationIntegrationTest` | MUST_KEEP |
 | **OTel extension tests** | 78 | processor/sampler/scrubbing/resource/propagation suites | MUST_KEEP |
 | **JMX / control-plane tests** | 6+ | `PlatformTracingControlTest`, `SamplingControlClientTest`, `RuntimeConfigApplierTest` | MUST_KEEP / ADAPT_FOR_NEW_ARCHITECTURE |
-| **Config / property binding** | 5+ | `TracingPropertiesBindingTest`, `SharedDefaultsAlignmentTest`, `PlatformTracingDefaultsProviderTest` | MUST_KEEP |
+| **Config / property binding** | 5+ | `TracingPropertiesBindingTest`, `PlatformTracingDefaultsProviderTest` | MUST_KEEP |
 | **E2E tests** | 42 | `TracingE2ETest`, `RuntimeSamplingControlSmokeTest`, Agent*Smoke* | MUST_KEEP |
 | **Contract tests** | 4 | `PerformanceBudgetsContractTest`, `CollectorPolicyContractTest` | MUST_KEEP |
 | **Perf tests** | 0 Java (scripts/docker) | M0–M10 via `run-perf-scenario.ps1` | MUST_KEEP |
@@ -753,12 +753,12 @@ Preservation risk: CRITICAL
 
 | Property prefix | Class | Module | Current fields (top-level) | Runtime mutable | Topology or policy | Target source | Migration notes |
 |-----------------|-------|--------|---------------------------|-----------------|-------------------|---------------|-----------------|
-| `platform.tracing` | `TracingProperties` | autoconfigure | enabled, sdk, service, resource, facade, sampling, limits, queue, scrubbing, exporter, response, serviceNames, aop, suppression, enriching, validation, semantic, watchdog, propagation, kafka, contextPropagation, diagnostics | **yes** (RefreshScope + Actuator write for subset) | **both** | HELM_ENV_BOOTSTRAP_DEFAULT + CONFIG_SERVER_RUNTIME_POLICY | Split topology vs policy per target |
-| `platform.tracing.sampling.*` | `TracingProperties.Sampling` | autoconfigure | ratio, routes, killSwitch, qaTrace, forceHeaders | **yes** (JMX/Actuator/Refresh) | policy | CONFIG_SERVER_RUNTIME_POLICY | Core extraction candidate |
-| `platform.tracing.scrubbing.*` | `TracingProperties.Scrubbing` | autoconfigure | enabled, rules, mode | partial via JMX reload | policy | CONFIG_SERVER_RUNTIME_POLICY | Mandatory baseline |
-| `platform.tracing.validation.*` | `TracingProperties.Validation` | autoconfigure | enabled, mode | partial | policy | CONFIG_SERVER_RUNTIME_POLICY | Optional tier |
-| `platform.tracing.enriching.*` | `TracingProperties.Enriching` | autoconfigure | enabled, attributes | partial | policy | CONFIG_SERVER_RUNTIME_POLICY | Optional tier |
-| `platform.tracing.exporter.*` / `queue.*` | nested classes | autoconfigure | endpoint, protocol, queue size, overflow policy | mostly startup | topology | HELM_ENV_STARTUP_TOPOLOGY | |
+| `platform.tracing` | `TracingProperties` | autoconfigure | enabled, sdk, service (name only), sampling, scrubbing, exporter (enabled), response, aop, suppression, validation, semantic, propagation (platformHeaders, outbound), kafka, contextPropagation, diagnostics (logLevel), actuator | **yes** (RefreshScope + Actuator write for subset) | **both** | HELM_ENV_BOOTSTRAP_DEFAULT + CONFIG_SERVER_RUNTIME_POLICY | Purged C/D/E mirror groups (ADR-spring-owns-only-what-spring-applies) |
+| `platform.tracing.sampling.*` | `TracingProperties.Sampling` | autoconfigure | enabled, ratio, routeRatios, forceRecordHeaderValues, dropPaths | **yes** (JMX/Actuator/Refresh) | policy | CONFIG_SERVER_RUNTIME_POLICY | forceRecordHeader/qaForceHeader removed (use propagation.platformHeaders) |
+| `platform.tracing.scrubbing.*` | `TracingProperties.Scrubbing` | autoconfigure | enabled, builtInRules | partial via JMX reload | policy | CONFIG_SERVER_RUNTIME_POLICY | rulesConfig removed (agent loader) |
+| `platform.tracing.validation.*` | `TracingProperties.Validation` | autoconfigure | enabled, strict | partial | policy | CONFIG_SERVER_RUNTIME_POLICY | strictRuntimeAllowed removed (agent-only) |
+| `platform.tracing.exporter.enabled` | `TracingProperties.Exporter` | autoconfigure | enabled kill-switch | JMX | policy | CONFIG_SERVER_RUNTIME_POLICY | otlp nested group removed |
+| OTel agent env | `ExtensionPropertyNames` / `PlatformTracingDefaultsProvider` | otel-extension | limits, queue, resource, enriching, watchdog, baggage, exporter endpoint | via agent ConfigProperties | policy (applied) | HELM_ENV / OTEL_* | Sole source for removed Spring mirrors |
 | `platform.tracing.sdk.mode` | `TracingProperties.Sdk` | autoconfigure | AUTO/AGENT/STARTER/EXTERNAL/DISABLED | no | topology/diagnostic | HELM_ENV_BOOTSTRAP_DEFAULT | Dual-channel with agent configuration |
 | OTel agent env | `ExtensionPropertyNames` / `PlatformTracingDefaultsProvider` | otel-extension | mirrors sampling/scrubbing/validation/etc. | via JMX reload | policy (applied) | INTERNAL_DERIVED | Agent applied state, not source of truth |
 | `management.endpoints.web.exposure` | (Spring) | consumer app | actuator exposure | yes | topology | HELM_ENV_STARTUP_TOPOLOGY | Mutation exposure risk |

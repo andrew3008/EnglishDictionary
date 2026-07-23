@@ -2,9 +2,38 @@
 
 Документ содержит несколько разделов, каждый соответствует одной волне изменений.
 
+- [Removed Spring properties (TracingProperties purge)](#removed-spring-properties-tracingproperties-purge)
 - [v0.1.0 default changes (Wave R1+)](#v010-default-changes-wave-r1) — alignment shared defaults Spring ↔ Agent
 - [Wave 2c: `micrometer-tracing-bridge-otel` opt-in](#wave-2c-micrometer-tracing-bridge-otel-opt-in)
 - [v1.x: `DROP_OLDEST` export processor (default)](#v1x-drop_oldest-export-processor-default)
+
+---
+
+## Removed Spring properties (TracingProperties purge)
+
+Spring `TracingProperties` больше не содержит зеркал agent-конфигурации. Ключи ниже **удалены из Spring binding**; если они остались в `application.yml`, Spring Boot их проигнорирует.
+
+| Старый Spring-ключ | Действие |
+|--------------------|----------|
+| `platform.tracing.facade.*` | Удалить (мёртвый код, Spring не применял) |
+| `platform.tracing.resource.*` | Мигрировать на agent: `platform.tracing.resource.*` / `OTEL_RESOURCE_*` |
+| `platform.tracing.limits.*` | Мигрировать на agent: `OTEL_SPAN_*` / `PlatformTracingDefaultsProvider` |
+| `platform.tracing.queue.max-size/export-batch-size/export-timeout/policy` | Мигрировать на agent: `OTEL_BSP_*` |
+| `platform.tracing.queue.overflow-policy` | **Agent-канал** — не менялся; `-Dplatform.tracing.queue.overflow-policy=...` |
+| `platform.tracing.service-names.*` | Удалить (мёртвый код) |
+| `platform.tracing.enriching.*` | Мигрировать на agent: `platform.tracing.enriching.*` |
+| `platform.tracing.watchdog.*` | Мигрировать на agent: `platform.tracing.watchdog.*` |
+| `platform.tracing.control.*` | Мигрировать на agent: `platform.tracing.control.*` |
+| `platform.tracing.propagation.baggage.*` | Мигрировать на agent: `platform.tracing.propagation.baggage.*` |
+| `platform.tracing.exporter.otlp.*` | Мигрировать на agent/env: `OTEL_EXPORTER_OTLP_*` |
+| `platform.tracing.service.version/environment/c-group/container-id` | Мигрировать на agent: `platform.tracing.service.*` |
+| `platform.tracing.sampling.force-record-header/qa-force-header` | Использовать `platform.tracing.propagation.platform-headers.*` |
+| `platform.tracing.scrubbing.rules-config` | Agent-side `ScrubbingRulesLoader` (extension) |
+| `platform.tracing.validation.strict-runtime-allowed` | **Agent-канал** — `-Dplatform.tracing.validation.strict-runtime-allowed=...` |
+| `platform.tracing.diagnostics.dual-channel-warn` | Удалить (диагностика удалена) |
+| `platform.tracing.diagnostics.drop-oldest-aspiration-*` | Удалить (диагностика удалена) |
+
+ADR: [decisions/ADR-spring-owns-only-what-spring-applies.md](./decisions/ADR-spring-owns-only-what-spring-applies.md)
 
 ---
 

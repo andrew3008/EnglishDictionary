@@ -9,4 +9,3 @@ platform:
     validation:
       enabled: true
       strict: true
-      strict-runtime-allowed: true

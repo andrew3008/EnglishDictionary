@@ -47,8 +47,6 @@ public class DuplicateHttpSpanSmokeMain {
                 "--spring.main.banner-mode=off",
                 // Намеренно false: воспроизводим дублирование Agent + Micrometer.
                 "--platform.tracing.suppression.suppress-micrometer-tracing=false",
-                // Diagnostic WARN на dual-channel в этом сценарии нерелевантен.
-                "--platform.tracing.diagnostics.dual-channel-warn=false",
                 // bridge-otel path: Micrometer Observation должна экспортировать span'ы в OTel/Jaeger.
                 "--management.tracing.enabled=true",
                 "--logging.level.root=WARN");

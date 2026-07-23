@@ -16,26 +16,6 @@ class TracingPropertiesBindingTest {
             .withUserConfiguration(TestConfig.class);
 
     @Test
-    void bindsEnrichingEnabled() {
-        contextRunner
-                .withPropertyValues("platform.tracing.enriching.enabled=false")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getEnriching().isEnabled()).isFalse();
-                });
-    }
-
-    @Test
-    void bindsWatchdogScanInterval() {
-        contextRunner
-                .withPropertyValues("platform.tracing.watchdog.scan-interval=15s")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getWatchdog().getScanInterval()).hasSeconds(15);
-                });
-    }
-
-    @Test
     void bindsSamplingEnabled() {
         contextRunner
                 .withPropertyValues("platform.tracing.sampling.enabled=false")
@@ -120,17 +100,6 @@ class TracingPropertiesBindingTest {
     }
 
     @Test
-    void bindsScrubbingRulesConfig() {
-        contextRunner
-                .withPropertyValues("platform.tracing.scrubbing.rules-config=classpath:tracing/scrubbing-rules-test.properties")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getScrubbing().getRulesConfig())
-                            .isEqualTo("classpath:tracing/scrubbing-rules-test.properties");
-                });
-    }
-
-    @Test
     void bindsValidationEnabled() {
         contextRunner
                 .withPropertyValues("platform.tracing.validation.enabled=false")
@@ -147,16 +116,6 @@ class TracingPropertiesBindingTest {
                 .run(ctx -> {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
                     assertThat(properties.getValidation().isStrict()).isTrue();
-                });
-    }
-
-    @Test
-    void bindsValidationStrictRuntimeAllowed() {
-        contextRunner
-                .withPropertyValues("platform.tracing.validation.strict-runtime-allowed=true")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getValidation().isStrictRuntimeAllowed()).isTrue();
                 });
     }
 
@@ -180,28 +139,12 @@ class TracingPropertiesBindingTest {
     }
 
     @Test
-    void defaultRuntimeControlMutationEnabled_isFalse() {
-        contextRunner
-                .run(ctx -> assertThat(ctx.getBean(TracingProperties.class)
-                        .getControl().getRuntimeMutation().isEnabled()).isFalse());
-    }
-
-    @Test
-    void bindsRuntimeControlMutationEnabled() {
-        contextRunner
-                .withPropertyValues("platform.tracing.control.runtime-mutation.enabled=true")
-                .run(ctx -> assertThat(ctx.getBean(TracingProperties.class)
-                        .getControl().getRuntimeMutation().isEnabled()).isTrue());
-    }
-
-    @Test
     void defaultValidationValues_preserved() {
         contextRunner
                 .run(ctx -> {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
                     assertThat(properties.getValidation().isEnabled()).isTrue();
                     assertThat(properties.getValidation().isStrict()).isFalse();
-                    assertThat(properties.getValidation().isStrictRuntimeAllowed()).isFalse();
                 });
     }
 

@@ -22,9 +22,8 @@ import java.util.Map;
 /**
  * Actuator-эндпоинт {@code /actuator/tracing}.
  * <p>
- * Предоставляет диагностический срез текущего состояния платформенной трассировки
- * ({@link #tracing()}, {@code GET /actuator/tracing}) и динамическое управление параметрами
- * ({@code POST /actuator/tracing/{property}/{value}}).
+ * Read-model: только Spring-applied / JMX-reconciled конфигурация плюс agent-effective снимки
+ * ({@link OtelEffectiveConfigSnapshot}, {@link ResourceEffectiveSnapshot}).
  */
 @Endpoint(id = "tracing")
 public class TracingActuatorEndpoint {
@@ -114,10 +113,7 @@ public class TracingActuatorEndpoint {
         info.put("currentTraceId", traceOperations.traceContext().traceId().orElse(null));
         info.put("currentSpanId", traceOperations.traceContext().spanId().orElse(null));
         info.put("service", Map.of(
-                "name", nullSafe(properties.getService().getName()),
-                "version", nullSafe(properties.getService().getVersion()),
-                "environment", nullSafe(properties.getService().getEnvironment()),
-                "cGroup", nullSafe(properties.getService().getCGroup())
+                "name", nullSafe(properties.getService().getName())
         ));
 
         Map<String, Object> samplingInfo = new LinkedHashMap<>();
@@ -131,9 +127,7 @@ public class TracingActuatorEndpoint {
         samplingInfo.put("liveForceRecordHeaderValues", jmxClient.getLiveForceRecordValues().orElse(null));
         samplingInfo.put("liveRouteRatios", jmxClient.getLiveRouteRatios().orElse(null));
         samplingInfo.put("controlAvailable", jmxClient.isAvailable());
-        samplingInfo.put("forceRecordHeader", properties.getSampling().getForceRecordHeader());
         samplingInfo.put("forceRecordHeaderValues", properties.getSampling().getForceRecordHeaderValues());
-        samplingInfo.put("qaForceHeader", properties.getSampling().getQaForceHeader());
         samplingInfo.put("dropPaths", properties.getSampling().getDropPaths());
         samplingInfo.put("configVersion", jmxClient.getSamplingConfigVersion().orElse(null));
         samplingInfo.put("configSource", jmxClient.getSamplingConfigLastUpdatedSource().orElse(null));
@@ -143,32 +137,11 @@ public class TracingActuatorEndpoint {
         samplingInfo.put("decisions", decisions);
         info.put("sampling", samplingInfo);
 
-        info.put("limits", Map.of(
-                "maxAttributes", properties.getLimits().getMaxAttributes(),
-                "maxAttributeValueLength", properties.getLimits().getMaxAttributeValueLength(),
-                "maxEvents", properties.getLimits().getMaxEvents(),
-                "spanTimeout", properties.getLimits().getSpanTimeout().toString(),
-                "traceTimeout", properties.getLimits().getTraceTimeout().toString()
-        ));
-        info.put("queue", Map.of(
-                "maxSize", properties.getQueue().getMaxSize(),
-                "policy", properties.getQueue().getPolicy().name(),
-                "exportBatchSize", properties.getQueue().getExportBatchSize(),
-                "exportTimeout", properties.getQueue().getExportTimeout().toString()
-        ));
-        info.put("exporter", Map.of(
-                "otlpEndpoint", properties.getExporter().getOtlp().getEndpoint(),
-                "retryEnabled", properties.getExporter().getOtlp().getRetry().isEnabled()
-        ));
         info.put("export", jmxClient.getExportMetrics()
                 .orElseGet(() -> Map.of("status", "not_ready")));
         info.put("response", Map.of(
                 "exposeRequestIdHeader", properties.getResponse().isExposeRequestIdHeader(),
                 "headerName", properties.getResponse().getHeaderName()
-        ));
-        info.put("enriching", Map.of(
-                "enabled", properties.getEnriching().isEnabled(),
-                "remoteServicePriority", properties.getEnriching().getRemoteServicePriority()
         ));
 
         Map<String, Object> scrubbingInfo = new LinkedHashMap<>();
@@ -182,47 +155,20 @@ public class TracingActuatorEndpoint {
         scrubbingInfo.put("customRulesSource", "otel-agent-spi");
         scrubbingInfo.put("customRulesVisible", false);
         scrubbingInfo.put("note", "SPI-реализации SpanAttributeScrubbingRule грузятся classloader'ом OTel Agent и в actuator не видны");
-        scrubbingInfo.put("rulesConfig", nullSafe(properties.getScrubbing().getRulesConfig()));
         info.put("scrubbing", scrubbingInfo);
 
         Map<String, Object> validationInfo = new LinkedHashMap<>();
         validationInfo.put("enabled", properties.getValidation().isEnabled());
         validationInfo.put("strict", properties.getValidation().isStrict());
-        validationInfo.put("strictRuntimeAllowed", properties.getValidation().isStrictRuntimeAllowed());
         validationInfo.put("liveEnabled", jmxClient.isValidationEnabled().orElse(null));
         validationInfo.put("liveStrict", jmxClient.isValidationStrict().orElse(null));
         validationInfo.put("liveStrictRuntimeAllowed", jmxClient.isValidationStrictRuntimeAllowed().orElse(null));
         validationInfo.put("configVersion", jmxClient.getValidationConfigVersion().orElse(null));
         validationInfo.put("configSource", jmxClient.getValidationConfigLastUpdatedSource().orElse(null));
-        validationInfo.put("strictRuntimeAllowedNote",
-                "configured strictRuntimeAllowed is Spring input; liveStrictRuntimeAllowed is agent startup "
-                        + "enforcement from platform.tracing.validation.strict-runtime-allowed");
         info.put("validation", validationInfo);
 
-        info.put("control", Map.of(
-                "runtimeMutationEnabled", properties.getControl().getRuntimeMutation().isEnabled(),
-                "effectivePolicySource", "otel-agent startup configuration"));
-
-        info.put("watchdog", Map.of(
-                "enabled", properties.getWatchdog().isEnabled(),
-                "scanInterval", properties.getWatchdog().getScanInterval().toString(),
-                "spanTimeout", properties.getLimits().getSpanTimeout().toString(),
-                "traceTimeout", properties.getLimits().getTraceTimeout().toString()
-        ));
         info.put("otelEffective", otelEffectiveSnapshot.build());
-        info.put("otelEnvHints", OtelEnvHintsBuilder.from(properties));
         info.put("resourceEffective", resourceEffectiveSnapshot.build());
-
-        Map<String, Object> resourceSpringConfig = new LinkedHashMap<>();
-        resourceSpringConfig.put("serviceName", nullSafe(properties.getService().getName()));
-        resourceSpringConfig.put("serviceVersion", nullSafe(properties.getService().getVersion()));
-        resourceSpringConfig.put("environment", nullSafe(properties.getService().getEnvironment()));
-        resourceSpringConfig.put("cGroup", nullSafe(properties.getService().getCGroup()));
-        resourceSpringConfig.put("policyVersion", nullSafe(properties.getResource().getPolicyVersion()));
-        resourceSpringConfig.put("normalizeEnvironment", properties.getResource().isNormalizeEnvironment());
-        resourceSpringConfig.put("validationMode", properties.getResource().getValidationMode());
-        resourceSpringConfig.put("detectContainerId", properties.getResource().isDetectContainerId());
-        info.put("resourceSpringConfig", resourceSpringConfig);
 
         Map<String, Object> processorInfo = new LinkedHashMap<>();
         processorInfo.put("errorsTotal", jmxClient.getProcessorErrorsTotal().orElse(null));
