@@ -53,11 +53,11 @@ class TracingImplementationArchTest {
                     .because("otel.runtime (кроме otel) не должен зависеть от OpenTelemetry API");
 
     @ArchTest
-    static final ArchRule runtimeMustNotDependOnManual =
+    static final ArchRule runtimeMustNotDependOnSpan =
             noClasses().that().resideInAPackage("space.br1440.platform.tracing.otel.runtime..")
                     .should().dependOnClassesThat().resideInAnyPackage(
-                            "space.br1440.platform.tracing.otel.manual..")
-                    .because("otel.runtime не должен зависеть от otel.manual");
+                            "space.br1440.platform.tracing.otel.span..")
+                    .because("otel.runtime не должен зависеть от otel.span");
 
     @ArchTest
     static final ArchRule runtimeMustNotDependOnRootFacade =
@@ -67,12 +67,12 @@ class TracingImplementationArchTest {
                     .because("otel.runtime не должен зависеть от facade/propagation entrypoint-классов");
 
     @ArchTest
-    static final ArchRule manualBuildersDoNotUseOtelDirectly =
-            noClasses().that().resideInAPackage("space.br1440.platform.tracing.otel.manual..")
+    static final ArchRule spanBuildersDoNotUseOtelDirectly =
+            noClasses().that().resideInAPackage("space.br1440.platform.tracing.otel.span.builder..")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "io.opentelemetry.api.trace..",
                             "io.opentelemetry.context..")
-                    .because("public manual builders must route through TracingRuntime, not OTel API");
+                    .because("public span builders must route through DefaultSpanSpecFactory, not OTel API");
 
     @ArchTest
     static final ArchRule platformTracingFacadeDoesNotUseOtelSpanApi =

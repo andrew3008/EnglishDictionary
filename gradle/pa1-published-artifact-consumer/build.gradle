@@ -1,0 +1,66 @@
+import java.nio.file.Files
+import java.security.MessageDigest
+
+plugins {
+    id 'java'
+}
+
+def pa1Repository = providers.gradleProperty('pa1Repository').get()
+def platformTracingVersion = providers.gradleProperty('platformTracingVersion').get()
+def publishedOtelJar = providers.gradleProperty('publishedOtelJar').get()
+def publishedOtelSha256 = providers.gradleProperty('publishedOtelSha256').get()
+def publishedGitCommit = providers.gradleProperty('publishedGitCommit').get()
+
+repositories {
+    maven {
+        url = uri(pa1Repository)
+        metadataSources {
+            gradleMetadata()
+            mavenPom()
+            artifact()
+        }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation "space.br1440.platform.tracing:platform-tracing-api:${platformTracingVersion}"
+    implementation "space.br1440.platform.tracing:platform-tracing-otel:${platformTracingVersion}"
+}
+
+sourceSets {
+    negative {
+        java.srcDir 'src/negative/java'
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+
+tasks.register('verifyPublishedProvenance') {
+    doLast {
+        File jar = file(publishedOtelJar)
+        if (!jar.isFile()) {
+            throw new GradleException("Published otel jar not found: ${jar}")
+        }
+        String actualSha256 = MessageDigest.getInstance('SHA-256')
+                .digest(Files.readAllBytes(jar.toPath()))
+                .collect { String.format('%02x', it) }
+                .join('')
+        if (actualSha256 != publishedOtelSha256) {
+            throw new GradleException("Published otel jar SHA-256 mismatch: expected ${publishedOtelSha256}, actual ${actualSha256}")
+        }
+        if (publishedGitCommit.isBlank()) {
+            throw new GradleException('Published git commit SHA must not be blank')
+        }
+    }
+}
+
+tasks.register('verifyPublishedArtifactConsumer') {
+    dependsOn tasks.named('compileJava')
+    dependsOn tasks.named('verifyPublishedProvenance')
+}
+
+tasks.register('compileGovernanceBypassProbe', JavaCompile) {
+    source = sourceSets.negative.java
+    classpath = sourceSets.negative.compileClasspath
+    destinationDirectory = layout.buildDirectory.dir('classes/negative')
+}

@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
-import space.br1440.platform.tracing.otel.manual.DefaultSpanFactory;
+import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.SpanSpecAttributeValueConverter;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;

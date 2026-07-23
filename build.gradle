@@ -80,8 +80,8 @@ subprojects {
                     url = rootProject.layout.buildDirectory.dir('c3-maven-repository')
                 }
                 maven {
-                    name = 'pa0ProposedAbiVerification'
-                    url = rootProject.layout.buildDirectory.dir('pa0-proposed-abi-maven-repository')
+                    name = 'pa1PublishedArtifactVerification'
+                    url = rootProject.layout.buildDirectory.dir('pa1-published-artifact-maven-repository')
                 }
                 maven {
                     if (project.version.toString().endsWith('-SNAPSHOT')) {
@@ -174,26 +174,41 @@ tasks.register('c3PublishedMetadataConsumerVerify') {
     }
 }
 
-def pa0PublishedProjects = [
+def pa1PublishedProjects = [
         ':platform-tracing-bom',
         ':platform-tracing-api',
         ':platform-tracing-otel'
 ]
 
-tasks.register('pa0ProposedAbiConsumerVerify') {
+tasks.register('pa1PublishedArtifactConsumerVerify') {
     group = 'verification'
-    description = 'Verifies PA-0 proposed bridge ABI using fixture jar and isolated Maven repository.'
+    description = 'Verifies PA-1 bridge ABI using production published JAR with provenance.'
 
     doLast {
-        File repository = layout.buildDirectory.dir('pa0-proposed-abi-maven-repository').get().asFile
-        File fixture = file('gradle/pa0-proposed-abi-consumer')
-        File fixtureJar = project(':platform-tracing-otel').layout.buildDirectory.file(
-                "libs/platform-tracing-otel-proposed-abi-${project.version}.jar").get().asFile
+        File repository = layout.buildDirectory.dir('pa1-published-artifact-maven-repository').get().asFile
+        File fixture = file('gradle/pa1-published-artifact-consumer')
         File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
                 ? 'gradlew.bat' : 'gradlew')
 
-        if (!fixtureJar.isFile()) {
-            throw new GradleException("PA-0 proposed ABI fixture jar not found: ${fixtureJar}")
+        File otelVersionDir = new File(repository,
+                "space/br1440/platform/tracing/platform-tracing-otel/${project.version}")
+        File otelJar = otelVersionDir.listFiles()
+                ?.findAll { it.name.endsWith('.jar') && !it.name.contains('-sources') && !it.name.contains('-javadoc') }
+                ?.max { it.lastModified() }
+        if (otelJar == null || !otelJar.isFile()) {
+            throw new GradleException("PA-1 published otel jar not found under ${otelVersionDir}")
+        }
+
+        String sha256 = java.security.MessageDigest.getInstance('SHA-256')
+                .digest(otelJar.bytes)
+                .collect { String.format('%02x', it) }
+                .join('')
+        String commitSha = providers.exec {
+            commandLine 'git', 'rev-parse', 'HEAD'
+            ignoreExitValue = true
+        }.standardOutput.asText.get().trim()
+        if (commitSha.isBlank()) {
+            throw new GradleException('PA-1 provenance requires git commit SHA')
         }
 
         def runFixture = { String taskName ->
@@ -205,8 +220,10 @@ tasks.register('pa0ProposedAbiConsumerVerify') {
             command.addAll([
                     '-p', fixture.absolutePath,
                     taskName,
-                    "-Ppa0Repository=${repository.absolutePath}",
-                    "-PfixtureJar=${fixtureJar.absolutePath}",
+                    "-Ppa1Repository=${repository.absolutePath}",
+                    "-PpublishedOtelJar=${otelJar.absolutePath}",
+                    "-PpublishedOtelSha256=${sha256}",
+                    "-PpublishedGitCommit=${commitSha}",
                     "-PplatformTracingVersion=${project.version}",
                     '--no-daemon'
             ])
@@ -220,20 +237,20 @@ tasks.register('pa0ProposedAbiConsumerVerify') {
             return [exitCode: exitCode, output: output]
         }
 
-        def positive = runFixture('verifyProposedAbiConsumer')
+        def positive = runFixture('verifyPublishedArtifactConsumer')
         if (positive.exitCode != 0) {
-            throw new GradleException("PA-0 proposed ABI positive consumer failed:\n${positive.output}")
+            throw new GradleException("PA-1 published artifact positive consumer failed:\n${positive.output}")
         }
 
-        def negative = runFixture('compileNegativeJava')
+        def negative = runFixture('compileGovernanceBypassProbe')
         if (negative.exitCode == 0) {
-            throw new GradleException('PA-0 negative compile unexpectedly succeeded: governance bypass method exists')
+            throw new GradleException('PA-1 negative compile unexpectedly succeeded: governance bypass method exists')
         }
         if (!negative.output.contains('executionFromGovernedSpec')) {
-            throw new GradleException("PA-0 negative compile failed for an unexpected reason:\n${negative.output}")
+            throw new GradleException("PA-1 negative compile failed for an unexpected reason:\n${negative.output}")
         }
 
-        logger.lifecycle('PA-0 proposed ABI consumer verification passed')
+        logger.lifecycle("PA-1 published artifact consumer verification passed (jar=${otelJar.name}, sha256=${sha256}, commit=${commitSha})")
     }
 }
 
@@ -243,10 +260,9 @@ gradle.projectsEvaluated {
             project(path).tasks.named('publishMavenJavaPublicationToC3VerificationRepository')
         }
     }
-    tasks.named('pa0ProposedAbiConsumerVerify').configure {
-        dependsOn ':platform-tracing-otel:pa0ProposedAbiJar'
-        dependsOn pa0PublishedProjects.collect { path ->
-            project(path).tasks.named('publishMavenJavaPublicationToPa0ProposedAbiVerificationRepository')
+    tasks.named('pa1PublishedArtifactConsumerVerify').configure {
+        dependsOn pa1PublishedProjects.collect { path ->
+            project(path).tasks.named('publishMavenJavaPublicationToPa1PublishedArtifactVerificationRepository')
         }
     }
 }
