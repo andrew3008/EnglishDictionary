@@ -46,3 +46,24 @@ tasks.register('knownDefectTest', Test) {
 }
 
 check.dependsOn tasks.named('knownDefectTest')
+
+// PA-0: proposed-ABI fixture — spike bridge signatures для SAFE-BRIDGE-ABI compile proof.
+sourceSets {
+    pa0ProposedAbi {
+        java.srcDir 'src/pa0ProposedAbi/java'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    }
+}
+
+tasks.named('compilePa0ProposedAbiJava').configure {
+    dependsOn tasks.named('compileJava')
+}
+
+tasks.register('pa0ProposedAbiJar', Jar) {
+    group = 'verification'
+    description = 'Packages PA-0 proposed bridge ABI fixture for external consumer verification.'
+    dependsOn tasks.named('compilePa0ProposedAbiJava')
+    from sourceSets.pa0ProposedAbi.output
+    archiveBaseName = 'platform-tracing-otel-proposed-abi'
+    archiveVersion = project.version
+}

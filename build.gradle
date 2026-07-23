@@ -80,6 +80,10 @@ subprojects {
                     url = rootProject.layout.buildDirectory.dir('c3-maven-repository')
                 }
                 maven {
+                    name = 'pa0ProposedAbiVerification'
+                    url = rootProject.layout.buildDirectory.dir('pa0-proposed-abi-maven-repository')
+                }
+                maven {
                     if (project.version.toString().endsWith('-SNAPSHOT')) {
                         name = 'snapshotRepo'
                         url = uri("https://n.1440.space/repository/platform-maven-dev")
@@ -170,10 +174,79 @@ tasks.register('c3PublishedMetadataConsumerVerify') {
     }
 }
 
+def pa0PublishedProjects = [
+        ':platform-tracing-bom',
+        ':platform-tracing-api',
+        ':platform-tracing-otel'
+]
+
+tasks.register('pa0ProposedAbiConsumerVerify') {
+    group = 'verification'
+    description = 'Verifies PA-0 proposed bridge ABI using fixture jar and isolated Maven repository.'
+
+    doLast {
+        File repository = layout.buildDirectory.dir('pa0-proposed-abi-maven-repository').get().asFile
+        File fixture = file('gradle/pa0-proposed-abi-consumer')
+        File fixtureJar = project(':platform-tracing-otel').layout.buildDirectory.file(
+                "libs/platform-tracing-otel-proposed-abi-${project.version}.jar").get().asFile
+        File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'gradlew.bat' : 'gradlew')
+
+        if (!fixtureJar.isFile()) {
+            throw new GradleException("PA-0 proposed ABI fixture jar not found: ${fixtureJar}")
+        }
+
+        def runFixture = { String taskName ->
+            List<String> command = []
+            if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+                command.addAll(['cmd.exe', '/d', '/c'])
+            }
+            command.add(wrapper.absolutePath)
+            command.addAll([
+                    '-p', fixture.absolutePath,
+                    taskName,
+                    "-Ppa0Repository=${repository.absolutePath}",
+                    "-PfixtureJar=${fixtureJar.absolutePath}",
+                    "-PplatformTracingVersion=${project.version}",
+                    '--no-daemon'
+            ])
+
+            Process process = new ProcessBuilder(command.collect { it.toString() })
+                    .directory(rootDir)
+                    .redirectErrorStream(true)
+                    .start()
+            String output = process.inputStream.getText('UTF-8')
+            int exitCode = process.waitFor()
+            return [exitCode: exitCode, output: output]
+        }
+
+        def positive = runFixture('verifyProposedAbiConsumer')
+        if (positive.exitCode != 0) {
+            throw new GradleException("PA-0 proposed ABI positive consumer failed:\n${positive.output}")
+        }
+
+        def negative = runFixture('compileNegativeJava')
+        if (negative.exitCode == 0) {
+            throw new GradleException('PA-0 negative compile unexpectedly succeeded: governance bypass method exists')
+        }
+        if (!negative.output.contains('executionFromGovernedSpec')) {
+            throw new GradleException("PA-0 negative compile failed for an unexpected reason:\n${negative.output}")
+        }
+
+        logger.lifecycle('PA-0 proposed ABI consumer verification passed')
+    }
+}
+
 gradle.projectsEvaluated {
     tasks.named('c3PublishedMetadataConsumerVerify').configure {
         dependsOn c3PublishedProjects.collect { path ->
             project(path).tasks.named('publishMavenJavaPublicationToC3VerificationRepository')
+        }
+    }
+    tasks.named('pa0ProposedAbiConsumerVerify').configure {
+        dependsOn ':platform-tracing-otel:pa0ProposedAbiJar'
+        dependsOn pa0PublishedProjects.collect { path ->
+            project(path).tasks.named('publishMavenJavaPublicationToPa0ProposedAbiVerificationRepository')
         }
     }
 }
