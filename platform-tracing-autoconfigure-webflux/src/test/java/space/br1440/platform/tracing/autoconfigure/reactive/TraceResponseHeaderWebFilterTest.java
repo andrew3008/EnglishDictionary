@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
-import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc;

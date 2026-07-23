@@ -1,10 +1,8 @@
-TYPE public abstract interface space.br1440.platform.tracing.api.CorrelationScope extends java.lang.AutoCloseable
-  METHOD public abstract void close()
 TYPE public abstract interface space.br1440.platform.tracing.api.TraceOperations
   METHOD public abstract T withCorrelationId(java.lang.String,space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
-  METHOD public abstract space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.context.ActiveTraceContextView traceContext()
+  METHOD public abstract space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(java.lang.String)
   METHOD public abstract space.br1440.platform.tracing.api.span.SpanFactory spans()
-  METHOD public abstract space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
   METHOD public abstract void withCorrelationId(java.lang.String,java.lang.Runnable)
 TYPE public abstract annotation space.br1440.platform.tracing.api.annotation.SuppressAgentInstrumentation extends java.lang.annotation.Annotation
   METHOD public abstract java.lang.String value() default=
@@ -62,6 +60,13 @@ TYPE public final class space.br1440.platform.tracing.api.attributes.PlatformSam
   FIELD public static final java.util.Set<java.lang.String> DROPPED
   FIELD public static final java.util.Set<java.lang.String> EXPORTED
   CTOR public space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons()
+TYPE public abstract interface space.br1440.platform.tracing.api.context.ActiveTraceContextView
+  METHOD public abstract java.util.Optional<java.lang.String> correlationId()
+  METHOD public abstract java.util.Optional<java.lang.String> requestId()
+  METHOD public abstract java.util.Optional<java.lang.String> spanId()
+  METHOD public abstract java.util.Optional<java.lang.String> traceId()
+TYPE public abstract interface space.br1440.platform.tracing.api.context.CorrelationScope extends java.lang.AutoCloseable
+  METHOD public abstract void close()
 TYPE public final record space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot
   CTOR public space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot(java.lang.String,java.lang.String,java.lang.String,java.lang.String)
   METHOD public final boolean equals(java.lang.Object)
@@ -270,11 +275,6 @@ TYPE public final enum space.br1440.platform.tracing.api.span.SpanResult
   METHOD public java.lang.String value()
   METHOD public static space.br1440.platform.tracing.api.span.SpanResult valueOf(java.lang.String)
   METHOD public static space.br1440.platform.tracing.api.span.SpanResult[] values()
-TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView
-  METHOD public abstract java.util.Optional<java.lang.String> correlationId()
-  METHOD public abstract java.util.Optional<java.lang.String> requestId()
-  METHOD public abstract java.util.Optional<java.lang.String> spanId()
-  METHOD public abstract java.util.Optional<java.lang.String> traceId()
 TYPE public abstract interface space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder extends space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder<space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder>
   METHOD public abstract space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder collection(java.lang.String)
   METHOD public abstract space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder operation(java.lang.String)
@@ -481,7 +481,7 @@ TYPE public abstract interface space.br1440.platform.tracing.api.spi.SpanAttribu
   METHOD public int priority()
 TYPE public abstract interface space.br1440.platform.tracing.api.util.ThrowingSupplier
   METHOD public abstract T get() throws java.lang.Exception
-TYPE public final class space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView implements space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView
+TYPE public final class space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView implements space.br1440.platform.tracing.api.context.ActiveTraceContextView
   CTOR public space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView(java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>,java.util.function.Supplier<java.util.Optional<java.lang.String>>)
   METHOD public java.util.Optional<java.lang.String> correlationId()
   METHOD public java.util.Optional<java.lang.String> requestId()
@@ -557,18 +557,18 @@ TYPE public class space.br1440.platform.tracing.otel.facade.DefaultTraceOperatio
   CTOR public space.br1440.platform.tracing.otel.facade.DefaultTraceOperations(space.br1440.platform.tracing.otel.runtime.TracingRuntime)
   METHOD public T withCorrelationId(java.lang.String,space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
   METHOD public boolean isFacadeEnabled()
-  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.context.ActiveTraceContextView traceContext()
+  METHOD public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.SpanFactory spans()
-  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
   METHOD public space.br1440.platform.tracing.otel.runtime.TracingRuntime tracingRuntime()
   METHOD public void setFacadeEnabled(boolean)
   METHOD public void withCorrelationId(java.lang.String,java.lang.Runnable)
 TYPE public final class space.br1440.platform.tracing.otel.facade.NoopTraceOperations implements space.br1440.platform.tracing.api.TraceOperations
   FIELD public static final space.br1440.platform.tracing.otel.facade.NoopTraceOperations INSTANCE
   METHOD public T withCorrelationId(java.lang.String,space.br1440.platform.tracing.api.util.ThrowingSupplier<T>) throws java.lang.Exception
-  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.context.ActiveTraceContextView traceContext()
+  METHOD public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.SpanFactory spans()
-  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView traceContext()
   METHOD public static space.br1440.platform.tracing.otel.facade.NoopTraceOperations backedBy(space.br1440.platform.tracing.otel.runtime.TracingRuntime)
   METHOD public void withCorrelationId(java.lang.String,java.lang.Runnable)
 TYPE public final class space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc
@@ -636,9 +636,9 @@ TYPE public final class space.br1440.platform.tracing.otel.runtime.NoOpTracingRu
   METHOD public java.lang.String requireCanonicalCorrelationId(java.lang.String)
   METHOD public java.util.Optional<java.lang.String> currentCorrelationId()
   METHOD public java.util.Optional<java.lang.String> currentRequestId()
-  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
-  METHOD public space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(java.lang.String)
-  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
+  METHOD public space.br1440.platform.tracing.api.context.ActiveTraceContextView currentTraceContext()
+  METHOD public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
   METHOD public space.br1440.platform.tracing.otel.runtime.state.TracingState state()
   METHOD public space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy attributePolicy()
@@ -654,9 +654,9 @@ TYPE public abstract interface space.br1440.platform.tracing.otel.runtime.Tracin
   METHOD public abstract java.lang.String requireCanonicalCorrelationId(java.lang.String)
   METHOD public abstract java.util.Optional<java.lang.String> currentCorrelationId()
   METHOD public abstract java.util.Optional<java.lang.String> currentRequestId()
-  METHOD public abstract space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
-  METHOD public abstract space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(java.lang.String)
-  METHOD public abstract space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
+  METHOD public abstract space.br1440.platform.tracing.api.context.ActiveTraceContextView currentTraceContext()
+  METHOD public abstract space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public abstract space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(java.lang.String)
   METHOD public abstract space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
   METHOD public abstract space.br1440.platform.tracing.otel.runtime.state.TracingState state()
   METHOD public abstract space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy attributePolicy()
@@ -667,9 +667,9 @@ TYPE public final class space.br1440.platform.tracing.otel.runtime.otel.OtelTrac
   METHOD public java.lang.String requireCanonicalCorrelationId(java.lang.String)
   METHOD public java.util.Optional<java.lang.String> currentCorrelationId()
   METHOD public java.util.Optional<java.lang.String> currentRequestId()
-  METHOD public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(java.lang.String)
-  METHOD public space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(java.lang.String)
-  METHOD public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext()
+  METHOD public space.br1440.platform.tracing.api.context.ActiveTraceContextView currentTraceContext()
+  METHOD public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(java.lang.String)
+  METHOD public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(space.br1440.platform.tracing.api.span.spec.SpanSpec)
   METHOD public space.br1440.platform.tracing.otel.runtime.state.TracingState state()
   METHOD public space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy attributePolicy()

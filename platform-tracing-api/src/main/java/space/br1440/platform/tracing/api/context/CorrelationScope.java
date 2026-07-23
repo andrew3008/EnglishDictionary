@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.api;
+package space.br1440.platform.tracing.api.context;
 
 /**
  * Синхронная область действия бизнес-идентификатора корреляции.

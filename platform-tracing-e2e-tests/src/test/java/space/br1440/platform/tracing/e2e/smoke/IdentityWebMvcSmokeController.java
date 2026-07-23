@@ -5,7 +5,7 @@ import java.util.concurrent.CountDownLatch;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import space.br1440.platform.tracing.api.CorrelationScope;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.TraceOperations;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;

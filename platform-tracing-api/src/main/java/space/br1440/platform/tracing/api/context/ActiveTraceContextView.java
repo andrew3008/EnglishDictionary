@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.api.span.builder;
+package space.br1440.platform.tracing.api.context;
 
 import jakarta.annotation.Nonnull;
 

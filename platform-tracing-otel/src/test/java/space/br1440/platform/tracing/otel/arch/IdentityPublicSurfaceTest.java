@@ -8,10 +8,10 @@ import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.api.CorrelationScope;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
-import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 
 class IdentityPublicSurfaceTest {
