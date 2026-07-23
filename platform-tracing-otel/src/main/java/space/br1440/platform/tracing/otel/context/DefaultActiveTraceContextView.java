@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 
 public final class DefaultActiveTraceContextView implements ActiveTraceContextView {
 

@@ -57,7 +57,7 @@
 | `otel.exception.*` | KEEP | cycle if moved under `otel.span` |
 | `otel.facade.*` | KEEP | update import to `otel.span.DefaultSpanFactory` only |
 | `otel.runtime..*` | KEEP (PA-3 audit) | no span back-deps |
-| `api.context` types | PA-2 | `CorrelationScope`, `ActiveTraceContextView` |
+| `api.context` types | PA-2 **DONE** | `CorrelationScope`, `ActiveTraceContextView` → `api.context` |
 
 ## File-level inventory (`otel.manual` main)
 

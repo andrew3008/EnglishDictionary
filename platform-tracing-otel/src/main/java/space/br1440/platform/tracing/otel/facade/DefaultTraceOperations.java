@@ -4,10 +4,10 @@ import java.util.Objects;
 
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.CorrelationScope;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanFactory;
-import space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;

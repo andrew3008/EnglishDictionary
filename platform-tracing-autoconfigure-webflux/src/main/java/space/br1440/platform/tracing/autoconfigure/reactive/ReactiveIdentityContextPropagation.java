@@ -10,7 +10,7 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import io.micrometer.context.ContextRegistry;
 import io.micrometer.context.ThreadLocalAccessor;
 
-import space.br1440.platform.tracing.api.CorrelationScope;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
 
 /** Связывает immutable identity из Reactor Context с внутренним execution-store. */

@@ -9,7 +9,7 @@ import io.opentelemetry.context.ContextKey;
 import io.opentelemetry.context.Scope;
 import org.slf4j.MDC;
 
-import space.br1440.platform.tracing.api.CorrelationScope;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
 /** Package-private OTel carrier для enabled runtime. */

@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.support;
 import java.util.Objects;
 import java.util.Optional;
 
-import space.br1440.platform.tracing.api.CorrelationScope;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 /**

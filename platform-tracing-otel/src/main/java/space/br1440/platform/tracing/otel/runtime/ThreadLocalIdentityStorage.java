@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import org.slf4j.MDC;
 
-import space.br1440.platform.tracing.api.CorrelationScope;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
 /** Instance-local carrier для disabled runtime; WebFlux использует Reactor Context поверх него. */

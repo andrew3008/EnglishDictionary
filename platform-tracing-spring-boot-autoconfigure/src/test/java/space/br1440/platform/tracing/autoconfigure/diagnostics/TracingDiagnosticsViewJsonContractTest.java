@@ -86,17 +86,17 @@ class TracingDiagnosticsViewJsonContractTest {
         }
 
         @Override
-        public space.br1440.platform.tracing.api.span.builder.ActiveTraceContextView currentTraceContext() {
+        public space.br1440.platform.tracing.api.context.ActiveTraceContextView currentTraceContext() {
             return identityDelegate.currentTraceContext();
         }
 
         @Override
-        public space.br1440.platform.tracing.api.CorrelationScope openCorrelationScope(String correlationId) {
+        public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(String correlationId) {
             return identityDelegate.openCorrelationScope(correlationId);
         }
 
         @Override
-        public space.br1440.platform.tracing.api.CorrelationScope openRequestIdentityScope(String requestId) {
+        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(String requestId) {
             return identityDelegate.openRequestIdentityScope(requestId);
         }
 
