@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — PA-0 census and SAFE-BRIDGE-ABI closure.
+Accepted — PA-0 through PA-3 complete (plan v3.4).
 
 ## Context
 
