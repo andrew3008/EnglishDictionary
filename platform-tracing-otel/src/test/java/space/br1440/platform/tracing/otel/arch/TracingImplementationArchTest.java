@@ -63,8 +63,8 @@ class TracingImplementationArchTest {
     static final ArchRule runtimeMustNotDependOnRootFacade =
             noClasses().that().resideInAPackage("space.br1440.platform.tracing.otel.runtime..")
                     .should().dependOnClassesThat().haveNameMatching(
-                            "space\\.br1440\\.platform\\.tracing\\.core\\.(DefaultTraceOperations|NoopTraceOperations|OtelPlatformContextPropagation|NoOpPlatformContextPropagation)")
-                    .because("otel.runtime не должен зависеть от root facade-кlassов");
+                            "space\\.br1440\\.platform\\.tracing\\.otel\\.(facade\\.(DefaultTraceOperations|NoopTraceOperations)|propagation\\.(OtelPlatformContextPropagation|NoOpPlatformContextPropagation))")
+                    .because("otel.runtime не должен зависеть от facade/propagation entrypoint-классов");
 
     @ArchTest
     static final ArchRule manualBuildersDoNotUseOtelDirectly =

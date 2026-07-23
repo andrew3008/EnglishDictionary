@@ -14,6 +14,7 @@
 | Sampling policy | [ADR-cp-2-sampling-policy-extension-contract](./ADR-cp-2-sampling-policy-extension-contract.md) | Accepted, sealed internal |
 | OTel implementation module | [ADR-platform-tracing-otel-module-identity](./ADR-platform-tracing-otel-module-identity.md) | Accepted |
 | Public API governance | [ADR-public-api-allowlist](./ADR-public-api-allowlist.md) | Accepted |
+| OTel ↔ API package alignment | [ADR-otel-api-package-alignment](./ADR-otel-api-package-alignment.md) | Accepted (PA-0) |
 | Control protocol | [ADR-control-protocol-version-model](./ADR-control-protocol-version-model.md) | Accepted |
 
 Остальные Accepted ADR уточняют отдельные контракты, включая lifecycle, propagation, semconv, exporter и Micrometer boundaries. При противоречии со старым target-architecture документом применяется [финальная архитектура](./ADR-platform-tracing-final-architecture.md).
