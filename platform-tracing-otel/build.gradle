@@ -1,7 +1,6 @@
-description = 'Core platform tracing runtime, facade, manual tracing pipeline, semantic policy, ' +
-        'enrichment, sampling, and validation primitives built around TracingRuntime and the ' +
-        'OpenTelemetry-backed OtelTracingRuntime adapter. ObservationConvention\'s are implemented ' +
-        'in the autoconfigure module and are not shipped by this artifact.'
+description = 'Platform tracing OTel runtime: facade, span pipeline, semantic policy, ' +
+        'enrichment, sampling, validation, and OpenTelemetry-backed TracingRuntime adapter. ' +
+        'ObservationConvention implementations live in autoconfigure and are not shipped here.'
 
 dependencies {
     api platform(project(':platform-tracing-bom'))

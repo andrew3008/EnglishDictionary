@@ -586,6 +586,57 @@ tasks.register('cp3LegacyPackageVerify') {
     }
 }
 
+def otelAlignmentActiveFiles = files(fileTree(rootDir) {
+    include '*/src/**/*.java'
+    include '*/src/**/*.txt'
+    include '*/src/**/*.properties'
+    include '*/src/**/*.xml'
+    include '*/src/**/*.yml'
+    include '*/src/**/*.yaml'
+    include '*/src/**/*.json'
+    include '*/src/**/*.imports'
+    include '*/src/**/META-INF/services/*'
+    exclude '**/build/**'
+})
+
+tasks.register('otelAlignmentStalePackageVerify') {
+    group = 'verification'
+    description = 'Rejects pre-alignment otel.manual/enrichment/naming and pre-PA-2 api.context FQCNs in active sources.'
+    inputs.files(otelAlignmentActiveFiles)
+
+    doLast {
+        def staleMarkers = [
+                'space.br1440.platform.tracing.otel.' + 'manual',
+                'space.br1440.platform.tracing.otel.' + 'enrichment',
+                'space.br1440.platform.tracing.otel.' + 'naming',
+                'space.br1440.platform.tracing.api.span.builder.' + 'ActiveTraceContextView',
+                'space.br1440.platform.tracing.api.' + 'CorrelationScope',
+                'space.br1440.platform.tracing.otel.manual.' + 'ScopedExecution',
+        ]
+        def violations = inputs.files.files
+                .findAll { it.isFile() }
+                .findAll { file ->
+                    String content = file.getText('UTF-8')
+                    staleMarkers.any { marker -> content.contains(marker) }
+                }
+                .sort { it.path }
+                .collect { rootDir.toPath().relativize(it.toPath()).toString() }
+        if (!violations.isEmpty()) {
+            throw new GradleException("OTel alignment stale-package verification failed:\n${violations.join('\n')}")
+        }
+        logger.lifecycle('OTel alignment stale-package verification passed')
+    }
+}
+
+tasks.register('pa3FinalAlignmentVerify') {
+    group = 'verification'
+    description = 'PA-3 final audit: architecture fitness, stale packages, provenance consumer, otel module gates.'
+    dependsOn 'pr4ArchitectureFitnessVerify'
+    dependsOn 'otelAlignmentStalePackageVerify'
+    dependsOn ':platform-tracing-otel:otelManualPackageVerify'
+    dependsOn 'pa1PublishedArtifactConsumerVerify'
+}
+
 // ---------------------------------------------------------------------------------------------
 // PR-1 — Module taxonomy verification (docs/architecture/platform-tracing-module-taxonomy.md).
 // ArchUnit guardrails + starter smoke; no production code changes.
