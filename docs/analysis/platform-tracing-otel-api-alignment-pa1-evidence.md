@@ -2,8 +2,10 @@
 
 > Date: 2026-07-23  
 > Branch: `feature/otel-api-alignment-pa1-span`  
-> Base: merged PA-0 (`02a9a93`)  
-> Worktree: `E:\Platform_Traces_Otel_Api_Alignment`
+> Commit: `628464a`  
+> Base: PA-0 (`02a9a93`)  
+> Worktree: `E:\Platform_Traces_Otel_Api_Alignment`  
+> PR: https://github.com/andrew3008/EnglishDictionary/pull/new/feature/otel-api-alignment-pa1-span
 
 ## 1. Результат PA-1
 
@@ -51,7 +53,7 @@ Removed 6 / added 4 per ADR. Gate: `PublicSurfaceAllowlistTest` exact set equali
 | `pr4ArchitectureFitnessVerify` | PASS |
 | `cp3LegacyPackageVerify` | PASS |
 | Full module test matrix | PASS |
-| E2E `-PrunE2e` | see §6 |
+| E2E `-PrunE2e` | **BLOCKED** — Docker `192.168.100.70:2375` unreachable (see §7) |
 
 ## 6. PA-1 published-artifact provenance
 
@@ -64,10 +66,18 @@ Task: `pa1PublishedArtifactConsumerVerify`
 
 ## 7. E2E
 
+**Last run (2026-07-23):** 25 passed, **18 failed** — all `initializationError` (Testcontainers cannot reach Docker daemon).
+
+Root cause: remote Docker host `tcp://192.168.100.70:2375` connection timeout (same host passed PA-0 E2E earlier the same day).
+
+Re-run when Docker is available:
+
 ```powershell
 $env:DOCKER_HOST='tcp://192.168.100.70:2375'
 .\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --rerun-tasks --no-daemon
 ```
+
+Target: **65 tests, 0 failures / 0 errors / 0 skipped** (PA-0 baseline).
 
 ## 8. PA-2 next
 
