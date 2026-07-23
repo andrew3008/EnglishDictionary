@@ -27,18 +27,16 @@ Slice PA-2 завершён: atomic moves identity/context API types в symmetri
 | `pr4ArchitectureFitnessVerify` | PASS |
 | `cp3LegacyPackageVerify` | PASS |
 | `pa1PublishedArtifactConsumerVerify` | PASS |
-| E2E `-PrunE2e` | **BLOCKED** — Docker `192.168.100.70:2375` unreachable |
+| E2E `-PrunE2e` | **PASS** — 65 tests, 0/0/0 (~9m35s) |
 
 ## 3. E2E
 
-Re-run when Docker is available:
+**2026-07-23:** `DOCKER_HOST=tcp://192.168.100.70:2375` — **65 tests, 0/0/0** (~9m35s, branch `feature/otel-api-alignment-pa2-context`).
 
 ```powershell
 $env:DOCKER_HOST='tcp://192.168.100.70:2375'
 .\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --rerun-tasks --no-daemon
 ```
-
-Target: **65 tests, 0 failures / 0 errors / 0 skipped**.
 
 ## 4. PA-3 next
 
