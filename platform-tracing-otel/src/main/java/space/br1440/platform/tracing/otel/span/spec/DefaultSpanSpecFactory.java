@@ -49,6 +49,16 @@ public final class DefaultSpanSpecFactory {
     }
 
     @Nonnull
+    public SpanExecution fromOperation(@Nonnull SpanCategory category,
+                                       @Nonnull String explicitName,
+                                       @Nonnull SpanRelationship relationship,
+                                       @Nonnull List<RemoteSpanLink> links,
+                                       @Nonnull String builderName) {
+        SpanSpec spec = OperationSpanSpecs.from(explicitName, category, relationship, links);
+        return fromBuilderRawSpec(spec, builderName);
+    }
+
+    @Nonnull
     public SpanExecution fromSemanticBuilder(@Nonnull SpanCategory category,
                                              @Nonnull String explicitName,
                                              @Nonnull SpanRelationship relationship,

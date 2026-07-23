@@ -74,7 +74,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
         SpanBuilder builder = tracer.spanBuilder(spec.name())
                 .setSpanKind(SpanKinds.toSpanKind(spec.category()));
         builder.setAllAttributes(SpanSpecAttributeValueConverter.toAttributes(spec.attributes()));
-        // Каноническая категория платформы не может быть переопределена пользовательским атрибутом.
+
         builder.setAttribute(PlatformAttributes.PLATFORM_TYPE, spec.category().value());
         currentCorrelationId()
                 .ifPresent(value -> builder.setAttribute(PlatformAttributes.PLATFORM_CORRELATION_ID, value));
@@ -177,6 +177,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
                 builder.put(trimmed.substring(0, separator).trim(), trimmed.substring(separator + 1).trim());
             }
         }
+
         return builder.build();
     }
 }

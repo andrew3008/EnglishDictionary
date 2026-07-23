@@ -48,17 +48,15 @@ public final class SpanSpecAttributeValueConverter {
             case SpanSpecAttributeValue.LongValue lv -> builder.put(key, lv.value());
             case SpanSpecAttributeValue.DoubleValue dv -> builder.put(key, dv.value());
             case SpanSpecAttributeValue.BooleanValue bv -> builder.put(key, bv.value());
-            case SpanSpecAttributeValue.StringListValue slv ->
-                    builder.put(key, slv.values().toArray(String[]::new));
-            case SpanSpecAttributeValue.LongListValue llv ->
-                    builder.put(key, llv.values().stream().mapToLong(Long::longValue).toArray());
-            case SpanSpecAttributeValue.DoubleListValue dlv ->
-                    builder.put(key, dlv.values().stream().mapToDouble(Double::doubleValue).toArray());
+            case SpanSpecAttributeValue.StringListValue slv -> builder.put(key, slv.values().toArray(String[]::new));
+            case SpanSpecAttributeValue.LongListValue llv -> builder.put(key, llv.values().stream().mapToLong(Long::longValue).toArray());
+            case SpanSpecAttributeValue.DoubleListValue dlv -> builder.put(key, dlv.values().stream().mapToDouble(Double::doubleValue).toArray());
             case SpanSpecAttributeValue.BooleanListValue blv -> {
                 boolean[] values = new boolean[blv.values().size()];
                 for (int i = 0; i < blv.values().size(); i++) {
                     values[i] = blv.values().get(i);
                 }
+
                 builder.put(key, values);
             }
         }
@@ -68,6 +66,7 @@ public final class SpanSpecAttributeValueConverter {
     static SpanSpecAttributeValue fromOtelValue(@Nonnull AttributeKey<?> key, @Nonnull Object value) {
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(value, "value");
+
         return switch (value) {
             case String s -> SpanSpecAttributeValue.of(s);
             case Long l -> SpanSpecAttributeValue.of(l);
@@ -86,26 +85,27 @@ public final class SpanSpecAttributeValueConverter {
                 case LONG_ARRAY -> SpanSpecAttributeValue.longList(List.of());
                 case DOUBLE_ARRAY -> SpanSpecAttributeValue.doubleList(List.of());
                 case BOOLEAN_ARRAY -> SpanSpecAttributeValue.booleanList(List.of());
-                default -> throw new IllegalArgumentException(
-                        "Attribute key is not a list key: " + key.getKey() + " (" + key.getType() + ")");
+                default -> throw new IllegalArgumentException("""
+                        Attribute key is not a list key: key=%s, type=%s"""
+                        .formatted(key.getKey(), key.getType()));
             };
         }
 
         Class<?> elementType = requireHomogeneousElementType(list);
         if (elementType == String.class) {
-            return SpanSpecAttributeValue.stringList(castList(list, String.class));
+            return SpanSpecAttributeValue.stringList(castList(list));
         }
 
         if (elementType == Long.class) {
-            return SpanSpecAttributeValue.longList(castList(list, Long.class));
+            return SpanSpecAttributeValue.longList(castList(list));
         }
 
         if (elementType == Double.class) {
-            return SpanSpecAttributeValue.doubleList(castList(list, Double.class));
+            return SpanSpecAttributeValue.doubleList(castList(list));
         }
 
         if (elementType == Boolean.class) {
-            return SpanSpecAttributeValue.booleanList(castList(list, Boolean.class));
+            return SpanSpecAttributeValue.booleanList(castList(list));
         }
 
         throw new IllegalArgumentException("Unsupported list attribute element type: " + elementType);
@@ -116,9 +116,9 @@ public final class SpanSpecAttributeValueConverter {
         for (Object element : list) {
             Class<?> current = (element == null) ? null : element.getClass();
             if (!Objects.equals(first, current)) {
-                throw new IllegalArgumentException(
-                        "Mixed-type list attribute is not supported: expected " + first
-                                + " but found " + current);
+                throw new IllegalArgumentException("""
+                                    Mixed-type list attribute is not supported: expected %s but found %s
+                                    """.formatted(first, current));
             }
         }
 
@@ -129,8 +129,13 @@ public final class SpanSpecAttributeValueConverter {
         return first;
     }
 
+    /**
+     * Безопасно только потому, что вызывающая сторона ({@link #fromOtelList}) уже подтвердила через
+     * {@link #requireHomogeneousElementType} гомогенность списка и явно сверила полученный
+     * {@code elementType} с целевым {@code T} перед вызовом — сам метод этого не проверяет.
+     */
     @SuppressWarnings("unchecked")
-    private static <T> List<T> castList(List<?> list, Class<T> type) {
+    private static <T> List<T> castList(List<?> list) {
         return (List<T>) list;
     }
 }

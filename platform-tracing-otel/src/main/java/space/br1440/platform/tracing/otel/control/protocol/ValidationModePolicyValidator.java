@@ -107,6 +107,7 @@ public final class ValidationModePolicyValidator {
         if (mode == null || strict == null) {
             return; // one or both absent – no conflict possible
         }
+
         if (!ALLOWED_MODES.contains(mode)) {
             return; // mode already rejected above; don't pile on
         }
@@ -120,17 +121,13 @@ public final class ValidationModePolicyValidator {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
     private static String modeValue(Map<String, Object> payload) {
         Object raw = payload.get(TracingControlProtocolKeys.VALIDATION_MODE);
-        return raw instanceof String s ? s : null;
+        return (raw instanceof String s) ? s : null;
     }
 
     private static Boolean strictValue(Map<String, Object> payload) {
         Object raw = payload.get(TracingControlProtocolKeys.VALIDATION_STRICT);
-        return raw instanceof Boolean b ? b : null;
+        return (raw instanceof Boolean b) ? b : null;
     }
 }

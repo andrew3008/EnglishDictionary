@@ -8,7 +8,20 @@ import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
-/** Instance-local carrier для disabled runtime; WebFlux использует Reactor Context поверх него. */
+/**
+ * {@link ThreadLocal}-хранилище request/correlation identity для {@link NoOpTracingRuntime}
+ * (режимы disabled/unavailable/noop) — без зависимости на OpenTelemetry {@code Context}.
+ * <p>
+ * Функциональный аналог {@code OtelIdentityStorage} (пакет {@code runtime.otel}), который решает
+ * ту же задачу через OTel {@code Context}/{@code Baggage} для включённого {@code OtelTracingRuntime}.
+ * Здесь отдельная ThreadLocal-реализация нужна потому, что при disabled/unavailable OTel SDK
+ * либо не инициализирован, либо не должен участвовать в identity-контексте.
+ * <p>
+ * Реактивный (WebFlux) код не обращается к этому классу напрямую: {@code ReactiveIdentityContextPropagation}
+ * переносит значения из Reactor {@code Context} на это ThreadLocal-хранилище через Micrometer
+ * {@code ThreadLocalAccessor} при каждой смене потока-исполнителя, так что открытие/закрытие scope
+ * фактически происходит здесь.
+ */
 final class ThreadLocalIdentityStorage {
 
     private final ThreadLocal<IdentityFrame> current = new ThreadLocal<>();
@@ -31,7 +44,7 @@ final class ThreadLocalIdentityStorage {
         String canonical = requireCanonical(correlationId);
         IdentityFrame previous = current.get();
         return open(new IdentityFrame(
-                previous == null ? null : previous.requestId(),
+                (previous == null) ? null : previous.requestId(),
                 canonical,
                 previous));
     }
@@ -41,6 +54,7 @@ final class ThreadLocalIdentityStorage {
         if (correlationId.isEmpty() || correlationId.length() > 128) {
             throw new IllegalArgumentException("correlationId length must be between 1 and 128");
         }
+
         for (int index = 0; index < correlationId.length(); index++) {
             char character = correlationId.charAt(index);
             boolean canonical = character >= 'A' && character <= 'Z'
@@ -48,10 +62,12 @@ final class ThreadLocalIdentityStorage {
                     || character >= '0' && character <= '9'
                     || character == '_'
                     || character == '-';
+
             if (!canonical) {
                 throw new IllegalArgumentException("correlationId must match [A-Za-z0-9_-]{1,128}");
             }
         }
+
         return correlationId;
     }
 
@@ -60,7 +76,7 @@ final class ThreadLocalIdentityStorage {
         IdentityFrame previous = current.get();
         return open(new IdentityFrame(
                 requestId,
-                previous == null ? null : previous.correlationId(),
+                (previous == null) ? null : previous.correlationId(),
                 previous));
     }
 
@@ -68,8 +84,10 @@ final class ThreadLocalIdentityStorage {
         String previousRequestId = MDC.get(TracingMdcKeys.REQUEST_ID);
         String previousCorrelationId = MDC.get(TracingMdcKeys.CORRELATION_ID);
         current.set(frame);
+
         putOrRemove(TracingMdcKeys.REQUEST_ID, frame.requestId());
         putOrRemove(TracingMdcKeys.CORRELATION_ID, frame.correlationId());
+
         return new IdentityScope(
                 Thread.currentThread(),
                 frame,
@@ -111,17 +129,21 @@ final class ThreadLocalIdentityStorage {
             if (Thread.currentThread() != owner) {
                 throw new IllegalStateException("CorrelationScope must be closed by its owner thread");
             }
+
             if (closed) {
                 return;
             }
+
             if (current.get() != installed) {
                 throw new IllegalStateException("CorrelationScope must be closed in LIFO order");
             }
+
             if (installed.previous() == null) {
                 current.remove();
             } else {
                 current.set(installed.previous());
             }
+
             closed = true;
             putOrRemove(TracingMdcKeys.REQUEST_ID, previousRequestId);
             putOrRemove(TracingMdcKeys.CORRELATION_ID, previousCorrelationId);

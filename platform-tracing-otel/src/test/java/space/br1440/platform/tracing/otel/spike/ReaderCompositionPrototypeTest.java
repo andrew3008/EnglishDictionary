@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.spike;
 
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
@@ -96,7 +97,7 @@ class ReaderCompositionPrototypeTest {
         }
 
         @Override
-        public RemoteSpanLink require(String traceparent) {
+        public RemoteSpanLink require(@Nonnull String traceparent) {
             throw new IllegalArgumentException("traceparent parsing is disabled");
         }
     }

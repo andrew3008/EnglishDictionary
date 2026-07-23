@@ -35,7 +35,7 @@ final class PlatformSpanNameBuilder {
             case KAFKA_PRODUCER, KAFKA_CONSUMER -> kafka(attributes, explicitName);
             case INTERNAL -> orFallback(explicitName, "internal");
         };
-        return name == null || name.isBlank() ? category.value() : name;
+        return (name == null) || name.isBlank() ? category.value() : name;
     }
 
     private static String http(Attributes attrs, String explicitName) {

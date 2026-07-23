@@ -17,4 +17,5 @@ public final class PlatformTraceContextKeys {
 
     public static final ContextKey<OutboundPropagationDecision> PROPAGATION_DECISION =
             ContextKey.named("platform-propagation-decision");
+
 }

@@ -33,6 +33,7 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
         if (maxEntries <= 0) {
             throw new IllegalArgumentException("maxEntries должен быть положительным");
         }
+
         Objects.requireNonNull(ttl, "ttl");
         if (ttl.isZero() || ttl.isNegative()) {
             throw new IllegalArgumentException("ttl должен быть положительным");
@@ -61,10 +62,12 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
         }
 
         removeExpired(ticker.getAsLong());
+
         Entry entry = entries.get(traceId);
         if (entry == null || isBlank(entry.remoteService())) {
             return Optional.empty();
         }
+
         return Optional.of(entry.remoteService());
     }
 
@@ -92,6 +95,7 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
             if (now - entry.createdAtNanos() < ttlNanos) {
                 break;
             }
+
             iterator.remove();
         }
     }

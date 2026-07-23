@@ -1,16 +1,13 @@
 package space.br1440.platform.tracing.otel.propagation.control;
 
-import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
-
 import java.util.List;
 
-/**
- * Фабрика {@link TrustedDestinationMatcher} для wiring-слоя (autoconfigure).
- */
-public final class TrustedDestinationMatchers {
+import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 
-    private TrustedDestinationMatchers() {
-    }
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
+public final class TrustedDestinationMatchers {
 
     public static TrustedDestinationMatcher forHttpHosts(List<String> hostPatterns, boolean allowIpLiterals) {
         return new GlobTrustedDestinationMatcher(hostPatterns, true, allowIpLiterals);

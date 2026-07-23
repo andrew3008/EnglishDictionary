@@ -95,14 +95,17 @@ final class GlobTrustedDestinationMatcher implements TrustedDestinationMatcher {
             if (c == '*') {
                 if (hostMode) {
                     if (i + 1 < g.length() && g.charAt(i + 1) == '*') {
+                        // ** — один или несколько лейблов через точку
                         sb.append("[a-z0-9-]+(?:\\.[a-z0-9-]+)*");
                         i += 2;
                     } else {
+                        // * — ровно один лейбл (без точки)
                         sb.append("[a-z0-9-]+");
                         i += 1;
                     }
                 } else {
-                    sb.append(".*");
+                    // topic-mode: любая последовательность кроме newline
+                    sb.append("[^\\n]*");
                     i += 1;
                 }
             } else if (c == '.') {
@@ -118,7 +121,6 @@ final class GlobTrustedDestinationMatcher implements TrustedDestinationMatcher {
         }
         sb.append('$');
 
-        int flags = hostMode ? Pattern.CASE_INSENSITIVE : 0;
-        return Pattern.compile(sb.toString(), flags);
+        return Pattern.compile(sb.toString());
     }
 }

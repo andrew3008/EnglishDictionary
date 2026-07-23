@@ -9,9 +9,6 @@ import space.br1440.platform.tracing.api.span.enrich.SpanEnricher;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-/**
- * OTel-backed реализация публичного контракта обогащения активного span.
- */
 public final class DefaultSpanEnricher implements SpanEnricher {
 
     @Override

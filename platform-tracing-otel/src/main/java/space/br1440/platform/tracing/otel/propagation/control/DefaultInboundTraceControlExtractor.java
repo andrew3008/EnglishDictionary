@@ -2,14 +2,12 @@ package space.br1440.platform.tracing.otel.propagation.control;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.otel.propagation.RequestIdSupport;
 
-/**
- * Реализация {@link InboundTraceControlExtractor} без singleton-поля INSTANCE.
- */
 public final class DefaultInboundTraceControlExtractor implements InboundTraceControlExtractor {
 
     public DefaultInboundTraceControlExtractor() {
@@ -17,10 +15,9 @@ public final class DefaultInboundTraceControlExtractor implements InboundTraceCo
 
     @Override
     @Nonnull
-    public InboundTraceControl fromHeaders(
-            @Nullable String traceOn,
-            @Nullable String qaTrace,
-            @Nullable String requestId) {
+    public InboundTraceControl fromHeaders(@Nullable String traceOn,
+                                           @Nullable String qaTrace,
+                                           @Nullable String requestId) {
         boolean isForceTrace = "on".equalsIgnoreCase(traceOn);
         boolean isQaTrace = (qaTrace != null) && !qaTrace.isBlank();
 

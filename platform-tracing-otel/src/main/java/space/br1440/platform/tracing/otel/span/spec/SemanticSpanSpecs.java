@@ -28,7 +28,6 @@ final class SemanticSpanSpecs {
                                  @Nonnull Map<String, SpanSpecAttributeValue> attributes,
                                  @Nonnull AttributePolicy policy,
                                  @Nonnull String builderName) {
-
         Objects.requireNonNull(category, "category");
         Objects.requireNonNull(relationship, "relationship");
         Objects.requireNonNull(links, "links");

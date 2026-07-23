@@ -51,6 +51,7 @@ public final class NoopTraceOperations implements TraceOperations {
     @Override
     public void withCorrelationId(@Nonnull String correlationId, @Nonnull Runnable action) {
         Objects.requireNonNull(action, "action");
+
         try (CorrelationScope ignored = openCorrelationScope(correlationId)) {
             action.run();
         }
@@ -60,6 +61,7 @@ public final class NoopTraceOperations implements TraceOperations {
     public <T> T withCorrelationId(@Nonnull String correlationId,
                                    @Nonnull ThrowingSupplier<T> action) throws Exception {
         Objects.requireNonNull(action, "action");
+
         try (CorrelationScope ignored = openCorrelationScope(correlationId)) {
             return action.get();
         }

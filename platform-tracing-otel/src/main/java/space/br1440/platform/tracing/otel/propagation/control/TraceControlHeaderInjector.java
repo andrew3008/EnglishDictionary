@@ -9,4 +9,5 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 public interface TraceControlHeaderInjector {
 
     <C> void inject(Context context, C carrier, TextMapSetter<C> setter);
+
 }

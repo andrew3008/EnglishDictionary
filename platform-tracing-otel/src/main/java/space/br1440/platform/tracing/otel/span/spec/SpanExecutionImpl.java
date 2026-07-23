@@ -1,15 +1,15 @@
 package space.br1440.platform.tracing.otel.span.spec;
 
+import java.util.Objects;
+import java.util.function.Supplier;
 import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
-
-import java.util.Objects;
-import java.util.function.Supplier;
 
 final class SpanExecutionImpl implements SpanExecution {
 
@@ -31,7 +31,8 @@ final class SpanExecutionImpl implements SpanExecution {
     @Override
     @Nonnull
     public SpanHandle start() {
-        return implementation.startSpan(SpanSpecGovernance.validateAndNormalize(spec, policy, builderName));
+        SpanSpec spanSpec = SpanSpecGovernance.validateAndNormalize(spec, policy, builderName);
+        return implementation.startSpan(spanSpec);
     }
 
     @Override

@@ -5,16 +5,16 @@ import java.util.function.Supplier;
 
 import jakarta.annotation.Nonnull;
 
+import lombok.experimental.UtilityClass;
+
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 
 /**
  * Вспомогательный lifecycle для span execution/builder без отдельного {@code ScopedExecution}.
  */
+@UtilityClass
 final class SpanLifecycle {
-
-    private SpanLifecycle() {
-    }
 
     static void run(@Nonnull Supplier<SpanHandle> handleSupplier, @Nonnull Runnable action) {
         Objects.requireNonNull(handleSupplier, "handleSupplier");

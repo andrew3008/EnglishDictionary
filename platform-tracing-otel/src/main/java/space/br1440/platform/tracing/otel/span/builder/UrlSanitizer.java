@@ -1,13 +1,18 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
 import jakarta.annotation.Nullable;
+
 import lombok.experimental.UtilityClass;
 
 /**
  * Удаляет секреты из URL перед записью значения в span.
+ *
+ * <p>{@value #MAX_LENGTH} совпадает с дефолтом {@code TracingProperties.Limits.maxAttributeValueLength}.
+ * Значение зафиксировано константой намеренно: sanitizer не должен зависеть от Spring-контекста;
+ * изменение лимита атрибутов не обязано автоматически менять порог обрезки URL.
  */
 @UtilityClass
-final class UrlSanitizer {
+class UrlSanitizer {
 
     private static final String REDACTED = "REDACTED";
     private static final int MAX_LENGTH = 1000;
@@ -29,7 +34,7 @@ final class UrlSanitizer {
                 authEnd = working.length();
             }
 
-            int at = working.lastIndexOf('@', authEnd);
+            int at = working.lastIndexOf('@', authEnd - 1);
             if (at >= authStart) {
                 working = working.substring(0, authStart) + working.substring(at + 1);
             }
@@ -40,14 +45,27 @@ final class UrlSanitizer {
         if (queryStart >= 0) {
             String base = working.substring(0, queryStart);
             int fragmentStart = working.indexOf('#', queryStart);
-            String query = fragmentStart >= 0
+            String query = (fragmentStart >= 0)
                     ? working.substring(queryStart + 1, fragmentStart)
                     : working.substring(queryStart + 1);
-            String fragment = fragmentStart >= 0 ? working.substring(fragmentStart) : "";
+            String fragment = (fragmentStart >= 0) ? working.substring(fragmentStart) : "";
             working = base + '?' + redactQuery(query) + fragment;
         }
 
-        return (working.length() > MAX_LENGTH) ? working.substring(0, MAX_LENGTH) : working;
+        // Усекает результат до {@value #MAX_LENGTH} символов
+        // без разрыва посередине percent-encoded последовательности ({@code %XX})
+        if (working.length() > MAX_LENGTH) {
+            int cut = MAX_LENGTH;
+            if (working.charAt(cut - 1) == '%') {
+                cut -= 1;
+            } else if (working.charAt(cut - 2) == '%') {
+                cut -= 2;
+            }
+
+            working = working.substring(0, cut);
+        }
+
+        return working;
     }
 
     private static String redactQuery(String query) {

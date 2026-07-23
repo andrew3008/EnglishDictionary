@@ -47,4 +47,5 @@ public interface OtelTraceparentReader {
      * @throws IllegalArgumentException если значение заголовка невалидно
      */
     RemoteSpanLink require(@Nonnull String traceparent);
+
 }

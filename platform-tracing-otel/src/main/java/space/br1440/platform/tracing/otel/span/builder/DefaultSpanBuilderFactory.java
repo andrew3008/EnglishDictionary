@@ -9,9 +9,6 @@ import space.br1440.platform.tracing.api.span.builder.TransportTracing;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory;
 
-/**
- * Public bridge builder-factory: без {@code TracingRuntime} и {@code AttributePolicy}.
- */
 public final class DefaultSpanBuilderFactory {
 
     private final DefaultSpanSpecFactory specFactory;

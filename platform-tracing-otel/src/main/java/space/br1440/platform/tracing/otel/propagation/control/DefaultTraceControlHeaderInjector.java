@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.propagation.control;
 import java.util.Objects;
 import java.util.Optional;
 
+import jakarta.annotation.Nonnull;
+
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
@@ -27,13 +29,13 @@ import lombok.RequiredArgsConstructor;
  * {@link OutboundPropagationDecision#propagateForceTrace()}.
  */
 @RequiredArgsConstructor
-public final class DefaultTraceControlHeaderInjector
-        implements PlatformOutboundPropagation, TraceControlHeaderInjector {
+public final class DefaultTraceControlHeaderInjector implements PlatformOutboundPropagation, TraceControlHeaderInjector {
 
     private final String forceTraceHeader;
     private final String qaTraceHeader;
     private final String requestIdHeader;
 
+    @Nonnull
     @Override
     public OutboundPropagationHeaders resolve(OutboundPropagationDecision decision) {
         if (isDenied(decision)) {
@@ -79,14 +81,17 @@ public final class DefaultTraceControlHeaderInjector
                 decision.propagateForceTrace() && control.forceTrace()
                         ? header(forceTraceHeader, "on")
                         : Optional.empty();
+
         Optional<OutboundPropagationHeaders.Header> qaTrace =
                 decision.propagateQaTrace() && control.qaTrace()
                         ? header(qaTraceHeader, "1")
                         : Optional.empty();
+
         Optional<OutboundPropagationHeaders.Header> requestId =
                 decision.propagateRequestId() && control.requestId() != null
                         ? header(requestIdHeader, control.requestId())
                         : Optional.empty();
+
         return new OutboundPropagationHeaders(forceTrace, qaTrace, requestId);
     }
 

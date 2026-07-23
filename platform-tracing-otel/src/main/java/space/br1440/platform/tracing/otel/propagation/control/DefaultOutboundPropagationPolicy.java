@@ -1,9 +1,12 @@
 package space.br1440.platform.tracing.otel.propagation.control;
 
-import lombok.RequiredArgsConstructor;
+import jakarta.annotation.Nonnull;
+
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
+
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public final class DefaultOutboundPropagationPolicy implements OutboundPropagationPolicy {
@@ -14,6 +17,7 @@ public final class DefaultOutboundPropagationPolicy implements OutboundPropagati
     private final boolean propagateQaTrace;
     private final boolean propagateRequestId;
 
+    @Nonnull
     @Override
     public OutboundPropagationDecision decide(String destination) {
         if (!enabled || trusted == null || !trusted.isTrusted(destination)) {

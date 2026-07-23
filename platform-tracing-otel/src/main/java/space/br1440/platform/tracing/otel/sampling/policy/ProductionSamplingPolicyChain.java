@@ -4,7 +4,7 @@ import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
 
-/** Фиксированная platform-owned цепочка sampling rules без внешней точки расширения. */
+/** Фиксированная цепочка sampling rules без внешней точки расширения. */
 public final class ProductionSamplingPolicyChain {
 
     private final SamplingPolicyRule[] rules;
@@ -39,6 +39,7 @@ public final class ProductionSamplingPolicyChain {
                 return decision;
             }
         }
+
         return SamplingPolicyDecision.abstain();
     }
 

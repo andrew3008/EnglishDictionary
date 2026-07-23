@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.otel.context;
 
 import java.util.Optional;
 import java.util.function.Supplier;
-
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;

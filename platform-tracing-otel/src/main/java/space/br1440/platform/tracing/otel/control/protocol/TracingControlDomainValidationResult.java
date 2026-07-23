@@ -9,6 +9,7 @@ public record TracingControlDomainValidationResult(boolean valid, List<String> v
         if (valid && !violations.isEmpty()) {
             throw new IllegalArgumentException("valid domain result must not contain violations");
         }
+
         if (!valid && violations.isEmpty()) {
             throw new IllegalArgumentException("invalid domain result must contain violations");
         }

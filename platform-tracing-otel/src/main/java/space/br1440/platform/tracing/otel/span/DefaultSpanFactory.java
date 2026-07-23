@@ -27,6 +27,7 @@ public final class DefaultSpanFactory implements SpanFactory {
                               @Nonnull AttributePolicy policy) {
         Objects.requireNonNull(runtime, "runtime");
         Objects.requireNonNull(policy, "policy");
+
         this.specFactory = new DefaultSpanSpecFactory(runtime, policy);
         this.builderFactory = new DefaultSpanBuilderFactory(specFactory, readerFor(runtime));
     }
@@ -70,7 +71,7 @@ public final class DefaultSpanFactory implements SpanFactory {
         }
 
         @Override
-        public RemoteSpanLink require(String traceparent) {
+        public RemoteSpanLink require(@Nonnull String traceparent) {
             throw new IllegalArgumentException("traceparent parsing is disabled");
         }
     }

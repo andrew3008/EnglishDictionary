@@ -5,6 +5,8 @@ import java.util.Objects;
 
 import jakarta.annotation.Nonnull;
 
+import lombok.experimental.UtilityClass;
+
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
@@ -16,10 +18,8 @@ import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 /**
  * Применяет единый semantic-контракт к внешней спецификации span до передачи в runtime.
  */
+@UtilityClass
 final class SpanSpecGovernance {
-
-    private SpanSpecGovernance() {
-    }
 
     @Nonnull
     static SpanSpec validateAndNormalize(@Nonnull SpanSpec spec,
@@ -31,9 +31,7 @@ final class SpanSpecGovernance {
 
         var accumulated = SpanSpecAttributeValueConverter.toAttributes(spec.attributes());
         var validated = policy.validateAndNormalize(spec.category(), accumulated, builderName);
-        Map<String, SpanSpecAttributeValue> normalized =
-                SpanSpecAttributeValueConverter.fromAttributes(validated.attributes());
-
+        Map<String, SpanSpecAttributeValue> normalized = SpanSpecAttributeValueConverter.fromAttributes(validated.attributes());
         if (normalized.equals(spec.attributes())) {
             return spec;
         }
@@ -69,14 +67,10 @@ final class SpanSpecGovernance {
                 case SpanSpecAttributeValue.LongValue value -> builder.attribute(entry.getKey(), value.value());
                 case SpanSpecAttributeValue.DoubleValue value -> builder.attribute(entry.getKey(), value.value());
                 case SpanSpecAttributeValue.BooleanValue value -> builder.attribute(entry.getKey(), value.value());
-                case SpanSpecAttributeValue.StringListValue value ->
-                        builder.stringListAttribute(entry.getKey(), value.values());
-                case SpanSpecAttributeValue.LongListValue value ->
-                        builder.longListAttribute(entry.getKey(), value.values());
-                case SpanSpecAttributeValue.DoubleListValue value ->
-                        builder.doubleListAttribute(entry.getKey(), value.values());
-                case SpanSpecAttributeValue.BooleanListValue value ->
-                        builder.booleanListAttribute(entry.getKey(), value.values());
+                case SpanSpecAttributeValue.StringListValue value -> builder.stringListAttribute(entry.getKey(), value.values());
+                case SpanSpecAttributeValue.LongListValue value -> builder.longListAttribute(entry.getKey(), value.values());
+                case SpanSpecAttributeValue.DoubleListValue value -> builder.doubleListAttribute(entry.getKey(), value.values());
+                case SpanSpecAttributeValue.BooleanListValue value -> builder.booleanListAttribute(entry.getKey(), value.values());
             }
         }
     }

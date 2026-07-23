@@ -37,13 +37,13 @@ public final class RemoteServiceNameResolver {
                 return Optional.of(fromMdc);
             }
         } catch (RuntimeException ignored) {
-            // fail-soft: ошибка чтения MDC не должна срывать error-handling
+            // fail-soft: ошибка чтения MDC не должна прерывать flow для error-handling
         }
 
         for (RemoteServiceNameSource source : sources) {
             try {
                 Optional<String> value = source.resolve();
-                if (value != null && value.isPresent() && !value.get().isBlank()) {
+                if (value.isPresent() && !value.get().isBlank()) {
                     return value;
                 }
             } catch (RuntimeException ignored) {

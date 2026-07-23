@@ -1,20 +1,22 @@
 package space.br1440.platform.tracing.otel.runtime.versioned;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 /**
- * Lock-free CAS holder for immutable {@link VersionedState} snapshots with last-known-good semantics.
+ * Lock-free CAS-хранилище иммутабельных снапшотов {@link VersionedState} с семантикой
+ * «последнего известного корректного состояния» (last-known-good).
  * <p>
- * Agent-internal runtime primitive (sampler / scrubbing / validation policy holders in
- * {@code otel-extension}). Not part of the public application SDK.
+ * Внутренний runtime-примитив агента (держатели политик сэмплирования, скрабинга и валидации
+ * в {@code otel-extension}). Не является частью публичного SDK приложения.
  * <p>
- * The {@code builder} passed to {@link #tryUpdate(UnaryOperator)} and
- * {@link #tryUpdate(UnaryOperator, Predicate)} must be side-effect-free: it may run multiple times
- * under CAS contention.
+ * Функция {@code builder}, передаваемая в {@link #tryUpdate(UnaryOperator)} и
+ * {@link #tryUpdate(UnaryOperator, Predicate)}, должна быть свободна от побочных эффектов:
+ * при конкуренции на CAS она может быть вызвана несколько раз.
  */
-public final class VersionedStateHolder<T extends VersionedState> {
+public final class VersionedStateHolder<T extends VersionedState>{
 
     private final AtomicReference<T> ref;
 
@@ -39,9 +41,7 @@ public final class VersionedStateHolder<T extends VersionedState> {
     }
 
     public boolean tryUpdate(UnaryOperator<T> builder, Predicate<T> validator) {
-        if (builder == null) {
-            return false;
-        }
+        Objects.requireNonNull(builder, "builder");
 
         for (; ; ) {
             T previous = ref.get();
@@ -77,6 +77,13 @@ public final class VersionedStateHolder<T extends VersionedState> {
         }
     }
 
+    /**
+     * Перебрасывает t, если это JVM-фатальная ошибка (VirtualMachineError, LinkageError),
+     * которую нельзя проглотить без риска запуска JVM в неопределённом состоянии.
+     * Восстанавливает interrupt-флаг для InterruptedException.
+     * <p>
+     * Паттерн: Reactor Exceptions.throwIfFatal(), RxJava Exceptions.throwIfFatal().
+     */
     private static void rethrowIfFatal(Throwable t) {
         if (t instanceof VirtualMachineError || t instanceof LinkageError) {
             throw (Error) t;

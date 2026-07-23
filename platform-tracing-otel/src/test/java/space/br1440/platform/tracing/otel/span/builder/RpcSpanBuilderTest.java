@@ -21,9 +21,6 @@ import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Hard gate: {@code spans().transport().rpc()} builder behavior.
- */
 class RpcSpanBuilderTest {
 
     private RecordingTracingRuntime recording;

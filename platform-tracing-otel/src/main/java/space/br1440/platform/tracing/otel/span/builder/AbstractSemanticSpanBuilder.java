@@ -16,9 +16,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanExecution;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
-import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
-import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
 import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory;
@@ -149,9 +147,7 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
         SpanRelationshipSpec.validateRelationshipLinks(relationship, links);
 
         if (category == SpanCategory.INTERNAL) {
-            return specFactory.fromBuilderRawSpec(
-                    internalOperationSpec(explicitName, category, relationship, List.copyOf(links)),
-                    builderName);
+            return specFactory.fromOperation(category, explicitName, relationship, List.copyOf(links), builderName);
         }
 
         return specFactory.fromSemanticBuilder(
@@ -161,28 +157,5 @@ abstract class AbstractSemanticSpanBuilder<B extends ManualSpanBuilder<B>> imple
                 List.copyOf(links),
                 attributes,
                 builderName);
-    }
-
-    @Nonnull
-    private static SpanSpec internalOperationSpec(@Nonnull String name,
-                                                  @Nonnull SpanCategory category,
-                                                  @Nonnull SpanRelationship relationship,
-                                                  @Nonnull List<RemoteSpanLink> links) {
-        var builder = SpanSpec.builder(name)
-                .category(category)
-                .reason(SpanSpecReason.PLATFORM_EDGE_CASE);
-
-        switch (relationship) {
-            case CHILD -> builder.child();
-            case ROOT -> {
-                builder.root();
-                if (!links.isEmpty()) {
-                    builder.linkedTo(links.toArray(RemoteSpanLink[]::new));
-                }
-            }
-            case DETACHED -> builder.detached();
-        }
-
-        return builder.build();
     }
 }

@@ -1,27 +1,24 @@
 package space.br1440.platform.tracing.otel.propagation;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
-import io.opentelemetry.api.trace.TraceState;
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import lombok.extern.slf4j.Slf4j;
-import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
-/**
- * OTel-backed реализация чтения W3C trace context.
- * Экземпляр передаётся manual builder-ам через application composition root.
- */
+import space.br1440.platform.tracing.api.span.RemoteSpanLink;
+
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.TraceState;
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapGetter;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
 
@@ -33,10 +30,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     private static final String HDR_TRACEPARENT = "traceparent";
     private static final String HDR_TRACESTATE = "tracestate";
 
-    /**
-     * Создаёт stateless reader. Composition roots обычно переиспользуют {@link #INSTANCE}.
-     */
-    public OtelTraceparentReaderImpl() {
+    private OtelTraceparentReaderImpl() {
     }
 
     @Override

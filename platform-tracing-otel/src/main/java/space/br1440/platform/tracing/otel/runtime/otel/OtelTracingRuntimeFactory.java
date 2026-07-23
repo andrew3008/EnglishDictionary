@@ -15,6 +15,7 @@ public final class OtelTracingRuntimeFactory {
     @Nonnull
     public static TracingRuntime create(@Nonnull OpenTelemetry openTelemetry) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
+
         return new OtelTracingRuntime(openTelemetry, new AttributePolicy(), ExceptionRecorder.secureDefault());
     }
 
@@ -23,6 +24,7 @@ public final class OtelTracingRuntimeFactory {
                                         @Nonnull AttributePolicy policy) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(policy, "policy");
+
         return new OtelTracingRuntime(openTelemetry, policy, ExceptionRecorder.secureDefault());
     }
 
@@ -31,6 +33,7 @@ public final class OtelTracingRuntimeFactory {
                                         @Nonnull ExceptionRecorder exceptionRecorder) {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(exceptionRecorder, "exceptionRecorder");
+
         return new OtelTracingRuntime(openTelemetry, new AttributePolicy(), exceptionRecorder);
     }
 
@@ -41,6 +44,7 @@ public final class OtelTracingRuntimeFactory {
         Objects.requireNonNull(openTelemetry, "openTelemetry");
         Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(exceptionRecorder, "exceptionRecorder");
+
         return new OtelTracingRuntime(openTelemetry, policy, exceptionRecorder);
     }
 }
