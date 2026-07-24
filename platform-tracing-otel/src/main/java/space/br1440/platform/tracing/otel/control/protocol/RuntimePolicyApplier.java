@@ -5,38 +5,36 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import java.util.Map;
 
 /**
- * SPI for applying a normalised, domain-validated control-protocol payload
- * to the platform runtime state.
+ * SPI применения нормализованного и доменно валидированного payload
+ * control-protocol к runtime-состоянию платформы.
  *
- * <p>Implementations live in {@code platform-tracing-otel-javaagent-extension} (or any
- * other runtime module) and are injected into
- * {@link RuntimePolicyControlHandler}.  This inversion of control keeps
- * {@code platform-tracing-otel} free from any dependency on the extension
- * module.
+ * <p>Реализации живут в {@code platform-tracing-otel-javaagent-extension} (или в
+ * другом runtime-модуле) и внедряются в {@link RuntimePolicyControlHandler}. Такая инверсия зависимостей держит
+ * {@code platform-tracing-otel} свободным от зависимости на extension-модуль.
  *
- * <p><b>Contract:</b> this method is called by
- * {@link RuntimePolicyControlHandler} <em>only</em> after both decode-layer
- * and domain-layer validation have succeeded.  Implementations may therefore
- * assume that every value in {@code normalizedPayload} is structurally correct
- * and domain-valid; no re-validation is required or expected.
+ * <p><b>Контракт:</b> метод вызывается {@link RuntimePolicyControlHandler}
+ * <em>только</em> после успешной валидации на слоях decode и domain.
+ * Реализации поэтому могут считать, что каждое значение в
+ * {@code normalizedPayload} структурно корректно и доменно валидно;
+ * повторная валидация не требуется и не ожидается.
  *
- * <p>Implementations must be thread-safe: JMX threads may call
- * {@code apply} concurrently with other management operations.
+ * <p>Реализации должны быть потокобезопасны: потоки JMX могут вызывать
+ * {@code apply} параллельно с другими management-операциями.
  */
 public interface RuntimePolicyApplier {
 
     /**
-     * Applies the decoded, domain-validated payload to the live runtime state.
+     * Применяет декодированный и доменно валидированный payload к живому
+     * runtime-состоянию.
      *
-     * @param operation       the resolved protocol operation
-     *                        (always {@link TracingControlProtocolOperation#APPLY_RUNTIME_POLICY}
-     *                        in practice; read-only operations are short-circuited
-     *                        before this call)
-     * @param normalizedPayload normalised map produced by the decoder and
-     *                          accepted by the domain validator; never {@code null},
-     *                          never modified after this call
-     * @param source          human-readable origin label (e.g. {@code "JMX"},
-     *                        {@code "REST"}, {@code "test"})
+     * @param operation         разрешённая операция протокола
+     *                          (на практике всегда
+     *                          {@link TracingControlProtocolOperation#APPLY_RUNTIME_POLICY};
+     *                          операции только для чтения коротко замыкаются до этого вызова)
+     * @param normalizedPayload нормализованная map, полученная от decoder и
+     *                          принятая доменным валидатором; никогда не
+     *                          {@code null}, не изменяется после этого вызова
+     * @param source            человеко-читаемая метка источника (например, {@code "JMX"}, {@code "REST"}, {@code "test"})
      */
     void apply(TracingControlProtocolOperation operation,
                Map<String, Object> normalizedPayload,

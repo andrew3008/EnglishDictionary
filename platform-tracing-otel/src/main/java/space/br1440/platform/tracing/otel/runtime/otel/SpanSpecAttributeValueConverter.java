@@ -117,8 +117,8 @@ public final class SpanSpecAttributeValueConverter {
             Class<?> current = (element == null) ? null : element.getClass();
             if (!Objects.equals(first, current)) {
                 throw new IllegalArgumentException("""
-                                    Mixed-type list attribute is not supported: expected %s but found %s
-                                    """.formatted(first, current));
+                        Mixed-type list attribute is not supported: expected %s but found %s"""
+                        .formatted(first, current));
             }
         }
 

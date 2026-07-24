@@ -17,17 +17,16 @@ public interface RuntimeControlMutationPolicy {
      */
     RuntimeControlMutationDecision evaluate(TracingControlProtocolOperation operation);
 
-    /**
-     * Создаёт startup-политику с fail-closed поведением для APPLY.
-     */
     static RuntimeControlMutationPolicy startupConfigured(boolean mutationEnabled) {
         return operation -> {
             if (operation != TracingControlProtocolOperation.APPLY_RUNTIME_POLICY) {
                 return RuntimeControlMutationDecision.permitted();
             }
+
             if (mutationEnabled) {
                 return RuntimeControlMutationDecision.permitted();
             }
+
             return RuntimeControlMutationDecision.rejected(
                     "runtime mutation is disabled; set platform.tracing.control.runtime-mutation.enabled=true at startup");
         };

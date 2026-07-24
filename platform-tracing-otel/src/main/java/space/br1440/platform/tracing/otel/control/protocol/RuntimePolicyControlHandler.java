@@ -8,34 +8,30 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Façade that closes the full control-protocol pipeline:
+ * Фасад, замыкающий полный pipeline control-protocol:
  * <pre>
  *   decode  →  domain validate  →  apply
  * </pre>
  *
- * <p>The caller is responsible for running the decode step first (via
- * {@code TracingControlProtocolDecoder}) and passing the resulting
- * {@link TracingControlProtocolDecodeResult} to {@link #handle}.  This class
- * then performs domain/policy validation and, on success, delegates to the
- * injected {@link RuntimePolicyApplier} for the actual state mutation.
+ * <p>Вызывающая сторона отвечает за выполнение шага decode (через
+ * {@code TracingControlProtocolDecoder}) и передачу полученного
+ * {@link TracingControlProtocolDecodeResult} в {@link #handle}. Этот класс
+ * затем выполняет доменную / policy-валидацию и при успехе делегирует
+ * внедрённому {@link RuntimePolicyApplier} фактическую мутацию состояния.
  *
- * <h2>Guarantees</h2>
+ * <h2>Гарантии</h2>
  * <ul>
- *   <li>{@link RuntimePolicyApplier#apply} is called <em>only</em> when
- *       both {@code decodeResult.valid()} and
- *       {@code domainResult.valid()} are {@code true}.</li>
- *   <li>Read-only operations ({@link TracingControlProtocolOperation#READ_APPLIED_STATE})
- *       are short-circuited before domain validation and never reach the
- *       applier.</li>
- *   <li>The method never throws for expected protocol errors; all rejection
- *       reasons are encoded in the returned
- *       {@link RuntimePolicyControlHandleResult}.</li>
+ *   <li>{@link RuntimePolicyApplier#apply} вызывается <em>только</em> когда
+ *       и {@code decodeResult.valid()}, и {@code domainResult.valid()} равны {@code true}.</li>
+ *   <li>Операции только для чтения ({@link TracingControlProtocolOperation#READ_APPLIED_STATE})
+ *       коротко замыкаются до доменной валидации и никогда не доходят до applier.</li>
+ *   <li>Метод не бросает исключения для ожидаемых ошибок протокола; все
+ *       причины отклонения кодируются в возвращаемом {@link RuntimePolicyControlHandleResult}.</li>
  * </ul>
  *
- * <h2>Thread safety</h2>
- * This class is stateless after construction and therefore inherently
- * thread-safe, provided that the injected {@link RuntimePolicyApplier}
- * implementation is also thread-safe.
+ * <h2>Потокобезопасность</h2>
+ * После конструкции класс не хранит изменяемого состояния и поэтому
+ * потокобезопасен сам по себе, при условии, что внедрённая реализация {@link RuntimePolicyApplier} также потоко-безопасна.
  */
 public final class RuntimePolicyControlHandler {
 
@@ -53,18 +49,17 @@ public final class RuntimePolicyControlHandler {
     }
 
     /**
-     * Handles a single decoded protocol request.
+     * Обрабатывает один декодированный запрос протокола.
      *
-     * @param decodeResult the result produced by
+     * @param decodeResult результат, полученный от
      *                     {@code TracingControlProtocolDecoder.decode(Map)}
-     * @return a result indicating success or the rejection reason;
-     *         never {@code null}
+     * @return результат, указывающий на успех или причину отклонения;
+     *         никогда не {@code null}
      */
-    public RuntimePolicyControlHandleResult handle(
-            TracingControlProtocolDecodeResult decodeResult) {
+    public RuntimePolicyControlHandleResult handle(TracingControlProtocolDecodeResult decodeResult) {
         Objects.requireNonNull(decodeResult, "decodeResult");
 
-        // --- Step 1: structural / wire decode ---
+        // --- Шаг 1: структурный / wire decode ---
         if (!decodeResult.valid()) {
             return RuntimePolicyControlHandleResult.decodeRejected(decodeResult.violations());
         }
@@ -73,16 +68,14 @@ public final class RuntimePolicyControlHandler {
                 .orElseThrow(() -> new IllegalStateException(
                         "Decode result is valid but operation is absent – decoder contract violation"));
 
-        // --- Step 2: read-only short-circuit ---
+        // --- Шаг 2: короткое замыкание для операций только для чтения ---
         if (operation == TracingControlProtocolOperation.READ_APPLIED_STATE) {
             return RuntimePolicyControlHandleResult.success(operation);
         }
 
-        // --- Step 3: domain / policy validation ---
+        // --- Шаг 3: доменная / policy-валидация ---
         Map<String, Object> payload = decodeResult.normalizedPayload();
-        TracingControlDomainValidationResult domainResult =
-                RuntimePolicyControlDomainValidator.validate(payload);
-
+        TracingControlDomainValidationResult domainResult = RuntimePolicyControlDomainValidator.validate(payload);
         if (!domainResult.valid()) {
             return RuntimePolicyControlHandleResult.domainRejected(operation, domainResult.violations());
         }
@@ -98,7 +91,7 @@ public final class RuntimePolicyControlHandler {
             return RuntimePolicyControlHandleResult.mutationRejected(operation, decision.reason());
         }
 
-        // --- Step 4: apply (mutating operations only) ---
+        // --- Шаг 4: apply (только мутирующие операции) ---
         String source = resolveSource(payload);
         applier.apply(operation, payload, source);
 

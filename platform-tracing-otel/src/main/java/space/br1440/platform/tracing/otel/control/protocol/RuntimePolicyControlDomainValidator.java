@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.control.protocol;
 
+import lombok.experimental.UtilityClass;
+
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
 import space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyProperties;
@@ -13,28 +15,28 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Domain validator for {@code APPLY_RUNTIME_POLICY} /
- * {@code VALIDATE_RUNTIME_POLICY} payloads.
+ * Доменный валидатор payload операций {@code APPLY_RUNTIME_POLICY} /
+ * {@code VALIDATE_RUNTIME_POLICY}.
  *
- * <p>Operates on the <em>normalised</em> payload produced by
- * {@code TracingControlProtocolDecoder} (structural and open-type
- * validation is already complete at that point).  This class enforces
- * two categories of domain / policy rules:
+ * <p>Работает с <em>нормализованным</em> payload, полученным от
+ * {@code TracingControlProtocolDecoder} (структурная валидация и проверка
+ * открытых типов к этому моменту уже завершены). Этот класс применяет
+ * две категории доменных / policy-правил:
  *
  * <ul>
- *   <li><b>Sampling bounds</b> – delegates to
- *       {@link SamplingPolicyPropertiesValidator} for ratio ranges,
- *       drop-path constraints and force-header-value limits.</li>
- *   <li><b>Validation-mode policy</b> – delegates to
- *       {@link ValidationModePolicyValidator} for the allowed-value and
- *       cross-field consistency rules on {@code validation.mode} /
- *       {@code validation.strict}.</li>
+ *   <li><b>Границы sampling</b> — делегирует в
+ *       {@link SamplingPolicyPropertiesValidator} проверку диапазонов ratio,
+ *       ограничений drop-path и лимитов force-header-value.</li>
+ *   <li><b>Политика режима валидации</b> — делегирует в
+ *       {@link ValidationModePolicyValidator} правила допустимых значений и
+ *       согласованности полей {@code validation.mode} / {@code validation.strict}.</li>
  * </ul>
  *
- * <p>All violations from every sub-validator are collected and returned
- * together so that callers receive a complete diagnostic picture in a
- * single pass, rather than failing on the first error found.
+ * <p>Нарушения от всех подвалидаторов собираются и возвращаются вместе,
+ * чтобы вызывающая сторона получила полную диагностическую картину за один
+ * проход, а не останавливалась на первой найденной ошибке.
  */
+@UtilityClass
 public final class RuntimePolicyControlDomainValidator {
 
     private static final Set<String> RUNTIME_POLICY_KEYS = Set.of(
@@ -55,15 +57,12 @@ public final class RuntimePolicyControlDomainValidator {
             TracingControlProtocolKeys.EXPORT_ENABLED,
             TracingControlProtocolKeys.PROPAGATION_ENABLED);
 
-    private RuntimePolicyControlDomainValidator() {
-    }
-
     /**
-     * Validates domain-level rules against a normalised payload.
+     * Проверяет доменные правила для нормализованного payload.
      *
-     * @param normalizedPayload normalised map produced by the decoder
-     * @return {@code valid=true} when no violations are found;
-     *         {@code valid=false} with a non-empty violations list otherwise
+     * @param normalizedPayload нормализованная map, полученная от decoder
+     * @return {@code valid=true}, если нарушений нет;
+     *         иначе {@code valid=false} и непустой список нарушений
      */
     public static TracingControlDomainValidationResult validate(Map<String, Object> normalizedPayload) {
         List<String> violations = new ArrayList<>();
@@ -75,6 +74,7 @@ public final class RuntimePolicyControlDomainValidator {
         if (violations.isEmpty()) {
             return TracingControlDomainValidationResult.success();
         }
+
         return new TracingControlDomainValidationResult(false, violations);
     }
 
@@ -83,6 +83,7 @@ public final class RuntimePolicyControlDomainValidator {
         if (!isApplyOperation(payload)) {
             return;
         }
+
         boolean hasMutation = payload.keySet().stream().anyMatch(RUNTIME_POLICY_KEYS::contains);
         if (!hasMutation) {
             violations.add("empty mutation rejected");
@@ -93,10 +94,6 @@ public final class RuntimePolicyControlDomainValidator {
         return TracingControlProtocolOperation.APPLY_RUNTIME_POLICY.wireValue()
                 .equals(payload.get(TracingControlProtocolKeys.OPERATION));
     }
-
-    // -------------------------------------------------------------------------
-    // Sampling bounds
-    // -------------------------------------------------------------------------
 
     private static void collectSamplingViolations(Map<String, Object> payload,
                                                   List<String> violations) {
@@ -111,30 +108,25 @@ public final class RuntimePolicyControlDomainValidator {
     private static SamplingPolicyProperties toSamplingPolicyProperties(Map<String, Object> payload) {
         double defaultRatio = valueOrDefault(payload.get(TracingControlProtocolKeys.SAMPLING_RATIO), 1.0d);
         String[] droppedRoutes = (String[]) payload.get(TracingControlProtocolKeys.SAMPLING_DROP_PATH_PREFIXES);
-        String[] forceValues   = (String[]) payload.get(TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_VALUES);
-        Map<String, Double> routeRatios =
-                (Map<String, Double>) payload.get(TracingControlProtocolKeys.SAMPLING_ROUTE_RATIOS);
+        String[] forceValues = (String[]) payload.get(TracingControlProtocolKeys.SAMPLING_FORCE_HEADER_VALUES);
+        Map<String, Double> routeRatios = (Map<String, Double>) payload.get(TracingControlProtocolKeys.SAMPLING_ROUTE_RATIOS);
 
         return new SamplingPolicyProperties(
                 true,
                 defaultRatio,
-                droppedRoutes == null ? null : Arrays.asList(droppedRoutes),
-                forceValues   == null ? null : Set.copyOf(Arrays.asList(forceValues)),
-                routeRatios   == null ? null : new LinkedHashMap<>(routeRatios));
+                (droppedRoutes == null) ? null : Arrays.asList(droppedRoutes),
+                (forceValues == null) ? null : Set.copyOf(Arrays.asList(forceValues)),
+                (routeRatios == null) ? null : new LinkedHashMap<>(routeRatios));
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static double valueOrDefault(Object value, double fallback) {
-        return value instanceof Double d ? d : fallback;
+        return (value instanceof Double d) ? d : fallback;
     }
-
-    // -------------------------------------------------------------------------
-    // Validation-mode policy
-    // -------------------------------------------------------------------------
 
     private static void collectValidationModeViolations(Map<String, Object> payload,
                                                         List<String> violations) {
-        TracingControlDomainValidationResult modeResult =
-                ValidationModePolicyValidator.validate(payload);
+        TracingControlDomainValidationResult modeResult = ValidationModePolicyValidator.validate(payload);
         if (!modeResult.valid()) {
             violations.addAll(modeResult.violations());
         }

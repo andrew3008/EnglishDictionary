@@ -12,6 +12,7 @@ public record RuntimeControlMutationDecision(boolean allowed, String reason) {
         if (allowed && !reason.isEmpty()) {
             throw new IllegalArgumentException("allowed decision must not carry a rejection reason");
         }
+
         if (!allowed && reason.isBlank()) {
             throw new IllegalArgumentException("rejected decision must carry a reason");
         }
