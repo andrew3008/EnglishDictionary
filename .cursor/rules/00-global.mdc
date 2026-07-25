@@ -82,10 +82,10 @@ Avoid:
 Preserve these ownership rules:
 
 - API owns public contracts and classloader-neutral value/wire types.
-- Core owns runtime behavior, domain validation, policies, lifecycle, and state.
+- `platform-tracing-otel` owns runtime behavior, domain validation, policies, lifecycle, and state.
 - Spring Boot modules own wiring, properties, conditions, and diagnostics.
 - Servlet and WebFlux adapters remain isolated from each other.
-- OTel/JMX modules own agent, SDK, OpenMBean, and classloader-sensitive integration.
+- `platform-tracing-otel-javaagent-extension` owns Java-agent extension points, JMX/OpenMBean adapters, readiness, and classloader-sensitive integration.
 - Starters remain thin dependency aggregators.
 - Test, sample, benchmark, and E2E modules must not be production dependencies.
 

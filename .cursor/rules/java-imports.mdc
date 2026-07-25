@@ -2,7 +2,7 @@
 description: Java import policy for Cursor, Codex, and other generated Java changes.
 globs:
   - "**/*.java"
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Java Import Rules

@@ -1,0 +1,183 @@
+---
+description: Reactor and WebFlux tracing-context propagation, MDC lifecycle, subscription semantics, cancellation, retry, and event-loop safety rules.
+globs:
+  - "platform-tracing-autoconfigure-webflux/src/**/*.java"
+  - "**/*Reactive*.java"
+  - "**/*Reactor*.java"
+  - "**/*WebFilter*.java"
+  - "**/*ContextPropagation*.java"
+alwaysApply: false
+---
+
+# Reactor Context Propagation Rules
+
+## Context Ownership
+
+Reactor `Context` is the primary per-subscription carrier in reactive flows.
+
+Do not build a WebFlux path that depends only on:
+
+- `ThreadLocal`
+- servlet request context
+- current platform thread
+- one-time MDC population at request entry
+
+ThreadLocal, MDC, and OpenTelemetry current context may be projected at execution boundaries, but Reactor context remains the durable reactive carrier.
+
+## Subscription Semantics
+
+Reactive pipelines may be:
+
+- subscribed more than once
+- retried
+- repeated
+- cancelled
+- resumed on another scheduler
+- executed concurrently
+
+Do not create spans, request identity, or mutable tracing state at assembly time when the semantics are per subscription.
+
+Use deferred construction where required.
+
+Each subscription must have isolated state.
+
+## Context Propagation
+
+Preserve:
+
+- trace context
+- requestId
+- correlationId
+- approved baggage
+- sampling/trace-control decisions
+
+Do not derive requestId from baggage.
+
+Do not overwrite an existing valid edge-stable requestId.
+
+Do not leak context between requests, subscribers, retries, or tests.
+
+## MDC
+
+MDC is a logging projection, not the source of truth.
+
+Use the approved keys:
+
+```text
+traceId
+spanId
+traceFlags
+requestId
+correlationId
+```
+
+Populate MDC only for the active signal execution.
+
+Always restore or clear previous values.
+
+Test thread hops and interleaved requests.
+
+Do not assume automatic MDC propagation without verified hooks.
+
+## Blocking and Schedulers
+
+Do not block Reactor event-loop threads.
+
+Do not call:
+
+- `block()`
+- `blockFirst()`
+- `blockLast()`
+- blocking I/O
+- synchronous waits
+
+inside event-loop execution.
+
+Do not add unmanaged schedulers or executors.
+
+When blocking integration is unavoidable:
+
+- isolate it on an approved bounded scheduler
+- preserve tracing context
+- define cancellation and timeout
+- verify resource bounds
+
+Do not replace WebFlux architecture with virtual-thread blocking code inside an unrelated tracing change.
+
+## WebFilter Lifecycle
+
+A WebFilter must:
+
+- establish/extract context once per subscription
+- preserve framework observation ownership
+- avoid duplicate server spans
+- handle success, error, and cancellation
+- avoid committing response headers incorrectly
+- restore projected context
+- remain order-aware
+
+Do not manually subscribe inside filters.
+
+Do not swallow exceptions to preserve tracing.
+
+## Retry and Resubscription
+
+Retry may create a new attempt while preserving the logical request identity.
+
+Define whether spans represent:
+
+- logical operation
+- individual attempt
+- linked retry attempt
+
+Do not create duplicate root/server spans because of resubscription.
+
+RequestId remains retry-invariant unless the explicit contract says otherwise.
+
+Use span links or child attempt spans according to the approved semantic model.
+
+## Outbound Propagation
+
+WebFlux adapters must depend on the approved OTel-free outbound propagation port.
+
+Do not import internal header keys or OTel injector implementation directly into web modules.
+
+Inject approved headers once.
+
+Do not overwrite transport-owned W3C headers incorrectly.
+
+Validate and bound platform identity headers.
+
+## Error and Cancellation
+
+Record only approved error information.
+
+Do not attach raw bodies, credentials, or PII.
+
+Cancellation is not automatically an application error.
+
+Close scopes/spans exactly once.
+
+Ensure terminal signals cannot double-finish telemetry.
+
+## Testing
+
+Test with actual reactive execution:
+
+- success
+- application error
+- cancellation
+- retry
+- scheduler hop
+- concurrent requests
+- multiple subscriptions
+- existing/absent requestId
+- correlationId propagation
+- MDC restoration
+- no duplicate spans
+- no servlet dependency
+- optional classpath behavior
+
+Use `StepVerifier` for pipeline semantics and focused Spring/WebFlux integration tests for filter wiring.
+
+Run E2E when propagation crosses application, agent, HTTP, collector, or exporter boundaries.

@@ -1,25 +1,5 @@
 ---
-description: Distributed-systems guardrails for retries, idempotency, ordering, coordination, runtime control, messaging, and multi-instance behavior.
-globs:
-  - "**/*Retry*.java"
-  - "**/*Idempot*.java"
-  - "**/*Coordinator*.java"
-  - "**/*Lock*.java"
-  - "**/*Lease*.java"
-  - "**/*Leader*.java"
-  - "**/*Distributed*.java"
-  - "**/*Kafka*.java"
-  - "**/*Message*.java"
-  - "**/*Consumer*.java"
-  - "**/*Producer*.java"
-  - "**/*Outbox*.java"
-  - "**/*RuntimeControl*.java"
-  - "**/*Policy*.java"
-  - "**/*Cluster*.java"
-  - "**/*Failover*.java"
-  - "**/*Resilien*.java"
-  - "**/*distributed*/**/*.java"
-  - "**/*messaging*/**/*.java"
+description: Apply for distributed-state, retry, idempotency, ordering, messaging, coordination, multi-instance, or rollout design and review.
 alwaysApply: false
 ---
 

@@ -1,0 +1,204 @@
+---
+description: JMX and OpenMBean adapter rules for stable ObjectNames, JDK-safe wire values, registration lifecycle, runtime control, security, and classloader isolation.
+globs:
+  - "**/*Jmx*.java"
+  - "**/*JMX*.java"
+  - "**/*MBean*.java"
+  - "**/*OpenMBean*.java"
+  - "**/*CompositeData*.java"
+  - "**/*TabularData*.java"
+  - "**/jmx/**/*.java"
+alwaysApply: false
+---
+
+# JMX and OpenMBean Rules
+
+## Role
+
+JMX is an operational transport adapter.
+
+It does not own:
+
+- tracing domain policy
+- sampling/scrubbing validation
+- runtime state
+- mutation authorization policy
+- application-facing API
+- exporter or processor lifecycle
+
+JMX converts OpenMBean/JDK-safe values into approved API/core contracts and maps results back.
+
+## ObjectName and Management Contract
+
+ObjectNames, attribute names, operation names, and Open Types are external operational contracts.
+
+Define them centrally.
+
+Avoid names derived from implementation class names.
+
+Do not register duplicate or unstable names.
+
+Because the solution is pre-production, justified clean replacement is allowed, but update all:
+
+- tests
+- docs
+- dashboards/scripts
+- deployment guidance
+- warning registers
+
+Do not keep dual old/new MBeans by default.
+
+## Open Types
+
+Use JMX Open Types or bounded JDK-safe values:
+
+- `String`
+- primitive wrappers
+- arrays where bounded
+- `CompositeData`
+- `TabularData`
+- explicit maps converted at the boundary
+
+Do not expose:
+
+- implementation objects
+- Spring beans
+- OTel SDK objects
+- mutable collections
+- arbitrary serializable classes
+- class names for reconstruction
+
+Do not use Java native serialization.
+
+Use string wire values instead of Java enum instances across classloader boundaries.
+
+## Transport Conversion
+
+Keep conversion isolated:
+
+```text
+OpenMBean/JMX input
+    -> bounded transport conversion
+    -> control-protocol decode
+    -> domain validation
+    -> mutation policy
+    -> apply/read
+    -> OpenMBean/JMX result
+```
+
+Do not apply raw maps directly to runtime state.
+
+Do not duplicate domain validation in the MBean implementation.
+
+Conversion failures must return bounded, machine-readable diagnostics without exposing raw payloads.
+
+## Registration Lifecycle
+
+Registration must be:
+
+- explicitly owned
+- idempotent
+- safe when an ObjectName already exists
+- reversible
+- rollback-safe after partial registration
+- classloader-safe
+- cleaned up on shutdown
+
+Do not register MBeans in static initializers.
+
+Do not retain application classloaders through platform/agent global registries.
+
+Define ownership when both application and agent planes can register management endpoints.
+
+## Read and Mutation Operations
+
+Read operations are side-effect-free.
+
+Mutation operations:
+
+- are disabled by default
+- use the approved runtime-control gate
+- validate before apply
+- preserve LKG on rejection/failure
+- return applied/current version and status
+- do not expose mutable state
+
+An MBean cannot bypass core mutation policy.
+
+## Readiness
+
+MBean presence is not equivalent to extension or telemetry-pipeline readiness.
+
+Readiness should use the approved versioned descriptor and capability model.
+
+Do not infer sampler, processor, sanitizer, propagation, or exporter readiness from one registration marker.
+
+## Security
+
+JMX is a privileged administrative surface.
+
+Code-level validation does not replace:
+
+- JVM JMX configuration
+- authentication
+- authorization
+- TLS
+- network policy
+- Kubernetes RBAC
+- host/container security
+
+Do not expose public unauthenticated remote JMX.
+
+Do not log:
+
+- credentials
+- raw mutation payloads
+- PII
+- full environment
+- sensitive patterns
+- implementation dumps
+
+Tracing identifiers are not authorization proof.
+
+## Diagnostics
+
+Expose bounded operational facts such as:
+
+- mode
+- readiness lifecycle
+- capabilities
+- mutation gate
+- applied policy version
+- state fingerprint
+- last rejection code
+- bounded warning summary
+
+Do not expose raw policy content when it may contain sensitive keys or patterns.
+
+## Testing
+
+Unit/integration tests should cover:
+
+- ObjectName stability
+- Open Type schema
+- conversion
+- invalid shape/type
+- unsupported protocol version
+- read without mutation
+- mutation disabled
+- successful apply
+- rejection preserves state
+- duplicate registration
+- partial registration rollback
+- unregister/shutdown
+
+Run real E2E for:
+
+- application/agent classloader separation
+- JMX wire round trip
+- readiness descriptor
+- agent-only and application modes
+- version mismatch
+- runtime mutation
+
+A skipped required JMX E2E is `INSUFFICIENT_EVIDENCE`.

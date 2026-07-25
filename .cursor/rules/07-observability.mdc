@@ -1,24 +1,5 @@
 ---
-description: Observability guardrails for tracing, metrics, structured logging, runtime diagnostics, sampling, scrubbing, and context propagation.
-globs:
-  - "**/*Tracing*.java"
-  - "**/*Trace*.java"
-  - "**/*Span*.java"
-  - "**/*Sampler*.java"
-  - "**/*Scrubb*.java"
-  - "**/*Metric*.java"
-  - "**/*Meter*.java"
-  - "**/*Observation*.java"
-  - "**/*Health*.java"
-  - "**/*Diagnostic*.java"
-  - "**/*Mdc*.java"
-  - "**/*Telemetry*.java"
-  - "**/*Exporter*.java"
-  - "**/*Processor*.java"
-  - "**/*Propag*.java"
-  - "**/*instrumentation*/**/*.java"
-  - "**/*observability*/**/*.java"
-  - "**/*tracing*/**/*.java"
+description: Apply for observability design or review involving tracing semantics, metrics, structured logging, diagnostics, sampling, scrubbing, propagation, processors, or exporters.
 alwaysApply: false
 ---
 

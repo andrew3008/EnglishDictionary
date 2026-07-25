@@ -1,0 +1,200 @@
+---
+description: Sampling, force-sampling, route normalization, scrubbing, PII protection, runtime-policy mutation, and deterministic verification rules.
+globs:
+  - "**/*Sampler*.java"
+  - "**/*Sampling*.java"
+  - "**/*Scrubb*.java"
+  - "**/*Sanitiz*.java"
+  - "**/*SensitiveData*.java"
+  - "**/sampling/**/*.java"
+  - "**/scrubbing/**/*.java"
+alwaysApply: false
+---
+
+# Sampling and Scrubbing Rules
+
+## Ownership
+
+Sampling and scrubbing policy implementation belongs in `platform-tracing-otel` or the approved Java-agent extension integration.
+
+API may own only intentional policy vocabulary and immutable specifications.
+
+Spring owns typed startup configuration and wiring.
+
+JMX owns transport conversion only.
+
+Do not duplicate policy logic across application and agent planes.
+
+## Sampling Semantics
+
+Define for each sampler:
+
+- decision inputs
+- parent-based behavior
+- ratio bounds
+- route/service precedence
+- deterministic seed/hash behavior
+- fallback
+- diagnostic state
+- runtime mutation behavior
+
+Do not rely on random outcomes in tests.
+
+Ratio must have explicit valid bounds.
+
+Invalid or empty policy must be rejected without changing applied state.
+
+## Parent and Remote Context
+
+Do not break distributed trace continuity by starting a new root solely to satisfy local sampling preference.
+
+Define behavior for:
+
+- valid sampled parent
+- valid unsampled parent
+- invalid remote context
+- absent parent
+- force-sampling request
+- agent-created context
+
+Do not use requestId or correlationId as a sampling decision unless explicitly approved and privacy-reviewed.
+
+## Force Sampling
+
+Force sampling is privileged policy input, not authorization.
+
+It must not bypass:
+
+- header validation
+- mutation/security gates
+- mandatory scrubbing
+- protected exporter path
+- payload/cardinality bounds
+
+Define accepted source, precedence, and diagnostics.
+
+Do not trust an arbitrary inbound header without approved ingress controls.
+
+## Route and Attribute Inputs
+
+Prefer normalized low-cardinality route templates over raw URLs.
+
+Do not sample or label by:
+
+- raw path with identifiers
+- query string
+- requestId
+- traceId
+- user identifier
+- arbitrary baggage value
+
+Define precedence when several route sources are available.
+
+## Scrubbing Coverage
+
+State exact signal coverage:
+
+- span attributes
+- span events
+- resource attributes
+- logs
+- baggage
+- propagation headers
+- exporter payloads
+
+An attribute scrubber does not automatically scrub events, logs, resources, or baggage.
+
+Do not claim complete PII protection without signal-by-signal evidence.
+
+## Mandatory Rules
+
+Mandatory safety rules cannot be disabled or replaced by a custom provider unless the architecture explicitly permits it.
+
+Custom extensions must compose behind the mandatory safety layer.
+
+Force-sampled telemetry must still be scrubbed.
+
+Scrubbing must run before data reaches an untrusted exporter boundary.
+
+## Rule Behavior
+
+For each scrubbing rule define:
+
+- target keys/signals
+- match semantics
+- replacement/drop behavior
+- ordering
+- conflict resolution
+- case sensitivity
+- bounded pattern complexity
+- invalid rule handling
+- diagnostic representation
+
+Avoid catastrophic or unbounded regular expressions.
+
+Compile reusable patterns once under explicit lifecycle ownership.
+
+Do not log the sensitive value that caused a match.
+
+## Runtime Mutation
+
+Sampling/scrubbing mutations follow the control-protocol rule.
+
+Required:
+
+- validate before apply
+- mutation disabled by default
+- atomic combined state where policies are coupled
+- immutable applied snapshot
+- LKG update only after complete success
+- rejection preserves version/source/fingerprint
+- safe diagnostics of active rule counts or fingerprints
+
+Do not expose raw active patterns or sensitive literals through diagnostics.
+
+## Performance
+
+Sampling and scrubbing are hot-path concerns.
+
+Review:
+
+- allocations
+- map copies
+- regex matching
+- string normalization
+- boxing
+- synchronization
+- event iteration
+- duplicate attribute traversal
+
+Do not weaken safety for micro-optimization.
+
+Use benchmarks only for a concrete performance hypothesis and preserve correctness tests.
+
+## Testing
+
+Sampling tests must be deterministic.
+
+Cover:
+
+- ratio boundaries
+- parent sampled/unsampled
+- route precedence
+- invalid route/input
+- force-sampling precedence
+- repeated decision stability
+- disabled/no-op mode
+- runtime mutation rejection and rollback
+
+Scrubbing tests must cover each claimed signal:
+
+- sensitive key removal/replacement
+- event attributes
+- resource attributes where supported
+- force-sampled spans
+- custom provider composition
+- invalid rules
+- no sensitive diagnostics
+- bounded behavior
+
+Run agent/application E2E when parity or classloader behavior is part of the contract.

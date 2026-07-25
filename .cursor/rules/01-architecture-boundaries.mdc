@@ -1,11 +1,16 @@
 ---
 description: Architecture-boundary guardrails for module ownership, dependency direction, public API separation, and classloader-sensitive integration.
 globs:
-  - "**/*.java"
-  - "**/*.gradle"
-  - "**/*.gradle.kts"
   - "**/settings.gradle"
   - "**/settings.gradle.kts"
+  - "**/build.gradle"
+  - "**/build.gradle.kts"
+  - "platform-tracing-api/src/main/java/**/*.java"
+  - "platform-tracing-otel/src/main/java/**/*.java"
+  - "platform-tracing-spring-boot-autoconfigure/src/main/java/**/*.java"
+  - "platform-tracing-autoconfigure-webmvc/src/main/java/**/*.java"
+  - "platform-tracing-autoconfigure-webflux/src/main/java/**/*.java"
+  - "platform-tracing-otel-javaagent-extension/src/main/java/**/*.java"
 alwaysApply: false
 ---
 
