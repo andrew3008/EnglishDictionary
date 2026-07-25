@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "Platform_Traces",
+      "path": "."
+    },
+    {
+      "name": "Platform_Development",
+      "path": "../Platform_Development"
+    },
+    {
+      "name": "doc-portal",
+      "path": "../Platform_DocPortal/doc-portal"
+    }
+  ],
+  "settings": {}
+}

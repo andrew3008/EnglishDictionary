@@ -1,0 +1,31 @@
+---
+description: Enterprise API design standards for platform tracing modules (Platform Development guide).
+globs:
+  - "platform-tracing-api/**/*.java"
+  - "platform-tracing-*/src/main/java/**/*.java"
+  - "platform-tracing-*/src/test/java/**/*.java"
+  - "docs/**/*.md"
+alwaysApply: false
+---
+
+# API Design Standards
+
+Apply when analyzing, designing, reviewing, or documenting:
+
+- public API boundaries and contracts
+- configuration, Spring, dependency, and operational surfaces
+- semantic models, naming, and type roles
+- API/SPI/internal separation
+- compatibility, dependency publication, or starter architecture
+
+Before API or starter changes, follow the Platform Development guide skill:
+
+@../../Platform_Development/Cursor/skills/api-design/SKILL.md
+
+Load only the relevant `references/week-NN-*.md` files named in the skill for the task at hand.
+
+Canonical chapter sources:
+
+- `E:/Platform_Development/API/api-design-week-01-what-is-api.md` through `api-design-week-12-starter-architecture.md`
+
+For starter or auto-configuration work, combine with `@02-spring-starters.mdc` and the repository `spring-boot` skill when present.

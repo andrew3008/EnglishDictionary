@@ -1,0 +1,706 @@
+# Public Contract Inventory — единый machine-readable артефакт Platform Tracing.
+#
+# Методология: Platform Development API Design, Week 01 (Public Contract Inventory).
+# JSON Schema: docs/contracts/public-contract-inventory.schema.json
+# Контрактный тест: platform-tracing-api/src/test/java/.../PublicContractInventoryContractTest.java
+# Semantic Contract Map (Week 02): docs/contracts/semantic-contract-map.yaml
+#
+# Governance: изменение status/guarantees supported-* элементов = PR с архитектурным review.
+# Pre-production: breaking changes допустимы по project-context; inventory фиксирует intended surface.
+
+version: 1
+schema: public-contract-inventory.schema.json
+methodology: platform-development-api-design-week-01
+updatedAt: "2026-07-25"
+semanticContractMap: docs/contracts/semantic-contract-map.yaml
+
+inventories:
+
+  - module: platform-tracing-api
+    artifact: space.br1440:platform-tracing-api
+    phase: pre-production
+    scope:
+      summary: >
+        Публичный Java/wire контракт платформенной трассировки без Spring и без OpenTelemetry
+        compile/runtime зависимостей в consumer classpath.
+      javaBaseline: "21"
+      springBootBaseline: "3.5+ (via platform starters; not a direct module dependency)"
+      runtimeSurfacesExcluded:
+        - configuration-properties
+        - spring-beans
+        - actuator-metrics-defined-in-this-module
+    consumers:
+      - application-developer
+      - platform-module
+      - extension-author
+      - spring-container
+      - sre
+      - build-tooling
+      - transport-adapter
+      - control-plane
+    compileApiDependencies:
+      - jakarta.annotation:jakarta.annotation-api
+      - platform-tracing-bom (dependency management only)
+
+    entries:
+
+      # --- Application entry points -------------------------------------------------
+
+      - id: trace-operations
+        surface: java-api
+        element: space.br1440.platform.tracing.api.TraceOperations
+        elementKind: interface
+        consumers: [application-developer, spring-container]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "traceContext() returns non-null read-only ActiveTraceContextView"
+          - "spans() returns non-null SpanFactory for manual instrumentation"
+          - "Correlation helpers open same-thread CorrelationScope; not a runtime or SDK facade"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/TraceOperations.java
+          - platform-tracing-api/CHANGELOG.md
+        compatibility: additive methods allowed in minor; semantic or rename changes require ADR while pre-production
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/DefaultTraceOperationsTest.java
+          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/TracingAutoConfigurationTest.java
+        disposition: none
+        semanticConceptIds: [trace-operations-facade]
+
+      - id: active-trace-context-view
+        surface: java-api
+        element: space.br1440.platform.tracing.api.context.ActiveTraceContextView
+        elementKind: interface
+        consumers: [application-developer, platform-module]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Live read-only view of current execution trace context"
+          - "Fields exposed as Optional; absence is normal"
+          - "Not a snapshot; values may change with scope transitions"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/ActiveTraceContextView.java
+        compatibility: additive Optional fields only in minor
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/DefaultTraceOperationsTest.java
+        disposition: none
+        semanticConceptIds: [active-trace-context-view]
+
+      - id: request-trace-context-snapshot
+        surface: java-api
+        element: space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot
+        elementKind: record
+        consumers: [application-developer, platform-module]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Immutable point-in-time snapshot for error-handling integration"
+          - "Nullable fields when tracing or MDC unavailable"
+          - "Not a live propagation carrier"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/RequestTraceContextSnapshot.java
+        compatibility: field additions nullable-only; renames are breaking
+        owner: platform-tracing
+        verification:
+          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/errorhandling/RequestTraceContextSnapshotSupplierTest.java
+        disposition: none
+        semanticConceptIds: [request-trace-context-snapshot]
+
+      - id: correlation-scope
+        surface: java-api
+        element: space.br1440.platform.tracing.api.context.CorrelationScope
+        elementKind: interface
+        consumers: [application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Same-thread open/close semantics"
+          - "close() is idempotent"
+          - "Reactive correlation uses WebFlux module APIs, not this type"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/context/CorrelationScope.java
+        compatibility: behavior-preserving only in patch/minor
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/context/CorrelationScopeContractTest.java
+        disposition: none
+        semanticConceptIds: [correlation-scope]
+
+      # --- Manual span creation -----------------------------------------------------
+
+      - id: span-factory
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.SpanFactory
+        elementKind: interface
+        consumers: [application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "operation(name) starts typed OperationSpanBuilder with domain.verb naming convention"
+          - "transport() exposes transport sub-factory"
+          - "fromSpec(SpanSpec) returns SpanExecution"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/SpanFactory.java
+          - platform-tracing-api/CHANGELOG.md
+        compatibility: additive factory methods allowed; renames breaking
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/span/builder/RpcSpanBuilderTest.java
+          - gradle/pa1-published-artifact-consumer/src/main/java/pa1/consumer/SafeBridgeConsumer.java
+        disposition: none
+        semanticConceptIds: [manual-span-factory]
+
+      - id: manual-span-builder-family
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.builder.ManualSpanBuilder
+        elementKind: interface
+        relatedElements:
+          - space.br1440.platform.tracing.api.span.builder.OperationSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.TransportTracing
+          - space.br1440.platform.tracing.api.span.builder.HttpTracing
+          - space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.RpcTracing
+          - space.br1440.platform.tracing.api.span.builder.RpcClientSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.RpcServerSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.KafkaTracing
+          - space.br1440.platform.tracing.api.span.builder.KafkaProducerSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.KafkaConsumerSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder
+          - space.br1440.platform.tracing.api.span.builder.DatabaseSpanBuilder
+        consumers: [application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "child/root/detached/link/fromTraceparent configure SpanRelationshipSpec"
+          - "start() returns SpanHandle; run/call/callChecked manage lifecycle"
+          - "SpanHandle must be closed in the same thread that obtained it"
+          - "No default methods on public builder interfaces (v3 arch rule)"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/builder/ManualSpanBuilder.java
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/builder/arch/V3SpanBuilderApiArchTest.java
+        compatibility: additive builder methods and transport facets allowed with semconv review
+        owner: platform-tracing
+        verification:
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/builder/arch/V3SpanBuilderApiArchTest.java
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/span/builder/KafkaBatchSpanBuilderIntegrationTest.java
+        disposition: none
+        semanticConceptIds: [manual-span-factory, span-handle]
+
+      - id: span-handle
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.spec.SpanHandle
+        elementKind: interface
+        consumers: [application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "AutoCloseable lifecycle handle for started manual span"
+          - "recordException accepts nullable throwable"
+          - "Not thread-portable; close in acquiring thread"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanHandle.java
+        compatibility: behavior-preserving close/record semantics
+        owner: platform-tracing
+        verification:
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/SpanScopeRemovalTest.java
+        disposition: none
+        semanticConceptIds: [span-handle]
+
+      - id: span-spec-model
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.spec.SpanSpec
+        elementKind: interface
+        relatedElements:
+          - space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder
+          - space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue
+          - space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec
+          - space.br1440.platform.tracing.api.span.spec.SpanRelationship
+          - space.br1440.platform.tracing.api.span.spec.SpanSpecReason
+          - space.br1440.platform.tracing.api.span.RemoteSpanLink
+        consumers: [application-developer, platform-module]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "SpanSpec.builder(name) is the supported construction path; impl classes are package-private"
+          - "Built spec is immutable input to SpanFactory.fromSpec"
+          - "Blank name rejected at build time"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanSpec.java
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/DefaultSpanSpecBuilder.java
+        compatibility: additive spec fields require builder + fromSpec path update
+        owner: platform-tracing
+        verification:
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/spec/SpanSpecBuilderListAttributeTest.java
+        disposition: none
+        semanticConceptIds: [span-specification, span-execution]
+
+      - id: span-execution
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.spec.SpanExecution
+        elementKind: interface
+        consumers: [application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Created only via SpanFactory.fromSpec"
+          - "start/run/call/callChecked open and close span around user code"
+          - "Checked exceptions propagate unchanged after record on span"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/SpanExecution.java
+        compatibility: lifecycle semantics breaking if changed
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/DefaultTraceOperationsTest.java
+        disposition: none
+        semanticConceptIds: [span-execution]
+
+      - id: span-category
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.SpanCategory
+        elementKind: enum
+        consumers: [application-developer, platform-module]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Closed enum; value() strings map to platform.trace.type attribute"
+          - "Used by @Traced and span builders"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/SpanCategory.java
+        compatibility: additive enum constants only in minor
+        owner: platform-tracing
+        verification:
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/semconv/DatabaseSpanBuilderSemconvVersionMarkerTest.java
+        disposition: none
+        semanticConceptIds: [span-category]
+
+      - id: span-result
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.SpanResult
+        elementKind: enum
+        consumers: [application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Maps to platform.trace.result via GenericSpanEnrichment"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/SpanResult.java
+        compatibility: closed enum; constant renames breaking
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/span/enrich/SpanEnricherTest.java
+        disposition: none
+        semanticConceptIds: [span-result]
+
+      # --- Declarative instrumentation ----------------------------------------------
+
+      - id: traced-annotation
+        surface: java-api
+        element: space.br1440.platform.tracing.api.annotation.Traced
+        elementKind: annotation
+        relatedElements:
+          - space.br1440.platform.tracing.api.annotation.TracedAttribute
+          - space.br1440.platform.tracing.api.annotation.SuppressAgentInstrumentation
+        consumers: [application-developer, spring-container]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Processed by TracedAspect in spring-boot-autoconfigure, not by api module alone"
+          - "Default span name is method simple name when value empty"
+          - "category maps to platform.trace.type"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/annotation/Traced.java
+        compatibility: additive annotation attributes with defaults
+        owner: platform-tracing
+        verification:
+          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/aspect/TracedAspectTest.java
+        disposition: none
+        semanticConceptIds: [declarative-tracing]
+
+      # --- Context propagation (application) ----------------------------------------
+
+      - id: platform-context-propagation
+        surface: java-api
+        element: space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
+        elementKind: interface
+        consumers: [application-developer, spring-container]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "wrap captures current context on caller thread and restores on worker thread"
+          - "contextAware(Executor/ExecutorService) applies per-task capture at execute time"
+          - "Double-wrap is possible but not idempotent by contract"
+          - "Must not be used for HTTP/Kafka agent paths, Reactor, or @Async with platform TaskDecorator"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/PlatformContextPropagation.java
+        compatibility: behavior-preserving wrapper semantics
+        owner: platform-tracing
+        verification:
+          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MdcPropagationAsyncIntegrationTest.java
+        disposition: none
+        notes: "Javadoc references OpenTelemetry Context conceptually; public signatures remain OTel-free."
+        semanticConceptIds: [context-propagation-wrapper]
+
+      # --- Enrichment ---------------------------------------------------------------
+
+      - id: span-enricher
+        surface: java-api
+        element: space.br1440.platform.tracing.api.span.enrich.SpanEnricher
+        elementKind: interface
+        relatedElements:
+          - space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment
+        consumers: [application-developer, spring-container]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "enrichCurrentSpan accepts only platform-safe GenericSpanEnrichment callbacks"
+          - "Does not expose OTel types or arbitrary attribute keys"
+          - "Replaces removed OTel-based SpanEnrichment without compatibility alias"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/enrich/SpanEnricher.java
+          - platform-tracing-api/CHANGELOG.md
+        compatibility: additive enrichment methods only
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/span/enrich/SpanEnricherTest.java
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/characterization/SpanEnricherV3CharacterizationTest.java
+        disposition: none
+        semanticConceptIds: [span-enrichment]
+
+      # --- SPI: scrubbing -----------------------------------------------------------
+
+      - id: span-attribute-scrubbing-rule
+        surface: spi
+        element: space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule
+        elementKind: interface
+        relatedElements:
+          - space.br1440.platform.tracing.api.spi.ScrubbingDecision
+          - space.br1440.platform.tracing.api.spi.ScrubbingAction
+        consumers: [extension-author, control-plane]
+        status: supported-spi
+        intendedStatus: supported-spi
+        effectiveUsage: match
+        guarantees:
+          - "evaluate(key,value) returns non-null ScrubbingDecision; keep() means no action"
+          - "Rules merged by strictness KEEP<TRUNCATE<HASH<MASK<DROP"
+          - "priority ranges documented; custom rules clamped to 900+"
+          - "critical() terminal decisions only for platform built-ins"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/spi/SpanAttributeScrubbingRule.java
+        compatibility: SPI implementors must tolerate additive default methods
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/scrubbing/ServiceLoaderSpanAttributeScrubbingRuleTest.java
+          - platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/scrubbing/engine/MergeEngineTest.java
+        disposition: none
+        semanticConceptIds: [attribute-scrubbing-rule]
+
+      # --- SPI: propagation control -------------------------------------------------
+
+      - id: outbound-propagation-policy
+        surface: spi
+        element: space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy
+        elementKind: interface
+        relatedElements:
+          - space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision
+          - space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher
+          - space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation
+          - space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders
+          - space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor
+          - space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
+        consumers: [platform-module, transport-adapter, extension-author]
+        status: supported-spi
+        intendedStatus: supported-spi
+        effectiveUsage: match
+        guarantees:
+          - "OutboundPropagationPolicy is thread-safe and stateless; null destination denies all"
+          - "PlatformOutboundPropagation resolves headers from decision + current execution context"
+          - "Transport adapters own policy evaluation; port only materializes allowed headers"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/control/OutboundPropagationPolicy.java
+          - docs/decisions/ADR-outbound-propagation.md
+        compatibility: additive header fields in OutboundPropagationHeaders require transport review
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/propagation/control/DefaultOutboundPropagationPolicyTest.java
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/propagation/control/OutboundPropagationHeadersTest.java
+        disposition: none
+        semanticConceptIds: [outbound-propagation-policy, platform-header-vocabulary]
+
+      # --- SPI: MDC remote service --------------------------------------------------
+
+      - id: remote-service-name-source
+        surface: spi
+        element: space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource
+        elementKind: interface
+        consumers: [extension-author, spring-container]
+        status: supported-spi
+        intendedStatus: supported-spi
+        effectiveUsage: match
+        guarantees:
+          - "resolve() returns Optional upstream service name for MDC platform.remote.service"
+          - "Aggregated by RemoteServiceNameResolver in otel module"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/mdc/RemoteServiceNameSource.java
+        compatibility: additive sources via Spring bean list; ordering must remain documented in autoconfigure
+        owner: platform-tracing
+        verification:
+          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/SemanticLayerAutoConfigurationTest.java
+        disposition: decision-required
+        notes: "Conflict resolution and ordering across multiple beans not fully specified in api module."
+        semanticConceptIds: [remote-service-name-source]
+
+      # --- Semconv validation -------------------------------------------------------
+
+      - id: semconv-validation-mode
+        surface: java-api
+        element: space.br1440.platform.tracing.api.semconv.SemconvValidationMode
+        elementKind: enum
+        relatedElements:
+          - space.br1440.platform.tracing.api.semconv.SemconvViolation
+          - space.br1440.platform.tracing.api.semconv.SemconvViolationException
+          - space.br1440.platform.tracing.api.semconv.annotation.HttpSemconvVersion
+          - space.br1440.platform.tracing.api.semconv.annotation.DatabaseSemconvVersion
+          - space.br1440.platform.tracing.api.semconv.annotation.RpcSemconvVersion
+          - space.br1440.platform.tracing.api.semconv.annotation.KafkaSemconvVersion
+        consumers: [platform-module, build-tooling]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "STRICT fail-fast before span start; intended for CI/test only"
+          - "WARN production default: safe defaults + metrics/logs, span always created"
+          - "DISABLED explicit opt-out without defaults or violation telemetry"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/semconv/SemconvValidationMode.java
+        compatibility: enum constant additions only
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/control/protocol/ValidationModePolicyValidatorTest.java
+        disposition: none
+        semanticConceptIds: [semconv-validation-mode]
+
+      # --- Wire / operational constants ---------------------------------------------
+
+      - id: platform-headers
+        surface: wire
+        element: space.br1440.platform.tracing.api.propagation.PlatformHeaders
+        elementKind: constant
+        consumers: [sre, transport-adapter, application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Stable HTTP header names including X-Trace-On, X-Request-Id, X-Trace-Id"
+          - "X-Correlation-ID is optional boundary bridge; not read/written by default"
+          - "W3C traceparent handled by OTel propagators, not duplicated here"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/PlatformHeaders.java
+        compatibility: header renames are operational breaking changes
+        owner: platform-tracing
+        verification:
+          - platform-tracing-e2e-tests/src/test/java/space/br1440/platform/tracing/e2e/TracingE2ETest.java
+        disposition: none
+        semanticConceptIds: [platform-header-vocabulary, outbound-propagation-policy]
+
+      - id: platform-attributes
+        surface: operations
+        element: space.br1440.platform.tracing.api.attributes.PlatformAttributes
+        elementKind: constant
+        relatedElements:
+          - space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons
+        consumers: [sre, platform-module, application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Stable span attribute key strings aligned with OTel semconv literals without semconv-jar compile dep"
+          - "platform.* keys are platform namespace; high-cardinality keys documented as metric-forbidden"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/attributes/PlatformAttributes.java
+          - docs/semconv-mapping.md
+        compatibility: key renames breaking for dashboards/alerts
+        owner: platform-tracing
+        verification:
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/semconv/policy/CategoryContractsTest.java
+        disposition: none
+
+      - id: tracing-mdc-keys
+        surface: operations
+        element: space.br1440.platform.tracing.api.mdc.TracingMdcKeys
+        elementKind: constant
+        consumers: [sre, build-tooling]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "traceId/spanId/traceFlags aligned with Micrometer tracing bridge conventions"
+          - "requestId and correlationId camelCase keys; MDC is projection not source of truth"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/mdc/TracingMdcKeys.java
+        compatibility: key renames breaking for logging pipelines
+        owner: platform-tracing
+        verification:
+          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MdcPropagationAsyncIntegrationTest.java
+        disposition: none
+
+      # --- Control protocol (wire) --------------------------------------------------
+
+      - id: tracing-control-protocol
+        surface: wire
+        element: space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
+        elementKind: protocol
+        relatedElements:
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation
+        consumers: [control-plane, platform-module]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "TracingControlProtocol.current() is versioned decode facade"
+          - "TracingControlProtocolKeys string values are stable wire field names"
+          - "Decoder/schema classes remain package-private; only decode surface is public"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocol.java
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/GoldenWireContractTest.java
+        compatibility: major version bump for incompatible wire schema
+        owner: platform-tracing
+        verification:
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolTest.java
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/GoldenWireContractTest.java
+        disposition: none
+
+      # --- Utility types ------------------------------------------------------------
+
+      - id: throwing-supplier
+        surface: java-api
+        element: space.br1440.platform.tracing.api.util.ThrowingSupplier
+        elementKind: interface
+        consumers: [application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Functional interface for checked-exception suppliers in span/correlation APIs"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/util/ThrowingSupplier.java
+        compatibility: stable functional interface; abstract method changes breaking
+        owner: platform-tracing
+        verification:
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/arch/ApiModuleTaxonomyArchTest.java
+        disposition: none
+
+      # --- Dependency contract ------------------------------------------------------
+
+      - id: no-otel-compile-surface
+        surface: dependency
+        element: "rule:no-opentelemetry-types-in-platform-tracing-api-main"
+        elementKind: dependency-rule
+        consumers: [build-tooling, application-developer]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "Consumer compiles against platform-tracing-api without opentelemetry-* on compile classpath"
+          - "Only jakarta.annotation-api published as explicit api dependency besides BOM"
+        evidence:
+          - platform-tracing-api/build.gradle
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/arch/ApiModuleTaxonomyArchTest.java
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/span/builder/arch/V3SpanBuilderApiArchTest.java
+        compatibility: adding OTel types to public signatures is breaking ABI policy
+        owner: platform-tracing
+        verification:
+          - gradle/pa1-published-artifact-consumer/src/main/java/pa1/consumer/SafeBridgeConsumer.java
+        disposition: none
+
+      - id: package-private-implementations
+        surface: java-api
+        element: "rule:implementation-types-package-private-in-api-module"
+        elementKind: dependency-rule
+        consumers: [build-tooling]
+        status: supported-api
+        intendedStatus: supported-api
+        effectiveUsage: match
+        guarantees:
+          - "DefaultSpanSpecBuilder, SpanSpecImpl, ImmutableSpanRelationshipSpec, protocol decoder/schema are not public API"
+          - "Public factories on interfaces are the supported construction path"
+        evidence:
+          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/DefaultSpanSpecBuilder.java
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/arch/ApiModuleTaxonomyArchTest.java
+        compatibility: promoting impl types to public requires explicit ADR
+        owner: platform-tracing
+        verification:
+          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/arch/ApiModuleTaxonomyArchTest.java
+        disposition: none
+
+    contradictions:
+
+      - id: otel-javadoc-without-otel-abi
+        summary: "PlatformContextPropagation and RequestTraceContextSnapshot Javadoc mention OpenTelemetry while signatures stay OTel-free."
+        risk: low
+        disposition: none
+        relatedEntryIds: [platform-context-propagation, request-trace-context-snapshot]
+
+      - id: changelog-otel-context-dep-drift
+        summary: "CHANGELOG mentions opentelemetry-context compile dependency; current build.gradle has no opentelemetry dependency."
+        risk: low
+        disposition: restrict
+        relatedEntryIds: [no-otel-compile-surface]
+
+    openDecisions:
+
+      - id: correlation-header-bridge
+        question: "Promote PlatformHeaders.X_CORRELATION_ID to supported inbound/outbound contract or keep experimental until RG-IDENTITY-TRUST?"
+        owner: platform-tracing
+        relatedEntryIds: [platform-headers]
+
+      - id: remote-service-source-ordering
+        question: "Document aggregation/ordering/conflict policy for multiple RemoteServiceNameSource beans."
+        owner: platform-tracing
+        relatedEntryIds: [remote-service-name-source]
+
+      - id: traced-vs-observed-canonical
+        question: "Enforce single canonical declarative annotation (@Traced vs @Observed) per service via docs only or architecture gate?"
+        owner: platform-tracing
+        relatedEntryIds: [traced-annotation]
+
+    crossSurfaceReferences:
+
+      - entryId: trace-operations
+        externalModule: platform-tracing-spring-boot-autoconfigure
+        externalElement: "spring bean name traceOperations"
+        surface: spring
+        notes: "Bean name changed from platformTracing per CHANGELOG; not defined in api module."
+
+      - entryId: traced-annotation
+        externalModule: platform-tracing-spring-boot-autoconfigure
+        externalElement: space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect
+        surface: spring
+        notes: "Annotation has no effect without Spring AOP autoconfigure."
+
+      - entryId: semconv-validation-mode
+        externalModule: platform-tracing-spring-boot-autoconfigure
+        externalElement: platform.tracing.semconv.validation.mode
+        surface: configuration
+        notes: "Property binding lives outside api module."

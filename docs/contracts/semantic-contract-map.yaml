@@ -1,0 +1,644 @@
+# Semantic Contract Map — machine-readable conceptual model Platform Tracing.
+#
+# Методология: Platform Development API Design, Week 02 (Semantic Contract Map).
+# JSON Schema: docs/contracts/semantic-contract-map.schema.json
+# Связанный inventory: docs/contracts/public-contract-inventory.yaml
+# Контрактный тест: platform-tracing-api/.../SemanticContractMapContractTest.java
+#
+# Назначение: связать опубликованные поверхности Week 01 в единую модель понятий.
+
+version: 1
+schema: semantic-contract-map.schema.json
+methodology: platform-development-api-design-week-02
+updatedAt: "2026-07-25"
+publicContractInventory: docs/contracts/public-contract-inventory.yaml
+
+maps:
+
+  - module: platform-tracing-api
+    contextStatement: >
+      Bounded context «platform tracing application contract»: дать Spring Boot-сервисам
+      стабильный Java/wire язык для корреляции, ручных spans, declarative tracing,
+      безопасного async propagation и controlled extension points — без экспорта SDK/runtime
+      деталей в compile classpath приложения.
+    excludedResponsibilities:
+      - OpenTelemetry SDK/runtime ownership
+      - Spring bean wiring and ConfigurationProperties
+      - Exporter/sampler implementation
+      - Auto-instrumentation bytecode
+      - Metrics/health endpoint definitions
+
+    glossary:
+
+      - term: Trace operations
+        definition: Прикладная точка входа для read-only context и manual spans в текущем запросе.
+        doesNotMean:
+          - tracing runtime aggregate
+          - SDK TracerProvider
+          - Spring ApplicationContext
+        synonymsInCode:
+          - TraceOperations
+          - PlatformTracing (removed)
+
+      - term: Active trace context view
+        definition: Live read-only наблюдение за текущим trace/span context исполнения.
+        doesNotMean:
+          - immutable snapshot
+          - mutable propagation carrier
+          - request DTO
+        synonymsInCode:
+          - ActiveTraceContextView
+          - TraceContextView (removed)
+
+      - term: Request trace context snapshot
+        definition: Immutable снимок request-level идентификаторов для error-handling.
+        doesNotMean:
+          - live active context
+          - propagation scope
+          - error DTO itself
+        synonymsInCode:
+          - RequestTraceContextSnapshot
+          - TracingRequestContext (removed)
+
+      - term: Span specification
+        definition: Immutable описание будущего span до start.
+        doesNotMean:
+          - active span handle
+          - builder after start
+          - exported span
+        synonymsInCode:
+          - SpanSpec
+          - SpecifiedSpan (removed)
+
+      - term: Span handle
+        definition: Same-thread lifecycle handle начатого manual span.
+        doesNotMean:
+          - span specification
+          - cross-thread propagation token
+          - SDK Span reference
+        synonymsInCode:
+          - SpanHandle
+          - SpanExecution (fromSpec path uses separate type)
+
+      - term: Scrubbing rule
+        definition: Policy решения над одним attribute key/value до export.
+        doesNotMean:
+          - exporter filter
+          - tail sampling
+          - span processor orchestrator
+        synonymsInCode:
+          - SpanAttributeScrubbingRule
+
+    concepts:
+
+      - id: trace-operations-facade
+        canonicalTerm: Trace operations
+        definition: Прикладной фасад доступа к trace context и manual span factory в текущем execution scope.
+        role: operation
+        invariants:
+          - Не владеет tracing runtime и не конфигурирует pipeline
+          - traceContext() и spans() всегда non-null
+          - Correlation helpers ограничены same-thread scope
+        lifecycle: stateless facade; CorrelationScope — отдельный lifecycle object
+        javaExpressions:
+          - space.br1440.platform.tracing.api.TraceOperations
+          - TraceOperations.traceContext()
+          - TraceOperations.spans()
+          - TraceOperations.openCorrelationScope(String)
+        configurationExpressions: []
+        springExpressions:
+          - "bean TraceOperations (name: traceOperations) in platform-tracing-spring-boot-autoconfigure"
+        operationalExpressions: []
+        exclusions:
+          - не runtime aggregate
+          - не SPI для замены всего pipeline
+          - не configuration properties object
+        evolutionRule: additive methods only in minor; rename requires migration while pre-production
+        inventoryEntryIds: [trace-operations]
+
+      - id: active-trace-context-view
+        canonicalTerm: Active trace context view
+        definition: Live read-only view текущего active trace/span context для корреляции и logging.
+        role: view
+        invariants:
+          - Read-only; mutation через view запрещена
+          - Optional fields означают absence, не error
+          - Значения могут меняться при смене scope
+        lifecycle: observation only; no open/close on view itself
+        javaExpressions:
+          - space.br1440.platform.tracing.api.context.ActiveTraceContextView
+          - ActiveTraceContextView.traceId()
+          - ActiveTraceContextView.spanId()
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions:
+          - TracingMdcKeys.TRACE_ID
+          - TracingMdcKeys.SPAN_ID
+          - PlatformAttributes.PLATFORM_REQUEST_ID
+        exclusions:
+          - not snapshot
+          - not ownership of propagation context
+          - not arbitrary attribute bag
+        evolutionRule: additive Optional fields only
+        inventoryEntryIds: [active-trace-context-view]
+
+      - id: request-trace-context-snapshot
+        canonicalTerm: Request trace context snapshot
+        definition: Immutable point-in-time copy request-level trace identifiers для error-handling bridge.
+        role: value
+        invariants:
+          - Fixed at capture time
+          - Nullable components reflect tracing/MDC degradation
+          - Not updated when active context changes
+        lifecycle: created → consumed immutably; no transitions
+        javaExpressions:
+          - space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot
+        configurationExpressions: []
+        springExpressions:
+          - RequestTraceContextSnapshotSupplier bean in autoconfigure
+        operationalExpressions: []
+        exclusions:
+          - not live view
+          - not RequestContext from web-error-model
+          - not propagation carrier
+        evolutionRule: additive nullable fields only; renames breaking
+        inventoryEntryIds: [request-trace-context-snapshot]
+
+      - id: correlation-scope
+        canonicalTerm: Correlation scope
+        definition: Same-thread scope временного business/technical correlation id.
+        role: entity
+        invariants:
+          - Must close in opening thread
+          - close() idempotent
+          - Does not replace distributed trace propagation
+        lifecycle: OPEN → CLOSED (idempotent close)
+        javaExpressions:
+          - space.br1440.platform.tracing.api.context.CorrelationScope
+          - TraceOperations.openCorrelationScope(String)
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions:
+          - TracingMdcKeys.CORRELATION_ID
+          - PlatformAttributes.PLATFORM_CORRELATION_ID
+        exclusions:
+          - not reactive scope (WebFlux module owns reactive path)
+          - not span handle
+        evolutionRule: behavior-preserving only
+        inventoryEntryIds: [correlation-scope, trace-operations]
+
+      - id: manual-span-factory
+        canonicalTerm: Manual span factory
+        definition: Factory typed manual spans для application и transport instrumentation.
+        role: operation
+        invariants:
+          - operation(name) uses domain.verb naming convention
+          - transport() isolates HTTP/RPC/Kafka/DB facets
+          - fromSpec bridges declarative SpanSpec into execution
+        lifecycle: stateless factory; lifecycle delegated to SpanHandle/SpanExecution
+        javaExpressions:
+          - space.br1440.platform.tracing.api.span.SpanFactory
+          - SpanFactory.operation(String)
+          - SpanFactory.transport()
+          - SpanFactory.fromSpec(SpanSpec)
+        configurationExpressions: []
+        springExpressions:
+          - provided via TraceOperations.spans()
+        operationalExpressions:
+          - PlatformAttributes.PLATFORM_TYPE via SpanCategory
+        exclusions:
+          - not automatic instrumentation entry
+          - not global tracer builder
+          - not SDK TracerProviderCustomizer
+        evolutionRule: additive factory methods with semconv review
+        inventoryEntryIds: [span-factory, manual-span-builder-family]
+
+      - id: span-specification
+        canonicalTerm: Span specification
+        definition: Immutable value описывающий будущий span до start, включая topology и attributes.
+        role: value
+        invariants:
+          - Validated at build; blank name rejected
+          - Implementation classes package-private
+          - Built spec immutable
+        lifecycle: BUILDING (builder) → BUILT (immutable value)
+        javaExpressions:
+          - space.br1440.platform.tracing.api.span.spec.SpanSpec
+          - SpanSpec.builder(String)
+          - space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder
+          - space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions: []
+        exclusions:
+          - not started span
+          - not active handle
+          - not YAML binding model
+        evolutionRule: additive spec fields require builder + fromSpec path update
+        inventoryEntryIds: [span-spec-model]
+
+      - id: span-handle
+        canonicalTerm: Span handle
+        definition: Same-thread lifecycle handle активированного manual span.
+        role: entity
+        invariants:
+          - Obtained via ManualSpanBuilder.start() or SpanExecution.start()
+          - close() in acquiring thread
+          - recordException before close on failure paths
+        lifecycle: OPEN → CLOSED
+        javaExpressions:
+          - space.br1440.platform.tracing.api.span.spec.SpanHandle
+          - ManualSpanBuilder.start()
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions:
+          - PlatformAttributes.PLATFORM_RESULT (on completion paths)
+        exclusions:
+          - not cross-thread portable
+          - not span spec
+          - not auto-instrumented span wrapper for apps
+        evolutionRule: lifecycle semantics breaking if changed
+        inventoryEntryIds: [span-handle, manual-span-builder-family]
+
+      - id: span-execution
+        canonicalTerm: Span execution
+        definition: Entry point запуска span из immutable SpanSpec через run/call wrappers.
+        role: operation
+        invariants:
+          - Created only via SpanFactory.fromSpec
+          - Ensures span closes around user code
+          - Checked exceptions propagate unchanged
+        lifecycle: start → user code → close (via handle or wrapper)
+        javaExpressions:
+          - space.br1440.platform.tracing.api.span.spec.SpanExecution
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions: []
+        exclusions:
+          - not reusable builder
+          - not long-lived runtime object
+        evolutionRule: additive wrapper methods only
+        inventoryEntryIds: [span-execution, span-spec-model]
+
+      - id: span-category
+        canonicalTerm: Span category
+        definition: Closed vocabulary категории span для platform.type attribute и @Traced.
+        role: value
+        invariants:
+          - Enum constants stable within minor releases
+          - value() string is operational contract
+        lifecycle: none
+        javaExpressions:
+          - space.br1440.platform.tracing.api.span.SpanCategory
+        configurationExpressions: []
+        springExpressions:
+          - "@Traced(category = ...)"
+        operationalExpressions:
+          - PlatformAttributes.PLATFORM_TYPE
+        exclusions:
+          - not OpenTelemetry span kind duplicate
+          - not free-form string in @Traced
+        evolutionRule: additive enum constants only in minor
+        inventoryEntryIds: [span-category]
+
+      - id: context-propagation-wrapper
+        canonicalTerm: Context propagation wrapper
+        definition: Explicit wrap/capture текущего execution context для custom executors and CompletableFuture.
+        role: operation
+        invariants:
+          - Capture on wrap/execute caller thread
+          - Restore on worker; prior worker context restored after task
+          - Double-wrap not guaranteed idempotent
+          - Forbidden for agent-instrumented HTTP/Kafka/Reactor/@Async TaskDecorator paths
+        lifecycle: per-task capture/restore; no global state in API type
+        javaExpressions:
+          - space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
+          - PlatformContextPropagation.wrap(Runnable)
+          - PlatformContextPropagation.contextAware(Executor)
+        configurationExpressions:
+          - platform.tracing.thread-pool-task-executor.enabled (external module; alternative path)
+        springExpressions:
+          - PlatformContextPropagation bean when enabled
+        operationalExpressions: []
+        exclusions:
+          - not W3C header propagation API
+          - not Reactor Context API
+          - not OpenTelemetry Context type in signature
+        evolutionRule: preserve capture/restore semantics; document new forbidden paths explicitly
+        inventoryEntryIds: [platform-context-propagation]
+
+      - id: span-enrichment
+        canonicalTerm: Span enrichment
+        definition: Platform-safe добавление ограниченного набора attributes к current span.
+        role: operation
+        invariants:
+          - Only GenericSpanEnrichment callback surface
+          - No arbitrary attribute keys from apps
+          - Works on agent-created spans without OTel types in API
+        lifecycle: single callback invocation per enrichCurrentSpan call
+        javaExpressions:
+          - space.br1440.platform.tracing.api.span.enrich.SpanEnricher
+          - space.br1440.platform.tracing.api.span.enrich.GenericSpanEnrichment
+        configurationExpressions: []
+        springExpressions:
+          - SpanEnricher bean in SemanticLayerAutoConfiguration
+        operationalExpressions:
+          - PlatformAttributes.PLATFORM_REQUEST_ID
+          - PlatformAttributes.PLATFORM_CORRELATION_ID
+          - PlatformAttributes.PLATFORM_TRACED_METHOD
+        exclusions:
+          - not full SpanProcessor
+          - not OTel Span enrichment with AttributeKey
+          - not mutation of foreign spans by reference
+        evolutionRule: additive enrichment methods only
+        inventoryEntryIds: [span-enricher]
+
+      - id: attribute-scrubbing-rule
+        canonicalTerm: Attribute scrubbing rule
+        definition: SPI policy решения KEEP/TRUNCATE/HASH/MASK/DROP для одного attribute перед export.
+        role: policy
+        invariants:
+          - Does not export spans or mutate pipeline topology
+          - evaluate returns decision; keep() means no-op
+          - Merge by strictness ordering across rules
+          - Custom priority clamped to 900+
+        lifecycle: stateless rule; reusable across spans
+        javaExpressions:
+          - space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule
+          - space.br1440.platform.tracing.api.spi.ScrubbingDecision
+        configurationExpressions:
+          - TracingControlProtocolKeys.SCRUBBING_*
+        springExpressions:
+          - ServiceLoader + optional Spring-assembled rule lists in agent extension
+        operationalExpressions:
+          - scrubbing rule name in metrics/logs on fire
+        exclusions:
+          - not tail sampling
+          - not exporter filter
+          - not span enricher
+        evolutionRule: SPI default methods additive; new ScrubbingAction values require major review
+        inventoryEntryIds: [span-attribute-scrubbing-rule]
+
+      - id: outbound-propagation-policy
+        canonicalTerm: Outbound propagation policy
+        definition: Policy разрешения platform headers для конкретного destination hostname/topic.
+        role: policy
+        invariants:
+          - Thread-safe and stateless implementation expected
+          - null destination → deny all
+          - Separate port materializes headers from decision + current context
+        lifecycle: stateless decision per call
+        javaExpressions:
+          - space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy
+          - space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation
+          - space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders
+        configurationExpressions:
+          - platform.tracing.propagation.outbound.* (autoconfigure module)
+        springExpressions:
+          - beans wired in PlatformOutboundPropagationAutoConfiguration
+        operationalExpressions:
+          - PlatformHeaders.X_TRACE_ON
+          - PlatformHeaders.X_TRACE_ID
+          - PlatformHeaders.X_REQUEST_ID
+        exclusions:
+          - not W3C traceparent injector (agent-owned)
+          - not inbound servlet filter contract
+        evolutionRule: additive header fields require transport adapter review
+        inventoryEntryIds: [outbound-propagation-policy, platform-headers]
+
+      - id: platform-header-vocabulary
+        canonicalTerm: Platform header
+        definition: Stable platform-specific HTTP header names for trace control and correlation.
+        role: value
+        invariants:
+          - Constant string names are wire contract
+          - X-Trace-Id only when valid span context exists
+          - X-Correlation-ID optional bridge; not default read/write
+        lifecycle: n/a (symbolic constants)
+        javaExpressions:
+          - space.br1440.platform.tracing.api.propagation.PlatformHeaders
+        configurationExpressions:
+          - platform.tracing.sampling.force-record-header-values
+        springExpressions:
+          - response header filters in webmvc/webflux autoconfigure
+        operationalExpressions:
+          - gateway/runbook header names
+        exclusions:
+          - not traceparent/tracestate duplicates
+          - not arbitrary custom header registry
+        evolutionRule: renames are operational breaking changes
+        inventoryEntryIds: [platform-headers]
+
+      - id: span-attribute-vocabulary
+        canonicalTerm: Platform span attribute
+        definition: Stable span attribute key vocabulary aligned with platform and OTel semconv literals.
+        role: value
+        invariants:
+          - String constants only; no semconv-jar compile dependency
+          - High-cardinality keys documented as metric-forbidden
+        lifecycle: n/a
+        javaExpressions:
+          - space.br1440.platform.tracing.api.attributes.PlatformAttributes
+          - space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions:
+          - dashboards/alerts on platform.* and selected semconv keys
+        exclusions:
+          - not dynamic attribute registry
+          - not OpenTelemetry Attributes builder in API
+        evolutionRule: key renames breaking; additive keys with semconv mapping update
+        inventoryEntryIds: [platform-attributes]
+
+      - id: tracing-mdc-projection
+        canonicalTerm: Tracing MDC projection
+        definition: Canonical MDC key names projecting trace/request identity into logs.
+        role: value
+        invariants:
+          - MDC is projection, not source of truth
+          - traceId/spanId aligned with Micrometer bridge naming
+        lifecycle: n/a
+        javaExpressions:
+          - space.br1440.platform.tracing.api.mdc.TracingMdcKeys
+        configurationExpressions: []
+        springExpressions:
+          - MDC population in otel/autoconfigure modules
+        operationalExpressions:
+          - logback patterns %X{traceId} %X{spanId}
+        exclusions:
+          - not logging configuration itself
+          - not metrics tags for high-cardinality ids
+        evolutionRule: key renames breaking for logging pipelines
+        inventoryEntryIds: [tracing-mdc-keys]
+
+      - id: tracing-control-protocol
+        canonicalTerm: Tracing control protocol
+        definition: Versioned wire map protocol for runtime control of sampling/scrubbing/validation/export flags.
+        role: value
+        invariants:
+          - TracingControlProtocol.current() is sole public decode entry
+          - Keys in TracingControlProtocolKeys are stable wire names
+          - Decoder/schema remain package-private
+        lifecycle: decode-only request; major version for incompatible schema
+        javaExpressions:
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
+          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions:
+          - JMX/actuator control plane in agent/autoconfigure modules
+        exclusions:
+          - not public Java configuration object
+          - not ad-hoc JSON schema without version field
+        evolutionRule: incompatible wire changes require protocol major bump
+        inventoryEntryIds: [tracing-control-protocol]
+
+      - id: semconv-validation-mode
+        canonicalTerm: Semconv validation mode
+        definition: Policy режима проверки platform semantic contract при построении spans.
+        role: policy
+        invariants:
+          - STRICT fail-fast before span start; CI/test oriented
+          - WARN always creates span with safe defaults + telemetry
+          - DISABLED explicit opt-out without defaults/violation metrics
+        lifecycle: configured once per runtime; not per-span mutable via API module
+        javaExpressions:
+          - space.br1440.platform.tracing.api.semconv.SemconvValidationMode
+          - space.br1440.platform.tracing.api.semconv.SemconvViolationException
+        configurationExpressions:
+          - platform.tracing.semconv.validation.mode
+        springExpressions:
+          - bound in SemanticLayerAutoConfiguration
+        operationalExpressions:
+          - semconv violation metrics/logs in WARN mode
+        exclusions:
+          - not general exception hierarchy for app errors
+          - not OTel SDK validation switch
+        evolutionRule: additive enum constants only
+        inventoryEntryIds: [semconv-validation-mode]
+
+      - id: declarative-tracing
+        canonicalTerm: Declarative tracing
+        definition: Annotation-driven automatic span creation around Spring-managed methods via platform @Traced.
+        role: operation
+        invariants:
+          - Requires TracedAspect in spring-boot-autoconfigure; annotation alone has no effect
+          - Default span name is method simple name when value empty
+          - category attribute maps to platform.trace.type via SpanCategory
+        lifecycle: per method invocation; span opened before method, closed after (including exceptional paths via aspect)
+        javaExpressions:
+          - space.br1440.platform.tracing.api.annotation.Traced
+          - space.br1440.platform.tracing.api.annotation.TracedAttribute
+          - space.br1440.platform.tracing.api.annotation.SuppressAgentInstrumentation
+        configurationExpressions: []
+        springExpressions:
+          - space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect
+          - TracingAopAutoConfiguration
+        operationalExpressions:
+          - PlatformAttributes.PLATFORM_TRACED_METHOD
+        exclusions:
+          - not replacement for agent auto-instrumentation on supported transports
+          - not Micrometer @Observed (dual story is guidance-only)
+          - not manual SpanFactory path
+        evolutionRule: additive annotation attributes with defaults only
+        inventoryEntryIds: [traced-annotation]
+
+      - id: span-result
+        canonicalTerm: Span result
+        definition: Closed vocabulary исхода операции для platform.trace.result attribute.
+        role: result
+        invariants:
+          - Enum constants map 1:1 to stable string values
+          - Applied via GenericSpanEnrichment on completion paths
+        lifecycle: assigned at span completion; no mid-span mutation contract in API
+        javaExpressions:
+          - space.br1440.platform.tracing.api.span.SpanResult
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions:
+          - PlatformAttributes.PLATFORM_RESULT
+        exclusions:
+          - not HTTP status code duplicate
+          - not arbitrary string outcome bag
+          - not error classification hierarchy
+        evolutionRule: additive enum constants only in minor
+        inventoryEntryIds: [span-result]
+
+      - id: remote-service-name-source
+        canonicalTerm: Remote service name source
+        definition: SPI policy resolving upstream service name for MDC platform.remote.service projection.
+        role: policy
+        invariants:
+          - resolve() returns Optional; absence is normal
+          - Stateless implementation expected
+          - Aggregated by RemoteServiceNameResolver in otel module; ordering across beans not fully specified in API
+        lifecycle: stateless per resolve() call
+        javaExpressions:
+          - space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource
+        configurationExpressions: []
+        springExpressions:
+          - bean list assembled in SemanticLayerAutoConfiguration
+        operationalExpressions:
+          - TracingMdcKeys.REMOTE_SERVICE
+          - PlatformAttributes.PLATFORM_REMOTE_SERVICE
+        exclusions:
+          - not service discovery client
+          - not outbound propagation policy
+          - not span attribute enricher
+        evolutionRule: additive SPI methods only; ordering policy changes require autoconfigure ADR
+        inventoryEntryIds: [remote-service-name-source]
+
+      - id: api-compile-boundary
+        canonicalTerm: API compile boundary
+        definition: Architectural policy keeping platform-tracing-api OTel-free and hiding implementation types from public ABI.
+        role: policy
+        invariants:
+          - No opentelemetry-* types in public signatures of main source set
+          - DefaultSpanSpecBuilder, SpanSpecImpl, protocol decoder/schema remain package-private
+          - Public factories on interfaces are sole supported construction path
+        lifecycle: enforced at build time via ArchUnit and consumer compile tests
+        javaExpressions:
+          - "rule:no-opentelemetry-types-in-platform-tracing-api-main"
+          - "rule:implementation-types-package-private-in-api-module"
+        configurationExpressions: []
+        springExpressions: []
+        operationalExpressions:
+          - gradle/pa1-published-artifact-consumer compile gate
+        exclusions:
+          - not runtime SDK ownership policy (otel module)
+          - not Spring bean visibility rule
+          - not Javadoc conceptual OTel references ban
+        evolutionRule: promoting impl types or OTel signatures to public requires explicit ADR
+        inventoryEntryIds: [no-otel-compile-surface, package-private-implementations]
+
+    translationGaps:
+
+      - conceptId: trace-operations-facade
+        surface: spring
+        summary: "Java name TraceOperations vs historical bean name platformTracing (removed) documented only in CHANGELOG."
+        disposition: document
+
+      - conceptId: platform-header-vocabulary
+        surface: configuration
+        summary: "X-Correlation-ID concept exists as constant but default read/write disabled pending RG-IDENTITY-TRUST."
+        disposition: decision-required
+
+      - conceptId: declarative-tracing
+        surface: spring
+        summary: "@Traced (platform) vs @Observed (Micrometer) dual annotation story is guidance-only, not enforced."
+        disposition: decision-required
+
+      - conceptId: remote-service-name-source
+        surface: spring
+        summary: "Aggregation/ordering/conflict policy for multiple RemoteServiceNameSource beans not fully specified in API module."
+        disposition: decision-required
+
+      - conceptId: attribute-scrubbing-rule
+        surface: operations
+        summary: "Rule priority ranges referenced in SPI Javadoc with partial enforcement noted as PR-3 hardening."
+        disposition: align
+
+      - conceptId: context-propagation-wrapper
+        surface: configuration
+        summary: "Alternative @Async path uses property platform.tracing.thread-pool-task-executor.enabled outside api module."
+        disposition: document

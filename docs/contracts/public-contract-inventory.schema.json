@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform.tracing/contracts/public-contract-inventory.schema.json",
+  "title": "Public Contract Inventory",
+  "description": "Machine-readable registry of supported and effective contract surfaces for Platform Tracing modules.",
+  "type": "object",
+  "required": [
+    "version",
+    "methodology",
+    "updatedAt",
+    "inventories"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "schema": {
+      "type": "string"
+    },
+    "methodology": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "semanticContractMap": {
+      "type": "string"
+    },
+    "inventories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/moduleInventory"
+      }
+    }
+  },
+  "$defs": {
+    "consumer": {
+      "type": "string",
+      "enum": [
+        "application-developer",
+        "platform-module",
+        "extension-author",
+        "spring-container",
+        "sre",
+        "build-tooling",
+        "transport-adapter",
+        "control-plane"
+      ]
+    },
+    "surface": {
+      "type": "string",
+      "enum": [
+        "java-api",
+        "spi",
+        "wire",
+        "operations",
+        "dependency",
+        "configuration",
+        "spring",
+        "evolution"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "supported-api",
+        "supported-spi",
+        "experimental",
+        "incidental",
+        "internal",
+        "deprecated"
+      ]
+    },
+    "effectiveUsage": {
+      "type": "string",
+      "enum": [
+        "match",
+        "wider",
+        "narrower",
+        "unknown"
+      ]
+    },
+    "disposition": {
+      "type": "string",
+      "enum": [
+        "none",
+        "promote",
+        "replace",
+        "restrict",
+        "deprecate",
+        "remove",
+        "decision-required"
+      ]
+    },
+    "elementKind": {
+      "type": "string",
+      "enum": [
+        "interface",
+        "class",
+        "record",
+        "enum",
+        "annotation",
+        "constant",
+        "protocol",
+        "dependency-rule",
+        "bean-name",
+        "property"
+      ]
+    },
+    "contractEntry": {
+      "type": "object",
+      "required": [
+        "id",
+        "surface",
+        "element",
+        "elementKind",
+        "consumers",
+        "status",
+        "intendedStatus",
+        "effectiveUsage",
+        "guarantees",
+        "evidence",
+        "compatibility",
+        "owner",
+        "verification",
+        "disposition"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface"
+        },
+        "element": {
+          "type": "string",
+          "minLength": 1
+        },
+        "elementKind": {
+          "$ref": "#/$defs/elementKind"
+        },
+        "relatedElements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "consumers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/consumer"
+          }
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "intendedStatus": {
+          "$ref": "#/$defs/status"
+        },
+        "effectiveUsage": {
+          "$ref": "#/$defs/effectiveUsage"
+        },
+        "guarantees": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "compatibility": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verification": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "disposition": {
+          "$ref": "#/$defs/disposition"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "semanticConceptIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        }
+      }
+    },
+    "contradiction": {
+      "type": "object",
+      "required": [
+        "id",
+        "summary",
+        "risk",
+        "disposition"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "risk": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "disposition": {
+          "$ref": "#/$defs/disposition"
+        },
+        "relatedEntryIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "openDecision": {
+      "type": "object",
+      "required": [
+        "id",
+        "question",
+        "owner"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "relatedEntryIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "moduleInventory": {
+      "type": "object",
+      "required": [
+        "module",
+        "artifact",
+        "phase",
+        "scope",
+        "consumers",
+        "entries"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "artifact": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "pre-production",
+            "production"
+          ]
+        },
+        "scope": {
+          "type": "object",
+          "required": [
+            "summary",
+            "javaBaseline",
+            "springBootBaseline",
+            "runtimeSurfacesExcluded"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "javaBaseline": {
+              "type": "string"
+            },
+            "springBootBaseline": {
+              "type": "string"
+            },
+            "runtimeSurfacesExcluded": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "consumers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/consumer"
+          }
+        },
+        "compileApiDependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/contractEntry"
+          }
+        },
+        "contradictions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contradiction"
+          }
+        },
+        "openDecisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/openDecision"
+          }
+        },
+        "crossSurfaceReferences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "entryId",
+              "externalModule",
+              "externalElement",
+              "surface"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "entryId": {
+                "type": "string"
+              },
+              "externalModule": {
+                "type": "string"
+              },
+              "externalElement": {
+                "type": "string"
+              },
+              "surface": {
+                "$ref": "#/$defs/surface"
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

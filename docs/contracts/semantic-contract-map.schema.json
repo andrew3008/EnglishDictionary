@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform.tracing/contracts/semantic-contract-map.schema.json",
+  "title": "Semantic Contract Map",
+  "description": "Machine-readable conceptual model linking published contract surfaces.",
+  "type": "object",
+  "required": [
+    "version",
+    "methodology",
+    "updatedAt",
+    "publicContractInventory",
+    "maps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "schema": {
+      "type": "string"
+    },
+    "methodology": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "publicContractInventory": {
+      "type": "string"
+    },
+    "maps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/moduleMap"
+      }
+    }
+  },
+  "$defs": {
+    "conceptRole": {
+      "type": "string",
+      "enum": [
+        "entity",
+        "value",
+        "operation",
+        "policy",
+        "state",
+        "result",
+        "view"
+      ]
+    },
+    "glossaryEntry": {
+      "type": "object",
+      "required": [
+        "term",
+        "definition",
+        "doesNotMean"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "type": "string"
+        },
+        "definition": {
+          "type": "string"
+        },
+        "doesNotMean": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "synonymsInCode": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "concept": {
+      "type": "object",
+      "required": [
+        "id",
+        "canonicalTerm",
+        "definition",
+        "role",
+        "invariants",
+        "lifecycle",
+        "javaExpressions",
+        "configurationExpressions",
+        "springExpressions",
+        "operationalExpressions",
+        "exclusions",
+        "evolutionRule",
+        "inventoryEntryIds"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "canonicalTerm": {
+          "type": "string"
+        },
+        "definition": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/conceptRole"
+        },
+        "invariants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "lifecycle": {
+          "type": "string"
+        },
+        "javaExpressions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "configurationExpressions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "springExpressions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "operationalExpressions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclusions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "evolutionRule": {
+          "type": "string"
+        },
+        "inventoryEntryIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "translationGap": {
+      "type": "object",
+      "required": [
+        "conceptId",
+        "surface",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "conceptId": {
+          "type": "string"
+        },
+        "surface": {
+          "type": "string",
+          "enum": [
+            "configuration",
+            "spring",
+            "operations"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "document",
+            "align",
+            "decision-required",
+            "none"
+          ]
+        }
+      }
+    },
+    "moduleMap": {
+      "type": "object",
+      "required": [
+        "module",
+        "contextStatement",
+        "glossary",
+        "concepts"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "contextStatement": {
+          "type": "string"
+        },
+        "excludedResponsibilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "glossary": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/glossaryEntry"
+          }
+        },
+        "concepts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/concept"
+          }
+        },
+        "translationGaps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/translationGap"
+          }
+        }
+      }
+    }
+  }
+}
