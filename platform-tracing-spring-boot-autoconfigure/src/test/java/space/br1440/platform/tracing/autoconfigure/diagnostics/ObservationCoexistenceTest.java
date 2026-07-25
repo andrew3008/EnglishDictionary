@@ -23,6 +23,7 @@ import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
+import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
@@ -102,8 +103,7 @@ class ObservationCoexistenceTest {
     void disabledPlatformspanFactory_doesNotDisableSpringObservation() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.enabled=false",
-                        "platform.tracing.sdk.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED")
                 .run(context -> {
                     ObservationRegistry observationRegistry = context.getBean(ObservationRegistry.class);
                     TraceOperations tracing = context.getBean(TraceOperations.class);
@@ -187,7 +187,8 @@ class ObservationCoexistenceTest {
                 OpenTelemetry openTelemetry,
                 MeterRegistry meterRegistry,
                 Environment environment) {
-            if (!environment.getProperty("platform.tracing.enabled", Boolean.class, true)) {
+            if (environment.getProperty("platform.tracing.mode", SdkMode.class, SdkMode.AGENT)
+                    == SdkMode.DISABLED) {
                 return NoOpTracingRuntime.disabledByConfiguration("test-disabled");
             }
             return new MeteredTracingRuntime(

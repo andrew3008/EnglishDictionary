@@ -19,7 +19,8 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
  * {@code ThreadPoolTaskExecutor}.
  * <p>
  * Активируется ТОЛЬКО при явном включении
- * {@code platform.tracing.context-propagation.async.enabled=true}. По умолчанию выключена,
+ * {@code platform.tracing.thread-pool-task-executor.enabled=true}.
+ * По умолчанию выключена,
  * чтобы не вмешиваться в работу прикладных executors и не конфликтовать с Spring Boot 3.5
  * {@code ContextPropagatingTaskDecorator}, кастомными {@code TaskDecorator}, security/tenant
  * propagation, OpenTelemetry Java Agent executor instrumentation.
@@ -33,25 +34,18 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
  *       {@link PlatformContextTaskDecorator}, оставляя платформенный самым внешним слоем
  *       (см. {@link PlatformContextTaskDecorator} Javadoc).</li>
  * </ol>
- * <p>
- * <b>Mode validation.</b> При неизвестном значении
- * {@code platform.tracing.context-propagation.async.mode} логируется WARN и используется
- * fallback {@code propagate-current-context} (forward-compatibility).
  */
 @AutoConfiguration
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
 @ConditionalOnClass({ThreadPoolTaskExecutor.class, ContextSnapshotFactory.class})
 @ConditionalOnProperty(
-        prefix = TracingProperties.PREFIX + ".context-propagation.async",
+        prefix = TracingProperties.PREFIX + ".thread-pool-task-executor",
         name = "enabled",
         havingValue = "true")
 @EnableConfigurationProperties(TracingProperties.class)
 public class TracingAsyncContextAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(TracingAsyncContextAutoConfiguration.class);
-
-    /** Поддерживаемый в v0.1.0 режим переноса контекста. */
-    public static final String MODE_PROPAGATE_CURRENT_CONTEXT = "propagate-current-context";
 
     /**
      * Глобальный {@link ContextSnapshotFactory}. {@link ConditionalOnMissingBean} позволяет
@@ -68,17 +62,10 @@ public class TracingAsyncContextAutoConfiguration {
     @ConditionalOnMissingBean
     public ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
             platformThreadPoolTaskExecutorContextPropagationBeanPostProcessor(
-                    ContextSnapshotFactory contextSnapshotFactory,
-                    TracingProperties tracingProperties) {
+                    ContextSnapshotFactory contextSnapshotFactory) {
 
-        String mode = tracingProperties.getContextPropagation().getAsync().getMode();
-        if (mode == null || !mode.equals(MODE_PROPAGATE_CURRENT_CONTEXT)) {
-            log.warn("Неизвестное значение platform.tracing.context-propagation.async.mode='{}'; "
-                    + "будет использован fallback '{}'", mode, MODE_PROPAGATE_CURRENT_CONTEXT);
-        }
-
-        log.info("Платформенный TaskDecorator активирован: режим '{}', composition с существующими "
-                + "TaskDecorator-ами ThreadPoolTaskExecutor", MODE_PROPAGATE_CURRENT_CONTEXT);
+        log.info("Platform TaskDecorator activated: composition with existing "
+                + "ThreadPoolTaskExecutor TaskDecorators");
 
         return new ThreadPoolTaskExecutorContextPropagationBeanPostProcessor(contextSnapshotFactory);
     }

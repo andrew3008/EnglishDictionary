@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.jmx.ConfigApplyResult;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.TracingControlDomain;
@@ -67,7 +68,7 @@ public class RuntimeConfigApplier {
     public void applyAll(TracingProperties properties) {
         if (!client.allMBeansAvailable()) {
             rejectedApplyCount.increment();
-            log.warn("RuntimeConfigApplier [REJECTED]: не все доменные MBean доступны — push пропущен");
+            log.warn("RuntimeConfigApplier [REJECTED]: not all domain MBeans are available — push skipped");
             return;
         }
 
@@ -90,10 +91,10 @@ public class RuntimeConfigApplier {
                 () -> client.setPropagationEnabled(properties.getPropagation().isEnabled()),
                 applied, failed);
 
-        String level = properties.getDiagnostics().getLogLevel();
-        if (level != null && !level.isBlank()) {
+        OtelAgentLogLevel level = properties.getLogLevel();
+        if (level != null) {
             runDomain(TracingControlDomain.DIAGNOSTICS, "log_level",
-                    () -> client.setPlatformLogLevel(level),
+                    () -> client.setPlatformLogLevel(level.name()),
                     applied, failed);
         }
 
@@ -104,7 +105,7 @@ public class RuntimeConfigApplier {
 
         if (!failed.isEmpty()) {
             partialApplyCount.increment();
-            log.warn("RuntimeConfigApplier [PARTIAL applied={} failed={}]: некоторые домены не применены",
+            log.warn("RuntimeConfigApplier [PARTIAL applied={} failed={}]: some domains were not applied",
                     applied.size(), failed.size());
         }
     }
@@ -143,7 +144,7 @@ public class RuntimeConfigApplier {
         } catch (Exception e) {
             failed.add(domain);
             incrementApplyResult(label, RESULT_FAILURE);
-            log.warn("RuntimeConfigApplier [DOMAIN={}]: не удалось применить домен: {}", label, e.getMessage());
+            log.warn("RuntimeConfigApplier [DOMAIN={}]: failed to apply domain: {}", label, e.getMessage());
         }
     }
 

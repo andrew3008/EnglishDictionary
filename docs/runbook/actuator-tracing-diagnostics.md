@@ -29,8 +29,7 @@ GET /actuator/tracing
 "sdk": {
   "mode": "AGENT",
   "configuredMode": "AGENT",
-  "configuredEnabled": true,
-  "agentDetected": true,
+ "agentDetected": true,
   "runtimeState": "AGENT_READY",
   "extensionFailureCode": ""
 }
@@ -39,8 +38,7 @@ GET /actuator/tracing
 | Поле | Значение |
 |------|----------|
 | `mode` | production mode: `AGENT` или `DISABLED` |
-| `configuredMode` | значение `platform.tracing.sdk.mode` как задал оператор |
-| `configuredEnabled` | значение `platform.tracing.enabled`; обязано согласовываться с mode |
+| `configuredMode` | значение `platform.tracing.mode` как задал оператор |
 | `agentDetected` | обнаружен ли OTel Java Agent в JVM |
 | `runtimeState` | проверенное startup-состояние Controlled Agent |
 | `extensionFailureCode` | безопасный машинный код; полный Agent failure message не раскрывается |
@@ -55,7 +53,7 @@ Application `OpenTelemetry` bean запрещён. Подробности —
 
 - startup failure `AGENT_MISSING`/`EXTENSION_MISSING` → проверить Controlled Agent distribution и verifier.
 - `CAPABILITY_MISSING`/`EXTENSION_FAILED` → deployment не готов; не обходить ошибку stock Agent'ом.
-- `mode=DISABLED` → одновременно нужны `enabled=false`, отсутствие Agent и любого application SDK.
+- `mode=DISABLED` → одновременно нужны отсутствие Agent и любого application SDK.
 - `agentDetected=false` при ожидаемом агенте → проверить путь `-javaagent` и `otel.javaagent.extensions`.
 
 ## Иерархия приоритетов (`otelEffective.source`)
@@ -184,7 +182,7 @@ platform:
 
 | Проблема | Проверка |
 |----------|----------|
-| `otelEffective` пустой / 404 | Actuator exposure, `platform.tracing.enabled=true` |
+| `otelEffective` пустой / 404 | Actuator exposure, `platform.tracing.mode=AGENT` |
 | Все BSP — `default-platform`, env не применяется | Имя env: `OTEL_BSP_*` (underscore), не `otel.bsp.*` |
 | `export-timeout` не число | OTel SPEC: только integer-ms, без суффикса `ms` |
 | Контракт extension ↔ actuator | CI: `OtelEffectiveConfigSnapshotDefaultsContractTest` |

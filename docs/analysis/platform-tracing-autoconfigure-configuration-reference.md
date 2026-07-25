@@ -38,8 +38,7 @@ WebMvc/WebFlux **не добавляют** своих `@ConfigurationProperties`
 
 ### «Обязательные для старта» vs «обязательные для production»
 
-Properties имеют defaults, но runtime ownership проверяется fail-fast: default `enabled=true` и
-`sdk.mode=AGENT` требуют compatible `READY` Controlled Agent. Без него Spring startup отклоняется.
+Properties имеют defaults, но runtime ownership проверяется fail-fast: default `mode=AGENT` требуют compatible `READY` Controlled Agent. Без него Spring startup отклоняется.
 
 Для **production** (по `docs/SUPPORTED.md`) обязательны:
 
@@ -77,11 +76,12 @@ platform:
 | `OTEL_SERVICE_NAME` **или** `PLATFORM_TRACING_SERVICE_NAME` **или** `spring.application.name` | Логическое имя сервиса в backend |
 | `PLATFORM_TRACING_SERVICE_ENVIRONMENT` | Среда (`dev`/`stage`/`prod`) — рекомендуется для fleet |
 
-**Резолв имени сервиса** (`PlatformLocalServiceNameProvider`):
+**Резолв имени сервиса** (`PlatformLocalServiceNameProvider`, errorhandling domain):
 
-1. `platform.tracing.service.name`
-2. `spring.application.name`
-3. Fallback: `unknown_service`
+1. `spring.application.name`
+2. Fallback: `unknown_service`
+
+Agent Resource `service.name` резолвится отдельно (`OTEL_SERVICE_NAME` / `platform.tracing.service.name` / fallback) — см. ADR-resource-merge-precedence. Spring binding `platform.tracing.service.name` удалён.
 
 #### 4. Условно обязательные
 
@@ -143,8 +143,7 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | YAML (`platform.tracing.*`) | Переменная окружения | Default | Обяз. | Канал | Описание |
 |----------------------------|----------------------|---------|-------|-------|----------|
 | — | `SPRING_APPLICATION_NAME` | — | **Prod: да** | Spring | Fallback для `service.name` |
-| `enabled` | `PLATFORM_TRACING_ENABLED` | `true` | Нет | Spring | Глобальный выключатель |
-| `sdk.mode` | `PLATFORM_TRACING_SDK_MODE` | `AGENT` | Нет | Spring (ownership) | `AGENT\|DISABLED`; обязано согласовываться с `enabled` |
+| `mode` | `PLATFORM_TRACING_MODE` | `AGENT` | Нет | Spring (ownership) | `AGENT\|DISABLED`; единственный startup-переключатель |
 | **service** | | | | | |
 | `service.name` | `PLATFORM_TRACING_SERVICE_NAME` | — | **Prod: да*** | Spring + Agent bridge | Логическое имя сервиса |
 | `service.version` | `PLATFORM_TRACING_SERVICE_VERSION` | — | Рек. | Spring + Agent bridge | `service.version` в resource |
@@ -188,16 +187,14 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `exporter.otlp.retry.initial-backoff` | `PLATFORM_TRACING_EXPORTER_OTLP_RETRY_INITIAL_BACKOFF` | `1s` | Нет | Spring | Initial backoff |
 | `exporter.otlp.retry.max-backoff` | `PLATFORM_TRACING_EXPORTER_OTLP_RETRY_MAX_BACKOFF` | `30s` | Нет | Spring | Max backoff |
 | **response** (WebMvc + WebFlux) | | | | | |
-| `response.expose-request-id-header` | `PLATFORM_TRACING_RESPONSE_EXPOSE_REQUEST_ID_HEADER` | `true` | Нет | Spring | `X-Request-Id` в ответе |
+| `response.expose-request-id-header` | `PLATFORM_TRACING_RESPONSE_EXPOSE_REQUEST_ID_HEADER` | `true` | Нет | Spring | runtime opt-out только для `X-Request-Id` в ответе (фильтр всегда активен) |
 | `response.header-name` | `PLATFORM_TRACING_RESPONSE_HEADER_NAME` | `X-Request-Id` | Нет | Spring | Имя заголовка ответа |
 | **service-names** | | | | | |
 | `service-names.record-remote-on-client-error` | `PLATFORM_TRACING_SERVICE_NAMES_RECORD_REMOTE_ON_CLIENT_ERROR` | `true` | Нет | Spring | `platform.remote.service` на ERROR |
 | `service-names.remote-attribute-priority` | `PLATFORM_TRACING_SERVICE_NAMES_REMOTE_ATTRIBUTE_PRIORITY` | peer/rpc/server | Нет | Spring | Приоритет атрибутов |
 | `service-names.ignore-server-address-if-ip` | `PLATFORM_TRACING_SERVICE_NAMES_IGNORE_SERVER_ADDRESS_IF_IP` | `true` | Нет | Spring | Игнор IP как имени |
-| **aop** | | | | | |
-| `aop.mode` | `PLATFORM_TRACING_AOP_MODE` | `ENRICH_CURRENT` | Нет | Spring | `@Traced` режим |
 | **suppression** (WebMvc + WebFlux) | | | | | |
-| `suppression.suppress-micrometer-tracing` | `PLATFORM_TRACING_SUPPRESSION_SUPPRESS_MICROMETER_TRACING` | `false` | **Prod+Agent: да** | Spring | Подавление дублей HTTP spans |
+| `suppression.suppress-micrometer-tracing` | `PLATFORM_TRACING_SUPPRESSION_SUPPRESS_MICROMETER_TRACING` | `null` (auto-derive из присутствия OTel Java Agent) | Нет — auto-derive, override опционален | Spring | Подавление дублей HTTP spans |
 | **enriching** | | | | | |
 | `enriching.enabled` | `PLATFORM_TRACING_ENRICHING_ENABLED` | `true` | Нет | Agent (mirror) | EnrichingSpanProcessor |
 | `enriching.remote-service-priority` | `PLATFORM_TRACING_ENRICHING_REMOTE_SERVICE_PRIORITY` | peer/rpc/server | Нет | Agent (mirror) | Приоритет upstream |
@@ -235,14 +232,13 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `kafka.mode` | `PLATFORM_TRACING_KAFKA_MODE` | `agent-compatible` | Нет | Spring | `agent-compatible\|disabled` |
 | `kafka.propagate-platform-headers` | `PLATFORM_TRACING_KAFKA_PROPAGATE_PLATFORM_HEADERS` | `false` | Cond. | Spring | Producer header inject |
 | `kafka.trusted-topic-patterns` | `PLATFORM_TRACING_KAFKA_TRUSTED_TOPIC_PATTERNS` | `[]` | **Cond.** | Spring | Glob доверенных топиков |
-| **context-propagation.async** | | | | | |
-| `context-propagation.async.enabled` | `PLATFORM_TRACING_CONTEXT_PROPAGATION_ASYNC_ENABLED` | `false` | Нет | Spring (bootstrap) | @Async TaskDecorator |
-| `context-propagation.async.mode` | `PLATFORM_TRACING_CONTEXT_PROPAGATION_ASYNC_MODE` | `propagate-current-context` | Нет | Spring | Режим propagation |
+| **thread-pool-task-executor** | | | | | |
+| `thread-pool-task-executor.enabled` | `PLATFORM_TRACING_THREAD_POOL_TASK_EXECUTOR_ENABLED` | `false` | Нет | Spring (bootstrap) | Перенос текущего OTel Context/MDC в задачи `ThreadPoolTaskExecutor`; span не создаёт |
 | **diagnostics** | | | | | |
 | `diagnostics.dual-channel-warn` | `PLATFORM_TRACING_DIAGNOSTICS_DUAL_CHANNEL_WARN` | `true` | Нет | Spring | WARN при drift Spring↔Agent |
 | `diagnostics.drop-oldest-aspiration-warn` | `PLATFORM_TRACING_DIAGNOSTICS_DROP_OLDEST_ASPIRATION_WARN` | `true` | Нет | Spring | WARN DROP_OLDEST mismatch |
 | `diagnostics.drop-oldest-aspiration-info` | `PLATFORM_TRACING_DIAGNOSTICS_DROP_OLDEST_ASPIRATION_INFO` | `true` | Нет | Spring | INFO DROP_OLDEST status |
-| `diagnostics.log-level` | `PLATFORM_TRACING_DIAGNOSTICS_LOG_LEVEL` | — | Нет | Spring → Agent JMX | Уровень логов platform.* |
+| `log-level` | `PLATFORM_TRACING_LOG_LEVEL` | `INFO` | Нет | Spring → Agent JMX | Уровень логирования платформенного расширения: `OFF`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
 | **actuator** | | | | | |
 | `actuator.mutation-enabled` | `PLATFORM_TRACING_ACTUATOR_MUTATION_ENABLED` | `false` | Нет | Spring | POST `/actuator/tracing/*` |
 
@@ -323,7 +319,7 @@ args:
 
 ## Практические выводы
 
-1. **Strictly required при default `enabled=true`** — compatible READY Controlled Agent Distribution; иначе startup failure.
+1. **Strictly required при default `mode=AGENT`** — compatible READY Controlled Agent Distribution; иначе startup failure.
 2. **Strictly required для рабочего production tracing** — verified atomic distribution, `suppress-micrometer-tracing=true`, имя сервиса, реальный `OTEL_EXPORTER_OTLP_ENDPOINT`.
 3. **WebMvc vs WebFlux** — различаются только starter-модулем; свойства одинаковые, outbound inject включается одним флагом `propagation.outbound.enabled`.
 4. **Dual-channel** — меняя только `application.yml`, вы не меняете BSP/limits/exporter в Agent; выравнивайте через `OTEL_*` или смотрите `GET /actuator/tracing` → `otelEnvHints` / `otelEffective`.

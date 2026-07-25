@@ -83,12 +83,11 @@ public class TracingCoreAutoConfiguration {
         boolean agentPresent = OtelAgentDetector.isAgentPresent();
         boolean userBeanPresent = beanFactory.getBeanNamesForType(OpenTelemetry.class, false, false).length > 0;
         boolean globalOpenTelemetrySet = GlobalOpenTelemetry.isSet();
-        boolean configuredDisabled = properties.getSdk().getMode() == SdkMode.DISABLED;
+        boolean configuredDisabled = properties.getMode() == SdkMode.DISABLED;
         AgentExtensionDescriptor extension = new AgentExtensionObserver().awaitStartupDecision(
                 configuredDisabled, agentPresent, userBeanPresent, globalOpenTelemetrySet);
         SdkMode resolved = SdkModeResolver.resolve(
-                properties.getSdk().getMode(),
-                properties.isEnabled(),
+                properties.getMode(),
                 extension);
 
         if (extension.state() != AgentRuntimeState.AGENT_READY
@@ -96,11 +95,10 @@ public class TracingCoreAutoConfiguration {
             log.error("Platform tracing runtime rejected: state={}, failureCode={}",
                     extension.state(), extension.failureCode());
         }
-        log.info("Платформенная трассировка: SDK mode={} (enabled={}, runtimeState={}, agentMarker={})",
-                resolved, properties.isEnabled(), extension.state(), agentPresent);
+        log.info("Platform tracing: mode={} (runtimeState={}, agentMarker={})",
+                resolved, extension.state(), agentPresent);
         return new SdkModeDiagnostics(
                 resolved,
-                properties.isEnabled(),
                 agentPresent,
                 extension.state(),
                 extension);
@@ -132,8 +130,8 @@ public class TracingCoreAutoConfiguration {
                     space.br1440.platform.tracing.otel.exception.ExceptionRecorder> exceptionRecorderProvider,
             SdkModeDiagnostics sdkModeDiagnostics) {
         if (sdkModeDiagnostics.mode() == SdkMode.DISABLED) {
-            log.info("platform.tracing.sdk.mode=DISABLED — TracingRuntime DISABLED_BY_CONFIGURATION");
-            return NoOpTracingRuntime.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED");
+            log.info("platform.tracing.mode=DISABLED — TracingRuntime DISABLED_BY_CONFIGURATION");
+            return NoOpTracingRuntime.disabledByConfiguration("platform.tracing.mode=DISABLED");
         }
         if (sdkModeDiagnostics.runtimeState() != AgentRuntimeState.AGENT_READY) {
             throw new IllegalStateException(
@@ -190,10 +188,11 @@ public class TracingCoreAutoConfiguration {
     @ConditionalOnMissingBean
     public PlatformContextPropagation platformContextPropagation(TraceOperations traceOperations) {
         if (traceOperations instanceof NoopTraceOperations) {
-            log.debug("PlatformContextPropagation: используется NoOp (OpenTelemetry в degraded mode)");
+            log.debug("PlatformContextPropagation: using NoOp (OpenTelemetry in degraded mode)");
             return NoOpPlatformContextPropagation.INSTANCE;
         }
-        log.debug("PlatformContextPropagation: используется OtelPlatformContextPropagation");
+
+        log.debug("PlatformContextPropagation: using OtelPlatformContextPropagation");
         return new OtelPlatformContextPropagation();
     }
 }

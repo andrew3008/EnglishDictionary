@@ -8,12 +8,10 @@ package space.br1440.platform.tracing.autoconfigure.support;
  * намеренно не переносится в application diagnostics.
  *
  * @param mode          настроенный и проверенный production-режим
- * @param enabled       значение {@code platform.tracing.enabled}
  * @param agentDetected обнаружен ли OTel Java Agent в текущей JVM
  */
 public record SdkModeDiagnostics(
         SdkMode mode,
-        boolean enabled,
         boolean agentDetected,
         AgentRuntimeState runtimeState,
         AgentExtensionDescriptor extensionDescriptor) {

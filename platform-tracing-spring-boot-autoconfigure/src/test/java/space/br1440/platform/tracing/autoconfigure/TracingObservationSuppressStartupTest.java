@@ -49,7 +49,7 @@ class TracingObservationSuppressStartupTest {
         List<ILoggingEvent> events = appender.list;
         assertThat(events).hasSize(1);
         assertThat(events.get(0).getLevel()).isEqualTo(Level.WARN);
-        assertThat(events.get(0).getFormattedMessage()).contains("Agent не обнаружен");
+        assertThat(events.get(0).getFormattedMessage()).contains("was not detected");
     }
 
     @Test
@@ -60,7 +60,7 @@ class TracingObservationSuppressStartupTest {
         List<ILoggingEvent> events = appender.list;
         assertThat(events).hasSize(1);
         assertThat(events.get(0).getLevel()).isEqualTo(Level.WARN);
-        assertThat(events.get(0).getFormattedMessage()).contains("Обнаружен OpenTelemetry Java Agent");
+        assertThat(events.get(0).getFormattedMessage()).contains("OpenTelemetry Java Agent detected");
     }
 
     @Test

@@ -6,10 +6,12 @@ import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.boot.actuate.endpoint.annotation.Selector;
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
@@ -30,30 +32,35 @@ public class TracingActuatorEndpoint {
 
     private static final Logger log = LoggerFactory.getLogger(TracingActuatorEndpoint.class);
 
+    private static final String SPRING_APPLICATION_NAME = "spring.application.name";
+
     private final TraceOperations traceOperations;
     private final TracingProperties properties;
     private final PlatformTracingJmxClient jmxClient;
     private final SpanFactoryDiagnostics spanFactoryDiagnostics;
     private final OtelEffectiveConfigSnapshot otelEffectiveSnapshot;
     private final ResourceEffectiveSnapshot resourceEffectiveSnapshot;
+    private final Environment environment;
 
     private SdkModeDiagnostics sdkModeDiagnostics;
 
     public TracingActuatorEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
-                                   SpanFactoryDiagnostics spanFactoryDiagnostics) {
+                                   SpanFactoryDiagnostics spanFactoryDiagnostics,
+                                   Environment environment) {
         this(traceOperations, properties, jmxClient, null, spanFactoryDiagnostics,
-                new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot());
+                new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot(), environment);
     }
 
     public TracingActuatorEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
                                    SdkModeDiagnostics sdkModeDiagnostics,
-                                   SpanFactoryDiagnostics spanFactoryDiagnostics) {
+                                   SpanFactoryDiagnostics spanFactoryDiagnostics,
+                                   Environment environment) {
         this(traceOperations, properties, jmxClient, sdkModeDiagnostics, spanFactoryDiagnostics,
-                new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot());
+                new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot(), environment);
     }
 
     TracingActuatorEndpoint(TraceOperations traceOperations,
@@ -61,9 +68,10 @@ public class TracingActuatorEndpoint {
                             PlatformTracingJmxClient jmxClient,
                             OtelEffectiveConfigSnapshot otelEffectiveSnapshot,
                             ResourceEffectiveSnapshot resourceEffectiveSnapshot,
-                            SpanFactoryDiagnostics spanFactoryDiagnostics) {
+                            SpanFactoryDiagnostics spanFactoryDiagnostics,
+                            Environment environment) {
         this(traceOperations, properties, jmxClient, null, spanFactoryDiagnostics,
-                otelEffectiveSnapshot, resourceEffectiveSnapshot);
+                otelEffectiveSnapshot, resourceEffectiveSnapshot, environment);
     }
 
     TracingActuatorEndpoint(TraceOperations traceOperations,
@@ -72,7 +80,8 @@ public class TracingActuatorEndpoint {
                             SdkModeDiagnostics sdkModeDiagnostics,
                             SpanFactoryDiagnostics spanFactoryDiagnostics,
                             OtelEffectiveConfigSnapshot otelEffectiveSnapshot,
-                            ResourceEffectiveSnapshot resourceEffectiveSnapshot) {
+                            ResourceEffectiveSnapshot resourceEffectiveSnapshot,
+                            Environment environment) {
         this.traceOperations = traceOperations;
         this.properties = properties;
         this.jmxClient = jmxClient;
@@ -80,21 +89,21 @@ public class TracingActuatorEndpoint {
         this.sdkModeDiagnostics = sdkModeDiagnostics;
         this.otelEffectiveSnapshot = otelEffectiveSnapshot;
         this.resourceEffectiveSnapshot = resourceEffectiveSnapshot;
+        this.environment = environment;
     }
 
     @ReadOperation
     public Map<String, Object> tracing() {
         Map<String, Object> info = new LinkedHashMap<>();
-        info.put("enabled", properties.isEnabled());
+        info.put("mode", properties.getMode().name());
         info.put("implementation", traceOperations.getClass().getName());
         info.put("spanFactory", spanFactoryDiagnostics.toActuatorMap());
 
         Map<String, Object> sdkInfo = new LinkedHashMap<>();
         sdkInfo.put("mode", sdkModeDiagnostics != null
                 ? sdkModeDiagnostics.mode().name()
-                : properties.getSdk().getMode().name());
-        sdkInfo.put("configuredMode", properties.getSdk().getMode().name());
-        sdkInfo.put("configuredEnabled", properties.isEnabled());
+                : properties.getMode().name());
+        sdkInfo.put("configuredMode", properties.getMode().name());
         sdkInfo.put("agentDetected", sdkModeDiagnostics != null
                 ? sdkModeDiagnostics.agentDetected()
                 : OtelAgentDetector.isAgentPresent());
@@ -113,7 +122,7 @@ public class TracingActuatorEndpoint {
         info.put("currentTraceId", traceOperations.traceContext().traceId().orElse(null));
         info.put("currentSpanId", traceOperations.traceContext().spanId().orElse(null));
         info.put("service", Map.of(
-                "name", nullSafe(properties.getService().getName())
+                "name", nullSafe(springApplicationName())
         ));
 
         Map<String, Object> samplingInfo = new LinkedHashMap<>();
@@ -231,7 +240,7 @@ public class TracingActuatorEndpoint {
                 }
                 double previousProperties = properties.getSampling().getRatio();
                 properties.getSampling().setRatio(ratio);
-                log.info("samplingRatio {} -> {} через actuator endpoint (JMX)",
+                log.info("samplingRatio {} -> {} via actuator endpoint (JMX)",
                         previousLive != null ? previousLive : previousProperties, ratio);
                 result.put("previousLiveValue", previousLive);
                 result.put("previousConfiguredValue", previousProperties);
@@ -245,7 +254,7 @@ public class TracingActuatorEndpoint {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
                 }
                 properties.getExporter().setEnabled(enabled);
-                log.info("Export-gate -> {} через actuator endpoint (JMX)", enabled);
+                log.info("Export-gate -> {} via actuator endpoint (JMX)", enabled);
                 result.put("status", "updated");
                 result.put("appliedValue", enabled);
             }
@@ -257,20 +266,26 @@ public class TracingActuatorEndpoint {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
                 }
                 properties.getPropagation().setEnabled(enabled);
-                log.info("Platform propagation -> {} через actuator endpoint (JMX)", enabled);
+                log.info("Platform propagation -> {} via actuator endpoint (JMX)", enabled);
                 result.put("status", "updated");
                 result.put("appliedValue", enabled);
             }
             case "logLevel" -> {
+                OtelAgentLogLevel level;
                 try {
-                    jmxClient.setPlatformLogLevel(value);
+                    level = OtelAgentLogLevel.parse(value);
+                } catch (IllegalArgumentException e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+                }
+                try {
+                    jmxClient.setPlatformLogLevel(level.name());
                 } catch (PlatformTracingJmxOperationException e) {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
                 }
-                properties.getDiagnostics().setLogLevel(value);
-                log.info("Platform log level -> {} через actuator endpoint (JMX)", value);
+                properties.setLogLevel(level);
+                log.info("Platform log level -> {} via actuator endpoint (JMX)", level);
                 result.put("status", "updated");
-                result.put("appliedValue", value);
+                result.put("appliedValue", level.name());
             }
             default -> throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -287,6 +302,13 @@ public class TracingActuatorEndpoint {
                     "Actuator tracing mutation is disabled. Set platform.tracing.actuator.mutation-enabled=true "
                             + "for local/dev/debug/test/pre-prod only. Direct JMX access is not affected.");
         }
+    }
+
+    private String springApplicationName() {
+        if (environment == null) {
+            return null;
+        }
+        return environment.getProperty(SPRING_APPLICATION_NAME);
     }
 
     private static String nullSafe(String value) {

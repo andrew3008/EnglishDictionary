@@ -43,7 +43,7 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
      */
     private final AtomicReference<ExtensionConfig> extensionConfig = new AtomicReference<>();
 
-    // Одноразовый guard для диагностической лог-строки platform.tracing.sdk.mode.
+    // Одноразовый guard для диагностической лог-строки platform.tracing.mode.
     private final AtomicBoolean sdkModeLogged = new AtomicBoolean();
 
     @Override
@@ -80,7 +80,7 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
             if (sdkModeLogged.compareAndSet(false, true)) {
                 String mode = extensionConfig.get().sdk().mode();
                 if (Strings.isNotBlank(mode)) {
-                    log.info("Platform tracing extension: platform.tracing.sdk.mode={} (agent-канал, диагностика)", mode);
+                    log.info("Platform tracing extension: platform.tracing.mode={} (agent-канал, диагностика)", mode);
                 }
             }
             return Map.of();

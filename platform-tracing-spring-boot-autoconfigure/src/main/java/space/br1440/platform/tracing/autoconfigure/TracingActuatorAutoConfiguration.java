@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
 import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
@@ -10,12 +11,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
-import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 
@@ -28,7 +28,7 @@ import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 @AutoConfiguration
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
 @ConditionalOnClass({Endpoint.class, HealthIndicator.class})
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
 public class TracingActuatorAutoConfiguration {
 
     @Bean(name = "tracingHealthIndicator")
@@ -47,8 +47,9 @@ public class TracingActuatorAutoConfiguration {
                                                             TracingProperties properties,
                                                             PlatformTracingJmxClient platformTracingJmxClient,
                                                             ObjectProvider<SdkModeDiagnostics> sdkModeDiagnostics,
-                                                            SpanFactoryDiagnostics spanFactoryDiagnostics) {
+                                                            SpanFactoryDiagnostics spanFactoryDiagnostics,
+                                                            Environment environment) {
         return new TracingActuatorEndpoint(traceOperations, properties, platformTracingJmxClient,
-                sdkModeDiagnostics.getIfAvailable(), spanFactoryDiagnostics);
+                sdkModeDiagnostics.getIfAvailable(), spanFactoryDiagnostics, environment);
     }
 }

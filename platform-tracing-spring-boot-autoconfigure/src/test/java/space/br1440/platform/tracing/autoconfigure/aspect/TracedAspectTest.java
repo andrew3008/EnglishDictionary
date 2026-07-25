@@ -18,7 +18,6 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.test.TraceOperationsTestExtension;
 
 import java.util.List;
@@ -87,14 +86,14 @@ class TracedAspectTest {
     }
 
     /**
-     * ENRICH_CURRENT при наличии активного span'а: дочерний не создаётся, активный обогащается
+     * При наличии активного span'а дочерний не создаётся, активный обогащается
      * атрибутами {@code @TracedAttribute} и {@code platform.traced.method}.
      */
     @Test
-    void enrichCurrentModeDoesNotCreateChildSpanWhenParentActive(InMemorySpanExporter exporter) {
+    void doesNotCreateChildSpanWhenParentActive(InMemorySpanExporter exporter) {
         // given: внешний parent-span (имитируем серверный span от Agent / Filter).
         try (SpanHandle parent = tracing.spans().operation("parent.span").start()) {
-            // when: вызов @Traced-метода в режиме ENRICH_CURRENT (по умолчанию).
+            // when
             service.process(7L);
         }
 
@@ -116,29 +115,6 @@ class TracedAspectTest {
                 io.opentelemetry.api.common.AttributeKey.stringKey("orderId"),
                 "7"
         );
-    }
-
-    /**
-     * CHILD_SPAN: явное создание дочернего span'а независимо от наличия parent'а.
-     */
-    @Test
-    void childSpanModeCreatesNewSpan(InMemorySpanExporter exporter) {
-        // given: переопределяем aspect в режиме CHILD_SPAN.
-        TracedAspect aspect = new TracedAspect(tracing, TracingProperties.Aop.Mode.CHILD_SPAN);
-        AspectJProxyFactory factory = new AspectJProxyFactory(new SampleServiceImpl());
-        factory.addAspect(aspect);
-        SampleService child = factory.getProxy();
-
-        // when: вызов @Traced-метода под активным parent-span'ом.
-        try (SpanHandle parent = tracing.spans().operation("parent.span").start()) {
-            child.process(99L);
-        }
-
-        // then: оба span'а присутствуют.
-        List<SpanData> exported = exporter.getFinishedSpanItems();
-        assertThat(exported).hasSize(2);
-        assertThat(exported).extracting(SpanData::getName)
-                .containsExactlyInAnyOrder("parent.span", "sample.process");
     }
 
     /**

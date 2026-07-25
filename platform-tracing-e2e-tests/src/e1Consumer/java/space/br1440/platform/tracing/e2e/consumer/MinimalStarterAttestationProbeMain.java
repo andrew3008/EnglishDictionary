@@ -51,7 +51,7 @@ public class MinimalStarterAttestationProbeMain {
         return application.run(
                 "--spring.main.banner-mode=off",
                 "--logging.level.root=ERROR",
-                "--platform.tracing.sdk.mode=" + mode);
+                "--platform.tracing.mode=" + mode);
     }
 
     private static String rootMessage(Throwable failure) {

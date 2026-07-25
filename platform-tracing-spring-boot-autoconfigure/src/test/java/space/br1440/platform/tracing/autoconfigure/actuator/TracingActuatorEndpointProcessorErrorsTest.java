@@ -35,7 +35,8 @@ class TracingActuatorEndpointProcessorErrorsTest {
                 NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
-                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()));
+                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()),
+                null);
     }
 
     @Test

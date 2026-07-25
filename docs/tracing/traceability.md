@@ -97,7 +97,7 @@
 
 | GAP | Статус | Реализация |
 |---|---|---|
-| G-01 `container.id` в Resource | OK | `PlatformResourceProvider` + `TracingProperties.Service.containerId`; omit-if-unconfigured |
+| G-01 `container.id` в Resource | OK | `PlatformResourceProvider`; omit-if-unconfigured |
 | G-02 MDC `platform.remote.service` | OK | `RemoteServiceMdc` + `EnrichingSpanProcessor` + response filters; ADR WebFlux |
 | M-01 `@Traced` → `platform.traced.method` | OK | `PlatformAttributes.PLATFORM_TRACED_METHOD` + `TracedAspect` |
 

@@ -37,18 +37,18 @@ class TracingObservationSuppressStartupRunner implements SmartInitializingSingle
     public void afterSingletonsInstantiated() {
         if (suppressEnabled && !agentDetected) {
             // Suppress включён, но Agent не обнаружен → HTTP-span'ы вообще не создаются никем.
-            log.warn("Включено platform.tracing.suppression.suppress-micrometer-tracing=true, но "
-                    + "OpenTelemetry Java Agent не обнаружен в JVM. HTTP-span'ы не будут создаваться "
-                    + "ни Micrometer Observation (подавлен), ни Agent'ом. Отключите подавление либо "
-                    + "подключите Agent (-javaagent:opentelemetry-javaagent.jar).");
+            log.warn("platform.tracing.suppression.suppress-micrometer-tracing=true is enabled, but "
+                    + "OpenTelemetry Java Agent was not detected in the JVM. HTTP spans will not be created "
+                    + "by Micrometer Observation (suppressed) nor by the Agent. Disable suppression or "
+                    + "attach the Agent (-javaagent:opentelemetry-javaagent.jar).");
             return;
         }
         if (!suppressEnabled && agentDetected) {
             // Agent обнаружен, но suppress выключен → дублирование HTTP-span'ов.
-            log.warn("Обнаружен OpenTelemetry Java Agent, но "
-                    + "platform.tracing.suppression.suppress-micrometer-tracing=false. Возможно "
-                    + "дублирование HTTP-span'ов: их создаёт и Agent, и Micrometer Observation. "
-                    + "Рекомендуется включить platform.tracing.suppression.suppress-micrometer-tracing=true.");
+            log.warn("OpenTelemetry Java Agent detected, but "
+                    + "platform.tracing.suppression.suppress-micrometer-tracing=false. HTTP spans may be "
+                    + "duplicated: both the Agent and Micrometer Observation create them. "
+                    + "Set platform.tracing.suppression.suppress-micrometer-tracing=true.");
         }
         // Остальные две ячейки (true/yes — штатный сценарий; false/no — default) не требуют WARN.
     }

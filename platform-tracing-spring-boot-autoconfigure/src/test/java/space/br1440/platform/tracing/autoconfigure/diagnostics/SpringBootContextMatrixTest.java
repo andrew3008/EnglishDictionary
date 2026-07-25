@@ -53,8 +53,7 @@ class SpringBootContextMatrixTest {
     void disabledSdkMode_exposesDisabledDiagnosticsAndNoOpFacade() {
         baseRunner
                 .withPropertyValues(
-                        "platform.tracing.enabled=false",
-                        "platform.tracing.sdk.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED")
                 .run(context -> {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class).state().mode())
@@ -102,7 +101,8 @@ class SpringBootContextMatrixTest {
                             context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
-                            context.getBean(SpanFactoryDiagnostics.class));
+                            context.getBean(SpanFactoryDiagnostics.class),
+                            context.getEnvironment());
                     @SuppressWarnings("unchecked")
                     Map<String, Object> spanFactory = (Map<String, Object>) endpoint.tracing()
                             .get("spanFactory");

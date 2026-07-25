@@ -46,14 +46,14 @@ class DiagnosticsBoundaryTest {
     void actuatorEndpoint_exposesStablespanFactorySection() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.enabled=false",
-                        "platform.tracing.sdk.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED")
                 .run(context -> {
                     TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
                             context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
-                            context.getBean(SpanFactoryDiagnostics.class));
+                            context.getBean(SpanFactoryDiagnostics.class),
+                            context.getEnvironment());
                     Map<String, Object> payload = endpoint.tracing();
 
                     assertThat(payload).containsKey("spanFactory");

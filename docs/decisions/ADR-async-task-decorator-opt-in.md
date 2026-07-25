@@ -28,11 +28,21 @@
 ```yaml
 platform:
   tracing:
-    context-propagation:
-      async:
-        enabled: true              # default false
-        mode: propagate-current-context
+    thread-pool-task-executor:
+      enabled: true            # default false
 ```
+
+> Обновление (2026-07-24): ключ переименован из `context-propagation.async.enabled` в
+> `context-propagation.thread-pool-task-executor.enabled`. Он называет единственный поддерживаемый
+> ресурс интеграции, а не создаёт впечатление общего переключателя async tracing. Свойство `mode`
+> удалено как speculative extension point: единственное значение не влияло на поведение BPP —
+> см. `docs/MIGRATION.md`.
+>
+> Обновление (2026-07-24, продолжение): обёртка `context-propagation` убрана (flatten) —
+> у неё был ровно один child, сама она нигде не читалась через POJO-геттер, а имя коллизировало
+> с несвязанным `TracingProperties.Propagation` (межсервисные HTTP-заголовки) и с нативным Spring
+> `spring.reactor.context-propagation`. Новый ключ: `platform.tracing.thread-pool-task-executor.enabled`
+> — см. `docs/MIGRATION.md`.
 
 При `enabled=true`:
 
@@ -50,9 +60,9 @@ worker-thread:
 
 ### Mode
 
-В v0.1.0 поддерживается единственный режим `propagate-current-context`: переносится только OTel Context + MDC (через `ContextSnapshotFactory.captureAll()`), span автоматически не создаётся. Создание span'а — задача прикладного кода через `@Traced` или `TraceOperations.inSpan`.
+Переносится только OTel Context + MDC (через `ContextSnapshotFactory.captureAll()`), span автоматически не создаётся. Создание span'а — задача прикладного кода через `@Traced` или `TraceOperations.inSpan`.
 
-Свойство `mode` объявлено как открытый enum (String): неизвестные значения логируются как WARN и fallback'ятся на `propagate-current-context` — это обеспечивает forward-compatibility для будущих режимов в v1.1 (например, `propagate-and-create-span`).
+Свойство `mode` (в v0.1.0 объявленное как открытый enum-String для forward-compatibility будущих режимов) удалено (2026-07-24): единственное значение никогда не имело альтернативы и не передавалось в BPP — см. `docs/MIGRATION.md`.
 
 ### Ordering
 

@@ -19,7 +19,7 @@ class StrictSdkOwnershipArchitectureTest {
     void productionModeSurfaceContainsOnlyAgentAndDisabled() {
         assertThat(Arrays.stream(SdkMode.values()).map(Enum::name))
                 .containsExactly("AGENT", "DISABLED");
-        assertThat(new TracingProperties().getSdk().getMode()).isEqualTo(SdkMode.AGENT);
+        assertThat(new TracingProperties().getMode()).isEqualTo(SdkMode.AGENT);
     }
 
     @Test

@@ -84,8 +84,7 @@ class BeanTopologyTest {
     void disabledSdkMode_exposesNonEnabledTracingState() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.enabled=false",
-                        "platform.tracing.sdk.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED")
                 .run(context -> {
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
                     assertThat(impl.state().mode()).isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);

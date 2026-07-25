@@ -24,9 +24,9 @@ final class TracingReactorContextPropagationStartupRunner implements SmartInitia
     @Override
     public void afterSingletonsInstantiated() {
         if (!"AUTO".equalsIgnoreCase(contextPropagationMode)) {
-            log.warn("spring.reactor.context-propagation={} — автоматический проброс trace/MDC через Reactor "
-                    + "scheduler switch отключён или ограничен. Для WebFlux рекомендуется AUTO "
-                    + "(см. TracingReactorEagerInitConfiguration).", contextPropagationMode);
+            log.warn("spring.reactor.context-propagation={} — automatic trace/MDC propagation across Reactor "
+                    + "scheduler switches is disabled or limited. For WebFlux, AUTO is recommended "
+                    + "(see TracingReactorEagerInitConfiguration).", contextPropagationMode);
         }
     }
 }

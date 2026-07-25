@@ -43,20 +43,20 @@ import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBounda
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
 @ConditionalOnClass({Servlet.class, FilterRegistrationBean.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
 public class ServletTracingAutoConfiguration {
 
     /**
-     * Регистрация фильтра, добавляющего trace-заголовки в HTTP-ответ.
+     * Регистрация фильтра, добавляющего request/trace заголовки в HTTP-ответ и
+     * привязывающего edge {@code requestId} на границе запроса.
      * <p>
-     * Активируется отдельным свойством {@code platform.tracing.response.expose-request-id-header},
-     * чтобы клиенты могли отключить экспонирование заголовка независимо от прочих интеграций
-     * платформы.
+     * Фильтр регистрируется всегда (при активной авто-конфигурации). Запись
+     * {@code X-Request-Id} в ответ гейтится runtime-флагом
+     * {@code platform.tracing.response.expose-request-id-header}; {@code X-Trace-Id},
+     * identity scope и boundary cleanup не зависят от этого флага.
      */
     @Bean
     @ConditionalOnMissingBean(name = "platformTraceResponseHeaderServletFilterRegistration")
-    @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".response", name = "expose-request-id-header",
-            havingValue = "true", matchIfMissing = true)
     public FilterRegistrationBean<TraceResponseHeaderServletFilter> platformTraceResponseHeaderServletFilterRegistration(
             TraceOperations traceOperations,
             TracingProperties properties,

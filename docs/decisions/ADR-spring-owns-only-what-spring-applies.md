@@ -15,8 +15,8 @@
 
 Удалить из Spring `TracingProperties` все C/D/E поля. Оставить только:
 
-- **A** — Spring применяет (facade wiring, propagation outbound, semantic, kafka, response, aop, suppression, service.name)
-- **B** — JMX reconcile (sampling, scrubbing, validation, exporter.enabled, propagation.enabled, diagnostics.logLevel)
+- **A** — Spring применяет (facade wiring, propagation outbound, semantic, kafka, response, aop, suppression)
+- **B** — JMX reconcile (sampling, scrubbing, validation, exporter.enabled, propagation.enabled, logLevel)
 
 Agent-канал (`OTEL_*`, `PLATFORM_TRACING_*`, `PlatformTracingDefaultsProvider`, `ExtensionPropertyNames`) остаётся единственным источником истины для SDK limits/queue/exporter/resource/enriching/watchdog/baggage.
 
@@ -35,10 +35,12 @@ Agent-канал (`OTEL_*`, `PLATFORM_TRACING_*`, `PlatformTracingDefaultsProvid
 | `Propagation.Baggage` | C/E | Удалить; agent: `platform.tracing.propagation.baggage.*` |
 | `Exporter.Otlp` | C | Удалить; agent/env: `OTEL_EXPORTER_OTLP_*` |
 | `service.version/environment/c-group/container-id` | C | Удалить из Spring; agent: `platform.tracing.service.*` |
+| `service.name` | overhead (dual-channel) | Удалить из Spring; app-plane: `spring.application.name`; agent: `platform.tracing.service.name` / `OTEL_SERVICE_NAME` |
 | `sampling.forceRecordHeader/qaForceHeader` | C (дубль `propagation.platformHeaders.*`) | Удалить |
 | `scrubbing.rulesConfig` | C | Удалить; agent-side loader |
 | `validation.strictRuntimeAllowed` | C | Удалить из Spring; agent: `platform.tracing.validation.strict-runtime-allowed` |
 | `diagnostics.dualChannelWarn/dropOldestAspiration*` | D | Удалить вместе с diagnostics-классами |
+| `aop.mode` (`CHILD_SPAN`) | overhead (dead legacy path) | Удалить весь `Aop`-property-класс; `TracedAspect` хардкодит единственное реально применяемое поведение (обогащение активного span'а). `CHILD_SPAN` не имел production-потребителей и воссоздавал дублирование span'ов с OTel Java Agent, от которого платформа защищается в остальных местах |
 
 ## Удалённые классы
 

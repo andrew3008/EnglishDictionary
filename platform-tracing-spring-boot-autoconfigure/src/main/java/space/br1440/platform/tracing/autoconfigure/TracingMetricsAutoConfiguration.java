@@ -32,7 +32,7 @@ import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSample
         })
 @ConditionalOnClass(MeterRegistry.class)
 @ConditionalOnBean(MeterRegistry.class)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
 public class TracingMetricsAutoConfiguration {
 
     @Bean

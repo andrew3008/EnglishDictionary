@@ -77,7 +77,7 @@ public class AgentExtensionAttestationProbeMain {
                 "--spring.main.banner-mode=off",
                 "--spring.autoconfigure.exclude=" + BOOT_OTEL_SDK_AUTO_CONFIGURATIONS,
                 "--logging.level.root=ERROR",
-                "--platform.tracing.sdk.mode=" + mode);
+                "--platform.tracing.mode=" + mode);
     }
 
     private static AgentRuntimeState findRuntimeState(Throwable failure) {

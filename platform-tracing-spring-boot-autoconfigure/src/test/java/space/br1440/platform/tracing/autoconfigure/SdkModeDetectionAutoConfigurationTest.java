@@ -27,7 +27,7 @@ class SdkModeDetectionAutoConfigurationTest {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure())
                     .hasRootCauseMessage(
-                            "platform.tracing.sdk.mode=AGENT rejected observed runtime state=AGENT_MISSING, "
+                            "platform.tracing.mode=AGENT rejected observed runtime state=AGENT_MISSING, "
                                     + "failureCode=CONTROLLED_AGENT_MISSING");
         });
     }
@@ -36,8 +36,7 @@ class SdkModeDetectionAutoConfigurationTest {
     void disabledWithoutAnyRuntimeCreatesTheOnlySuccessfulNoopFacade() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.enabled=false",
-                        "platform.tracing.sdk.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
@@ -53,8 +52,7 @@ class SdkModeDetectionAutoConfigurationTest {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .withPropertyValues(
-                        "platform.tracing.enabled=false",
-                        "platform.tracing.sdk.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
@@ -65,26 +63,10 @@ class SdkModeDetectionAutoConfigurationTest {
     }
 
     @Test
-    void contradictoryEnabledAndModeValuesFailStartup() {
-        contextRunner
-                .withPropertyValues("platform.tracing.enabled=true", "platform.tracing.sdk.mode=DISABLED")
-                .run(context -> assertThat(context.getStartupFailure())
-                        .hasRootCauseMessage(
-                                "Contradictory platform tracing configuration: platform.tracing.enabled=true "
-                                        + "requires platform.tracing.sdk.mode=AGENT"));
-        contextRunner
-                .withPropertyValues("platform.tracing.enabled=false", "platform.tracing.sdk.mode=AGENT")
-                .run(context -> assertThat(context.getStartupFailure())
-                        .hasRootCauseMessage(
-                                "Contradictory platform tracing configuration: platform.tracing.enabled=false "
-                                        + "requires platform.tracing.sdk.mode=DISABLED"));
-    }
-
-    @Test
     void removedPropertyValuesFailBinding() {
         for (String removed : new String[] {"AUTO", "STARTER", "EXTERNAL"}) {
             contextRunner
-                    .withPropertyValues("platform.tracing.sdk.mode=" + removed)
+                    .withPropertyValues("platform.tracing.mode=" + removed)
                     .run(context -> {
                         assertThat(context).hasFailed();
                         assertThat(context.getStartupFailure())

@@ -22,10 +22,10 @@ public class DefaultTraceOperations implements TraceOperations {
     private volatile RuntimeHolder active;
     private final RuntimeHolder original;
 
-    public DefaultTraceOperations(@Nonnull TracingRuntime implementation) {
-        Objects.requireNonNull(implementation, "implementation");
+    public DefaultTraceOperations(@Nonnull TracingRuntime runtime) {
+        Objects.requireNonNull(runtime, "runtime");
 
-        var holder = buildHolder(implementation);
+        var holder = buildHolder(runtime);
         this.original = holder;
         this.active = holder;
     }

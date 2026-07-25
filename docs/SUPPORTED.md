@@ -134,7 +134,7 @@ Additional `OTEL_*` / `platform.tracing.*` — see [runbook/mdc-logging-producti
 
 ---
 
-## Agent mode: named SPI и sdk.mode (Фаза 15)
+## Agent mode: named SPI и mode (Фаза 15)
 
 В agent/autoconfigure-режиме платформенные sampler и propagator доступны через стандартные OTel-ключи
 (`ConfigurableSamplerProvider`/`ConfigurablePropagatorProvider`), помимо inline-customizer'ов:
@@ -154,9 +154,9 @@ Additional `OTEL_*` / `platform.tracing.*` — see [runbook/mdc-logging-producti
 | `otel.traces.sampler` | не задан → compose-over-existing | `platform` — явный opt-in; рантайм существующих деплоев не меняется |
 | `otel.propagators` | `tracecontext,baggage` → дописывается `platform-trace-control` | `none` → платформенный не добавляется; дубль не создаётся |
 
-`platform.tracing.sdk.mode` (`AGENT|DISABLED`, default `AGENT`) задаёт strict ownership.
+`platform.tracing.mode` (`AGENT|DISABLED`, default `AGENT`) задаёт strict ownership.
 `AGENT` требует READY Controlled Platform Agent; application SDK запрещён. `NoopTraceOperations` допустим
-только при `enabled=false`, `mode=DISABLED` и отсутствии Agent/runtime. `AUTO`, `STARTER`, `EXTERNAL`
+только при `mode=DISABLED` и отсутствии Agent/runtime. `AUTO`, `STARTER`, `EXTERNAL`
 удалены без aliases. Состояние видно в `/actuator/tracing` → секция `sdk`.
 [ADR-named-spi-sampler-propagator.md](./decisions/ADR-named-spi-sampler-propagator.md),
 [ADR-sdk-mode-detection.md](./decisions/ADR-sdk-mode-detection.md),
@@ -211,7 +211,7 @@ Spring `RuntimeConfigApplier` на `RefreshScopeRefreshedEvent`. Подробн�
 | **Export** | export-gate `exporter.enabled` (kill-switch) | OTLP endpoint, retry, BSP queue, processor chain |
 | **Propagation** | `propagation.enabled` (платформенные заголовки) | набор пропагаторов, W3C (зона Агента) |
 | **Facade** | `facade.enabled` (no-op span scope) | — |
-| **Diagnostics** | `diagnostics.log-level` (agent-CL) — app-CL через `/actuator/loggers` | — |
+| **Diagnostics** | `log-level` (agent-CL) — app-CL через `/actuator/loggers` | — |
 
 Гарантии: каждый домен публикуется **атомарно** (один снимок = один CAS), при невалидном апдейте
 сохраняется **last-known-good**. Export-gate выключает экспорт, **не ломая propagation** (span'ы
@@ -289,8 +289,8 @@ A: Not in v0.1.0 matrix. Request via separate epic if business requires.
 A: Untested. Production target is 3.5.x aligned with platform BOM.
 
 **Q: Can we run without Java Agent?**  
-A: В production и при `enabled=true` — нет: требуется READY Controlled Agent Distribution.
-Для local/dev без Agent используйте `enabled=false` и `sdk.mode=DISABLED`; application SDK не
+A: В production и при `mode=AGENT` — нет: требуется READY Controlled Agent Distribution.
+Для local/dev без Agent используйте `platform.tracing.mode=DISABLED`; application SDK не
 является поддерживаемым fallback.
 
 **Q: Кто пишет traceId в MDC?**  

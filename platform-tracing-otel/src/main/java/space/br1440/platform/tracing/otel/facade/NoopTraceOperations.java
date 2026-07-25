@@ -18,22 +18,22 @@ public final class NoopTraceOperations implements TraceOperations {
 
     public static final NoopTraceOperations INSTANCE = new NoopTraceOperations(NoOpTracingRuntime.noop());
 
-    private final TracingRuntime implementation;
+    private final TracingRuntime runtime;
     private final SpanFactory spanFactory;
 
-    private NoopTraceOperations(@Nonnull TracingRuntime implementation) {
-        this.implementation = implementation;
-        this.spanFactory = new DefaultSpanFactory(implementation, new AttributePolicy());
+    private NoopTraceOperations(@Nonnull TracingRuntime runtime) {
+        this.runtime = runtime;
+        this.spanFactory = new DefaultSpanFactory(runtime, new AttributePolicy());
     }
 
-    public static NoopTraceOperations backedBy(@Nonnull TracingRuntime implementation) {
-        return new NoopTraceOperations(implementation);
+    public static NoopTraceOperations backedBy(@Nonnull TracingRuntime runtime) {
+        return new NoopTraceOperations(runtime);
     }
 
     @Override
     @Nonnull
     public ActiveTraceContextView traceContext() {
-        return implementation.currentTraceContext();
+        return runtime.currentTraceContext();
     }
 
     @Override
@@ -45,7 +45,7 @@ public final class NoopTraceOperations implements TraceOperations {
     @Override
     @Nonnull
     public CorrelationScope openCorrelationScope(@Nonnull String correlationId) {
-        return implementation.openCorrelationScope(correlationId);
+        return runtime.openCorrelationScope(correlationId);
     }
 
     @Override

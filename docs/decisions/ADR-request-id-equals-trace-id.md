@@ -56,7 +56,8 @@ platform:
 ```
 
 Отключение: `expose-request-id-header: false` — заголовок primary не выставляется;
-`X-Trace-Id` по-прежнему добавляется для compat (см. Javadoc фильтров).
+фильтр остаётся активным, `X-Trace-Id` и identity boundary продолжают работать
+(см. Javadoc фильтров).
 
 ## Последствия
 

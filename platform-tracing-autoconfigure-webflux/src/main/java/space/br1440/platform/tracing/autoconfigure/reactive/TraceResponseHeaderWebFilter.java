@@ -48,7 +48,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
 
         response.beforeCommit(() -> Mono.fromRunnable(() -> {
             try {
-                // X-Request-Id всегда присутствует.
+                // X-Request-Id: opt-out через platform.tracing.response.expose-request-id-header.
                 if (properties.getResponse().isExposeRequestIdHeader()) {
                     response.getHeaders().set(properties.getResponse().getHeaderName(), requestId);
                 }

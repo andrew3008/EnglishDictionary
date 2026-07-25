@@ -9,19 +9,22 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.http.server.reactive.observation.ServerRequestObservationContext;
 import org.springframework.web.reactive.function.client.ClientRequestObservationContext;
-import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
+import space.br1440.platform.tracing.autoconfigure.support.SuppressMicrometerTracingCondition;
 
 /**
  * Подавление дублирующих HTTP-обсерваций {@code Micrometer} для реактивного стека (Spring WebFlux).
  * <p>
- * Активируется при {@code platform.tracing.suppression.suppress-micrometer-tracing=true} и
- * регистрирует {@link ObservationRegistryCustomizer}, который через {@code ObservationPredicate}
+ * Активируется через {@code SuppressMicrometerTracingCondition}: если оператор не задал
+ * {@code platform.tracing.suppression.suppress-micrometer-tracing} явно, значение auto-derive'ится
+ * из присутствия OpenTelemetry Java Agent в JVM — типовому сервису не нужно вручную подбирать этот
+ * флаг. При активации регистрирует {@link ObservationRegistryCustomizer}, который через
+ * {@code ObservationPredicate}
  * проверяет тип контекста обсервации по {@code instanceof}: реактивный
  * {@link ServerRequestObservationContext} (пакет {@code http.server.reactive.observation}) и
  * {@link ClientRequestObservationContext} (пакет {@code web.reactive.function.client} — для
@@ -47,10 +50,7 @@ import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
 @AutoConfigureAfter(ObservationAutoConfiguration.class)
 @ConditionalOnClass(ServerRequestObservationContext.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-@ConditionalOnProperty(
-        prefix = TracingProperties.PREFIX + ".suppression",
-        name = "suppress-micrometer-tracing",
-        havingValue = "true")
+@Conditional(SuppressMicrometerTracingCondition.class)
 public class WebFluxSuppressMicrometerTracingAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(WebFluxSuppressMicrometerTracingAutoConfiguration.class);
@@ -77,8 +77,8 @@ public class WebFluxSuppressMicrometerTracingAutoConfiguration {
                 }
                 return true;
             });
-            log.info("Подавлены Reactive HTTP server/client Micrometer Observation'ы — span'ы и метрики "
-                    + "по этим observation'ам не публикуются. HTTP-телеметрия должна поступать из "
+            log.info("Suppressed Reactive HTTP server/client Micrometer Observations — spans and metrics "
+                    + "for these observations are not published. HTTP telemetry should come from "
                     + "OpenTelemetry Java Agent. (agentDetected={})", OtelAgentDetector.isAgentPresent());
         };
     }

@@ -45,8 +45,8 @@ Application and Agent classes may have different class identities. Their support
 
 | Mode | Required state | Result |
 |---|---|---|
-| `AGENT` | `platform.tracing.enabled=true` and compatible full-profile Agent state `AGENT_READY` | functional facade and Agent-owned tracing |
-| `DISABLED` | `platform.tracing.enabled=false`, no Agent and no application SDK | intentional NoOp facade |
+| `AGENT` | `platform.tracing.mode=AGENT` and compatible full-profile Agent state `AGENT_READY` | functional facade and Agent-owned tracing |
+| `DISABLED` | `platform.tracing.mode=DISABLED`, no Agent and no application SDK | intentional NoOp facade |
 
 There is no production `AUTO`, `STARTER` or `EXTERNAL` mode. Enabled tracing without compatible READY Controlled Agent fails startup. See [runtime ADR](../decisions/ADR-sdk-mode-detection.md) and [Controlled Agent gate](./rg-controlled-agent-release-gate.md).
 

@@ -32,7 +32,7 @@ import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
  */
 @AutoConfiguration
 @ConditionalOnClass(OpenTelemetry.class)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
 @EnableConfigurationProperties(TracingProperties.class)
 public class SemanticLayerAutoConfiguration {
 
@@ -78,13 +78,13 @@ public class SemanticLayerAutoConfiguration {
     private void emitStartupSignals(SemconvValidationMode mode, String disabledReason) {
         switch (mode) {
             case STRICT -> log.warn(
-                    "platform.tracing.semantic.validation-mode=STRICT предназначен только для test/CI; "
-                            + "в production runtime рекомендуется WARN (см. ADR-semconv-validation-modes)");
+                    "platform.tracing.semantic.validation-mode=STRICT is intended for test/CI only; "
+                            + "WARN is recommended for production runtime (see ADR-semconv-validation-modes)");
             case DISABLED -> log.warn(
-                    "platform.tracing.semantic.validation-mode=DISABLED: runtime semantic-валидация отключена "
-                            + "(reason='{}'). Это аварийный opt-out, НЕ режим миграции. PII-scrubbing продолжает "
-                            + "работать независимо от режима.",
-                    disabledReason == null || disabledReason.isBlank() ? "<не указана>" : disabledReason);
+                    "platform.tracing.semantic.validation-mode=DISABLED: runtime semantic validation is off "
+                            + "(reason='{}'). This is an emergency opt-out, NOT a migration mode. PII scrubbing "
+                            + "continues independently of the validation mode.",
+                    disabledReason == null || disabledReason.isBlank() ? "<unspecified>" : disabledReason);
             case WARN -> {
                 // production default — отдельный сигнал не требуется
             }

@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.util.Set;
 
@@ -16,36 +17,31 @@ class SdkModeResolverTest {
 
     @Test
     void agentRequiresReadyControlledExtension() {
-        assertThat(SdkModeResolver.resolve(SdkMode.AGENT, true, descriptor(AgentRuntimeState.AGENT_READY)))
+        assertThat(SdkModeResolver.resolve(SdkMode.AGENT, descriptor(AgentRuntimeState.AGENT_READY)))
                 .isEqualTo(SdkMode.AGENT);
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> SdkModeResolver.resolve(
-                        SdkMode.AGENT, true, descriptor(AgentRuntimeState.EXTENSION_MISSING)))
+                        SdkMode.AGENT, descriptor(AgentRuntimeState.EXTENSION_MISSING)))
                 .withMessageContaining("state=EXTENSION_MISSING");
     }
 
     @Test
     void disabledRequiresCompleteRuntimeAbsence() {
-        assertThat(SdkModeResolver.resolve(SdkMode.DISABLED, false, descriptor(AgentRuntimeState.DISABLED)))
+        assertThat(SdkModeResolver.resolve(SdkMode.DISABLED, descriptor(AgentRuntimeState.DISABLED)))
                 .isEqualTo(SdkMode.DISABLED);
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> SdkModeResolver.resolve(
-                        SdkMode.DISABLED, false, descriptor(AgentRuntimeState.AGENT_READY)))
+                        SdkMode.DISABLED, descriptor(AgentRuntimeState.AGENT_READY)))
                 .withMessageContaining("mode=DISABLED rejected observed runtime state=AGENT_READY");
     }
 
     @Test
-    void enabledAndModeMustDescribeTheSameState() {
-        assertThatIllegalStateException()
-                .isThrownBy(() -> SdkModeResolver.resolve(
-                        SdkMode.DISABLED, true, descriptor(AgentRuntimeState.DISABLED)))
-                .withMessageContaining("enabled=true requires platform.tracing.sdk.mode=AGENT");
-        assertThatIllegalStateException()
-                .isThrownBy(() -> SdkModeResolver.resolve(
-                        SdkMode.AGENT, false, descriptor(AgentRuntimeState.AGENT_READY)))
-                .withMessageContaining("enabled=false requires platform.tracing.sdk.mode=DISABLED");
+    void configuredModeIsRequired() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> SdkModeResolver.resolve(null, descriptor(AgentRuntimeState.DISABLED)))
+                .withMessage("platform.tracing.mode must be configured");
     }
 
     private static AgentExtensionDescriptor descriptor(AgentRuntimeState state) {

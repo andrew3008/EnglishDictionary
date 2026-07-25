@@ -16,7 +16,6 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
-import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 
 import java.lang.annotation.Annotation;
@@ -32,6 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * из параметров, помеченных {@link TracedAttribute}, и автоматически переводит исключения в
  * {@link SpanResult#FAILURE} с записью exception-события.
  * <p>
+ * Режим работы — всегда {@code ENRICH_CURRENT}: если есть активный валидный span (например,
+ * серверный, созданный OpenTelemetry Java Agent), аспект обогащает его вместо создания дочернего.
+ * Это устраняет дублирующие span'ы при совместной работе с Agent. Legacy-режим создания
+ * отдельного дочернего span'а независимо от родителя удалён как источник того же дублирования,
+ * от которого аспект защищает в остальных случаях (см. {@code ADR-spring-owns-only-what-spring-applies}).
+ * <p>
  * Используется Spring AOP (proxy-based). Прикладные сервисы должны быть Spring-бинами; вызов через
  * прямой ссылку на {@code this} не перехватывается — это ограничение proxy-подхода. Если требуется
  * перехват внутри класса, рекомендуется выделить метод в отдельный бин.
@@ -42,7 +47,6 @@ public class TracedAspect {
     private static final Logger log = LoggerFactory.getLogger(TracedAspect.class);
 
     private final TraceOperations traceOperations;
-    private final TracingProperties.Aop.Mode mode;
     private final ExceptionRecorder exceptionRecorder;
 
     /**
@@ -52,22 +56,12 @@ public class TracedAspect {
      */
     private final Set<String> httpServerMisuseReported = ConcurrentHashMap.newKeySet();
 
-    /**
-     * Совместимый конструктор с поведением по умолчанию ({@link TracingProperties.Aop.Mode#ENRICH_CURRENT}).
-     */
     public TracedAspect(TraceOperations traceOperations) {
-        this(traceOperations, TracingProperties.Aop.Mode.ENRICH_CURRENT, ExceptionRecorder.secureDefault());
+        this(traceOperations, ExceptionRecorder.secureDefault());
     }
 
-    public TracedAspect(TraceOperations traceOperations, TracingProperties.Aop.Mode mode) {
-        this(traceOperations, mode, ExceptionRecorder.secureDefault());
-    }
-
-    public TracedAspect(TraceOperations traceOperations,
-                        TracingProperties.Aop.Mode mode,
-                        ExceptionRecorder exceptionRecorder) {
+    public TracedAspect(TraceOperations traceOperations, ExceptionRecorder exceptionRecorder) {
         this.traceOperations = traceOperations;
-        this.mode = mode == null ? TracingProperties.Aop.Mode.ENRICH_CURRENT : mode;
         this.exceptionRecorder = exceptionRecorder == null ? ExceptionRecorder.secureDefault() : exceptionRecorder;
     }
 
@@ -91,22 +85,22 @@ public class TracedAspect {
         if (annotation.category() == SpanCategory.HTTP_SERVER) {
             String key = method.getDeclaringClass().getName() + "#" + method.getName();
             if (httpServerMisuseReported.add(key)) {
-                log.warn("Применение @Traced(category=HTTP_SERVER) на методе {} — почти всегда "
-                        + "приводит к дублированию HTTP-server span'ов. HTTP-server span'ы создаются "
-                        + "OpenTelemetry Java Agent (Tomcat/Netty) и Micrometer Observation. "
-                        + "Используйте @Traced(category=INTERNAL) или RPC для бизнес-операций.", key);
+                log.warn("@Traced(category=HTTP_SERVER) on method {} almost always "
+                        + "duplicates HTTP-server spans. HTTP-server spans are created by "
+                        + "OpenTelemetry Java Agent (Tomcat/Netty) and Micrometer Observation. "
+                        + "Use @Traced(category=INTERNAL) or RPC for business operations.", key);
             }
         }
 
-        // ENRICH_CURRENT: если есть активный валидный span (например, серверный, созданный
-        // OpenTelemetry Java Agent), не создаём дочерний — обогащаем текущий. Это устраняет
-        // дублирующие span'ы при работе вместе с Agent (распространённая ошибка инструментации
-        // прикладного кода поверх auto-instrumentation) и удешевляет трассировку.
-        if (mode == TracingProperties.Aop.Mode.ENRICH_CURRENT && hasActiveSpan()) {
+        // Если есть активный валидный span (например, серверный, созданный OpenTelemetry Java
+        // Agent), не создаём дочерний — обогащаем текущий. Это устраняет дублирующие span'ы при
+        // работе вместе с Agent (распространённая ошибка инструментации прикладного кода поверх
+        // auto-instrumentation) и удешевляет трассировку.
+        if (hasActiveSpan()) {
             return enrichCurrentSpan(joinPoint, method, spanName);
         }
 
-        // CHILD_SPAN или отсутствие активного контекста: создаём отдельный span штатным путём.
+        // Отсутствие активного контекста: создаём отдельный span штатным путём.
         try (SpanHandle handle = traceOperations.spans().operation(spanName).start()) {
             applyParameterAttributesToSpan(Span.current(), method, joinPoint.getArgs());
             try {
@@ -117,7 +111,7 @@ public class TracedAspect {
                 try {
                     handle.recordException(t);
                 } catch (RuntimeException tracingError) {
-                    log.warn("Не удалось зафиксировать исключение на span'е '{}': {}",
+                    log.warn("Failed to record exception on span '{}': {}",
                             spanName, tracingError.getMessage());
                 }
                 throw t;
@@ -141,7 +135,7 @@ public class TracedAspect {
             current.setAttribute(PlatformAttributes.PLATFORM_TRACED_METHOD, spanName);
             applyParameterAttributesToSpan(current, method, joinPoint.getArgs());
         } catch (RuntimeException attrError) {
-            log.warn("Не удалось обогатить активный span '{}' через @Traced: {}",
+            log.warn("Failed to enrich active span '{}' via @Traced: {}",
                     spanName, attrError.getMessage());
         }
         try {
@@ -150,7 +144,7 @@ public class TracedAspect {
             try {
                 exceptionRecorder.record(Span.current(), t);
             } catch (RuntimeException tracingError) {
-                log.warn("Не удалось зафиксировать исключение на активном span'е через @Traced('{}'): {}",
+                log.warn("Failed to record exception on active span via @Traced('{}'): {}",
                         spanName, tracingError.getMessage());
             }
             throw t;

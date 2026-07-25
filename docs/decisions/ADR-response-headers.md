@@ -60,6 +60,7 @@ OTel Java Agent закрывает SERVER span при выходе из servlet 
 
 - v1.0: сохраняем `TraceResponseHeaderServletFilter` и `TraceResponseHeaderWebFilter`.
 - Заголовки по умолчанию: `X-Request-Id` (primary, `platform.tracing.response.header-name`) + всегда `X-Trace-Id`.
+- `expose-request-id-header=false` отключает только запись `X-Request-Id`; фильтр (identity boundary + `X-Trace-Id`) остаётся.
 - Источник trace context: `TraceOperations.currentTraceId()` — абстракция над Micrometer Tracer / OTel bridge, **не** прямой доступ к Agent API.
 
 > **Обновлено (Фаза 12, [ADR-request-id-correlation-id.md](./ADR-request-id-correlation-id.md)).** Семантика `X-Request-Id` изменена:

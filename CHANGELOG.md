@@ -8,6 +8,9 @@
 
 ### Breaking Changes
 
+- **Runtime ownership configuration simplified:** `platform.tracing.enabled` and
+  `platform.tracing.sdk.mode` are replaced by the single typed property
+  `platform.tracing.mode=AGENT|DISABLED` (default `AGENT`). No compatibility aliases are provided.
 - **`TracingProperties` surface reduced** to Spring-applied (A) and JMX-reconciled (B) fields only.
   Removed mirror groups: `facade`, `resource`, `limits`, `queue`, `serviceNames`, `enriching`,
   `watchdog`, `control`, `propagation.baggage`, `exporter.otlp`; removed fields
@@ -238,7 +241,7 @@
   старте агента (`platform.sampling.enabled`, per-route ratios), закрывая startup-window до первого
   refresh.
 - **`TracingProperties`** дополнен: `facade.enabled`, `sampling.enabled`, `sampling.route-ratios`,
-  `exporter.enabled`, `propagation.enabled`, `validation.strict`, `diagnostics.log-level`.
+  `exporter.enabled`, `propagation.enabled`, `validation.strict`, `log-level`.
 
 ### Added (Фаза 13 — Typed Span API + Semantic Layer)
 

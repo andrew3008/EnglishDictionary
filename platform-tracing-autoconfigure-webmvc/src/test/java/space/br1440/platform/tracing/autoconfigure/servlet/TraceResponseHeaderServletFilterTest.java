@@ -109,6 +109,22 @@ class TraceResponseHeaderServletFilterTest {
     }
 
     @Test
+    void skipsRequestIdHeaderWhenExposeDisabled_butStillWritesTraceId() throws ServletException, java.io.IOException {
+        // given
+        properties.getResponse().setExposeRequestIdHeader(false);
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-hidden");
+        when(traceContextView.traceId()).thenReturn(Optional.of("trace-keep"));
+        when(response.isCommitted()).thenReturn(false);
+
+        // when
+        filter.doFilter(request, response, chain);
+
+        // then
+        verify(response, never()).setHeader(eq(properties.getResponse().getHeaderName()), anyString());
+        verify(response).setHeader(PlatformHeaders.X_TRACE_ID, "trace-keep");
+    }
+
+    @Test
     void bindsRequestIdOnlyForListenerExecution() throws ServletException, java.io.IOException {
         when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("request-42");
         when(traceContextView.traceId()).thenReturn(Optional.empty());

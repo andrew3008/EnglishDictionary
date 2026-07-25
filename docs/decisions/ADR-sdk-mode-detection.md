@@ -21,7 +21,7 @@ auto-instrumentation, sampler, обязательными processors, sanitizer,
 lifecycle. Spring starter владеет application facade, web/Kafka adapters, binding и наблюдением
 readiness; starter не создаёт и не принимает application `OpenTelemetry` SDK.
 
-Поддерживаются ровно два значения `platform.tracing.sdk.mode`:
+Поддерживаются ровно два значения `platform.tracing.mode`:
 
 | Режим | Контракт |
 |---|---|
@@ -29,8 +29,8 @@ readiness; starter не создаёт и не принимает application `O
 | `DISABLED` | Успешный intentional NoOp только при отсутствии Agent, extension, global и application runtime |
 
 `AUTO`, `STARTER`, `EXTERNAL` удалены без compatibility aliases. Их передача является ошибкой
-property binding. Инвариант конфигурации: `enabled=true` требует `AGENT`; `enabled=false` требует
-`DISABLED`. Противоречия завершают startup ошибкой.
+property binding. `platform.tracing.mode` является единственным источником истины для startup ownership:
+отдельный глобальный `platform.tracing.enabled` удалён, поэтому противоречивую пару параметров задать нельзя.
 
 ## Readiness и collision semantics
 

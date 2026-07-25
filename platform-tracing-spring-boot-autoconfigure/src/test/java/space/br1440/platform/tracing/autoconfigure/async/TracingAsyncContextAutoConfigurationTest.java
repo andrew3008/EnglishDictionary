@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Тесты {@link TracingAsyncContextAutoConfiguration}: проверка opt-in активации, регистрации
- * BPP и {@link ContextSnapshotFactory}, fallback для неизвестного режима.
+ * BPP и {@link ContextSnapshotFactory}.
  */
 class TracingAsyncContextAutoConfigurationTest {
 
@@ -25,7 +25,8 @@ class TracingAsyncContextAutoConfigurationTest {
 
     @Test
     void при_enabled_true_регистрируется_bpp_и_contextSnapshotFactory() {
-        runner.withPropertyValues("platform.tracing.context-propagation.async.enabled=true")
+        runner.withPropertyValues(
+                        "platform.tracing.thread-pool-task-executor.enabled=true")
                 .run(context -> {
                     assertThat(context).hasSingleBean(ThreadPoolTaskExecutorContextPropagationBeanPostProcessor.class);
                     assertThat(context).hasSingleBean(ContextSnapshotFactory.class);
@@ -33,24 +34,26 @@ class TracingAsyncContextAutoConfigurationTest {
     }
 
     @Test
-    void неизвестный_mode_не_блокирует_активацию_но_логирует_warning() {
-        // Forward-compatibility: при появлении новых режимов в v1.1 текущие сборки
-        // должны корректно fallback'нуться, а не падать с BeanCreationException.
+    void existing_ContextSnapshotFactory_не_перетирается() {
+        ContextSnapshotFactory custom = ContextSnapshotFactory.builder().build();
         runner.withPropertyValues(
-                        "platform.tracing.context-propagation.async.enabled=true",
-                        "platform.tracing.context-propagation.async.mode=future-unknown-mode")
+                        "platform.tracing.thread-pool-task-executor.enabled=true")
+                .withBean(ContextSnapshotFactory.class, () -> custom)
                 .run(context -> {
-                    assertThat(context).hasSingleBean(ThreadPoolTaskExecutorContextPropagationBeanPostProcessor.class);
+                    assertThat(context.getBean(ContextSnapshotFactory.class)).isSameAs(custom);
                 });
     }
 
     @Test
-    void existing_ContextSnapshotFactory_не_перетирается() {
-        ContextSnapshotFactory custom = ContextSnapshotFactory.builder().build();
-        runner.withPropertyValues("platform.tracing.context-propagation.async.enabled=true")
-                .withBean(ContextSnapshotFactory.class, () -> custom)
+    void устаревшие_ключи_не_активируют_task_decorator() {
+        runner.withPropertyValues(
+                        "platform.tracing.async.enabled=true",
+                        "platform.tracing.context-propagation.async.enabled=true",
+                        "platform.tracing.context-propagation.thread-pool-task-executor.enabled=true")
                 .run(context -> {
-                    assertThat(context.getBean(ContextSnapshotFactory.class)).isSameAs(custom);
+                    assertThat(context).doesNotHaveBean(
+                            ThreadPoolTaskExecutorContextPropagationBeanPostProcessor.class);
+                    assertThat(context).doesNotHaveBean(ContextSnapshotFactory.class);
                 });
     }
 }

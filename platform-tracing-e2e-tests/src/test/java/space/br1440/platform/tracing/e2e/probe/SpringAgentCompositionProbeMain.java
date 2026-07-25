@@ -92,8 +92,7 @@ public class SpringAgentCompositionProbeMain {
                 // Общий E2E classpath содержит SDK для других тестов; production starter его не публикует.
                 "--spring.autoconfigure.exclude=" + BOOT_OTEL_SDK_AUTO_CONFIGURATIONS,
                 "--logging.level.root=WARN",
-                "--platform.tracing.enabled=" + (mode == SdkMode.AGENT),
-                "--platform.tracing.sdk.mode=" + mode.name());
+                "--platform.tracing.mode=" + mode.name());
     }
 
     private static String rootMessage(Throwable failure) {

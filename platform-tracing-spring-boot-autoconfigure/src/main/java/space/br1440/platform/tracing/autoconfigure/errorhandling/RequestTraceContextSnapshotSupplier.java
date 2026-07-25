@@ -40,7 +40,7 @@ public final class RequestTraceContextSnapshotSupplier implements Supplier<Reque
                     context.traceId().orElse(null),
                     context.spanId().orElse(null));
         } catch (RuntimeException exception) {
-            log.debug("Не удалось прочитать контекст при формировании RequestTraceContextSnapshot", exception);
+            log.debug("Failed to read context while building RequestTraceContextSnapshot", exception);
             return emptySnapshot();
         }
     }

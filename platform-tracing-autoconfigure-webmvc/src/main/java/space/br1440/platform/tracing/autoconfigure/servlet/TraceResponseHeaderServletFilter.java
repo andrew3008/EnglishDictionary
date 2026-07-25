@@ -95,7 +95,7 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
 
                 if (!response.isCommitted()) {
                     try {
-                        // X-Request-Id всегда присутствует: при отсутствии входящего он сгенерирован.
+                        // X-Request-Id: opt-out через platform.tracing.response.expose-request-id-header.
                         if (properties.getResponse().isExposeRequestIdHeader()) {
                             response.setHeader(properties.getResponse().getHeaderName(), requestId);
                         }

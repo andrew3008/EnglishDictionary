@@ -2,61 +2,69 @@ package space.br1440.platform.tracing.autoconfigure.servicename;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
-import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PlatformLocalServiceNameProviderTest {
 
     @Test
-    void приоритет_TracingProperties_service_name() {
-        TracingProperties properties = new TracingProperties();
-        properties.getService().setName("override-service");
-        MockEnvironment env = new MockEnvironment();
-        env.setProperty("spring.application.name", "spring-name");
-
-        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(properties, env);
-
-        assertThat(provider.get()).isEqualTo("override-service");
-    }
-
-    @Test
-    void fallback_на_spring_application_name() {
-        TracingProperties properties = new TracingProperties();
+    void resolves_spring_application_name() {
+        // given
         MockEnvironment env = new MockEnvironment();
         env.setProperty("spring.application.name", "order-service");
 
-        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(properties, env);
+        // when
+        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(env);
 
+        // then
         assertThat(provider.get()).isEqualTo("order-service");
     }
 
     @Test
-    void финальный_fallback_unknown_service() {
-        TracingProperties properties = new TracingProperties();
+    void falls_back_to_unknown_service_when_spring_name_absent() {
+        // given
         MockEnvironment env = new MockEnvironment();
 
-        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(properties, env);
+        // when
+        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(env);
 
+        // then
         assertThat(provider.get()).isEqualTo(PlatformLocalServiceNameProvider.UNKNOWN_SERVICE);
     }
 
     @Test
-    void пустая_строка_в_TracingProperties_не_перекрывает_spring_имя() {
-        TracingProperties properties = new TracingProperties();
-        properties.getService().setName("   ");
+    void blank_spring_application_name_falls_back_to_unknown_service() {
+        // given
         MockEnvironment env = new MockEnvironment();
-        env.setProperty("spring.application.name", "billing-service");
+        env.setProperty("spring.application.name", "   ");
 
-        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(properties, env);
+        // when
+        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(env);
 
-        assertThat(provider.get()).isEqualTo("billing-service");
+        // then
+        assertThat(provider.get()).isEqualTo(PlatformLocalServiceNameProvider.UNKNOWN_SERVICE);
     }
 
     @Test
-    void устойчив_к_null_аргументам() {
-        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(null, null);
+    void ignores_platform_tracing_service_name_spring_binding() {
+        // given — agent-канал не читается этим провайдером
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("spring.application.name", "spring-name");
+        env.setProperty("platform.tracing.service.name", "tracing-name");
 
+        // when
+        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(env);
+
+        // then
+        assertThat(provider.get()).isEqualTo("spring-name");
+    }
+
+    @Test
+    void tolerates_null_environment() {
+        // when
+        PlatformLocalServiceNameProvider provider = new PlatformLocalServiceNameProvider(null);
+
+        // then
         assertThat(provider.get()).isEqualTo(PlatformLocalServiceNameProvider.UNKNOWN_SERVICE);
     }
 }

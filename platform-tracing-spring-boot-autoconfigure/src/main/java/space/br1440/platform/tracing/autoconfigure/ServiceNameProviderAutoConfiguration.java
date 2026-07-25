@@ -3,7 +3,6 @@ package space.br1440.platform.tracing.autoconfigure;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
@@ -19,14 +18,13 @@ import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
  * без {@code @ConditionalOnProperty}, без {@code @ConditionalOnBean}. Это сделано осознанно —
  * по тому же контракту, что и {@code RequestContextSupplierAutoConfiguration}: внешний
  * errorhandling-стартер потребителя должен получать корректные значения независимо от
- * состояния {@code platform.tracing.enabled}.
+ * режима {@code platform.tracing.mode}.
  * <p>
- * Поведение при {@code platform.tracing.enabled=false}:
+ * Поведение при {@code platform.tracing.mode=DISABLED}:
  * <ul>
  *   <li>{@link PlatformLocalServiceNameProvider} продолжает работать корректно: возвращает
- *       {@code platform.tracing.service.name} → {@code spring.application.name} →
- *       {@link PlatformLocalServiceNameProvider#UNKNOWN_SERVICE}. Все источники доступны
- *       через {@link Environment} и не требуют активной OTel-инфраструктуры.</li>
+ *       {@code spring.application.name} → {@link PlatformLocalServiceNameProvider#UNKNOWN_SERVICE}.
+ *       Источник доступен через {@link Environment} и не требует активной OTel-инфраструктуры.</li>
  *   <li>{@link PlatformRemoteServiceNameProvider} возвращает {@link java.util.Optional#empty()}:
  *       при отключённом tracing'е CLIENT-span'ы не создаются и атрибут upstream-сервиса
  *       не выставляется — это и есть ожидаемое поведение.</li>
@@ -38,18 +36,16 @@ import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
  * читают данные из {@link Environment} и/или {@link io.opentelemetry.api.trace.Span#current()} +
  * MDC, а не из {@link space.br1440.platform.tracing.api.TraceOperations}. <b>Не добавлять</b>
  * {@code after}/{@code before} «по аналогии с соседними классами»: это сделает регистрацию
- * провайдеров зависимой от {@code platform.tracing.enabled} и сломает контракт «errorhandling
+ * провайдеров зависимой от {@code platform.tracing.mode} и сломает контракт «errorhandling
  * всегда получает корректные имена сервисов, даже при выключенном tracing».
  */
 @AutoConfiguration
-@EnableConfigurationProperties(TracingProperties.class)
 public class ServiceNameProviderAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(PlatformLocalServiceNameProvider.class)
-    public PlatformLocalServiceNameProvider platformLocalServiceNameProvider(TracingProperties properties,
-                                                                             Environment environment) {
-        return new PlatformLocalServiceNameProvider(properties, environment);
+    public PlatformLocalServiceNameProvider platformLocalServiceNameProvider(Environment environment) {
+        return new PlatformLocalServiceNameProvider(environment);
     }
 
     /**

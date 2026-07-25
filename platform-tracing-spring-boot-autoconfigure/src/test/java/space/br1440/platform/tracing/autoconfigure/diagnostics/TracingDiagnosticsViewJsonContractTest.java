@@ -38,7 +38,7 @@ class TracingDiagnosticsViewJsonContractTest {
     @Test
     void actuatorMap_includesReasonWhenPresent() throws Exception {
         TracingDiagnosticsView view = TracingDiagnosticsMapper.fromState(
-                NoOpTracingRuntime.disabledByConfiguration("platform.tracing.sdk.mode=DISABLED").state());
+                NoOpTracingRuntime.disabledByConfiguration("platform.tracing.mode=DISABLED").state());
 
         @SuppressWarnings("unchecked")
         Map<String, Object> json = OBJECT_MAPPER.readValue(
@@ -47,7 +47,7 @@ class TracingDiagnosticsViewJsonContractTest {
 
         assertThat(json.keySet()).containsExactlyInAnyOrder("mode", "reason", "details");
         assertThat(json.get("mode")).isEqualTo("DISABLED_BY_CONFIGURATION");
-        assertThat(json.get("reason")).isEqualTo("platform.tracing.sdk.mode=DISABLED");
+        assertThat(json.get("reason")).isEqualTo("platform.tracing.mode=DISABLED");
         assertThat(json.get("details")).isEqualTo(Map.of());
     }
 

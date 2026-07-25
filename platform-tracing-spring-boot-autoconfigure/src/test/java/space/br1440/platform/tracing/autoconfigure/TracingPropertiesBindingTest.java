@@ -5,6 +5,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 
+import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
+import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -14,6 +17,24 @@ class TracingPropertiesBindingTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(TestConfig.class);
+
+    @Test
+    void defaultRuntimeModeIsAgent() {
+        contextRunner.run(ctx -> {
+            TracingProperties properties = ctx.getBean(TracingProperties.class);
+            assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
+        });
+    }
+
+    @Test
+    void bindsRuntimeModeAsEnum() {
+        contextRunner
+                .withPropertyValues("platform.tracing.mode=disabled")
+                .run(ctx -> {
+                    TracingProperties properties = ctx.getBean(TracingProperties.class);
+                    assertThat(properties.getMode()).isEqualTo(SdkMode.DISABLED);
+                });
+    }
 
     @Test
     void bindsSamplingEnabled() {
@@ -117,6 +138,31 @@ class TracingPropertiesBindingTest {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
                     assertThat(properties.getValidation().isStrict()).isTrue();
                 });
+    }
+
+    @Test
+    void bindsPlatformLogLevelAsEnum() {
+        contextRunner
+                .withPropertyValues("platform.tracing.log-level=warn")
+                .run(ctx -> {
+                    TracingProperties properties = ctx.getBean(TracingProperties.class);
+                    assertThat(properties.getLogLevel()).isEqualTo(OtelAgentLogLevel.WARN);
+                });
+    }
+
+    @Test
+    void defaultPlatformLogLevelIsInfo() {
+        contextRunner.run(ctx -> {
+            TracingProperties properties = ctx.getBean(TracingProperties.class);
+            assertThat(properties.getLogLevel()).isEqualTo(OtelAgentLogLevel.INFO);
+        });
+    }
+
+    @Test
+    void rejectsUnknownPlatformLogLevel() {
+        contextRunner
+                .withPropertyValues("platform.tracing.log-level=verbose")
+                .run(ctx -> assertThat(ctx.getStartupFailure()).isNotNull());
     }
 
     @Test

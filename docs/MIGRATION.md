@@ -2,10 +2,81 @@
 
 Документ содержит несколько разделов, каждый соответствует одной волне изменений.
 
+- [`context-propagation.async` → `context-propagation.thread-pool-task-executor`](#context-propagationasync--context-propagationthread-pool-task-executor)
+- [`context-propagation.thread-pool-task-executor` → `thread-pool-task-executor` (flatten)](#context-propagationthread-pool-task-executor--thread-pool-task-executor-flatten)
+- [`suppression.suppress-micrometer-tracing`: auto-derive из Agent presence](#suppressionsuppress-micrometer-tracing-auto-derive-из-agent-presence)
 - [Removed Spring properties (TracingProperties purge)](#removed-spring-properties-tracingproperties-purge)
 - [v0.1.0 default changes (Wave R1+)](#v010-default-changes-wave-r1) — alignment shared defaults Spring ↔ Agent
 - [Wave 2c: `micrometer-tracing-bridge-otel` opt-in](#wave-2c-micrometer-tracing-bridge-otel-opt-in)
 - [v1.x: `DROP_OLDEST` export processor (default)](#v1x-drop_oldest-export-processor-default)
+
+---
+
+## Runtime ownership mode
+
+Replace the former pair of startup properties with one source of truth:
+
+```properties
+platform.tracing.mode=AGENT
+```
+
+For an intentional local NoOp runtime without Java Agent use
+`platform.tracing.mode=DISABLED`. The removed `platform.tracing.enabled` and
+`platform.tracing.sdk.mode` properties have no compatibility aliases.
+
+## `context-propagation.async` → `context-propagation.thread-pool-task-executor`
+
+| Поле | Значение |
+|------|----------|
+| **Тип изменения** | Breaking: YAML-ключ и Java-путь изменены |
+| **Старый YAML ключ** | `platform.tracing.context-propagation.async.enabled` |
+| **Новый YAML ключ** | `platform.tracing.context-propagation.thread-pool-task-executor.enabled` |
+| **Java API** | `TracingProperties.getContextPropagation().getAsync().isEnabled()` → `TracingProperties.getContextPropagation().getThreadPoolTaskExecutor().isEnabled()` |
+| **Причина** | Настройка применяется только к Spring `ThreadPoolTaskExecutor`; короткое имя `async.enabled` ошибочно выглядело как общий переключатель async tracing. Новый путь называет конкретный ресурс и действие: перенос текущего контекста в задачи executor'а. |
+
+### Кого затрагивает
+
+- Сервисы, использующие `platform.tracing.context-propagation.async.enabled=true` — переименовать ключ в `platform.tracing.context-propagation.thread-pool-task-executor.enabled`. Старый и промежуточный `platform.tracing.async.enabled` игнорируются Spring Boot.
+- Сервисы, не задававшие свойство — изменений не требуется (default `false` не изменился).
+
+---
+
+## `context-propagation.thread-pool-task-executor` → `thread-pool-task-executor` (flatten)
+
+| Поле | Значение |
+|------|----------|
+| **Тип изменения** | Breaking: YAML-ключ и Java-путь изменены |
+| **Старый YAML ключ** | `platform.tracing.context-propagation.thread-pool-task-executor.enabled` |
+| **Новый YAML ключ** | `platform.tracing.thread-pool-task-executor.enabled` |
+| **Java API** | `TracingProperties.getContextPropagation().getThreadPoolTaskExecutor().isEnabled()` → `TracingProperties.getThreadPoolTaskExecutor().isEnabled()` |
+| **Причина** | `ContextPropagation` был обёрткой с ровно одним child и сам нигде не читался через POJO (значение потребляется `@ConditionalOnProperty` напрямую из `Environment`, минуя getter) — структурный overhead. Имя дополнительно коллизировало с несвязанным `TracingProperties.Propagation` (межсервисные HTTP-заголовки трассировки) и с нативным Spring `spring.reactor.context-propagation`. |
+
+### Кого затрагивает
+
+- Сервисы, использующие `platform.tracing.context-propagation.thread-pool-task-executor.enabled=true` — переименовать ключ в `platform.tracing.thread-pool-task-executor.enabled`. Старый ключ игнорируется Spring Boot.
+- Сервисы, не задававшие свойство — изменений не требуется (default `false` не изменился).
+
+---
+
+## `suppression.suppress-micrometer-tracing`: auto-derive из Agent presence
+
+| Поле | Значение |
+|------|----------|
+| **Тип изменения** | Behavior change для default-конфигурации; property остаётся, но default больше не статичен |
+| **YAML ключ** | `platform.tracing.suppression.suppress-micrometer-tracing` (не изменился) |
+| **Java API** | `TracingProperties.Suppression#getSuppressMicrometerTracing()` — тип изменён `boolean` → `Boolean` (nullable) |
+| **Старый default** | `false` (статичный) |
+| **Новый default** | не задано (`null`) → эффективное значение auto-derive'ится из присутствия OpenTelemetry Java Agent в JVM (`OtelAgentDetector`): Agent есть → `true`, Agent'а нет → `false` |
+| **Причина** | Разработчики сервисов не должны разбираться в тонкостях 2×2-матрицы (suppress × agent) — типовой случай (Agent подключён → suppress включён автоматически) больше не требует явной настройки |
+
+### Кого затрагивает
+
+- Сервисы, которые **не задавали** свойство явно — поведение теперь соответствует фактическому окружению автоматически: с Agent'ом (production) suppression включается сам, без Agent'а (dev/staging SDK-only) остаётся выключенным. Ранее без явной настройки с Agent'ом возникало дублирование HTTP-span'ов (устранялось только startup-WARN'ом, не поведением).
+- Сервисы, которые **явно** задали `true`/`false` — изменений нет: явное значение всегда имеет приоритет над auto-derive.
+
+### Реализация
+
+Auto-derive и активация `WebMvc`/`WebFluxSuppressMicrometerTracingAutoConfiguration` управляются единым `MicrometerTracingSuppressionResolver` (`space.br1440.platform.tracing.autoconfigure.support`), чтобы условие активации автоконфигурации и диагностический WARN (`TracingObservationSuppressStartupRunner`) не могли разойтись.
 
 ---
 
@@ -27,11 +98,14 @@ Spring `TracingProperties` больше не содержит зеркал agent
 | `platform.tracing.propagation.baggage.*` | Мигрировать на agent: `platform.tracing.propagation.baggage.*` |
 | `platform.tracing.exporter.otlp.*` | Мигрировать на agent/env: `OTEL_EXPORTER_OTLP_*` |
 | `platform.tracing.service.version/environment/c-group/container-id` | Мигрировать на agent: `platform.tracing.service.*` |
+| `platform.tracing.service.name` | Удалить из Spring binding; app-plane: `spring.application.name`; agent Resource: `OTEL_SERVICE_NAME` / `-Dplatform.tracing.service.name` / `PLATFORM_TRACING_SERVICE_NAME` |
 | `platform.tracing.sampling.force-record-header/qa-force-header` | Использовать `platform.tracing.propagation.platform-headers.*` |
 | `platform.tracing.scrubbing.rules-config` | Agent-side `ScrubbingRulesLoader` (extension) |
 | `platform.tracing.validation.strict-runtime-allowed` | **Agent-канал** — `-Dplatform.tracing.validation.strict-runtime-allowed=...` |
 | `platform.tracing.diagnostics.dual-channel-warn` | Удалить (диагностика удалена) |
 | `platform.tracing.diagnostics.drop-oldest-aspiration-*` | Удалить (диагностика удалена) |
+| `platform.tracing.aop.mode` | Удалить. `TracedAspect` теперь всегда работает в единственном режиме (обогащение активного span'а без создания дочернего при наличии parent'а); legacy-режим создания отдельного дочернего span'а удалён как источник дублирования span'ов с OTel Java Agent |
+| `platform.tracing.context-propagation.async.mode` | Удалить. Единственное поддерживаемое значение никогда не имело альтернативы и не влияло на поведение `ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` (конструктор его не принимал) — свойство существовало только для WARN про само себя ради гипотетического будущего второго режима |
 
 ADR: [decisions/ADR-spring-owns-only-what-spring-applies.md](./decisions/ADR-spring-owns-only-what-spring-applies.md)
 

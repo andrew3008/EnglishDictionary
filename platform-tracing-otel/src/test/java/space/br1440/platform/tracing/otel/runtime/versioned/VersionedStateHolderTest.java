@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.runtime.versioned;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import jakarta.annotation.Nullable;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,8 +16,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Контракт {@link VersionedStateHolder}: атомарная публикация, last-known-good на всех
- * ветках отказа (null/исключение builder'а/валидатора, отказ валидатора) и корректность под
- * конкуренцией (CAS-retry, монотонность версий, отсутствие потерянных апдейтов).
+ * ветках отказа (null-кандидат / исключение builder'а или валидатора, отказ валидатора)
+ * и корректность под конкуренцией (CAS-retry, монотонность версий, отсутствие потерянных апдейтов).
+ * Null {@code builder} — программная ошибка: {@link NullPointerException}.
  */
 @DisplayName("VersionedStateHolder: atomic publish + last-known-good + concurrency")
 class VersionedStateHolderTest {
@@ -24,7 +27,16 @@ class VersionedStateHolderTest {
     }
 
     private static VersionedStateHolder<Snapshot> holder() {
-        return new VersionedStateHolder<>(new Snapshot(0, 0));
+        return holder(new Snapshot(0, 0));
+    }
+
+    private static VersionedStateHolder<Snapshot> holder(@Nullable Snapshot initial) {
+        return new VersionedStateHolder<>(initial);
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private static void clearInterruptStatus() {
+        Thread.interrupted();
     }
 
     @SuppressWarnings("unchecked")
@@ -35,7 +47,9 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("null initial → IllegalArgumentException")
     void initialNullRejected() {
-        assertThatThrownBy(() -> new VersionedStateHolder<>(null))
+        // when
+        // then
+        assertThatThrownBy(() -> holder(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("initial snapshot must not be null");
     }
@@ -43,8 +57,12 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("builder бросил VirtualMachineError → пробрасывается, LKG сохранён")
     void builderFatalErrorRethrown() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         OutOfMemoryError fatal = new OutOfMemoryError("simulated");
+
+        // when
+        // then
         assertThatThrownBy(() -> holder.tryUpdate(prev -> {
             throw fatal;
         })).isSameAs(fatal);
@@ -54,9 +72,13 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("validator бросил LinkageError → пробрасывается, LKG сохранён")
     void validatorFatalErrorRethrown() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         holder.tryUpdate(prev -> new Snapshot(1, 7));
         LinkageError fatal = new LinkageError("simulated");
+
+        // when
+        // then
         assertThatThrownBy(() -> holder.tryUpdate(
                 prev -> new Snapshot(2, 8),
                 s -> {
@@ -68,12 +90,15 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("builder бросил InterruptedException → interrupt flag, false, LKG")
     void builderInterruptedSetsFlagReturnsFalse() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         holder.tryUpdate(prev -> new Snapshot(1, 7));
-        Thread.interrupted();
+        clearInterruptStatus();
 
+        // when
         boolean applied = holder.tryUpdate(prev -> sneakyThrow(new InterruptedException("interrupted")));
 
+        // then
         assertThat(applied).isFalse();
         assertThat(Thread.interrupted()).isTrue();
         assertThat(holder.current().value()).isEqualTo(7);
@@ -82,14 +107,17 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("validator бросил InterruptedException → interrupt flag, false, LKG")
     void validatorInterruptedSetsFlagReturnsFalse() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         holder.tryUpdate(prev -> new Snapshot(1, 7));
-        Thread.interrupted();
+        clearInterruptStatus();
 
+        // when
         boolean applied = holder.tryUpdate(
                 prev -> new Snapshot(2, 8),
                 s -> sneakyThrow(new InterruptedException("interrupted")));
 
+        // then
         assertThat(applied).isFalse();
         assertThat(Thread.interrupted()).isTrue();
         assertThat(holder.current().value()).isEqualTo(7);
@@ -98,7 +126,11 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("version() делегирует current().version()")
     void versionDelegatesToCurrent() {
+        // given
         VersionedStateHolder<Snapshot> holder = new VersionedStateHolder<>(new Snapshot(42, 0));
+
+        // when
+        // then
         assertThat(holder.version()).isEqualTo(42);
         holder.tryUpdate(prev -> new Snapshot(43, 1));
         assertThat(holder.version()).isEqualTo(43);
@@ -107,9 +139,12 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("tryUpdate(builder) эквивалентен tryUpdate(builder, null)")
     void singleArgOverloadEquivalentToNullValidator() {
+        // given
         VersionedStateHolder<Snapshot> singleArg = holder();
         VersionedStateHolder<Snapshot> nullValidator = holder();
 
+        // when
+        // then
         assertThat(singleArg.tryUpdate(prev -> new Snapshot(1, 1))).isTrue();
         assertThat(nullValidator.tryUpdate(prev -> new Snapshot(1, 1), null)).isTrue();
 
@@ -121,10 +156,13 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("успешный tryUpdate публикует новый снимок и поднимает версию")
     void successfulUpdatePublishes() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
 
+        // when
         boolean applied = holder.tryUpdate(prev -> new Snapshot(prev.version() + 1, 42));
 
+        // then
         assertThat(applied).isTrue();
         assertThat(holder.version()).isEqualTo(1);
         assertThat(holder.current().value()).isEqualTo(42);
@@ -133,11 +171,14 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("builder вернул null → keep last-known-good")
     void nullCandidateKeepsLkg() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         holder.tryUpdate(prev -> new Snapshot(1, 7));
 
+        // when
         boolean applied = holder.tryUpdate(prev -> null);
 
+        // then
         assertThat(applied).isFalse();
         assertThat(holder.current().value()).isEqualTo(7);
         assertThat(holder.version()).isEqualTo(1);
@@ -146,13 +187,16 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("builder бросил исключение → keep last-known-good, наружу не пробрасывается")
     void builderThrowKeepsLkg() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         holder.tryUpdate(prev -> new Snapshot(1, 7));
 
+        // when
         boolean applied = holder.tryUpdate(prev -> {
             throw new IllegalStateException("bad input");
         });
 
+        // then
         assertThat(applied).isFalse();
         assertThat(holder.current().value()).isEqualTo(7);
     }
@@ -160,11 +204,14 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("validator отверг кандидата → keep last-known-good")
     void validatorRejectKeepsLkg() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         holder.tryUpdate(prev -> new Snapshot(1, 7));
 
+        // when
         boolean applied = holder.tryUpdate(prev -> new Snapshot(2, 999), s -> s.value() <= 100);
 
+        // then
         assertThat(applied).isFalse();
         assertThat(holder.current().value()).isEqualTo(7);
     }
@@ -172,28 +219,38 @@ class VersionedStateHolderTest {
     @Test
     @DisplayName("validator бросил исключение → keep last-known-good")
     void validatorThrowKeepsLkg() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         holder.tryUpdate(prev -> new Snapshot(1, 7));
 
+        // when
         boolean applied = holder.tryUpdate(prev -> new Snapshot(2, 8), s -> {
             throw new RuntimeException("validator boom");
         });
 
+        // then
         assertThat(applied).isFalse();
         assertThat(holder.current().value()).isEqualTo(7);
     }
 
     @Test
-    @DisplayName("null builder → false без изменений")
-    void nullBuilderReturnsFalse() {
+    @DisplayName("null builder → NullPointerException, состояние не меняется")
+    void nullBuilderThrowsAndKeepsState() {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
-        assertThat(holder.tryUpdate(null)).isFalse();
+
+        // when
+        // then
+        assertThatThrownBy(() -> holder.tryUpdate(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("builder");
         assertThat(holder.version()).isZero();
     }
 
     @Test
     @DisplayName("конкурентные апдейты: все применяются, версии монотонны, без потерь (CAS-retry)")
     void concurrentUpdatesAreSerializedWithoutLoss() throws InterruptedException {
+        // given
         VersionedStateHolder<Snapshot> holder = holder();
         int threads = 8;
         int perThread = 2000;
@@ -217,8 +274,11 @@ class VersionedStateHolderTest {
             });
         }
 
+        // when
         start.countDown();
         pool.shutdown();
+
+        // then
         assertThat(pool.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
 
         int expected = threads * perThread;

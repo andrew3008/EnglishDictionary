@@ -45,6 +45,30 @@ class TraceResponseHeaderWebFilterTest {
     }
 
     @Test
+    void skipsRequestIdHeaderWhenExposeDisabled_butStillWritesTraceId() {
+        // given
+        TraceOperations traceOperations = mock(TraceOperations.class);
+        ActiveTraceContextView traceContext = mock(ActiveTraceContextView.class);
+        when(traceOperations.traceContext()).thenReturn(traceContext);
+        when(traceContext.traceId()).thenReturn(Optional.of(TRACE_ID));
+        var properties = new TracingProperties();
+        properties.getResponse().setExposeRequestIdHeader(false);
+        var filter = new TraceResponseHeaderWebFilter(traceOperations, properties);
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/no-request-id")
+                .header("X-Request-Id", "req-hidden")
+                .build());
+        WebFilterChain chain = ignored -> Mono.empty();
+
+        // when
+        filter.filter(exchange, chain).block();
+        exchange.getResponse().setComplete().block();
+
+        // then
+        assertThat(exchange.getResponse().getHeaders().getFirst(properties.getResponse().getHeaderName())).isNull();
+        assertThat(exchange.getResponse().getHeaders().getFirst("X-Trace-Id")).isEqualTo(TRACE_ID);
+    }
+
+    @Test
     void cancellationBoundaryClearsRemoteServiceMirror() {
         TraceOperations traceOperations = mock(TraceOperations.class);
         ActiveTraceContextView traceContext = mock(ActiveTraceContextView.class);

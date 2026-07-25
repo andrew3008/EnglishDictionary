@@ -30,7 +30,7 @@ import java.lang.reflect.Field;
  * delegated logic.
  * <p>
  * <b>Activation guard.</b> Регистрация BPP управляется property
- * {@code platform.tracing.context-propagation.async.enabled=true} на уровне
+ * {@code platform.tracing.thread-pool-task-executor.enabled=true} на уровне
  * {@code TracingAsyncContextAutoConfiguration}. Сам BPP не делает условную проверку — это
  * ответственность auto-configuration.
  *
@@ -67,7 +67,7 @@ public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
         // Защита от двойной обёртки при повторной инициализации (например, refresh контекста):
         // если на executor уже установлен платформенный декоратор, оставляем bean без изменений.
         if (existing instanceof PlatformContextTaskDecorator) {
-            log.debug("ThreadPoolTaskExecutor '{}' уже имеет PlatformContextTaskDecorator — пропускаем", beanName);
+            log.debug("ThreadPoolTaskExecutor '{}' already has PlatformContextTaskDecorator — skipping", beanName);
             return bean;
         }
 
@@ -75,10 +75,10 @@ public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
         executor.setTaskDecorator(composed);
 
         if (existing != null) {
-            log.debug("ThreadPoolTaskExecutor '{}' получил композированный PlatformContextTaskDecorator "
-                    + "поверх существующего {}", beanName, existing.getClass().getName());
+            log.debug("ThreadPoolTaskExecutor '{}' received composed PlatformContextTaskDecorator "
+                    + "on top of existing {}", beanName, existing.getClass().getName());
         } else {
-            log.debug("ThreadPoolTaskExecutor '{}' получил PlatformContextTaskDecorator (без delegate)", beanName);
+            log.debug("ThreadPoolTaskExecutor '{}' received PlatformContextTaskDecorator (no delegate)", beanName);
         }
 
         return bean;
@@ -95,9 +95,9 @@ public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
     private TaskDecorator readExistingTaskDecorator(ThreadPoolTaskExecutor executor) {
         Field field = ReflectionUtils.findField(ThreadPoolTaskExecutor.class, TASK_DECORATOR_FIELD);
         if (field == null) {
-            log.warn("Поле '{}' в ThreadPoolTaskExecutor не найдено — composition с existing TaskDecorator "
-                    + "недоступна; платформенный decorator будет установлен как единственный. "
-                    + "Возможно, изменён внутренний API Spring.", TASK_DECORATOR_FIELD);
+            log.warn("Field '{}' not found on ThreadPoolTaskExecutor — composition with existing TaskDecorator "
+                    + "is unavailable; the platform decorator will be set as the only one. "
+                    + "Spring internal API may have changed.", TASK_DECORATOR_FIELD);
             return null;
         }
 
@@ -106,8 +106,8 @@ public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
             Object value = field.get(executor);
             return value instanceof TaskDecorator td ? td : null;
         } catch (IllegalAccessException | RuntimeException e) {
-            log.warn("Не удалось прочитать существующий TaskDecorator через reflection: {}; "
-                    + "композиция деградирует до установки платформенного decorator без delegate", e.getMessage());
+            log.warn("Failed to read existing TaskDecorator via reflection: {}; "
+                    + "composition degrades to installing the platform decorator without a delegate", e.getMessage());
             return null;
         }
     }

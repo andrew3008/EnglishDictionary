@@ -1,23 +1,23 @@
 package space.br1440.platform.tracing.autoconfigure;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.experimental.Accessors;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
+import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
+
 /**
  * Платформенная конфигурация модуля трассировки.
- * <p>
- * Spring владеет только тем, что Spring применяет или реконсилит в агент по JMX.
- * SDK limits/queue/exporter/resource/enriching/watchdog и прочие agent-only параметры
- * конфигурируются в agent-канале ({@code OTEL_*}, {@code PLATFORM_TRACING_*},
- * {@code PlatformTracingDefaultsProvider}). См. ADR-spring-owns-only-what-spring-applies.
  */
 @Getter
 @Setter
@@ -28,57 +28,39 @@ public class TracingProperties {
     public static final String PREFIX = "platform.tracing";
 
     /**
-     * Глобальный переключатель. Значение {@code true} требует {@code sdk.mode=AGENT},
-     * значение {@code false} требует {@code sdk.mode=DISABLED}.
+     * Режим работы платформенной трассировки. {@link SdkMode#AGENT} требует готовый
+     * Controlled Platform Agent, {@link SdkMode#DISABLED} включает намеренный NoOp-режим.
      */
-    private boolean enabled = true;
+    private SdkMode mode = SdkMode.AGENT;
 
-    private final Sdk sdk = new Sdk();
-    private final Service service = new Service();
+    /**
+     * Уровень логирования платформенного расширения OpenTelemetry Java Agent.
+     */
+    private OtelAgentLogLevel logLevel = OtelAgentLogLevel.INFO;
+
     private final Sampling sampling = new Sampling();
     private final Scrubbing scrubbing = new Scrubbing();
     private final Exporter exporter = new Exporter();
     private final Response response = new Response();
-    private final Aop aop = new Aop();
     private final Suppression suppression = new Suppression();
     private final Validation validation = new Validation();
     private final Semantic semantic = new Semantic();
     private final Propagation propagation = new Propagation();
     private final Kafka kafka = new Kafka();
-    private final ContextPropagation contextPropagation = new ContextPropagation();
-    private final Diagnostics diagnostics = new Diagnostics();
+    private final ThreadPoolTaskExecutorPropagation threadPoolTaskExecutor = new ThreadPoolTaskExecutorPropagation();
     private final Actuator actuator = new Actuator();
-
-    /**
-     * Production-режим владения OpenTelemetry SDK.
-     */
-    @Getter
-    @Setter
-    @Accessors(chain = true)
-    public static class Sdk {
-        private space.br1440.platform.tracing.autoconfigure.support.SdkMode mode =
-                space.br1440.platform.tracing.autoconfigure.support.SdkMode.AGENT;
-    }
-
-    @Getter
-    @Setter
-    @Accessors(chain = true)
-    public static class Service {
-        /** Логическое имя сервиса (для {@code PlatformLocalServiceNameProvider}). */
-        private String name;
-    }
 
     @Getter
     @Setter
     @Accessors(chain = true)
     public static class Sampling {
-        /** Runtime-mutable kill-switch сэмплирования (JMX reconcile). */
+        /** Runtime-переключатель (kill-switch) для сэмплирования, изменяемый на лету (JMX reconcile). */
         private boolean enabled = true;
 
         /** Базовая вероятность сэмплирования trace'ов в диапазоне [0.0, 1.0]. */
         private double ratio = 0.1;
 
-        /** Per-route вероятности сэмплирования. */
+        /** Вероятности сэмплирования по отдельным маршрутам (route). */
         private Map<String, Double> routeRatios = new LinkedHashMap<>();
 
         /** Значения force-record заголовка ({@code propagation.platformHeaders.forceTraceHeader}). */
@@ -96,7 +78,7 @@ public class TracingProperties {
     @Setter
     @Accessors(chain = true)
     public static class Scrubbing {
-        /** Runtime-mutable kill-switch scrubbing (JMX reconcile). */
+        /** Runtime-переключатель (kill-switch) для скраббинга, изменяемый на лету (JMX reconcile). */
         private boolean enabled = true;
 
         /** Встроенные правила scrubbing (runtime-mutable, JMX reconcile). */
@@ -111,7 +93,7 @@ public class TracingProperties {
     @Setter
     @Accessors(chain = true)
     public static class Exporter {
-        /** Export kill-switch (JMX reconcile). */
+        /** Переключатель (kill-switch) экспорта, изменяемый на лету (JMX reconcile). */
         private boolean enabled = true;
     }
 
@@ -119,27 +101,33 @@ public class TracingProperties {
     @Setter
     @Accessors(chain = true)
     public static class Response {
+        /** runtime opt-out только для X-Request-Id; фильтр всегда активен. */
         private boolean exposeRequestIdHeader = true;
+
         private String headerName = PlatformHeaders.X_REQUEST_ID;
     }
 
     @Getter
     @Setter
     @Accessors(chain = true)
-    public static class Aop {
-        private Mode mode = Mode.ENRICH_CURRENT;
-
-        public enum Mode {
-            ENRICH_CURRENT,
-            CHILD_SPAN
-        }
-    }
-
-    @Getter
-    @Setter
-    @Accessors(chain = true)
     public static class Suppression {
-        private boolean suppressMicrometerTracing = false;
+
+        /**
+         * При {@code true} подавляет Micrometer Observation для HTTP server/client (Servlet и
+         * WebFlux): {@code ObservationPredicate} переводит соответствующие observation в
+         * {@code Observation.NOOP} — ни span, ни метрика ({@code http.server.requests} /
+         * {@code http.client.requests}) не создаются.
+         * <p>
+         * <b>Значение по умолчанию — {@code null} (не задано), а не {@code false}.</b> Если
+         * оператор не задал свойство явно, эффективное значение автоматически выводится из
+         * присутствия OpenTelemetry Java Agent в JVM ({@code OtelAgentDetector}) через
+         * {@code MicrometerTracingSuppressionResolver}: Agent есть → suppression включён (иначе
+         * дублирование HTTP-span'ов); Agent'а нет → suppression выключен (иначе дыра в HTTP
+         * телеметрии). Явное значение всегда имеет приоритет над auto-derive — это escape hatch
+         * для нетиповых сценариев (тесты, гибридные конфигурации), а не типовая настройка,
+         * которую должен подбирать разработчик сервиса.
+         */
+        private Boolean suppressMicrometerTracing;
     }
 
     @Getter
@@ -158,8 +146,7 @@ public class TracingProperties {
     @Accessors(chain = true)
     public static class Semantic {
 
-        private space.br1440.platform.tracing.api.semconv.SemconvValidationMode validationMode =
-                space.br1440.platform.tracing.api.semconv.SemconvValidationMode.WARN;
+        private SemconvValidationMode validationMode = SemconvValidationMode.WARN;
 
         private String disabledReason;
         private boolean allowUnsafeAttributes = false;
@@ -219,26 +206,18 @@ public class TracingProperties {
     @Getter
     @Setter
     @Accessors(chain = true)
-    public static class ContextPropagation {
-        private final Async async = new Async();
-    }
-
-    @Getter
-    @Setter
-    @Accessors(chain = true)
-    public static class Async {
-        private boolean enabled = false;
-        private String mode = "propagate-current-context";
-    }
-
-    @Getter
-    @Setter
-    @Accessors(chain = true)
-    public static class Diagnostics {
+    public static class ThreadPoolTaskExecutorPropagation {
         /**
-         * Желаемый уровень логирования платформенных логгеров (runtime-mutable, JMX reconcile).
+         * При {@code true} переносит текущий OTel Context и MDC в задачи Spring
+         * {@code ThreadPoolTaskExecutor}, включая вызовы {@code @Async}. Перенос реализуется
+         * через {@code ThreadPoolTaskExecutorContextPropagationBeanPostProcessor}.
+         * <p>
+         * Не создаёт span, не применяется к Reactor, произвольным {@code Executor} и
+         * {@code CompletableFuture} без этого executor. По умолчанию выключен: перед включением
+         * следует исключить уже действующую executor-propagation от Java Agent, Spring Boot или
+         * пользовательского {@code TaskDecorator}. См. {@code ADR-async-task-decorator-opt-in}.
          */
-        private String logLevel;
+        private boolean enabled = false;
     }
 
     @Getter

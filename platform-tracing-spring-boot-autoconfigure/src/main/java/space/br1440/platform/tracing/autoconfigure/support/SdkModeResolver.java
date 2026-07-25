@@ -15,22 +15,15 @@ public final class SdkModeResolver {
      * Проверяет согласованность конфигурации и наблюдаемого runtime.
      *
      * @param configured настроенный режим
-     * @param enabled значение глобального переключателя
      * @param extension наблюдаемый classloader-neutral descriptor
      * @return проверенный режим
      */
     public static SdkMode resolve(
             SdkMode configured,
-            boolean enabled,
             AgentExtensionDescriptor extension) {
-        SdkMode requested = Objects.requireNonNull(configured, "platform.tracing.sdk.mode must be configured");
+        SdkMode requested = Objects.requireNonNull(configured, "platform.tracing.mode must be configured");
         Objects.requireNonNull(extension, "extension");
 
-        if (enabled != (requested == SdkMode.AGENT)) {
-            throw new IllegalStateException(
-                    "Contradictory platform tracing configuration: platform.tracing.enabled=" + enabled
-                            + " requires platform.tracing.sdk.mode=" + (enabled ? "AGENT" : "DISABLED"));
-        }
         if (requested == SdkMode.AGENT && extension.state() != AgentRuntimeState.AGENT_READY) {
             throw new IllegalStateException(runtimeFailure("AGENT", extension));
         }
@@ -42,7 +35,7 @@ public final class SdkModeResolver {
 
     private static String runtimeFailure(String mode, AgentExtensionDescriptor extension) {
         String failureCode = extension.failureCode().isBlank() ? "NONE" : extension.failureCode();
-        return "platform.tracing.sdk.mode=" + mode + " rejected observed runtime state="
+        return "platform.tracing.mode=" + mode + " rejected observed runtime state="
                 + extension.state() + ", failureCode=" + failureCode;
     }
 }

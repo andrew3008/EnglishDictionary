@@ -6,9 +6,11 @@ import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
+import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 
@@ -41,7 +43,8 @@ class TracingActuatorEndpointTest {
                 NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
-                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()));
+                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()),
+                null);
     }
 
     @Test
@@ -68,7 +71,7 @@ class TracingActuatorEndpointTest {
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                         .isEqualTo(HttpStatus.FORBIDDEN));
 
-        assertThat(properties.isEnabled()).isTrue();
+        assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
     }
 
     @Test
@@ -87,14 +90,14 @@ class TracingActuatorEndpointTest {
         properties.getActuator().setMutationEnabled(false);
 
         Map<String, Object> info = endpoint.tracing();
-        assertThat(info).containsKeys("enabled", "sampling", "validation", "actuator");
+        assertThat(info).containsKeys("mode", "sampling", "validation", "actuator");
     }
 
     @Test
     void readOperation_формирует_сокращённый_read_model() {
         Map<String, Object> info = endpoint.tracing();
 
-        assertThat(info).containsKeys("enabled", "implementation", "sampling", "validation", "actuator",
+        assertThat(info).containsKeys("mode", "implementation", "sampling", "validation", "actuator",
                 "otelEffective", "resourceEffective", "export", "processors", "config");
         assertThat(info).doesNotContainKeys("limits", "queue", "exporter", "enriching", "watchdog",
                 "control", "otelEnvHints", "resourceSpringConfig");
@@ -122,7 +125,7 @@ class TracingActuatorEndpointTest {
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST))
                 .hasMessageContaining("Unsupported tracing property: enabled");
-        assertThat(properties.isEnabled()).isTrue();
+        assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
         verify(jmxClient, never()).setRatio(anyDouble());
     }
 
@@ -194,11 +197,22 @@ class TracingActuatorEndpointTest {
 
     @Test
     void writeOperation_logLevel_проксирует_в_JMX_и_синхронизирует_properties() {
-        Map<String, Object> result = endpoint.updateTracing("logLevel", "DEBUG");
+        Map<String, Object> result = endpoint.updateTracing("logLevel", "debug");
 
         verify(jmxClient, times(1)).setPlatformLogLevel("DEBUG");
         assertThat(result.get("appliedValue")).isEqualTo("DEBUG");
-        assertThat(properties.getDiagnostics().getLogLevel()).isEqualTo("DEBUG");
+        assertThat(properties.getLogLevel()).isEqualTo(OtelAgentLogLevel.DEBUG);
+    }
+
+    @Test
+    void writeOperation_logLevel_отклоняет_неизвестный_уровень() {
+        assertThatThrownBy(() -> endpoint.updateTracing("logLevel", "verbose"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .hasMessageContaining("Unsupported platform log level: verbose");
+
+        Mockito.verifyNoInteractions(jmxClient);
     }
 
     @Test
@@ -214,7 +228,7 @@ class TracingActuatorEndpointTest {
     @Test
     void readOperation_возвращает_текущее_состояние_включая_live_ratio() {
         Map<String, Object> info = endpoint.tracing();
-        assertThat(info).containsKeys("enabled", "implementation", "sampling", "validation");
+        assertThat(info).containsKeys("mode", "implementation", "sampling", "validation");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> sampling = (Map<String, Object>) info.get("sampling");
@@ -347,7 +361,8 @@ class TracingActuatorEndpointTest {
                 jmxClient,
                 snapshot,
                 resourceSnapshot,
-                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()));
+                new SpanFactoryDiagnostics(NoOpTracingRuntime.noop()),
+                null);
 
         Map<String, Object> info = custom.tracing();
         assertThat(info).containsKey("otelEffective");

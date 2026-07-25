@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.jmx.ConfigApplyResult;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.TracingControlDomain;
@@ -16,7 +17,6 @@ import space.br1440.platform.tracing.autoconfigure.sampling.ValidationRuntimeCon
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,7 +46,7 @@ class RuntimeConfigApplierTest {
         client = Mockito.mock(PlatformTracingJmxClient.class);
         applier = new RuntimeConfigApplier(client);
         properties = new TracingProperties();
-        properties.getDiagnostics().setLogLevel("WARN");
+        properties.setLogLevel(OtelAgentLogLevel.WARN);
     }
 
     @Test
@@ -233,9 +233,9 @@ class RuntimeConfigApplierTest {
     }
 
     @Test
-    void applyAll_пропускает_пустой_logLevel() {
+    void applyAll_пропускает_незаданный_logLevel() {
         when(client.allMBeansAvailable()).thenReturn(true);
-        properties.getDiagnostics().setLogLevel(null);
+        properties.setLogLevel(null);
 
         applier.applyAll(properties);
 

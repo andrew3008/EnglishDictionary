@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutorService;
  *   <li>Reactor {@code Mono} / {@code Flux} — используется механизм Reactor hooks и
  *       Micrometer Context Propagation.</li>
  *   <li>Spring {@code @Async} с {@code ThreadPoolTaskExecutor} — включите
- *       {@code platform.tracing.context-propagation.async.enabled=true}, после чего
+ *       {@code platform.tracing.thread-pool-task-executor.enabled=true}, после чего
  *       платформенный {@code TaskDecorator} возьмёт пропагацию на себя.</li>
  * </ul>
  * <p>

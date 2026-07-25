@@ -15,6 +15,7 @@ dependencies {
     testImplementation platform(project(':platform-tracing-bom'))
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.yaml:snakeyaml'
     testImplementation project(':platform-tracing-test')
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

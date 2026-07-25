@@ -27,7 +27,7 @@ import space.br1440.platform.tracing.otel.propagation.control.TrustedDestination
  */
 @AutoConfiguration
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
 public class PlatformOutboundPropagationAutoConfiguration {
 
     /**

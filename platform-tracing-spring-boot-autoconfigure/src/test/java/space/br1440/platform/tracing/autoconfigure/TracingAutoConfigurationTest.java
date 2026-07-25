@@ -60,8 +60,7 @@ class TracingAutoConfigurationTest {
     void отключаетсяПриЯвномВыключении() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.enabled=false",
-                        "platform.tracing.sdk.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED")
                 .run(context -> {
                     assertThat(context).hasSingleBean(TraceOperations.class);
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);

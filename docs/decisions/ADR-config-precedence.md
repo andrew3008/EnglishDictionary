@@ -58,14 +58,14 @@ Runtime-канал **перекрывает** startup для тех же клю�
 `addPropertiesCustomizer` (а не `addPropertiesSupplier`) выбран сознательно: supplier имеет низший приоритет
 и игнорируется при ENV-вводе ([ADR-named-spi-sampler-propagator](ADR-named-spi-sampler-propagator.md) §дефолты).
 
-### 4. SDK mode (`platform.tracing.sdk.mode`)
+### 4. SDK mode (`platform.tracing.mode`)
 
 | Приоритет | Источник | Поведение |
 |---|---|---|
-| 1 | `AGENT` (default) + `enabled=true` | Требует compatible READY Controlled Agent и полный capability profile |
-| 2 | `DISABLED` + `enabled=false` | Разрешён только при отсутствии Agent/global/application SDK; intentional NoOp |
+| 1 | `AGENT` (default) | Требует compatible READY Controlled Agent и полный capability profile |
+| 2 | `DISABLED` | Разрешён только при отсутствии Agent/global/application SDK; intentional NoOp |
 
-Противоречивые пары и удалённые `AUTO|STARTER|EXTERNAL` завершают startup ошибкой. Свойство не
+Удалённые `AUTO|STARTER|EXTERNAL` завершают startup ошибкой. Свойство не
 создаёт SDK; application runtime не участвует в precedence
 ([ADR-sdk-mode-detection](ADR-sdk-mode-detection.md)).
 

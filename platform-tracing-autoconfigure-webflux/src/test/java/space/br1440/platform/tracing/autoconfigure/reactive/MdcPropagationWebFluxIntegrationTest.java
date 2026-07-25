@@ -39,8 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 "spring.main.lazy-initialization=false",
                 "spring.application.name=mdc-webflux-propagation-test",
-                "platform.tracing.enabled=false",
-                "platform.tracing.sdk.mode=DISABLED",
+                "platform.tracing.mode=DISABLED",
                 "spring.autoconfigure.exclude="
                         + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
                 "spring.main.web-application-type=reactive"

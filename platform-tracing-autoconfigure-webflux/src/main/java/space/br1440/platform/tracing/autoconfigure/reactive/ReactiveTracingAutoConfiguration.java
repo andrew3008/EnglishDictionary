@@ -57,7 +57,7 @@ import java.util.Optional;
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
 @ConditionalOnClass({WebFluxConfigurer.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
 public class ReactiveTracingAutoConfiguration {
 
     @Bean
@@ -73,15 +73,18 @@ public class ReactiveTracingAutoConfiguration {
     }
 
     /**
-     * Регистрация реактивного {@link WebFilter}, добавляющего trace-заголовки в HTTP-ответ.
+     * Регистрация реактивного {@link WebFilter}, добавляющего request/trace заголовки в HTTP-ответ
+     * и привязывающего edge {@code requestId} на границе запроса.
+     * <p>
+     * Фильтр регистрируется всегда. Запись {@code X-Request-Id} гейтится
+     * {@code platform.tracing.response.expose-request-id-header}; {@code X-Trace-Id} и identity
+     * boundary не зависят от этого флага.
      * <p>
      * Порядок выставлен близко к началу реактивной цепочки фильтров, чтобы заголовок
      * гарантированно попадал в ответ независимо от исхода обработки запроса.
      */
     @Bean
     @ConditionalOnMissingBean(TraceResponseHeaderWebFilter.class)
-    @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".response", name = "expose-request-id-header",
-            havingValue = "true", matchIfMissing = true)
     @Order(Ordered.HIGHEST_PRECEDENCE + 50)
     public TraceResponseHeaderWebFilter platformTraceResponseHeaderWebFilter(TraceOperations traceOperations,
                                                                              TracingProperties properties) {
@@ -153,7 +156,7 @@ public class ReactiveTracingAutoConfiguration {
                     return Optional.of(fromMdc);
                 }
             } catch (RuntimeException e) {
-                log.debug("Не удалось прочитать MDC ключ {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
+                log.debug("Failed to read MDC key {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
             }
             return Optional.empty();
         };
