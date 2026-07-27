@@ -1,37 +1,248 @@
 ---
 name: Рефакторинг конфигурации платформенного трейсинга
 overview: >-
-  Архитектурное направление утверждено. Нормативный план подготовлен
-  для рассмотрения архитектурным комитетом. Implementation GO не предоставлен.
-  Закрыты E1, E2, E4, E5 и E9. Открыты только E3, E6, E7 и E8.
+  Архитектурное направление утверждено. План содержит полный исполняемый
+  backlog P0–P7 и подготовлен для рассмотрения архитектурным комитетом.
+  Implementation GO не предоставлен. Закрыты E1, E2, E4, E5 и E9.
+  Открыты E3, E6, E7 и E8.
 status: architecture_plan_ready_for_committee_review
 todos:
-  - id: e1-jmx-baseline
-    content: Полный baseline JMX-контракта и inventory потребителей
+  - id: e1-jmx-contract-baseline
+    content: "E1 COMPLETED: снять и закоммитить полный baseline JMX-контракта из 8 ObjectName и inventory потребителей"
     status: completed
-  - id: e2-private-mbeanserver
-    content: Private process-local MBeanServer и classloader isolation
+  - id: e2-private-mbeanserver-proof
+    content: "E2 COMPLETED: доказать private process-local MBeanServer, classloader isolation, remote-JMX isolation и lifecycle"
     status: completed
   - id: e4-configuration-inventory
-    content: Полный inventory properties и environment variables
+    content: "E4 COMPLETED: создать воспроизводимый inventory 78 properties и 29 environment variables с exact-name disposition"
     status: completed
-  - id: e5-category-a
-    content: Финальная allowlist Category A из восьми листьев
+  - id: e5-category-a-contract
+    content: "E5 COMPLETED: зафиксировать allowlist Category A из восьми runtime-mutable листьев"
     status: completed
   - id: e9-config-server-provenance
-    content: Воспроизводимый Config Server provenance Step 0B
+    content: "E9 COMPLETED: закоммитить и воспроизвести Config Server provenance Step 0B, T1–T10 и Git-backed process test"
     status: completed
-  - id: e3-state-primitive
-    content: Выбор и доказательство exact accepted-state primitive
+  - id: architecture-plan-rewrite
+    content: "PLAN COMPLETED: переписать канонический нормативный план для архитектурного комитета"
+    status: completed
+  - id: p0-e3-state-primitive-spike
+    content: "P0/E3: сравнить generic и domain-specific accepted-state primitive по S-01"
     status: pending
-  - id: e6-cloud-bom-refresh
-    content: Production Boot/Cloud/BOM matrix и механизм refresh delivery
+  - id: p0-e3-state-primitive-decision
+    content: "P0/E3: выбрать exact accepted-state primitive и зафиксировать API, placement и ownership"
     status: pending
-  - id: e7-jmx-read-delta
-    content: Утверждение точной read-only JMX/diagnostics delta
+  - id: p0-e3-performance-proof
+    content: "P0/E3: доказать one-winner CAS, STALE без rebase, memory visibility и zero-allocation hot-path read"
     status: pending
-  - id: e8-implementation-go
-    content: Явное решение архитектурного комитета об Implementation GO
+  - id: p0-e6-cloud-bom-matrix
+    content: "P0/E6: выполнить C1–C7 dependency matrix для Boot, Spring Cloud, BOM, starter и published consumer"
+    status: pending
+  - id: p0-e6-remove-eol-cloud-constraint
+    content: "P0/E6: утвердить удаление misaligned EOL spring-cloud-context API constraint из публикуемого BOM"
+    status: pending
+  - id: p0-e6-refresh-delivery
+    content: "P0/E6: выбрать production refresh delivery, владельца fan-out и требования авторизации"
+    status: pending
+  - id: p0-e7-jmx-read-delta
+    content: "P0/E7: утвердить exact retain/delete/rewrite delta относительно baseline из 63 JMX members"
+    status: pending
+  - id: p0-e7-diagnostics-delta
+    content: "P0/E7: утвердить итоговую read-only diagnostics projection и судьбу членов без named consumer"
+    status: pending
+  - id: p0-e8-implementation-go
+    content: "P0/E8: получить явное Implementation GO архитектурного комитета"
+    status: pending
+  - id: p1-effective-policy-model
+    content: "P1 ADD: реализовать immutable EffectiveTracingPolicy с ровно восемью Category A leaves"
+    status: pending
+  - id: p1-accepted-state-envelope
+    content: "P1 ADD: реализовать accepted-state envelope с runtimeInstanceId, acceptedSequence и deterministic digest"
+    status: pending
+  - id: p1-accepted-state-store
+    content: "P1 ADD: реализовать выбранный E3 accepted-state store с one-shot expected-base commit"
+    status: pending
+  - id: p1-apply-outcome-contract
+    content: "P1 ADD: реализовать APPLIED, UNCHANGED, REJECTED, STALE и FAILED без скрытого rebase"
+    status: pending
+  - id: p1-policy-normalization-validation
+    content: "P1 ADD: реализовать normalization, full-candidate validation, strict envelope и unknown-field rejection"
+    status: pending
+  - id: p1-canonical-digest
+    content: "P1 ADD: реализовать versioned deterministic digest без Map.toString, locale drift и secret material"
+    status: pending
+  - id: p1-apply-diagnostics
+    content: "P1 ADD: реализовать Agent apply diagnostics вне accepted-state CAS payload"
+    status: pending
+  - id: p1-audit-buffer
+    content: "P1 ADD: реализовать metadata-only audit ring фиксированной ёмкости 32 записи"
+    status: pending
+  - id: p2-private-mbeanserver-owner
+    content: "P2 ADD: productionize private MBeanServer owner с exactly-one lifecycle guard"
+    status: pending
+  - id: p2-private-marker
+    content: "P2 ADD: реализовать marker protocol для discovery, protocol version и runtime instance"
+    status: pending
+  - id: p2-agent-open-type-codec
+    content: "P2 ADD: реализовать strict Agent-side Open-Type codec"
+    status: pending
+  - id: p2-application-open-type-codec
+    content: "P2 ADD: реализовать независимый Spring-side Open-Type codec без shared DTO"
+    status: pending
+  - id: p2-aggregate-writer
+    content: "P2 ADD: зарегистрировать единственный internal aggregate writer на private MBeanServer"
+    status: pending
+  - id: p2-platform-control-projection
+    content: "P2 REWRITE: подготовить read-only Control projection на platform MBeanServer под тем же ObjectName"
+    status: pending
+  - id: p2-jmx-registrar-lifecycle
+    content: "P2 REWRITE: разделить platform/private registration и обеспечить unregister-before-release shutdown"
+    status: pending
+  - id: p2-private-boundary-regression
+    content: "P2 TEST: перенести M1–M12 и N1–N7 в постоянные production-contract tests"
+    status: pending
+  - id: p3-sampling-reader-migration
+    content: "P3 REWRITE: перевести CompositeSampler на единый immutable accepted policy snapshot"
+    status: pending
+  - id: p3-validation-reader-migration
+    content: "P3 REWRITE: перевести ValidatingSpanProcessor на единый accepted policy snapshot"
+    status: pending
+  - id: p3-exporter-reader-migration
+    content: "P3 REWRITE: перевести SafeSpanExporter gate на единый accepted policy snapshot"
+    status: pending
+  - id: p3-propagation-reader-migration
+    content: "P3 REWRITE: перевести trace-control propagation gate на единый accepted policy snapshot"
+    status: pending
+  - id: p3-log-level-reader-migration
+    content: "P3 REWRITE: перевести PlatformLogControl на единый accepted policy snapshot"
+    status: pending
+  - id: p3-remove-domain-holders
+    content: "P3 DELETE: удалить SamplerStateHolder, ScrubbingPolicyHolder и ValidationPolicyHolder после equivalence proof"
+    status: pending
+  - id: p3-remove-duplicate-version-owners
+    content: "P3 DELETE: удалить дублирующие version owners и ручные prev.version()+1 paths"
+    status: pending
+  - id: p3-hot-path-proof
+    content: "P3 TEST: доказать behavior parity, memory visibility, zero allocation и P5/JMH budgets"
+    status: pending
+  - id: p4-authority-posture-guard
+    content: "P4 ADD: реализовать mode/authority posture guard и fail-fast matrix"
+    status: pending
+  - id: p4-config-server-classifier
+    content: "P4 ADD: реализовать per-key Config Server provenance classifier"
+    status: pending
+  - id: p4-complete-manifest-builder
+    content: "P4 ADD: реализовать complete manifest builder для восьми Category A leaves"
+    status: pending
+  - id: p4-config-server-bridge
+    content: "P4 ADD: реализовать Config Server bridge через private aggregate writer"
+    status: pending
+  - id: p4-refresh-coalescer
+    content: "P4 ADD: реализовать generation/dirty single-worker coalescing"
+    status: pending
+  - id: p4-stale-retry-policy
+    content: "P4 ADD: реализовать один bounded full rebuild/retry только после STALE"
+    status: pending
+  - id: p4-dev-jmx-endpoint
+    content: "P4 ADD: реализовать typed DEV_ACTUATOR JMX endpoint для восьми Category A leaves"
+    status: pending
+  - id: p4-dev-command-service
+    content: "P4 ADD: реализовать read-copy-change-validate-full-snapshot command service без STALE retry"
+    status: pending
+  - id: p4-application-readiness
+    content: "P4 ADD: реализовать application tracing-configuration readiness отдельно от Agent readiness"
+    status: pending
+  - id: p4-actuator-read-model
+    content: "P4 REWRITE: сделать Actuator tracing endpoint read-only и secret-safe"
+    status: pending
+  - id: p5-complete-manifest-tests
+    content: "P5 TEST: доказать initial missing-key readiness block и runtime missing-key REJECTED с LKG"
+    status: pending
+  - id: p5-refresh-storm-tests
+    content: "P5 TEST: доказать convergence generation/dirty worker и отсутствие потерянного final refresh"
+    status: pending
+  - id: p5-config-server-outage-tests
+    content: "P5 TEST: доказать initial fail-closed и runtime outage с сохранением LKG"
+    status: pending
+  - id: p5-secret-canary
+    content: "P5 TEST: доказать отсутствие secret material в wire, digest, JMX, audit, metrics и logs"
+    status: pending
+  - id: p5-malformed-payload-tests
+    content: "P5 TEST: доказать fail-closed для malformed, unknown, missing, null и oversized Open-Type payload"
+    status: pending
+  - id: p5-authority-negative-tests
+    content: "P5 TEST: доказать invalid mode/authority combinations, local overrides и DISABLED no-discovery"
+    status: pending
+  - id: p5-jmh-performance
+    content: "P5 TEST: выполнить JMH before/after для state reads, concurrent apply и allocation"
+    status: pending
+  - id: p5-m10-production-flow
+    content: "P5 TEST: переписать и выполнить M10/M10c/M10d через Config Server и private writer"
+    status: pending
+  - id: p6-property-disposition
+    content: "P6 REWRITE: применить exact-name disposition ко всем 78 properties и 29 environment variables"
+    status: pending
+  - id: p6-namespace-conflicts
+    content: "P6 REWRITE: разрешить policy-version attribute, baggage families, force-record spelling и semconv contract"
+    status: pending
+  - id: p6-agent-parser-cutover
+    content: "P6 REWRITE: атомарно переключить Agent bootstrap parser на final policy/javaagent names"
+    status: pending
+  - id: p6-spring-binding-cutover
+    content: "P6 REWRITE: атомарно переключить Spring bindings, guard и configuration authority names"
+    status: pending
+  - id: p6-deployment-manifest-cutover
+    content: "P6 REWRITE: синхронно обновить Helm, Config Server manifests, fixtures, samples и perf configuration"
+    status: pending
+  - id: p6-legacy-name-fail-fast
+    content: "P6 ADD: реализовать exact legacy-name detector с replacement/deletion diagnostics"
+    status: pending
+  - id: p6-delete-refreshscope-mutation
+    content: "P6 DELETE: удалить TracingRefreshScopeAutoConfiguration и RuntimeConfigApplier mutation path"
+    status: pending
+  - id: p6-delete-actuator-write
+    content: "P6 DELETE: удалить HTTP @WriteOperation и mutation-enabled gate"
+    status: pending
+  - id: p6-delete-partial-control-protocol
+    content: "P6 DELETE: удалить partial applyPolicy protocol, string-coercion codec и старые public control types"
+    status: pending
+  - id: p6-delete-domain-jmx-writes
+    content: "P6 DELETE: удалить все 16 semantic platform-JMX mutations"
+    status: pending
+  - id: p6-delete-perf-admin-mutation
+    content: "P6 DELETE: удалить PerfAdminController mutation path и устаревшие ObjectName"
+    status: pending
+  - id: p6-delete-test-benchmark-mutation
+    content: "P6 DELETE: удалить direct mutation из test/benchmark сценариев после замены целевыми fixtures"
+    status: pending
+  - id: p6-zero-legacy-verification
+    content: "P6 TEST: доказать ноль legacy writers, names, aliases, dual readers и platform JMX writes"
+    status: pending
+  - id: p6-coherent-cutover
+    content: "P6 RELEASE: выполнить единый unreleased authority/namespace/writer switch без промежуточной публикации"
+    status: pending
+  - id: p7-supported-migration-changelog
+    content: "P7 REWRITE: обновить SUPPORTED, MIGRATION и CHANGELOG по финальному контракту"
+    status: pending
+  - id: p7-public-contracts
+    content: "P7 REWRITE: исправить public-contract inventory, semantic contract map и telemetry attribute migration"
+    status: pending
+  - id: p7-runbooks
+    content: "P7 ADD: подготовить runbooks для HELM, CONFIG_SERVER, DEV_ACTUATOR, outage, drift и rollback"
+    status: pending
+  - id: p7-consumer-examples
+    content: "P7 REWRITE: обновить samples, starter consumer fixtures, Helm и Config Server examples"
+    status: pending
+  - id: p7-jmx-consumer-migration
+    content: "P7 REWRITE: задокументировать E7 JMX read delta и миграцию dashboards/operational consumers"
+    status: pending
+  - id: p7-deletion-scorecard
+    content: "P7 ADD: сформировать measured scorecard по writers, owners, JMX/HTTP writes, names, types, tests и LOC"
+    status: pending
+  - id: p7-final-verification
+    content: "P7 TEST: выполнить полный build, evidence tasks, published consumer, documentation и zero-legacy gates"
+    status: pending
+  - id: p7-release-readiness-review
+    content: "P7 REVIEW: подтвердить выполнение release blockers и готовность полного unreleased train к rollout"
     status: pending
 isProject: false
 ---
