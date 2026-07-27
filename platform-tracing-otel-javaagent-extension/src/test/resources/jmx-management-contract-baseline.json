@@ -1,0 +1,1026 @@
+{
+  "schemaVersion": 1,
+  "generatedFromCommit": "62158867d9309eab29ce8de3f05db8e3b9300b1b",
+  "javaVersion": "21.0.6",
+  "objectNameCount": 8,
+  "memberCount": 63,
+  "readOnlyMemberCount": 47,
+  "mutatingMemberCount": 16,
+  "objectNames": [
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMXBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+      ],
+      "operations": [
+        {
+          "name": "applyPolicy",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "javax.management.openmbean.CompositeData",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        },
+        {
+          "name": "readAppliedState",
+          "description": "Operation exposed for management",
+          "arguments": [
+          ],
+          "returnJavaType": "javax.management.openmbean.CompositeData",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": false
+        }
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ConfigAuditTrail",
+          "description": "Attribute exposed for management",
+          "javaType": "[Ljava.lang.String;",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ConfigReloadMetrics",
+          "description": "Attribute exposed for management",
+          "javaType": "java.util.Map",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "InvalidConfigCount",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "PlatformLogLevel",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": false
+        },
+        {
+          "name": "PropagationEnabled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": true
+        },
+        {
+          "name": "SafeWrapperMetrics",
+          "description": "Attribute exposed for management",
+          "javaType": "java.util.Map",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ExportDroppedAfterShutdownTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ExportDroppedOverflowTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ExportEnabled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": true
+        },
+        {
+          "name": "ExportFailuresTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ExportQueueCapacity",
+          "description": "Attribute exposed for management",
+          "javaType": "int",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ExportQueueSize",
+          "description": "Attribute exposed for management",
+          "javaType": "int",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ExportTimeoutsTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "SafeExporterMetrics",
+          "description": "Attribute exposed for management",
+          "javaType": "java.util.Map",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "Capabilities",
+          "description": "Attribute exposed for management",
+          "javaType": "[Ljava.lang.String;",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ExportPathProtected",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        },
+        {
+          "name": "ExtensionVersion",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "FailureCode",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "FailureMessage",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "LifecycleState",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "Profile",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "PropagationHooksInstalled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        },
+        {
+          "name": "ProtocolVersion",
+          "description": "Attribute exposed for management",
+          "javaType": "int",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "RequiredCapabilities",
+          "description": "Attribute exposed for management",
+          "javaType": "[Ljava.lang.String;",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "RequiredSpanProcessorsInstalled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        },
+        {
+          "name": "SamplerInstalled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        },
+        {
+          "name": "SanitizerInstalled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ActiveSpanCount",
+          "description": "Attribute exposed for management",
+          "javaType": "int",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ActiveTraceCount",
+          "description": "Attribute exposed for management",
+          "javaType": "int",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "DroppedAttributesTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "DroppedEventsTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "DroppedLinksTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ForcedSpanCloses",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ForcedTraceCloses",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ProcessorErrorsByName",
+          "description": "Attribute exposed for management",
+          "javaType": "java.util.Map",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ProcessorErrorsTotal",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "DropPathPrefixes",
+          "description": "Attribute exposed for management",
+          "javaType": "[Ljava.lang.String;",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": false
+        },
+        {
+          "name": "ForceRecordValues",
+          "description": "Attribute exposed for management",
+          "javaType": "[Ljava.lang.String;",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": false
+        },
+        {
+          "name": "RouteRatios",
+          "description": "Attribute exposed for management",
+          "javaType": "java.util.Map",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": false
+        },
+        {
+          "name": "SamplerDecisionCounts",
+          "description": "Attribute exposed for management",
+          "javaType": "java.util.Map",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "SamplerEnabled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": true
+        },
+        {
+          "name": "SamplingConfigLastUpdatedSource",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "SamplingConfigVersion",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "SamplingRatio",
+          "description": "Attribute exposed for management",
+          "javaType": "double",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": true,
+          "isIs": false
+        }
+      ],
+      "operations": [
+        {
+          "name": "getSamplerDecisionCount",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "java.lang.String",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p2",
+              "description": "",
+              "javaType": "java.lang.String",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "long",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": false
+        },
+        {
+          "name": "resetSamplerCounters",
+          "description": "Operation exposed for management",
+          "arguments": [
+          ],
+          "returnJavaType": "void",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        },
+        {
+          "name": "updateSamplingPolicy",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p2",
+              "description": "",
+              "javaType": "double",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p3",
+              "description": "",
+              "javaType": "[Ljava.lang.String;",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p4",
+              "description": "",
+              "javaType": "[Ljava.lang.String;",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p5",
+              "description": "",
+              "javaType": "[Ljava.lang.String;",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p6",
+              "description": "",
+              "javaType": "[D",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p7",
+              "description": "",
+              "javaType": "java.lang.String",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "void",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        },
+        {
+          "name": "updateSamplingPolicy",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p2",
+              "description": "",
+              "javaType": "double",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p3",
+              "description": "",
+              "javaType": "java.util.Map",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p4",
+              "description": "",
+              "javaType": "[Ljava.lang.String;",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p5",
+              "description": "",
+              "javaType": "[Ljava.lang.String;",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "void",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        }
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ScrubbingConfigLastUpdatedSource",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ScrubbingConfigVersion",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ScrubbingEnabled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        },
+        {
+          "name": "ScrubbingMetrics",
+          "description": "Attribute exposed for management",
+          "javaType": "java.util.Map",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+        {
+          "name": "updateScrubbingPolicy",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p2",
+              "description": "",
+              "javaType": "[Ljava.lang.String;",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "void",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        },
+        {
+          "name": "updateScrubbingPolicy",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p2",
+              "description": "",
+              "javaType": "[Ljava.lang.String;",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p3",
+              "description": "",
+              "javaType": "java.lang.String",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "void",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        }
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ValidationConfigLastUpdatedSource",
+          "description": "Attribute exposed for management",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ValidationConfigVersion",
+          "description": "Attribute exposed for management",
+          "javaType": "long",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ValidationEnabled",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        },
+        {
+          "name": "ValidationStrict",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        },
+        {
+          "name": "ValidationStrictRuntimeAllowed",
+          "description": "Attribute exposed for management",
+          "javaType": "boolean",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": true
+        }
+      ],
+      "operations": [
+        {
+          "name": "updateValidationPolicy",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p2",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "void",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        },
+        {
+          "name": "updateValidationPolicy",
+          "description": "Operation exposed for management",
+          "arguments": [
+            {
+              "name": "p1",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p2",
+              "description": "",
+              "javaType": "boolean",
+              "descriptor": [
+              ]
+            },
+            {
+              "name": "p3",
+              "description": "",
+              "javaType": "java.lang.String",
+              "descriptor": [
+              ]
+            }
+          ],
+          "returnJavaType": "void",
+          "descriptor": [
+          ],
+          "impact": 3,
+          "mutating": true
+        }
+      ],
+      "notifications": [
+      ]
+    }
+  ]
+}

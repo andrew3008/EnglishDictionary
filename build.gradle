@@ -680,3 +680,59 @@ tasks.register('configProvenanceVerify') {
     description = 'Runs the isolated Spring Cloud Config provenance characterization (Step 0B evidence).'
     dependsOn ':platform-tracing-e2e-tests:configProvenanceTest'
 }
+
+def jmxExtensionProject = project(':platform-tracing-otel-javaagent-extension')
+def jmxSpringProject = project(':platform-tracing-spring-boot-autoconfigure')
+
+def jmxManagementContractBaselineTest = tasks.register('jmxManagementContractBaselineTest', Test) {
+    group = 'verification'
+    description = 'Compares all eight live platform MBeans with the committed JSON baseline.'
+    dependsOn jmxExtensionProject.tasks.named('testClasses')
+    testClassesDirs = jmxExtensionProject.sourceSets.test.output.classesDirs
+    classpath = jmxExtensionProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/jmxManagementContractBaselineTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/jmxManagementContractBaselineTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/jmxManagementContractBaselineTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.jmx.DomainMBeanJmxComplianceTest'
+    }
+
+    if (providers.gradleProperty('updateJmxContractBaseline').isPresent()) {
+        systemProperty 'jmx.contract.baseline.update', 'true'
+        systemProperty 'jmx.contract.baseline.path', layout.projectDirectory.file(
+                'platform-tracing-otel-javaagent-extension/src/test/resources/' +
+                        'jmx-management-contract-baseline.json').asFile.absolutePath
+        systemProperty 'jmx.contract.baseline.commit', providers.exec {
+            workingDir rootProject.projectDir
+            commandLine 'git', 'rev-parse', 'HEAD'
+        }.standardOutput.asText.map { it.trim() }.get()
+    }
+}
+
+def jmxObjectNameConsistencyTest = tasks.register('jmxObjectNameConsistencyTest', Test) {
+    group = 'verification'
+    description = 'Verifies the complete Spring/Agent ObjectName duplication inventory.'
+    dependsOn jmxSpringProject.tasks.named('testClasses')
+    testClassesDirs = jmxSpringProject.sourceSets.test.output.classesDirs
+    classpath = jmxSpringProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/jmxObjectNameConsistencyTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/jmxObjectNameConsistencyTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/jmxObjectNameConsistencyTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.jmx.ObjectNameConstantsConsistencyTest'
+    }
+}
+
+tasks.register('jmxManagementContractVerify') {
+    group = 'verification'
+    description = 'Verifies the complete live JMX management baseline and duplicated ObjectNames.'
+    dependsOn jmxManagementContractBaselineTest, jmxObjectNameConsistencyTest
+}

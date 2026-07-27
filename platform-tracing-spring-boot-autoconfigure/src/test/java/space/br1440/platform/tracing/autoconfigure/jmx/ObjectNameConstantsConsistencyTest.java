@@ -3,12 +3,19 @@ package space.br1440.platform.tracing.autoconfigure.jmx;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Verifies that {@link PlatformTracingJmxObjectNames} (autoconfigure / App CL side) and
  * {@link PlatformTracingObjectNames} (otel-extension / Agent CL side) declare identical
- * ObjectName strings for all six domains.
+ * ObjectName strings for every name duplicated on the Spring side.
  * <p>
  * This test catches drift between the two constant sets that would break JMX routing
  * at runtime (they cannot share a class due to classloader isolation but must be identical).
@@ -16,54 +23,36 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ObjectNameConstantsConsistencyTest {
 
     @Test
-    void sampling_objectName_strings_are_equal() {
-        assertThat(PlatformTracingJmxObjectNames.SAMPLING_OBJECT_NAME_STR)
-                .isEqualTo(PlatformTracingObjectNames.SAMPLING_OBJECT_NAME_STR);
+    void springDuplicatesExactlyMatchCanonicalAgentNames() throws Exception {
+        Map<String, String> canonical = stringConstants(PlatformTracingObjectNames.class);
+        Map<String, String> duplicated = stringConstants(PlatformTracingJmxObjectNames.class);
+        Set<String> missing = new java.util.TreeSet<>(canonical.keySet());
+        missing.removeAll(duplicated.keySet());
+        Set<String> extra = new java.util.TreeSet<>(duplicated.keySet());
+        extra.removeAll(canonical.keySet());
+        Map<String, String> expectedDuplicated = new LinkedHashMap<>(canonical);
+        missing.forEach(expectedDuplicated::remove);
+
+        assertThat(duplicated)
+                .as("Spring ObjectName duplicates; missing and extra keys are shown in the map diff")
+                .isEqualTo(expectedDuplicated);
+        assertThat(missing)
+                .as("Намеренно не продублированные Agent ObjectName")
+                .containsExactly("CONTROL_PROTOCOL_OBJECT_NAME_STR");
+        assertThat(extra)
+                .as("Spring не должен объявлять неизвестные Agent стороне ObjectName")
+                .isEmpty();
     }
 
-    @Test
-    void scrubbing_objectName_strings_are_equal() {
-        assertThat(PlatformTracingJmxObjectNames.SCRUBBING_OBJECT_NAME_STR)
-                .isEqualTo(PlatformTracingObjectNames.SCRUBBING_OBJECT_NAME_STR);
-    }
-
-    @Test
-    void validation_objectName_strings_are_equal() {
-        assertThat(PlatformTracingJmxObjectNames.VALIDATION_OBJECT_NAME_STR)
-                .isEqualTo(PlatformTracingObjectNames.VALIDATION_OBJECT_NAME_STR);
-    }
-
-    @Test
-    void export_objectName_strings_are_equal() {
-        assertThat(PlatformTracingJmxObjectNames.EXPORT_OBJECT_NAME_STR)
-                .isEqualTo(PlatformTracingObjectNames.EXPORT_OBJECT_NAME_STR);
-    }
-
-    @Test
-    void processorMetrics_objectName_strings_are_equal() {
-        assertThat(PlatformTracingJmxObjectNames.PROCESSOR_METRICS_OBJECT_NAME_STR)
-                .isEqualTo(PlatformTracingObjectNames.PROCESSOR_METRICS_OBJECT_NAME_STR);
-    }
-
-    @Test
-    void diagnostics_objectName_strings_are_equal() {
-        assertThat(PlatformTracingJmxObjectNames.DIAGNOSTICS_OBJECT_NAME_STR)
-                .isEqualTo(PlatformTracingObjectNames.DIAGNOSTICS_OBJECT_NAME_STR);
-    }
-
-    @Test
-    void all_six_objectName_instances_match_string_constants() {
-        assertThat(PlatformTracingJmxObjectNames.SAMPLING.toString())
-                .isEqualTo(PlatformTracingJmxObjectNames.SAMPLING_OBJECT_NAME_STR);
-        assertThat(PlatformTracingJmxObjectNames.SCRUBBING.toString())
-                .isEqualTo(PlatformTracingJmxObjectNames.SCRUBBING_OBJECT_NAME_STR);
-        assertThat(PlatformTracingJmxObjectNames.VALIDATION.toString())
-                .isEqualTo(PlatformTracingJmxObjectNames.VALIDATION_OBJECT_NAME_STR);
-        assertThat(PlatformTracingJmxObjectNames.EXPORT.toString())
-                .isEqualTo(PlatformTracingJmxObjectNames.EXPORT_OBJECT_NAME_STR);
-        assertThat(PlatformTracingJmxObjectNames.PROCESSOR_METRICS.toString())
-                .isEqualTo(PlatformTracingJmxObjectNames.PROCESSOR_METRICS_OBJECT_NAME_STR);
-        assertThat(PlatformTracingJmxObjectNames.DIAGNOSTICS.toString())
-                .isEqualTo(PlatformTracingJmxObjectNames.DIAGNOSTICS_OBJECT_NAME_STR);
+    private static Map<String, String> stringConstants(Class<?> type) throws IllegalAccessException {
+        Map<String, String> constants = new TreeMap<>();
+        for (Field field : type.getFields()) {
+            if (Modifier.isStatic(field.getModifiers())
+                    && field.getType() == String.class
+                    && field.getName().endsWith("_OBJECT_NAME_STR")) {
+                constants.put(field.getName(), (String) field.get(null));
+            }
+        }
+        return constants;
     }
 }
