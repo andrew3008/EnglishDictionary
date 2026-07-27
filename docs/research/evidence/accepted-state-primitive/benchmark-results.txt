@@ -131,3 +131,50 @@ INTERPRETATION
    every retry of the current primitive re-normalises and re-compiles a policy
    snapshot, so retry amplification there is allocation-heavy, not merely a
    repeated CAS. Quantifying that is P5 scope, not P0.
+
+
+================================================================================
+CORRECTIVE PASS S-01-C1 — BENCHMARK STATUS
+================================================================================
+
+JMH STATUS IN THIS PASS: NOT_RUN
+
+No benchmark was executed during the S-01-C1 corrective pass. Nothing above this
+line was regenerated, edited or deleted; all figures above remain the original
+S-01 measurements taken at commit
+fdf81df4daa764e2310f10586b29285491788fd4.
+
+WHY THE ORIGINAL FIGURES REMAIN IN FORCE
+----------------------------------------
+The corrective pass changed the accepted-state PAYLOAD contract, not the read
+mechanism. Both the generic spike store and the PROPOSED concrete store read
+accepted state the same way:
+
+    return current.get();      // one AtomicReference volatile load
+
+The two JMH classes were not modified:
+
+    platform-tracing-bench/src/jmh/java/.../S01AcceptedStateReadBenchmark.java
+    platform-tracing-bench/src/jmh/java/.../S01AcceptedStateContendedBenchmark.java
+
+so the measured hot-path read remains representative of the recommended design.
+The corrected payload adds no work to the read: the eight Category A leaves are
+seven primitives/enum plus one already-materialised unmodifiable map reference,
+and no defensive copy, normalisation or validation happens on the read path.
+Defensive copying and normalisation happen once per candidate construction, which
+is cold-path.
+
+WHAT WOULD REQUIRE A NEW BENCHMARK
+----------------------------------
+A new measurement becomes necessary if any of the following changes:
+
+  - the read returns anything other than a published immutable reference;
+  - the route-ratio map is materialised, copied or sorted during a read;
+  - the store acquires a lock, a retry loop or a second atomic;
+  - the payload gains a field that a hot-path reader must compute.
+
+None of these is true of the PROPOSED contract fixed by this correction.
+
+The reference-lab baseline and any latency budget remain P5 scope, unchanged by
+this pass. The -PjmhDev caveat recorded above still applies to every ns/op figure
+in this file.

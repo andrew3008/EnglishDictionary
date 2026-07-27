@@ -11,10 +11,20 @@
 | Production code changed | **NO** |
 | Implementation GO | `NOT_GRANTED` — unchanged by this spike |
 | Legacy deletion GO | `BLOCKED` — unchanged by this spike |
+| Corrective pass | **S-01-C1**, correcting commit `fdf81df4daa764e2310f10586b29285491788fd4` |
 | Overall result | **PASS** |
 
 This spike decides only the E3 primitive question. It does not modify Category A, the authority
 model, the JMX boundary, the namespace taxonomy, or phases P0–P7, and it does not start P1.
+
+> **Corrective pass S-01-C1.** An independent review of the original S-01 commit raised three
+> blockers: **B1** an incomplete production owner and caller inventory, **B2** Category B scrubbing
+> incorrectly mapped into the accepted runtime envelope, and **B3** a generic payload type that
+> cannot guarantee deep immutability. All three are closed. §18 is the correction record; §18.5
+> raises `PLAN_CORRECTION_REQUIRED`. Sections that carried a falsified statement have been corrected
+> in place and the superseded statement is quoted, so no contradiction remains in this document. The
+> verdict is unchanged and was re-derived rather than restated. No production code and no plan file
+> was modified in either pass.
 
 ---
 
@@ -38,17 +48,24 @@ pre-existing architecture gates already assert that this module never reaches th
 classpath, which makes Agent-classloader exclusivity structurally enforced rather than merely
 documented.
 
-The selected design holds **one immutable envelope in one `AtomicReference`**, carrying
-`runtimeInstanceId`, `acceptedSequence` and `policy` together, and performs **exactly one
-`compareAndSet` per commit with no loop and no candidate-builder function**. Rebase is not merely
-forbidden, it is unrepresentable: the store receives an already-built candidate and has nothing it
-could re-invoke.
+The selected design is a **`PROPOSED` concrete Agent-specific one-shot accepted-policy store backed
+by `AtomicReference<AcceptedPolicyEnvelope>`**. It holds **one immutable envelope in one
+`AtomicReference`**, carrying `runtimeInstanceId`, `acceptedSequence` and a **deeply immutable
+`EffectiveTracingPolicy`** together, and performs **exactly one `compareAndSet` per commit with no
+loop and no candidate-builder function**. Rebase is not merely forbidden, it is unrepresentable: the
+store receives an already-built candidate and has nothing it could re-invoke.
 
-Weighted scores: **Candidate D 98.2**, G1 63.8, X 56.0, G0 40.4.
+The payload type is concrete, not generic. The spike's `S01AcceptedPolicyStore<S>` proved the
+mechanism, but an arbitrary `S` may be mutable, so it is scaffolding rather than the production
+contract (§11.1, correcting **B3**).
+
+Weighted scores after correction: **Candidate D 97.8** (was 98.2), G1 63.8, X 56.0, G0 40.4. The
+single change is `migration risk` 3 → 2, justified in §10.
 
 Measured: hot-path read **0.890 ns/op** at **`gc.alloc.rate.norm` ≈ 10⁻⁶ B/op**, corroborated by an
 exact HotSpot per-thread counter showing **0 bytes over 2 000 000 reads**. One-winner semantics proven
-over 250 rounds × 8 concurrent writers. 27 tests, 0 failures.
+over 250 rounds × 8 concurrent writers on the generic store and re-proven over 100 rounds × 8 writers
+on the concrete store. **53 tests, 0 failures, 0 skipped** — 27 original plus 26 corrective.
 
 ---
 
@@ -72,7 +89,23 @@ E3 closure conditions, each mapped to executed evidence:
 | Future deletion map complete | MET | §14 |
 | Production code unchanged | MET | §16, `git diff --stat` |
 
+Conditions added by the corrective pass:
+
+| Condition | Status | Evidence |
+| --- | --- | --- |
+| Complete production owner and caller inventory | MET | §4.5, machine-checked by `S01OwnerInventoryEvidenceTest` |
+| All eight Category A leaves have a current and a target owner | MET | §4.6 — five current owners, one target owner |
+| Category B scrubbing excluded from the accepted envelope | MET | §4.7, `S01CategoryALeafContractTest.policyDeclaresNoCategoryBLeaf` |
+| Concrete deeply immutable payload contract fixed | MET | §11.1, §11.2 |
+| Deep-immutability proofs | **PASS** | `S01DeepImmutabilityTest`, 6 tests; 1 200 000 concurrent observations, 0 violations |
+| Existing CAS / JMM / allocation proofs still pass | **PASS** | §7.1 — all 27 original tests re-executed with `--rerun-tasks` |
+
 The committee or plan owner closes E3. This spike recommends only.
+
+One item is raised but does **not** block E3: the plan schedules `ScrubbingPolicyHolder` deletion
+inside the P3 accepted-state migration while the binding decision classifies scrubbing as Category B.
+See §18.5, `PLAN_CORRECTION_REQUIRED`. It is a plan-backlog correction, not a primitive-selection
+question, and this spike did not edit the plan.
 
 One caveat that does **not** block E3 but must be carried into P5: the JMH figures were produced with
 the repository's `-PjmhDev` profile, which `platform-tracing-bench/build.gradle` documents as
@@ -197,8 +230,9 @@ Two structural observations that S-01 relies on:
 
 ### 4.1 Accepted-state owners today
 
-There is no single accepted state. There are **three independent policy holders**, each with its own
-version line, none of which is coordinated with the others:
+There is no single accepted state. There are **six independent mutable owners** of runtime tracing
+policy state in production. Three are versioned policy holders, each with its own version line, none
+coordinated with the others:
 
 | # | Owner | Version line |
 | --- | --- | --- |
@@ -206,9 +240,25 @@ version line, none of which is coordinated with the others:
 | 2 | `ScrubbingPolicyHolder` → `ScrubbingSnapshot.version` | starts at 1 (`ScrubbingSpanProcessor` ctor line 111) |
 | 3 | `ValidationPolicyHolder` → `ValidationSnapshot.version` | independent |
 
+Three more are **unversioned bare atomics**, each mutated directly with no expected base and no
+version at all:
+
+| # | Owner | State field | Version line |
+| --- | --- | --- | --- |
+| 4 | `SafeSpanExporter` | `AtomicBoolean exportEnabled` | **none** |
+| 5 | `PlatformPropagationGate` | `static final AtomicBoolean enabled` | **none** |
+| 6 | `PlatformLogControl` | `static final AtomicReference<LogLevel> level` | **none** |
+
+Owners 4–6 were missing from the original inventory. They are inventoried in full in §4.5, which
+closes blocker **B1**. Their absence understated the migration: three of the eight Category A leaves
+live in owners that have no version, no expected base and no read-back path, which is a stronger
+argument for the selected primitive than the original report made, and simultaneously more migration
+work (§10).
+
 `ReadAppliedStateHandler.read()` exposes `_meta.samplingConfigVersion` and
-`_meta.validationConfigVersion` as separate values, and does not read scrubbing state at all. An
-operator therefore cannot name "the" accepted configuration with one number.
+`_meta.validationConfigVersion` as separate values, and does not read scrubbing state, export state,
+propagation state or log level at all. An operator therefore cannot name "the" accepted configuration
+with one number, and for three leaves cannot read the accepted value back through the protocol at all.
 
 ### 4.2 Version-increment owners — the duplicate-ownership finding
 
@@ -245,6 +295,158 @@ compiles the sampling policy snapshot. Because `VersionedStateHolder` re-invokes
 CAS failure, **each retry re-normalises and re-compiles a full policy snapshot**. Retry amplification
 here is allocation- and CPU-heavy, not just a repeated compare-and-set. Quantifying this is P5 scope;
 it is recorded because it strengthens the case against keeping a retry loop in the accepted-state path.
+
+### 4.5 Complete production owner and caller inventory — corrects B1
+
+The original inventory covered only the three `VersionedStateHolder`-backed holders. That was
+incomplete: it understated the accepted-state migration by three owners and overstated it by one.
+This section is the authoritative inventory. Every entry below was read from `src/main/java` at the
+cited line; **no caller was assumed**. Where a claimed caller does not exist, it is recorded with a
+`NOT_*` role rather than omitted.
+
+Full machine-readable form, carrying all twelve required fields per site — module, package, class,
+method, state field, read/write role, current mutation entry point, current gate, target Category A
+leaf, future P1 replacement, future deletion/adaptation phase, zero-reference proof — is
+`repository-symbol-inventory.json` → `correctiveEvidence.accessSites`, **41 sites over 6 owners**.
+`S01OwnerInventoryEvidenceTest` fails the build if any site omits any of the twelve fields, so the
+JSON is the checked source of truth and the tables below are a readable projection of it.
+
+#### 4.5.1 Exporter state — `SafeSpanExporter.exportEnabled` (13 sites)
+
+Module `platform-tracing-otel-javaagent-extension`, package `...javaagent.exporter`. Field declared at
+line 33, `AtomicBoolean`, initialised `true`, no version and no expected base.
+
+| Class · method | Role | Gate today |
+| --- | --- | --- |
+| `SafeSpanExporter` field, line 33 | `OWNER_FIELD` | none — writable with no mutation policy |
+| `SafeSpanExporter.export(...)`, line 50 | `READER_HOT` | n/a — per export **batch**, not per span; gated batches are counted into `gatedSpans` at line 51 and reported successful at line 52 |
+| `SafeSpanExporter.isExportEnabled()`, line 152 | `READER` | n/a |
+| `SafeSpanExporter.metricsSnapshot()`, line 174 | `READER` | n/a — emits `EXPORT_ENABLED` as 1/0; today the **only** way the Spring side can observe the effective gate |
+| `SafeSpanExporter.setExportEnabled(boolean)`, line 156 | `WRITER` | **none** — unconditional set, no expected base, no version |
+| `PlatformExportControl.isExportEnabled()`, lines 28–31 | `READER` | n/a — `false` when no exporter is registered |
+| `PlatformExportControl.setExportEnabled(boolean)`, lines 34–42 | `WRITER` | **none** — no `RuntimeControlMutationPolicy`; records `JmxConfigReloadRecorder.record("export", true, -1)` at line 41 |
+| `PlatformTracingJmxRegistrar.setSafeExporter/getSafeExporter`, lines 140, 169 | `HOLDER` | lifecycle only |
+| `PlatformExportProcessorFactory` | `HOLDER_CREATOR` | lifecycle only — startup pipeline construction |
+| `PlatformTracingJmxClient.setExportEnabled(boolean)`, lines 353–357 | `WRITER_INDIRECT` | `requireDomain(EXPORT)` only — fails closed if the MBean is absent, but no authorization and no expected base |
+| `TracingActuatorEndpoint.updateTracing("exportEnabled", …)`, lines 249–259 | `WRITER_INDIRECT` | `assertMutationAllowed()` line 204 — `platform.tracing.actuator.mutation-enabled`, **default false** |
+| `RuntimeConfigApplier.applyAll(...)`, lines 87–88 | `WRITER_INDIRECT` | `client.allMBeansAvailable()` only |
+| `JmxRuntimePolicyApplier.apply(...)`, lines 53–69 | **`NOT_ROUTED`** | the mutation policy gates this path, but the exporter leaf **never reaches an owner** |
+
+Zero-reference proof: `SafeSpanExporter` matches exactly **five** files under `**/src/main/java` —
+itself, `PlatformExportControl`, `PlatformTracingJmxRegistrar`, `PlatformExportProcessorFactory`, and
+`RateLimitedLogger` (Javadoc mention only). No Spring module references the type.
+
+#### 4.5.2 Propagation state — `PlatformPropagationGate.enabled` (10 sites)
+
+Package `...javaagent.propagation`. `AtomicBoolean` at line 31, reached in production only through the
+**static `SHARED` singleton at line 29** — the process has exactly one mutable propagation policy, with
+no version and no gate.
+
+| Class · method | Role | Gate today |
+| --- | --- | --- |
+| `PlatformPropagationGate` field, line 31 / `SHARED`, line 29 | `OWNER_FIELD` | none |
+| `PlatformPropagationGate.isEnabled()`, line 39 | `READER` | n/a |
+| `PlatformPropagationGate.setEnabled(boolean)`, line 43 | `WRITER` | **none** — unconditional set |
+| `InboundTraceControlPropagator.extract(...)` line 68, `.inject(...)` line 90 | `READER_HOT` | n/a — **per request**, both directions; verified to contain no write |
+| `PlatformDiagnosticsControl.isPropagationEnabled()`, lines 23–26 | `READER` | n/a |
+| `PlatformDiagnosticsControl.setPropagationEnabled(boolean)`, lines 28–32 | `WRITER` | **none** — writes the shared singleton directly, then records `JmxConfigReloadRecorder.record("propagation", true, -1)` |
+| `PlatformTracingJmxClient.setPropagationEnabled(boolean)`, lines 438–441 | `WRITER_INDIRECT` | `requireDomain(DIAGNOSTICS)` only |
+| `TracingActuatorEndpoint.updateTracing("propagationEnabled", …)`, lines 261–271 | `WRITER_INDIRECT` | `assertMutationAllowed()`, default false |
+| `RuntimeConfigApplier.applyAll(...)`, lines 90–91 | `WRITER_INDIRECT` | `client.allMBeansAvailable()` only |
+| `JmxRuntimePolicyApplier.apply(...)`, lines 53–69 | **`NOT_ROUTED`** | the propagation leaf never reaches an owner |
+
+Zero-reference proof: `PlatformPropagationGate` matches exactly **three** files under
+`**/src/main/java` — itself, `InboundTraceControlPropagator`, `PlatformDiagnosticsControl`. No Spring
+module references the type.
+
+#### 4.5.3 Diagnostics log-level state — `PlatformLogControl.level` (10 sites)
+
+Package `...javaagent.safety`. `AtomicReference<LogLevel>` at line 54, reached in production only
+through the **static `SHARED` singleton at line 51**.
+
+| Class · method | Role | Gate today |
+| --- | --- | --- |
+| `PlatformLogControl` field, line 54 / `SHARED`, line 51 | `OWNER_FIELD` | none |
+| `PlatformLogControl.getLevel()` line 60, `isEnabled(LogLevel)` line 89 | `READER` | n/a |
+| `PlatformLogControl.setLevel(LogLevel)` line 64, `setLevel(String)` line 76 | `WRITER` | **none** — a `null` level is ignored at line 65 and an unparseable string returns `false` at line 83; that is last-known-good input handling, not a mutation gate |
+| `RateLimitedLogger.warn(...)` line 87, `logRecoveryOnce(...)` line 126 | `READER` | n/a — verified to contain no write |
+| `PlatformDiagnosticsControl.getPlatformLogLevel()`, lines 44–47 | `READER` | n/a |
+| `PlatformDiagnosticsControl.setPlatformLogLevel(String)`, lines 49–60 | `WRITER` | **none** — an unknown value increments the invalid-config counter and throws `IllegalArgumentException` (lines 52–56); input validation, not a mutation policy |
+| `PlatformTracingJmxClient.setPlatformLogLevel(String)`, lines 444–447 | `WRITER_INDIRECT` | `requireDomain(DIAGNOSTICS)` only |
+| `TracingActuatorEndpoint.updateTracing("logLevel", …)`, lines 273–285 | `WRITER_INDIRECT` | `assertMutationAllowed()`, default false |
+| `RuntimeConfigApplier.applyAll(...)`, lines 94–99 | `WRITER_INDIRECT` | `client.allMBeansAvailable()` only |
+| `TracingControlProtocolKeys` constants | **`NOT_IN_PROTOCOL`** | the leaf has **no wire key at all** |
+
+Zero-reference proof: `PlatformLogControl` matches exactly **three** files under `**/src/main/java` —
+itself, `RateLimitedLogger`, `PlatformDiagnosticsControl`. No Spring module references the type.
+
+#### 4.5.4 Four findings that only the complete inventory exposes
+
+1. **Three leaves have no version and no expected base at all.** Owners 4–6 are bare atomics. For
+   these, "accepted state" does not merely lack coordination — it does not exist as a concept.
+2. **Two of the three are process-wide `static` singletons.** Any writer anywhere in the Agent
+   extension mutates global process state with no gate. This is a stronger argument for a single
+   owning store than the original report made.
+3. **Write-only asymmetry.** `PlatformTracingJmxClient` can write propagation and log level but has no
+   read-back method for either, and `ReadAppliedStateHandler` exposes neither. An operator can change
+   these two leaves through Actuator and then cannot read back what was accepted.
+4. **The protocol validates leaves it never applies.** `JmxRuntimePolicyApplier.apply` routes only
+   sampling and validation (lines 44–50, 67–68). `export.enabled` and `propagation.enabled` are
+   accepted by the schema and then silently dropped, and `diagnostics.log-level` has no protocol key
+   at all. Combined with §3.5 finding 1 — the applier returns `void` and the handler reports `SUCCESS`
+   regardless — the unified protocol today can return `SUCCESS` for a leaf that reached no owner.
+
+Only the gated path is `TracingActuatorEndpoint`, via `assertMutationAllowed()`, default `false`. Every
+other write path into the three new owners is ungated.
+
+### 4.6 The eight Category A leaves — current owner and target owner — corrects B2
+
+The accepted runtime envelope contains **exactly eight** Category A leaves. Five distinct current
+owners collapse into **one** target owner.
+
+| # | Category A leaf | Current owner · state field | Target |
+| --- | --- | --- | --- |
+| 1 | `sampling.enabled` | `SamplerStateHolder` → `SamplerState.enabled` (line 36) | `EffectiveTracingPolicy.samplingEnabled` |
+| 2 | `sampling.ratio` | `SamplerStateHolder` → `SamplerState.defaultRatio` (line 40) | `EffectiveTracingPolicy.samplingRatio` |
+| 3 | `sampling.route-ratios` | `SamplerStateHolder` → `SamplerState.routeRatios` (line 39) | `EffectiveTracingPolicy.samplingRouteRatios`, deeply immutable key-sorted map |
+| 4 | `validation.enabled` | `ValidationPolicyHolder` → `ValidationSnapshot.enabled` (line 22) | `EffectiveTracingPolicy.validationEnabled` |
+| 5 | `validation.strict` | `ValidationPolicyHolder` → `ValidationSnapshot.strict` (line 23) | `EffectiveTracingPolicy.validationStrict`, bounded by the Category B startup envelope `…javaagent.validation.strict-runtime-allowed` |
+| 6 | `exporter.enabled` | `SafeSpanExporter.exportEnabled` (line 33) | `EffectiveTracingPolicy.exporterEnabled` |
+| 7 | `propagation.trace-control-headers.enabled` | `PlatformPropagationGate.enabled` (line 31, static `SHARED`) | `EffectiveTracingPolicy.propagationTraceControlHeadersEnabled` |
+| 8 | `diagnostics.log-level` | `PlatformLogControl.level` (line 54, static `SHARED`) | `EffectiveTracingPolicy.diagnosticsLogLevel`, closed enum `OFF\|ERROR\|WARN\|INFO\|DEBUG\|TRACE` |
+
+Target owner for all eight: `PROPOSED AcceptedPolicyStateStore` →
+`AcceptedPolicyEnvelope.policy()`. Names stay `PROPOSED` until P1.
+
+### 4.7 Excluded from the accepted runtime envelope — corrects B2
+
+The envelope must **not** carry these. Each is Category B or is never representable as accepted state.
+
+| Excluded leaf | Why | Current owner | Replacement |
+| --- | --- | --- | --- |
+| `scrubbing.enabled` | startup-only; the plan's Category B list excludes it from Category A | `ScrubbingPolicyHolder` → `ScrubbingSnapshot` | immutable Agent startup Category B configuration |
+| `scrubbing.built-in-rules` | rule-set composition **is** pipeline composition, which the Category A schema forbids | `ScrubbingPolicyHolder` → `ScrubbingSnapshot` | immutable Agent startup Category B configuration |
+| `sampling.drop-paths` | startup-only | `SamplerState.droppedRoutes` (line 37) | immutable Agent startup Category B configuration |
+| `sampling.force-record-values` | startup-only | `SamplerState.forceRecordValues` (line 38) | immutable Agent startup Category B configuration |
+| any secret | no desired-state, digest, audit or drift representation is safe for a raw secret | none — no accepted-state owner holds a secret today | startup environment only; never in the envelope |
+| any pipeline-composition field | processor/exporter topology is startup structure; changing it at runtime replaces components, not values | `PlatformSpanProcessorFactory` / `PlatformExportProcessorFactory` startup wiring | immutable Agent startup wiring |
+
+Note the asymmetry that the original report missed: `SamplerState` holds **both** Category A leaves
+(1–3) and Category B leaves (`droppedRoutes`, `forceRecordValues`). Its P3 migration therefore splits
+one record across two namespaces rather than moving it wholesale.
+
+`ScrubbingPolicyHolder` is **not** hidden from this inventory. It is recorded as mutable owner #6 in
+§4.1 and as a first-class entry in `correctiveEvidence.mutableOwners`, with these five facts fixed:
+
+- it **is** a current mutable production owner;
+- it does **not** migrate to accepted Category A state;
+- its replacement is **immutable Agent startup Category B configuration**;
+- it is **not** a field of `EffectiveTracingPolicy` and is not carried by the accepted envelope;
+- its exact deletion phase must be agreed with the **coherent Category B namespace cutover**, not with
+  the accepted-state migration.
+
+This contradicts the current Cursor plan. The plan was **not** edited. See §18.5,
+`PLAN_CORRECTION_REQUIRED`.
 
 ---
 
@@ -359,6 +561,15 @@ Proof-to-invariant mapping:
 | `S01ApiMisuseTest` | 6, 7, 13, 15 |
 | `S01VersionedStateHolderContrastTest` | falsifies G0 against 3–8 |
 
+Corrective proofs added by pass S-01-C1, over the **concrete** types of §11.1:
+
+| Proof class | Covers |
+| --- | --- |
+| `S01CategoryALeafContractTest` | exactly eight Category A fields, no Category B field, immutable field types, deterministic route-map order, concrete store surface |
+| `S01DeepImmutabilityTest` | defensive ingress copy, unmodifiable exposed map, stable object graph under concurrent readers |
+| `S01ConcreteStoreCommitTest` | one-winner, no-rebase, `runtimeInstanceId` and `acceptedSequence` semantics re-proven on the concrete store |
+| `S01OwnerInventoryEvidenceTest` | the committed inventory itself: twelve fields per access site, the eight-leaf map, Category B exclusion |
+
 ---
 
 ## 7. Test and benchmark results
@@ -368,7 +579,11 @@ Full transcripts: `docs/research/evidence/accepted-state-primitive/test-results.
 
 ### 7.1 Tests — `acceptedStatePrimitiveVerify`
 
-`BUILD SUCCESSFUL`. **27 tests, 0 failures, 0 errors, 0 skipped.**
+Corrective pass, `--rerun-tasks`, so every original proof was re-executed rather than reported from
+cache: `BUILD SUCCESSFUL`, **53 tests, 0 failures, 0 errors, 0 skipped** — the 27 original plus 26
+corrective. The original pass was 27/0/0/0.
+
+Original proofs, all still passing:
 
 | Proof | Result | Observed |
 | --- | --- | --- |
@@ -381,6 +596,22 @@ Full transcripts: `docs/research/evidence/accepted-state-primitive/test-results.
 | Hot-path allocation (exact) | **PASS** | **0 bytes** over 2 000 000 reads (HotSpot per-thread counter) |
 | API misuse resistance | **PASS** | 8 surface assertions, all held |
 | G0 falsification | **PASS** | builder invoked twice, bases `[0, 1]`, stale caller reported success and overwrote the winner |
+
+Corrective proofs, 26 tests over the concrete types:
+
+| Proof | Result | Observed |
+| --- | --- | --- |
+| Exactly eight Category A fields | **PASS** | reflection over the policy record: 8 components, in the fixed leaf order |
+| No Category B field | **PASS** | no component name matches `scrub*`, `dropPath*`, `droppedRoutes`, `forceRecord*`, `secret*`, `password*`, `token*`, `processor*`, `exporterClass*` |
+| All field types immutable | **PASS** | 7 primitives/closed enum + 1 `NavigableMap`; no mutable collection or mutable reference component |
+| Defensive ingress copy | **PASS** | mutating the caller's source map after construction, including `clear()`, leaves the accepted policy byte-for-byte unchanged |
+| Unmodifiable exposed map | **PASS** | `put`, `remove`, `clear`, `putAll`, `merge`, `compute`, `replaceAll`, `entrySet().iterator().remove()`, `values()`, `keySet()`, `descendingMap()`, `headMap()`, `tailMap()`, `subMap()` — every mutator throws `UnsupportedOperationException` |
+| Deterministic key order | **PASS** | two policies built from differently ordered source maps iterate identically; order is ascending key order, not insertion order |
+| Stable object graph under concurrent readers | **PASS** | 6 readers × 200 000 observations = **1 200 000** reads across commits, **0** violations of leaf-set, ordering or sequence/policy coherence |
+| Concrete one-winner | **PASS** | 100 rounds × 8 writers: exactly 1 `APPLIED`, 7 `STALE`, sequence +1 per round |
+| Concrete no-rebase | **PASS** | sequence advances by rounds, not by attempts; store has no builder parameter |
+| Concrete store surface | **PASS** | one `AtomicReference` field; surface exactly `{current, commit}`; payload type is not generic |
+| Inventory completeness | **PASS** | all 41 access sites declare all 12 required fields; 8 leaves mapped with current and target owner; 6 excluded leaves recorded; `ScrubbingPolicyHolder` present with `migratesToAcceptedState=false` |
 
 ### 7.2 Benchmarks — JMH
 
@@ -406,13 +637,24 @@ Two honest qualifications:
   one-entry immutable map on every call. It is an upper bound on candidate construction plus one
   compare-and-set, not the cost of the store.
 
+**Corrective pass: JMH was `NOT_RUN`, and is not claimed as re-executed.** The read mechanism is
+unchanged — one `AtomicReference.get()` followed by plain final-field reads — and the corrective work
+changed only the *static type* of the payload, not the read path or the field layout of the fields that
+were benchmarked. The original benchmark evidence therefore remains in force for the read mechanism and
+is retained unmodified in `benchmark-results.txt`. Re-running JMH on a reference lab is P5 scope.
+
+The one figure that the concrete payload could in principle move is `contendedCommit`, because a
+`TreeMap`-backed defensive copy is not free. That is **cold-path candidate construction**, it is
+excluded from all read benchmarks, and §7.1's exact per-thread allocation counter still shows 0 bytes
+on the read path. No latency budget is asserted here either way.
+
 ### 7.3 Full `test`
 
-`.\gradlew.bat test --no-daemon` → `BUILD SUCCESSFUL`.
+`.\gradlew.bat test --no-daemon` → `BUILD SUCCESSFUL` in both passes.
 
-Executed in this run: `:platform-tracing-bench:test`,
-`:platform-tracing-spring-boot-autoconfigure:test`. Other module `test` tasks were `UP-TO-DATE` under
-Gradle incrementality, since this spike changed no source in those modules.
+Executed in the corrective run: `:platform-tracing-bench:test` (recompiled and re-executed, since the
+corrective sources land in that module's test source set). Other module `test` tasks were `UP-TO-DATE`
+under Gradle incrementality, since neither pass changed any source in those modules.
 
 **Reported as `SKIPPED/NOT_RUN`, never as PASS:**
 

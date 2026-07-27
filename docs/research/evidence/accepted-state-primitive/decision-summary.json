@@ -25,9 +25,20 @@
   "selection": {
     "module": "platform-tracing-otel-javaagent-extension",
     "currentSymbolReused": null,
-    "proposedPrimitive": "single-shot expected-base accepted-policy state store; production naming is P1 work",
+    "proposedPrimitive": "PROPOSED concrete Agent-specific one-shot accepted-policy store backed by AtomicReference<AcceptedPolicyEnvelope>",
+    "proposedPrimitiveBeforeCorrection": "single-shot expected-base accepted-policy state store described through the generic S01AcceptedPolicyStore<S>",
+    "genericFormIsNotTheProductionPrimitive": "S01AcceptedPolicyStore<S> is spike scaffolding retained for the mechanism proofs and the benchmarks. An arbitrary S may be mutable, so it is explicitly NOT the production contract.",
+    "productionContract": {
+      "store": "final class AcceptedPolicyStateStore with exactly one field: final AtomicReference<AcceptedPolicyEnvelope> current",
+      "envelope": "record AcceptedPolicyEnvelope(String runtimeInstanceId, long acceptedSequence, EffectiveTracingPolicy policy)",
+      "policy": "record EffectiveTracingPolicy with exactly eight Category A leaves and no Category B state",
+      "read": "current() returns the published immutable envelope reference",
+      "write": "commit performs exactly one expected-base compareAndSet",
+      "genericParameters": 0,
+      "namingStatus": "PROPOSED until P1"
+    },
     "stateFields": ["runtimeInstanceId", "acceptedSequence", "policy"],
-    "conceptualApi": ["AcceptedEnvelope<S> current()", "CommitResult<S> commit(ExpectedBase expectedBase, S candidate)"],
+    "conceptualApi": ["AcceptedPolicyEnvelope current()", "CommitResult commit(ExpectedBase expectedBase, EffectiveTracingPolicy candidate)"],
     "commitOutcomes": ["APPLIED", "STALE"],
     "orchestrationOutcomes": ["UNCHANGED", "REJECTED", "FAILED"],
     "memoryVisibilityMechanism": "one final AtomicReference holding one immutable all-final-field envelope; get() is a volatile read, compareAndSet is a volatile write; successful commit happens-before every subsequent observing read",
@@ -123,21 +134,27 @@
   ],
   "verification": {
     "acceptedStatePrimitiveVerify": {
-      "command": ".\\gradlew.bat acceptedStatePrimitiveVerify --no-daemon",
+      "command": ".\\gradlew.bat acceptedStatePrimitiveVerify --no-daemon --rerun-tasks",
       "result": "PASS",
-      "tests": 27,
+      "tests": 53,
+      "testsOriginal": 27,
+      "testsCorrective": 26,
       "failures": 0,
       "errors": 0,
-      "skipped": 0
+      "skipped": 0,
+      "classes": 11
     },
     "jmh": {
       "command": ".\\gradlew.bat :platform-tracing-bench:jmh \"-PjmhInclude=S01Accepted.*Benchmark\" -PjmhDev --no-daemon",
       "result": "PASS",
-      "runTimeSeconds": 17
+      "runTimeSeconds": 17,
+      "correctivePassStatus": "NOT_RUN",
+      "correctivePassRationale": "No benchmark executed in the S-01-C1 pass and none claimed. The read mechanism is unchanged — one AtomicReference.get() in both the generic and the concrete store — and neither JMH class was modified, so the original evidence remains in force."
     },
     "fullTest": {
       "command": ".\\gradlew.bat test --no-daemon",
       "result": "BUILD SUCCESSFUL",
+      "benchTestInCorrectivePass": { "tests": 98, "failures": 0, "errors": 0, "skipped": 2, "skipReason": "pre-existing PerformanceReleaseGateTest cases, gated behind -Pplatform.release.gate, unrelated to S-01" },
       "executedInThisRun": [":platform-tracing-bench:test", ":platform-tracing-spring-boot-autoconfigure:test"],
       "upToDate": "other module test tasks were UP-TO-DATE under Gradle incrementality; this spike changed no source in those modules",
       "skippedOrNotRun": [
@@ -152,8 +169,18 @@
     "gitDiffCheck": "PASS"
   },
   "replacedHoldersAndVersionOwners": {
-    "holders": ["SamplerStateHolder", "ScrubbingPolicyHolder", "ValidationPolicyHolder"],
-    "independentVersionLines": ["SamplerState.version", "ScrubbingSnapshot.version", "ValidationSnapshot.version"],
+    "holders": ["SamplerStateHolder", "ValidationPolicyHolder"],
+    "holdersBeforeCorrection": ["SamplerStateHolder", "ScrubbingPolicyHolder", "ValidationPolicyHolder"],
+    "holdersCorrection": "S-01-C1: ScrubbingPolicyHolder removed — scrubbing is Category B and does not migrate to accepted state. Three additional non-holder owners added below.",
+    "additionalMutableOwnersReplaced": [
+      "SafeSpanExporter.exportEnabled (AtomicBoolean, no version, no snapshot)",
+      "PlatformPropagationGate.enabled (AtomicBoolean behind a process-wide static singleton)",
+      "PlatformLogControl.level (AtomicReference<LogLevel> behind a process-wide static singleton)"
+    ],
+    "totalMutableCategoryAOwnersConsolidated": 5,
+    "processWideStaticSingletonsRemoved": 2,
+    "independentVersionLines": ["SamplerState.version", "ValidationSnapshot.version"],
+    "independentVersionLinesNote": "ScrubbingSnapshot.version is not merged into acceptedSequence; it disappears with the Category B cutover. The three newly inventoried owners have no version line at all today.",
     "versionIncrementOwners": [
       "SamplerPolicyUpdate.buildNext:61",
       "ScrubbingPolicyUpdate.buildNext:38,47",
@@ -167,6 +194,8 @@
   "rollbackUnit": "the accepted-state store, its envelope types, and the orchestration layer, all inside platform-tracing-otel-javaagent-extension; the three existing holders remain intact throughout P1 because P3 deletions are gated behind Legacy deletion GO",
   "openBlockersForE3": [],
   "openItemsNotBlockingE3": [
+    "PLAN_CORRECTION_REQUIRED: move ScrubbingPolicyHolder deletion out of the P3 accepted-state migration and attach it to the coherent Category B namespace cutover (plan owner action; does not block primitive selection but must be corrected before that phase is implemented)",
+    "P0 wire schema must introduce a diagnostics.log-level protocol key, which does not exist in TracingControlProtocolKeys today, and must reconcile export.enabled and propagation.enabled being validated but never applied by JmxRuntimePolicyApplier",
     "E3 closure decision by committee / plan owner",
     "Category A effective-policy field set binding (E5 closed, binding is P1)",
     "Wire schema contract and bounds for exposing one acceptedSequence (E7 + P0)",
@@ -176,6 +205,97 @@
     "Reference-lab JMH baseline and any latency budget (P5)",
     "Whether VersionedStateHolder is deleted or retained as a domain-neutral primitive once its last consumer is gone (P3)"
   ],
+  "correctiveEvidence": {
+    "correctionId": "S-01-C1",
+    "correctsCommit": "fdf81df4daa764e2310f10586b29285491788fd4",
+    "evidenceSeparation": "Every field in this file outside this object is original S-01 evidence, except fields carrying an explicit *BeforeCorrection, *Correction or correctivePass* marker.",
+    "blockersAddressed": [
+      { "id": "B1", "title": "incomplete production owner/caller inventory", "status": "CLOSED" },
+      { "id": "B2", "title": "Category B scrubbing mapped into the accepted runtime envelope", "status": "CLOSED" },
+      { "id": "B3", "title": "generic payload type does not guarantee deep immutability", "status": "CLOSED" }
+    ],
+    "verdictAfterCorrection": "IMPLEMENT_AGENT_SPECIFIC_PRIMITIVE",
+    "verdictChanged": false,
+    "candidateDScoreBefore": 98.2,
+    "candidateDScoreAfter": 97.8,
+    "onlyScoreChanged": "migration-risk 3 -> 2, weight 2, weighted 1.2 -> 0.8",
+    "e3RecommendationAfterCorrection": "READY_TO_CLOSE_E3",
+    "e3ClosedByThisPass": false,
+    "productionCodeChanged": false,
+    "cursorPlanChanged": false,
+    "eightLeafMap": {
+      "leafCount": 8,
+      "currentOwnerCount": 5,
+      "targetOwnerCount": 1,
+      "leavesWithNoVersionOrSnapshotToday": [
+        "exporter.enabled",
+        "propagation.trace-control-headers.enabled",
+        "diagnostics.log-level"
+      ],
+      "detail": "docs/research/evidence/accepted-state-primitive/repository-symbol-inventory.json -> correctiveEvidence.acceptedRuntimeEnvelopeLeaves"
+    },
+    "categoryBExclusion": {
+      "excludedLeaves": ["scrubbing.enabled", "scrubbing.built-in-rules", "sampling.drop-paths", "sampling.force-record-values", "secrets", "pipeline-composition"],
+      "scrubbingPolicyHolder": {
+        "isCurrentMutableProductionOwner": true,
+        "migratesToAcceptedCategoryAState": false,
+        "isFieldOfEffectiveTracingPolicy": false,
+        "replacement": "immutable Agent startup Category B configuration",
+        "deletionPhase": "coherent Category B namespace cutover — plan tasks p6-agent-parser-cutover, p6-delete-domain-jmx-writes, p6-coherent-cutover. NOT the P3 accepted-state migration.",
+        "hiddenFromInventory": false
+      }
+    },
+    "planCorrectionRequired": {
+      "required": true,
+      "marker": "PLAN_CORRECTION_REQUIRED",
+      "blocksPrimitiveSelection": false,
+      "mustBeCorrectedBefore": "implementation of the corresponding phase",
+      "contradiction": "The current plan assigns ScrubbingPolicyHolder deletion to the P3 accepted-state migration (task p3-remove-domain-holders, plan line 131), although the binding decision assigns scrubbing to Category B (plan §7 lines 457-458 exclude platform.tracing.javaagent.scrubbing.enabled and .built-in-rules from Category A).",
+      "requestedPlanChange": "Move ScrubbingPolicyHolder out of p3-remove-domain-holders and attach its deletion to the coherent Category B namespace cutover. Plan edited by the plan owner; this spike did not modify the plan.",
+      "planEditedByThisPass": false
+    },
+    "deepImmutabilityContract": {
+      "status": "FIXED",
+      "allowedFieldKinds": ["primitives", "closed enums", "deeply immutable normalized route-ratio map"],
+      "routeMapRequirements": [
+        "defensive copy on ingress from every construction path",
+        "deterministic natural key order, independent of any caller-supplied comparator",
+        "unmodifiable representation",
+        "no mutable backing map returned",
+        "no dependency on a mutable caller-owned map"
+      ],
+      "mapCopyOfRejected": "Map.copyOf does not specify iteration order, so it does not establish deterministic ordering. The semantic requirement is an immutable key-sorted representation, of which Collections.unmodifiableNavigableMap(new TreeMap<>(input)) is one satisfying form; the exact implementation remains P1 work.",
+      "provenBy": ["S01DeepImmutabilityTest", "S01CategoryALeafContractTest"]
+    },
+    "correctiveProofs": [
+      { "id": "eight-category-a-fields", "result": "PASS", "test": "S01CategoryALeafContractTest.policyDeclaresExactlyEightCategoryALeaves" },
+      { "id": "no-category-b-fields", "result": "PASS", "test": "S01CategoryALeafContractTest.policyDeclaresNoCategoryBLeaf" },
+      { "id": "no-mutable-field-types", "result": "PASS", "test": "S01CategoryALeafContractTest.policyDeclaresNoMutableFieldType, onlyOneLeafIsAReference" },
+      { "id": "deterministic-route-order", "result": "PASS", "test": "S01CategoryALeafContractTest.routeMapOrderIsDeterministicRegardlessOfSource" },
+      { "id": "no-generic-payload-in-production-surface", "result": "PASS", "test": "S01CategoryALeafContractTest.concreteSurfaceHasNoTypeParameter" },
+      { "id": "defensive-route-map-copy", "result": "PASS", "test": "S01DeepImmutabilityTest.sourceMapMutationDoesNotReachAcceptedPolicy, canonicalConstructorAlsoCopiesOnIngress, committedCandidateIsDeeplyImmutable" },
+      { "id": "unmodifiable-exposed-map", "result": "PASS", "test": "S01DeepImmutabilityTest.exposedRouteMapIsUnmodifiableThroughEveryView", "observed": "UnsupportedOperationException from all ten mutating views including sub-maps and the entrySet iterator" },
+      { "id": "post-publication-graph-stability", "result": "PASS", "test": "S01DeepImmutabilityTest.concurrentReadersObserveAStableObjectGraph", "observed": "1200000 concurrent observations against a hostile source-map mutator; 0 violations" },
+      { "id": "concrete-store-one-winner", "result": "PASS", "test": "S01ConcreteStoreCommitTest.singleWinnerPerExpectedBase", "observed": "100 rounds x 8 writers; 1 APPLIED and 7 STALE per round; sequence +1 per round; 800 candidates for 800 attempts" },
+      { "id": "concrete-store-expected-base", "result": "PASS", "test": "S01ConcreteStoreCommitTest.runtimeInstanceMismatchIsStale, sequenceMismatchIsStale, loserLearnsTheFreshBase" },
+      { "id": "complete-owner-inventory", "result": "PASS", "test": "S01OwnerInventoryEvidenceTest.accessSitesDeclareAllRequiredFields, b1OwnersHaveCompleteAccessGraph, verifiedAbsencesAreRecorded" },
+      { "id": "exact-future-migration-map", "result": "PASS", "test": "S01OwnerInventoryEvidenceTest.ownerMigrationMapIsExact, everyLeafHasCurrentAndTargetOwner" },
+      { "id": "category-b-exclusion", "result": "PASS", "test": "S01OwnerInventoryEvidenceTest.categoryBIsExcluded, scrubbingHolderIsInventoriedButNotMigrated" }
+    ],
+    "newCorrectiveSources": [
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01LogLevel.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01EffectiveTracingPolicy.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01AcceptedPolicyEnvelope.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01AcceptedPolicyStateStore.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01ConcreteCommitResult.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01CategoryALeafContractTest.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01DeepImmutabilityTest.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01ConcreteStoreCommitTest.java",
+      "platform-tracing-bench/src/test/java/.../acceptedstate/S01OwnerInventoryEvidenceTest.java"
+    ],
+    "buildWiringChanged": false,
+    "buildWiringNote": "acceptedStatePrimitiveTest already filters the whole space.br1440.platform.tracing.bench.acceptedstate package, so the four new proof classes were picked up with no build change."
+  },
   "artifacts": [
     "docs/research/accepted-state-primitive-s01.md",
     "docs/research/evidence/accepted-state-primitive/candidate-scorecard.json",

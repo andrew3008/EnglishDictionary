@@ -91,12 +91,26 @@
     },
     {
       "id": "D",
-      "name": "Agent-specific accepted-state primitive",
-      "symbol": "proposed; production naming is P1 work",
+      "name": "Concrete Agent-specific one-shot accepted-policy store backed by AtomicReference<AcceptedPolicyEnvelope>",
+      "symbol": "PROPOSED AcceptedPolicyStateStore; production naming is P1 work. The generic S01AcceptedPolicyStore<S> is spike scaffolding and is NOT the production primitive.",
       "module": "platform-tracing-otel-javaagent-extension",
       "selected": true,
-      "weightedTotal": 98.2,
+      "weightedTotal": 97.8,
+      "weightedTotalBeforeCorrection": 98.2,
+      "scoreDelta": -0.4,
       "scores": {
+        "e3-contract": 5,
+        "concurrency-correctness": 5,
+        "jmm-clarity": 5,
+        "hot-path": 5,
+        "ownership": 5,
+        "misuse-resistance": 5,
+        "deletion-value": 5,
+        "api-simplicity": 4,
+        "testability": 5,
+        "migration-risk": 2
+      },
+      "scoresBeforeCorrection": {
         "e3-contract": 5,
         "concurrency-correctness": 5,
         "jmm-clarity": 5,
@@ -109,16 +123,16 @@
         "migration-risk": 3
       },
       "evidence": {
-        "e3-contract": "All 17 invariants satisfied; 27 tests, 0 failures. Expected base carries runtimeInstanceId and acceptedSequence; outcome is APPLIED or STALE only.",
-        "concurrency-correctness": "S01OneWinnerCommitTest: 250 rounds x 8 concurrent writers on one shared expected base; exactly 1 APPLIED and 7 STALE every round; sequence +1 every round; 2000 attempts produced 250 accepted commits.",
-        "jmm-clarity": "One AtomicReference holding one immutable all-final-field envelope; no retry loop. S01PublicationVisibilityTest: 20000 commits x 6 unsynchronised readers, zero torn or partial observations.",
-        "hot-path": "JMH readAcceptedRatio 0.890 ns/op at gc.alloc.rate.norm ~1e-6 B/op; HotSpot per-thread counter shows exactly 0 bytes over 2000000 reads.",
-        "ownership": "Extension module absence from the application classpath is already asserted by root build.gradle line 472 and gradle/c3-published-consumer/build.gradle lines 44 and 46.",
-        "misuse-resistance": "S01ApiMisuseTest, 8 assertions: surface is exactly {current, commit}; no set/put/replace/reset/update/getAndSet/force method; no method accepts an envelope; sequence has no mutator; runtimeInstanceId is mandatory and non-null; CAS payload components are exactly (runtimeInstanceId, acceptedSequence, policy); consecutive reads return the same instance.",
-        "deletion-value": "Replaces 3 holders, 3 independent version lines, and 4 version-increment owners across 8 increment sites.",
-        "api-simplicity": "Five small types, no interface, no factory, no registry, no adapter, no SPI. Net production types and net mutable owners both decrease. Not 5/5 only because five types is not one.",
-        "testability": "Every invariant is directly assertable; reference identity gives a seam-free no-CAS observable.",
-        "migration-risk": "Real P1 and P3 work, but confined to one module and one rollback unit, with the three existing holders left intact throughout P1."
+        "e3-contract": "All 17 invariants satisfied. 53 tests, 0 failures, 0 skipped after the S-01-C1 correction (27 original plus 26 corrective). Expected base carries runtimeInstanceId and acceptedSequence; outcome is APPLIED or STALE only. The payload is now the concrete deeply immutable EffectiveTracingPolicy rather than an arbitrary type parameter: S01CategoryALeafContractTest.concreteSurfaceHasNoTypeParameter.",
+        "concurrency-correctness": "S01OneWinnerCommitTest: 250 rounds x 8 concurrent writers on one shared expected base; exactly 1 APPLIED and 7 STALE every round; sequence +1 every round; 2000 attempts produced 250 accepted commits. Re-proven on the concrete store by S01ConcreteStoreCommitTest: 100 rounds x 8 writers, 800 candidates for 100 accepted commits.",
+        "jmm-clarity": "One AtomicReference holding one immutable all-final-field envelope; no retry loop. S01PublicationVisibilityTest: 20000 commits x 6 unsynchronised readers, zero torn or partial observations. S01DeepImmutabilityTest adds 1200000 concurrent reads against a hostile source-map mutator with zero observed object-graph change.",
+        "hot-path": "JMH readAcceptedRatio 0.890 ns/op at gc.alloc.rate.norm ~1e-6 B/op; HotSpot per-thread counter shows exactly 0 bytes over 2000000 reads. Original evidence remains valid: the read mechanism is one AtomicReference.get() in both the generic and the concrete store, unchanged by S-01-C1.",
+        "ownership": "Extension module absence from the application classpath is already asserted by root build.gradle line 472 and gradle/c3-published-consumer/build.gradle lines 44 and 46. Strengthened by the corrected inventory: two of the five Category A owners are today process-wide static singletons (PlatformPropagationGate.SHARED, PlatformLogControl.SHARED), which this candidate removes.",
+        "misuse-resistance": "S01ApiMisuseTest, 8 assertions on the generic mechanism, plus S01CategoryALeafContractTest and S01DeepImmutabilityTest on the concrete contract: exactly eight Category A components with no Category B or secret name, no mutable declared field type, no array field, defensive copy on ingress from every construction path, deterministic natural key order regardless of the source comparator, and UnsupportedOperationException from ten distinct mutating views of the exposed route map.",
+        "deletion-value": "Consolidates five mutable Category A owners into one: SamplerStateHolder, ValidationPolicyHolder, SafeSpanExporter.exportEnabled, PlatformPropagationGate.enabled and PlatformLogControl.level. Also removes two process-wide static singletons, three independent version lines, and four version-increment owners across eight increment sites. Score stays 5 but the justification changed: three of the consolidated owners were absent from the original inventory, and ScrubbingPolicyHolder is correctly excluded because scrubbing is Category B.",
+        "api-simplicity": "Six small types, no interface, no factory, no registry, no adapter, no SPI. Net production types and net mutable owners both decrease. Score unchanged at 4: removing the type parameter simplifies the store, and the route-map normalisation contract adds a comparable amount of complexity to the payload, so the two effects offset.",
+        "testability": "Every invariant is directly assertable; reference identity gives a seam-free no-CAS observable. The corrected owner inventory and eight-leaf migration map are themselves machine-checked by S01OwnerInventoryEvidenceTest against the committed evidence file.",
+        "migration-risk": "LOWERED from 3 to 2 by S-01-C1. The complete inventory shows the migration is materially larger than the original estimate: five Category A owners rather than three; three leaves (exporter.enabled, propagation.trace-control-headers.enabled, diagnostics.log-level) that today have no version, no snapshot and no expected base, so the ordering semantics are new rather than replaced; two process-wide static singletons to dismantle; three JMX writer MBeans and three Spring write paths to reroute; two of those three leaves have no Spring read-back at all; and the wire protocol is inconsistent (export.enabled and propagation.enabled are validated then silently ignored by JmxRuntimePolicyApplier, and diagnostics.log-level has no protocol key). A plan backlog correction is also required for the ScrubbingPolicyHolder phase. Still confined to one module and one rollback unit, which is why the score is 2 rather than 1."
       }
     },
     {
@@ -159,5 +173,45 @@
   "ranking": ["D", "G1", "X", "G0"],
   "verdict": "IMPLEMENT_AGENT_SPECIFIC_PRIMITIVE",
   "selectedModule": "platform-tracing-otel-javaagent-extension",
-  "newGradleModuleCreated": false
+  "newGradleModuleCreated": false,
+  "correctiveReEvaluation": {
+    "correctionId": "S-01-C1",
+    "correctsCommit": "fdf81df4daa764e2310f10586b29285491788fd4",
+    "blockersAddressed": ["B1", "B2", "B3"],
+    "verdictAfterCorrection": "IMPLEMENT_AGENT_SPECIFIC_PRIMITIVE",
+    "verdictChanged": false,
+    "verdictRetainedBecause": "No new repository fact weakens Candidate D. B1 enlarged the migration surface, B2 removed one owner from it, and B3 replaced the generic payload with a concrete deeply immutable one — all three make the selected design more specific rather than less suitable. G0 remains falsified by S01VersionedStateHolderContrastTest and G1/X are unaffected.",
+    "candidateDScoreBefore": 98.2,
+    "candidateDScoreAfter": 97.8,
+    "candidateDCriterionChanges": [
+      {
+        "criterion": "migration-risk",
+        "weight": 2,
+        "before": 3,
+        "after": 2,
+        "weightedBefore": 1.2,
+        "weightedAfter": 0.8,
+        "justification": "The complete owner inventory raised the migration from three owners to five, added two process-wide static singletons and three unversioned bare atomics, and exposed a protocol schema/applier inconsistency plus a required plan backlog correction. Not lowered to 1 because the change is still confined to one module and one rollback unit."
+      }
+    ],
+    "candidateDCriteriaReviewedAndUnchanged": [
+      { "criterion": "e3-contract", "score": 5, "reason": "The concrete payload strengthens conformance; the mechanism proofs are unchanged and still PASS." },
+      { "criterion": "concurrency-correctness", "score": 5, "reason": "Re-proven on the concrete store; identical results." },
+      { "criterion": "jmm-clarity", "score": 5, "reason": "Same single AtomicReference over all-final-field records; deep immutability makes the safe-publication argument stronger, not different." },
+      { "criterion": "hot-path", "score": 5, "reason": "Read mechanism unchanged, so the original measurement stands. No new benchmark was run and none is claimed." },
+      { "criterion": "ownership", "score": 5, "reason": "Already maximal; the two static singletons found by B1 reinforce it." },
+      { "criterion": "misuse-resistance", "score": 5, "reason": "Already maximal; six additional deep-immutability assertions now defend it." },
+      { "criterion": "deletion-value", "score": 5, "reason": "Already maximal. Net owner count consolidated is five rather than three, offset by correctly excluding scrubbing." },
+      { "criterion": "api-simplicity", "score": 4, "reason": "Dropping the type parameter and adding route-map normalisation offset each other." },
+      { "criterion": "testability", "score": 5, "reason": "Already maximal; the inventory itself is now machine-checked." }
+    ],
+    "otherCandidatesUnchanged": {
+      "G0": 40.4,
+      "G1": 63.8,
+      "X": 56.0,
+      "reason": "No new repository fact bears on their scores, and the correction brief forbids revisiting them without one. One observation is recorded without changing a number: neither G0 nor G1 can address exporter.enabled, propagation.trace-control-headers.enabled or diagnostics.log-level at all, because those owners are bare atomics that never used VersionedStateHolder. That widens the existing gap to D rather than altering any score."
+    },
+    "rankingAfterCorrection": ["D", "G1", "X", "G0"],
+    "rankingChanged": false
+  }
 }
