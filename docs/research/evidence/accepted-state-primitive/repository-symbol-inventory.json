@@ -507,7 +507,7 @@
         "isFieldOfEffectiveTracingPolicy": false,
         "replacement": "immutable Agent startup Category B configuration. Not accepted Category A state, not a field of EffectiveTracingPolicy, and not carried by the accepted envelope",
         "futureDeletionPhase": "NOT P3 accepted-state migration. Deletion belongs to the coherent Category B namespace cutover — plan tasks p6-agent-parser-cutover, p6-delete-domain-jmx-writes and p6-coherent-cutover — because the holder can only disappear once platform.tracing.javaagent.scrubbing.* is startup-immutable and PlatformScrubbingControl.updateScrubbingPolicy is gone. Exact phase must be agreed with that cutover.",
-        "planCorrectionRequired": "YES — plan task p3-remove-domain-holders (plan line 131) schedules ScrubbingPolicyHolder deletion inside the P3 accepted-state migration together with SamplerStateHolder and ValidationPolicyHolder, while plan §7 (lines 457-458) classifies platform.tracing.javaagent.scrubbing.enabled and .built-in-rules as Category B explicitly excluded from Category A. The same holder cannot be both migrated by the accepted-state phase and owned by startup-only Category B configuration.",
+        "planCorrectionRequired": "RESOLVED — p3-remove-domain-holders now removes only SamplerStateHolder and ValidationPolicyHolder; p6-remove-scrubbing-policy-holder binds ScrubbingPolicyHolder deletion to the coherent Category B cutover.",
         "zeroReferenceProof": "rg ScrubbingPolicyHolder over **/src/main/java matches ScrubbingPolicyHolder, ScrubbingSpanProcessor:439/453 and PlatformScrubbingControl:63. Scrubbing state is not exposed by ReadAppliedStateHandler at all, so no read surface has to migrate."
       }
     ],
@@ -571,6 +571,36 @@
         "futureP1Replacement": "export_enabled stays a diagnostics metric but is projected from the accepted envelope, so metrics stop being a second source of truth",
         "futureDeletionPhase": "P3 ADAPT — p3-exporter-reader-migration",
         "zeroReferenceProof": "emits SpanExporterMetrics.EXPORT_ENABLED as 1/0; this is today the only way the Spring side can observe the effective exporter gate"
+      },
+      {
+        "owner": "SafeSpanExporter",
+        "module": "platform-tracing-otel-javaagent-extension",
+        "package": "space.br1440.platform.tracing.otel.javaagent.jmx.export",
+        "class": "PlatformExportControl",
+        "method": "getSafeExporterMetrics() lines 81-84",
+        "stateField": "SafeSpanExporter.exportEnabled projected as SpanExporterMetrics.EXPORT_ENABLED by metricsSnapshot()",
+        "role": "READER_JMX",
+        "currentMutationEntryPoint": "N/A — read path exposed through the EXPORT MBean",
+        "currentGate": "N/A — read path; returns an empty map when no exporter is registered",
+        "targetCategoryALeaf": "exporter.enabled",
+        "futureP1Replacement": "keeps the diagnostics projection but reads exporter.enabled from the accepted envelope",
+        "futureDeletionPhase": "P6 ADAPT — p0-e7-jmx-read-delta makes the MBean read-only",
+        "zeroReferenceProof": "the method is the sole implementation of the SafeExporterMetrics JMX attribute and delegates directly to SafeSpanExporter.metricsSnapshot()"
+      },
+      {
+        "owner": "SafeSpanExporter",
+        "module": "platform-tracing-otel-javaagent-extension",
+        "package": "space.br1440.platform.tracing.otel.javaagent.jmx.export",
+        "class": "PlatformExportControlMBean",
+        "method": "getSafeExporterMetrics() line 24",
+        "stateField": "SafeSpanExporter.exportEnabled projected inside the SafeExporterMetrics JMX attribute",
+        "role": "READER_JMX_CONTRACT",
+        "currentMutationEntryPoint": "N/A — JMX read contract",
+        "currentGate": "MBean registration and process-local JMX access",
+        "targetCategoryALeaf": "exporter.enabled",
+        "futureP1Replacement": "read-only JMX contract remains a projection of the accepted envelope",
+        "futureDeletionPhase": "P6 ADAPT — p0-e7-jmx-read-delta",
+        "zeroReferenceProof": "this method declaration is the Open MBean getter used by MBeanServer.getAttribute(EXPORT, \"SafeExporterMetrics\")"
       },
       {
         "owner": "SafeSpanExporter",
@@ -665,6 +695,36 @@
       {
         "owner": "SafeSpanExporter",
         "module": "platform-tracing-spring-boot-autoconfigure",
+        "package": "space.br1440.platform.tracing.autoconfigure.jmx",
+        "class": "PlatformTracingJmxClient",
+        "method": "getExportMetrics() lines 315-334 and getSafeExporterMetrics() lines 337-349",
+        "stateField": "SafeSpanExporter.exportEnabled read from the SafeExporterMetrics JMX attribute",
+        "role": "READER_INDIRECT",
+        "currentMutationEntryPoint": "N/A — Spring-side JMX read-back path",
+        "currentGate": "returns Optional.empty() when the EXPORT MBean is unavailable and an empty safe-exporter map when the attribute read fails",
+        "targetCategoryALeaf": "exporter.enabled",
+        "futureP1Replacement": "reads the read-only accepted-policy projection rather than a mutable exporter-local flag",
+        "futureDeletionPhase": "P6 ADAPT — p0-e7-jmx-read-delta",
+        "zeroReferenceProof": "getExportMetrics() has one production caller, TracingActuatorEndpoint.tracing(); getSafeExporterMetrics() performs MBeanServer.getAttribute(EXPORT, \"SafeExporterMetrics\")"
+      },
+      {
+        "owner": "SafeSpanExporter",
+        "module": "platform-tracing-spring-boot-autoconfigure",
+        "package": "space.br1440.platform.tracing.autoconfigure.actuator",
+        "class": "TracingActuatorEndpoint",
+        "method": "tracing() line 149",
+        "stateField": "SafeSpanExporter.exportEnabled nested under export.safeExporter.export_enabled",
+        "role": "READER_DELIVERY",
+        "currentMutationEntryPoint": "N/A — GET /actuator/tracing delivery path",
+        "currentGate": "Actuator endpoint exposure policy; falls back to status=not_ready when export metrics are unavailable",
+        "targetCategoryALeaf": "exporter.enabled",
+        "futureP1Replacement": "delivers the read-only accepted-policy projection exposed by PlatformTracingJmxClient",
+        "futureDeletionPhase": "P6 ADAPT — p0-e7-jmx-read-delta",
+        "zeroReferenceProof": "rg getExportMetrics over src/main/java finds only PlatformTracingJmxClient and this call at line 149"
+      },
+      {
+        "owner": "SafeSpanExporter",
+        "module": "platform-tracing-spring-boot-autoconfigure",
         "package": "space.br1440.platform.tracing.autoconfigure.actuator",
         "class": "TracingActuatorEndpoint",
         "method": "updateTracing(\"exportEnabled\", value) lines 249-259",
@@ -691,6 +751,21 @@
         "futureP1Replacement": "replaced by a complete desired-snapshot apply carrying all eight leaves at once, so a partial per-domain apply becomes impossible",
         "futureDeletionPhase": "P4 REWRITE — p4-complete-manifest-builder and p4-config-server-bridge; per-domain calls removed at P6",
         "zeroReferenceProof": "runDomain(TracingControlDomain.EXPORT, \"export\", ...) is the only exporter call in the applier"
+      },
+      {
+        "owner": "SafeSpanExporter",
+        "module": "platform-tracing-spring-boot-autoconfigure",
+        "package": "space.br1440.platform.tracing.autoconfigure",
+        "class": "TracingRefreshScopeAutoConfiguration",
+        "method": "tracingEnvironmentChangeListener(...) lines 55-60",
+        "stateField": "SafeSpanExporter.exportEnabled via RuntimeConfigApplier.applyAll(properties)",
+        "role": "WRITER_DELIVERY_TRIGGER",
+        "currentMutationEntryPoint": "EnvironmentChangeEvent invokes RuntimeConfigApplier.applyAll(properties)",
+        "currentGate": "Spring bean conditions plus RuntimeConfigApplier.allMBeansAvailable(); no expected-base check",
+        "targetCategoryALeaf": "exporter.enabled",
+        "futureP1Replacement": "the refresh trigger builds and submits one complete desired snapshot instead of initiating per-domain writes",
+        "futureDeletionPhase": "P4 REWRITE — p4-config-server-bridge",
+        "zeroReferenceProof": "rg applyAll over src/main/java finds this as the sole production caller of RuntimeConfigApplier.applyAll"
       },
       {
         "owner": "SafeSpanExporter",
@@ -844,6 +919,21 @@
       },
       {
         "owner": "PlatformPropagationGate",
+        "module": "platform-tracing-spring-boot-autoconfigure",
+        "package": "space.br1440.platform.tracing.autoconfigure",
+        "class": "TracingRefreshScopeAutoConfiguration",
+        "method": "tracingEnvironmentChangeListener(...) lines 55-60",
+        "stateField": "PlatformPropagationGate.shared().enabled via RuntimeConfigApplier.applyAll(properties)",
+        "role": "WRITER_DELIVERY_TRIGGER",
+        "currentMutationEntryPoint": "EnvironmentChangeEvent invokes RuntimeConfigApplier.applyAll(properties)",
+        "currentGate": "Spring bean conditions plus RuntimeConfigApplier.allMBeansAvailable(); no expected-base check",
+        "targetCategoryALeaf": "propagation.trace-control-headers.enabled",
+        "futureP1Replacement": "the refresh trigger submits the propagation leaf inside one complete desired snapshot",
+        "futureDeletionPhase": "P4 REWRITE — p4-config-server-bridge",
+        "zeroReferenceProof": "the listener is the sole production caller of RuntimeConfigApplier.applyAll and therefore the Spring refresh delivery trigger for this leaf"
+      },
+      {
+        "owner": "PlatformPropagationGate",
         "module": "platform-tracing-otel-javaagent-extension",
         "package": "space.br1440.platform.tracing.otel.javaagent.control",
         "class": "JmxRuntimePolicyApplier",
@@ -991,6 +1081,21 @@
         "futureP1Replacement": "part of the complete desired snapshot; a complete snapshot cannot omit the leaf, which removes the current null-means-skip branch",
         "futureDeletionPhase": "P4 REWRITE then P6 delete of the per-domain call",
         "zeroReferenceProof": "runDomain(TracingControlDomain.DIAGNOSTICS, \"log_level\", ...) is the only log-level call in the applier"
+      },
+      {
+        "owner": "PlatformLogControl",
+        "module": "platform-tracing-spring-boot-autoconfigure",
+        "package": "space.br1440.platform.tracing.autoconfigure",
+        "class": "TracingRefreshScopeAutoConfiguration",
+        "method": "tracingEnvironmentChangeListener(...) lines 55-60",
+        "stateField": "PlatformLogControl.shared().level via RuntimeConfigApplier.applyAll(properties)",
+        "role": "WRITER_DELIVERY_TRIGGER",
+        "currentMutationEntryPoint": "EnvironmentChangeEvent invokes RuntimeConfigApplier.applyAll(properties)",
+        "currentGate": "Spring bean conditions plus RuntimeConfigApplier.allMBeansAvailable(); null log level is skipped by the current applier",
+        "targetCategoryALeaf": "diagnostics.log-level",
+        "futureP1Replacement": "the refresh trigger submits the required closed-enum leaf inside one complete desired snapshot",
+        "futureDeletionPhase": "P4 REWRITE — p4-config-server-bridge",
+        "zeroReferenceProof": "the listener is the sole production caller of RuntimeConfigApplier.applyAll and therefore the Spring refresh delivery trigger for this leaf"
       },
       {
         "owner": "PlatformLogControl",

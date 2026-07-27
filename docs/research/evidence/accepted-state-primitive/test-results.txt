@@ -213,18 +213,18 @@ Blockers        : B1 incomplete production owner/caller inventory
                   B2 Category B scrubbing mapped into the accepted envelope
                   B3 generic payload does not guarantee deep immutability
 Production code : NOT MODIFIED
-Cursor plan     : NOT MODIFIED
+Cursor plan     : CORRECTED — ScrubbingPolicyHolder deletion moved from P3 to P6 Category B cutover
 
 COMMAND
 -------
     .\gradlew.bat acceptedStatePrimitiveVerify --no-daemon --rerun-tasks
 
-    BUILD SUCCESSFUL in 13s
+    BUILD SUCCESSFUL in 16s
     11 actionable tasks: 11 executed
 
 TOTALS (from build/test-results/acceptedStatePrimitiveTest/*.xml)
 ----------------------------------------------------------------
-    tests    = 53   (27 original + 26 corrective)
+    tests    = 54   (27 original + 27 corrective)
     failures = 0
     errors   = 0
     skipped  = 0
@@ -242,7 +242,7 @@ PER-CLASS
     S01CategoryALeafContractTest                 8   CORRECTIVE  (B2, B3)
     S01DeepImmutabilityTest                      6   CORRECTIVE  (B3)
     S01ConcreteStoreCommitTest                   4   CORRECTIVE  (B3)
-    S01OwnerInventoryEvidenceTest                8   CORRECTIVE  (B1, B2)
+    S01OwnerInventoryEvidenceTest                9   CORRECTIVE  (B1, B2)
 
 CORRECTIVE PROOF DETAIL
 -----------------------
@@ -336,7 +336,7 @@ S01OwnerInventoryEvidenceTest — PASS
                                                     zero Category A leaves,
                                                     replacement and deletion
                                                     phase stated,
-                                                    planCorrectionRequired
+                                                    plan correction resolution
                                                     recorded
     ownerMigrationMapIsExact                        6 owners; the eight leaves
                                                     are claimed exactly once
@@ -356,18 +356,25 @@ S01OwnerInventoryEvidenceTest — PASS
                                                     reaches none of the three
                                                     owners, recorded as NOT_*
                                                     roles rather than omitted
+    jmxAndSpringDeliveryPathsAreComplete             exporter read-back is
+                                                    inventoried from the MBean
+                                                    contract through the Spring
+                                                    JMX client to the actuator;
+                                                    the refresh listener is the
+                                                    required production trigger
+                                                    of RuntimeConfigApplier
 
 FULL TEST GATE
 --------------
     .\gradlew.bat test --no-daemon
 
-    BUILD SUCCESSFUL in 9s
+    BUILD SUCCESSFUL in 8s
     76 actionable tasks: 5 executed, 71 up-to-date
 
-    :platform-tracing-bench:test executed: 98 tests, 0 failures, 0 errors,
+    :platform-tracing-bench:test executed: 99 tests, 0 failures, 0 errors,
     2 skipped. The 2 skips are the pre-existing PerformanceReleaseGateTest
     cases, which run only under -Pplatform.release.gate and are unrelated to
-    S-01. All 26 corrective tests executed here as well, which additionally
+    S-01. All 27 corrective tests executed here as well, which additionally
     proves the evidence test resolves the repository root from the bench
     working directory and not only from the root project.
 

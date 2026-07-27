@@ -136,9 +136,9 @@
     "acceptedStatePrimitiveVerify": {
       "command": ".\\gradlew.bat acceptedStatePrimitiveVerify --no-daemon --rerun-tasks",
       "result": "PASS",
-      "tests": 53,
+      "tests": 54,
       "testsOriginal": 27,
-      "testsCorrective": 26,
+      "testsCorrective": 27,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
@@ -154,9 +154,9 @@
     "fullTest": {
       "command": ".\\gradlew.bat test --no-daemon",
       "result": "BUILD SUCCESSFUL",
-      "benchTestInCorrectivePass": { "tests": 98, "failures": 0, "errors": 0, "skipped": 2, "skipReason": "pre-existing PerformanceReleaseGateTest cases, gated behind -Pplatform.release.gate, unrelated to S-01" },
-      "executedInThisRun": [":platform-tracing-bench:test", ":platform-tracing-spring-boot-autoconfigure:test"],
-      "upToDate": "other module test tasks were UP-TO-DATE under Gradle incrementality; this spike changed no source in those modules",
+      "benchTestInCorrectivePass": { "tests": 99, "failures": 0, "errors": 0, "skipped": 2, "skipReason": "pre-existing PerformanceReleaseGateTest cases, gated behind -Pplatform.release.gate, unrelated to S-01" },
+      "executedInThisRun": [":platform-tracing-bench:test"],
+      "upToDate": "other module test tasks, including :platform-tracing-spring-boot-autoconfigure:test, were UP-TO-DATE under Gradle incrementality; this spike changed no source in those modules",
       "skippedOrNotRun": [
         { "task": ":platform-tracing-e2e-tests:test", "state": "SKIPPED", "reason": "opt-in Docker-backed E2E module" },
         { "task": ":platform-tracing-samples:test", "state": "SKIPPED", "reason": "no test sources" },
@@ -194,7 +194,6 @@
   "rollbackUnit": "the accepted-state store, its envelope types, and the orchestration layer, all inside platform-tracing-otel-javaagent-extension; the three existing holders remain intact throughout P1 because P3 deletions are gated behind Legacy deletion GO",
   "openBlockersForE3": [],
   "openItemsNotBlockingE3": [
-    "PLAN_CORRECTION_REQUIRED: move ScrubbingPolicyHolder deletion out of the P3 accepted-state migration and attach it to the coherent Category B namespace cutover (plan owner action; does not block primitive selection but must be corrected before that phase is implemented)",
     "P0 wire schema must introduce a diagnostics.log-level protocol key, which does not exist in TracingControlProtocolKeys today, and must reconcile export.enabled and propagation.enabled being validated but never applied by JmxRuntimePolicyApplier",
     "E3 closure decision by committee / plan owner",
     "Category A effective-policy field set binding (E5 closed, binding is P1)",
@@ -222,7 +221,7 @@
     "e3RecommendationAfterCorrection": "READY_TO_CLOSE_E3",
     "e3ClosedByThisPass": false,
     "productionCodeChanged": false,
-    "cursorPlanChanged": false,
+    "cursorPlanChanged": true,
     "eightLeafMap": {
       "leafCount": 8,
       "currentOwnerCount": 5,
@@ -246,13 +245,14 @@
       }
     },
     "planCorrectionRequired": {
-      "required": true,
-      "marker": "PLAN_CORRECTION_REQUIRED",
+      "required": false,
+      "marker": "PLAN_CORRECTION_RESOLVED",
       "blocksPrimitiveSelection": false,
       "mustBeCorrectedBefore": "implementation of the corresponding phase",
       "contradiction": "The current plan assigns ScrubbingPolicyHolder deletion to the P3 accepted-state migration (task p3-remove-domain-holders, plan line 131), although the binding decision assigns scrubbing to Category B (plan §7 lines 457-458 exclude platform.tracing.javaagent.scrubbing.enabled and .built-in-rules from Category A).",
-      "requestedPlanChange": "Move ScrubbingPolicyHolder out of p3-remove-domain-holders and attach its deletion to the coherent Category B namespace cutover. Plan edited by the plan owner; this spike did not modify the plan.",
-      "planEditedByThisPass": false
+      "requestedPlanChange": "Move ScrubbingPolicyHolder out of p3-remove-domain-holders and attach its deletion to the coherent Category B namespace cutover.",
+      "planEditedByThisPass": true,
+      "resolution": "p3-remove-domain-holders now names only SamplerStateHolder and ValidationPolicyHolder; p6-remove-scrubbing-policy-holder owns Category B deletion."
     },
     "deepImmutabilityContract": {
       "status": "FIXED",
@@ -278,7 +278,7 @@
       { "id": "post-publication-graph-stability", "result": "PASS", "test": "S01DeepImmutabilityTest.concurrentReadersObserveAStableObjectGraph", "observed": "1200000 concurrent observations against a hostile source-map mutator; 0 violations" },
       { "id": "concrete-store-one-winner", "result": "PASS", "test": "S01ConcreteStoreCommitTest.singleWinnerPerExpectedBase", "observed": "100 rounds x 8 writers; 1 APPLIED and 7 STALE per round; sequence +1 per round; 800 candidates for 800 attempts" },
       { "id": "concrete-store-expected-base", "result": "PASS", "test": "S01ConcreteStoreCommitTest.runtimeInstanceMismatchIsStale, sequenceMismatchIsStale, loserLearnsTheFreshBase" },
-      { "id": "complete-owner-inventory", "result": "PASS", "test": "S01OwnerInventoryEvidenceTest.accessSitesDeclareAllRequiredFields, b1OwnersHaveCompleteAccessGraph, verifiedAbsencesAreRecorded" },
+      { "id": "complete-owner-inventory", "result": "PASS", "test": "S01OwnerInventoryEvidenceTest.accessSitesDeclareAllRequiredFields, b1OwnersHaveCompleteAccessGraph, jmxAndSpringDeliveryPathsAreComplete, verifiedAbsencesAreRecorded" },
       { "id": "exact-future-migration-map", "result": "PASS", "test": "S01OwnerInventoryEvidenceTest.ownerMigrationMapIsExact, everyLeafHasCurrentAndTargetOwner" },
       { "id": "category-b-exclusion", "result": "PASS", "test": "S01OwnerInventoryEvidenceTest.categoryBIsExcluded, scrubbingHolderIsInventoriedButNotMigrated" }
     ],

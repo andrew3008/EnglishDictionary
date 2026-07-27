@@ -1,10 +1,6 @@
 package space.br1440.platform.tracing.bench.acceptedstate;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -18,7 +14,12 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * S-01 corrective evidence for blockers B1 and B2: the committed owner inventory is complete and the
@@ -237,6 +238,21 @@ class S01OwnerInventoryEvidenceTest {
     }
 
     @Test
+    @DisplayName("exporter read-back and Spring refresh delivery paths are inventoried end to end")
+    void jmxAndSpringDeliveryPathsAreComplete() {
+        assertSite("SafeSpanExporter", "PlatformExportControl", "getSafeExporterMetrics");
+        assertSite("SafeSpanExporter", "PlatformExportControlMBean", "getSafeExporterMetrics");
+        assertSite("SafeSpanExporter", "PlatformTracingJmxClient", "getExportMetrics");
+        assertSite("SafeSpanExporter", "TracingActuatorEndpoint", "tracing()");
+        assertSite("SafeSpanExporter", "TracingRefreshScopeAutoConfiguration",
+                "tracingEnvironmentChangeListener");
+        assertSite("PlatformPropagationGate", "TracingRefreshScopeAutoConfiguration",
+                "tracingEnvironmentChangeListener");
+        assertSite("PlatformLogControl", "TracingRefreshScopeAutoConfiguration",
+                "tracingEnvironmentChangeListener");
+    }
+
+    @Test
     @DisplayName("verified absences are recorded, not assumed: unrouted protocol paths are explicit")
     void verifiedAbsencesAreRecorded() {
         // when
@@ -261,6 +277,20 @@ class S01OwnerInventoryEvidenceTest {
             }
         }
         return null;
+    }
+
+    private static void assertSite(String owner, String className, String methodFragment) {
+        List<JsonNode> matches = new ArrayList<>();
+        corrective.get("accessSites").forEach(site -> {
+            if (site.get("owner").asText().equals(owner)
+                    && site.get("class").asText().equals(className)
+                    && site.get("method").asText().contains(methodFragment)) {
+                matches.add(site);
+            }
+        });
+        assertThat(matches)
+                .as("%s must inventory %s.%s exactly once", owner, className, methodFragment)
+                .hasSize(1);
     }
 
     private static void assertNonBlank(JsonNode node, String field, String label) {
