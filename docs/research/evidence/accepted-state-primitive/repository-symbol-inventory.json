@@ -1,0 +1,299 @@
+{
+  "spike": "S-01",
+  "gate": "E3",
+  "repository": "E:\\Platform_Traces",
+  "branch": "refactor/cursor-rules",
+  "headAtSpikeStart": "8bf1bfdc127853fe4ea3a5918dba13d5592948db",
+  "scope": "all src/main/java across all 16 modules declared in settings.gradle; test and benchmark source sets noted separately",
+  "moduleCount": 16,
+  "modulesScanned": [
+    "platform-tracing-bom",
+    "platform-tracing-api",
+    "platform-tracing-otel",
+    "platform-tracing-spring-boot-autoconfigure",
+    "platform-tracing-autoconfigure-webmvc",
+    "platform-tracing-autoconfigure-webflux",
+    "platform-tracing-spring-boot-starter-servlet",
+    "platform-tracing-spring-boot-starter-reactive",
+    "platform-tracing-otel-javaagent-extension",
+    "platform-tracing-collector-config",
+    "platform-tracing-test",
+    "platform-tracing-samples",
+    "platform-tracing-bench",
+    "platform-tracing-e2e-tests",
+    "platform-tracing-perf-tests",
+    "platform-tracing-perf-harness"
+  ],
+  "absentFromProduction": {
+    "note": "Zero occurrences in any src/main/java. Relevant because there is no existing idiom to match and no precedent for a dual-value atomic update.",
+    "symbols": [
+      "VarHandle",
+      "AtomicStampedReference",
+      "ReadWriteLock",
+      "StampedLock",
+      "compareAndExchange",
+      "getAndSet",
+      "weakCompareAndSet"
+    ]
+  },
+  "conceptsNotYetInProduction": [
+    {
+      "concept": "runtimeInstanceId",
+      "productionStatus": "ABSENT",
+      "detail": "Present only in E2E fixtures platform-tracing-e2e-tests/src/.../PrivateMBeanServerProbeMain.java and PrivateMBeanServerExtension.java, and in planning documents. PlatformResourceProvider.java line 41 mentions the OpenTelemetry SDK ServiceInstanceIdResourceProvider in a comment only, which is a different concept.",
+      "e3Consequence": "A domain-neutral generic primitive would have to acquire this Agent-lifecycle concept from scratch. It is a P1 prerequisite for the store."
+    },
+    {
+      "concept": "acceptedSequence / acceptedState / AcceptedPolicy",
+      "productionStatus": "ABSENT",
+      "detail": "Zero matches in production Java. Present only under docs/.",
+      "e3Consequence": "There is no existing accepted-state concept to reuse or refactor."
+    }
+  ],
+  "genericPrimitive": {
+    "symbol": "VersionedStateHolder",
+    "generic": "<T extends VersionedState>",
+    "module": "platform-tracing-otel",
+    "package": "space.br1440.platform.tracing.otel.runtime.versioned",
+    "file": "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/runtime/versioned/VersionedStateHolder.java",
+    "api": [
+      "T current()",
+      "long version()",
+      "boolean tryUpdate(UnaryOperator<T> builder)",
+      "boolean tryUpdate(UnaryOperator<T> builder, Predicate<T> validator)"
+    ],
+    "concurrencyModel": "single AtomicReference<T>; unbounded for(;;) CAS-retry loop at lines 46-77; ref.compareAndSet at line 74",
+    "versionOwnership": "NONE. version() delegates to ref.get().version() at line 36. The increment is the caller's responsibility; the VersionedState Javadoc states the convention prev.version() + 1.",
+    "allocationOnRead": "zero (ref.get())",
+    "allocationOnWrite": "one candidate per builder invocation; the builder is re-invoked on every CAS failure",
+    "e3Conformance": {
+      "expectedBaseParameter": false,
+      "canExpressStale": false,
+      "hasInternalRetry": true,
+      "hasRebase": true,
+      "ownsVersion": false,
+      "verdict": "cannot express the E3 contract"
+    },
+    "productionConsumers": ["SamplerStateHolder", "ScrubbingPolicyHolder", "ValidationPolicyHolder"],
+    "companionType": {
+      "symbol": "VersionedState",
+      "kind": "interface",
+      "module": "platform-tracing-otel",
+      "api": ["long version()"]
+    },
+    "replacementImpact": "After the three holders migrate, this type has no production consumer. Deletion is a P3 decision, not an E3 decision; see report section 14 item 8."
+  },
+  "domainHolders": [
+    {
+      "symbol": "SamplerStateHolder",
+      "module": "platform-tracing-otel-javaagent-extension",
+      "package": "space.br1440.platform.tracing.otel.javaagent.sampler",
+      "file": "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/sampler/SamplerStateHolder.java",
+      "wrappedState": "SamplerState",
+      "api": [
+        "SamplerState current()",
+        "long version()",
+        "void update(SamplerState newState)",
+        "void validatePolicyUpdateDomain(...)",
+        "boolean tryApplyPolicyUpdate(...)",
+        "boolean tryUpdate(Supplier<SamplerState>)",
+        "boolean tryUpdate(UnaryOperator<SamplerState>)"
+      ],
+      "concurrencyModel": "delegates to VersionedStateHolder by composition",
+      "versionOwnership": "none; delegates. Increment computed by SamplerPolicyUpdate.buildNext and by inline lambdas in PlatformSamplingControl.",
+      "productionWriters": [
+        "PlatformSamplingControl:37 setSamplerEnabled",
+        "PlatformSamplingControl:80 setRouteRatios",
+        "PlatformSamplingControl:112 setSamplingRatio",
+        "PlatformSamplingControl:161 setDropPathPrefixes",
+        "PlatformSamplingControl:209 setForceRecordValues",
+        "PlatformSamplingControl:281 updateSamplingPolicy"
+      ],
+      "productionReaders": [
+        "CompositeSampler.shouldSample (hot path)",
+        "ReadAppliedStateHandler.read:68",
+        "PlatformSamplingControl JMX getters"
+      ],
+      "unconditionalSetPath": "update(SamplerState) line 59 performs holder.tryUpdate(prev -> newState) at line 64, ignoring prev entirely. No production caller today; test callers only. Public API on a production class.",
+      "allocationNote": "SamplerState's constructor calls SamplingPolicySnapshotFactory.create(...), which normalises and compiles the policy snapshot. Because the generic primitive re-invokes the builder on CAS failure, every retry re-normalises and re-compiles a full snapshot.",
+      "replacementImpact": "Replaced by the accepted-state store. Deletion gated on all six production write sites migrating."
+    },
+    {
+      "symbol": "ScrubbingPolicyHolder",
+      "module": "platform-tracing-otel-javaagent-extension",
+      "package": "space.br1440.platform.tracing.otel.javaagent.scrubbing",
+      "file": "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/scrubbing/ScrubbingPolicyHolder.java",
+      "wrappedState": "ScrubbingSnapshot",
+      "api": [
+        "ScrubbingSnapshot current()",
+        "long version()",
+        "void validatePolicyUpdateDomain(String[] ruleNames)",
+        "boolean tryApplyPolicyUpdate(boolean enabled, String[] ruleNames, String source)",
+        "boolean tryUpdate(UnaryOperator<ScrubbingSnapshot>)"
+      ],
+      "concurrencyModel": "delegates to VersionedStateHolder by composition",
+      "versionOwnership": "none; increment computed by ScrubbingPolicyUpdate.buildNext lines 38 and 47",
+      "productionWriters": [
+        "ScrubbingSpanProcessor:453 (reached from ScrubbingSpanProcessor:439)",
+        "PlatformScrubbingControl:63 updateScrubbingPolicy"
+      ],
+      "productionReaders": ["ScrubbingSpanProcessor.onEnding (hot path)"],
+      "replacementImpact": "Replaced by the accepted-state store. Note: scrubbing state is NOT exposed by ReadAppliedStateHandler today."
+    },
+    {
+      "symbol": "ValidationPolicyHolder",
+      "module": "platform-tracing-otel-javaagent-extension",
+      "package": "space.br1440.platform.tracing.otel.javaagent.processor",
+      "file": "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/processor/ValidationPolicyHolder.java",
+      "wrappedState": "ValidationSnapshot",
+      "api": [
+        "boolean isStrictRuntimeAllowed()",
+        "ValidationSnapshot current()",
+        "long version()",
+        "boolean tryApplyPolicyUpdate(boolean enabled, boolean strict, String source)",
+        "boolean tryUpdate(UnaryOperator<ValidationSnapshot>)"
+      ],
+      "concurrencyModel": "delegates to VersionedStateHolder by composition",
+      "versionOwnership": "none; increment computed by ValidationPolicyUpdate.buildNext line 20 (module platform-tracing-otel)",
+      "productionWriters": [
+        "ValidatingSpanProcessor:245 (reached from ValidatingSpanProcessor:236)",
+        "PlatformValidationControl:43 updateValidationPolicy",
+        "JmxRuntimePolicyApplier:166",
+        "PlatformSpanProcessorFactory:119 startup stub init"
+      ],
+      "productionReaders": ["ValidatingSpanProcessor.onEnding (hot path)", "ReadAppliedStateHandler.read:88-99"],
+      "replacementImpact": "Replaced by the accepted-state store."
+    }
+  ],
+  "versionIncrementOwners": {
+    "requiredByE3": 1,
+    "actual": 4,
+    "incrementSites": 8,
+    "owners": [
+      {
+        "owner": "SamplerPolicyUpdate.buildNext",
+        "module": "platform-tracing-otel-javaagent-extension",
+        "lines": [61],
+        "expression": "prev.version() + 1"
+      },
+      {
+        "owner": "ScrubbingPolicyUpdate.buildNext",
+        "module": "platform-tracing-otel-javaagent-extension",
+        "lines": [38, 47],
+        "expression": "prev.version() + 1"
+      },
+      {
+        "owner": "ValidationPolicyUpdate.buildNext",
+        "module": "platform-tracing-otel",
+        "lines": [20],
+        "expression": "prev.version() + 1"
+      },
+      {
+        "owner": "PlatformSamplingControl inline lambdas",
+        "module": "platform-tracing-otel-javaagent-extension",
+        "lines": [43, 86, 118, 167, 215],
+        "expression": "prev.version() + 1",
+        "note": "Five separate copies inside the JMX MBean, bypassing SamplerPolicyUpdate entirely."
+      }
+    ]
+  },
+  "independentVersionLines": [
+    { "state": "SamplerState.version", "module": "platform-tracing-otel-javaagent-extension", "initialValue": 1, "initialisedAt": "SamplerStateHolder constructor line 40" },
+    { "state": "ScrubbingSnapshot.version", "module": "platform-tracing-otel-javaagent-extension", "initialValue": 1, "initialisedAt": "ScrubbingSpanProcessor constructor line 111" },
+    { "state": "ValidationSnapshot.version", "module": "platform-tracing-otel", "initialValue": null, "initialisedAt": "independent" }
+  ],
+  "mutationPath": {
+    "entryPoints": [
+      "PlatformControlProtocolMBean.applyPolicy(CompositeData) — extension line 66 — unified protocol",
+      "PlatformSamplingControl per-field setters — extension lines 32, 63, 102, 139, 187",
+      "PlatformSamplingControl.updateSamplingPolicy — extension lines 226 and 263",
+      "PlatformValidationControl.updateValidationPolicy — extension lines 33 and 38",
+      "PlatformScrubbingControl.updateScrubbingPolicy — extension lines 46 and 51",
+      "Spring PlatformTracingJmxClient via JMX"
+    ],
+    "chain": [
+      "PlatformControlProtocolMBean.applyPolicy — extension:66",
+      "TracingControlProtocol.decode — platform-tracing-api",
+      "RuntimePolicyControlHandler.handle — platform-tracing-otel:59",
+      "RuntimePolicyControlDomainValidator.validate — platform-tracing-otel",
+      "RuntimeControlMutationPolicy.evaluate — platform-tracing-otel:89",
+      "JmxRuntimePolicyApplier.apply — extension:54",
+      "PlatformSamplingControl.updateSamplingPolicy — extension:133 -> 281",
+      "SamplerStateHolder.tryApplyPolicyUpdate — extension:85",
+      "VersionedStateHolder.tryUpdate CAS — platform-tracing-otel:74"
+    ],
+    "findings": [
+      "JmxRuntimePolicyApplier.apply returns void (extension line 54). RuntimePolicyControlHandler reports SUCCESS after the applier returns, so the protocol result is decided without knowing whether the underlying CAS succeeded. Failure surfaces only as an MBean counter increment and a log line.",
+      "Multiple concurrent entry points converge on the same SamplerStateHolder instance, and each of the five per-field MBean setters performs an independent CAS. This is the multi-writer situation expected-base semantics exist to arbitrate.",
+      "JmxRuntimePolicyApplier does not route scrubbing fields; there is no PlatformScrubbingControl call in that class.",
+      "ReadAppliedStateHandler.read() exposes _meta.samplingConfigVersion and _meta.validationConfigVersion as separate values and does not read scrubbing state at all."
+    ]
+  },
+  "policyWritingMBeans": [
+    {
+      "mbean": "PlatformSamplingControl",
+      "writableAttributes": ["setSamplerEnabled", "setRouteRatios", "setSamplingRatio", "setDropPathPrefixes", "setForceRecordValues"],
+      "mutatingOperations": ["updateSamplingPolicy (6-arg)", "updateSamplingPolicy (7-arg with source)", "resetSamplerCounters"]
+    },
+    {
+      "mbean": "PlatformValidationControl",
+      "writableAttributes": [],
+      "mutatingOperations": ["updateValidationPolicy (2-arg)", "updateValidationPolicy (3-arg with source)"]
+    },
+    {
+      "mbean": "PlatformScrubbingControl",
+      "writableAttributes": [],
+      "mutatingOperations": ["updateScrubbingPolicy (2-arg)", "updateScrubbingPolicy (3-arg with source)"]
+    },
+    {
+      "mbean": "PlatformControlProtocolMXBean",
+      "writableAttributes": [],
+      "mutatingOperations": ["applyPolicy"]
+    }
+  ],
+  "otherProductionConcurrencyPrimitives": [
+    { "module": "platform-tracing-otel", "symbol": "OwningSpanScope.closed", "mechanism": "AtomicBoolean CAS", "line": 21, "pathType": "hot" },
+    { "module": "platform-tracing-otel", "symbol": "DefaultTraceOperations.active", "mechanism": "volatile reference", "line": 22, "pathType": "hot read, config write" },
+    { "module": "platform-tracing-otel", "symbol": "RemoteServiceTraceMirror", "mechanism": "synchronized methods", "line": 47, "pathType": "hot" },
+    { "module": "platform-tracing-otel", "symbol": "ThreadLocalIdentityStorage.current", "mechanism": "ThreadLocal", "line": 27, "pathType": "hot" },
+    { "module": "platform-tracing-otel-javaagent-extension", "symbol": "PlatformDropOldestExportSpanProcessor.queueLock", "mechanism": "ReentrantLock", "line": 41, "pathType": "hot enqueue" },
+    { "module": "platform-tracing-otel-javaagent-extension", "symbol": "CircuitBreaker.state", "mechanism": "AtomicReference state machine", "line": 44, "pathType": "hot" },
+    { "module": "platform-tracing-otel-javaagent-extension", "symbol": "RuleCircuitBreaker.state", "mechanism": "AtomicReference state machine", "line": 46, "pathType": "hot" },
+    { "module": "platform-tracing-otel-javaagent-extension", "symbol": "ScrubbingSpanProcessor.threadLocalMac", "mechanism": "ThreadLocal", "line": 81, "pathType": "hot" },
+    { "module": "platform-tracing-otel-javaagent-extension", "symbol": "PlatformExtensionReadiness", "mechanism": "synchronized methods", "line": 38, "pathType": "lifecycle" },
+    { "module": "platform-tracing-spring-boot-autoconfigure", "symbol": "RuntimeConfigApplier.lastConfigApplyResult", "mechanism": "volatile", "line": 52, "pathType": "config" },
+    { "module": "platform-tracing-autoconfigure-webflux", "symbol": "ReactiveIdentityContextPropagation bridgeScopes", "mechanism": "ThreadLocal", "line": 60, "pathType": "hot on scheduler switch" }
+  ],
+  "modulesWithNoRelevantPrimitives": [
+    "platform-tracing-bom",
+    "platform-tracing-autoconfigure-webmvc",
+    "platform-tracing-spring-boot-starter-servlet",
+    "platform-tracing-spring-boot-starter-reactive",
+    "platform-tracing-collector-config",
+    "platform-tracing-test",
+    "platform-tracing-samples",
+    "platform-tracing-bench",
+    "platform-tracing-e2e-tests",
+    "platform-tracing-perf-harness"
+  ],
+  "classloaderPlacementEvidence": [
+    {
+      "module": "platform-tracing-otel",
+      "onApplicationClasspath": true,
+      "evidence": "platform-tracing-spring-boot-autoconfigure/build.gradle line 9: implementation project(':platform-tracing-otel')",
+      "e3Consequence": "Accepted state placed here would be constructible in the Spring application classloader, risking a second runtime-policy owner with no gate preventing it."
+    },
+    {
+      "module": "platform-tracing-otel-javaagent-extension",
+      "onApplicationClasspath": false,
+      "gated": true,
+      "evidence": [
+        "root build.gradle line 472: asserts 'platform-tracing-otel-javaagent-extension not on application classpath via either starter'",
+        "gradle/c3-published-consumer/build.gradle line 44: assert !compileModules.contains('platform-tracing-otel-javaagent-extension')",
+        "gradle/c3-published-consumer/build.gradle line 46: assert !runtimeModules.contains('platform-tracing-otel-javaagent-extension')",
+        "platform-tracing-spring-boot-autoconfigure/build.gradle line 69: testImplementation only"
+      ],
+      "e3Consequence": "Agent-classloader exclusivity is structurally enforced by pre-existing gates. This is the decisive placement argument."
+    }
+  ]
+}

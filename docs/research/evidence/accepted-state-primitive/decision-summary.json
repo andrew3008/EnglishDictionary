@@ -1,0 +1,187 @@
+{
+  "spike": "S-01",
+  "subject": "accepted-state primitive",
+  "gate": "E3",
+  "overallResult": "PASS",
+  "verdict": "IMPLEMENT_AGENT_SPECIFIC_PRIMITIVE",
+  "e3Recommendation": "READY_TO_CLOSE_E3",
+  "e3ClosedByThisSpike": false,
+  "e3ClosureOwner": "architecture committee / plan owner",
+  "productionCodeChanged": false,
+  "newGradleModuleCreated": false,
+  "legacyCodeDeleted": false,
+  "p1Started": false,
+  "implementationGo": "NOT_GRANTED",
+  "legacyDeletionGo": "BLOCKED",
+  "environment": {
+    "repository": "E:\\Platform_Traces",
+    "branch": "refactor/cursor-rules",
+    "headAtSpikeStart": "8bf1bfdc127853fe4ea3a5918dba13d5592948db",
+    "jdk": "21.0.6+8-LTS-188 Oracle, Java HotSpot(TM) 64-Bit Server VM",
+    "gradle": "8.14",
+    "os": "Windows 10 10.0 amd64",
+    "host": "DESKTOP-OEGBG7F"
+  },
+  "selection": {
+    "module": "platform-tracing-otel-javaagent-extension",
+    "currentSymbolReused": null,
+    "proposedPrimitive": "single-shot expected-base accepted-policy state store; production naming is P1 work",
+    "stateFields": ["runtimeInstanceId", "acceptedSequence", "policy"],
+    "conceptualApi": ["AcceptedEnvelope<S> current()", "CommitResult<S> commit(ExpectedBase expectedBase, S candidate)"],
+    "commitOutcomes": ["APPLIED", "STALE"],
+    "orchestrationOutcomes": ["UNCHANGED", "REJECTED", "FAILED"],
+    "memoryVisibilityMechanism": "one final AtomicReference holding one immutable all-final-field envelope; get() is a volatile read, compareAndSet is a volatile write; successful commit happens-before every subsequent observing read",
+    "hotPathMechanism": "single AtomicReference.get() followed by plain final-field reads; zero allocation, zero lock, zero JMX",
+    "internalRetry": false,
+    "internalRebase": false,
+    "atomicReferenceCount": 1,
+    "sequenceOwners": 1,
+    "placementRationale": "platform-tracing-otel is on the Spring application classpath (platform-tracing-spring-boot-autoconfigure/build.gradle:9). The extension module's absence from the application classpath is already asserted by root build.gradle:472 and gradle/c3-published-consumer/build.gradle:44,46, making Agent-classloader exclusivity structurally enforced."
+  },
+  "proofs": [
+    {
+      "id": "one-winner",
+      "requirement": "N concurrent writers on one expected base yield exactly one APPLIED and N-1 STALE; acceptedSequence advances by exactly 1; final state is the winner's; no lost update",
+      "result": "PASS",
+      "test": "S01OneWinnerCommitTest.singleWinnerPerExpectedBase",
+      "observed": "250 rounds x 8 writers; 1 APPLIED and 7 STALE every round; sequence +1 every round; 2000 attempts produced 250 accepted commits; final sequence 250"
+    },
+    {
+      "id": "no-retry-no-rebase",
+      "requirement": "the store performs no retry, rebase or merge",
+      "result": "PASS",
+      "test": "S01OneWinnerCommitTest.singleWinnerPerExpectedBase, S01ApiMisuseTest.storeSurfaceIsTwoOperations",
+      "observed": "candidate constructions 2000 = one per attempt; sequence advances +1 per round rather than +8; commit accepts a built candidate rather than a builder function, so there is nothing the store could re-invoke"
+    },
+    {
+      "id": "runtime-instance-mismatch",
+      "requirement": "expected runtimeInstanceId != actual -> STALE, state unchanged, sequence unchanged",
+      "result": "PASS",
+      "test": "S01ExpectedBaseMismatchTest.runtimeInstanceMismatchIsStale",
+      "observed": "STALE returned; accepted envelope identical by reference afterwards, proving no compare-and-set occurred; sequence and policy unchanged"
+    },
+    {
+      "id": "sequence-mismatch",
+      "requirement": "expected acceptedSequence != actual -> STALE, state unchanged",
+      "result": "PASS",
+      "test": "S01ExpectedBaseMismatchTest.sequenceMismatchIsStale, S01ExpectedBaseMismatchTest.futureSequenceIsStale",
+      "observed": "both stale-behind and stale-ahead bases return STALE with the accepted envelope identical by reference"
+    },
+    {
+      "id": "unchanged-boundary",
+      "requirement": "semantically identical policy digest -> store CAS not invoked, acceptedSequence unchanged",
+      "result": "PASS",
+      "test": "S01UnchangedBoundaryTest.identicalCandidateIsUnchangedWithoutCommit",
+      "observed": "UNCHANGED returned; accepted envelope identical by reference; sequence unchanged. REJECTED and FAILED likewise never enter the store. No spy or seam needed: a successful commit always installs a new envelope instance, so reference identity is a direct no-CAS observable."
+    },
+    {
+      "id": "publication-visibility",
+      "requirement": "after a successful commit, readers see fully constructed immutable state with no partial or mixed fields and no reader-side synchronisation",
+      "result": "PASS",
+      "test": "S01PublicationVisibilityTest.readersNeverObserveTornOrPartialState",
+      "observed": "20000 commits with 6 unsynchronised reader threads; readers verified policy self-consistency and acceptedSequence == policy.seed() on every observation; 0 violations"
+    },
+    {
+      "id": "hot-path-allocation",
+      "requirement": "hot-path read allocates zero bytes, takes no lock, constructs no wrapper",
+      "result": "PASS",
+      "exactCounter": {
+        "method": "com.sun.management.ThreadMXBean.getCurrentThreadAllocatedBytes()",
+        "warmupReads": 200000,
+        "measuredReads": 2000000,
+        "allocatedBytes": 0
+      },
+      "jmh": {
+        "profile": "-PjmhDev",
+        "profileCaveat": "documented in platform-tracing-bench/build.gradle as indicative on a developer host; gc.alloc.rate.norm is counter-derived and sound at this profile, ns/op is feasibility evidence only",
+        "results": [
+          { "benchmark": "S01AcceptedStateReadBenchmark.readAcceptedRatio", "nsPerOp": 0.890, "nsPerOpError": 0.028, "gcAllocRateNormBytesPerOp": "~1e-6", "gcCount": "~0" },
+          { "benchmark": "S01AcceptedStateReadBenchmark.readAcceptedRouteRatioCount", "nsPerOp": 1.040, "nsPerOpError": 0.015, "gcAllocRateNormBytesPerOp": "~1e-6", "gcCount": "~0" },
+          { "benchmark": "S01AcceptedStateReadBenchmark.readAcceptedSequenceAndPolicy", "nsPerOp": 1.193, "nsPerOpError": 0.035, "gcAllocRateNormBytesPerOp": "~1e-6", "gcCount": "~0" },
+          { "benchmark": "S01AcceptedStateContendedBenchmark.readWhileCommit:contendedRead", "nsPerOp": 8.146, "threads": 7 },
+          { "benchmark": "S01AcceptedStateContendedBenchmark.readWhileCommit:contendedCommit", "nsPerOp": 266.722, "threads": 1, "note": "includes construction of a fresh candidate policy record and its one-entry immutable map on every call" }
+        ],
+        "groupAggregateNote": "readWhileCommit group gc.alloc.rate.norm = 1.021 B/op is the GROUP aggregate, amortising the writer's two allocations per commit across all eight threads' operations. It is not reader allocation."
+      },
+      "latencyBudgetEstablished": false,
+      "latencyBudgetOwner": "P5"
+    },
+    {
+      "id": "api-misuse",
+      "requirement": "manual sequence increment, unconditional set, in-place mutation, runtimeInstanceId bypass, rebase and diagnostics in the CAS payload are impossible or require breaking encapsulation",
+      "result": "PASS",
+      "test": "S01ApiMisuseTest (8 tests)",
+      "observed": "surface is exactly {current, commit}; no set/put/replace/reset/update/getAndSet/force method; no method accepts an envelope; no void-returning method on the envelope and all its fields are final; expected-base components are exactly (runtimeInstanceId, acceptedSequence) with null identity rejected; CAS payload components are exactly (runtimeInstanceId, acceptedSequence, policy); consecutive reads return the same instance so there is no copy-on-read; the store declares exactly one field and it is a final AtomicReference"
+    },
+    {
+      "id": "g0-falsification",
+      "requirement": "determine executably whether the existing generic primitive satisfies E3",
+      "result": "PASS (G0 falsified)",
+      "test": "S01VersionedStateHolderContrastTest (4 tests)",
+      "observed": "no tryUpdate overload accepts an expected base and all return boolean, so STALE is inexpressible; in a deterministic latch-controlled handoff the builder was invoked twice with bases [0, 1], the stale caller was told it succeeded rather than STALE, and the stale caller's value overwrote the winner; with 8 writers on one logical base all 8 reported success and the version advanced +8 where E3 requires 1 and +1"
+    }
+  ],
+  "verification": {
+    "acceptedStatePrimitiveVerify": {
+      "command": ".\\gradlew.bat acceptedStatePrimitiveVerify --no-daemon",
+      "result": "PASS",
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "jmh": {
+      "command": ".\\gradlew.bat :platform-tracing-bench:jmh \"-PjmhInclude=S01Accepted.*Benchmark\" -PjmhDev --no-daemon",
+      "result": "PASS",
+      "runTimeSeconds": 17
+    },
+    "fullTest": {
+      "command": ".\\gradlew.bat test --no-daemon",
+      "result": "BUILD SUCCESSFUL",
+      "executedInThisRun": [":platform-tracing-bench:test", ":platform-tracing-spring-boot-autoconfigure:test"],
+      "upToDate": "other module test tasks were UP-TO-DATE under Gradle incrementality; this spike changed no source in those modules",
+      "skippedOrNotRun": [
+        { "task": ":platform-tracing-e2e-tests:test", "state": "SKIPPED", "reason": "opt-in Docker-backed E2E module" },
+        { "task": ":platform-tracing-samples:test", "state": "SKIPPED", "reason": "no test sources" },
+        { "task": ":platform-tracing-spring-boot-starter-servlet:test", "state": "NO-SOURCE", "reason": "no test sources" },
+        { "task": ":platform-tracing-spring-boot-starter-reactive:test", "state": "NO-SOURCE", "reason": "no test sources" },
+        { "task": ":platform-tracing-perf-tests:test", "state": "NO-SOURCE", "reason": "no test sources" }
+      ],
+      "skippedClaimedAsPass": false
+    },
+    "gitDiffCheck": "PASS"
+  },
+  "replacedHoldersAndVersionOwners": {
+    "holders": ["SamplerStateHolder", "ScrubbingPolicyHolder", "ValidationPolicyHolder"],
+    "independentVersionLines": ["SamplerState.version", "ScrubbingSnapshot.version", "ValidationSnapshot.version"],
+    "versionIncrementOwners": [
+      "SamplerPolicyUpdate.buildNext:61",
+      "ScrubbingPolicyUpdate.buildNext:38,47",
+      "ValidationPolicyUpdate.buildNext:20",
+      "PlatformSamplingControl inline lambdas:43,86,118,167,215"
+    ],
+    "totalIncrementSitesRemoved": 8
+  },
+  "futureP1ChangeCount": 10,
+  "futureP3DeletionCount": 8,
+  "rollbackUnit": "the accepted-state store, its envelope types, and the orchestration layer, all inside platform-tracing-otel-javaagent-extension; the three existing holders remain intact throughout P1 because P3 deletions are gated behind Legacy deletion GO",
+  "openBlockersForE3": [],
+  "openItemsNotBlockingE3": [
+    "E3 closure decision by committee / plan owner",
+    "Category A effective-policy field set binding (E5 closed, binding is P1)",
+    "Wire schema contract and bounds for exposing one acceptedSequence (E7 + P0)",
+    "Readiness package and Implementation GO (E8, two-step, open)",
+    "Private JMX writer transition sequencing (E6, open)",
+    "Production naming of the accepted-state types (P1)",
+    "Reference-lab JMH baseline and any latency budget (P5)",
+    "Whether VersionedStateHolder is deleted or retained as a domain-neutral primitive once its last consumer is gone (P3)"
+  ],
+  "artifacts": [
+    "docs/research/accepted-state-primitive-s01.md",
+    "docs/research/evidence/accepted-state-primitive/candidate-scorecard.json",
+    "docs/research/evidence/accepted-state-primitive/repository-symbol-inventory.json",
+    "docs/research/evidence/accepted-state-primitive/test-results.txt",
+    "docs/research/evidence/accepted-state-primitive/benchmark-results.txt",
+    "docs/research/evidence/accepted-state-primitive/decision-summary.json"
+  ]
+}

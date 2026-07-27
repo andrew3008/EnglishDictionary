@@ -1,0 +1,204 @@
+S-01 ACCEPTED-STATE PRIMITIVE — EXECUTABLE TEST EVIDENCE
+========================================================
+
+Repository   : E:\Platform_Traces
+Branch       : refactor/cursor-rules
+HEAD         : 8bf1bfdc127853fe4ea3a5918dba13d5592948db
+JDK          : 21.0.6+8-LTS-188 (Oracle), Java HotSpot(TM) 64-Bit Server VM
+Gradle       : 8.14
+OS           : Windows 10 10.0 amd64
+Host         : DESKTOP-OEGBG7F
+Gate         : E3 (accepted-state primitive)
+Production code changed : NO
+
+COMMAND
+-------
+.\gradlew.bat acceptedStatePrimitiveVerify --no-daemon
+
+RESULT
+------
+BUILD SUCCESSFUL
+Tasks executed : :platform-tracing-bench:compileTestJava,
+                 :platform-tracing-bench:testClasses,
+                 :acceptedStatePrimitiveTest,
+                 :acceptedStatePrimitiveVerify
+
+Totals : 27 tests, 0 failures, 0 errors, 0 skipped
+
+PER-CLASS RESULTS
+-----------------
+tests=2  failures=0  errors=0  skipped=0  time=0.044s
+    S01OneWinnerCommitTest
+    "S-01: expected-base commit yields exactly one winner and no rebase"
+
+tests=4  failures=0  errors=0  skipped=0  time=0.015s
+    S01ExpectedBaseMismatchTest
+    "S-01: expected-base mismatch is STALE and never mutates accepted state"
+
+tests=5  failures=0  errors=0  skipped=0  time=0.005s
+    S01UnchangedBoundaryTest
+    "S-01: UNCHANGED, REJECTED and FAILED never reach the store"
+
+tests=2  failures=0  errors=0  skipped=0  time=0.045s
+    S01PublicationVisibilityTest
+    "S-01: readers see fully constructed, non-torn accepted state without synchronisation"
+
+tests=2  failures=0  errors=0  skipped=0  time=0.060s
+    S01HotPathAllocationTest
+    "S-01: hot-path read allocates zero bytes"
+
+tests=8  failures=0  errors=0  skipped=0  time=0.013s
+    S01ApiMisuseTest
+    "S-01: forbidden mutations are absent from the API surface"
+
+tests=4  failures=0  errors=0  skipped=0  time=0.011s
+    S01VersionedStateHolderContrastTest
+    "S-01: VersionedStateHolder cannot express expected-base commit (Candidate G0)"
+
+
+PROOF-BY-PROOF OUTCOMES
+-----------------------
+
+[PASS] ONE-WINNER EXPECTED-BASE COMMIT
+    S01OneWinnerCommitTest.singleWinnerPerExpectedBase
+    250 rounds x 8 concurrent writers, all presenting the SAME expected base,
+    released through a CyclicBarrier.
+    Asserted and observed per round:
+        exactly 1  APPLIED
+        exactly 7  STALE
+        acceptedSequence advanced by exactly +1
+        surviving policy == the winner's candidate
+        runtimeInstanceId carried forward unchanged
+    Aggregate: 2000 commit attempts, 250 accepted commits, final sequence == 250.
+    Candidate constructions == 2000 == one per attempt, so the store never
+    rebuilt any candidate.
+
+[PASS] NO INTERNAL RETRY / NO REBASE
+    Structural: the store's commit() accepts an already-built candidate, not a
+    builder function, so there is nothing the store could re-invoke. Proven by
+    S01ApiMisuseTest.storeSurfaceIsTwoOperations (surface == {commit, current}).
+    Behavioural: sequence advances +1 per round for 8 attempts
+    (S01OneWinnerCommitTest). Under internal retry it would advance +8.
+    Contrast: S01VersionedStateHolderContrastTest.staleCallerIsRebasedAndOverwritesWinner
+    shows the current generic primitive invokes its builder twice, is handed
+    bases [0, 1], reports success to the stale caller, and lets that caller
+    overwrite the winner.
+
+[PASS] RUNTIME-INSTANCE MISMATCH
+    S01ExpectedBaseMismatchTest.runtimeInstanceMismatchIsStale
+    expected runtimeInstanceId != actual -> STALE
+    accepted envelope identical BY REFERENCE afterwards (no CAS occurred)
+    acceptedSequence unchanged, policy unchanged.
+
+[PASS] ACCEPTED-SEQUENCE MISMATCH
+    S01ExpectedBaseMismatchTest.sequenceMismatchIsStale  (base behind actual)
+    S01ExpectedBaseMismatchTest.futureSequenceIsStale    (base ahead of actual)
+    Both -> STALE, accepted envelope identical by reference, sequence unchanged.
+    S01ExpectedBaseMismatchTest.matchingBaseIsApplied confirms the positive case
+    installs a NEW envelope instance, which is what makes reference identity a
+    valid "no CAS happened" observable.
+
+[PASS] UNCHANGED BOUNDARY
+    S01UnchangedBoundaryTest.identicalCandidateIsUnchangedWithoutCommit
+    Semantically identical candidate (distinct instance, equal value) ->
+    UNCHANGED, accepted envelope identical by reference, sequence unchanged.
+    No spy or test seam required: a successful commit always installs a new
+    envelope instance, so reference identity proves the store was not entered.
+    Also proven on the same boundary:
+        REJECTED (domain validator returned false)  -> store not entered
+        FAILED   (domain validator threw)           -> store not entered
+
+[PASS] PUBLICATION AND MEMORY VISIBILITY
+    S01PublicationVisibilityTest.readersNeverObserveTornOrPartialState
+    20 000 sequential commits by 1 writer while 6 reader threads spin on the
+    hot path with NO reader-side synchronisation.
+    Writer maintains the invariant acceptedSequence == policy.seed().
+    Readers checked, on every observation:
+        policy.selfConsistent()  -- rejects a partially constructed policy,
+                                    including a null reference field
+        envelope.acceptedSequence() == policy.seed()
+                                 -- rejects a torn sequence/policy pair
+    Violations observed: 0. Final sequence: 20 000.
+    S01PublicationVisibilityTest.publishedStateIsImmutable confirms a previously
+    observed envelope is unaffected by later commits.
+
+[PASS] HOT-PATH ALLOCATION (exact counter)
+    S01HotPathAllocationTest.hotPathReadIsAllocationFree
+    com.sun.management.ThreadMXBean.getCurrentThreadAllocatedBytes()
+    200 000 warm-up reads, then 2 000 000 measured reads.
+    Allocated bytes on the reading thread: 0   (asserted isZero(), passed)
+    S01HotPathAllocationTest.hotPathReadHoldsNoLock
+    No method on the store is synchronized; the store declares exactly one
+    field, and it is a final AtomicReference.
+
+[PASS] API MISUSE RESISTANCE
+    S01ApiMisuseTest (8 tests)
+    storeSurfaceIsTwoOperations        surface == {commit, current}
+    noUnconditionalSetExists          no set*/put*/replace*/reset*/update*/
+                                      getAndSet*/force* method exists; the only
+                                      mutation takes an expected base as its
+                                      first parameter
+    noEnvelopeInjectionPointExists    no method accepts an envelope, so a
+                                      hand-built sequence cannot be installed
+    acceptedSequenceHasNoMutator      no void-returning method on the envelope;
+                                      envelope is a record; all fields final
+    runtimeInstanceIdCannotBeBypassed expected base components are exactly
+                                      (runtimeInstanceId, acceptedSequence);
+                                      null identity rejected
+    acceptedStateCarriesNoDiagnostics CAS payload components are exactly
+                                      (runtimeInstanceId, acceptedSequence, policy)
+    acceptedStateIsTyped              consecutive reads return the SAME instance
+                                      (no copy-on-read); policy is not a Map
+    storeHoldsSingleAtomicReference   one final AtomicReference field, not a
+                                      policy plus a separate counter
+
+[PASS] CANDIDATE G0 FALSIFICATION
+    S01VersionedStateHolderContrastTest (4 tests)
+    surfaceCannotExpressExpectedBase
+        every tryUpdate overload returns boolean, so APPLIED and STALE are
+        indistinguishable; no overload accepts an expected base, so
+        runtimeInstanceId and acceptedSequence cannot participate at all.
+    staleCallerIsRebasedAndOverwritesWinner   (deterministic, latch-controlled)
+        builder invocations == 2
+        bases handed to the builder == [0, 1]  -> rebase onto the winner
+        stale caller was told it SUCCEEDED, never STALE
+        final state == "stale-caller"          -> the winner was overwritten
+        final version == 2
+    everyWriterWinsAndSequenceAdvancesPerAttempt
+        8 writers, one logical base: all 8 report success, sequence advances +8.
+        E3 requires 1 winner and +1.
+    s01StoreAdmitsOneWinnerForTheSameRace
+        identical race against the S-01 store: 1 APPLIED, 7 STALE, sequence +1.
+
+
+REPEATABILITY
+-------------
+Because the one-winner, publication and rebase proofs are race-dependent, the
+suite was re-run three additional times with forced task re-execution:
+
+    .\gradlew.bat acceptedStatePrimitiveTest --rerun --no-daemon
+
+RUN 1  BUILD SUCCESSFUL in 7s
+RUN 2  BUILD SUCCESSFUL in 7s
+RUN 3  BUILD SUCCESSFUL in 7s
+
+Four executions in total, zero failures. The two proofs that would otherwise be
+timing-sensitive are constructed to be deterministic rather than probabilistic:
+
+  - the one-winner proof asserts sequence arithmetic (+1 per round), which holds
+    regardless of which writer wins and regardless of scheduling;
+  - the rebase proof uses a latch-controlled handoff that forces the interleaving
+    rather than hoping for it.
+
+The publication proof is the only genuinely probabilistic one. It is bounded by
+20 000 commits against 6 concurrent readers per execution, so four executions
+represent 80 000 commits observed without a single torn or partial read.
+
+
+NOTES ON SCOPE
+--------------
+All classes above live in test and benchmark source sets of
+platform-tracing-bench only. No production Java was added, modified or deleted.
+The S01* types are evidence artefacts, not approved production names.
+
+acceptedStatePrimitiveVerify is opt-in and is NOT wired into check or build.

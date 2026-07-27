@@ -782,3 +782,37 @@ tasks.register('tracingConfigurationInventoryVerify') {
     description = 'Verifies committed S-04 inventory artifacts and exact-name dispositions.'
     dependsOn tracingConfigurationInventoryTest
 }
+
+// ---------------------------------------------------------------------------------------------
+// S-01 accepted-state primitive evidence (Gate E3).
+//
+// Opt-in: НЕ подключается к check/build. Доказательства живут только в test/jmh source set'ах
+// platform-tracing-bench; production-код не участвует. JMH-замер аллокаций запускается отдельно
+// (:platform-tracing-bench:jmh -PjmhInclude=S01AcceptedStateReadBenchmark), потому что forked
+// benchmark добавляет заметный overhead обычной сборке.
+// ---------------------------------------------------------------------------------------------
+
+def acceptedStatePrimitiveTest = tasks.register('acceptedStatePrimitiveTest', Test) {
+    group = 'verification'
+    description = 'Runs the S-01 accepted-state primitive concurrency, publication and allocation evidence.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/acceptedStatePrimitiveTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/acceptedStatePrimitiveTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/acceptedStatePrimitiveTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.acceptedstate.*'
+    }
+}
+
+tasks.register('acceptedStatePrimitiveVerify') {
+    group = 'verification'
+    description = 'Verifies the S-01 accepted policy state primitive evidence for Gate E3.'
+    dependsOn acceptedStatePrimitiveTest
+}

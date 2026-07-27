@@ -1,0 +1,133 @@
+S-01 ACCEPTED-STATE PRIMITIVE — JMH BENCHMARK EVIDENCE
+======================================================
+
+Repository   : E:\Platform_Traces
+Branch       : refactor/cursor-rules
+HEAD         : 8bf1bfdc127853fe4ea3a5918dba13d5592948db
+JMH version  : 1.36
+VM           : JDK 21.0.6, Java HotSpot(TM) 64-Bit Server VM, 21.0.6+8-LTS-188
+VM options   : -Xmx4g
+Blackhole    : compiler (auto-detected)
+OS           : Windows 10 10.0 amd64
+Gate         : E3 (accepted-state primitive)
+
+COMMAND
+-------
+.\gradlew.bat :platform-tracing-bench:jmh "-PjmhInclude=S01Accepted.*Benchmark" -PjmhDev --no-daemon
+
+RESULT
+------
+BUILD SUCCESSFUL. Total run time 00:00:17.
+Raw JSON: platform-tracing-bench/build/results/jmh/results.json
+
+PROFILE CAVEAT — READ BEFORE USING THESE NUMBERS
+------------------------------------------------
+-PjmhDev is the repository's DEV profile: 1 fork, 3 warm-up and 5 measurement
+iterations of 500 ms, with the gc profiler. platform-tracing-bench/build.gradle
+documents this profile as producing INDICATIVE figures on a developer host, for
+relative comparison and ranking only. Official latency data comes only from the
+full profile on the reference lab (see performance-budgets.yaml referenceLab).
+
+Consequences for how this file may be cited:
+
+  gc.alloc.rate.norm  is derived from an allocation COUNTER, not from timing, so
+                      the bytes-per-operation figures below are trustworthy at
+                      this profile. This is the metric S-01 depends on.
+
+  ns/op               is INDICATIVE ONLY at this profile. It is reported here as
+                      P0 feasibility evidence that the read path is in the
+                      single-digit-nanosecond class. It is NOT a budget and must
+                      not be treated as a P5 performance acceptance figure.
+
+S-01 deliberately establishes no production latency budget. That is P5 work.
+
+
+RAW SUMMARY (as printed by JMH)
+-------------------------------
+Benchmark                                                                        Mode  Cnt    Score     Error   Units
+S01AcceptedStateContendedBenchmark.readWhileCommit                               avgt    5   40.468 ±  25.449   ns/op
+S01AcceptedStateContendedBenchmark.readWhileCommit:contendedCommit               avgt    5  266.722 ± 147.649   ns/op
+S01AcceptedStateContendedBenchmark.readWhileCommit:contendedRead                 avgt    5    8.146 ±   8.045   ns/op
+S01AcceptedStateContendedBenchmark.readWhileCommit:·gc.alloc.rate                avgt    5  871.701 ± 510.467  MB/sec
+S01AcceptedStateContendedBenchmark.readWhileCommit:·gc.alloc.rate.norm           avgt    5    1.021 ±   0.487    B/op
+S01AcceptedStateContendedBenchmark.readWhileCommit:·gc.count                     avgt    5    4.000            counts
+S01AcceptedStateContendedBenchmark.readWhileCommit:·gc.time                      avgt    5    9.000                ms
+S01AcceptedStateReadBenchmark.readAcceptedRatio                                  avgt    5    0.890 ±   0.028   ns/op
+S01AcceptedStateReadBenchmark.readAcceptedRatio:·gc.alloc.rate                   avgt    5    0.001 ±   0.001  MB/sec
+S01AcceptedStateReadBenchmark.readAcceptedRatio:·gc.alloc.rate.norm              avgt    5   ≈ 10⁻⁶              B/op
+S01AcceptedStateReadBenchmark.readAcceptedRatio:·gc.count                        avgt    5      ≈ 0            counts
+S01AcceptedStateReadBenchmark.readAcceptedRouteRatioCount                        avgt    5    1.040 ±   0.015   ns/op
+S01AcceptedStateReadBenchmark.readAcceptedRouteRatioCount:·gc.alloc.rate         avgt    5    0.001 ±   0.001  MB/sec
+S01AcceptedStateReadBenchmark.readAcceptedRouteRatioCount:·gc.alloc.rate.norm    avgt    5   ≈ 10⁻⁶              B/op
+S01AcceptedStateReadBenchmark.readAcceptedRouteRatioCount:·gc.count              avgt    5      ≈ 0            counts
+S01AcceptedStateReadBenchmark.readAcceptedSequenceAndPolicy                      avgt    5    1.193 ±   0.035   ns/op
+S01AcceptedStateReadBenchmark.readAcceptedSequenceAndPolicy:·gc.alloc.rate       avgt    5    0.001 ±   0.001  MB/sec
+S01AcceptedStateReadBenchmark.readAcceptedSequenceAndPolicy:·gc.alloc.rate.norm  avgt    5   ≈ 10⁻⁶              B/op
+S01AcceptedStateReadBenchmark.readAcceptedSequenceAndPolicy:·gc.count            avgt    5      ≈ 0            counts
+
+
+INTERPRETATION
+--------------
+
+1. HOT-PATH READ ALLOCATION — the load-bearing E3 result.
+
+   readAcceptedRatio                gc.alloc.rate.norm = ≈ 10⁻⁶ B/op
+   readAcceptedRouteRatioCount      gc.alloc.rate.norm = ≈ 10⁻⁶ B/op
+   readAcceptedSequenceAndPolicy    gc.alloc.rate.norm = ≈ 10⁻⁶ B/op
+
+   JMH prints "≈ 10⁻⁶" when total allocation across the whole run is a handful
+   of bytes attributable to harness infrastructure rather than to the measured
+   operation. gc.count is ≈ 0 for all three: no collection was triggered.
+
+   This is corroborated by an independent EXACT measurement in
+   S01HotPathAllocationTest, which uses the HotSpot per-thread allocation
+   counter and observes exactly 0 bytes over 2 000 000 reads. The two methods
+   agree, and the exact counter is what the E3 zero-allocation claim rests on;
+   the JMH figure is the statistical confirmation.
+
+   Reading a nested reference field (routeRatios) costs no allocation either,
+   confirming there is no copy-on-read anywhere on the path.
+
+2. HOT-PATH READ LATENCY — indicative, not a budget.
+
+   0.890 / 1.040 / 1.193 ns/op for one, two and three field reads behind a
+   single volatile reference load. The progression is consistent with the read
+   being exactly what it claims: one AtomicReference.get() followed by plain
+   final-field reads, with no lock and no wrapper construction.
+
+3. READS UNDER A COMMIT STORM.
+
+   contendedRead   8.146 ns/op with 7 reader threads while a writer commits
+                   continuously. Readers are never blocked, because they take no
+                   lock and observe only whole immutable envelopes.
+   contendedCommit 266.722 ns/op for one writer.
+
+   The commit figure INCLUDES construction of a fresh candidate policy (a record
+   plus a one-entry immutable Map) on every call. It is therefore an upper bound
+   on candidate construction plus one compareAndSet, not the cost of the store
+   itself. The commit rate driven here is orders of magnitude above real
+   operation, where policy changes arrive a few times per minute; this is an
+   intentional stress mode.
+
+4. WHY THE GROUP FIGURE IS 1.021 B/op AND NOT ZERO.
+
+   readWhileCommit:·gc.alloc.rate.norm = 1.021 B/op is the GROUP AGGREGATE. It
+   amortises the writer thread's two allocations per commit (one candidate
+   policy plus one accepted envelope) across the operations of all eight threads
+   in the group. It is NOT reader allocation.
+
+   The reader-only benchmarks in section 1 are the hot-path evidence. The
+   per-commit allocation counted here is cold-path allocation, which the E3
+   contract permits: a new immutable envelope per accepted commit is exactly how
+   the design achieves a zero-allocation read.
+
+5. WHAT IS NOT MEASURED HERE.
+
+   No comparative benchmark against VersionedStateHolder's retry loop was run.
+   The retry-amplification difference is established behaviourally instead, in
+   S01VersionedStateHolderContrastTest, which shows builder re-invocation and
+   rebase deterministically rather than statistically. Note for P5: because
+   SamplerState's constructor calls SamplingPolicySnapshotFactory.create(),
+   every retry of the current primitive re-normalises and re-compiles a policy
+   snapshot, so retry amplification there is allocation-heavy, not merely a
+   repeated CAS. Quantifying that is P5 scope, not P0.
