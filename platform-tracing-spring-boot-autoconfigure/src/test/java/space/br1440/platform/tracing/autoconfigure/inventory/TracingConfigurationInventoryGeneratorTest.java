@@ -1570,7 +1570,10 @@ class TracingConfigurationInventoryGeneratorTest {
                             + "14-category-a-binding-decision.md")
                     && !normalized.endsWith(
                     "/docs/analysis/plans/"
-                            + "platform-tracing-configuration-refactoring-plan.md")
+                            + "immutable_config_namespace_split_ba8da442.plan.md")
+                    && !normalized.endsWith(
+                    "/docs/analysis/platform-tracing-configuration/"
+                            + "15-opus-final-plan-review.md")
                     && !normalized.endsWith(
                     "/TracingConfigurationInventoryGeneratorTest.java");
         }
