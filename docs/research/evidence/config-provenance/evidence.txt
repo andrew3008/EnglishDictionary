@@ -1,0 +1,190 @@
+﻿# Config Provenance Step 0B - raw evidence emitted by EvidenceRecorder.
+# Source: platform-tracing-e2e-tests/build/reports/config-provenance/evidence.txt
+# Single processing step applied before committing: the local Windows account name inside
+# JUnit @TempDir paths was replaced with <redacted-user> (repository rule: no raw PII in test reports).
+# No other character was altered.
+
+=== Layer-B-real-config-server-git ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=0.62, effectiveSource=SourceEvidence[name=configserver:file:///C:/Users/<redacted-user>/AppData/Local/Temp/junit-14972764534412346677/config-repository//provenance-client.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=org.springframework.cloud.config.client.ConfigServicePropertySourceLocator$ConfigServiceOrigin, origin=Config Server file:///C:/Users/<redacted-user>/AppData/Local/Temp/junit-14972764534412346677/config-repository//provenance-client.yml:5:16], remoteDesiredValue=0.62, remoteSource=SourceEvidence[name=configserver:file:///C:/Users/<redacted-user>/AppData/Local/Temp/junit-14972764534412346677/config-repository//provenance-client.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=org.springframework.cloud.config.client.ConfigServicePropertySourceLocator$ConfigServiceOrigin, origin=Config Server file:///C:/Users/<redacted-user>/AppData/Local/Temp/junit-14972764534412346677/config-repository//provenance-client.yml:5:16], effectiveCategory=CONFIG_SERVER_REMOTE, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=a32b0b52b5943a8397abbeadb7ddc1edebfa7d2a, state=null]
+details=initialCommit=4c74cf74d5afa62680cc63b0672fc59210e1c006; refreshedCommit=a32b0b52b5943a8397abbeadb7ddc1edebfa7d2a; changedKeys=[config.client.version, platform.tracing.policy.sampling.ratio]; childServerProcess=true; childServerReadinessMillis=4924; childServerReadinessBudgetMillis=45000
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:file:///C:/Users/<redacted-user>/AppData/Local/Temp/junit-14972764534412346677/config-repository//provenance-client.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== Layer-B-cleanup ===
+gracefulStop=true; childServerProcessAlive=false
+
+=== T3 ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=null, effectiveSource=SourceEvidence[name=null, sourceClass=null, originClass=null, origin=null], remoteDesiredValue=null, remoteSource=SourceEvidence[name=null, sourceClass=null, originClass=null, origin=null], effectiveCategory=ABSENT, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v3-after, state=state-v3-after]
+details=eventKeys=[config.client.version, platform.tracing.policy.sampling.ratio, config.client.state]; rebuiltFullSnapshot=1.0
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T6 ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=0.99, effectiveSource=SourceEvidence[name=systemProperties, sourceClass=org.springframework.core.env.PropertiesPropertySource, originClass=null, origin=null], remoteDesiredValue=0.20, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=SYSTEM, localOverride=true, conflict=true]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v6, state=state-v6]
+details=guard=FAIL_CLOSED
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T1 ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=0.25, effectiveSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], remoteDesiredValue=0.25, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=CONFIG_SERVER_REMOTE, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v1, state=state-v1]
+details=guard=ACCEPT
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T8 ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=0.80, effectiveSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], remoteDesiredValue=0.80, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=CONFIG_SERVER_REMOTE, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=actual-remote-version, state=state-v8]
+details=guard=ACCEPT
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio, config.client.version]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource | keys=[config.client.version]
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource | keys=[config.client.version]
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T2-local-yaml ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.route-ratio, effectiveValue=remote-route, effectiveSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], remoteDesiredValue=remote-route, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=CONFIG_SERVER_REMOTE, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v2, state=state-v2]
+details=CONFIG_SERVER guard decision for command-line override=FAIL_CLOSED; local YAML actual category=CONFIG_SERVER_REMOTE
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | Config resource 'file [C:\Users\<redacted-user>\AppData\Local\Temp\junit-13507929802899979599\application.yml]' via location 'file:///C:/Users/<redacted-user>/AppData/Local/Temp/junit-13507929802899979599/' | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=9 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=10 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T2-command-line ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=command-line-ratio, effectiveSource=SourceEvidence[name=commandLineArgs, sourceClass=org.springframework.core.env.SimpleCommandLinePropertySource, originClass=null, origin=null], remoteDesiredValue=remote-ratio, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=COMMAND_LINE, localOverride=true, conflict=true]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v2, state=state-v2]
+details=guard=FAIL_CLOSED
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | Config resource 'file [C:\Users\<redacted-user>\AppData\Local\Temp\junit-13507929802899979599\application.yml]' via location 'file:///C:/Users/<redacted-user>/AppData/Local/Temp/junit-13507929802899979599/' | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio, platform.tracing.policy.sampling.route-ratio]
+tree=9 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=10 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T5 ===
+effective=KeyEvidence[key=otel.bsp.max.queue.size, effectiveValue=2048, effectiveSource=SourceEvidence[name=systemProperties, sourceClass=org.springframework.core.env.PropertiesPropertySource, originClass=null, origin=null], remoteDesiredValue=4096, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=SYSTEM, localOverride=true, conflict=true]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v5, state=state-v5]
+details=runtimePolicy=UNCHANGED; restartRequired=true
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[otel.bsp.max.queue.size]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource | keys=[otel.bsp.max.queue.size]
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[otel.bsp.max.queue.size]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T7 ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=0.70, effectiveSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], remoteDesiredValue=0.70, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=CONFIG_SERVER_REMOTE, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=null, state=state-v7]
+details=guard=ACCEPT
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T10 ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=0.22, effectiveSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], remoteDesiredValue=0.22, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=CONFIG_SERVER_REMOTE, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v10-after, state=state-v10-after]
+details=eventKeys=[config.client.version, platform.tracing.policy.sampling.ratio, config.client.state]; rebuiltFullSnapshot=EventObservation[keys=[config.client.version, platform.tracing.policy.sampling.ratio, config.client.state], evidence=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=0.22, effectiveSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], remoteDesiredValue=0.22, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=CONFIG_SERVER_REMOTE, localOverride=false, conflict=false], marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v10-after, state=state-v10-after]]
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[platform.tracing.policy.sampling.ratio]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T9 ===
+effective=KeyEvidence[key=platform.tracing.policy.sampling.ratio, effectiveValue=null, effectiveSource=SourceEvidence[name=null, sourceClass=null, originClass=null, origin=null], remoteDesiredValue=null, remoteSource=SourceEvidence[name=null, sourceClass=null, originClass=null, origin=null], effectiveCategory=ABSENT, localOverride=false, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v9-after, state=state-v9-after]
+details=eventKeys=[config.client.version, platform.tracing.policy.sampling.ratio, config.client.state]; rebuiltFullSnapshot={platform.tracing.policy.sampling.ratio=1.0}
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource
+
+=== T4 ===
+effective=KeyEvidence[key=otel.bsp.max.queue.size, effectiveValue=2048, effectiveSource=SourceEvidence[name=systemProperties, sourceClass=org.springframework.core.env.PropertiesPropertySource, originClass=null, origin=null], remoteDesiredValue=2048, remoteSource=SourceEvidence[name=configserver:stub:application.yml, sourceClass=org.springframework.boot.env.OriginTrackedMapPropertySource, originClass=null, origin=null], effectiveCategory=SYSTEM, localOverride=true, conflict=false]
+marker=MarkerEvidence[present=true, sourceClass=org.springframework.core.env.MapPropertySource, version=remote-v4, state=state-v4]
+details=runtimePolicy=UNCHANGED; restartRequired=false
+tree=0 | configurationProperties | org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource | keys=[otel.bsp.max.queue.size]
+tree=1 | commandLineArgs | org.springframework.core.env.SimpleCommandLinePropertySource
+tree=2 | systemProperties | org.springframework.core.env.PropertiesPropertySource | keys=[otel.bsp.max.queue.size]
+tree=3 | systemEnvironment | org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource
+tree=4 | random | org.springframework.boot.env.RandomValuePropertySource
+tree=5 | cachedrandom | org.springframework.cloud.util.random.CachedRandomPropertySource
+tree=6 | configserver:stub:application.yml | org.springframework.boot.env.OriginTrackedMapPropertySource | keys=[otel.bsp.max.queue.size]
+tree=7 | configClient | org.springframework.core.env.MapPropertySource
+tree=8 | springCloudClientHostInfo | org.springframework.core.env.MapPropertySource
+tree=9 | applicationInfo | org.springframework.boot.ApplicationInfoPropertySource

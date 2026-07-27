@@ -667,3 +667,16 @@ tasks.register('pr4ArchitectureFitnessVerify') {
     dependsOn 'cp3LegacyPackageVerify'
     dependsOn ':platform-tracing-api:test'
 }
+
+// ---------------------------------------------------------------------------------------------
+// S-02 — Config Server provenance evidence (docs/research/config-server-provenance-step-0b-reproduction.md).
+// Deliberately not wired into check/build: the characterization forks a child Config Server JVM,
+// binds ephemeral loopback ports and requires `git` on PATH. CI and release gates must invoke this
+// task by name; ordinary local `check` stays free of external-process cost.
+// ---------------------------------------------------------------------------------------------
+
+tasks.register('configProvenanceVerify') {
+    group = 'verification'
+    description = 'Runs the isolated Spring Cloud Config provenance characterization (Step 0B evidence).'
+    dependsOn ':platform-tracing-e2e-tests:configProvenanceTest'
+}

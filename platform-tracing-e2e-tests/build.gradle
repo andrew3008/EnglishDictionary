@@ -55,6 +55,14 @@ sourceSets {
             srcDir 'src/e1Consumer/resources'
         }
     }
+    configProvenance {
+        java {
+            srcDir 'src/configProvenance/java'
+        }
+        resources {
+            srcDir 'src/configProvenance/resources'
+        }
+    }
 }
 
 configurations {
@@ -174,6 +182,16 @@ dependencies {
     // App-CL сторона E2E (MapWireRoundTripMain) использует константы MBean и маркеры харнесса.
     testImplementation sourceSets.jmxWireExtension.output
     testImplementation sourceSets.e1Consumer.output
+
+    // Step 0B: изолированный test-only стек не влияет на production BOM и publication metadata.
+    configProvenanceImplementation enforcedPlatform('org.springframework.boot:spring-boot-dependencies:3.5.6')
+    configProvenanceImplementation enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')
+    configProvenanceImplementation 'org.springframework.cloud:spring-cloud-starter-config'
+    configProvenanceImplementation 'org.springframework.cloud:spring-cloud-config-server'
+    configProvenanceImplementation 'org.springframework.boot:spring-boot-starter-web'
+    configProvenanceImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+    configProvenanceImplementation 'org.springframework.boot:spring-boot-starter-test'
+    configProvenanceRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.register('verifyExtensionDeps') {
@@ -301,5 +319,19 @@ test {
                 testJmxWireExtensionJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.readiness.fixture.extension.jar',
                 testReadinessFixtureExtensionJar.archiveFile.get().asFile.absolutePath
+    }
+}
+
+tasks.register('configProvenanceTest', Test) {
+    group = 'verification'
+    description = 'Runs isolated Spring Cloud Config provenance characterization (Step 0B).'
+    testClassesDirs = sourceSets.configProvenance.output.classesDirs
+    classpath = sourceSets.configProvenance.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    systemProperty 'config.provenance.evidence.file',
+            layout.buildDirectory.file('reports/config-provenance/evidence.txt').get().asFile.absolutePath
+    doFirst {
+        delete layout.buildDirectory.file('reports/config-provenance/evidence.txt')
     }
 }

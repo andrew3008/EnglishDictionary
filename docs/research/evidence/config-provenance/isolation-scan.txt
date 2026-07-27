@@ -1,0 +1,30 @@
+﻿Config Provenance Step 0B - Spring Cloud isolation scan
+captured: 2026-07-27, HEAD 9fc01d7 + uncommitted S-02 changes
+
+Commands (each run with --no-daemon -q):
+  .\gradlew.bat :platform-tracing-e2e-tests:dependencies       --configuration configProvenanceRuntimeClasspath
+  .\gradlew.bat :platform-tracing-e2e-tests:dependencies       --configuration testRuntimeClasspath
+  .\gradlew.bat :platform-tracing-spring-boot-starter-servlet:dependencies  --configuration runtimeClasspath
+  .\gradlew.bat :platform-tracing-spring-boot-starter-reactive:dependencies --configuration runtimeClasspath
+  .\gradlew.bat :platform-tracing-spring-boot-autoconfigure:dependencies    --configuration runtimeClasspath
+
+Scan pattern: spring-cloud | jgit | spring-boot:3.5.6
+
+configProvenanceRuntimeClasspath -> see dependency-tree.txt (spring-cloud-* 4.3.0, JGit 6.10.1, Boot 3.5.6)
+
+Results on the four non-configProvenance configurations:
+  build-iso-1.txt : spring-cloud/jgit occurrences = 0
+  build-iso-2.txt : spring-cloud/jgit occurrences = 0
+  build-iso-3.txt : spring-cloud/jgit occurrences = 0
+  build-iso-4.txt : spring-cloud/jgit occurrences = 0
+
+Mapping: build-iso-1 = e2e-tests testRuntimeClasspath; build-iso-2 = starter-servlet runtimeClasspath;
+         build-iso-3 = starter-reactive runtimeClasspath; build-iso-4 = autoconfigure runtimeClasspath
+
+Conclusion: zero Spring Cloud and zero JGit artifacts on any production or ordinary test configuration.
+Boot 3.5.6 does appear on e2e-tests testRuntimeClasspath, but it is pre-existing and unrelated:
+it is pulled by the external starter space.br1440.platform.starters:spring-boot-starter-platform-logging:1.0.4
+(platform-tracing-e2e-tests/build.gradle:144). The configProvenance* configurations are not extended by
+any other configuration, so they cannot influence it.
+
+platform-tracing-e2e-tests is never published: publish* tasks are disabled in its build.gradle:79-81.
