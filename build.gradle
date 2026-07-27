@@ -736,3 +736,9 @@ tasks.register('jmxManagementContractVerify') {
     description = 'Verifies the complete live JMX management baseline and duplicated ObjectNames.'
     dependsOn jmxManagementContractBaselineTest, jmxObjectNameConsistencyTest
 }
+
+tasks.register('privateMBeanServerVerify') {
+    group = 'verification'
+    description = 'Runs the S-03 private process-local MBeanServer evidence spike.'
+    dependsOn ':platform-tracing-e2e-tests:privateMBeanServerTest'
+}

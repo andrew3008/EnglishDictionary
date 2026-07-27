@@ -1,0 +1,19 @@
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+S03_PRIVATE:event=server-created:begin
+S03_PRIVATE:event=server-created
+S03_PRIVATE:event=marker-registered
+S03_PRIVATE:event=codec-ready
+S03_PRIVATE:event=writer-registered
+S03_PRIVATE:event=state-store-ready
+S03_PRIVATE:event=capability-visible
+S03_PRIVATE:extensionClassLoader=io.opentelemetry.javaagent.tooling.ExtensionClassLoader
+S03_PRIVATE:duplicateInitialization=existing-owner
+S03_APP:disabledDiscoveryAttempts=0
+S03_APP:disabledInvocationAttempts=0
+S03_APP:M8=PASS
+S03_PRIVATE:event=writer-unregistered
+S03_PRIVATE:event=marker-unregistered
+S03_PRIVATE:event=server-released
