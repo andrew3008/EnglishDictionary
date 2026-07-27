@@ -199,8 +199,9 @@ dependencies {
     testImplementation sourceSets.jmxWireExtension.output
     testImplementation sourceSets.e1Consumer.output
 
-    // Step 0B: изолированный test-only стек не влияет на production BOM и publication metadata.
-    configProvenanceImplementation enforcedPlatform('org.springframework.boot:spring-boot-dependencies:3.5.6')
+    // Step 0B / S-06 approved production stack: Boot baseline from gradle.properties (3.5.5)
+    // plus Northfields 2025.0.0 — isolated from production BOM; does not change publication metadata.
+    configProvenanceImplementation enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${rootProject.springBootVersion}")
     configProvenanceImplementation enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')
     configProvenanceImplementation 'org.springframework.cloud:spring-cloud-starter-config'
     configProvenanceImplementation 'org.springframework.cloud:spring-cloud-config-server'

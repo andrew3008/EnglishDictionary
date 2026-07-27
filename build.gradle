@@ -80,6 +80,10 @@ subprojects {
                     url = rootProject.layout.buildDirectory.dir('c3-maven-repository')
                 }
                 maven {
+                    name = 'c6Verification'
+                    url = rootProject.layout.buildDirectory.dir('c6-maven-repository')
+                }
+                maven {
                     name = 'pa1PublishedArtifactVerification'
                     url = rootProject.layout.buildDirectory.dir('pa1-published-artifact-maven-repository')
                 }
@@ -815,4 +819,185 @@ tasks.register('acceptedStatePrimitiveVerify') {
     group = 'verification'
     description = 'Verifies the S-01 accepted policy state primitive evidence for Gate E3.'
     dependsOn acceptedStatePrimitiveTest
+}
+
+// ---------------------------------------------------------------------------------------------
+// S-06 — Boot/Cloud/BOM and refresh delivery evidence (Gate E6).
+// Opt-in: not wired into check/build. Proves approved dependency baseline, published consumer
+// isolation, and S-02 on the corporate Boot patch; does not mutate production BOM constraints.
+// ---------------------------------------------------------------------------------------------
+
+def c6PublishedProjects = [
+        ':platform-tracing-bom',
+        ':platform-tracing-api',
+        ':platform-tracing-otel',
+        ':platform-tracing-spring-boot-autoconfigure',
+        ':platform-tracing-autoconfigure-webflux',
+        ':platform-tracing-spring-boot-starter-reactive'
+]
+
+def s06EvidenceDir = layout.projectDirectory.dir('docs/research/evidence/boot-cloud-bom-refresh')
+
+tasks.register('s06ApprovedStackResolutionVerify') {
+    group = 'verification'
+    description = 'Verifies approved Boot 3.5.5 + Spring Cloud 2025.0.0 resolution (C1).'
+
+    doLast {
+        File fixture = file('gradle/s06-approved-stack-resolution')
+        File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'gradlew.bat' : 'gradlew')
+        List<String> command = []
+        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+            command.addAll(['cmd.exe', '/d', '/c'])
+        }
+        command.add(wrapper.absolutePath)
+        command.addAll(['-p', fixture.absolutePath, 'verifyApprovedStackResolution', '--no-daemon'])
+
+        Process process = new ProcessBuilder(command.collect { it.toString() })
+                .directory(rootDir)
+                .redirectErrorStream(true)
+                .start()
+        String output = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            throw new GradleException("S-06 approved stack resolution failed:\n${output}")
+        }
+        logger.lifecycle('S-06 approved stack resolution verification passed')
+    }
+}
+
+tasks.register('c6PublishedReactiveConsumerVerify') {
+    group = 'verification'
+    description = 'Verifies reactive starter published consumer boundaries (C4).'
+
+    doLast {
+        File repository = layout.buildDirectory.dir('c6-maven-repository').get().asFile
+        File fixture = file('gradle/c6-published-reactive-consumer')
+        File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'gradlew.bat' : 'gradlew')
+
+        def runFixture = { String taskName, Map extraProps = [:] ->
+            List<String> command = []
+            if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+                command.addAll(['cmd.exe', '/d', '/c'])
+            }
+            command.add(wrapper.absolutePath)
+            command.addAll([
+                    '-p', fixture.absolutePath,
+                    taskName,
+                    "-Pc6Repository=${repository.absolutePath}",
+                    "-PplatformTracingVersion=${project.version}",
+                    '--no-daemon'
+            ])
+            extraProps.each { key, value -> command.add("-P${key}=${value}") }
+
+            Process process = new ProcessBuilder(command.collect { it.toString() })
+                    .directory(rootDir)
+                    .redirectErrorStream(true)
+                    .start()
+            String output = process.inputStream.getText('UTF-8')
+            int exitCode = process.waitFor()
+            return [exitCode: exitCode, output: output]
+        }
+
+        def positive = runFixture('verifyPublishedConsumer')
+        if (positive.exitCode != 0) {
+            throw new GradleException("C6 reactive published consumer failed:\n${positive.output}")
+        }
+
+        def negative = runFixture('compileNegativeJava')
+        if (negative.exitCode == 0) {
+            throw new GradleException('C6 negative compile unexpectedly succeeded: core leaked onto compileClasspath')
+        }
+        if (!negative.output.contains('space.br1440.platform.tracing.otel.runtime.otel')) {
+            throw new GradleException("C6 negative compile failed for unexpected reason:\n${negative.output}")
+        }
+
+        File evidenceOutput = s06EvidenceDir.file('published-reactive-consumer-dependencies.txt').asFile
+        def export = runFixture('exportDependencyEvidence', [evidenceOutput: evidenceOutput.absolutePath])
+        if (export.exitCode != 0) {
+            throw new GradleException("C6 dependency evidence export failed:\n${export.output}")
+        }
+
+        logger.lifecycle('C6 reactive published metadata consumer verification passed')
+    }
+}
+
+tasks.register('s06PublishedServletDependencyEvidence') {
+    group = 'verification'
+    description = 'Exports servlet starter published consumer dependency evidence (C3 supplement).'
+
+    doLast {
+        File repository = layout.buildDirectory.dir('c3-maven-repository').get().asFile
+        File fixture = file('gradle/c3-published-consumer')
+        File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'gradlew.bat' : 'gradlew')
+        File evidenceOutput = s06EvidenceDir.file('published-servlet-consumer-dependencies.txt').asFile
+
+        List<String> command = []
+        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+            command.addAll(['cmd.exe', '/d', '/c'])
+        }
+        command.add(wrapper.absolutePath)
+        command.addAll([
+                '-p', fixture.absolutePath,
+                'exportDependencyEvidence',
+                "-Pc3Repository=${repository.absolutePath}",
+                "-PplatformTracingVersion=${project.version}",
+                "-PevidenceOutput=${evidenceOutput.absolutePath}",
+                '--no-daemon'
+        ])
+
+        Process process = new ProcessBuilder(command.collect { it.toString() })
+                .directory(rootDir)
+                .redirectErrorStream(true)
+                .start()
+        String output = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            throw new GradleException("S-06 servlet dependency evidence export failed:\n${output}")
+        }
+        logger.lifecycle('S-06 servlet published consumer dependency evidence exported')
+    }
+}
+
+def s06BootCloudBomTest = tasks.register('s06BootCloudBomTest', Test) {
+    group = 'verification'
+    description = 'Runs S-06 evidence consistency and starter leakage proofs.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir('test-results/s06BootCloudBomTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir('test-results/s06BootCloudBomTest')
+    reports.html.outputLocation = layout.buildDirectory.dir('reports/tests/s06BootCloudBomTest')
+    useJUnitPlatform()
+    systemProperty 's06.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/boot-cloud-bom-refresh').asFile.absolutePath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.bootcloudbom.*'
+    }
+}
+
+tasks.register('bootCloudBomRefreshVerify') {
+    group = 'verification'
+    description = 'Verifies S-06 Boot/Cloud/BOM baseline and refresh delivery evidence for Gate E6.'
+    dependsOn s06ApprovedStackResolutionVerify
+    dependsOn 'c3PublishedMetadataConsumerVerify'
+    dependsOn s06PublishedServletDependencyEvidence
+    dependsOn c6PublishedReactiveConsumerVerify
+    dependsOn 'configProvenanceVerify'
+    dependsOn s06BootCloudBomTest
+}
+
+gradle.projectsEvaluated {
+    tasks.named('c6PublishedReactiveConsumerVerify').configure {
+        dependsOn c6PublishedProjects.collect { path ->
+            project(path).tasks.named('publishMavenJavaPublicationToC6VerificationRepository')
+        }
+    }
+    tasks.named('s06PublishedServletDependencyEvidence').configure {
+        dependsOn c3PublishedProjects.collect { path ->
+            project(path).tasks.named('publishMavenJavaPublicationToC3VerificationRepository')
+        }
+    }
 }

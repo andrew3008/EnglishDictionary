@@ -1,0 +1,33 @@
+{
+  "spikeId": "S-06",
+  "gate": "E6",
+  "headAtInvestigation": "6909f44a1d9957a488c3e144b6f1e4949752aef5",
+  "branch": "refactor/cursor-rules",
+  "verdict": "APPROVE_BOOT_CLOUD_BASELINE",
+  "e6Recommendation": "READY_TO_CLOSE_E6",
+  "overallResult": "PASS",
+  "productionCodeChanged": false,
+  "selectedBootVersion": "3.5.5",
+  "selectedSpringFrameworkVersion": "6.2.10",
+  "selectedSpringCloudTrain": "2025.0.0",
+  "selectedConfigVersions": {
+    "spring-cloud-context": "4.3.0",
+    "spring-cloud-config-client": "4.3.0",
+    "spring-cloud-config-server": "4.3.0",
+    "spring-cloud-commons": "4.3.0"
+  },
+  "selectedRefreshFanOut": "SPRING_CLOUD_CONFIG_MONITOR_AND_BUS",
+  "refreshOwner": "Platform Config Server + Kafka Bus operations (fan-out); tracing bridge (EnvironmentChangeEvent consumer only)",
+  "migrationUnit": "Single unreleased train: P4 BOM + SUPPORTED.md + Config bridge",
+  "rollbackUnit": "Entire unreleased release train revert",
+  "openBlockersForE8": [
+    "E7 JMX read delta",
+    "Wire schema contract P0",
+    "Implementation GO from committee"
+  ],
+  "openItemsNotBlockingE6": [
+    "P4 must apply approved BOM contract (remove 4.1.5, import 2025.0.0)",
+    "P4 must implement Bus-backed refresh bridge and delete TracingRefreshScopeAutoConfiguration mutation path",
+    "Corporate Kafka Bus availability must be confirmed operationally before production cutover"
+  ]
+}

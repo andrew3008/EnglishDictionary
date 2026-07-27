@@ -1,0 +1,59 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation enforcedPlatform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    implementation enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+}
+
+static def moduleVersions(Configuration configuration, String moduleName) {
+    return configuration.incoming.resolutionResult.allComponents
+            .findAll { it.moduleVersion?.name == moduleName }
+            .collect { it.moduleVersion.version }
+            .findAll { it != null }
+}
+
+static def assertSpringBoot355(Configuration configuration) {
+    def versions = moduleVersions(configuration, 'spring-boot')
+    if (versions.isEmpty()) {
+        throw new GradleException('spring-boot not found on classpath')
+    }
+    if (!versions.every { it.startsWith('3.5.5') }) {
+        throw new GradleException("spring-boot must resolve to 3.5.5.x, found: ${versions}")
+    }
+}
+
+static def assertSpringCloud43(Configuration configuration, String moduleName) {
+    def versions = moduleVersions(configuration, moduleName)
+    if (versions.isEmpty()) {
+        throw new GradleException("${moduleName} not found on classpath")
+    }
+    if (!versions.every { it.startsWith('4.3.') }) {
+        throw new GradleException("${moduleName} must resolve to 4.3.x, found: ${versions}")
+    }
+}
+
+static def assertNoSpringCloudContext415(Configuration configuration, String configurationName) {
+    def versions = moduleVersions(configuration, 'spring-cloud-context')
+    if (versions.contains('4.1.5')) {
+        throw new GradleException(
+                "spring-cloud-context:4.1.5 must not appear on ${configurationName}, found: ${versions}")
+    }
+}
+
+tasks.register('verifyApprovedStackResolution') {
+    doLast {
+        [configurations.compileClasspath, configurations.runtimeClasspath].each { configuration ->
+            assertSpringBoot355(configuration)
+            assertSpringCloud43(configuration, 'spring-cloud-context')
+            assertSpringCloud43(configuration, 'spring-cloud-config-client')
+            assertNoSpringCloudContext415(configuration, configuration.name)
+        }
+    }
+}

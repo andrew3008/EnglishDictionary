@@ -1,0 +1,111 @@
+{
+  "spikeId": "S-06",
+  "headAtInvestigation": "6909f44a1d9957a488c3e144b6f1e4949752aef5",
+  "investigationDate": "2026-07-27",
+  "corporateBaselineSource": "gradle.properties:springBootVersion=3.5.5; docs/SUPPORTED.md validated 3.5.5",
+  "dependencies": [
+    {
+      "component": "Spring Boot",
+      "requestedVersion": "3.5.5",
+      "resolvedVersion": "3.5.5",
+      "declarationLocation": "gradle.properties + platform-tracing-bom/build.gradle api platform spring-boot-dependencies",
+      "gradleConfiguration": "api platform import",
+      "constraintType": "api platform",
+      "publishedPom": "dependencyManagement import scope",
+      "publishedGradleMetadata": "platform dependency",
+      "transitivePath": "direct BOM import",
+      "consumerVisibility": "all BOM consumers",
+      "compatibilityStatus": "CORPORATE_BASELINE"
+    },
+    {
+      "component": "Spring Framework",
+      "requestedVersion": "managed by Boot BOM",
+      "resolvedVersion": "6.2.10",
+      "declarationLocation": "transitive from spring-boot-dependencies:3.5.5",
+      "gradleConfiguration": "transitive",
+      "constraintType": "BOM-managed",
+      "publishedPom": "via spring-boot-dependencies import",
+      "publishedGradleMetadata": "via spring-boot-dependencies platform",
+      "transitivePath": "spring-boot -> spring-core",
+      "consumerVisibility": "all Boot consumers",
+      "compatibilityStatus": "ALIGNED",
+      "evidenceCommand": "gradle/s06-approved-stack-resolution dependencyInsight --dependency spring-core"
+    },
+    {
+      "component": "spring-cloud-context",
+      "requestedVersion": "4.1.5",
+      "resolvedVersion": "4.1.5 (BOM constraint only; not on starter runtimeClasspath)",
+      "declarationLocation": "gradle.properties:springCloudContextVersion + platform-tracing-bom/build.gradle:29 api constraint",
+      "gradleConfiguration": "api constraint in javaPlatform constraints",
+      "constraintType": "api",
+      "publishedPom": "dependencyManagement dependency version 4.1.5",
+      "publishedGradleMetadata": "constraint api",
+      "transitivePath": "published BOM only",
+      "consumerVisibility": "all BOM importers receive misaligned constraint",
+      "compatibilityStatus": "MISALIGNED_EOL",
+      "note": "4.1.x belongs to 2023.0.x Leyton train (Boot 3.2/3.3 EOL). Boot baseline is 3.5.5 requiring 2025.0.x / 4.3.x."
+    },
+    {
+      "component": "spring-cloud-config-client",
+      "requestedVersion": "none in production",
+      "resolvedVersion": "absent from starter runtimeClasspath",
+      "declarationLocation": "not declared in starters or autoconfigure implementation",
+      "gradleConfiguration": "n/a",
+      "constraintType": "n/a",
+      "publishedPom": "absent",
+      "publishedGradleMetadata": "absent",
+      "transitivePath": "none",
+      "consumerVisibility": "none via standard starters",
+      "compatibilityStatus": "ABSENT_BY_DESIGN"
+    },
+    {
+      "component": "spring-cloud-config-server",
+      "requestedVersion": "none in production",
+      "resolvedVersion": "absent",
+      "declarationLocation": "configProvenance test-only source set only",
+      "gradleConfiguration": "configProvenanceImplementation",
+      "constraintType": "test-only",
+      "publishedPom": "absent",
+      "publishedGradleMetadata": "absent",
+      "transitivePath": "isolated e2e configProvenance source set",
+      "consumerVisibility": "test-only",
+      "compatibilityStatus": "TEST_ONLY"
+    },
+    {
+      "component": "Spring Cloud release train",
+      "requestedVersion": "none in production BOM",
+      "resolvedVersion": "not imported; misaligned 4.1.5 single-artifact constraint only",
+      "declarationLocation": "absent from platform-tracing-bom",
+      "gradleConfiguration": "n/a",
+      "constraintType": "n/a",
+      "publishedPom": "no spring-cloud-dependencies import",
+      "publishedGradleMetadata": "no cloud platform",
+      "transitivePath": "none",
+      "consumerVisibility": "none",
+      "compatibilityStatus": "MISSING_OFFICIAL_TRAIN"
+    }
+  ],
+  "currentPublicationDefect": {
+    "springBootBaseline": "3.5.5",
+    "springCloudContextConstraintVersion": "4.1.5",
+    "springCloudContextConstraintScope": "api",
+    "springCloudReleaseTrainImported": false,
+    "misaligned": true,
+    "defectId": "GOV-1",
+    "evidenceFiles": [
+      "platform-tracing-bom/build/publications/mavenJava/pom-default.xml:27-29",
+      "platform-tracing-bom/build.gradle:27-29"
+    ],
+    "starterRuntimeLeakage": {
+      "springCloudConfigClient": false,
+      "springCloudContext": false,
+      "springCloudStarterConfig": false,
+      "evidenceCommand": ":platform-tracing-spring-boot-starter-servlet:dependencyInsight --dependency spring-cloud --configuration runtimeClasspath -> No dependencies matching"
+    },
+    "autoconfigureScope": {
+      "springCloudContext": "compileOnly",
+      "location": "platform-tracing-spring-boot-autoconfigure/build.gradle:50",
+      "consumerLeakage": false
+    }
+  }
+}

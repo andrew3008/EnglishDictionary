@@ -84,3 +84,26 @@ tasks.register('verifyPublishedConsumer') {
     dependsOn tasks.named('verifyPublishedMetadata')
     dependsOn tasks.named('runMinimalContext')
 }
+
+tasks.register('exportDependencyEvidence') {
+    doLast {
+        def outputPath = providers.gradleProperty('evidenceOutput').get()
+        File outputFile = file(outputPath)
+
+        def compileModules = configurations.compileClasspath.incoming.resolutionResult.allComponents
+                .collect { it.moduleVersion?.name }
+                .findAll { it != null }
+                .sort()
+        def runtimeModules = configurations.runtimeClasspath.incoming.resolutionResult.allComponents
+                .collect { it.moduleVersion?.name }
+                .findAll { it != null }
+                .sort()
+
+        outputFile.parentFile.mkdirs()
+        outputFile.text = """compileClasspath
+${compileModules.join('\n')}
+runtimeClasspath
+${runtimeModules.join('\n')}
+"""
+    }
+}

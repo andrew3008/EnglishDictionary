@@ -1,0 +1,72 @@
+{
+  "spikeId": "S-06",
+  "officialCompatibilitySource": "https://spring.io/projects/spring-cloud — 2025.0.x (Northfields) maps to Spring Boot 3.5.x",
+  "selectedCandidateId": "A",
+  "candidates": [
+    {
+      "id": "A",
+      "label": "Corporate Boot 3.5.5 + Northfields 2025.0.0",
+      "bootVersion": "3.5.5",
+      "springFrameworkVersion": "6.2.10",
+      "springCloudTrain": "2025.0.0",
+      "springCloudContextVersion": "4.3.0",
+      "springCloudConfigClientVersion": "4.3.0",
+      "springCloudConfigServerVersion": "4.3.0",
+      "java21Support": true,
+      "supportLifecycle": "Boot 3.5.x current corporate baseline; Cloud 2025.0.x OSS support ended 2026-06-30 per spring.io with commercial support available",
+      "compatibilityVerifierResult": "PASS — gradle/s06-approved-stack-resolution verifyApprovedStackResolution",
+      "dependencyResolutionResult": "PASS",
+      "s02ProvenanceCompatibility": "PASS — configProvenanceVerify on Boot 3.5.5 + 2025.0.0",
+      "refreshEventBehavior": "ContextRefresher.refresh() -> EnvironmentChangeEvent (S-02 T3, T10)",
+      "publicationConsequences": "Remove api spring-cloud-context:4.1.5; import spring-cloud-dependencies:2025.0.0; update SUPPORTED.md atomically in P4",
+      "migrationSize": "SMALL — one BOM constraint removal + one platform import + SUPPORTED.md",
+      "rollbackComplexity": "LOW — single unreleased train revert",
+      "scores": {
+        "officialBootCloudCompatibility": 5,
+        "corporateBaselineAlignment": 5,
+        "publishedBomCorrectness": 5,
+        "starterDependencyIsolation": 5,
+        "s02ProvenancePreservation": 5,
+        "refreshDeliveryFit": 4,
+        "securityAndOperationsFit": 4,
+        "upgradeComplexity": 4,
+        "rollbackClarity": 4,
+        "longTermSupportability": 4
+      },
+      "weightedScore": 94.6
+    },
+    {
+      "id": "B",
+      "label": "Boot 3.5.6 patch + Northfields 2025.0.0",
+      "bootVersion": "3.5.6",
+      "springFrameworkVersion": "6.2.11",
+      "springCloudTrain": "2025.0.0",
+      "springCloudContextVersion": "4.3.0",
+      "springCloudConfigClientVersion": "4.3.0",
+      "springCloudConfigServerVersion": "4.3.0",
+      "java21Support": true,
+      "supportLifecycle": "Newer Boot patch; not the corporate baseline in gradle.properties or SUPPORTED.md",
+      "compatibilityVerifierResult": "PASS — same Northfields train",
+      "dependencyResolutionResult": "PASS",
+      "s02ProvenanceCompatibility": "PASS — was the prior isolated S-02 stack before S-06 realignment",
+      "refreshEventBehavior": "Same as A",
+      "publicationConsequences": "Requires changing corporate baseline declaration",
+      "migrationSize": "MEDIUM — baseline drift from validated SUPPORTED 3.5.5",
+      "rollbackComplexity": "LOW",
+      "scores": {
+        "officialBootCloudCompatibility": 5,
+        "corporateBaselineAlignment": 3,
+        "publishedBomCorrectness": 5,
+        "starterDependencyIsolation": 5,
+        "s02ProvenancePreservation": 5,
+        "refreshDeliveryFit": 4,
+        "securityAndOperationsFit": 4,
+        "upgradeComplexity": 3,
+        "rollbackClarity": 4,
+        "longTermSupportability": 4
+      },
+      "weightedScore": 90.2
+    }
+  ],
+  "candidateCExcluded": "No third candidate required — Boot 3.5.5 + 2025.0.0 satisfies official matrix and corporate baseline without experimental trains."
+}
