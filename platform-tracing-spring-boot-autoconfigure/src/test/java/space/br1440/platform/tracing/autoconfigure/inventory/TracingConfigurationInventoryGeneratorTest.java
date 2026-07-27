@@ -1566,6 +1566,12 @@ class TracingConfigurationInventoryGeneratorTest {
                     && !normalized.endsWith(
                     "/docs/research/tracing-configuration-key-disposition.md")
                     && !normalized.endsWith(
+                    "/docs/analysis/platform-tracing-configuration/"
+                            + "14-category-a-binding-decision.md")
+                    && !normalized.endsWith(
+                    "/docs/analysis/plans/"
+                            + "platform-tracing-configuration-refactoring-plan.md")
+                    && !normalized.endsWith(
                     "/TracingConfigurationInventoryGeneratorTest.java");
         }
 

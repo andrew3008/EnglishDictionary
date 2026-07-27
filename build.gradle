@@ -782,3 +782,93 @@ tasks.register('tracingConfigurationInventoryVerify') {
     description = 'Verifies committed S-04 inventory artifacts and exact-name dispositions.'
     dependsOn tracingConfigurationInventoryTest
 }
+
+// E5: узкая проверка нормативного плана без введения общего документационного framework.
+tasks.register('tracingConfigurationPlanVerify') {
+    group = 'verification'
+    description = 'Verifies the binding E5 allowlist and normative configuration plan invariants.'
+
+    def planFile = layout.projectDirectory.file(
+            'docs/analysis/plans/platform-tracing-configuration-refactoring-plan.md')
+    def decisionFile = layout.projectDirectory.file(
+            'docs/analysis/platform-tracing-configuration/14-category-a-binding-decision.md')
+    inputs.files(planFile, decisionFile, layout.projectDirectory.file('settings.gradle'))
+
+    doLast {
+        String plan = planFile.asFile.getText('UTF-8')
+        String decision = decisionFile.asFile.getText('UTF-8')
+        List<String> expectedCategoryA = [
+                'platform.tracing.policy.sampling.enabled',
+                'platform.tracing.policy.sampling.ratio',
+                'platform.tracing.policy.sampling.route-ratios',
+                'platform.tracing.policy.validation.enabled',
+                'platform.tracing.policy.validation.strict',
+                'platform.tracing.policy.exporter.enabled',
+                'platform.tracing.policy.propagation.trace-control-headers.enabled',
+                'platform.tracing.policy.diagnostics.log-level'
+        ]
+        List<String> excludedCategoryA = [
+                'platform.tracing.javaagent.sampling.drop-paths',
+                'platform.tracing.javaagent.sampling.force-record-values',
+                'platform.tracing.javaagent.scrubbing.built-in-rules',
+                'platform.tracing.javaagent.scrubbing.enabled'
+        ]
+
+        def categoryAFrom = { String text, String source ->
+            int begin = text.indexOf('<!-- CATEGORY_A_BEGIN -->')
+            int end = text.indexOf('<!-- CATEGORY_A_END -->')
+            if (begin < 0 || end <= begin) {
+                throw new GradleException("${source}: canonical Category A markers are missing")
+            }
+            String block = text.substring(begin, end)
+            List<String> leaves = (block =~ /`(platform\.tracing\.policy\.[^`]+)`/)
+                    .collect { it[1] }
+            if (leaves != expectedCategoryA) {
+                throw new GradleException(
+                        "${source}: expected exact ordered Category A ${expectedCategoryA}, got ${leaves}")
+            }
+            leaves
+        }
+
+        categoryAFrom(plan, 'plan')
+        categoryAFrom(decision, 'decision')
+
+        if (plan =~ /(?i)\b(64|67)\s+(platform\.tracing\.\*\s+)?(configuration\s+)?propert/) {
+            throw new GradleException('plan: obsolete 64/67 property count is forbidden')
+        }
+        [
+                '78 `platform.tracing.*` configuration properties',
+                '29 directly read environment variables',
+                '63 live Standard MBean members',
+                '16 semantic mutations',
+                'E1, E2, E4, E5, and E9 are CLOSED',
+                'Open gates: **E3, E6, E7, E8**.',
+                'private MBeanServer',
+                'read-only platform JMX',
+                'Implementation GO | NOT_GRANTED',
+                'No new Gradle module.',
+                'No HTTP mutation.'
+        ].each { required ->
+            if (!plan.contains(required)) {
+                throw new GradleException("plan: required invariant is missing: ${required}")
+            }
+        }
+        excludedCategoryA.each { excluded ->
+            if (!plan.contains(excluded)) {
+                throw new GradleException("plan: excluded Category B leaf is missing: ${excluded}")
+            }
+        }
+        if (plan.contains('platform.tracing.sdk.')) {
+            throw new GradleException('plan: platform.tracing.sdk.* target namespace is forbidden')
+        }
+        if (plan =~ /(?m)^\| Implementation GO \| (?!NOT_GRANTED)/) {
+            throw new GradleException('plan: implementation GO must remain NOT_GRANTED')
+        }
+
+        int moduleCount = (layout.projectDirectory.file('settings.gradle').asFile.getText('UTF-8')
+                =~ /(?m)^include\s+'platform-tracing-[^']+'$/).count
+        if (moduleCount != 16) {
+            throw new GradleException("settings.gradle: expected 16 active modules, got ${moduleCount}")
+        }
+    }
+}
