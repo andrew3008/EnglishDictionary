@@ -1,0 +1,25 @@
+S-04 execution environment
+
+Date: 2026-07-27
+Repository: E:/Platform_Traces
+Branch: refactor/cursor-rules
+Starting HEAD: 2e3f68f4d6e1237fd19ab254e0404bac29af205c
+Required predecessors:
+- 2e3f68f test(e2e): prove private MBeanServer isolation
+- 939e95c test(jmx): capture management contract baseline
+
+Java:
+- version: 21.0.6 LTS
+- runtime: Java HotSpot 64-Bit Server VM 21.0.6+8-LTS-188
+- JAVA_HOME: G:/JavaFrameworks/jdk-21.0.6
+
+Gradle:
+- version: 8.14
+- launcher JVM: 21.0.6
+- daemon JVM: G:/JavaFrameworks/jdk-21.0.6
+
+Operating system:
+- Windows 10 10.0 amd64
+
+No external service, Docker daemon or network fixture was required by S-04.
+No production source, configuration constant, dependency metadata or BOM was changed.

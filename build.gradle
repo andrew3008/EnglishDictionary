@@ -742,3 +742,43 @@ tasks.register('privateMBeanServerVerify') {
     description = 'Runs the S-03 private process-local MBeanServer evidence spike.'
     dependsOn ':platform-tracing-e2e-tests:privateMBeanServerTest'
 }
+
+project(':platform-tracing-spring-boot-autoconfigure') {
+    dependencies {
+        testRuntimeOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    }
+}
+
+def tracingConfigurationInventoryTest = tasks.register(
+        'tracingConfigurationInventoryTest',
+        Test) {
+    group = 'verification'
+    description = 'Regenerates and verifies the deterministic S-04 tracing configuration inventory.'
+    def inventoryProject = project(':platform-tracing-spring-boot-autoconfigure')
+    def extensionProject = project(':platform-tracing-otel-javaagent-extension')
+    dependsOn inventoryProject.tasks.named('testClasses')
+    testClassesDirs = inventoryProject.sourceSets.test.output.classesDirs
+    classpath = inventoryProject.sourceSets.test.runtimeClasspath +
+            extensionProject.sourceSets.main.compileClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/tracingConfigurationInventoryTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/tracingConfigurationInventoryTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/tracingConfigurationInventoryTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching(
+                'space.br1440.platform.tracing.autoconfigure.inventory.' +
+                        'TracingConfigurationInventoryGeneratorTest')
+    }
+    if (providers.gradleProperty('updateTracingConfigurationInventory').isPresent()) {
+        systemProperty 'tracing.configuration.inventory.update', 'true'
+    }
+}
+
+tasks.register('tracingConfigurationInventoryVerify') {
+    group = 'verification'
+    description = 'Verifies committed S-04 inventory artifacts and exact-name dispositions.'
+    dependsOn tracingConfigurationInventoryTest
+}

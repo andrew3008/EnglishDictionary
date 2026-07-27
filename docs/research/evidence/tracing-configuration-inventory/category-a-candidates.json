@@ -1,0 +1,133 @@
+[ {
+  "candidate" : "sampling.enabled",
+  "canonicalCurrentNames" : [ "platform.tracing.sampling.enabled" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler", "SamplingRuntimeConfig -> CompositeSampler" ],
+  "currentMutationPaths" : [ "JMX Sampling MBean", "RuntimeConfigApplier", "control protocol" ],
+  "default" : "true",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.sampling.enabled",
+  "securityClassification" : "NON_SECRET",
+  "type" : "boolean"
+}, {
+  "candidate" : "sampling.ratio",
+  "canonicalCurrentNames" : [ "platform.tracing.sampling.ratio" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler", "SamplingRuntimeConfig -> CompositeSampler" ],
+  "currentMutationPaths" : [ "JMX Sampling MBean", "RuntimeConfigApplier", "control protocol" ],
+  "default" : "0.1",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.sampling.ratio",
+  "securityClassification" : "NON_SECRET",
+  "type" : "double"
+}, {
+  "candidate" : "sampling.route-ratios",
+  "canonicalCurrentNames" : [ "platform.tracing.sampling.route-ratios" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler", "SamplingRuntimeConfig -> CompositeSampler" ],
+  "currentMutationPaths" : [ "JMX Sampling MBean", "RuntimeConfigApplier", "control protocol" ],
+  "default" : "{}",
+  "performanceRelevantBehavior" : "Bounded collection lookup on sampling hot path",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.sampling.route-ratios",
+  "securityClassification" : "NON_SECRET",
+  "type" : "Map"
+}, {
+  "candidate" : "sampling.drop-paths",
+  "canonicalCurrentNames" : [ "platform.tracing.sampling.drop-paths" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler", "SamplingRuntimeConfig -> CompositeSampler" ],
+  "currentMutationPaths" : [ "JMX Sampling MBean", "RuntimeConfigApplier", "control protocol" ],
+  "default" : "[/actuator/health,/actuator/prometheus,/actuator/info]",
+  "performanceRelevantBehavior" : "Bounded collection lookup on sampling hot path",
+  "preliminaryResult" : "NEEDS_SRE_DECISION",
+  "proposedTargetName" : "platform.tracing.policy.sampling.drop-paths",
+  "securityClassification" : "NON_SECRET",
+  "type" : "List"
+}, {
+  "candidate" : "sampling.force-record-values",
+  "canonicalCurrentNames" : [ "platform.tracing.sampling.force-record-header-values", "platform.tracing.sampling.force-record-values" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler" ],
+  "currentMutationPaths" : [ "JMX Sampling MBean", "RuntimeConfigApplier", "control protocol" ],
+  "default" : "[on]",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "NEEDS_SECURITY_DECISION",
+  "proposedTargetName" : "platform.tracing.policy.sampling.force-record-values",
+  "securityClassification" : "SECURITY_RELEVANT",
+  "type" : "List<String>"
+}, {
+  "candidate" : "validation.enabled",
+  "canonicalCurrentNames" : [ "platform.tracing.validation.enabled" ],
+  "consumer" : [ "ValidationExtensionConfig -> ValidatingSpanProcessor", "ValidationRuntimeConfig -> ValidatingSpanProcessor" ],
+  "currentMutationPaths" : [ "JMX Validation MBean", "RuntimeConfigApplier", "control protocol" ],
+  "default" : "true",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.validation.enabled",
+  "securityClassification" : "NON_SECRET",
+  "type" : "boolean"
+}, {
+  "candidate" : "validation.strict",
+  "canonicalCurrentNames" : [ "platform.tracing.validation.strict" ],
+  "consumer" : [ "ValidationExtensionConfig -> ValidatingSpanProcessor", "ValidationRuntimeConfig -> ValidatingSpanProcessor" ],
+  "currentMutationPaths" : [ "JMX Validation MBean", "RuntimeConfigApplier", "control protocol" ],
+  "default" : "false",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.validation.strict",
+  "securityClassification" : "NON_SECRET",
+  "type" : "boolean"
+}, {
+  "candidate" : "exporter.enabled",
+  "canonicalCurrentNames" : [ "platform.tracing.exporter.enabled" ],
+  "consumer" : [ "RuntimeConfigApplier -> SafeSpanExporter" ],
+  "currentMutationPaths" : [ "JMX Export MBean", "RuntimeConfigApplier" ],
+  "default" : "true",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.exporter.enabled",
+  "securityClassification" : "NON_SECRET",
+  "type" : "boolean"
+}, {
+  "candidate" : "propagation.trace-control-headers.enabled",
+  "canonicalCurrentNames" : [ "platform.tracing.propagation.enabled" ],
+  "consumer" : [ "Platform propagation adapters" ],
+  "currentMutationPaths" : [ "JMX Diagnostics MBean", "RuntimeConfigApplier" ],
+  "default" : "true",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.propagation.trace-control-headers.enabled",
+  "securityClassification" : "NON_SECRET",
+  "type" : "boolean"
+}, {
+  "candidate" : "diagnostics.log-level",
+  "canonicalCurrentNames" : [ "platform.tracing.log-level" ],
+  "consumer" : [ "RuntimeConfigApplier -> PlatformLogControl" ],
+  "currentMutationPaths" : [ "JMX Diagnostics MBean", "RuntimeConfigApplier" ],
+  "default" : "INFO",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "INCLUDE",
+  "proposedTargetName" : "platform.tracing.policy.diagnostics.log-level",
+  "securityClassification" : "NON_SECRET",
+  "type" : "OtelAgentLogLevel"
+}, {
+  "candidate" : "scrubbing.built-in-rules",
+  "canonicalCurrentNames" : [ "platform.tracing.scrubbing.built-in-rules" ],
+  "consumer" : [ "ScrubbingExtensionConfig -> ScrubbingSpanProcessor", "ScrubbingRuntimeConfig -> ScrubbingSpanProcessor" ],
+  "currentMutationPaths" : [ "JMX Scrubbing MBean", "RuntimeConfigApplier" ],
+  "default" : "[password,jwt,email,oauth-header,x-auth-header,infra-credential,webhook-token,ssh-credential,user-identity,hardware-identity,location,ip-address]",
+  "performanceRelevantBehavior" : "Rule compilation and processor pipeline composition",
+  "preliminaryResult" : "EXCLUDE",
+  "proposedTargetName" : "N/A",
+  "securityClassification" : "NON_SECRET",
+  "type" : "List"
+}, {
+  "candidate" : "scrubbing.enabled",
+  "canonicalCurrentNames" : [ "platform.tracing.scrubbing.enabled" ],
+  "consumer" : [ "ScrubbingExtensionConfig -> ScrubbingSpanProcessor", "ScrubbingRuntimeConfig -> ScrubbingSpanProcessor" ],
+  "currentMutationPaths" : [ "JMX Scrubbing MBean", "RuntimeConfigApplier" ],
+  "default" : "true",
+  "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
+  "preliminaryResult" : "EXCLUDE",
+  "proposedTargetName" : "N/A",
+  "securityClassification" : "NON_SECRET",
+  "type" : "boolean"
+} ]
