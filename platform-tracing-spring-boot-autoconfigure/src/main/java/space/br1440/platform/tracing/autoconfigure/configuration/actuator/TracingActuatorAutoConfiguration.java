@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicySnapshotReader;
+import space.br1440.platform.tracing.autoconfigure.configuration.InProcessAcceptedSnapshotStore;
 import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
@@ -17,29 +18,37 @@ import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateCon
 /**
  * Auto-configuration for P4 unified tracing policy adapters.
  * <p>
- * Single PrivateJmxTracingPolicySnapshotClient implements all three capability interfaces.
- * Spring wires them separately to different consumers.
+ * InProcessAcceptedSnapshotStore is the sole implementation of
+ * AcceptedTracingPolicySnapshotReader. No new JMX operations are added.
+ * E7/P0 wire contract: 1 mutation (applySnapshot) + 6 marker reads (unchanged).
  * <p>
- * Control endpoint (tracingControl): registered ONLY when:
- *   authority = ACTUATOR
- *   AND platform.environment = LOCAL (resolved and validated by guard at startup)
- * dev-control.enabled flag is removed; authority=ACTUATOR is the activation signal.
+ * Control write surface (TracingControlMvcController) is registered via
+ * TracingControlManagementContextConfiguration which requires both:
+ *   platform.tracing.configuration.authority=ACTUATOR
+ *   platform.environment=LOCAL
  */
 @AutoConfiguration
 public class TracingActuatorAutoConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    public InProcessAcceptedSnapshotStore inProcessAcceptedSnapshotStore() {
+        return new InProcessAcceptedSnapshotStore();
+    }
 
     @Bean
     @ConditionalOnMissingBean(PrivateJmxTracingPolicySnapshotClient.class)
     @ConditionalOnBean({PrivateControlLocator.class, PrivateControlOpenTypeCodec.class})
     public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(
             PrivateControlLocator locator,
-            PrivateControlOpenTypeCodec codec) {
-        PrivateJmxTracingPolicySnapshotClient client = new PrivateJmxTracingPolicySnapshotClient(locator, codec);
+            PrivateControlOpenTypeCodec codec,
+            InProcessAcceptedSnapshotStore store) {
+        PrivateJmxTracingPolicySnapshotClient client =
+                new PrivateJmxTracingPolicySnapshotClient(locator, codec, store);
         client.initialize();
         return client;
     }
 
-    // Expose individual capability interfaces from the single client bean
     @Bean
     @ConditionalOnBean(PrivateJmxTracingPolicySnapshotClient.class)
     @ConditionalOnMissingBean(TracingPolicySnapshotClient.class)
@@ -49,11 +58,11 @@ public class TracingActuatorAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(PrivateJmxTracingPolicySnapshotClient.class)
+    @ConditionalOnBean(InProcessAcceptedSnapshotStore.class)
     @ConditionalOnMissingBean(AcceptedTracingPolicySnapshotReader.class)
     public AcceptedTracingPolicySnapshotReader acceptedTracingPolicySnapshotReader(
-            PrivateJmxTracingPolicySnapshotClient client) {
-        return client;
+            InProcessAcceptedSnapshotStore store) {
+        return store;
     }
 
     @Bean
@@ -64,23 +73,24 @@ public class TracingActuatorAutoConfiguration {
         return client;
     }
 
-    // Read-only endpoint: technology-neutral @Endpoint (read via JMX is acceptable)
     @Bean
     @ConditionalOnAvailableEndpoint(endpoint = TracingActuatorEndpoint.class)
     @ConditionalOnMissingBean(TracingActuatorEndpoint.class)
-    public TracingActuatorEndpoint tracingActuatorEndpoint(AcceptedTracingPolicyReader reader) {
+    public TracingActuatorEndpoint tracingActuatorEndpoint(
+            AcceptedTracingPolicyReader reader) {
         return new TracingActuatorEndpoint(reader);
     }
 
-    // Control write surface: HTTP-only @WebEndpoint
-    // Physically absent unless authority=ACTUATOR AND environment=LOCAL
-    // No dev-control.enabled: authority=ACTUATOR is the sole activation signal
+    // Actuator adapter: created only when authority=ACTUATOR
+    // Physical absence of the controller is enforced by
+    // TracingControlManagementContextConfiguration (authority=ACTUATOR AND env=LOCAL)
     @Configuration
     @ConditionalOnProperty(
             name = "platform.tracing.configuration.authority",
-            havingValue = "ACTUATOR"
+            havingValue = "ACTUATOR",
+            matchIfMissing = false
     )
-    static class ActuatorControlConfiguration {
+    static class ActuatorAdapterConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(SpringActuatorTracingPolicyAdapter.class)
@@ -88,14 +98,6 @@ public class TracingActuatorAutoConfiguration {
                 AcceptedTracingPolicySnapshotReader snapshotReader,
                 TracingPolicySnapshotClient snapshotClient) {
             return new SpringActuatorTracingPolicyAdapter(snapshotReader, snapshotClient);
-        }
-
-        @Bean
-        @ConditionalOnAvailableEndpoint(endpoint = TracingActuatorControlEndpoint.class)
-        @ConditionalOnMissingBean(TracingActuatorControlEndpoint.class)
-        public TracingActuatorControlEndpoint tracingActuatorControlEndpoint(
-                SpringActuatorTracingPolicyAdapter adapter) {
-            return new TracingActuatorControlEndpoint(adapter);
         }
     }
 }
