@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.configuration.actuator;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,27 +16,22 @@ import java.util.Map;
  * {@link TracingControlManagementContextConfiguration} (discovered through
  * META-INF/spring/ManagementContextConfiguration.imports).
  * <p>
- * Architectural note: This is a {@code @RestController} on the management port,
- * not a full Spring Boot Actuator {@code @WebEndpoint}. This design was chosen
- * because Boot's {@code @WebEndpoint} + {@code @Selector} model cannot produce
- * eight unambiguous HTTP paths. The trade-off: standard Actuator endpoint
- * governance ({@code management.endpoint.<id>.access}, {@code EndpointRequest}
- * security DSL, endpoint-specific enable/disable) does not apply.
- * Exposure is governed by: authority=ACTUATOR AND platform.environment=LOCAL
- * (enforced at both registration-time via {@code @ConditionalOnProperty} and
- * startup-time via {@code TracingConfigurationAuthorityGuard.validate()}).
+ * The class-level {@code @RequestMapping("/tracingControl")} is a relative
+ * path. The absolute prefix (management base-path) is applied at registration
+ * time by {@link TracingControlManagementContextConfiguration} via Spring Boot's
+ * {@code management.endpoints.web.base-path} injected into the factory method
+ * and passed to the constructor. This avoids bean-SpEL, instance-field SpEL,
+ * and separate path-provider infrastructure beans — all of which introduce
+ * child-context lifecycle ordering problems.
  * <p>
- * This decision requires explicit committee approval as
- * "management-context local control API" before production promotion.
+ * Architectural decision (requires committee approval before production):
+ * This is a {@code @RestController} on the management port, not a
+ * {@code @WebEndpoint}. Boot's {@code @WebEndpoint + @Selector} model cannot
+ * produce eight unambiguous HTTP paths. Trade-off: standard Actuator endpoint
+ * governance does not apply. Exposure is governed by:
+ * authority=ACTUATOR AND platform.environment=LOCAL.
  * <p>
- * Mapping strategy: the class-level {@code @RequestMapping} carries the full
- * absolute prefix (management base-path + {@code /tracingControl}), injected
- * via {@code @Value}. Method-level annotations use only short relative
- * sub-paths. This avoids instance-field SpEL in annotation values, which is
- * not a supported Spring MVC mapping mechanism and would cause routes to be
- * either un-registered or registered as literals.
- * <p>
- * Routes (relative to management server root):
+ * Routes (relative to management base-path root):
  * <pre>
  *   POST {base}/tracingControl/sampling/enabled
  *   POST {base}/tracingControl/sampling/ratio
@@ -50,13 +44,12 @@ import java.util.Map;
  * </pre>
  */
 @RestController
-@RequestMapping("#{@tracingControlMvcControllerPathProvider.basePath}")
+@RequestMapping("/tracingControl")
 public final class TracingControlMvcController {
 
     private final SpringActuatorTracingPolicyAdapter adapter;
 
-    public TracingControlMvcController(
-            SpringActuatorTracingPolicyAdapter adapter) {
+    public TracingControlMvcController(SpringActuatorTracingPolicyAdapter adapter) {
         this.adapter = adapter;
     }
 

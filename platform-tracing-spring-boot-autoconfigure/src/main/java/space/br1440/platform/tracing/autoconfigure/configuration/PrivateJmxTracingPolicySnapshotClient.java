@@ -15,13 +15,26 @@ import java.util.Optional;
 /**
  * Private JMX client implementing three capability interfaces.
  * <p>
- * E7/P0 wire contract (after Variant A extension):
+ * E7/P0 wire contract (after PROPOSED_PRIV_R07 extension):
  * <pre>
- *   6 marker reads          — unchanged (PRIV-R01..R06)
- *   1 complete-snapshot read: readAcceptedComplete  (PRIV-R07, approved Variant A)
+ *   6 marker reads:         PRIV-R01..R06 (unchanged)
+ *   1 complete-snapshot read: readAcceptedComplete  (PROPOSED_PRIV_R07 — see below)
  *   1 mutation:             applySnapshot           (PRIV-W01, unchanged)
  * </pre>
  * readAcceptedProjection is NOT called here — removed from wire.
+ * <p>
+ * PROPOSED_PRIV_R07 status:
+ *   Spring-side decoding: IMPLEMENTED (this class + PrivateControlOpenTypeCodec)
+ *   Agent-side AggregatePolicyControlMBean.readAcceptedComplete(): NOT YET IMPLEMENTED
+ *   E7 member inventory update: PENDING committee approval
+ *   P0 wire schema update: PENDING committee approval
+ *   before/after delta: PENDING
+ *   privateMBeanServerVerify: PENDING
+ *   jmxReadOnlyDeltaVerify: PENDING
+ * <p>
+ * CONSEQUENCE: any call to {@link #currentComplete()} will throw
+ * {@link TracingPolicyContractViolationException} (wrapping ReflectionException)
+ * until the Agent-side PR is merged. P4 is end-to-end BLOCKED until then.
  * <p>
  * Sequence contract:
  *   APPLIED   → sequence refreshed from Agent via readAcceptedComplete after apply
@@ -33,12 +46,6 @@ import java.util.Optional;
  *   MBeanException / RuntimeMBeanException with contract cause → fail-fast
  *   ReflectionException (method not found) → fail-fast (version mismatch)
  *   Transport/IO failures → FAILED
- * <p>
- * NOTE: Agent-side AggregatePolicyControlMBean.readAcceptedComplete() has not yet
- * been implemented. Until that Agent PR is merged and approved, any call to
- * {@link #currentComplete()} will produce a {@code ReflectionException} which is
- * classified as a contract violation and thrown as
- * {@link TracingPolicyContractViolationException}. P4 remains blocked.
  */
 public final class PrivateJmxTracingPolicySnapshotClient
         implements TracingPolicySnapshotClient,
@@ -67,7 +74,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
     public void initialize() {
         try {
             PrivateControlLocator.LocatedPrivateControl located = locator.locate();
-            this.privateServer    = located.server();
+            this.privateServer     = located.server();
             this.controlObjectName = located.writerObjectName();
             this.runtimeInstanceId = located.runtimeInstanceId();
             log.info("PrivateJmxTracingPolicySnapshotClient initialized: {} runtimeInstanceId={}",
@@ -95,13 +102,12 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
         Object encoded;
         try {
-            encoded = codec.encode(snapshot);
+            encoded = codec.encodeRequest(snapshot);
         } catch (Exception e) {
             throw new TracingPolicyContractViolationException(
                     "Codec failed to encode snapshot — programming defect. source=" + source, e);
         }
 
-        TracingPolicyDeliveryResult outcome;
         try {
             Object raw = server.invoke(
                     name, "applySnapshot",
@@ -109,7 +115,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
                     new String[]{long.class.getName(),
                                  "javax.management.openmbean.CompositeData",
                                  String.class.getName()});
-            outcome = parseOutcome(raw);
+            return parseOutcome(raw);
         } catch (TracingPolicyContractViolationException e) {
             throw e;
         } catch (MBeanException e) {
@@ -132,19 +138,18 @@ public final class PrivateJmxTracingPolicySnapshotClient
             log.error("applySnapshot transport error: source={}", source, e);
             return TracingPolicyDeliveryResult.FAILED;
         }
-
-        return outcome;
     }
 
-    // ── AcceptedTracingPolicySnapshotReader (PRIV-R07, Variant A) ─────────────
+    // ── AcceptedTracingPolicySnapshotReader (PROPOSED_PRIV_R07) ───────────────
 
     /**
-     * Reads the complete accepted snapshot from the Agent via PRIV-R07
+     * Reads the complete accepted snapshot from the Agent via PROPOSED_PRIV_R07
      * {@code readAcceptedComplete}.
      * <p>
-     * IMPORTANT: This call will throw {@link TracingPolicyContractViolationException}
+     * <strong>This operation will throw {@link TracingPolicyContractViolationException}</strong>
      * (wrapping {@link ReflectionException}) until the Agent MBean exposes
-     * {@code readAcceptedComplete}. P4 remains blocked until that Agent PR is merged.
+     * {@code readAcceptedComplete}. P4 is end-to-end BLOCKED until that Agent PR is merged
+     * and PROPOSED_PRIV_R07 is formally approved.
      */
     @Override
     public Optional<AcceptedSnapshotWithSequence> currentComplete() {
@@ -152,7 +157,6 @@ public final class PrivateJmxTracingPolicySnapshotClient
         ObjectName  name   = this.controlObjectName;
         if (server == null || name == null) return Optional.empty();
         try {
-            // Use empty arrays — NOT null — for zero-argument operations
             Object result = server.invoke(name, "readAcceptedComplete", NO_ARGS, NO_SIG);
             if (result == null) return Optional.empty();
             return Optional.of(codec.decodeCompleteWithSequence(result));
@@ -171,18 +175,16 @@ public final class PrivateJmxTracingPolicySnapshotClient
             log.debug("readAcceptedComplete RuntimeMBeanException: {}", e.getMessage());
             return Optional.empty();
         } catch (ReflectionException e) {
-            // readAcceptedComplete not present on Agent MBean — version mismatch.
-            // This is the expected failure mode until Agent-side PR is merged.
             throw new TracingPolicyContractViolationException(
                     "readAcceptedComplete not found on Agent MBean — Agent-side implementation "
-                    + "required (PRIV-R07). P4 is blocked until Agent PR is merged.", e);
+                    + "required (PROPOSED_PRIV_R07). P4 is BLOCKED until Agent PR is merged.", e);
         } catch (Exception e) {
             log.debug("readAcceptedComplete failed (transport): {}", e.getMessage());
             return Optional.empty();
         }
     }
 
-    // ── AcceptedTracingPolicyReader (secret-safe, public Actuator endpoint) ───
+    // ── AcceptedTracingPolicyReader ────────────────────────────────────────────
 
     @Override
     public Optional<AcceptedPolicyProjection> currentProjection() {
@@ -195,9 +197,6 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
         CompleteTracingPolicySnapshot s = accepted.snapshot();
 
-        // runtimeInstanceId is authoritative: sourced from PrivateMarker at initialize() time.
-        // It is NOT fabricated — any blank value here signals a genuine locate() failure
-        // that would have thrown at initialization.
         AgentReadinessView readiness = new AgentReadinessView(
                 resolvedRuntimeInstanceId != null ? resolvedRuntimeInstanceId : "",
                 accepted.acceptedSequence(),
@@ -213,16 +212,13 @@ public final class PrivateJmxTracingPolicySnapshotClient
                 s.traceControlHeadersEnabled(),
                 s.diagnosticsLogLevel()
         );
-        // policyDigest and latestApplyOutcome are NOT part of the readAcceptedComplete
-        // wire response (PRIV-R07). They are exposed exclusively by the separate
-        // applySnapshot response path (PRIV-W01). Returning absent sentinels here
-        // is intentional and contract-correct: callers must not infer these values
-        // from the complete-read path.
-        TracingApplyDiagnostics diag = TracingApplyDiagnostics.notAvailableViaCompleteRead();
-        return new AcceptedPolicyProjection(readiness, leaves, diag);
+        // policyDigest and latestApplyOutcome are NOT part of PROPOSED_PRIV_R07.
+        // They are sourced exclusively from the applySnapshot response (PRIV-W01).
+        // Structural absence is explicit: Optional.empty() fields, not placeholder strings.
+        return new AcceptedPolicyProjection(readiness, leaves, TracingApplyDiagnostics.absent());
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
+    // ── helpers ────────────────────────────────────────────────────────────────
 
     private TracingPolicyDeliveryResult parseOutcome(Object raw) {
         if (raw instanceof String s) {

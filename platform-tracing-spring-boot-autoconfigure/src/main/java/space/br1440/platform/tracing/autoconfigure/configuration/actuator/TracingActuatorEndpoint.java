@@ -8,6 +8,7 @@ import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracing
 import space.br1440.platform.tracing.autoconfigure.configuration.AgentReadinessView;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingApplyDiagnostics;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -19,6 +20,13 @@ import java.util.Map;
  * <p>
  * Depends only on {@link AcceptedTracingPolicyReader}. No write capability.
  * Assembles response from three separate truth-category projections.
+ * <p>
+ * Apply diagnostics rendering:
+ * <ul>
+ *   <li>{@link TracingApplyDiagnostics#isAbsent()} → {@code {"available": false}}
+ *       — diagnostics are not exposed by the PROPOSED_PRIV_R07 complete-read path.</li>
+ *   <li>Otherwise → {@code {"available": true, "policyDigest": ..., "latestApplyOutcome": ...}}</li>
+ * </ul>
  */
 @Endpoint(id = "tracingPolicy")
 public final class TracingActuatorEndpoint {
@@ -38,28 +46,36 @@ public final class TracingActuatorEndpoint {
 
     private Map<String, Object> toResponse(AcceptedPolicyProjection p) {
         AgentReadinessView readiness = p.agentReadiness();
-        AcceptedPolicyLeaves leaves = p.policy();
-        TracingApplyDiagnostics diag = p.diagnostics();
+        AcceptedPolicyLeaves leaves   = p.policy();
+        TracingApplyDiagnostics diag  = p.diagnostics();
         return Map.of(
                 "agent", Map.of(
                         "runtimeInstanceId", readiness.runtimeInstanceId(),
-                        "acceptedSequence", readiness.acceptedSequence(),
-                        "ready", readiness.agentReady()
+                        "acceptedSequence",  readiness.acceptedSequence(),
+                        "ready",             readiness.agentReady()
                 ),
                 "policy", Map.of(
-                        "sampling.enabled", leaves.samplingEnabled(),
-                        "sampling.ratio", leaves.samplingRatio(),
-                        "sampling.route-ratios.count", leaves.samplingRouteRatiosCount(),
-                        "validation.enabled", leaves.validationEnabled(),
-                        "validation.strict", leaves.validationStrict(),
-                        "exporter.enabled", leaves.exporterEnabled(),
+                        "sampling.enabled",                          leaves.samplingEnabled(),
+                        "sampling.ratio",                            leaves.samplingRatio(),
+                        "sampling.route-ratios.count",               leaves.samplingRouteRatiosCount(),
+                        "validation.enabled",                        leaves.validationEnabled(),
+                        "validation.strict",                         leaves.validationStrict(),
+                        "exporter.enabled",                          leaves.exporterEnabled(),
                         "propagation.trace-control-headers.enabled", leaves.traceControlHeadersEnabled(),
-                        "diagnostics.log-level", leaves.diagnosticsLogLevel()
+                        "diagnostics.log-level",                     leaves.diagnosticsLogLevel()
                 ),
-                "diagnostics", Map.of(
-                        "policyDigest", diag.policyDigest(),
-                        "latestApplyOutcome", diag.latestApplyOutcome()
-                )
+                "applyDiagnostics", renderDiagnostics(diag)
         );
+    }
+
+    private static Map<String, Object> renderDiagnostics(TracingApplyDiagnostics diag) {
+        if (diag.isAbsent()) {
+            return Map.of("available", false);
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("available", true);
+        diag.policyDigest().ifPresent(v -> result.put("policyDigest", v));
+        diag.latestApplyOutcome().ifPresent(v -> result.put("latestApplyOutcome", v));
+        return result;
     }
 }
