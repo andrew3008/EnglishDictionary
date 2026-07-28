@@ -1,0 +1,182 @@
+﻿{
+    "spikeId":  "S-07",
+    "requiredSemanticMutations":  16,
+    "mutations":  [
+                      {
+                          "baselineMemberId":  "M01",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                          "kind":  "OPERATION",
+                          "name":  "applyPolicy",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "MOVE_TO_PRIVATE_ONLY",
+                          "platformAfterP6":  "PRIVATE_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M06",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "PlatformLogLevel",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "RETAIN_SEMANTICS_CLARIFIED",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M07",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "PropagationEnabled",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "RETAIN_SEMANTICS_CLARIFIED",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M11",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "ExportEnabled",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "RETAIN_SEMANTICS_CLARIFIED",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M39",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "DropPathPrefixes",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_OBSOLETE_READ",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M40",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "ForceRecordValues",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_OBSOLETE_READ",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M41",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "RouteRatios",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "RETAIN_SEMANTICS_CLARIFIED",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M43",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "SamplerEnabled",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "RETAIN_SEMANTICS_CLARIFIED",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M46",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "ATTRIBUTE",
+                          "name":  "SamplingRatio",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "RETAIN_SEMANTICS_CLARIFIED",
+                          "platformAfterP6":  "ABSENT_OR_READ_ONLY"
+                      },
+                      {
+                          "baselineMemberId":  "M48",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "OPERATION",
+                          "name":  "resetSamplerCounters",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_MUTATION",
+                          "platformAfterP6":  "DELETED"
+                      },
+                      {
+                          "baselineMemberId":  "M49",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "OPERATION",
+                          "name":  "updateSamplingPolicy",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_MUTATION",
+                          "platformAfterP6":  "DELETED"
+                      },
+                      {
+                          "baselineMemberId":  "M50",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                          "kind":  "OPERATION",
+                          "name":  "updateSamplingPolicy",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_MUTATION",
+                          "platformAfterP6":  "DELETED"
+                      },
+                      {
+                          "baselineMemberId":  "M55",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+                          "kind":  "OPERATION",
+                          "name":  "updateScrubbingPolicy",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_MUTATION",
+                          "platformAfterP6":  "DELETED"
+                      },
+                      {
+                          "baselineMemberId":  "M56",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+                          "kind":  "OPERATION",
+                          "name":  "updateScrubbingPolicy",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_MUTATION",
+                          "platformAfterP6":  "DELETED"
+                      },
+                      {
+                          "baselineMemberId":  "M62",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+                          "kind":  "OPERATION",
+                          "name":  "updateValidationPolicy",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_MUTATION",
+                          "platformAfterP6":  "DELETED"
+                      },
+                      {
+                          "baselineMemberId":  "M63",
+                          "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+                          "kind":  "OPERATION",
+                          "name":  "updateValidationPolicy",
+                          "parameterOpenTypes":  [
+
+                                                 ],
+                          "disposition":  "DELETE_MUTATION",
+                          "platformAfterP6":  "DELETED"
+                      }
+                  ]
+}

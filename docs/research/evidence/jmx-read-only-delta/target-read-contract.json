@@ -1,0 +1,64 @@
+{
+  "spikeId": "S-07",
+  "selectedOption": "R3",
+  "platformMutationsAfterP6": 0,
+  "acceptedStateVisibility": {
+    "mode": "SELECTED_NON_SENSITIVE_VALUES_PLUS_DIGEST_AND_SEQUENCE",
+    "exposedCategoryALeaves": [
+      "sampling.enabled -> Sampling.SamplerEnabled (read-only)",
+      "sampling.ratio -> Sampling.SamplingRatio (read-only)",
+      "sampling.route-ratios -> Sampling.RouteRatios (read-only TabularData, key-sorted, bounded; internal path vocabulary sensitivity)",
+      "validation.enabled -> Validation.ValidationEnabled",
+      "validation.strict -> Validation.ValidationStrict",
+      "exporter.enabled -> Export.ExportEnabled",
+      "propagation.trace-control-headers.enabled -> Diagnostics.PropagationEnabled",
+      "diagnostics.log-level -> Diagnostics.PlatformLogLevel (closed enum)"
+    ],
+    "controlAggregateAttributes": [
+      "RuntimeInstanceId",
+      "AcceptedSequence",
+      "AcceptedPolicyDigest",
+      "LastApplyOutcome",
+      "LastAttemptId",
+      "LastFailureCode",
+      "StructuralDrift",
+      "RestartRequired"
+    ],
+    "forbidden": [
+      "raw secrets",
+      "unbounded failure text",
+      "exception stack traces",
+      "Category B drop-paths/force-record as runtime JMX",
+      "scrubbing rule composition as Category A"
+    ]
+  },
+  "readinessAndDelivery": {
+    "agentLifecycle": "PlatformExtension LifecycleState unchanged closed vocabulary; no DEGRADED lifecycle",
+    "configDeliveryHealth": "AVAILABLE|UNAVAILABLE|RECOVERING on PlatformExtension.ConfigDeliveryHealth",
+    "capabilityConfigSnapshotV1": "Present in Capabilities when aggregate snapshot protocol is available; distinct from successful initial apply (LastApplyOutcome)",
+    "falsePositiveReady": "READY requires required processors/sampler/sanitizer AND successful initial apply when CONFIG_SERVER authority; delivery UNAVAILABLE does not flip Agent LifecycleState"
+  },
+  "counterReset": {
+    "resetSamplerCounters": "DELETE_MUTATION",
+    "semantics": "monotonic for process lifetime; reset only on JVM restart; dashboards use rate/increase"
+  },
+  "openTypeRules": [
+    "Standard MBean mapping; exact case preserved",
+    "no overloaded operations on target private writer (single applyPolicy signature)",
+    "no Java collection types across JMX boundary",
+    "only approved JDK Open Types",
+    "bounded arrays/tables; deterministic TabularData key order for route-ratios",
+    "no arbitrary CompositeData keys; no secrets; no class names as configurable values"
+  ],
+  "addedReads": [
+    {"objectName": "Control", "name": "RuntimeInstanceId", "type": "String"},
+    {"objectName": "Control", "name": "AcceptedSequence", "type": "long"},
+    {"objectName": "Control", "name": "AcceptedPolicyDigest", "type": "String"},
+    {"objectName": "Control", "name": "LastApplyOutcome", "type": "String"},
+    {"objectName": "Control", "name": "LastAttemptId", "type": "String"},
+    {"objectName": "Control", "name": "LastFailureCode", "type": "String"},
+    {"objectName": "Control", "name": "StructuralDrift", "type": "boolean"},
+    {"objectName": "Control", "name": "RestartRequired", "type": "boolean"},
+    {"objectName": "Readiness", "name": "ConfigDeliveryHealth", "type": "String"}
+  ]
+}

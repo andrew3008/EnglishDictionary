@@ -1,0 +1,26 @@
+S-07 JMX read-only delta verification
+=====================================
+
+jmxManagementContractVerify --rerun-tasks
+  Result: BUILD SUCCESSFUL
+  jmxManagementContractBaselineTest: PASS (live MBeanInfo == committed fixture)
+  jmxObjectNameConsistencyTest: PASS
+
+jmxReadOnlyDeltaVerify --rerun-tasks
+  Result: BUILD SUCCESSFUL
+  s07JmxReadOnlyDeltaTest: PASS (10 evidence consistency tests)
+
+privateMBeanServerVerify --rerun-tasks
+  Result: BUILD SUCCESSFUL
+  privateMBeanServerTest: PASS
+
+Baseline counts verified:
+  ObjectNames=8 Members=63 Read-only=47 Mutations=16
+
+Target arithmetic verified:
+  Platform members=56 Platform mutations=0
+  Private ObjectNames=2 Private mutations=1
+  Added reads=9 Deleted reads=8
+
+Verdict evidence:
+  APPROVE_EXACT_JMX_DELTA / READY_TO_CLOSE_E7 / R3

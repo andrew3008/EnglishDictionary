@@ -1,0 +1,39 @@
+{
+  "spikeId": "S-07",
+  "gate": "E7",
+  "verdict": "APPROVE_EXACT_JMX_DELTA",
+  "e7Recommendation": "READY_TO_CLOSE_E7",
+  "overallResult": "PASS",
+  "selectedReadContractOption": "R3",
+  "weightedScore": 87.4,
+  "productionCodeChanged": false,
+  "baseline": {
+    "objectNames": 8,
+    "members": 63,
+    "readOnly": 47,
+    "mutations": 16
+  },
+  "target": {
+    "platformObjectNames": 8,
+    "platformReadOnlyMembers": 56,
+    "platformMutations": 0,
+    "privateObjectNames": 2,
+    "privateReadMembers": 4,
+    "privateMutations": 1
+  },
+  "counts": {
+    "retainedExact": 38,
+    "clarifiedReads": 8,
+    "renamedReads": 0,
+    "deletedReads": 8,
+    "addedReads": 9,
+    "deletedMutationsFromPlatform": 16,
+    "privateOnlyOperations": 1
+  },
+  "externalConsumerBlockers": [],
+  "rollbackUnit": "Entire unreleased release train at P6; ObjectName preservation allows dual-server coexistence during P2–P5 without supported dual contract",
+  "openBlockersForE8": [
+    "P0 wire schema contract and bounds",
+    "E8 readiness package and Implementation GO"
+  ]
+}

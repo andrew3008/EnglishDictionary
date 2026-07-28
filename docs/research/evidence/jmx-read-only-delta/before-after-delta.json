@@ -1,0 +1,45 @@
+﻿{
+    "spikeId":  "S-07",
+    "before":  {
+                   "objectNames":  8,
+                   "members":  63,
+                   "readOnly":  47,
+                   "mutations":  16
+               },
+    "after":  {
+                  "platformObjectNames":  8,
+                  "platformMembers":  56,
+                  "platformReadOnly":  56,
+                  "platformMutations":  0,
+                  "privateObjectNames":  2,
+                  "privateReadMembers":  4,
+                  "privateMutations":  1,
+                  "addedReads":  9,
+                  "deletedReads":  8,
+                  "renamedReads":  0,
+                  "deletedMutationsFromPlatform":  16,
+                  "clarifiedReads":  8,
+                  "replacedWithAggregateRead":  4,
+                  "retainedExact":  38,
+                  "moveToPrivateOnly":  1,
+                  "deleteMutationOps":  7,
+                  "retainedPlatformFromBaseline":  47
+              },
+    "arithmeticCheck":  {
+                            "baselineMembersAccounted":  63,
+                            "dispositionHistogram":  {
+                                                         "DELETE_MUTATION":  7,
+                                                         "MOVE_TO_PRIVATE_ONLY":  1,
+                                                         "REPLACE_WITH_AGGREGATE_READ":  4,
+                                                         "DELETE_OBSOLETE_READ":  5,
+                                                         "RETAIN_SEMANTICS_CLARIFIED":  8,
+                                                         "RETAIN_EXACT":  38
+                                                     },
+                            "formula":  "platform = RETAIN_* + readAppliedState(REPLACE) + ADD_NEW_READ; version REPLACE attrs count as deletedReads",
+                            "retainedFromBaseline":  47,
+                            "added":  9,
+                            "platformTotal":  56,
+                            "identity":  "63 = platformBaselineKeep + deleteMutation + movePrivate + deleteObsolete + versionReplaceExcludingReadApplied",
+                            "check":  true
+                        }
+}

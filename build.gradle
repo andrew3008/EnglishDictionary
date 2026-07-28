@@ -1061,3 +1061,35 @@ gradle.projectsEvaluated {
         }
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// S-07 — Exact read-only JMX contract delta (Gate E7).
+// Opt-in: not wired into check/build. Proves baseline reproduction, 63-member dispositions,
+// 16 mutation deletions, and before/after arithmetic. Does not mutate production MBeans.
+// ---------------------------------------------------------------------------------------------
+
+def s07JmxReadOnlyDeltaTest = tasks.register('s07JmxReadOnlyDeltaTest', Test) {
+    group = 'verification'
+    description = 'Runs S-07 JMX read-only delta evidence consistency proofs.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir('test-results/s07JmxReadOnlyDeltaTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir('test-results/s07JmxReadOnlyDeltaTest')
+    reports.html.outputLocation = layout.buildDirectory.dir('reports/tests/s07JmxReadOnlyDeltaTest')
+    useJUnitPlatform()
+    systemProperty 's07.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/jmx-read-only-delta').asFile.absolutePath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.jmxdelta.*'
+    }
+}
+
+tasks.register('jmxReadOnlyDeltaVerify') {
+    group = 'verification'
+    description = 'Verifies S-07 exact JMX read-only contract delta evidence for Gate E7.'
+    dependsOn 'jmxManagementContractVerify'
+    dependsOn s07JmxReadOnlyDeltaTest
+}

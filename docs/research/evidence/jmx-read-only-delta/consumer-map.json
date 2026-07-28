@@ -1,0 +1,51 @@
+{
+  "spikeId": "S-07",
+  "sourceInventory": "docs/research/evidence/jmx-contract/jmx-consumer-inventory.md",
+  "consumerClasses": [
+    "CLIENT",
+    "ACTUATOR",
+    "HEALTH",
+    "TEST",
+    "BENCHMARK",
+    "PERF",
+    "DOC",
+    "DASHBOARD",
+    "ALERT",
+    "JMX_EXPORTER",
+    "RUNBOOK",
+    "EXTERNAL_UNKNOWN",
+    "NO_NAMED_CONSUMER_FOUND"
+  ],
+  "namedProductionConsumers": [
+    {
+      "module": "platform-tracing-spring-boot-autoconfigure",
+      "symbol": "PlatformTracingJmxClient",
+      "role": "CLIENT",
+      "objectNamesCovered": 7,
+      "notes": "Omits Control ObjectName; duplicates seven Agent names"
+    },
+    {
+      "module": "platform-tracing-spring-boot-autoconfigure",
+      "symbol": "TracingActuatorEndpoint",
+      "role": "ACTUATOR",
+      "objectNamesCovered": "via CLIENT",
+      "notes": "Write path gated by mutation-enabled; read path projects metrics"
+    },
+    {
+      "module": "platform-tracing-spring-boot-autoconfigure",
+      "symbol": "AgentExtensionObserver",
+      "role": "HEALTH",
+      "objectNamesCovered": ["Readiness/PlatformExtension"],
+      "notes": "Reads readiness attributes for Spring health"
+    }
+  ],
+  "migrationOwners": {
+    "CLIENT": "platform-tracing-spring-boot-autoconfigure P4/P6",
+    "ACTUATOR": "platform-tracing-spring-boot-autoconfigure P4/P6",
+    "HEALTH": "platform-tracing-spring-boot-autoconfigure P4/P6",
+    "TEST": "module owners concurrent with P6",
+    "DOC": "docs owners at P6 cutover",
+    "EXTERNAL_UNKNOWN": "architecture committee survey before production rollout (not E7 blocker)"
+  },
+  "dashboardAlertJmxExporter": "NO_NAMED_CONSUMER_FOUND in repository; rate/increase guidance for counters; resetSamplerCounters deleted"
+}
