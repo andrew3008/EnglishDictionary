@@ -6,9 +6,12 @@ import org.springframework.core.env.PropertySource;
 /**
  * Classifies the provenance of each Category A policy key.
  * <p>
- * AUTHORITATIVE: key originates from a Config Server property source.
- * LOCAL_OVERRIDE: key originates from command-line args, system properties, or local file.
- * UNKNOWN: key not present.
+ * AUTHORITATIVE: key originates from an explicitly recognised Config Server property source.
+ * LOCAL_OVERRIDE: key originates from command-line, system properties, or local file.
+ * UNKNOWN: key not found, or found in an unrecognised source.
+ * <p>
+ * Unknown source -> {@code UNKNOWN} -> leads to {@link space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyManifestException}
+ * (fail-closed). There is no automatic trust grant to unknown sources.
  */
 public final class ConfigServerPolicyProvenanceClassifier {
 
@@ -18,11 +21,18 @@ public final class ConfigServerPolicyProvenanceClassifier {
         UNKNOWN
     }
 
-    private static final java.util.Set<String> LOCAL_OVERRIDE_SOURCE_PREFIXES = java.util.Set.of(
+    private static final java.util.Set<String> LOCAL_OVERRIDE_SOURCE_NAME_FRAGMENTS = java.util.Set.of(
             "commandLineArgs",
             "systemProperties",
             "systemEnvironment",
             "applicationConfig: [file:"
+    );
+
+    private static final java.util.Set<String> AUTHORITATIVE_SOURCE_NAME_FRAGMENTS = java.util.Set.of(
+            "configserver:",
+            "config-server",
+            "bootstrapProperties",
+            "configClient"
     );
 
     private final ConfigurableEnvironment environment;
@@ -35,18 +45,18 @@ public final class ConfigServerPolicyProvenanceClassifier {
         for (PropertySource<?> ps : environment.getPropertySources()) {
             if (ps.containsProperty(key)) {
                 String sourceName = ps.getName();
-                for (String localPrefix : LOCAL_OVERRIDE_SOURCE_PREFIXES) {
-                    if (sourceName.startsWith(localPrefix) || sourceName.contains(localPrefix)) {
+                for (String fragment : LOCAL_OVERRIDE_SOURCE_NAME_FRAGMENTS) {
+                    if (sourceName.contains(fragment)) {
                         return ProvenanceClass.LOCAL_OVERRIDE;
                     }
                 }
-                // Config Server sources contain "configserver" or "bootstrapProperties"
-                if (sourceName.contains("configserver") || sourceName.contains("config-server")
-                        || sourceName.contains("bootstrapProperties")) {
-                    return ProvenanceClass.AUTHORITATIVE;
+                for (String fragment : AUTHORITATIVE_SOURCE_NAME_FRAGMENTS) {
+                    if (sourceName.contains(fragment)) {
+                        return ProvenanceClass.AUTHORITATIVE;
+                    }
                 }
-                // Default: treat as authoritative if not clearly local
-                return ProvenanceClass.AUTHORITATIVE;
+                // Unknown source: fail-closed, not authoritative by default
+                return ProvenanceClass.UNKNOWN;
             }
         }
         return ProvenanceClass.UNKNOWN;

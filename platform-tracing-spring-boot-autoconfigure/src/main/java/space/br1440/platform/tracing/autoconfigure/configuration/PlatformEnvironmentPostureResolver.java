@@ -6,21 +6,24 @@ import org.springframework.core.env.Environment;
  * Resolves {@link PlatformEnvironmentPosture} from the {@code platform.environment}
  * deployment trust signal.
  * <p>
- * Only {@code platform.environment} is consulted. Spring profile names, hostname,
- * localhost strings, IDE detection, and absence of external services are forbidden
- * as posture signals.
+ * Accepted values (case-insensitive): LOCAL, SHARED, PRODUCTION.
+ * <strong>No aliases.</strong> dev, development, prod, test, staging are rejected.
+ * Unknown or missing value throws {@link TracingConfigurationGuardException} (fail-fast).
  */
 public final class PlatformEnvironmentPostureResolver {
 
     private PlatformEnvironmentPostureResolver() {}
 
     public static PlatformEnvironmentPosture resolve(Environment environment) {
-        String raw = environment.getProperty("platform.environment", "").trim().toLowerCase();
+        String raw = environment.getProperty("platform.environment", "").trim().toUpperCase();
         return switch (raw) {
-            case "dev", "development", "local" -> PlatformEnvironmentPosture.LOCAL;
-            case "shared", "integration", "staging", "test" -> PlatformEnvironmentPosture.SHARED;
-            case "production", "prod" -> PlatformEnvironmentPosture.PRODUCTION;
-            default -> PlatformEnvironmentPosture.SHARED; // fail-safe: unknown = not LOCAL
+            case "LOCAL"      -> PlatformEnvironmentPosture.LOCAL;
+            case "SHARED"     -> PlatformEnvironmentPosture.SHARED;
+            case "PRODUCTION" -> PlatformEnvironmentPosture.PRODUCTION;
+            default -> throw new TracingConfigurationGuardException(
+                    "Unknown platform.environment value: '" + raw +
+                    "'. Accepted exact values: LOCAL, SHARED, PRODUCTION. " +
+                    "Aliases (dev, development, prod, test, staging) are not accepted.");
         };
     }
 }

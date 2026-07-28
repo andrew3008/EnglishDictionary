@@ -9,17 +9,14 @@ import java.util.Set;
 
 /**
  * Builds a complete eight-leaf Category A manifest from the Spring Environment.
- * <p>
- * Fail-closed: any missing required leaf causes {@link TracingPolicyManifestException}.
- * Local overrides (command-line, system property, local file) for policy.* keys are rejected.
- * Returns a complete {@link CompleteTracingPolicySnapshot}.
+ * Fail-closed: missing leaf, local override, unknown provenance, or route-ratio parse error
+ * all throw {@link TracingPolicyManifestException}.
  */
 public final class ConfigServerPolicyManifestBuilder {
 
     private static final Set<String> REQUIRED_KEYS = Set.of(
             "platform.tracing.policy.sampling.enabled",
             "platform.tracing.policy.sampling.ratio",
-            "platform.tracing.policy.sampling.route-ratios",
             "platform.tracing.policy.validation.enabled",
             "platform.tracing.policy.validation.strict",
             "platform.tracing.policy.exporter.enabled",
@@ -41,14 +38,17 @@ public final class ConfigServerPolicyManifestBuilder {
         for (String key : REQUIRED_KEYS) {
             if (!environment.containsProperty(key)) {
                 throw new TracingPolicyManifestException(
-                        "Required Category A policy key missing: '" + key +
-                        "'. All eight leaves must be present in Config Server manifest.");
+                        "Required Category A policy key missing: '" + key + "'");
             }
             ConfigServerPolicyProvenanceClassifier.ProvenanceClass pClass = provenance.classify(key);
             if (pClass == ConfigServerPolicyProvenanceClassifier.ProvenanceClass.LOCAL_OVERRIDE) {
                 throw new TracingPolicyManifestException(
-                        "Local override rejected for policy key '" + key +
-                        "'. Category A leaves must originate from Config Server, not local configuration.");
+                        "Local override rejected for policy key '" + key + "'");
+            }
+            if (pClass == ConfigServerPolicyProvenanceClassifier.ProvenanceClass.UNKNOWN) {
+                throw new TracingPolicyManifestException(
+                        "Unknown property source for key '" + key +
+                        "'. Only recognised Config Server sources are accepted.");
             }
         }
 
@@ -56,7 +56,7 @@ public final class ConfigServerPolicyManifestBuilder {
                 "platform.tracing.policy.sampling.enabled", Boolean.class);
         double samplingRatio = environment.getRequiredProperty(
                 "platform.tracing.policy.sampling.ratio", Double.class);
-        Map<String, Double> routeRatios = parseRouteRatios();
+        Map<String, Double> routeRatios = parseRouteRatios(); // throws TracingPolicyManifestException on any error
         boolean validationEnabled = environment.getRequiredProperty(
                 "platform.tracing.policy.validation.enabled", Boolean.class);
         boolean validationStrict = environment.getRequiredProperty(
@@ -80,35 +80,48 @@ public final class ConfigServerPolicyManifestBuilder {
                 .build();
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Double> parseRouteRatios() {
-        // Spring binds Map<String,Double> from platform.tracing.policy.sampling.route-ratios.*
-        // Attempt to read the bound map; fall back to empty if binding is not map-style
+        String prefix = "platform.tracing.policy.sampling.route-ratios";
+        Map<String, Double> result = new LinkedHashMap<>();
         try {
-            // Convention: prefix binding produces Map via BindResult
-            Map<String, String> raw = new LinkedHashMap<>();
-            String prefix = "platform.tracing.policy.sampling.route-ratios";
-            // iterate over any environment properties with this prefix
-            if (environment instanceof org.springframework.core.env.ConfigurableEnvironment ce) {
-                for (org.springframework.core.env.PropertySource<?> ps : ce.getPropertySources()) {
-                    if (ps instanceof org.springframework.core.env.EnumerablePropertySource<?> eps) {
-                        for (String name : eps.getPropertyNames()) {
-                            if (name.startsWith(prefix + ".")) {
-                                String route = name.substring(prefix.length() + 1);
-                                String val = environment.getProperty(name);
-                                if (val != null) raw.put(route, val);
-                            }
-                        }
+            if (!(environment instanceof org.springframework.core.env.ConfigurableEnvironment ce)) {
+                // Non-configurable env: assume empty route ratios is valid
+                return result;
+            }
+            for (org.springframework.core.env.PropertySource<?> ps : ce.getPropertySources()) {
+                if (!(ps instanceof org.springframework.core.env.EnumerablePropertySource<?> eps)) continue;
+                for (String propName : eps.getPropertyNames()) {
+                    if (!propName.startsWith(prefix + ".")) continue;
+                    String route = propName.substring(prefix.length() + 1);
+                    String val = environment.getProperty(propName);
+                    if (val == null) {
+                        throw new TracingPolicyManifestException(
+                                "Null value for route-ratio key '" + propName + "'");
                     }
+                    double ratio;
+                    try {
+                        ratio = Double.parseDouble(val);
+                    } catch (NumberFormatException e) {
+                        throw new TracingPolicyManifestException(
+                                "Invalid double value '" + val + "' for route-ratio key '" + propName + "'");
+                    }
+                    if (ratio < 0.0 || ratio > 1.0) {
+                        throw new TracingPolicyManifestException(
+                                "Route ratio out of range [0,1]: '" + val + "' for key '" + propName + "'");
+                    }
+                    if (result.containsKey(route)) {
+                        throw new TracingPolicyManifestException(
+                                "Duplicate route-ratio key '" + route + "' in Config Server manifest");
+                    }
+                    result.put(route, ratio);
                 }
             }
-            Map<String, Double> result = new LinkedHashMap<>();
-            for (Map.Entry<String, String> entry : raw.entrySet()) {
-                result.put(entry.getKey(), Double.parseDouble(entry.getValue()));
-            }
-            return result;
+        } catch (TracingPolicyManifestException e) {
+            throw e; // re-throw as-is
         } catch (Exception e) {
-            return Map.of();
+            throw new TracingPolicyManifestException(
+                    "Unexpected error parsing route-ratios from Config Server: " + e.getMessage());
         }
+        return result;
     }
 }

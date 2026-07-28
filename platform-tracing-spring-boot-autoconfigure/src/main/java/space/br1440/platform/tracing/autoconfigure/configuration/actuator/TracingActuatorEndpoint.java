@@ -2,21 +2,23 @@ package space.br1440.platform.tracing.autoconfigure.configuration.actuator;
 
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedPolicyLeaves;
+import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedPolicyProjection;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyReader;
-import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyView;
+import space.br1440.platform.tracing.autoconfigure.configuration.AgentReadinessView;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingApplyDiagnostics;
 
 import java.util.Map;
 
 /**
- * Secret-safe read-only Actuator endpoint for accepted tracing policy projection.
+ * Secret-safe read-only Actuator endpoint.
  * <p>
- * Endpoint ID: "tracing" (or "tracingPolicy" if "tracing" is reserved).
- * No write operations. No Spring property substitution as effective truth.
- * No raw route values without approved disclosure contract.
- * No stack traces. No secrets.
+ * Technology-neutral read endpoint. Uses {@code @Endpoint} (not {@code @WebEndpoint})
+ * because read-only diagnostic exposure via JMX is acceptable; only the mutation
+ * surface must be restricted to HTTP.
  * <p>
- * This endpoint depends only on {@link AcceptedTracingPolicyReader},
- * not on the full {@link space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient}.
+ * Depends only on {@link AcceptedTracingPolicyReader}. No write capability.
+ * Assembles response from three separate truth-category projections.
  */
 @Endpoint(id = "tracingPolicy")
 public final class TracingActuatorEndpoint {
@@ -29,27 +31,34 @@ public final class TracingActuatorEndpoint {
 
     @ReadOperation
     public Map<String, Object> tracingPolicy() {
-        return reader.current()
-                .map(this::toView)
+        return reader.currentProjection()
+                .map(this::toResponse)
                 .orElseGet(() -> Map.of("status", "AGENT_UNAVAILABLE"));
     }
 
-    private Map<String, Object> toView(AcceptedTracingPolicyView v) {
+    private Map<String, Object> toResponse(AcceptedPolicyProjection p) {
+        AgentReadinessView readiness = p.agentReadiness();
+        AcceptedPolicyLeaves leaves = p.policy();
+        TracingApplyDiagnostics diag = p.diagnostics();
         return Map.of(
-                "runtimeInstanceId", v.runtimeInstanceId(),
-                "acceptedSequence", v.acceptedSequence(),
-                "policyDigest", v.policyDigest(),
-                "agentReady", v.agentReady(),
-                "latestApplyOutcome", v.latestApplyOutcome(),
+                "agent", Map.of(
+                        "runtimeInstanceId", readiness.runtimeInstanceId(),
+                        "acceptedSequence", readiness.acceptedSequence(),
+                        "ready", readiness.agentReady()
+                ),
                 "policy", Map.of(
-                        "sampling.enabled", v.samplingEnabled(),
-                        "sampling.ratio", v.samplingRatio(),
-                        "sampling.route-ratios.count", v.samplingRouteRatiosCount(),
-                        "validation.enabled", v.validationEnabled(),
-                        "validation.strict", v.validationStrict(),
-                        "exporter.enabled", v.exporterEnabled(),
-                        "propagation.trace-control-headers.enabled", v.traceControlHeadersEnabled(),
-                        "diagnostics.log-level", v.diagnosticsLogLevel()
+                        "sampling.enabled", leaves.samplingEnabled(),
+                        "sampling.ratio", leaves.samplingRatio(),
+                        "sampling.route-ratios.count", leaves.samplingRouteRatiosCount(),
+                        "validation.enabled", leaves.validationEnabled(),
+                        "validation.strict", leaves.validationStrict(),
+                        "exporter.enabled", leaves.exporterEnabled(),
+                        "propagation.trace-control-headers.enabled", leaves.traceControlHeadersEnabled(),
+                        "diagnostics.log-level", leaves.diagnosticsLogLevel()
+                ),
+                "diagnostics", Map.of(
+                        "policyDigest", diag.policyDigest(),
+                        "latestApplyOutcome", diag.latestApplyOutcome()
                 )
         );
     }

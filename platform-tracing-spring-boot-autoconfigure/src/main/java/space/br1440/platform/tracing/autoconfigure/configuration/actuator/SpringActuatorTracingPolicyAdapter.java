@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.configuration.actuator;
 
-import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyView;
+import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicySnapshotReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.CompleteTracingPolicySnapshot;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient;
@@ -11,24 +12,33 @@ import java.util.Optional;
 import java.util.function.UnaryOperator;
 
 /**
- * Actuator authority adapter. Orchestrates read-copy-change-validate-apply
- * for typed Category A leaf mutations.
+ * Actuator adapter: read-copy-change-validate-apply.
  * <p>
- * Does NOT own accepted state.
- * Does NOT change Spring properties.
- * Does NOT call RuntimeConfigApplier.
- * Does NOT call legacy domain JMX setters.
- * Does NOT retry on STALE.
- * No patch apply. No generic property mutation.
+ * Reads the <strong>complete internal snapshot</strong> (including route ratios)
+ * via {@link AcceptedTracingPolicySnapshotReader}, not the secret-safe projection.
+ * This ensures single-leaf mutations preserve all other leaves including route ratios.
+ * <p>
+ * Contract:
+ * - No retry on STALE (caller may retry if appropriate).
+ * - No patch apply, no generic property mutation.
+ * - Does not own accepted state.
+ * - Does not call legacy JMX domain setters.
  */
 public final class SpringActuatorTracingPolicyAdapter {
 
     private static final int MAX_ROUTE_RATIOS = 64;
     private static final int MAX_ROUTE_KEY_LENGTH = 256;
 
+    private static final java.util.Set<String> VALID_LOG_LEVELS =
+            java.util.Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
+
+    private final AcceptedTracingPolicySnapshotReader snapshotReader;
     private final TracingPolicySnapshotClient snapshotClient;
 
-    public SpringActuatorTracingPolicyAdapter(TracingPolicySnapshotClient snapshotClient) {
+    public SpringActuatorTracingPolicyAdapter(
+            AcceptedTracingPolicySnapshotReader snapshotReader,
+            TracingPolicySnapshotClient snapshotClient) {
+        this.snapshotReader = snapshotReader;
         this.snapshotClient = snapshotClient;
     }
 
@@ -50,7 +60,6 @@ public final class SpringActuatorTracingPolicyAdapter {
             if (entry.getValue() == null || entry.getValue() < 0.0 || entry.getValue() > 1.0)
                 return TracingPolicyDeliveryResult.REJECTED;
         }
-        // Check for duplicate normalized routes
         long uniqueCount = routeRatios.keySet().stream().map(String::toLowerCase).distinct().count();
         if (uniqueCount != routeRatios.size()) return TracingPolicyDeliveryResult.REJECTED;
         return applyChange(s -> s.withSamplingRouteRatios(routeRatios));
@@ -79,42 +88,23 @@ public final class SpringActuatorTracingPolicyAdapter {
         return applyChange(s -> s.withDiagnosticsLogLevel(level.toUpperCase()));
     }
 
-    private static final java.util.Set<String> VALID_LOG_LEVELS =
-            java.util.Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
-
     /**
-     * Core read-copy-change-validate-apply helper.
-     * Reads current accepted state, copies, applies one typed change, validates, delegates.
+     * Read complete accepted snapshot (including route ratios), copy, apply change, validate, apply.
      * No retry on STALE.
      */
     private TracingPolicyDeliveryResult applyChange(UnaryOperator<CompleteTracingPolicySnapshot> change) {
-        Optional<AcceptedTracingPolicyView> currentView = snapshotClient.current();
-        if (currentView.isEmpty()) {
+        Optional<AcceptedSnapshotWithSequence> current = snapshotReader.currentComplete();
+        if (current.isEmpty()) {
             return TracingPolicyDeliveryResult.FAILED;
         }
-        AcceptedTracingPolicyView view = currentView.get();
-        long expectedSequence = view.acceptedSequence();
+        AcceptedSnapshotWithSequence accepted = current.get();
+        long expectedSequence = accepted.acceptedSequence();
 
-        // Reconstruct snapshot from view for the copy base
-        // (view is secret-safe projection; route ratios not in view → keep existing)
-        // We apply the change to a baseline built from what we can observe.
-        // NOTE: If the accepted projection does not carry full route ratios (by design,
-        // since route ratios are not in the secret-safe view), the change operator
-        // for replaceSamplingRouteRatios will override them fully (whole-map replacement).
-        CompleteTracingPolicySnapshot base = CompleteTracingPolicySnapshot.builder()
-                .samplingEnabled(view.samplingEnabled())
-                .samplingRatio(view.samplingRatio())
-                .samplingRouteRatios(Map.of()) // route ratios replaced by the change if applicable
-                .validationEnabled(view.validationEnabled())
-                .validationStrict(view.validationStrict())
-                .exporterEnabled(view.exporterEnabled())
-                .traceControlHeadersEnabled(view.traceControlHeadersEnabled())
-                .diagnosticsLogLevel(view.diagnosticsLogLevel())
-                .build();
+        // Produce candidate: copy existing complete snapshot, apply one change
+        // Route ratios are carried from existing snapshot, not discarded
+        CompleteTracingPolicySnapshot candidate = change.apply(accepted.snapshot());
 
-        CompleteTracingPolicySnapshot candidate = change.apply(base);
-
-        // Validate ratio bounds
+        // Guard: validate mutated candidate
         if (candidate.samplingRatio() < 0.0 || candidate.samplingRatio() > 1.0) {
             return TracingPolicyDeliveryResult.REJECTED;
         }

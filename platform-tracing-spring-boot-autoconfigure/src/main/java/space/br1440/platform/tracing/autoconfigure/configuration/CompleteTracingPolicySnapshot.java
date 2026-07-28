@@ -6,12 +6,12 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Immutable complete Category A policy snapshot.
- * Contains exactly eight leaves. Never partial.
+ * Immutable complete Category A policy snapshot. Exactly eight leaves.
  * <p>
- * This is the application-side representation of the policy to be delivered
- * over the private JMX boundary. It is NOT shared with the Agent as a DTO;
- * it is encoded via {@link space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec}.
+ * The {@link Builder} requires all eight fields to be explicitly set;
+ * {@code build()} throws {@link TracingPolicyManifestException} for any unset leaf.
+ * There are NO implicit defaults. Convenience defaults (e.g. for HELM bootstrap)
+ * must use the explicit factory method {@link #helmBootstrapDefaults()}.
  */
 public final class CompleteTracingPolicySnapshot {
 
@@ -41,6 +41,13 @@ public final class CompleteTracingPolicySnapshot {
         this.exporterEnabled = exporterEnabled;
         this.traceControlHeadersEnabled = traceControlHeadersEnabled;
         this.diagnosticsLogLevel = Objects.requireNonNull(diagnosticsLogLevel, "diagnosticsLogLevel");
+    }
+
+    // --- Explicit factory for HELM bootstrap defaults only ---
+    public static CompleteTracingPolicySnapshot helmBootstrapDefaults() {
+        return new CompleteTracingPolicySnapshot(
+                true, 1.0, Map.of(),
+                true, false, true, true, "INFO");
     }
 
     public boolean samplingEnabled() { return samplingEnabled; }
@@ -94,15 +101,20 @@ public final class CompleteTracingPolicySnapshot {
 
     public static Builder builder() { return new Builder(); }
 
+    /**
+     * Builder with no implicit defaults.
+     * All eight leaves must be set explicitly via their setter before calling {@link #build()}.
+     */
     public static final class Builder {
-        private boolean samplingEnabled = true;
-        private double samplingRatio = 1.0;
-        private Map<String, Double> samplingRouteRatios = Collections.emptyMap();
-        private boolean validationEnabled = true;
-        private boolean validationStrict = false;
-        private boolean exporterEnabled = true;
-        private boolean traceControlHeadersEnabled = true;
-        private String diagnosticsLogLevel = "INFO";
+        // Boxed to detect unset state. Primitives cannot be null.
+        private Boolean samplingEnabled;
+        private Double samplingRatio;
+        private Map<String, Double> samplingRouteRatios;
+        private Boolean validationEnabled;
+        private Boolean validationStrict;
+        private Boolean exporterEnabled;
+        private Boolean traceControlHeadersEnabled;
+        private String diagnosticsLogLevel;
 
         public Builder samplingEnabled(boolean v) { this.samplingEnabled = v; return this; }
         public Builder samplingRatio(double v) { this.samplingRatio = v; return this; }
@@ -114,6 +126,14 @@ public final class CompleteTracingPolicySnapshot {
         public Builder diagnosticsLogLevel(String v) { this.diagnosticsLogLevel = v; return this; }
 
         public CompleteTracingPolicySnapshot build() {
+            if (samplingEnabled == null)          throw new TracingPolicyManifestException("samplingEnabled not set");
+            if (samplingRatio == null)             throw new TracingPolicyManifestException("samplingRatio not set");
+            if (samplingRouteRatios == null)       throw new TracingPolicyManifestException("samplingRouteRatios not set");
+            if (validationEnabled == null)         throw new TracingPolicyManifestException("validationEnabled not set");
+            if (validationStrict == null)          throw new TracingPolicyManifestException("validationStrict not set");
+            if (exporterEnabled == null)           throw new TracingPolicyManifestException("exporterEnabled not set");
+            if (traceControlHeadersEnabled == null) throw new TracingPolicyManifestException("traceControlHeadersEnabled not set");
+            if (diagnosticsLogLevel == null)       throw new TracingPolicyManifestException("diagnosticsLogLevel not set");
             return new CompleteTracingPolicySnapshot(
                     samplingEnabled, samplingRatio, samplingRouteRatios,
                     validationEnabled, validationStrict, exporterEnabled,
