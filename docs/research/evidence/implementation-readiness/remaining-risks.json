@@ -1,0 +1,98 @@
+{
+  "spikeId": "E8",
+  "review": "implementation-readiness",
+  "architectureRisks": [
+    {
+      "id": "AR-01",
+      "severity": "P0_BLOCKER",
+      "summary": "Versioned Open-Type wire schema not approved",
+      "planTask": "p0-wire-schema-contract",
+      "blocks": ["IMPLEMENTATION_GO", "P1", "P2"]
+    },
+    {
+      "id": "AR-02",
+      "severity": "P0_BLOCKER",
+      "summary": "Collection/key/payload bounds not approved",
+      "planTask": "p0-wire-schema-bounds",
+      "blocks": ["IMPLEMENTATION_GO", "P1", "P2"]
+    },
+    {
+      "id": "AR-03",
+      "severity": "P0_BLOCKER",
+      "summary": "Agent/App Open Types and bounds not approved",
+      "planSection": "28",
+      "blocks": ["IMPLEMENTATION_GO", "P2"]
+    },
+    {
+      "id": "AR-04",
+      "severity": "PROCESS_BLOCKER",
+      "summary": "E7 evidence READY_TO_CLOSE but not formally CLOSED in plan/checklist",
+      "blocks": ["IMPLEMENTATION_GO"]
+    },
+    {
+      "id": "AR-05",
+      "severity": "PROCESS_BLOCKER",
+      "summary": "Security debt explicit pre-production acceptance not recorded",
+      "planSection": "16/28",
+      "blocks": ["IMPLEMENTATION_GO"]
+    },
+    {
+      "id": "AR-06",
+      "severity": "PROCESS_BLOCKER",
+      "summary": "Rollback units and scenario acceptance checklist items still open",
+      "planSection": "28",
+      "blocks": ["IMPLEMENTATION_GO"]
+    }
+  ],
+  "implementationRisks": [
+    {
+      "id": "IR-01",
+      "summary": "Dual independent Open-Type codecs can drift from one wire contract",
+      "phase": "P2"
+    },
+    {
+      "id": "IR-02",
+      "summary": "Production naming/placement mistakes for accepted-state types in Agent module",
+      "phase": "P1"
+    },
+    {
+      "id": "IR-03",
+      "summary": "Accidental shared DTO / classloader leakage across Agent and App",
+      "phase": "P1-P2"
+    },
+    {
+      "id": "IR-04",
+      "summary": "Incomplete deletion of 16 platform mutations or residual writers",
+      "phase": "P3-P6"
+    },
+    {
+      "id": "IR-05",
+      "summary": "RefreshScope / HTTP mutation path residue if P4/P6 sequencing slips",
+      "phase": "P4-P6"
+    }
+  ],
+  "operationalRolloutRisks": [
+    {
+      "id": "OR-01",
+      "summary": "Corporate Kafka Bus readiness checks not yet production-executed",
+      "source": "corporate-bus-readiness.json verificationRequiredBeforeProduction",
+      "phase": "P4-P6 / release readiness"
+    },
+    {
+      "id": "OR-02",
+      "summary": "External JMX consumer survey and migration notice not completed",
+      "source": "S-07 productionRolloutBlockers",
+      "phase": "P6 / rollout"
+    },
+    {
+      "id": "OR-03",
+      "summary": "Config Server monitor/webhook operational ownership and outage handling",
+      "phase": "P4 / operations"
+    },
+    {
+      "id": "OR-04",
+      "summary": "Pre-production security-debt acceptance window before P6 cutover",
+      "phase": "committee / P6"
+    }
+  ]
+}

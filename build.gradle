@@ -1093,3 +1093,39 @@ tasks.register('jmxReadOnlyDeltaVerify') {
     dependsOn 'jmxManagementContractVerify'
     dependsOn s07JmxReadOnlyDeltaTest
 }
+
+// ---------------------------------------------------------------------------------------------
+// E8 — Implementation readiness package. Opt-in: not wired into check/build.
+// Proves gate-status / cross-gate consistency / readiness package completeness.
+// Does not grant Implementation GO and does not start P1.
+// ---------------------------------------------------------------------------------------------
+
+def e8ImplementationReadinessTest = tasks.register('e8ImplementationReadinessTest', Test) {
+    group = 'verification'
+    description = 'Runs E8 implementation readiness evidence consistency proofs.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/e8ImplementationReadinessTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/e8ImplementationReadinessTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/e8ImplementationReadinessTest')
+    useJUnitPlatform()
+    systemProperty 'e8.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/implementation-readiness').asFile.absolutePath
+    systemProperty 'e8.repo.root',
+            rootProject.layout.projectDirectory.asFile.absolutePath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.readiness.*'
+    }
+}
+
+tasks.register('implementationReadinessVerify') {
+    group = 'verification'
+    description = 'Verifies E8 implementation readiness package completeness and consistency.'
+    dependsOn e8ImplementationReadinessTest
+}
