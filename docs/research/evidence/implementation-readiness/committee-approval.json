@@ -1,0 +1,21 @@
+{
+  "artifactId": "e8-committee-approval",
+  "decisionDate": "2026-07-28",
+  "decisionSource": "Architecture committee decision supplied by the project owner",
+  "decision": "APPROVED_WITHOUT_ADDITIONAL_REQUIREMENTS",
+  "implementationGo": "GRANTED",
+  "legacyDeletionGo": "BLOCKED_UNTIL_P6_COHERENT_CUTOVER",
+  "gateStatuses": {
+    "E1": "CLOSED",
+    "E2": "CLOSED",
+    "E3": "CLOSED",
+    "E4": "CLOSED",
+    "E5": "CLOSED",
+    "E6": "CLOSED",
+    "E7": "CLOSED",
+    "E8": "CLOSED",
+    "E9": "CLOSED"
+  },
+  "authorizedNextPhase": "P1_ACCEPTED_STATE_FOUNDATION",
+  "historicalEvidenceRule": "Existing E8 readiness artifacts remain the immutable pre-decision package and are superseded for authorization status by this record."
+}
