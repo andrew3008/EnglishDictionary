@@ -30,6 +30,14 @@ final class TracingConfigurationReadiness {
         current.set(new Snapshot(State.BLOCKED, messageCode, 0L));
     }
 
+    void recordAcceptedStateAvailable(AcceptedTracingPolicyView accepted) {
+        Objects.requireNonNull(accepted, "accepted");
+        current.set(new Snapshot(
+                State.READY,
+                "ACCEPTED_STATE_AVAILABLE",
+                accepted.acceptedSequence()));
+    }
+
     enum State {
         PENDING,
         READY,

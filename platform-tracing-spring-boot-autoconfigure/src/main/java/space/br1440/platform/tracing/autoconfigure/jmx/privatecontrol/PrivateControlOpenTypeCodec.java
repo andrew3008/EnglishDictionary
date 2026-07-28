@@ -153,6 +153,11 @@ public final class PrivateControlOpenTypeCodec {
         if (response == null || !RESPONSE.equals(response.getCompositeType())) {
             throw new IllegalArgumentException("Unexpected private control response CompositeType");
         }
+        Object protocolVersion = response.get("protocolVersion");
+        if (!(protocolVersion instanceof Integer version)
+                || version != PrivateControlLocator.PROTOCOL_VERSION) {
+            throw new IllegalArgumentException("Unsupported private control response protocol");
+        }
         return new PrivateControlResponse(
                 (String) response.get("outcome"),
                 (String) response.get("attemptId"),

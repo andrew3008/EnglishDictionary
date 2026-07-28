@@ -26,10 +26,12 @@ public final class PrivateControlLocator {
         ObjectName marker = objectName(MARKER_NAME);
         ObjectName writer = objectName(WRITER_NAME);
         List<LocatedPrivateControl> matches = new ArrayList<>();
+        int markerCount = 0;
         for (MBeanServer server : MBeanServerFactory.findMBeanServer(null)) {
             if (!server.isRegistered(marker)) {
                 continue;
             }
+            markerCount++;
             try {
                 String protocol = (String) server.getAttribute(marker, "ProtocolId");
                 int version = (Integer) server.getAttribute(marker, "ProtocolVersion");
@@ -48,13 +50,15 @@ public final class PrivateControlLocator {
                     matches.add(new LocatedPrivateControl(server, writer, runtimeId));
                 }
             } catch (Exception ignored) {
-                // Несовместимый marker не является кандидатом и не ослабляет exactly-one выбор.
+                // Несовместимый marker проверяется после полного exactly-one поиска.
             }
         }
-        if (matches.size() != 1) {
+        if (markerCount == 0) {
+            throw new PrivateControlUnavailableException();
+        }
+        if (markerCount != 1 || matches.size() != 1) {
             throw new IllegalStateException(
-                    "Expected exactly one compatible private control plane, found "
-                            + matches.size());
+                    "Private control plane marker set violates the exactly-one compatible contract");
         }
         return matches.get(0);
     }
@@ -71,5 +75,15 @@ public final class PrivateControlLocator {
             MBeanServer server,
             ObjectName writerObjectName,
             String runtimeInstanceId) {
+    }
+
+    /**
+     * Ожидаемое отсутствие private control plane до готовности Controlled Agent.
+     */
+    public static final class PrivateControlUnavailableException extends RuntimeException {
+
+        public PrivateControlUnavailableException() {
+            super("Compatible private control plane is unavailable");
+        }
     }
 }

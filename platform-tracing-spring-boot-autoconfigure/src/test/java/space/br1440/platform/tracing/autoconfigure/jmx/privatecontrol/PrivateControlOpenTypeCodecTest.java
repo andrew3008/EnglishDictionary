@@ -1,12 +1,15 @@
 package space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
 import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
 
 import org.junit.jupiter.api.Test;
 
@@ -57,4 +60,31 @@ class PrivateControlOpenTypeCodecTest {
         assertThat(table.getTabularType().getIndexNames()).containsExactly("routePrefix");
     }
 
+    @Test
+    void rejectsUnsupportedResponseProtocolAsContractFailure() throws Exception {
+        PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
+        CompositeData valid = codec.encodeResponse(
+                new PrivateControlOpenTypeCodec.PrivateControlResponse(
+                        "APPLIED",
+                        UUID.randomUUID().toString(),
+                        UUID.randomUUID().toString(),
+                        8L,
+                        "a".repeat(64),
+                        "NONE",
+                        false,
+                        new String[0],
+                        new String[0]));
+        Map<String, Object> values = new HashMap<>();
+        for (String key : valid.getCompositeType().keySet()) {
+            values.put(key, valid.get(key));
+        }
+        values.put("protocolVersion", 2);
+        CompositeData incompatible = new CompositeDataSupport(
+                valid.getCompositeType(),
+                values);
+
+        assertThatThrownBy(() -> codec.decodeResponse(incompatible))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unsupported private control response protocol");
+    }
 }

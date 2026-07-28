@@ -7,6 +7,7 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -30,12 +31,48 @@ public class TracingPolicyAdaptersAutoConfiguration {
             tracingConfigurationAuthorityPosture(
                     TracingProperties properties,
                     Environment environment) {
-        return new TracingConfigurationAuthorityGuard().validate(
+        return TracingConfigurationAuthorityGuard.validate(
                 properties.getMode(),
                 properties.getConfiguration().getAuthority(),
                 environment.getProperty(PLATFORM_ENVIRONMENT),
-                properties.getActuator().isControlEnabled(),
                 properties.getActuator().isMutationEnabled());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AcceptedTracingPolicyReader.class)
+    @ConditionalOnProperty(
+            prefix = "platform.tracing",
+            name = "mode",
+            havingValue = "AGENT",
+            matchIfMissing = true)
+    AcceptedTracingPolicyReader acceptedTracingPolicyReader() {
+        return new PrivateControlAcceptedTracingPolicyReader();
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "platform.tracing",
+            name = "mode",
+            havingValue = "AGENT",
+            matchIfMissing = true)
+    TracingConfigurationReadiness tracingConfigurationReadiness(
+            TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision,
+            AcceptedTracingPolicyReader acceptedReader) {
+        TracingConfigurationReadiness readiness = new TracingConfigurationReadiness();
+        if (decision.authority() != TracingConfigurationAuthority.CONFIG_SERVER) {
+            readiness.recordAcceptedStateAvailable(acceptedReader.current());
+        }
+        return readiness;
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "platform.tracing",
+            name = "mode",
+            havingValue = "AGENT",
+            matchIfMissing = true)
+    TracingPolicyDeliveryDiagnostics tracingPolicyDeliveryDiagnostics() {
+        return new TracingPolicyDeliveryDiagnostics();
     }
 
     @Bean
@@ -54,29 +91,12 @@ public class TracingPolicyAdaptersAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(TracingPolicySnapshotClient.class)
     @ConditionalOnProperty(
             prefix = "platform.tracing.configuration",
             name = "authority",
             havingValue = "CONFIG_SERVER")
-    TracingConfigurationReadiness tracingConfigurationReadiness() {
-        return new TracingConfigurationReadiness();
-    }
-
-    @Bean
-    @ConditionalOnProperty(
-            prefix = "platform.tracing.configuration",
-            name = "authority",
-            havingValue = "CONFIG_SERVER")
-    TracingPolicyDeliveryDiagnostics tracingPolicyDeliveryDiagnostics() {
-        return new TracingPolicyDeliveryDiagnostics();
-    }
-
-    @Bean
-    @ConditionalOnProperty(
-            prefix = "platform.tracing.configuration",
-            name = "authority",
-            havingValue = "CONFIG_SERVER")
-    PrivateControlTracingPolicyClient configServerTracingPolicyClient(
+    TracingPolicySnapshotClient configServerTracingPolicyClient(
             TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision) {
         if (!decision.configServerDeliveryRequired()) {
             throw new IllegalStateException("Config Server delivery posture was not approved");
@@ -107,15 +127,16 @@ public class TracingPolicyAdaptersAutoConfiguration {
     ConfigServerTracingPolicyAdapter configServerTracingPolicyAdapter(
             ConfigurableEnvironment environment,
             ConfigServerPolicyManifestBuilder manifestBuilder,
-            PrivateControlTracingPolicyClient client,
+            AcceptedTracingPolicyReader acceptedReader,
+            TracingPolicySnapshotClient snapshotClient,
             TracingConfigurationReadiness readiness,
             TracingPolicyDeliveryDiagnostics diagnostics,
             ExecutorService tracingPolicyRefreshExecutor) {
         return new ConfigServerTracingPolicyAdapter(
                 environment,
                 manifestBuilder,
-                client,
-                client,
+                acceptedReader,
+                snapshotClient,
                 readiness,
                 diagnostics,
                 tracingPolicyRefreshExecutor);
@@ -129,7 +150,7 @@ public class TracingPolicyAdaptersAutoConfiguration {
             havingValue = "CONFIG_SERVER")
     SmartInitializingSingleton tracingPolicyInitialDelivery(
             ConfigServerTracingPolicyAdapter adapter) {
-        return adapter::applyInitial;
+        return () -> requireSuccessfulInitialDelivery(adapter.applyInitial());
     }
 
     @Bean(name = "tracingConfigurationHealthIndicator")
@@ -144,42 +165,17 @@ public class TracingPolicyAdaptersAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(TracingPolicySnapshotClient.class)
     @ConditionalOnProperty(
             prefix = "platform.tracing.configuration",
             name = "authority",
             havingValue = "ACTUATOR")
-    PrivateControlTracingPolicyClient actuatorTracingPolicyClient(
+    TracingPolicySnapshotClient actuatorTracingPolicyClient(
             TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision) {
         if (!decision.actuatorWriteSurfaceAllowed()) {
             throw new IllegalStateException("Actuator write posture was not approved");
         }
-        PrivateControlTracingPolicyClient client = new PrivateControlTracingPolicyClient();
-        client.verifyReady();
-        return client;
-    }
-
-    @Bean
-    @ConditionalOnProperty(
-            prefix = "platform.tracing.configuration",
-            name = "authority",
-            havingValue = "ACTUATOR")
-    TracingPolicyDeliveryDiagnostics actuatorTracingPolicyDeliveryDiagnostics() {
-        return new TracingPolicyDeliveryDiagnostics();
-    }
-
-    @Bean
-    @ConditionalOnProperty(
-            prefix = "platform.tracing.configuration",
-            name = "authority",
-            havingValue = "ACTUATOR")
-    TracingConfigurationReadiness actuatorTracingConfigurationReadiness() {
-        TracingConfigurationReadiness readiness = new TracingConfigurationReadiness();
-        readiness.recordInitial(new TracingPolicyDeliveryResult(
-                TracingPolicyDeliveryOutcome.UNCHANGED,
-                "",
-                "CONTROL_READY",
-                0L));
-        return readiness;
+        return new PrivateControlTracingPolicyClient();
     }
 
     @Bean
@@ -188,51 +184,40 @@ public class TracingPolicyAdaptersAutoConfiguration {
             name = "authority",
             havingValue = "ACTUATOR")
     SpringActuatorTracingPolicyAdapter springActuatorTracingPolicyAdapter(
-            PrivateControlTracingPolicyClient client,
+            AcceptedTracingPolicyReader acceptedReader,
+            TracingPolicySnapshotClient snapshotClient,
             TracingPolicyDeliveryDiagnostics diagnostics) {
-        return new SpringActuatorTracingPolicyAdapter(client, client, diagnostics);
-    }
-
-    @Bean
-    @ConditionalOnClass(name = "org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint")
-    @ConditionalOnProperty(
-            prefix = "platform.tracing.configuration",
-            name = "authority",
-            havingValue = "ACTUATOR")
-    TracingActuatorControlEndpoint tracingActuatorControlEndpoint(
-            SpringActuatorTracingPolicyAdapter adapter) {
-        return new TracingActuatorControlEndpoint(adapter);
-    }
-
-    @Bean
-    @ConditionalOnProperty(
-            prefix = "platform.tracing.configuration",
-            name = "authority",
-            havingValue = "CONFIG_SERVER")
-    TracingConfigurationReadModel configServerTracingConfigurationReadModel(
-            PrivateControlTracingPolicyClient client,
-            TracingConfigurationReadiness readiness,
-            TracingPolicyDeliveryDiagnostics diagnostics) {
-        return new TracingConfigurationReadModel(
-                TracingConfigurationAuthority.CONFIG_SERVER,
-                client,
-                readiness,
+        return new SpringActuatorTracingPolicyAdapter(
+                acceptedReader,
+                snapshotClient,
                 diagnostics);
     }
 
     @Bean
     @ConditionalOnProperty(
-            prefix = "platform.tracing.configuration",
-            name = "authority",
-            havingValue = "ACTUATOR")
-    TracingConfigurationReadModel actuatorTracingConfigurationReadModel(
-            PrivateControlTracingPolicyClient client,
+            prefix = "platform.tracing",
+            name = "mode",
+            havingValue = "AGENT",
+            matchIfMissing = true)
+    TracingConfigurationReadModel tracingConfigurationReadModel(
+            TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision,
+            AcceptedTracingPolicyReader acceptedReader,
             TracingConfigurationReadiness readiness,
             TracingPolicyDeliveryDiagnostics diagnostics) {
         return new TracingConfigurationReadModel(
-                TracingConfigurationAuthority.ACTUATOR,
-                client,
+                decision.authority(),
+                acceptedReader,
                 readiness,
                 diagnostics);
+    }
+
+    static void requireSuccessfulInitialDelivery(
+            TracingPolicyDeliveryResult result) {
+        if (result.outcome() != TracingPolicyDeliveryOutcome.APPLIED
+                && result.outcome() != TracingPolicyDeliveryOutcome.UNCHANGED) {
+            throw new IllegalStateException(
+                    "Initial Config Server tracing policy delivery failed: "
+                            + result.messageCode());
+        }
     }
 }

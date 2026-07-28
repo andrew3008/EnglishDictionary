@@ -6,11 +6,13 @@ import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 
 final class TracingConfigurationAuthorityGuard {
 
-    AuthorityPostureDecision validate(
+    private TracingConfigurationAuthorityGuard() {
+    }
+
+    static AuthorityPostureDecision validate(
             SdkMode mode,
             TracingConfigurationAuthority authority,
             String platformEnvironment,
-            boolean actuatorControlEnabled,
             boolean legacyActuatorMutationEnabled) {
         Objects.requireNonNull(mode, "mode");
         Objects.requireNonNull(authority, "authority");
@@ -19,9 +21,6 @@ final class TracingConfigurationAuthorityGuard {
         if (mode == SdkMode.DISABLED) {
             if (authority != TracingConfigurationAuthority.HELM) {
                 throw invalid(mode, authority, "DISABLED допускает только HELM authority");
-            }
-            if (actuatorControlEnabled) {
-                throw invalid(mode, authority, "actuator.control-enabled требует ACTUATOR authority");
             }
             return new AuthorityPostureDecision(mode, authority, environment, false, false);
         }
@@ -33,16 +32,10 @@ final class TracingConfigurationAuthorityGuard {
             if (environment != PlatformEnvironment.LOCAL) {
                 throw invalid(mode, authority, "ACTUATOR разрешён только при platform.environment=LOCAL");
             }
-            if (!actuatorControlEnabled) {
-                throw invalid(mode, authority, "ACTUATOR требует actuator.control-enabled=true");
-            }
             if (legacyActuatorMutationEnabled) {
                 throw invalid(mode, authority, "legacy Actuator mutation и ACTUATOR несовместимы");
             }
             return new AuthorityPostureDecision(mode, authority, environment, false, true);
-        }
-        if (actuatorControlEnabled) {
-            throw invalid(mode, authority, "actuator.control-enabled требует ACTUATOR authority");
         }
         return new AuthorityPostureDecision(
                 mode,

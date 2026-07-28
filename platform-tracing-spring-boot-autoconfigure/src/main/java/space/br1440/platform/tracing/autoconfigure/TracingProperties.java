@@ -228,9 +228,6 @@ public class TracingProperties {
     public static class Actuator {
         /** Enables {@code POST /actuator/tracing/{property}/{value}} mutation operations. */
         private boolean mutationEnabled = false;
-
-        /** Явно разрешает типизированную поверхность управления Category A через Actuator. */
-        private boolean controlEnabled = false;
     }
 
     @Getter

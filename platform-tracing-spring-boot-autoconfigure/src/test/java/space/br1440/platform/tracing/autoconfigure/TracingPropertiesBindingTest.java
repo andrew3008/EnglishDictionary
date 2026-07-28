@@ -186,26 +186,22 @@ class TracingPropertiesBindingTest {
     }
 
     @Test
-    void defaultsConfigurationAuthorityToHelmAndActuatorControlToDisabled() {
+    void defaultsConfigurationAuthorityToHelm() {
         contextRunner.run(ctx -> {
             TracingProperties properties = ctx.getBean(TracingProperties.class);
             assertThat(properties.getConfiguration().getAuthority())
                     .isEqualTo(TracingConfigurationAuthority.HELM);
-            assertThat(properties.getActuator().isControlEnabled()).isFalse();
         });
     }
 
     @Test
-    void bindsActuatorPostureProperties() {
+    void bindsActuatorAuthority() {
         contextRunner
-                .withPropertyValues(
-                        "platform.tracing.configuration.authority=actuator",
-                        "platform.tracing.actuator.control-enabled=true")
+                .withPropertyValues("platform.tracing.configuration.authority=actuator")
                 .run(ctx -> {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
                     assertThat(properties.getConfiguration().getAuthority())
                             .isEqualTo(TracingConfigurationAuthority.ACTUATOR);
-                    assertThat(properties.getActuator().isControlEnabled()).isTrue();
                 });
     }
 

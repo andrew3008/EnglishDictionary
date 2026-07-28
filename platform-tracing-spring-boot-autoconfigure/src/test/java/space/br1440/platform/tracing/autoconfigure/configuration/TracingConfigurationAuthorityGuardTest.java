@@ -9,9 +9,6 @@ import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 
 class TracingConfigurationAuthorityGuardTest {
 
-    private final TracingConfigurationAuthorityGuard guard =
-            new TracingConfigurationAuthorityGuard();
-
     @Test
     void exposesExactTechnologicalAuthorities() {
         assertThat(TracingConfigurationAuthority.values())
@@ -23,11 +20,11 @@ class TracingConfigurationAuthorityGuardTest {
 
     @Test
     void permitsActuatorOnlyForExplicitLocalPosture() {
-        TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision = guard.validate(
+        TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision =
+                TracingConfigurationAuthorityGuard.validate(
                 SdkMode.AGENT,
                 TracingConfigurationAuthority.ACTUATOR,
                 "LOCAL",
-                true,
                 false);
 
         assertThat(decision.actuatorWriteSurfaceAllowed()).isTrue();
@@ -36,19 +33,17 @@ class TracingConfigurationAuthorityGuardTest {
 
     @Test
     void rejectsActuatorForSharedAndProductionPostures() {
-        assertThatThrownBy(() -> guard.validate(
+        assertThatThrownBy(() -> TracingConfigurationAuthorityGuard.validate(
                 SdkMode.AGENT,
                 TracingConfigurationAuthority.ACTUATOR,
                 "SHARED",
-                true,
                 false))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("platform.environment=LOCAL");
-        assertThatThrownBy(() -> guard.validate(
+        assertThatThrownBy(() -> TracingConfigurationAuthorityGuard.validate(
                 SdkMode.AGENT,
                 TracingConfigurationAuthority.ACTUATOR,
                 "PRODUCTION",
-                true,
                 false))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("platform.environment=LOCAL");
@@ -56,35 +51,36 @@ class TracingConfigurationAuthorityGuardTest {
 
     @Test
     void disabledModeAcceptsOnlyHelmAndNeverDiscoversWriter() {
-        TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision = guard.validate(
+        TracingConfigurationAuthorityGuard.AuthorityPostureDecision decision =
+                TracingConfigurationAuthorityGuard.validate(
                 SdkMode.DISABLED,
                 TracingConfigurationAuthority.HELM,
                 null,
-                false,
                 false);
 
         assertThat(decision.actuatorWriteSurfaceAllowed()).isFalse();
         assertThat(decision.configServerDeliveryRequired()).isFalse();
-        assertThatThrownBy(() -> guard.validate(
+        assertThatThrownBy(() -> TracingConfigurationAuthorityGuard.validate(
                 SdkMode.DISABLED,
                 TracingConfigurationAuthority.CONFIG_SERVER,
                 "SHARED",
-                false,
                 false))
                 .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> guard.validate(
+        assertThatThrownBy(() -> TracingConfigurationAuthorityGuard.validate(
                 SdkMode.DISABLED,
                 TracingConfigurationAuthority.ACTUATOR,
                 "LOCAL",
-                true,
                 false))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void springProfileNamesDoNotAffectTrustedPosture() {
-        assertThat(PlatformEnvironment.from("dev")).isEqualTo(PlatformEnvironment.UNKNOWN);
-        assertThat(PlatformEnvironment.from("arbitrary-profile"))
-                .isEqualTo(PlatformEnvironment.UNKNOWN);
+    void unknownPlatformEnvironmentFailsFast() {
+        assertThatThrownBy(() -> PlatformEnvironment.from("PRODCUTION"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported platform.environment");
+        assertThatThrownBy(() -> PlatformEnvironment.from("dev"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(PlatformEnvironment.from(null)).isEqualTo(PlatformEnvironment.UNKNOWN);
     }
 }

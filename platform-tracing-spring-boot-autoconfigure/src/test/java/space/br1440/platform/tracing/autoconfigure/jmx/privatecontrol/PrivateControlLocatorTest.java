@@ -40,8 +40,8 @@ class PrivateControlLocatorTest {
     @Test
     void rejectsMissingCompatiblePrivateControlPlane() {
         assertThatThrownBy(() -> new PrivateControlLocator().locate())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Expected exactly one compatible private control plane, found 0");
+                .isInstanceOf(PrivateControlLocator.PrivateControlUnavailableException.class)
+                .hasMessage("Compatible private control plane is unavailable");
     }
 
     @Test
@@ -51,7 +51,9 @@ class PrivateControlLocatorTest {
         try {
             assertThatThrownBy(() -> new PrivateControlLocator().locate())
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessage("Expected exactly one compatible private control plane, found 2");
+                    .hasMessage(
+                            "Private control plane marker set violates the exactly-one "
+                                    + "compatible contract");
         } finally {
             MBeanServerFactory.releaseMBeanServer(second);
             MBeanServerFactory.releaseMBeanServer(first);

@@ -77,7 +77,7 @@ final class ConfigServerTracingPolicyAdapter
         AcceptedTracingPolicyView accepted;
         try {
             accepted = acceptedReader.current();
-        } catch (RuntimeException exception) {
+        } catch (AcceptedTracingPolicyUnavailableException exception) {
             return recordFailure("ACCEPTED_STATE_UNAVAILABLE");
         }
 
@@ -119,7 +119,7 @@ final class ConfigServerTracingPolicyAdapter
     private long currentSequence() {
         try {
             return acceptedReader.current().acceptedSequence();
-        } catch (RuntimeException exception) {
+        } catch (AcceptedTracingPolicyUnavailableException exception) {
             return 0L;
         }
     }

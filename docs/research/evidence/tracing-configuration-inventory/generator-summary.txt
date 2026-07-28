@@ -1,4 +1,4 @@
-kind.CONFIG_PROPERTY=80
+kind.CONFIG_PROPERTY=79
 kind.DOCUMENTED_ONLY_KEY=1
 kind.ENV_VARIABLE=29
 kind.FIXTURE_ONLY_KEY=8
@@ -6,7 +6,7 @@ kind.IMPORTED_PLATFORM_KEY=1
 kind.RELAXED_BINDING_ALIAS=1
 kind.RESOURCE_ATTRIBUTE=1
 kind.STANDARD_OTEL_KEY=20
-configProperty.platformTracing=80
+configProperty.platformTracing=79
 exactDuplicateNames=17
 typeDriftGroups=2
 defaultDriftGroups=2

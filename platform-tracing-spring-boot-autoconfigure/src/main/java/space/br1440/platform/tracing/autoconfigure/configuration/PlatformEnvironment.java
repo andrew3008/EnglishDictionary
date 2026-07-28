@@ -15,7 +15,9 @@ enum PlatformEnvironment {
         try {
             return valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
-            return UNKNOWN;
+            throw new IllegalArgumentException(
+                    "Unsupported platform.environment value: " + value,
+                    exception);
         }
     }
 }
