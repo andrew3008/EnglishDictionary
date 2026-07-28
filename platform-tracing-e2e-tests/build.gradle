@@ -324,6 +324,11 @@ test {
     // По умолчанию e2e-тесты исключаются из обычного gradle test, чтобы не замедлять CI без Docker.
     // Запускаются через `./gradlew :platform-tracing-e2e-tests:test -PrunE2e`.
     onlyIf { project.hasProperty('runE2e') }
+    // Private MBeanServer isolation requires private.mbeanserver.* system properties and
+    // fixture JARs owned by privateMBeanServerTest / privateMBeanServerVerify.
+    filter {
+        excludeTestsMatching 'space.br1440.platform.tracing.e2e.jmx.PrivateMBeanServerIsolationE2ETest'
+    }
     doFirst {
         systemProperty 'otel.javaagent.jar', configurations.otelJavaAgent.singleFile.absolutePath
         systemProperty 'smoke.controlled.agent.jar',

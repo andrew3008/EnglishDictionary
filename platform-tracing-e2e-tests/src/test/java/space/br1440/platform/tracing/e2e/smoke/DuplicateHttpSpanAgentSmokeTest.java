@@ -106,7 +106,7 @@ class DuplicateHttpSpanAgentSmokeTest {
 
         assertThat(output)
                 .as("Намеренно сломанная конфигурация должна логировать WARN о дублировании HTTP-span'ов")
-                .contains("дублирование HTTP-span")
+                .contains("HTTP spans may be duplicated")
                 .contains("suppress-micrometer-tracing=false");
 
         // Best-effort: HTTP span от Agent должен появиться в Jaeger (pipeline жив).
@@ -145,7 +145,7 @@ class DuplicateHttpSpanAgentSmokeTest {
 
         assertThat(output)
                 .as("Штатная prod-конфигурация (suppress=true) не должна WARN'ить о дублировании")
-                .doesNotContain("дублирование HTTP-span");
+                .doesNotContain("HTTP spans may be duplicated");
     }
 
     private static int freePort() throws Exception {
