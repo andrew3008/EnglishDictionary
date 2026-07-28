@@ -24,6 +24,8 @@ public final class PlatformTracingJmxObjectNames {
             "space.br1440.platform.tracing:type=Diagnostics,name=PlatformDiagnosticsControl";
     public static final String EXTENSION_READINESS_OBJECT_NAME_STR =
             "space.br1440.platform.tracing:type=Readiness,name=PlatformExtension";
+    public static final String CONTROL_PROTOCOL_OBJECT_NAME_STR =
+            "space.br1440.platform.tracing:type=Control,name=PlatformControlProtocol";
 
     public static final ObjectName SAMPLING;
     public static final ObjectName SCRUBBING;
@@ -32,6 +34,7 @@ public final class PlatformTracingJmxObjectNames {
     public static final ObjectName PROCESSOR_METRICS;
     public static final ObjectName DIAGNOSTICS;
     public static final ObjectName EXTENSION_READINESS;
+    public static final ObjectName CONTROL;
 
     static {
         try {
@@ -42,6 +45,7 @@ public final class PlatformTracingJmxObjectNames {
             PROCESSOR_METRICS = ObjectName.getInstance(PROCESSOR_METRICS_OBJECT_NAME_STR);
             DIAGNOSTICS = ObjectName.getInstance(DIAGNOSTICS_OBJECT_NAME_STR);
             EXTENSION_READINESS = ObjectName.getInstance(EXTENSION_READINESS_OBJECT_NAME_STR);
+            CONTROL = ObjectName.getInstance(CONTROL_PROTOCOL_OBJECT_NAME_STR);
         } catch (MalformedObjectNameException e) {
             throw new ExceptionInInitializerError(e);
         }

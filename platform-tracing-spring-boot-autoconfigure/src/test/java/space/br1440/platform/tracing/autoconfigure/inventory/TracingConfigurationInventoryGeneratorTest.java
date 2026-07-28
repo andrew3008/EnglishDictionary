@@ -1173,6 +1173,8 @@ class TracingConfigurationInventoryGeneratorTest {
             case "thread-pool-task-executor" ->
                     "ThreadPoolTaskExecutorContextPropagationBeanPostProcessor";
             case "actuator" -> "TracingActuatorEndpoint mutation gate";
+            case "configuration", "dev-control" ->
+                    "TracingConfigurationAuthorityGuard";
             case "mode" -> "TracingCoreAutoConfiguration";
             case "log-level" -> "RuntimeConfigApplier -> PlatformLogControl";
             default -> "NO_RUNTIME_CONSUMER_FOUND";

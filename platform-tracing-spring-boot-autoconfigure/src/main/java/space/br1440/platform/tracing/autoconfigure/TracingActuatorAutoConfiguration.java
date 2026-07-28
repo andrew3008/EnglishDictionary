@@ -12,8 +12,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
+
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationReadModel;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
@@ -47,9 +49,12 @@ public class TracingActuatorAutoConfiguration {
                                                             TracingProperties properties,
                                                             PlatformTracingJmxClient platformTracingJmxClient,
                                                             ObjectProvider<SdkModeDiagnostics> sdkModeDiagnostics,
+                                                            ObjectProvider<TracingConfigurationReadModel>
+                                                                    tracingConfigurationReadModel,
                                                             SpanFactoryDiagnostics spanFactoryDiagnostics,
                                                             Environment environment) {
         return new TracingActuatorEndpoint(traceOperations, properties, platformTracingJmxClient,
-                sdkModeDiagnostics.getIfAvailable(), spanFactoryDiagnostics, environment);
+                sdkModeDiagnostics.getIfAvailable(), spanFactoryDiagnostics, environment,
+                tracingConfigurationReadModel.getIfAvailable());
     }
 }

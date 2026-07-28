@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 
@@ -49,6 +50,7 @@ public class TracingProperties {
     private final Kafka kafka = new Kafka();
     private final ThreadPoolTaskExecutorPropagation threadPoolTaskExecutor = new ThreadPoolTaskExecutorPropagation();
     private final Actuator actuator = new Actuator();
+    private final Configuration configuration = new Configuration();
 
     @Getter
     @Setter
@@ -226,5 +228,17 @@ public class TracingProperties {
     public static class Actuator {
         /** Enables {@code POST /actuator/tracing/{property}/{value}} mutation operations. */
         private boolean mutationEnabled = false;
+
+        /** Явно разрешает типизированную поверхность управления Category A через Actuator. */
+        private boolean controlEnabled = false;
     }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    public static class Configuration {
+        /** Единственный источник управления конфигурацией трассировки для текущего runtime. */
+        private TracingConfigurationAuthority authority = TracingConfigurationAuthority.HELM;
+    }
+
 }

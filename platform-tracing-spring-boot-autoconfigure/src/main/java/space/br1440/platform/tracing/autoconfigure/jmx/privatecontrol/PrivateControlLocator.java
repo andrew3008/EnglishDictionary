@@ -1,25 +1,28 @@
 package space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol;
 
-import javax.management.MBeanServer;
-import javax.management.MBeanServerFactory;
-import javax.management.ObjectName;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+import javax.management.ObjectName;
+
 /**
  * Строгий application-side locator process-local control plane.
+ *
+ * <p>Internal delivery seam for Config Server / DEV adapters. Not a supported application API.
  */
-final class PrivateControlLocator {
+public final class PrivateControlLocator {
 
-    static final String PROTOCOL_ID = "platform-tracing-private-control";
-    static final int PROTOCOL_VERSION = 1;
-    static final String MARKER_SIGNATURE = "PLATFORM_PRIVATE_CONTROL_V1";
-    static final String MARKER_NAME =
+    public static final String PROTOCOL_ID = "platform-tracing-private-control";
+    public static final int PROTOCOL_VERSION = 1;
+    public static final String MARKER_SIGNATURE = "PLATFORM_PRIVATE_CONTROL_V1";
+    public static final String MARKER_NAME =
             "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane";
-    static final String WRITER_NAME =
+    public static final String WRITER_NAME =
             "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control";
 
-    LocatedPrivateControl locate() {
+    public LocatedPrivateControl locate() {
         ObjectName marker = objectName(MARKER_NAME);
         ObjectName writer = objectName(WRITER_NAME);
         List<LocatedPrivateControl> matches = new ArrayList<>();
@@ -64,7 +67,7 @@ final class PrivateControlLocator {
         }
     }
 
-    record LocatedPrivateControl(
+    public record LocatedPrivateControl(
             MBeanServer server,
             ObjectName writerObjectName,
             String runtimeInstanceId) {

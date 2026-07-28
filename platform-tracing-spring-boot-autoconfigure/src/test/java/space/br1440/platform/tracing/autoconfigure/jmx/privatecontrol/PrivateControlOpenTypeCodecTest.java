@@ -2,12 +2,13 @@ package space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
-
-import javax.management.openmbean.CompositeData;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import javax.management.openmbean.CompositeData;
+
+import org.junit.jupiter.api.Test;
 
 class PrivateControlOpenTypeCodecTest {
 
@@ -55,4 +56,5 @@ class PrivateControlOpenTypeCodecTest {
         assertThat(table.size()).isEqualTo(2);
         assertThat(table.getTabularType().getIndexNames()).containsExactly("routePrefix");
     }
+
 }

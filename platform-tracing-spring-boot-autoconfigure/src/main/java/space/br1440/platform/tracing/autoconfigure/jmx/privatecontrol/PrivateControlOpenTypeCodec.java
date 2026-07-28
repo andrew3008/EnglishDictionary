@@ -1,5 +1,11 @@
 package space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+
 import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
@@ -9,16 +15,13 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularDataSupport;
 import javax.management.openmbean.TabularType;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
 
 /**
  * Независимый Spring-side codec утверждённого wire contract v1.
+ *
+ * <p>Internal delivery seam for Config Server / DEV adapters. Not a supported application API.
  */
-final class PrivateControlOpenTypeCodec {
+public final class PrivateControlOpenTypeCodec {
 
     private static final String[] ROUTE_KEYS = {"ratio", "routePrefix"};
     private static final CompositeType ROUTE_ROW = composite(
@@ -104,8 +107,7 @@ final class PrivateControlOpenTypeCodec {
                     SimpleType.STRING,
                     arrayOfStrings()
             });
-
-    CompositeData encodeRequest(PrivateControlSnapshot snapshot) {
+    public CompositeData encodeRequest(PrivateControlSnapshot snapshot) {
         try {
             TabularDataSupport routes = new TabularDataSupport(ROUTES);
             for (Map.Entry<String, Double> route : new TreeMap<>(
@@ -147,7 +149,7 @@ final class PrivateControlOpenTypeCodec {
         }
     }
 
-    PrivateControlResponse decodeResponse(CompositeData response) {
+    public PrivateControlResponse decodeResponse(CompositeData response) {
         if (response == null || !RESPONSE.equals(response.getCompositeType())) {
             throw new IllegalArgumentException("Unexpected private control response CompositeType");
         }
@@ -163,7 +165,30 @@ final class PrivateControlOpenTypeCodec {
                 (String[]) response.get("violationCodes"));
     }
 
-    record PrivateControlSnapshot(
+    public CompositeData encodeResponse(PrivateControlResponse response) {
+        Objects.requireNonNull(response, "response");
+        try {
+            return new CompositeDataSupport(
+                    RESPONSE,
+                    RESPONSE_KEYS,
+                    new Object[]{
+                            response.acceptedSequence(),
+                            response.attemptId(),
+                            response.messageCode(),
+                            response.outcome(),
+                            response.payloadDigest(),
+                            PrivateControlLocator.PROTOCOL_VERSION,
+                            response.restartRequired(),
+                            response.restartRequiredKeys(),
+                            response.runtimeInstanceId(),
+                            response.violationCodes()
+                    });
+        } catch (OpenDataException exception) {
+            throw new IllegalArgumentException("Cannot encode private control response", exception);
+        }
+    }
+
+    public record PrivateControlSnapshot(
             String expectedRuntimeInstanceId,
             long expectedAcceptedSequence,
             String attemptId,
@@ -180,7 +205,7 @@ final class PrivateControlOpenTypeCodec {
             boolean traceControlHeadersEnabled,
             String diagnosticsLogLevel) {
 
-        PrivateControlSnapshot {
+        public PrivateControlSnapshot {
             samplingRouteRatios = Collections.unmodifiableMap(
                     new LinkedHashMap<>(Objects.requireNonNull(
                             samplingRouteRatios,
@@ -188,7 +213,7 @@ final class PrivateControlOpenTypeCodec {
         }
     }
 
-    record PrivateControlResponse(
+    public record PrivateControlResponse(
             String outcome,
             String attemptId,
             String runtimeInstanceId,
@@ -199,7 +224,7 @@ final class PrivateControlOpenTypeCodec {
             String[] restartRequiredKeys,
             String[] violationCodes) {
 
-        PrivateControlResponse {
+        public PrivateControlResponse {
             restartRequiredKeys = restartRequiredKeys.clone();
             violationCodes = violationCodes.clone();
         }

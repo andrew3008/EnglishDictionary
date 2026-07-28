@@ -1,14 +1,15 @@
 package space.br1440.platform.tracing.autoconfigure;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Проверяет корректный bind вложенных свойств {@link TracingProperties} из {@code application.properties}.
@@ -181,6 +182,30 @@ class TracingPropertiesBindingTest {
                 .run(ctx -> {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
                     assertThat(properties.getActuator().isMutationEnabled()).isTrue();
+                });
+    }
+
+    @Test
+    void defaultsConfigurationAuthorityToHelmAndActuatorControlToDisabled() {
+        contextRunner.run(ctx -> {
+            TracingProperties properties = ctx.getBean(TracingProperties.class);
+            assertThat(properties.getConfiguration().getAuthority())
+                    .isEqualTo(TracingConfigurationAuthority.HELM);
+            assertThat(properties.getActuator().isControlEnabled()).isFalse();
+        });
+    }
+
+    @Test
+    void bindsActuatorPostureProperties() {
+        contextRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=actuator",
+                        "platform.tracing.actuator.control-enabled=true")
+                .run(ctx -> {
+                    TracingProperties properties = ctx.getBean(TracingProperties.class);
+                    assertThat(properties.getConfiguration().getAuthority())
+                            .isEqualTo(TracingConfigurationAuthority.ACTUATOR);
+                    assertThat(properties.getActuator().isControlEnabled()).isTrue();
                 });
     }
 

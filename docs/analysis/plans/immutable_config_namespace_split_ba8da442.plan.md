@@ -125,35 +125,35 @@ todos:
     content: "P3 TEST: доказать behavior parity, memory visibility, zero allocation и P5/JMH budgets"
     status: pending
   - id: p4-authority-posture-guard
-    content: "P4 ADD: реализовать mode/authority posture guard и fail-fast matrix"
-    status: pending
+    content: "P4 COMPLETED: technological authority HELM/CONFIG_SERVER/ACTUATOR отделён от platform.environment; fail-closed matrix реализована"
+    status: completed
   - id: p4-config-server-classifier
-    content: "P4 ADD: реализовать per-key Config Server provenance classifier"
-    status: pending
+    content: "P4 COMPLETED: реализован per-key Config Server provenance classifier без local override и HELM fallback"
+    status: completed
   - id: p4-complete-manifest-builder
-    content: "P4 ADD: реализовать complete manifest builder для восьми Category A leaves"
-    status: pending
+    content: "P4 COMPLETED: complete manifest содержит ровно восемь Category A leaves"
+    status: completed
   - id: p4-config-server-bridge
-    content: "P4 ADD: реализовать Config Server bridge через private aggregate writer"
-    status: pending
+    content: "P4 COMPLETED: Config Server adapter использует общий TracingPolicySnapshotClient и private applySnapshot; activation отложена до P6 по C-05"
+    status: completed
   - id: p4-refresh-coalescer
-    content: "P4 ADD: реализовать generation/dirty single-worker coalescing"
-    status: pending
+    content: "P4 COMPLETED: generation/dirty single-worker coalescing сохраняет final refresh"
+    status: completed
   - id: p4-stale-retry-policy
-    content: "P4 ADD: реализовать один bounded full rebuild/retry только после STALE"
-    status: pending
+    content: "P4 COMPLETED: Config Server выполняет один bounded full rebuild/retry только после STALE"
+    status: completed
   - id: p4-dev-jmx-endpoint
-    content: "P4 ADD: реализовать typed DEV_ACTUATOR JMX endpoint для восьми Category A leaves"
-    status: pending
+    content: "P4 COMPLETED: один web-only namespace tracingControl содержит восемь typed ACTUATOR operations; private JMX остаётся внутренней delivery boundary"
+    status: completed
   - id: p4-dev-command-service
-    content: "P4 ADD: реализовать read-copy-change-validate-full-snapshot command service без STALE retry"
-    status: pending
+    content: "P4 COMPLETED: SpringActuatorTracingPolicyAdapter выполняет read-copy-one-leaf-change-complete-snapshot без command service и STALE retry"
+    status: completed
   - id: p4-application-readiness
-    content: "P4 ADD: реализовать application tracing-configuration readiness отдельно от Agent readiness"
-    status: pending
+    content: "P4 COMPLETED: application tracing-configuration readiness отделён от Agent readiness; только initial APPLIED/UNCHANGED даёт READY, initial failure блокирует readiness, runtime refresh не переписывает initial gate"
+    status: completed
   - id: p4-actuator-read-model
-    content: "P4 REWRITE: сделать Actuator tracing endpoint read-only и secret-safe"
-    status: pending
+    content: "P4 COMPLETED: secret-safe configuration projection встроена в canonical tracing endpoint и зависит только от AcceptedTracingPolicyReader; activation и legacy cutover остаются P6"
+    status: completed
   - id: p5-complete-manifest-tests
     content: "P5 TEST: доказать initial missing-key readiness block и runtime missing-key REJECTED с LKG"
     status: pending

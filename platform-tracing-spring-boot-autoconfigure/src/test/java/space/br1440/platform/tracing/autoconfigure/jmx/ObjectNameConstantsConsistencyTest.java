@@ -38,7 +38,7 @@ class ObjectNameConstantsConsistencyTest {
                 .isEqualTo(expectedDuplicated);
         assertThat(missing)
                 .as("Намеренно не продублированные Agent ObjectName")
-                .containsExactly("CONTROL_PROTOCOL_OBJECT_NAME_STR");
+                .isEmpty();
         assertThat(extra)
                 .as("Spring не должен объявлять неизвестные Agent стороне ObjectName")
                 .isEmpty();
