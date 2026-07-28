@@ -6,11 +6,12 @@
 | Repository | `E:\Platform_Traces`, branch `refactor/cursor-rules` |
 | HEAD | `6909f44a1d9957a488c3e144b6f1e4949752aef5` |
 | Toolchain | JDK 21.0.6+8-LTS-188 HotSpot, Gradle 8.14, Windows 10 amd64 |
-| Production code changed | **NO** |
+| Production Java changed | **NO** |
+| Production BOM changed | **YES — approved E6 alignment** |
 | Implementation GO | `NOT_GRANTED` |
-| Overall result | **PASS** |
+| Overall result | **PASS — dependency baseline and refresh-delivery contract approved** |
 
-E6 selects and proves the production dependency and refresh-delivery contract required before E8. It does not implement the Config Server bridge, change the published BOM, or start P1.
+E6 selects and proves the production dependency baseline and refresh-delivery contract required before E8. This corrective evidence applies the approved BOM alignment but does not implement the Config Server bridge or start P1.
 
 Prior gate evidence: E3 closed at commits `fdf81df4daa764e2310f10586b29285491788fd4` (S-01 spike) and `6909f44a1d9957a488c3e144b6f1e4949752aef5` (corrective evidence pass), identified by subject `test(concurrency): prove accepted policy state primitive`.
 
@@ -18,7 +19,7 @@ Prior gate evidence: E3 closed at commits `fdf81df4daa764e2310f10586b29285491788
 
 ## 1. Executive verdict
 
-**Verdict: `APPROVE_BOOT_CLOUD_BASELINE`**
+**Verdict: `APPROVE_BOOT_CLOUD_BASELINE_AND_REFRESH_DELIVERY_CONTRACT`**
 
 **Selected production stack:**
 
@@ -30,10 +31,14 @@ Prior gate evidence: E3 closed at commits `fdf81df4daa764e2310f10586b29285491788
 | spring-cloud-context | **4.3.0** |
 | spring-cloud-config-client | **4.3.0** |
 | spring-cloud-config-server | **4.3.0** |
+| spring-cloud-bus | **4.3.0** |
+| spring-cloud-stream / Kafka binder | **4.3.0** |
+| spring-kafka / kafka-clients | **3.3.9 / 3.9.1** |
+| spring-integration-core | **6.5.1** |
 
 **Selected refresh fan-out:** Spring Cloud Config Server Monitor/webhook → **Spring Cloud Bus (Kafka binder)** → Config Client `ContextRefresher.refresh()` → **`EnvironmentChangeEvent`** → tracing bridge (complete snapshot rebuild only).
 
-**E6 recommendation:** `READY_TO_CLOSE_E6` (committee/plan owner closes; this spike does not close E6 autonomously).
+**E6 recommendation:** `READY_TO_CLOSE_E6`.
 
 Weighted score: **Candidate A 94.6** vs Candidate B 90.2. Candidate A wins on corporate baseline alignment (`gradle.properties` / `SUPPORTED.md` validate **3.5.5**) while sharing the same official Northfields train as B.
 
@@ -41,7 +46,7 @@ Weighted score: **Candidate A 94.6** vs Candidate B 90.2. Candidate A wins on co
 
 ## 2. Gate E6 recommendation
 
-All E6 closure criteria are met by executed evidence:
+Repository-controlled dependency criteria are met by executed evidence:
 
 - exact Boot and Cloud versions selected;
 - official compatibility confirmed ([spring.io/projects/spring-cloud](https://spring.io/projects/spring-cloud) — 2025.0.x ↔ Boot 3.5.x);
@@ -50,10 +55,15 @@ All E6 closure criteria are met by executed evidence:
 - no Config Client leakage via standard starters;
 - no Agent extension leakage;
 - S-02 **PASS** on approved stack (Boot 3.5.5 + 2025.0.0);
-- refresh fan-out selected with explicit owners;
-- no custom polling; no application HTTP mutation;
+- exact Config Server and Config Client Bus dependency graphs pass;
+- no custom polling;
 - migration and rollback units defined;
-- production code unchanged.
+- production Java unchanged.
+
+The Platform Tracing Architecture Committee approved the complete corporate Kafka and Config
+Server `/monitor` hardening profile in `corporate-bus-readiness.json` on 2026-07-28. This closes
+the E6 design blocker. Approval does not replace the mandatory pre-production verification
+listed in that contract.
 
 ---
 
@@ -63,20 +73,26 @@ Corporate baseline is declared in `gradle.properties`:
 
 ```properties
 springBootVersion=3.5.5
-springCloudContextVersion=4.1.5
+springCloudVersion=2025.0.0
 ```
 
-`platform-tracing-bom` imports `spring-boot-dependencies:3.5.5` but also publishes a direct **`api` constraint** on `spring-cloud-context:4.1.5`. That version belongs to the EOL **2023.0.x (Leyton)** train (Boot 3.2/3.3), not Northfields.
+`platform-tracing-bom` imports both `spring-boot-dependencies:3.5.5` and
+`spring-cloud-dependencies:2025.0.0`. The former direct `spring-cloud-context:4.1.5`
+constraint is removed.
 
-Starters resolve **no** `spring-cloud-*` artifacts on `runtimeClasspath`. Autoconfigure declares `spring-cloud-context` as **`compileOnly`** only.
+Published starter consumers receive the `spring-cloud-dependencies` platform for version
+alignment, but resolve **no Spring Cloud runtime libraries**. Autoconfigure declares
+`spring-cloud-context` as **`compileOnly`** only.
 
 Full inventory: `docs/research/evidence/boot-cloud-bom-refresh/current-dependency-inventory.json`.
 
 ---
 
-## 4. Current publication defects
+## 4. Current publication
 
-Generated POM contains `spring-cloud-context:4.1.5` in `dependencyManagement` while importing Boot **3.5.5**. Defect **GOV-1**: misaligned EOL constraint without `spring-cloud-dependencies` import.
+`s06CandidateBomPublicationVerify` checks the generated Maven POM and Gradle module metadata:
+Cloud BOM `2025.0.0` is an imported platform in every variant and `4.1.5` is absent.
+Defect **GOV-1 is resolved**.
 
 ---
 
@@ -85,7 +101,8 @@ Generated POM contains `spring-cloud-context:4.1.5` in `dependencyManagement` wh
 - [Spring Cloud release train table](https://spring.io/projects/spring-cloud): **2025.0.x (Northfields) → Spring Boot 3.5.x**
 - [Supported Versions wiki](https://github.com/spring-cloud/spring-cloud-release/wiki/Supported-Versions): config/context/commons **4.3.x** under 2025.0
 
-Executable: `gradle/s06-approved-stack-resolution verifyApprovedStackResolution` — Boot **3.5.5**, context **4.3.0**, no **4.1.5**.
+Executable: `gradle/s06-approved-stack-resolution verifyApprovedStackResolution` — Boot
+**3.5.5**, Config/Context/Commons **4.3.0**, exact Bus/Stream/Kafka graph, no **4.1.5**.
 
 ---
 
@@ -103,7 +120,7 @@ Executable: `gradle/s06-approved-stack-resolution verifyApprovedStackResolution`
 | Gate | Status |
 | --- | --- |
 | C1 Root resolution | **PASS** |
-| C2 BOM publication | **PASS** (approved contract; current POM defect documented for P4) |
+| C2 BOM publication | **PASS** (generated POM and Gradle metadata) |
 | C3 Servlet consumer | **PASS** |
 | C4 Reactive consumer | **PASS** |
 | C5 Config Client leakage | **PASS** |
@@ -140,11 +157,16 @@ No Config Client on starter runtime classpaths. Agent extension absent from publ
 
 Rejected: `/actuator/refresh`, custom polling, restart-only.
 
+Repository feasibility is proven by exact dependency resolution. Corporate deployment readiness is
+not inferred from dependency resolution; see `corporate-bus-readiness.json`.
+
 ---
 
 ## 15–18. Ownership, contract, rollback
 
-See `refresh-delivery-decision.json` and `published-metadata-summary.json`. Rollback unit = entire unreleased train.
+See `refresh-delivery-decision.json`, `resolved-refresh-delivery-graph.json`,
+`corporate-bus-readiness.json` and `published-metadata-summary.json`. Rollback unit = entire
+unreleased train.
 
 ---
 
@@ -164,6 +186,7 @@ See `refresh-delivery-decision.json` and `published-metadata-summary.json`. Roll
 
 ## 21. Remaining blockers
 
-**E6:** none — recommend `READY_TO_CLOSE_E6`.
+**E6:** `READY_TO_CLOSE_E6`. Corporate Kafka and Config Server control-plane contract approved.
+All checks in `verificationRequiredBeforeProduction` remain mandatory before production rollout.
 
-**E8:** E7, wire schema, Implementation GO, P4 BOM apply, Bus ops confirmation.
+**E8:** E7, wire schema, Implementation GO and subsequent P4/P6 implementation gates.

@@ -1,0 +1,28 @@
+{
+  "spikeId": "S-06",
+  "verificationFixture": "gradle/s06-approved-stack-resolution",
+  "bootVersion": "3.5.5",
+  "springCloudTrain": "2025.0.0",
+  "configServerDelivery": {
+    "spring-cloud-config-server": "4.3.0",
+    "spring-cloud-config-monitor": "4.3.0",
+    "spring-cloud-bus": "4.3.0",
+    "spring-cloud-stream": "4.3.0",
+    "spring-cloud-stream-binder-kafka": "4.3.0",
+    "spring-kafka": "3.3.9",
+    "kafka-clients": "3.9.1",
+    "spring-integration-core": "6.5.1"
+  },
+  "configClientDelivery": {
+    "spring-cloud-config-client": "4.3.0",
+    "spring-cloud-context": "4.3.0",
+    "spring-cloud-bus": "4.3.0",
+    "spring-cloud-stream": "4.3.0",
+    "spring-cloud-stream-binder-kafka": "4.3.0",
+    "spring-kafka": "3.3.9",
+    "kafka-clients": "3.9.1",
+    "spring-integration-core": "6.5.1"
+  },
+  "ordinaryTracingStartersContainDeliveryGraph": false,
+  "result": "PASS"
+}

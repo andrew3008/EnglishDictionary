@@ -1,0 +1,88 @@
+{
+  "spikeId": "S-06",
+  "status": "CORPORATE_BUS_CONFIRMED",
+  "e6Status": "READY_TO_CLOSE_E6",
+  "decision": {
+    "purpose": "Production refresh-intent delivery for Spring Cloud Config through Spring Cloud Bus with the Kafka binder",
+    "dataClassification": "INTERNAL_CONTROL_PLANE_METADATA",
+    "payloadPolicy": "Events contain application and revision routing metadata only; secrets and configuration values are forbidden",
+    "approvalState": "APPROVED",
+    "approvedBy": "Platform Tracing Architecture Committee",
+    "approvedAt": "2026-07-28",
+    "approvalReference": "PROJECT_OWNER_REPORTED_ARCHITECTURE_APPROVAL_2026-07-28"
+  },
+  "requiredApprovals": {
+    "kafkaClusterOwner": "Corporate Kafka Platform Team",
+    "busTopicOwner": "Platform Configuration Control Plane Team",
+    "topicNameStrategy": "One pre-provisioned topic per environment and region: platform.config.bus.<environment>.<region>. Dynamic destinations and application-created topics are forbidden",
+    "environmentIsolation": "Production and non-production use separate Kafka clusters where available and always use separate topics, principals, consumer groups and ACLs. No principal receives access across environment boundaries",
+    "producerPrincipal": "Dedicated Config Server workload identity. WRITE and DESCRIBE are limited to the exact environment/region Bus topic. CREATE, ALTER, DELETE and wildcard topic permissions are forbidden",
+    "consumerPrincipal": "Dedicated workload identity per deployed service. READ and DESCRIBE are limited to the exact environment/region Bus topic and READ is limited to instance-scoped consumer groups. WRITE is forbidden because Bus acknowledgements, tracing, environment mutation and shutdown events are disabled",
+    "aclModel": "Default deny and least privilege. Kafka administrators pre-provision topics and ACLs. Config Server receives topic WRITE/DESCRIBE; service identities receive topic READ/DESCRIBE and group READ for the approved instance-group prefix; platform operations receive read-only diagnostics separately. Prefix or wildcard ACLs spanning environments are forbidden",
+    "authentication": "SASL_SSL with short-lived corporate workload identity. OAUTHBEARER is the preferred SASL mechanism; SCRAM-SHA-512 requires an explicit security exception and managed secret rotation. SASL_PLAINTEXT and anonymous access are forbidden",
+    "transportEncryption": "TLS 1.2 minimum, TLS 1.3 preferred, hostname verification enabled, corporate CA trust, certificate and credential rotation without application image changes, and no plaintext listener fallback",
+    "retention": "cleanup.policy=delete; retention.ms=86400000 (24 hours); retention.bytes is bounded by the Kafka platform quota. Startup always reloads the latest complete configuration snapshot, so retained events are not an authoritative state store",
+    "partitioning": "Six partitions initially, replication.factor=3, min.insync.replicas=2, unclean leader election disabled, producer acks=all and enable.idempotence=true. Capacity review may increase partitions; consumers must not depend on cross-partition ordering",
+    "serviceIdUniqueness": "Set spring.cloud.bus.id to <spring.application.name>:<environment>-<region>:<immutable-instance-id>. Kubernetes uses pod UID as the immutable instance ID. Startup fails when environment, region or immutable instance ID is absent",
+    "multiInstanceBehavior": "Every application instance uses a unique Bus ID and an instance-scoped consumer group so every live instance receives each refresh intent. A shared service-level Kafka consumer group is forbidden because it would load-balance an event to only one instance. Duplicate and out-of-order delivery is accepted and must coalesce to UNCHANGED or STALE",
+    "incidentOwner": "Platform Configuration Control Plane Team is service owner; Corporate Kafka Platform Team owns broker incidents; service teams own client connectivity. Alerts route through the central production incident process with both platform teams on escalation"
+  },
+  "monitorSecurity": {
+    "controlPlaneOwner": "Platform Configuration Control Plane Team",
+    "authentication": "The source-code provider authenticates to a dedicated private webhook ingress using mTLS or a provider-specific HMAC secret stored in the corporate secret manager. Static bearer tokens and unauthenticated POST requests are forbidden",
+    "authorization": "Only the dedicated repository webhook identity may invoke POST /monitor. Interactive users, application service identities and public Actuator access are denied. Bus refresh, bus environment and bus shutdown Actuator endpoints remain disabled",
+    "ingressRestriction": "POST /monitor is exposed only through the control-plane ingress, never through an application or public Actuator ingress. Enforce source network allowlists where the provider publishes stable ranges, WAF request-size limits, TLS and a deny-by-default route policy",
+    "webhookVerification": "Verify the signature over the unmodified request body using a constant-time comparison before Spring Cloud Config handles the event. Require the expected event type and allowlisted repository, organization and branch/ref. Reject missing, malformed or unverifiable metadata",
+    "replayProtection": "Require a provider delivery ID and cache accepted IDs for 24 hours in a shared bounded store. Reject duplicate delivery IDs. Enforce a five-minute timestamp window when the provider signs a timestamp; otherwise the verified delivery ID is mandatory",
+    "rateLimit": "Limit each repository identity to 60 requests per minute with a burst of 20 and the endpoint globally to 300 requests per minute. Return 429 on excess, record a security metric and alert on sustained rejection without publishing a Bus event",
+    "failureSemantics": "Authentication, authorization, signature, replay, repository/ref validation and request-shape failures are fail-closed and never publish a Bus event. Return a non-2xx response and emit an audit event without logging secrets or payload values",
+    "audit": "Record delivery ID, repository, ref, commit/revision, decision, rejection reason, target applications and resulting Bus event ID. Logs must exclude webhook secrets and configuration values and follow the corporate security-log retention policy"
+  },
+  "busHardening": {
+    "spring.cloud.bus.ack.enabled": false,
+    "spring.cloud.bus.trace.enabled": false,
+    "spring.cloud.bus.env.enabled": false,
+    "spring.cloud.bus.shutdown.enabled": false,
+    "spring.cloud.bus.refresh.enabled": true,
+    "spring.cloud.stream.kafka.binder.autoCreateTopics": false,
+    "spring.cloud.stream.kafka.binder.autoAddPartitions": false,
+    "spring.cloud.stream.kafka.binder.requiredAcks": "all",
+    "producer.enable.idempotence": true,
+    "consumer.auto.offset.reset": "latest",
+    "consumer.groupPolicy": "instance-scoped and environment-scoped"
+  },
+  "availabilityAndOperations": {
+    "readiness": "Config Server and clients are not ready when Kafka authentication, topic metadata or binding establishment fails during startup",
+    "runtimeOutage": "Keep the last-known-good tracing configuration, report DEGRADED refresh delivery, retry broker connectivity with bounded exponential backoff and never synthesize a permissive configuration",
+    "recovery": "After reconnect, each service obtains a complete authoritative snapshot from Config Server before applying a new accepted state; Bus events are triggers, not state",
+    "monitoring": [
+      "Kafka producer error and retry rate",
+      "Kafka consumer lag per instance-scoped group",
+      "Binding health and reconnect duration",
+      "Webhook authentication, replay and rate-limit rejection counts",
+      "Bus event publication-to-local-refresh latency",
+      "Refresh APPLIED, UNCHANGED, STALE and REJECTED outcomes"
+    ],
+    "sloProposal": "99.9% of authenticated refresh intents reach every healthy target instance within 60 seconds, measured over a rolling 30-day window",
+    "disasterRecovery": "Topics and ACL policy are recreated from infrastructure as code. No Bus event backup is required because Config Server is authoritative and every recovery performs a complete snapshot reload"
+  },
+  "verificationRequiredBeforeProduction": [
+    "Infrastructure-as-code review proves exact topic, replication, min ISR, retention and ACL settings",
+    "Packaged Config Server test proves invalid signature, replay, wrong repository/ref and rate-limit cases publish no Bus event",
+    "Packaged multi-instance test proves every instance receives one intent despite instance-scoped Kafka groups",
+    "Cross-environment negative test proves principals cannot read, write or join groups outside their environment",
+    "Broker outage and reconnect test proves LKG retention and complete-snapshot recovery",
+    "Duplicate and out-of-order test proves deterministic UNCHANGED or STALE outcomes",
+    "Actuator exposure test proves busrefresh, busenv, busshutdown and public monitor routes are unavailable"
+  ],
+  "normativeReferences": [
+    "https://docs.spring.io/spring-cloud-bus/reference/spring-cloud-bus/addressing.html",
+    "https://docs.spring.io/spring-cloud-bus/reference/appendix.html",
+    "https://docs.spring.io/spring-cloud-config/reference/server/push-notifications-and-bus.html",
+    "https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka-binder/overview.html",
+    "https://kafka.apache.org/39/security/security-overview/",
+    "https://kafka.apache.org/39/configuration/producer-configs/",
+    "https://kafka.apache.org/39/configuration/topic-level-configs/"
+  ],
+  "closureRule": "Architecture and infrastructure owners approve this proposal, record approver identities and an approval reference, change status to CORPORATE_BUS_CONFIRMED and e6Status to READY_TO_CLOSE_E6, then execute every verificationRequiredBeforeProduction check. Approval closes the E6 design gate; production rollout remains blocked until verification evidence is green."
+}

@@ -59,6 +59,7 @@ spring-boot-starter-json
 spring-boot-starter-logging
 spring-boot-starter-reactor-netty
 spring-boot-starter-webflux
+spring-cloud-dependencies
 spring-context
 spring-core
 spring-expression
@@ -127,6 +128,7 @@ spring-boot-starter-json
 spring-boot-starter-logging
 spring-boot-starter-reactor-netty
 spring-boot-starter-webflux
+spring-cloud-dependencies
 spring-context
 spring-core
 spring-expression

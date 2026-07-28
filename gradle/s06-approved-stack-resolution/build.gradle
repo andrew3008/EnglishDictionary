@@ -6,10 +6,32 @@ repositories {
     mavenCentral()
 }
 
+configurations {
+    configServerDelivery {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+    configClientDelivery {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
 dependencies {
     implementation enforcedPlatform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     implementation enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
+
+    configServerDelivery enforcedPlatform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    configServerDelivery enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')
+    configServerDelivery 'org.springframework.cloud:spring-cloud-config-server'
+    configServerDelivery 'org.springframework.cloud:spring-cloud-config-monitor'
+    configServerDelivery 'org.springframework.cloud:spring-cloud-starter-bus-kafka'
+
+    configClientDelivery enforcedPlatform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    configClientDelivery enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')
+    configClientDelivery 'org.springframework.cloud:spring-cloud-starter-config'
+    configClientDelivery 'org.springframework.cloud:spring-cloud-starter-bus-kafka'
 }
 
 static def moduleVersions(Configuration configuration, String moduleName) {
@@ -47,6 +69,19 @@ static def assertNoSpringCloudContext415(Configuration configuration, String con
     }
 }
 
+static def assertExactVersion(
+        Configuration configuration,
+        String moduleName,
+        String expectedVersion
+) {
+    def versions = moduleVersions(configuration, moduleName)
+    if (versions != [expectedVersion]) {
+        throw new GradleException(
+                "${moduleName} on ${configuration.name} must resolve exactly to "
+                        + "${expectedVersion}, found: ${versions}")
+    }
+}
+
 tasks.register('verifyApprovedStackResolution') {
     doLast {
         [configurations.compileClasspath, configurations.runtimeClasspath].each { configuration ->
@@ -55,5 +90,21 @@ tasks.register('verifyApprovedStackResolution') {
             assertSpringCloud43(configuration, 'spring-cloud-config-client')
             assertNoSpringCloudContext415(configuration, configuration.name)
         }
+
+        [configurations.configServerDelivery, configurations.configClientDelivery].each { configuration ->
+            assertSpringBoot355(configuration)
+            assertSpringCloud43(configuration, 'spring-cloud-context')
+            assertNoSpringCloudContext415(configuration, configuration.name)
+            assertExactVersion(configuration, 'spring-cloud-bus', '4.3.0')
+            assertExactVersion(configuration, 'spring-cloud-stream', '4.3.0')
+            assertExactVersion(configuration, 'spring-cloud-stream-binder-kafka', '4.3.0')
+            assertExactVersion(configuration, 'spring-kafka', '3.3.9')
+            assertExactVersion(configuration, 'kafka-clients', '3.9.1')
+            assertExactVersion(configuration, 'spring-integration-core', '6.5.1')
+        }
+
+        assertExactVersion(configurations.configServerDelivery, 'spring-cloud-config-server', '4.3.0')
+        assertExactVersion(configurations.configServerDelivery, 'spring-cloud-config-monitor', '4.3.0')
+        assertExactVersion(configurations.configClientDelivery, 'spring-cloud-config-client', '4.3.0')
     }
 }

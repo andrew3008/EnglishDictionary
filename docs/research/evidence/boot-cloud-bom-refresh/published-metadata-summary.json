@@ -6,15 +6,14 @@
     "moduleMetadataPath": "platform-tracing-bom/build/publications/mavenJava/module.json",
     "imports": [
       "org.springframework.boot:spring-boot-dependencies:3.5.5",
+      "org.springframework.cloud:spring-cloud-dependencies:2025.0.0",
       "io.opentelemetry:opentelemetry-bom:1.62.0",
       "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:2.28.1"
     ],
-    "misalignedConstraints": [
-      "org.springframework.cloud:spring-cloud-context:4.1.5 (api)"
-    ],
-    "missingApprovedImports": [
-      "org.springframework.cloud:spring-cloud-dependencies:2025.0.0"
-    ]
+    "misalignedConstraints": [],
+    "missingApprovedImports": [],
+    "verificationTask": "s06CandidateBomPublicationVerify",
+    "status": "PASS"
   },
   "approvedPublicationContract": {
     "bootVersion": "3.5.5",
@@ -41,6 +40,6 @@
       "reactive": "api platform-tracing-bom; api autoconfigure + webflux; api spring-boot-starter-webflux; no Config Client",
       "configClientOptIn": "Services in CONFIG_SERVER authority mode add spring-cloud-starter-config explicitly; not transitive from tracing starters"
     },
-    "autoconfigureSpringCloudScope": "compileOnly org.springframework.cloud:spring-cloud-context — must remain non-transitive"
+    "autoconfigureSpringCloudScope": "compileOnly org.springframework.cloud:spring-cloud-context - must remain non-transitive"
   }
 }

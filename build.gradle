@@ -838,6 +838,65 @@ def c6PublishedProjects = [
 
 def s06EvidenceDir = layout.projectDirectory.dir('docs/research/evidence/boot-cloud-bom-refresh')
 
+tasks.register('s06CandidateBomPublicationVerify') {
+    group = 'verification'
+    description = 'Verifies the generated candidate BOM POM and Gradle metadata (C2).'
+    dependsOn ':platform-tracing-bom:generatePomFileForMavenJavaPublication'
+    dependsOn ':platform-tracing-bom:generateMetadataFileForMavenJavaPublication'
+
+    doLast {
+        File publicationDir = project(':platform-tracing-bom')
+                .layout.buildDirectory.dir('publications/mavenJava').get().asFile
+        File pomFile = new File(publicationDir, 'pom-default.xml')
+        File moduleFile = new File(publicationDir, 'module.json')
+        if (!pomFile.isFile() || !moduleFile.isFile()) {
+            throw new GradleException('Candidate BOM publication metadata was not generated')
+        }
+
+        def pom = new XmlSlurper().parse(pomFile)
+        def dependencies = pom.dependencyManagement.dependencies.dependency
+        def cloudImport = dependencies.find {
+            it.groupId.text() == 'org.springframework.cloud'
+                    && it.artifactId.text() == 'spring-cloud-dependencies'
+        }
+        if (cloudImport.size() != 1
+                || cloudImport.version.text() != '2025.0.0'
+                || cloudImport.type.text() != 'pom'
+                || cloudImport.scope.text() != 'import') {
+            throw new GradleException('Candidate POM must import spring-cloud-dependencies:2025.0.0')
+        }
+        if (dependencies.any {
+            it.groupId.text() == 'org.springframework.cloud'
+                    && it.artifactId.text() == 'spring-cloud-context'
+                    && it.version.text() == '4.1.5'
+        }) {
+            throw new GradleException('Candidate POM must not publish spring-cloud-context:4.1.5')
+        }
+
+        def metadata = new groovy.json.JsonSlurper().parse(moduleFile)
+        metadata.variants.each { variant ->
+            def cloudPlatforms = variant.dependencies.findAll {
+                it.group == 'org.springframework.cloud'
+                        && it.module == 'spring-cloud-dependencies'
+            }
+            if (cloudPlatforms.size() != 1
+                    || cloudPlatforms[0].version?.requires != '2025.0.0'
+                    || cloudPlatforms[0].attributes?.get('org.gradle.category') != 'platform') {
+                throw new GradleException(
+                        "Variant ${variant.name} must import the approved Spring Cloud platform")
+            }
+            if (variant.dependencyConstraints.any {
+                it.group == 'org.springframework.cloud'
+                        && it.module == 'spring-cloud-context'
+                        && it.version?.requires == '4.1.5'
+            }) {
+                throw new GradleException(
+                        "Variant ${variant.name} must not constrain spring-cloud-context:4.1.5")
+            }
+        }
+    }
+}
+
 tasks.register('s06ApprovedStackResolutionVerify') {
     group = 'verification'
     description = 'Verifies approved Boot 3.5.5 + Spring Cloud 2025.0.0 resolution (C1).'
@@ -982,6 +1041,7 @@ tasks.register('bootCloudBomRefreshVerify') {
     group = 'verification'
     description = 'Verifies S-06 Boot/Cloud/BOM baseline and refresh delivery evidence for Gate E6.'
     dependsOn s06ApprovedStackResolutionVerify
+    dependsOn s06CandidateBomPublicationVerify
     dependsOn 'c3PublishedMetadataConsumerVerify'
     dependsOn s06PublishedServletDependencyEvidence
     dependsOn c6PublishedReactiveConsumerVerify

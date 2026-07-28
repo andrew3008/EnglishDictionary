@@ -18,8 +18,8 @@
       "dependencyResolutionResult": "PASS",
       "s02ProvenanceCompatibility": "PASS — configProvenanceVerify on Boot 3.5.5 + 2025.0.0",
       "refreshEventBehavior": "ContextRefresher.refresh() -> EnvironmentChangeEvent (S-02 T3, T10)",
-      "publicationConsequences": "Remove api spring-cloud-context:4.1.5; import spring-cloud-dependencies:2025.0.0; update SUPPORTED.md atomically in P4",
-      "migrationSize": "SMALL — one BOM constraint removal + one platform import + SUPPORTED.md",
+      "publicationConsequences": "Applied atomically: removed api spring-cloud-context:4.1.5; imported spring-cloud-dependencies:2025.0.0; updated SUPPORTED.md",
+      "migrationSize": "APPLIED — one BOM constraint removal + one platform import + SUPPORTED.md",
       "rollbackComplexity": "LOW — single unreleased train revert",
       "scores": {
         "officialBootCloudCompatibility": 5,

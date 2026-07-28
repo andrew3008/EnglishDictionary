@@ -30,6 +30,8 @@ class S06EvidenceConsistencyTest {
             "c1-c7-results.json",
             "published-metadata-summary.json",
             "refresh-delivery-decision.json",
+            "resolved-refresh-delivery-graph.json",
+            "corporate-bus-readiness.json",
             "decision-summary.json");
 
     @Test
@@ -44,23 +46,26 @@ class S06EvidenceConsistencyTest {
     }
 
     @Test
-    @DisplayName("decision summary recommends APPROVE_BOOT_CLOUD_BASELINE with Boot 3.5.5 and Cloud 2025.0.0")
+    @DisplayName("decision summary approves dependency baseline and refresh delivery contract")
     void decisionSummaryMatchesApprovedBaseline() throws IOException {
         JsonNode summary = MAPPER.readTree(new File(EVIDENCE_ROOT, "decision-summary.json"));
-        assertThat(summary.path("verdict").asText()).isEqualTo("APPROVE_BOOT_CLOUD_BASELINE");
+        assertThat(summary.path("verdict").asText())
+                .isEqualTo("APPROVE_BOOT_CLOUD_BASELINE_AND_REFRESH_DELIVERY_CONTRACT");
         assertThat(summary.path("selectedBootVersion").asText()).isEqualTo("3.5.5");
         assertThat(summary.path("selectedSpringCloudTrain").asText()).isEqualTo("2025.0.0");
-        assertThat(summary.path("e6Recommendation").asText()).isEqualTo("READY_TO_CLOSE_E6");
+        assertThat(summary.path("e6Recommendation").asText())
+                .isEqualTo("READY_TO_CLOSE_E6");
     }
 
     @Test
-    @DisplayName("current inventory documents misaligned spring-cloud-context 4.1.5 BOM defect")
-    void currentInventoryDocumentsBomDefect() throws IOException {
+    @DisplayName("current inventory records the corrected Spring Cloud BOM publication")
+    void currentInventoryDocumentsCorrectedBom() throws IOException {
         JsonNode inventory = MAPPER.readTree(new File(EVIDENCE_ROOT, "current-dependency-inventory.json"));
-        JsonNode defect = inventory.path("currentPublicationDefect");
-        assertThat(defect.path("springCloudContextConstraintVersion").asText()).isEqualTo("4.1.5");
-        assertThat(defect.path("springBootBaseline").asText()).isEqualTo("3.5.5");
-        assertThat(defect.path("misaligned").asBoolean()).isTrue();
+        JsonNode publication = inventory.path("currentPublication");
+        assertThat(publication.path("springBootBaseline").asText()).isEqualTo("3.5.5");
+        assertThat(publication.path("springCloudTrain").asText()).isEqualTo("2025.0.0");
+        assertThat(publication.path("misaligned").asBoolean()).isFalse();
+        assertThat(publication.path("legacyContextConstraintPresent").asBoolean()).isFalse();
     }
 
     @Test
@@ -84,9 +89,7 @@ class S06EvidenceConsistencyTest {
     @DisplayName("published consumer graphs exclude Config Client and Agent extension")
     void publishedConsumersExcludeConfigClientAndExtension(String fileName) throws IOException {
         File file = new File(EVIDENCE_ROOT, fileName);
-        if (!file.exists()) {
-            return;
-        }
+        assertThat(file).exists();
         List<String> lines = java.nio.file.Files.readAllLines(file.toPath());
         assertThat(lines).doesNotContain("spring-cloud-config-client");
         assertThat(lines).doesNotContain("spring-cloud-starter-config");
@@ -106,17 +109,73 @@ class S06EvidenceConsistencyTest {
     }
 
     @Test
+    @DisplayName("exact Config Server and client Bus graphs are fixed to the approved train")
+    void refreshDeliveryGraphIsExact() throws IOException {
+        JsonNode graph = MAPPER.readTree(
+                new File(EVIDENCE_ROOT, "resolved-refresh-delivery-graph.json"));
+        for (String side : List.of("configServerDelivery", "configClientDelivery")) {
+            JsonNode delivery = graph.path(side);
+            assertThat(delivery.path("spring-cloud-bus").asText()).isEqualTo("4.3.0");
+            assertThat(delivery.path("spring-cloud-stream").asText()).isEqualTo("4.3.0");
+            assertThat(delivery.path("spring-cloud-stream-binder-kafka").asText())
+                    .isEqualTo("4.3.0");
+            assertThat(delivery.path("spring-kafka").asText()).isEqualTo("3.3.9");
+            assertThat(delivery.path("kafka-clients").asText()).isEqualTo("3.9.1");
+            assertThat(delivery.path("spring-integration-core").asText()).isEqualTo("6.5.1");
+        }
+        assertThat(graph.path("ordinaryTracingStartersContainDeliveryGraph").asBoolean()).isFalse();
+        assertThat(graph.path("result").asText()).isEqualTo("PASS");
+    }
+
+    @Test
+    @DisplayName("approved corporate Bus contract closes E6 but retains production checks")
+    void approvedExternalDeliveryContractClosesE6DesignGate() throws IOException {
+        JsonNode readiness = MAPPER.readTree(
+                new File(EVIDENCE_ROOT, "corporate-bus-readiness.json"));
+        assertThat(readiness.path("status").asText())
+                .isEqualTo("CORPORATE_BUS_CONFIRMED");
+        assertThat(readiness.path("e6Status").asText())
+                .isEqualTo("READY_TO_CLOSE_E6");
+        assertThat(readiness.path("decision").path("approvalState").asText())
+                .isEqualTo("APPROVED");
+        assertThat(readiness.path("decision").path("approvedBy").asText()).isNotBlank();
+        assertThat(readiness.path("decision").path("approvalReference").asText()).isNotBlank();
+        Iterator<JsonNode> approvals = readiness.path("requiredApprovals").elements();
+        while (approvals.hasNext()) {
+            assertThat(approvals.next().asText()).isNotBlank();
+        }
+        Iterator<JsonNode> monitorControls = readiness.path("monitorSecurity").elements();
+        while (monitorControls.hasNext()) {
+            assertThat(monitorControls.next().asText()).isNotBlank();
+        }
+        JsonNode hardening = readiness.path("busHardening");
+        assertThat(hardening.path("spring.cloud.bus.ack.enabled").asBoolean()).isFalse();
+        assertThat(hardening.path("spring.cloud.bus.trace.enabled").asBoolean()).isFalse();
+        assertThat(hardening.path("spring.cloud.bus.env.enabled").asBoolean()).isFalse();
+        assertThat(hardening.path("spring.cloud.bus.shutdown.enabled").asBoolean()).isFalse();
+        assertThat(hardening.path("spring.cloud.bus.refresh.enabled").asBoolean()).isTrue();
+        assertThat(hardening.path("spring.cloud.stream.kafka.binder.autoCreateTopics").asBoolean())
+                .isFalse();
+        assertThat(hardening.path("spring.cloud.stream.kafka.binder.autoAddPartitions").asBoolean())
+                .isFalse();
+        assertThat(hardening.path("spring.cloud.stream.kafka.binder.requiredAcks").asText())
+                .isEqualTo("all");
+        assertThat(hardening.path("producer.enable.idempotence").asBoolean()).isTrue();
+        assertThat(readiness.path("verificationRequiredBeforeProduction")).hasSize(7);
+    }
+
+    @Test
     @DisplayName("C1–C7 results are PASS for approved-stack verification gates")
     void c1ThroughC7Pass() throws IOException {
         JsonNode results = MAPPER.readTree(new File(EVIDENCE_ROOT, "c1-c7-results.json"));
-        Iterator<String> gates = results.fieldNames();
+        JsonNode gateResults = results.path("gates");
+        assertThat(gateResults.size()).isEqualTo(7);
+        Iterator<String> gates = gateResults.fieldNames();
         while (gates.hasNext()) {
             String gate = gates.next();
-            if (gate.startsWith("C")) {
-                assertThat(results.path(gate).path("status").asText())
-                        .as("gate %s", gate)
-                        .isEqualTo("PASS");
-            }
+            assertThat(gateResults.path(gate).path("status").asText())
+                    .as("gate %s", gate)
+                    .isEqualTo("PASS");
         }
     }
 

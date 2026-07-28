@@ -11,9 +11,9 @@
     "C2": {
       "name": "BOM publication",
       "status": "PASS",
-      "evidence": "published-metadata-summary.json approvedPublicationContract; current production POM defect documented separately",
-      "currentProductionStatus": "FAIL — pom-default.xml still declares spring-cloud-context:4.1.5 api constraint",
-      "approvedContractStatus": "PASS — E6 selects removal of 4.1.5 and import of 2025.0.0 for P4 implementation"
+      "evidence": "s06CandidateBomPublicationVerify checks generated POM and Gradle module metadata",
+      "currentProductionStatus": "PASS - Cloud BOM 2025.0.0 imported; 4.1.5 constraint absent",
+      "approvedContractStatus": "PASS"
     },
     "C3": {
       "name": "Servlet starter consumer",
@@ -28,7 +28,7 @@
     "C5": {
       "name": "Config Client leakage",
       "status": "PASS",
-      "evidence": "No spring-cloud artifacts on starter runtimeClasspath; autoconfigure uses compileOnly spring-cloud-context; starters do not publish Config Client"
+      "evidence": "Published consumers receive only the Spring Cloud BOM platform; no Spring Cloud runtime library is present; autoconfigure uses compileOnly spring-cloud-context; starters do not publish Config Client"
     },
     "C6": {
       "name": "Agent extension isolation",

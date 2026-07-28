@@ -38,6 +38,7 @@ spring-boot-starter-json
 spring-boot-starter-logging
 spring-boot-starter-tomcat
 spring-boot-starter-web
+spring-cloud-dependencies
 spring-context
 spring-core
 spring-expression
@@ -88,6 +89,7 @@ spring-boot-starter-json
 spring-boot-starter-logging
 spring-boot-starter-tomcat
 spring-boot-starter-web
+spring-cloud-dependencies
 spring-context
 spring-core
 spring-expression

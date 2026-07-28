@@ -13,6 +13,7 @@ javaPlatform {
 dependencies {
     // Импортируемые BOM. Версии задаются в gradle.properties и являются единым источником истины.
     api platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    api platform("org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}")
     api platform("io.opentelemetry:opentelemetry-bom:${openTelemetryBomVersion}")
     api platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:${openTelemetryInstrumentationBomVersion}")
 
@@ -23,10 +24,6 @@ dependencies {
 
         // Spring gRPC starter — версия согласована с версией основного платформенного BOM `spring-boot-starter-platform-bom`.
         api 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:0.6.0'
-
-        // Spring Cloud Context: используется опциональной авто-конфигурацией @RefreshScope в стартере
-        // трассировки. Версия совместима со Spring Boot 3.5.x (Spring Cloud 2024.0.x).
-        api "org.springframework.cloud:spring-cloud-context:${springCloudContextVersion}"
 
         // ArchUnit (junit5-flavor) — публикуется через platform-tracing-test как api-зависимость,
         // чтобы сервисы-потребители могли использовать OtelSdkArchRules без повторного объявления версии.

@@ -22,10 +22,12 @@
     "tracingBridgeOwner": "platform-tracing-spring-boot-autoconfigure P4 bridge — EnvironmentChangeEvent consumer only; never invokes refresh"
   },
   "securityContract": {
-    "busTransport": "Corporate Kafka cluster with ACLs; Bus messages authenticated and authorized per service instance",
+    "status": "CORPORATE_BUS_CONFIRMED",
+    "busTransport": "Approved corporate Kafka hardening, ownership, ACL, identity, durability and isolation contract is defined in corporate-bus-readiness.json",
     "configServerAccess": "Config Server credentials via Spring Cloud Config standard auth; no tracing-specific HTTP writer",
     "noApplicationHttpMutation": true,
-    "noTracingMutationEndpoint": true
+    "noTracingMutationEndpoint": false,
+    "legacyRemovalOwner": "P6 coherent namespace and writer cutover"
   },
   "deliverySemantics": {
     "atLeastOnce": true,
@@ -48,5 +50,5 @@
     "Require explicit spring-cloud-starter-config + spring-cloud-starter-bus-kafka on CONFIG_SERVER services",
     "Config Server enables monitor/webhook to Bus on Git push"
   ],
-  "repositoryEvidenceForBus": "No spring-cloud-bus dependency in production modules today; selection follows official Spring Cloud Config push model documented in docs/analysis/platform-tracing-configuration/05-config-server-production-control.md §6.1 candidate 1 and spring.io Spring Cloud Bus documentation."
+  "repositoryEvidenceForBus": "Exact server/client dependency graphs pass in gradle/s06-approved-stack-resolution. The architecture committee approved the corporate runtime profile; E6 is ready to close. Production verification remains mandatory."
 }
