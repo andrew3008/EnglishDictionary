@@ -100,12 +100,50 @@ final class PrivateControlWireTypes {
                     arrayOfStrings()
             });
 
+    /**
+     * Canonical field names for readAcceptedComplete (PRIV-R07).
+     * Order is fixed and tested — do not reorder.
+     */
+    static final String[] ACCEPTED_COMPLETE_KEYS = {
+            "acceptedSequence",            // Long  >= 0
+            "runtimeInstanceId",           // String non-empty
+            "samplingEnabled",             // Boolean
+            "samplingRatio",               // Double [0.0, 1.0]
+            "samplingRouteRatios",         // TabularData reuses ROUTES
+            "validationEnabled",           // Boolean
+            "validationStrict",            // Boolean
+            "exporterEnabled",             // Boolean
+            "traceControlHeadersEnabled",  // Boolean
+            "diagnosticsLogLevel"          // String closed: DEBUG|INFO|WARN|ERROR
+    };
+
+    /**
+     * Versioned CompositeType for readAcceptedComplete response (PRIV-R07).
+     * Type name is exact and tested by Spring decoder.
+     */
+    static final CompositeType ACCEPTED_COMPLETE = composite(
+            "AcceptedCompleteSnapshot/v1",
+            ACCEPTED_COMPLETE_KEYS,
+            new OpenType<?>[]{
+                    SimpleType.LONG,
+                    SimpleType.STRING,
+                    SimpleType.BOOLEAN,
+                    SimpleType.DOUBLE,
+                    ROUTES,
+                    SimpleType.BOOLEAN,
+                    SimpleType.BOOLEAN,
+                    SimpleType.BOOLEAN,
+                    SimpleType.BOOLEAN,
+                    SimpleType.STRING
+            });
+
     private PrivateControlWireTypes() {
     }
 
     static void initialize() {
         if (REQUEST.keySet().size() != REQUEST_KEYS.length
-                || POLICY.keySet().size() != POLICY_KEYS.length) {
+                || POLICY.keySet().size() != POLICY_KEYS.length
+                || ACCEPTED_COMPLETE.keySet().size() != ACCEPTED_COMPLETE_KEYS.length) {
             throw new IllegalStateException("Private control Open-Type schema is inconsistent");
         }
     }

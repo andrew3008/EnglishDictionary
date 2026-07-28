@@ -4,9 +4,12 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.TreeMap;
 
 /**
@@ -102,6 +105,59 @@ final class PrivateControlOpenTypeCodec {
         } catch (OpenDataException exception) {
             throw new IllegalStateException("Cannot encode private control response", exception);
         }
+    }
+
+    /**
+     * Encodes one logically consistent accepted-state snapshot for PRIV-R07.
+     *
+     * <p>The caller must pass the {@link AcceptedPolicyView} obtained from a
+     * single {@code AcceptedPolicyStateStore.current()} call (one volatile
+     * {@code AtomicReference.get()}). This guarantees that
+     * {@code runtimeInstanceId}, {@code acceptedSequence} and all eight
+     * Category&nbsp;A policy leaves are read from the same
+     * {@code AcceptedPolicyEnvelope} reference — no separate, potentially
+     * inconsistent reads.
+     *
+     * <p>This method performs no mutation and causes no sequence change.
+     */
+    CompositeData encodeAcceptedComplete(AcceptedPolicyView view) {
+        Objects.requireNonNull(view, "view");
+        try {
+            TabularData routes = encodeRouteRatios(view.samplingRouteRatios());
+            return new CompositeDataSupport(
+                    PrivateControlWireTypes.ACCEPTED_COMPLETE,
+                    PrivateControlWireTypes.ACCEPTED_COMPLETE_KEYS,
+                    new Object[]{
+                            view.acceptedSequence(),            // Long
+                            view.runtimeInstanceId(),           // String
+                            view.samplingEnabled(),             // Boolean
+                            view.samplingRatio(),               // Double
+                            routes,                             // TabularData
+                            view.validationEnabled(),           // Boolean
+                            view.validationStrict(),            // Boolean
+                            view.exporterEnabled(),             // Boolean
+                            view.traceControlHeadersEnabled(),  // Boolean
+                            view.diagnosticsLogLevel()          // String
+                    });
+        } catch (OpenDataException exception) {
+            throw new IllegalStateException("Cannot encode AcceptedCompleteSnapshot", exception);
+        }
+    }
+
+    /**
+     * Encodes route ratios into a TabularData using the existing ROUTES TabularType.
+     * NavigableMap guarantees natural key order — deterministic across JVM runs.
+     */
+    private static TabularData encodeRouteRatios(NavigableMap<String, Double> ratios)
+            throws OpenDataException {
+        TabularDataSupport table = new TabularDataSupport(PrivateControlWireTypes.ROUTES);
+        for (Map.Entry<String, Double> entry : ratios.entrySet()) {
+            table.put(new CompositeDataSupport(
+                    PrivateControlWireTypes.ROUTE_ROW,
+                    PrivateControlWireTypes.ROUTE_KEYS,
+                    new Object[]{entry.getValue(), entry.getKey()}));
+        }
+        return table;
     }
 
     private static EffectiveTracingPolicy decodePolicy(CompositeData data) {

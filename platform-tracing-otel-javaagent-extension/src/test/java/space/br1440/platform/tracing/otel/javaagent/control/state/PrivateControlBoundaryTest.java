@@ -45,8 +45,33 @@ class PrivateControlBoundaryTest {
         assertThat(markerInfo.getAttributes()).hasSize(6)
                 .allMatch(attribute -> attribute.isReadable() && !attribute.isWritable());
         assertThat(writerInfo.getAttributes()).isEmpty();
-        assertThat(writerInfo.getOperations()).singleElement()
-                .satisfies(operation -> assertThat(operation.getName()).isEqualTo("applySnapshot"));
+
+        // PRIV-R07: writer now exposes exactly two operations
+        assertThat(writerInfo.getOperations()).hasSize(2);
+        assertThat(writerInfo.getOperations())
+                .anyMatch(op -> op.getName().equals("applySnapshot"))
+                .anyMatch(op -> op.getName().equals("readAcceptedComplete"));
+
+        // readAcceptedComplete must be INFO (read-only), applySnapshot must be ACTION
+        assertThat(writerInfo.getOperations())
+                .filteredOn(op -> op.getName().equals("readAcceptedComplete"))
+                .singleElement()
+                .satisfies(op -> {
+                    assertThat(op.getImpact()).isEqualTo(javax.management.MBeanOperationInfo.INFO);
+                    assertThat(op.getSignature()).isEmpty();
+                    assertThat(op.getReturnType()).isEqualTo(CompositeData.class.getName());
+                });
+        assertThat(writerInfo.getOperations())
+                .filteredOn(op -> op.getName().equals("applySnapshot"))
+                .singleElement()
+                .satisfies(op ->
+                    assertThat(op.getImpact()).isEqualTo(javax.management.MBeanOperationInfo.ACTION));
+
+        // readAcceptedComplete must be absent on platform MBeanServer
+        if (platformServer.isRegistered(PrivateControlObjectNames.WRITER)) {
+            assertThat(platformServer.getMBeanInfo(PrivateControlObjectNames.WRITER).getOperations())
+                    .noneMatch(op -> op.getName().equals("readAcceptedComplete"));
+        }
 
         owner.close();
         owner.close();
@@ -102,6 +127,39 @@ class PrivateControlBoundaryTest {
     }
 
     @Test
+    void readAcceptedComplete_returnsConsistentSnapshot() throws Exception {
+        String runtimeId = UUID.randomUUID().toString();
+        AcceptedPolicyStateStore store = store(runtimeId);
+        PrivateControlMBeanServerOwner owner = new PrivateControlMBeanServerOwner(
+                runtimeId,
+                store,
+                new PolicyValidationConstraints(true));
+        MBeanServer server = owner.initialize();
+        try {
+            CompositeData snapshot = readAcceptedComplete(server);
+
+            assertThat(snapshot).isNotNull();
+            assertThat(snapshot.getCompositeType().getTypeName())
+                    .isEqualTo("AcceptedCompleteSnapshot/v1");
+            assertThat(snapshot.get("runtimeInstanceId")).isEqualTo(runtimeId);
+            assertThat(snapshot.get("acceptedSequence")).isEqualTo(0L);
+            assertThat(snapshot.get("samplingEnabled")).isEqualTo(true);
+            assertThat(snapshot.get("samplingRatio")).isEqualTo(1.0d);
+            assertThat(snapshot.get("validationEnabled")).isEqualTo(true);
+            assertThat(snapshot.get("validationStrict")).isEqualTo(false);
+            assertThat(snapshot.get("exporterEnabled")).isEqualTo(true);
+            assertThat(snapshot.get("traceControlHeadersEnabled")).isEqualTo(true);
+            assertThat(snapshot.get("diagnosticsLogLevel")).isEqualTo("INFO");
+
+            // read must not change sequence
+            CompositeData snapshot2 = readAcceptedComplete(server);
+            assertThat(snapshot2.get("acceptedSequence")).isEqualTo(0L);
+        } finally {
+            owner.close();
+        }
+    }
+
+    @Test
     void targetPlatformProjectionContainsOnlyEightApprovedReads() {
         String runtimeId = UUID.randomUUID().toString();
         AcceptedPolicyStateStore store = store(runtimeId);
@@ -128,6 +186,14 @@ class PrivateControlBoundaryTest {
                 "applySnapshot",
                 new Object[]{request},
                 new String[]{CompositeData.class.getName()});
+    }
+
+    private static CompositeData readAcceptedComplete(MBeanServer server) throws Exception {
+        return (CompositeData) server.invoke(
+                PrivateControlObjectNames.WRITER,
+                "readAcceptedComplete",
+                new Object[0],
+                new String[0]);
     }
 
     private static CompositeData request(
