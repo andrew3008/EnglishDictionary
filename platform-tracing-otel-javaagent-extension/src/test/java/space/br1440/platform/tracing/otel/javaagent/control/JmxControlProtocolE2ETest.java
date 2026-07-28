@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutatio
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       --[RuntimePolicyControlHandler]--> RuntimePolicyControlHandleResult
  *           (domain validate inside handler)
  *               --[JmxRuntimePolicyApplier]-->
- *                   SamplerStateHolder / ValidatingSpanProcessor  (live state)
+ *                   AcceptedPolicyAccess / ValidatingSpanProcessor  (live state)
  * </pre>
  *
  * <p>All components are wired with <em>real</em> production implementations;
@@ -46,7 +46,7 @@ class JmxControlProtocolE2ETest {
     // Wired components (real implementations)
     // =========================================================================
 
-    private SamplerStateHolder       samplerHolder;
+    private AcceptedPolicyAccess       samplerHolder;
     private ValidatingSpanProcessor  validatingProcessor;
     private PlatformSamplingControl  samplingControl;
     private PlatformValidationControl validationControl;
@@ -55,8 +55,8 @@ class JmxControlProtocolE2ETest {
 
     @BeforeEach
     void wireComponents() {
-        // --- SamplerStateHolder: start with enabled=true, ratio=0.1 ---
-        samplerHolder = new SamplerStateHolder(
+        // --- AcceptedPolicyAccess: start with enabled=true, ratio=0.1 ---
+        samplerHolder = AcceptedPolicyAccess.isolatedSampling(
                 true,
                 List.of(),
                 List.of(),
@@ -64,8 +64,7 @@ class JmxControlProtocolE2ETest {
                 0.1d);
 
         // --- ValidatingSpanProcessor: start with enabled=false, strict=false ---
-        validatingProcessor = new ValidatingSpanProcessor(false, true);
-        validatingProcessor.tryApplyPolicyUpdate(false, false, "startup");
+        validatingProcessor = new ValidatingSpanProcessor(samplerHolder);
 
         // --- JMX MBeans backed by real holders ---
         LongAdder invalidCounter = new LongAdder();
@@ -118,7 +117,7 @@ class JmxControlProtocolE2ETest {
             RuntimePolicyControlHandleResult result = handle(payload);
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.42d);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.42d);
         }
 
         @Test
@@ -128,7 +127,7 @@ class JmxControlProtocolE2ETest {
 
             handle(payload);
 
-            assertThat(samplerHolder.current().enabled()).isFalse();
+            assertThat(samplerHolder.current().samplingEnabled()).isFalse();
         }
 
         @Test
@@ -137,14 +136,14 @@ class JmxControlProtocolE2ETest {
             Map<String, Object> disable = applyPayload();
             disable.put(TracingControlProtocolKeys.SAMPLING_KILL_SWITCH_ENABLED, true);
             handle(disable);
-            assertThat(samplerHolder.current().enabled()).isFalse();
+            assertThat(samplerHolder.current().samplingEnabled()).isFalse();
 
             // Then re-enable
             Map<String, Object> enable = applyPayload();
             enable.put(TracingControlProtocolKeys.SAMPLING_KILL_SWITCH_ENABLED, false);
             handle(enable);
 
-            assertThat(samplerHolder.current().enabled()).isTrue();
+            assertThat(samplerHolder.current().samplingEnabled()).isTrue();
         }
 
         @Test
@@ -158,7 +157,7 @@ class JmxControlProtocolE2ETest {
 
             handle(payload);
 
-            assertThat(samplerHolder.current().routeRatios())
+            assertThat(samplerHolder.current().samplingRouteRatios())
                     .containsEntry("/api/v1", 0.8d)
                     .containsEntry("/health", 0.0d);
         }
@@ -178,8 +177,8 @@ class JmxControlProtocolE2ETest {
             handle(second);
 
             // Route ratios must still be present (partial update)
-            assertThat(samplerHolder.current().routeRatios()).containsKey("/svc");
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.9d);
+            assertThat(samplerHolder.current().samplingRouteRatios()).containsKey("/svc");
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.9d);
         }
     }
 
@@ -253,7 +252,7 @@ class JmxControlProtocolE2ETest {
         RuntimePolicyControlHandleResult result = handle(payload);
 
         assertThat(result.isSuccess()).isTrue();
-        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.6d);
+        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.6d);
         assertThat(validatingProcessor.isEnabled()).isTrue();
         assertThat(validatingProcessor.isStrict()).isTrue();
     }
@@ -304,14 +303,14 @@ class JmxControlProtocolE2ETest {
 
         @Test
         void decodeRejectionLeavesLiveStateUnchanged() {
-            double ratioBefore = samplerHolder.current().defaultRatio();
+            double ratioBefore = samplerHolder.current().samplingRatio();
 
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put(TracingControlProtocolKeys.CONTRACT_VERSION, 999);
             payload.put(TracingControlProtocolKeys.SAMPLING_RATIO, 0.99d);
             handle(payload);
 
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(ratioBefore);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(ratioBefore);
         }
     }
 
@@ -364,7 +363,7 @@ class JmxControlProtocolE2ETest {
 
         @Test
         void domainRejectionLeavesLiveStateUnchanged() {
-            double ratioBefore        = samplerHolder.current().defaultRatio();
+            double ratioBefore        = samplerHolder.current().samplingRatio();
             boolean validBefore       = validatingProcessor.isEnabled();
 
             Map<String, Object> payload = applyPayload();
@@ -374,7 +373,7 @@ class JmxControlProtocolE2ETest {
             handle(payload);
 
             // Neither sampling nor validation state must change
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(ratioBefore);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(ratioBefore);
             assertThat(validatingProcessor.isEnabled()).isEqualTo(validBefore);
         }
 
@@ -397,8 +396,8 @@ class JmxControlProtocolE2ETest {
 
     @Test
     void readAppliedStateReturnsSuccessWithoutMutatingState() {
-        double ratioBefore  = samplerHolder.current().defaultRatio();
-        long versionBefore  = samplerHolder.current().version();
+        double ratioBefore  = samplerHolder.current().samplingRatio();
+        long versionBefore  = samplerHolder.current().acceptedSequence();
 
         RuntimePolicyControlHandleResult result = handle(readPayload());
 
@@ -406,8 +405,8 @@ class JmxControlProtocolE2ETest {
         assertThat(result.operation())
                 .contains(TracingControlProtocolOperation.READ_APPLIED_STATE);
         // Live state must be completely unchanged
-        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(ratioBefore);
-        assertThat(samplerHolder.current().version()).isEqualTo(versionBefore);
+        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(ratioBefore);
+        assertThat(samplerHolder.current().acceptedSequence()).isEqualTo(versionBefore);
     }
 
     // =========================================================================
@@ -421,7 +420,7 @@ class JmxControlProtocolE2ETest {
 
         @BeforeEach
         void setUpReadHandler() {
-            readHandler = new ReadAppliedStateHandler(samplerHolder, validatingProcessor);
+            readHandler = new ReadAppliedStateHandler(samplerHolder);
         }
 
         @Test

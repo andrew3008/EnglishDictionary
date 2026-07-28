@@ -12,23 +12,27 @@ import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.sampling.engine.SamplingPolicyEngine;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyView;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
 public final class CompositeSampler implements Sampler, PlatformManagedSampler {
 
-    private final SamplerStateHolder configHolder;
+    private final AtomicReference<AcceptedPolicyAccess> acceptedPolicy;
     private final SamplingPolicyEngine policyEngine;
 
     private final ConcurrentHashMap<String, LongAdder> decisionCounters = new ConcurrentHashMap<>();
 
-    public CompositeSampler(SamplerStateHolder configHolder) {
-        this.configHolder = configHolder;
+    public CompositeSampler(AcceptedPolicyAccess acceptedPolicy) {
+        this.acceptedPolicy = new AtomicReference<>(Objects.requireNonNull(acceptedPolicy, "acceptedPolicy"));
         this.policyEngine = SamplingPolicyEngine.productionEngine();
     }
 
@@ -36,12 +40,18 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
     public SamplingResult shouldSample(@NonNull Context parentContext, @NonNull String traceId, @NonNull String name,
                                        @NonNull SpanKind spanKind, @NonNull Attributes attributes,
                                        @NonNull List<LinkData> parentLinks) {
-        SamplerState state = configHolder.current();
+        AcceptedPolicyAccess access = acceptedPolicy.get();
+        AcceptedPolicyView policy = access.current();
         SamplingPolicyRequest request = SamplingPolicyOtelAdapter.toRequest(
                 parentContext, traceId, name, spanKind, attributes, parentLinks
         );
 
-        SamplingPolicyDecision decision = policyEngine.evaluate(request, state.policySnapshot());
+        SamplingPolicyDecision decision = policyEngine.evaluate(
+                request,
+                policy.samplingEnabled(),
+                policy.samplingRouteRatios(),
+                policy.samplingRatio(),
+                access.currentLegacySamplingRules());
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
         recordDecision(result.getDecision(), SamplingPolicyOtelAdapter.metricRuleName(decision));
         return result;
@@ -55,7 +65,8 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
     @Override
     public String getDescription() {
         return String.format("PlatformRuleBasedSampler{version=%d, defaultRatio=%.2f}",
-                configHolder.current().version(), configHolder.current().defaultRatio());
+                acceptedPolicy.get().current().acceptedSequence(),
+                acceptedPolicy.get().current().samplingRatio());
     }
 
     @Override
@@ -68,8 +79,12 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
         return this;
     }
 
-    public SamplerStateHolder stateHolder() {
-        return configHolder;
+    public AcceptedPolicyAccess acceptedPolicy() {
+        return acceptedPolicy.get();
+    }
+
+    public void bindAcceptedPolicy(AcceptedPolicyAccess policy) {
+        acceptedPolicy.set(Objects.requireNonNull(policy, "policy"));
     }
 
     public SamplingPolicyEngine policyEngine() {

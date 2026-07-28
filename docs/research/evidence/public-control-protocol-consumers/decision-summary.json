@@ -1,0 +1,78 @@
+{
+  "artifactId": "p0-public-control-deletion-prerequisite",
+  "gate": "P0",
+  "todoId": "p0-public-control-deletion-prerequisite",
+  "decisionDate": "2026-07-28",
+  "branch": "refactor/config-accepted-state-p1",
+  "headAtInventory": "8f690a7",
+  "productionCodeChanged": false,
+  "scope": {
+    "module": "platform-tracing-api",
+    "package": "space.br1440.platform.tracing.api.control.protocol",
+    "publicTypes": [
+      "TracingControlProtocol",
+      "TracingControlProtocolKeys",
+      "TracingControlProtocolVersion",
+      "TracingControlProtocolOperation",
+      "TracingControlProtocolDecodeResult",
+      "TracingControlProtocolViolation",
+      "TracingControlProtocolViolationCode"
+    ],
+    "packagePrivateTypes": [
+      "TracingControlProtocolDecoder",
+      "TracingControlProtocolSchema",
+      "TracingControlProtocolFieldType",
+      "TracingControlProtocolFieldDescriptor",
+      "ContractVersionValidator",
+      "FieldTypeSupport",
+      "RouteRatiosNormalizer"
+    ],
+    "excludedPackages": [
+      "space.br1440.platform.tracing.api.propagation.control"
+    ],
+    "legacyPackage": "space.br1440.platform.tracing.api.control.wire"
+  },
+  "externalConsumerDefinition": "Any consumer outside this monorepo product modules, or any adoption guidance in samples/README/SUPPORTED/MIGRATION that teaches application developers to depend on the Java FQCNs.",
+  "findings": {
+    "inRepoExternalFqcnConsumers": 0,
+    "sampleModuleFqcnHits": 0,
+    "supportedMdFqcnHits": 0,
+    "migrationMdFqcnHits": 0,
+    "readmeFqcnHits": 0,
+    "legacyWirePackageProductionTypes": 0,
+    "productModuleProductionConsumers": [
+      "platform-tracing-otel",
+      "platform-tracing-otel-javaagent-extension"
+    ],
+    "springAutoconfigureProductionConsumers": 0,
+    "publishedModule": true,
+    "publicContractInventoryStatus": "supported-api",
+    "nexusOutOfRepoConsumers": "NOT_PROVABLE_BY_REPO_SCAN"
+  },
+  "orGateEvaluation": {
+    "zeroExternalConsumersConfirmed": true,
+    "committeeApprovedBreakingDeletion": {
+      "status": "AUTHORIZED_FOR_P6_ONLY",
+      "evidence": "docs/research/evidence/implementation-readiness/committee-approval.json",
+      "implementationGo": "GRANTED",
+      "legacyDeletionGo": "BLOCKED_UNTIL_P6_COHERENT_CUTOVER",
+      "planDeletionTarget": "P6 DELETE public control protocol types after replacement"
+    }
+  },
+  "verdict": "PREREQUISITE_CLOSED",
+  "verdictDetail": "In-repo inventory confirms zero external/non-product FQCN consumers of public control protocol types. Product-module consumers remain and must be migrated before deletion. Breaking deletion stays blocked until P6 coherent cutover per committee-approval.json; this closes the P0 inventory OR-gate without authorizing immediate deletion.",
+  "authorizedNow": false,
+  "authorizedAt": "P6_COHERENT_CUTOVER",
+  "requiredFollowUpsBeforeDeletion": [
+    "Migrate platform-tracing-otel control protocol consumers",
+    "Migrate platform-tracing-otel-javaagent-extension JMX/control consumers",
+    "Update docs/contracts/public-contract-inventory.yaml status/disposition at P6/P7",
+    "Update SUPPORTED/MIGRATION/CHANGELOG in P7",
+    "Execute P6 zero-reference gates after deletion"
+  ],
+  "artifacts": [
+    "docs/research/evidence/public-control-protocol-consumers/decision-summary.json",
+    "docs/research/evidence/public-control-protocol-consumers/consumer-inventory.json",
+    "docs/research/public-control-protocol-deletion-prerequisite-p0.md"
+  ]
+}

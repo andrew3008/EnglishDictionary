@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.sampler;
 
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +37,7 @@ public final class PlatformSamplerBuilder {
      * Строит платформенный sampler из стартовой конфигурации.
      * <p>
      * Возвращаемый {@link SafeSampler} реализует {@link PlatformManagedSampler}: вызывающий код
-     * может извлечь внутренний {@link CompositeSampler} (и его {@link SamplerStateHolder}) для
+     * может извлечь внутренний {@link CompositeSampler} и его accepted policy для
      * привязки JMX-управления через {@link PlatformManagedSamplers#findComposite(Sampler)}.
      *
      * @param sampling immutable startup sampling config; ratio defaults to
@@ -44,15 +45,11 @@ public final class PlatformSamplerBuilder {
      *                 absent or blank (ALIGN_TO_EXTENSION_DEFAULTS, PR-5)
      */
     public static Sampler build(SamplingExtensionConfig sampling) {
-        double ratio = sampling.ratio();
-        boolean enabled = sampling.enabled();
-        Map<String, Double> routeRatios = parseRouteRatios(sampling.routeRatios());
 
         // Startup-init (Фаза 14): enabled/ratio/dropPaths/forceValues/routeRatios seedируют
-        // SamplerStateHolder, чтобы окно до первого JMX-пуша Spring работало с верной политикой.
-        SamplerStateHolder configHolder = new SamplerStateHolder(
-                enabled, sampling.dropPaths(), sampling.forceRecordValues(), routeRatios, ratio);
-        CompositeSampler compositeSampler = new CompositeSampler(configHolder);
+        // Accepted policy создаётся до первого runtime-обновления и сразу видна sampler hot path.
+        CompositeSampler compositeSampler = new CompositeSampler(
+                AcceptedPolicyAccess.fromSampling(sampling));
 
         // Ошибка platform policy не может ослабить sampling governance: fallback всегда DROP.
         return new SafeSampler(compositeSampler);
@@ -63,7 +60,7 @@ public final class PlatformSamplerBuilder {
      * Невалидные/непарсящиеся значения пропускаются; валидация диапазона {@code defaultRatio}
      * выполняется в {@link space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicySnapshotFactory}
      * через {@link space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyPropertiesValidator}
-     * при построении {@link SamplerState}.
+     * при построении accepted policy.
      */
     static Map<String, Double> parseRouteRatios(Map<String, String> raw) {
         if (raw == null || raw.isEmpty()) {

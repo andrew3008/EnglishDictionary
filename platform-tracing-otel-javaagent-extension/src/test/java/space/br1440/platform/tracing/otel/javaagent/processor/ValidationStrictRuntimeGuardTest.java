@@ -3,15 +3,13 @@ package space.br1440.platform.tracing.otel.javaagent.processor;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
-
-import java.util.concurrent.atomic.LongAdder;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
-import java.time.Instant;
+import java.util.concurrent.atomic.LongAdder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,11 +57,11 @@ class ValidationStrictRuntimeGuardTest {
         long v0 = processor.getPolicyVersion();
 
         control.updateValidationPolicy(true, false, "JMX");
-        assertThat(processor.getPolicyVersion()).isEqualTo(v0 + 1);
+        assertThat(processor.getPolicyVersion()).isEqualTo(v0);
         assertThat(processor.isStrict()).isFalse();
 
         control.updateValidationPolicy(false, false, "JMX");
-        assertThat(processor.getPolicyVersion()).isEqualTo(v0 + 2);
+        assertThat(processor.getPolicyVersion()).isEqualTo(v0 + 1);
         assertThat(processor.isEnabled()).isFalse();
         assertThat(counter.sum()).isZero();
     }
@@ -92,29 +90,13 @@ class ValidationStrictRuntimeGuardTest {
 
         assertThat(processor.getPolicyVersion()).isEqualTo(v0 + 1);
         assertThat(processor.isStrict()).isTrue();
-        assertThat(processor.getPolicySource()).isEqualTo("test-preprod");
+        assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
             assertThatThrownBy(() -> tracer.spanBuilder("op").startSpan().end())
                     .isInstanceOf(TracingValidationException.class);
         }
-    }
-
-    @Test
-    void holder_rejects_strict_without_changing_lkg() {
-        ValidationPolicyHolder holder = new ValidationPolicyHolder(
-                ValidationSnapshot.fromPolicy(true, false, 5, Instant.now(), "startup"),
-                false);
-        ValidationSnapshot before = holder.current();
-
-        boolean applied = holder.tryApplyPolicyUpdate(true, true, "JMX");
-
-        assertThat(applied).isFalse();
-        assertThat(holder.current()).isSameAs(before);
-        assertThat(holder.version()).isEqualTo(5);
-        assertThat(holder.current().strict()).isFalse();
-        assertThat(holder.current().source()).isEqualTo("startup");
     }
 
     @Test

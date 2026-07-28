@@ -1,0 +1,17 @@
+S-06 approved-stack S-02 reproduction — configProvenanceVerify on Boot 3.5.5 + Spring Cloud 2025.0.0
+HEAD: 6909f44a1d9957a488c3e144b6f1e4949752aef5
+Task: configProvenanceVerify --rerun-tasks
+Result: BUILD SUCCESSFUL
+
+Stack (configProvenance source set):
+  org.springframework.boot:spring-boot-dependencies:3.5.5 (from rootProject.springBootVersion)
+  org.springframework.cloud:spring-cloud-dependencies:2025.0.0
+  spring-cloud-context:4.3.0 (resolved)
+  spring-cloud-config-client:4.3.0 (resolved)
+  spring-cloud-config-server:4.3.0 (resolved)
+
+T1–T10: PASS (10/10)
+Git-backed Config Server process test: PASS
+Evidence file: platform-tracing-e2e-tests/build/reports/config-provenance/evidence.txt
+
+Q6 (production stack reproduction): PASS — closes the S-02 open item that depended on S-06.

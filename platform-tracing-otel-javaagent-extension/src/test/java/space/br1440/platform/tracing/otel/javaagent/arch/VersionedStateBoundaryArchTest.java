@@ -23,8 +23,8 @@ class VersionedStateBoundaryArchTest {
             ModuleTaxonomyArchRules.VERSIONED_STATE_IMPLS_ALLOWLIST;
 
     @ArchTest
-    static final ArchRule snapshotFieldsAreFinal =
-            ModuleTaxonomyArchRules.SNAPSHOT_FIELDS_ARE_FINAL;
+    static final ArchRule acceptedPolicyEnvelopeFieldsAreFinal =
+            ModuleTaxonomyArchRules.ACCEPTED_POLICY_ENVELOPE_FIELDS_ARE_FINAL;
 
     @ArchTest
     static final ArchRule scrubbingSnapshotFieldsAreFinal =

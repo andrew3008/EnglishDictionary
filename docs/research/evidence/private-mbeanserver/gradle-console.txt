@@ -1,0 +1,7 @@
+Task: :platform-tracing-e2e-tests:privateMBeanServerTest
+Result: PASS
+Forked controlled-Agent JVM: PASS
+Separate remote client process: PASS
+jcmd ManagementAgent.start_local and attach client: PASS
+Disabled Spring context: PASS
+Repeated Agent-only launches: PASS

@@ -1,0 +1,72 @@
+{
+  "spikeId": "S-07",
+  "selectedOption": "R3",
+  "weights": {
+    "operationalUsefulness": 20,
+    "consumerCompatibility": 15,
+    "securityMinimumDisclosure": 15,
+    "contractSimplicity": 15,
+    "singleTruthOwnership": 10,
+    "jmxOpenTypeQuality": 10,
+    "migrationClarity": 5,
+    "testability": 5,
+    "deletionValue": 3,
+    "longTermGovernance": 2
+  },
+  "candidates": [
+    {
+      "id": "R1",
+      "label": "Retain most current reads, delete only writes",
+      "scores": {
+        "operationalUsefulness": 5,
+        "consumerCompatibility": 5,
+        "securityMinimumDisclosure": 2,
+        "contractSimplicity": 2,
+        "singleTruthOwnership": 1,
+        "jmxOpenTypeQuality": 3,
+        "migrationClarity": 3,
+        "testability": 4,
+        "deletionValue": 1,
+        "longTermGovernance": 1
+      },
+      "weightedScore": 64.6,
+      "rejection": "Keeps duplicate ConfigVersion owners and Category B mutable surface as reads; fails single-truth ownership"
+    },
+    {
+      "id": "R2",
+      "label": "Minimal operational read projection",
+      "scores": {
+        "operationalUsefulness": 2,
+        "consumerCompatibility": 1,
+        "securityMinimumDisclosure": 5,
+        "contractSimplicity": 5,
+        "singleTruthOwnership": 5,
+        "jmxOpenTypeQuality": 4,
+        "migrationClarity": 2,
+        "testability": 3,
+        "deletionValue": 5,
+        "longTermGovernance": 4
+      },
+      "weightedScore": 67.0,
+      "rejection": "Deletes HEALTH/CLIENT export and processor counters required by named consumers"
+    },
+    {
+      "id": "R3",
+      "label": "Domain reads + aggregate accepted-state/readiness projection",
+      "scores": {
+        "operationalUsefulness": 5,
+        "consumerCompatibility": 4,
+        "securityMinimumDisclosure": 4,
+        "contractSimplicity": 4,
+        "singleTruthOwnership": 5,
+        "jmxOpenTypeQuality": 4,
+        "migrationClarity": 4,
+        "testability": 5,
+        "deletionValue": 4,
+        "longTermGovernance": 5
+      },
+      "weightedScore": 87.4,
+      "selection": "Retains named-consumer domain diagnostics; consolidates version/apply truth on Control; deletes all platform mutations; adds only evidence-backed accepted-state and delivery fields"
+    }
+  ]
+}

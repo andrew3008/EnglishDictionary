@@ -1,0 +1,6 @@
+S03_PRIVATE:extensionClassLoader=io.opentelemetry.javaagent.tooling.ExtensionClassLoader
+S03_APP:appClassLoader=jdk.internal.loader.ClassLoaders$AppClassLoader
+S03_APP:compositeDataClassLoader=bootstrap
+S03_APP:M4=PASS
+S03_APP:roundTripStatus=APPLIED
+S03_APP:agentWriterClassLoader=isolated-extension-classloader

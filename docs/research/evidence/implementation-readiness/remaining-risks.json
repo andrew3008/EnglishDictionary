@@ -1,0 +1,39 @@
+{
+  "spikeId": "E8",
+  "review": "implementation-readiness",
+  "technicalArchitectureBlockers": [],
+  "committeeDecisionRisks": [
+    {"id": "DR-01", "severity": "DECISION_REQUIRED",
+      "summary": "Proposed wire schema and bounds require explicit committee approval"},
+    {"id": "DR-02", "severity": "DECISION_REQUIRED",
+      "summary": "E7 is technically READY_TO_CLOSE but formal closure is not recorded"},
+    {"id": "DR-03", "severity": "DECISION_REQUIRED",
+      "summary": "Scenario, rollback and pre-production security-debt records require acceptance"},
+    {"id": "DR-04", "severity": "DECISION_REQUIRED",
+      "summary": "Implementation GO remains exclusively committee-owned"}
+  ],
+  "implementationRisks": [
+    {"id": "IR-01", "phase": "P2",
+      "summary": "Independent Agent and App codecs may drift",
+      "mitigation": "Same normative JSON contract, golden vectors and cross-classloader round-trip tests"},
+    {"id": "IR-02", "phase": "P1-P2",
+      "summary": "A shared DTO could leak across classloaders",
+      "mitigation": "JDK Open Types only; architecture test forbids shared control DTO"},
+    {"id": "IR-03", "phase": "P3-P6",
+      "summary": "Legacy mutations may survive cutover",
+      "mitigation": "S-07 deletion map and zero-write platform gate"},
+    {"id": "IR-04", "phase": "P2-P5",
+      "summary": "Oversized or malformed data may reach domain validation",
+      "mitigation": "Codec enforces exact type and bounds before normalization, validation and CAS"}
+  ],
+  "operationalRolloutRisks": [
+    {"id": "OR-01", "phase": "P4-P6",
+      "summary": "Corporate Kafka Bus checks are not yet executed in production-like infrastructure"},
+    {"id": "OR-02", "phase": "P6",
+      "summary": "External JMX consumer survey and migration notice remain pending"},
+    {"id": "OR-03", "phase": "P4",
+      "summary": "Config Server monitor/webhook operational ownership remains to be exercised"},
+    {"id": "OR-04", "phase": "P6",
+      "summary": "Production rollout remains forbidden until all legacy writers are removed"}
+  ]
+}

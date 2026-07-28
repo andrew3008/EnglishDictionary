@@ -1,0 +1,227 @@
+---
+description: Runtime-control and control-protocol rules for decoding, domain validation, mutation authorization, atomic applied state, and last-known-good behavior.
+globs:
+  - "**/*ControlProtocol*.java"
+  - "**/*RuntimeControl*.java"
+  - "**/*RuntimePolicy*.java"
+  - "**/*AppliedState*.java"
+  - "**/*MutationResult*.java"
+  - "**/control/**/*.java"
+alwaysApply: false
+---
+
+# Control Protocol and Runtime Control Rules
+
+## Required Pipeline
+
+Preserve this one-way pipeline:
+
+```text
+wire payload
+    -> structural decode
+    -> domain validation
+    -> mutation policy
+    -> atomic apply or read
+    -> observable applied state
+```
+
+Do not bypass or collapse these stages.
+
+## Ownership
+
+- API owns bounded wire vocabulary, protocol version, operation names, structural decode results, and violation vocabulary.
+- `platform-tracing-otel` owns domain validation, mutation policy, runtime state, atomic transitions, rollback, and last-known-good state.
+- JMX/OpenMBean owns transport conversion only.
+- Spring Boot owns startup properties and bean wiring only.
+
+Do not move domain validation into a wire decoder, JMX adapter, or Spring auto-configuration.
+
+## Operation Semantics
+
+Every operation must have one explicit semantic category:
+
+- `READ`
+- `VALIDATE`
+- `APPLY`
+
+`READ`:
+
+- never mutates
+- returns a safe immutable snapshot
+- does not refresh version or timestamps
+- does not trigger lazy initialization with side effects
+
+`VALIDATE`:
+
+- never mutates
+- performs structural and domain validation
+- does not advance version
+- does not replace last-known-good state
+- returns bounded violations
+
+`APPLY`:
+
+- requires the mutation gate
+- validates before mutation
+- applies atomically
+- updates applied metadata only after complete success
+- returns the resulting applied state or explicit rejection/failure
+
+Do not add ambiguous operations such as raw schema read, raw payload apply, or validate-and-apply.
+
+## Structural Decode
+
+Structural decode may verify:
+
+- required keys
+- supported protocol version
+- known operation
+- primitive/open-type shape
+- bounded collection sizes
+- bounded string lengths
+- syntactic representation
+
+Structural decode must not own tracing policy semantics.
+
+An invalid decode result must not expose a usable request object.
+
+Do not accept unknown keys silently unless forward-compatible behavior is explicitly designed and tested.
+
+## Domain Validation
+
+Domain validation owns:
+
+- ratio and numeric bounds
+- allowed combinations
+- required non-empty rule sets
+- route or attribute semantics
+- sampling/scrubbing invariants
+- provider capability constraints
+- cross-field consistency
+
+Validation must be:
+
+- deterministic
+- side-effect-free
+- independent from current mutable state unless the operation explicitly requires an expected version
+- safe for untrusted input
+
+## Mutation Gate
+
+Runtime mutation is disabled by default.
+
+Enablement must be explicit and observable.
+
+A user-replaceable bean, custom provider, JMX adapter, or alternate entry point must not bypass the gate.
+
+Disabled mutation returns an explicit rejection and does not change:
+
+- applied snapshot
+- version
+- source
+- applied timestamp
+- last-known-good state
+- diagnostics fingerprint
+
+## Applied State
+
+Applied state must be:
+
+- immutable
+- safely published
+- owned by one runtime component
+- versioned where stale updates are possible
+- distinct from Spring startup configuration
+- observable through safe diagnostics
+
+Update last-known-good state only after complete successful apply.
+
+Rejected validation or partial failure must preserve the complete previous applied state.
+
+Do not expose mutable collections from state snapshots.
+
+## Atomicity and Rollback
+
+A multi-component apply must either:
+
+- publish the complete new state, or
+- preserve/restore the previous complete state
+
+Do not expose mixed sampler/scrubber/processor configuration.
+
+Define rollback before implementing a multi-step mutation.
+
+Repeated application of an identical request must be deterministic.
+
+If expected-version semantics exist, reject stale updates explicitly.
+
+## Results and Violations
+
+Return machine-readable:
+
+- status
+- operation
+- protocol version
+- violation codes
+- applied/current version
+- bounded diagnostic message
+
+Do not return raw exceptions, raw payloads, secrets, PII, or implementation object dumps.
+
+Preserve root causes internally for diagnostics without exposing sensitive input.
+
+## Forbidden API
+
+Do not introduce public:
+
+- `schema()`
+- `validator()`
+- internal decoder/schema objects
+- raw wire-map apply methods
+- `READ_SCHEMA`
+- legacy and new decode paths in parallel
+- transport-specific types in core contracts
+
+## Security
+
+Treat all mutation payloads as untrusted.
+
+Apply:
+
+- payload bounds
+- operation allowlists
+- protocol-version checks
+- mutation authorization in the approved external layer
+- safe logging
+- no tracing identifier as authorization proof
+
+JMX code-level checks do not replace JVM, network, authentication, or RBAC controls.
+
+## Testing
+
+Required tests where applicable:
+
+- missing/unknown keys
+- unsupported version
+- invalid operation
+- boundary numeric values
+- domain-invalid combinations
+- mutation disabled
+- validate does not mutate
+- read does not mutate
+- successful atomic apply
+- rejection preserves all state metadata
+- partial failure rollback
+- repeated identical apply
+- stale version
+- concurrent reads/applies
+- JMX wire round trip
+
+For runtime/classloader behavior, run real E2E and verify:
+
+```text
+tests > 0
+skipped = 0
+failures = 0
+errors = 0
+```

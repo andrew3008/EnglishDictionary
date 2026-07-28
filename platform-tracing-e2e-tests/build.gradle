@@ -55,6 +55,30 @@ sourceSets {
             srcDir 'src/e1Consumer/resources'
         }
     }
+    configProvenance {
+        java {
+            srcDir 'src/configProvenance/java'
+        }
+        resources {
+            srcDir 'src/configProvenance/resources'
+        }
+    }
+    privateMBeanServerExtension {
+        java {
+            srcDir 'src/privateMBeanServerExtension/java'
+        }
+        resources {
+            srcDir 'src/privateMBeanServerExtension/resources'
+        }
+    }
+    privateMBeanServerApp {
+        java {
+            srcDir 'src/privateMBeanServerApp/java'
+        }
+        resources {
+            srcDir 'src/privateMBeanServerApp/resources'
+        }
+    }
 }
 
 configurations {
@@ -174,6 +198,23 @@ dependencies {
     // App-CL сторона E2E (MapWireRoundTripMain) использует константы MBean и маркеры харнесса.
     testImplementation sourceSets.jmxWireExtension.output
     testImplementation sourceSets.e1Consumer.output
+
+    // Step 0B / S-06 approved production stack: Boot baseline from gradle.properties (3.5.5)
+    // plus Northfields 2025.0.0 — isolated from production BOM; does not change publication metadata.
+    configProvenanceImplementation enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${rootProject.springBootVersion}")
+    configProvenanceImplementation enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')
+    configProvenanceImplementation 'org.springframework.cloud:spring-cloud-starter-config'
+    configProvenanceImplementation 'org.springframework.cloud:spring-cloud-config-server'
+    configProvenanceImplementation 'org.springframework.boot:spring-boot-starter-web'
+    configProvenanceImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+    configProvenanceImplementation 'org.springframework.boot:spring-boot-starter-test'
+    configProvenanceRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // S-03: полностью test-only Agent/App classloader fixture для private MBeanServer.
+    privateMBeanServerExtensionCompileOnly platform(project(':platform-tracing-bom'))
+    privateMBeanServerExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    privateMBeanServerAppImplementation platform(project(':platform-tracing-bom'))
+    privateMBeanServerAppImplementation 'org.springframework:spring-context'
 }
 
 tasks.register('verifyExtensionDeps') {
@@ -283,6 +324,11 @@ test {
     // По умолчанию e2e-тесты исключаются из обычного gradle test, чтобы не замедлять CI без Docker.
     // Запускаются через `./gradlew :platform-tracing-e2e-tests:test -PrunE2e`.
     onlyIf { project.hasProperty('runE2e') }
+    // Private MBeanServer isolation requires private.mbeanserver.* system properties and
+    // fixture JARs owned by privateMBeanServerTest / privateMBeanServerVerify.
+    filter {
+        excludeTestsMatching 'space.br1440.platform.tracing.e2e.jmx.PrivateMBeanServerIsolationE2ETest'
+    }
     doFirst {
         systemProperty 'otel.javaagent.jar', configurations.otelJavaAgent.singleFile.absolutePath
         systemProperty 'smoke.controlled.agent.jar',
@@ -301,5 +347,56 @@ test {
                 testJmxWireExtensionJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.readiness.fixture.extension.jar',
                 testReadinessFixtureExtensionJar.archiveFile.get().asFile.absolutePath
+    }
+}
+
+tasks.register('configProvenanceTest', Test) {
+    group = 'verification'
+    description = 'Runs isolated Spring Cloud Config provenance characterization (Step 0B).'
+    testClassesDirs = sourceSets.configProvenance.output.classesDirs
+    classpath = sourceSets.configProvenance.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    systemProperty 'config.provenance.evidence.file',
+            layout.buildDirectory.file('reports/config-provenance/evidence.txt').get().asFile.absolutePath
+    doFirst {
+        delete layout.buildDirectory.file('reports/config-provenance/evidence.txt')
+    }
+}
+
+tasks.register('testPrivateMBeanServerExtensionJar', Jar) {
+    archiveClassifier.set('private-mbeanserver-spike')
+    from sourceSets.privateMBeanServerExtension.output
+}
+
+tasks.named('processPrivateMBeanServerExtensionResources') {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.register('privateMBeanServerTest', Test) {
+    group = 'verification'
+    description = 'Runs the S-03 private process-local MBeanServer process and classloader spike.'
+    dependsOn testClasses, privateMBeanServerAppClasses, testPrivateMBeanServerExtensionJar,
+            ':platform-tracing-otel-javaagent-extension:platformExtendedAgentJar'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.e2e.jmx.PrivateMBeanServerIsolationE2ETest'
+    }
+    doFirst {
+        systemProperty 'private.mbeanserver.agent.jar',
+                project(':platform-tracing-otel-javaagent-extension').tasks
+                        .named('platformExtendedAgentJar').get().archiveFile.get().asFile.absolutePath
+        systemProperty 'private.mbeanserver.extension.jar',
+                testPrivateMBeanServerExtensionJar.archiveFile.get().asFile.absolutePath
+        systemProperty 'private.mbeanserver.app.classpath',
+                sourceSets.privateMBeanServerApp.runtimeClasspath.asPath
+        systemProperty 'private.mbeanserver.agent.only.classpath',
+                sourceSets.privateMBeanServerApp.output.classesDirs.asPath
+        systemProperty 'private.mbeanserver.evidence.dir',
+                rootProject.layout.projectDirectory.dir(
+                        'docs/research/evidence/private-mbeanserver').asFile.absolutePath
     }
 }

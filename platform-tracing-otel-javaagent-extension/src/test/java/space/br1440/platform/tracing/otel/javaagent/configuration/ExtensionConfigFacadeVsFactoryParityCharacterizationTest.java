@@ -356,7 +356,7 @@ class ExtensionConfigFacadeVsFactoryParityCharacterizationTest {
 
     /**
      * Строит sampler через {@code PlatformSamplerBuilder.build(SamplingExtensionConfig)} и
-     * возвращает стартовый {@code defaultRatio} из {@code SamplerStateHolder}.
+     * возвращает стартовый {@code defaultRatio} из {@code AcceptedPolicyAccess}.
      * <p>
      * PR-5: {@code ConfigProperties} \u2192 {@code SamplingExtensionConfig} через {@code ExtensionConfig},
      * обеспечивая ALIGN_TO_EXTENSION_DEFAULTS для absent/blank ratio.
@@ -368,7 +368,7 @@ class ExtensionConfigFacadeVsFactoryParityCharacterizationTest {
         space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler composite =
                 ((space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSampler) sampler)
                         .platformCompositeSampler();
-        return composite.stateHolder().current().defaultRatio();
+        return composite.acceptedPolicy().current().samplingRatio();
     }
 
     static ConfigProperties emptyConfig() {

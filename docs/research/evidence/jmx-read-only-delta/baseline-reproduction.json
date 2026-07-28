@@ -1,0 +1,17 @@
+{
+  "spikeId": "S-07",
+  "task": "jmxManagementContractVerify --no-daemon --rerun-tasks",
+  "result": "PASS",
+  "liveMatchesCommittedFixture": true,
+  "committedFixture": "platform-tracing-otel-javaagent-extension/src/test/resources/jmx-management-contract-baseline.json",
+  "fixtureCounts": {
+    "objectNameCount": 8,
+    "memberCount": 63,
+    "readOnlyMemberCount": 47,
+    "mutatingMemberCount": 16
+  },
+  "generatedFromCommit": "62158867d9309eab29ce8de3f05db8e3b9300b1b",
+  "evidenceCommitE1": "939e95c test(jmx): capture management contract baseline",
+  "evidenceCommitE2": "2e3f68f test(e2e): prove private MBeanServer isolation",
+  "drift": null
+}

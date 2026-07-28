@@ -1,0 +1,21 @@
+﻿Config Provenance Step 0B - test summary
+command: .\gradlew.bat configProvenanceVerify --rerun-tasks --no-daemon --console=plain
+result : BUILD SUCCESSFUL in 44s (wall clock 44.8 s)
+
+SUITE space.br1440.platform.tracing.e2e.configserver.ConfigServerGitProcessCharacterizationTest
+  tests=1 failures=0 errors=0 skipped=0 time=10.01s
+  PASS       10.01s  realConfigServerProcessReadsGitRevisionAndRefreshesAfterCommit(Path)
+
+SUITE space.br1440.platform.tracing.e2e.configserver.ConfigServerProvenanceCharacterizationTest
+  tests=10 failures=0 errors=0 skipped=0 time=24.658s
+  PASS       3.261s  t3_refreshRemovalRebuildsFullSnapshotAndSelectsExplicitDefault()
+  PASS       2.168s  t6_systemPolicyOverrideIsDetectedAndFailsClosed()
+  PASS       2.171s  t1_pureRemotePolicyHasTrustedEffectiveAndDesiredViews()
+  PASS       2.161s  t8_directMarkerReadDefeatsEffectiveVersionSpoofing()
+  PASS       2.172s  t2_commandLineWinsWhileLocalYamlPrecedenceIsCharacterized(Path)
+  PASS       2.159s  t5_differentStructuralDesiredValueIsVisibleAndRequiresRestart()
+  PASS       2.143s  t7_successfulFetchWithoutVersionKeepsRevisionOptional()
+  PASS       3.151s  t10_listenerSeesUpdatedEnvironmentSourcesAndMarker()
+  PASS       3.148s  t9_removedPropertyAppearsInDiffAndDisappearsFromBothViews()
+  PASS       2.123s  t4_equalStructuralBootstrapAndRemoteValuesDoNotRequireRestart()
+

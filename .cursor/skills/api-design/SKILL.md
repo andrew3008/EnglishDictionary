@@ -1,6 +1,6 @@
 ---
 name: api-design
-description: Defines enterprise Java library and Spring Boot starter API design standards from the Platform Development guide (12-week curriculum). Use when analyzing, designing, reviewing, or documenting public API boundaries, semantic models, state/information models, usability, object creation, Java type modeling, mutability/lifecycle, error contracts, API/SPI boundaries, compatibility evolution, dependency publication, starter architecture, Public Contract Inventory, or Semantic Contract Map.
+description: Defines enterprise Java library and Spring Boot starter API design standards from the Platform Development guide (16-week curriculum). Use when analyzing, designing, reviewing, or documenting public API boundaries, semantic models, state/information models, usability, object creation, Java type modeling, mutability/lifecycle, error contracts, API/SPI boundaries, compatibility evolution, dependency publication, starter architecture, conditional configuration and back-off, Configuration API and key space, Extension API and customizers, operational contracts, testing gates, release governance, Public Contract Inventory, or Semantic Contract Map.
 ---
 
 # API Design — Platform Development Guide
@@ -34,8 +34,14 @@ When requirements conflict, prefer:
 10. **Week 10** — plan compatibility dimensions, deprecation, evolution.
 11. **Week 11** — govern dependency API, scopes, publication metadata.
 12. **Week 12** — architect starter modules, auto-configuration, extension graph.
+13. **Week 13** — design conditions and back-off as an executable protocol.
+14. **Week 14** — design Configuration API as published control language.
+15. **Week 15** — design Extension API and Spring integration contract.
+16. **Week 16** — design Operational API, testing portfolio, and governance gates.
 
 Load only the `references/week-NN-*.md` files relevant to the task.
+
+Week 12 is the starter architecture overview. Week 13 is the deep executable condition/back-off protocol — load week-13 for condition detail; do not re-read all of week-12 for that purpose.
 
 ## Reference selection by week
 
@@ -171,11 +177,60 @@ Source: `E:/Platform_Development/API/api-design-week-11-dependency-api-library-p
 | File | Use when |
 |---|---|
 | [week-12-starter-architecture-fundamentals.md](references/week-12-starter-architecture-fundamentals.md) | Runtime/bootstrap/adoption systems, modules |
-| [week-12-autoconfigure-activation.md](references/week-12-autoconfigure-activation.md) | Auto-configuration, conditions, ordering |
-| [week-12-configuration-extensions-operations.md](references/week-12-configuration-extensions-operations.md) | Properties, extension points, operations |
+| [week-12-autoconfigure-activation.md](references/week-12-autoconfigure-activation.md) | Auto-configuration, conditions, ordering overview |
+| [week-12-configuration-extensions-operations.md](references/week-12-configuration-extensions-operations.md) | Properties, extension points, operations overview |
 | [week-12-dependencies-testing-publication.md](references/week-12-dependencies-testing-publication.md) | Dependencies, test matrix, publication review |
 
 Source: `E:/Platform_Development/API/api-design-week-12-starter-architecture.md`
+
+### Week 13 — Conditional configuration and back-off
+
+| File | Use when |
+|---|---|
+| [week-13-conditional-fundamentals.md](references/week-13-conditional-fundamentals.md) | Conditions as decision system, back-off contract, non-invasiveness, topology |
+| [week-13-classpath-bean-conditions.md](references/week-13-classpath-bean-conditions.md) | Classpath isolation, MissingBean/OnBean/SingleCandidate, Primary/Fallback, ambiguity |
+| [week-13-property-composite-conditions.md](references/week-13-property-composite-conditions.md) | Property truth table, activation vs replacement, custom Condition, slices |
+| [week-13-ordering-backoff-states.md](references/week-13-ordering-backoff-states.md) | Ordering limits, backoff granularity, error vs backoff, state model, report |
+| [week-13-testing-review-checklists.md](references/week-13-testing-review-checklists.md) | Condition test matrix, Conditional Configuration Review, anti-patterns |
+
+Source: `E:/Platform_Development/API/api-design-week-13-conditional-configuration-backoff.md`
+
+### Week 14 — Configuration API
+
+| File | Use when |
+|---|---|
+| [week-14-configuration-language-namespace.md](references/week-14-configuration-language-namespace.md) | Config as language, key space, prefix, relaxed binding, Origin |
+| [week-14-defaults-binding-model.md](references/week-14-defaults-binding-model.md) | Defaults taxonomy, immutable binding, null/absent, lists/maps merge |
+| [week-14-types-validation-diagnostics.md](references/week-14-types-validation-diagnostics.md) | Enum vs string, converters, validation, strict binding, diagnostics |
+| [week-14-metadata-evolution-operations.md](references/week-14-metadata-evolution-operations.md) | Metadata, deprecation, secrets, Actuator configprops, Binder API |
+| [week-14-testing-review-checklists.md](references/week-14-testing-review-checklists.md) | Configuration test strategy, Configuration API Review, anti-patterns |
+
+Source: `E:/Platform_Development/API/api-design-week-14-configuration-api.md`
+
+### Week 15 — Extension API and Spring integration
+
+| File | Use when |
+|---|---|
+| [week-15-extension-modes-replacement.md](references/week-15-extension-modes-replacement.md) | Extension protocol, four modes, minimal force, replacement precision |
+| [week-15-customizers-ordering-discovery.md](references/week-15-customizers-ordering-discovery.md) | Customizers, Ordered/ObjectProvider, Primary/Fallback, cardinality |
+| [week-15-lifecycle-events-container.md](references/week-15-lifecycle-events-container.md) | Scope/lifecycle, events, BPP/BFPP, proxies, context hierarchy |
+| [week-15-failure-security-aot-compat.md](references/week-15-failure-security-aot-compat.md) | Failure policy, trust boundary, AOT/native, Extension API compatibility |
+| [week-15-testing-review-checklists.md](references/week-15-testing-review-checklists.md) | Extension test strategy, Extension Contract Review, anti-patterns |
+
+Source: `E:/Platform_Development/API/api-design-week-15-extension-api-spring-integration-contract.md`
+
+### Week 16 — Operational API, testing, governance
+
+| File | Use when |
+|---|---|
+| [week-16-operational-contract-fundamentals.md](references/week-16-operational-contract-fundamentals.md) | Operational contract, observation vs control plane, inventory, startup diagnostics |
+| [week-16-health-actuator-endpoints.md](references/week-16-health-actuator-endpoints.md) | Health semantics, Actuator as API, schema, versioning |
+| [week-16-metrics-observation-logs.md](references/week-16-metrics-observation-logs.md) | Metrics/tags/cardinality, Observation, logs, secrets/PII, degradation |
+| [week-16-testing-context-matrix.md](references/week-16-testing-context-matrix.md) | Testing as executable spec, ContextRunner, auto-config matrix, slices |
+| [week-16-testing-signals-gates.md](references/week-16-testing-signals-gates.md) | Health/metrics/trace tests, failure injection, compat/AOT/perf gates |
+| [week-16-governance-review-checklists.md](references/week-16-governance-review-checklists.md) | Governance model, release gates, Operational Contract Review, anti-patterns |
+
+Source: `E:/Platform_Development/API/api-design-week-16-operational-api-testing-governance.md`
 
 ## Required reference combinations
 
@@ -188,6 +243,12 @@ Source: `E:/Platform_Development/API/api-design-week-12-starter-architecture.md`
 | Error handling design | week-08 + week-07 |
 | Dependency/publication change | week-11 + week-10 |
 | Usability review | week-04 + week-05 |
+| Conditional / back-off design | week-13 (+ week-12 activation overview) |
+| Configuration properties / binding | week-14 (+ week-03 + week-10 config evolution) |
+| Extension / customizer / replacement | week-15 (+ week-09 SPI + week-13) |
+| Operational / Actuator / metrics | week-16 (+ week-08 observability) |
+| Release readiness / governance | week-16 + week-10 + week-11 |
+| Full starter stack review | week-12 + week-13 + week-14 + week-15 |
 
 Always start with week-01 for contract surface analysis when scope is unclear.
 
@@ -201,4 +262,8 @@ Do not report API design or review complete until:
 - ownership, lifecycle, and error contracts are testable
 - dependency and publication impacts are verified
 - starter module topology matches responsibility boundaries
+- condition/back-off decision model and diagnostics are explicit (when Spring auto-configuration is in scope)
+- configuration namespace, defaults, validation, and metadata are explicit (when Configuration API is in scope)
+- extension mode, cardinality, ordering, and failure policy are explicit (when Extension API is in scope)
+- operational inventory and verification/governance gates are named (when operational surface is in scope)
 - verification mechanisms are named, not assumed

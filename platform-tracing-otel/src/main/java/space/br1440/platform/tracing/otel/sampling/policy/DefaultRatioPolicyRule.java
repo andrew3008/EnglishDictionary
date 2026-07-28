@@ -5,6 +5,8 @@ import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
 
+import java.util.Map;
+
 final class DefaultRatioPolicyRule implements SamplingPolicyRule {
 
     private static final SamplingPolicyDecision SAMPLE = SamplingPolicyDecision.recordAndSample(
@@ -21,17 +23,21 @@ final class DefaultRatioPolicyRule implements SamplingPolicyRule {
     }
 
     @Override
-    public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
-        double ratio = snapshot.getDefaultRatio();
-        if (ratio >= 1.0) {
+    public SamplingPolicyDecision evaluate(
+            SamplingPolicyRequest request,
+            boolean enabled,
+            Map<String, Double> routeRatios,
+            double defaultRatio,
+            SamplingPolicySnapshot startupRules) {
+        if (defaultRatio >= 1.0) {
             return SAMPLE;
         }
 
-        if (ratio <= 0.0) {
+        if (defaultRatio <= 0.0) {
             return DROP;
         }
 
-        if (TraceIdRatioDecision.shouldSample(request.traceId(), ratio)) {
+        if (TraceIdRatioDecision.shouldSample(request.traceId(), defaultRatio)) {
             return SAMPLE;
         }
 

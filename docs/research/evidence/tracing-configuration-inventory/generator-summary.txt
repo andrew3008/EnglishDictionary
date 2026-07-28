@@ -1,0 +1,17 @@
+kind.CONFIG_PROPERTY=78
+kind.DOCUMENTED_ONLY_KEY=1
+kind.ENV_VARIABLE=29
+kind.FIXTURE_ONLY_KEY=8
+kind.IMPORTED_PLATFORM_KEY=1
+kind.RELAXED_BINDING_ALIAS=1
+kind.RESOURCE_ATTRIBUTE=1
+kind.STANDARD_OTEL_KEY=20
+configProperty.platformTracing=78
+exactDuplicateNames=17
+typeDriftGroups=2
+defaultDriftGroups=2
+declaredNamesWithNoReader=2
+readerMethodsWithNoCaller=5
+documentedKeysWithNoDeclaration=1
+fixtureKeysWithNoReader=8
+query=inventory records grouped by kind/currentStatus/duplicateGroup flags

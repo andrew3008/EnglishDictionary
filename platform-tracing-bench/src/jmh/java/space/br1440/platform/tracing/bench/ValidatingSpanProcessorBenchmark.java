@@ -16,12 +16,11 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyView;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
-import space.br1440.platform.tracing.otel.javaagent.processor.ValidationPolicyHolder;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
-import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -49,8 +48,8 @@ public class ValidatingSpanProcessorBenchmark {
     private ValidatingSpanProcessor strictValidProcessor;
     private ValidatingSpanProcessor strictMissingProcessor;
 
-    private ValidationPolicyHolder lenientHolder;
-    private ValidationSnapshot lenientSnapshot;
+    private AcceptedPolicyAccess lenientAccess;
+    private AcceptedPolicyView lenientSnapshot;
 
     private OpenTelemetrySdk disabledSdk;
     private OpenTelemetrySdk lenientSdk;
@@ -75,9 +74,8 @@ public class ValidatingSpanProcessorBenchmark {
         strictValidProcessor.tryApplyPolicyUpdate(true, true, "bench");
         strictMissingProcessor = new ValidatingSpanProcessor(true, true);
 
-        lenientHolder = new ValidationPolicyHolder(
-                ValidationSnapshot.fromPolicy(true, false, 1, Instant.EPOCH, "bench"));
-        lenientSnapshot = lenientHolder.current();
+        lenientAccess = AcceptedPolicyAccess.isolatedValidation(true, false, true);
+        lenientSnapshot = lenientAccess.current();
 
         disabledSdk = buildSdk(disabledProcessor);
         lenientSdk = buildSdk(lenientProcessor);
@@ -151,22 +149,22 @@ public class ValidatingSpanProcessorBenchmark {
         bh.consume(span);
     }
 
-    /** Lock-free {@code ValidationPolicyHolder.current()} read. */
+    /** Lock-free чтение текущего accepted policy. */
     @Benchmark
     public void holderCurrentRead(Blackhole bh) {
-        ValidationSnapshot snapshot = lenientHolder.current();
-        bh.consume(snapshot.enabled());
-        bh.consume(snapshot.strict());
-        bh.consume(snapshot.version());
+        AcceptedPolicyView snapshot = lenientAccess.current();
+        bh.consume(snapshot.validationEnabled());
+        bh.consume(snapshot.validationStrict());
+        bh.consume(snapshot.acceptedSequence());
     }
 
     /** Immutable snapshot field access (no holder indirection). */
     @Benchmark
     public void policySnapshotRead(Blackhole bh) {
-        bh.consume(lenientSnapshot.enabled());
-        bh.consume(lenientSnapshot.strict());
-        bh.consume(lenientSnapshot.version());
-        bh.consume(lenientSnapshot.source());
+        bh.consume(lenientSnapshot.validationEnabled());
+        bh.consume(lenientSnapshot.validationStrict());
+        bh.consume(lenientSnapshot.acceptedSequence());
+        bh.consume(lenientSnapshot.runtimeInstanceId());
     }
 
     /**

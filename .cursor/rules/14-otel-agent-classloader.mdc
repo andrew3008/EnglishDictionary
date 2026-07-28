@@ -1,0 +1,196 @@
+---
+description: OpenTelemetry Java-agent, application-plane, classloader, SDK ownership, readiness, and controlled-distribution rules.
+globs:
+  - "platform-tracing-otel-javaagent-extension/**/*.java"
+  - "platform-tracing-otel-javaagent-extension/**/*.gradle"
+  - "**/*Agent*.java"
+  - "**/*Javaagent*.java"
+  - "**/*Classloader*.java"
+  - "**/*Readiness*.java"
+  - "**/*SdkOwner*.java"
+alwaysApply: false
+---
+
+# OTel Agent and Classloader Rules
+
+## Runtime Planes
+
+Keep these planes explicit:
+
+```text
+application plane
+    -> public facade
+    -> Spring wiring or direct SDK wiring
+    -> application classloader
+
+agent plane
+    -> OpenTelemetry Java Agent
+    -> platform Java-agent extension
+    -> agent/extension classloader
+```
+
+Do not assume classes, static fields, service providers, or implementation objects are shared between planes.
+
+## Boundary Contract
+
+Across the application/agent boundary use only approved classloader-neutral data:
+
+- JDK primitives and strings
+- bounded maps/lists of JDK-safe values
+- JMX Open Types at the adapter boundary
+- explicit protocol versions and operation names
+
+Do not pass:
+
+- Spring beans
+- OpenTelemetry SDK implementation objects
+- application implementation classes
+- Java enum instances as wire values
+- arbitrary serializable objects
+- class names for reflective instantiation
+
+Do not use Java native serialization.
+
+## SDK Ownership
+
+There must be one effective OpenTelemetry SDK owner per process.
+
+Approved modes must define:
+
+- agent present and extension ready
+- agent absent and application SDK wiring active
+- tracing facade disabled
+- agent-only instrumentation
+- disabled facade with active agent
+
+Do not create a second SDK merely because an agent marker, bean, or MBean is missing.
+
+Dual-SDK collision is an error and must remain visible even when the facade is disabled.
+
+## Agent Detection
+
+An agent marker proves only that an agent mechanism was detected.
+
+It does not prove:
+
+- platform extension loaded
+- sampler installed
+- processors installed
+- sanitizer installed
+- propagation hooks active
+- exporter path protected
+- pipeline ready
+
+Do not equate MBean presence with full pipeline readiness.
+
+## Readiness Protocol
+
+Use a versioned readiness descriptor.
+
+Lifecycle states should be explicit:
+
+```text
+INITIALIZING
+READY
+FAILED
+```
+
+`FAILED` should be sticky unless an approved recovery model exists.
+
+Readiness must describe required capabilities, for example:
+
+- configuration
+- sampler
+- required processors
+- sanitizer
+- propagation hooks
+- safe exporter
+- protected export path
+
+Application-side observation must consume only the stable readiness contract, not agent implementation objects.
+
+## Controlled Distribution
+
+Treat Java agent plus platform extension as one controlled, version-aligned distributive when agent-first behavior depends on extension capabilities.
+
+Define:
+
+- agent version
+- extension version
+- compatibility matrix
+- integrity/checksum verification
+- pre-JVM/startup validation
+- mismatch behavior
+- rollout and rollback
+
+Do not silently run with a partially compatible extension.
+
+## Disabled and No-Op Semantics
+
+Disabling the application facade does not disable active Java-agent instrumentation.
+
+A no-op facade does not stop:
+
+- auto-instrumentation
+- context creation
+- span export
+- active agent processors
+
+Diagnostics must distinguish facade state from agent pipeline state.
+
+## Lifecycle
+
+Registration and cleanup must be:
+
+- explicitly owned
+- idempotent
+- reversible where practical
+- safe under partial initialization
+- safe during shutdown
+- observable
+
+Do not create hidden threads, global registries, or classloader-pinning references.
+
+Avoid static state that retains application classes from the agent classloader or vice versa.
+
+## ServiceLoader and Instrumentation Hooks
+
+Use the classloader required by the actual agent extension mechanism.
+
+Test provider discovery with the packaged extension JAR.
+
+Remove obsolete descriptors.
+
+Do not use application-side ServiceLoader as a substitute for agent extension discovery.
+
+## Security
+
+The agent plane is privileged.
+
+Do not:
+
+- accept unbounded control payloads
+- expose mutable implementation objects over JMX
+- log secrets or PII
+- allow custom providers to bypass mandatory sanitizer or protected-export rules
+- trust agent presence as authorization
+
+JVM flags, filesystem permissions, container security, network policy, and artifact integrity remain external controls.
+
+## Verification
+
+Compile and test the extension artifact, then inspect the packaged JAR.
+
+Run E2E for:
+
+- isolated classloaders
+- agent plus extension readiness
+- missing extension
+- failed extension
+- version mismatch
+- application facade with agent-owned context
+- prevention of second SDK
+- disabled facade with active agent
+- shutdown/cleanup
+
+A unit test using one application classloader is not sufficient classloader evidence.

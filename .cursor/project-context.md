@@ -55,9 +55,9 @@ Prefer:
 ## Architecture principles
 
 - API modules define stable public contracts, vocabulary, annotations, value types, and narrow entry points.
-- Core modules own implementation, runtime behavior, domain validation, policies, lifecycle, and safety rules.
+- The `platform-tracing-otel` runtime implementation module owns implementation, runtime behavior, domain validation, policies, lifecycle, and safety rules.
 - Spring Boot autoconfiguration modules own wiring, properties, conditional beans, diagnostics, and adoption defaults.
-- OTel/JMX/agent integration modules own transport-specific adapters and classloader-sensitive integration code.
+- The `platform-tracing-otel-javaagent-extension` module owns Java-agent extension points, JMX/OpenMBean transport adapters, readiness, and classloader-sensitive integration code.
 - Domain rules must not leak into wire decoders or generic API vocabulary.
 - Implementation classes must not become accidental public API.
 - Runtime mutation must fail closed unless explicitly enabled.

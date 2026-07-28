@@ -1,0 +1,53 @@
+{
+  "spikeId": "E8",
+  "review": "implementation-readiness",
+  "headAtReview": "0f81052557c685b9988d438a6fbd4a5a031aab7a",
+  "branch": "refactor/cursor-rules",
+  "technicalPackageStatus": "READY_FOR_COMMITTEE_APPROVAL",
+  "implementationGo": "NOT_GRANTED",
+  "legacyDeletionGo": "BLOCKED",
+  "gates": {
+    "E1": {"status": "CLOSED", "subject": "JMX management contract baseline"},
+    "E2": {"status": "CLOSED", "subject": "private process-local MBeanServer"},
+    "E3": {
+      "status": "CLOSED",
+      "subject": "accepted-state primitive",
+      "verdict": "IMPLEMENT_AGENT_SPECIFIC_PRIMITIVE",
+      "evidence": "docs/research/evidence/accepted-state-primitive/decision-summary.json"
+    },
+    "E4": {"status": "CLOSED", "subject": "tracing configuration inventory"},
+    "E5": {
+      "status": "CLOSED",
+      "subject": "Category A eight-leaf binding",
+      "categoryALeafCount": 8,
+      "unknownFields": "REJECTED"
+    },
+    "E6": {
+      "status": "CLOSED",
+      "subject": "Boot/Cloud BOM baseline and refresh delivery",
+      "baseline": {"springBoot": "3.5.5", "springCloudTrain": "2025.0.0", "springCloudConfig": "4.3.0"}
+    },
+    "E7": {
+      "status": "READY_TO_CLOSE",
+      "subject": "exact read-only JMX contract delta",
+      "verdict": "APPROVE_EXACT_JMX_DELTA",
+      "evidence": "docs/research/evidence/jmx-read-only-delta/decision-summary.json",
+      "platformAfter": {"objectNames": 8, "readOnlyMembers": 56, "mutations": 0},
+      "privateWriter": {"operationName": "applySnapshot", "mutations": 1}
+    },
+    "E8": {
+      "status": "READY_FOR_COMMITTEE_APPROVAL",
+      "subject": "implementation readiness package",
+      "verdict": "READY_FOR_COMMITTEE_APPROVAL",
+      "technicalBlockers": [],
+      "committeeGo": "NOT_GRANTED"
+    },
+    "E9": {"status": "CLOSED", "subject": "Config Server provenance"}
+  },
+  "requiredCommitteeActions": [
+    "Approve p0-wire-schema-contract and p0-wire-schema-bounds",
+    "Record formal E7 closure",
+    "Accept scenario, rollback and pre-production security-debt records",
+    "Record E8 closure and Implementation GO"
+  ]
+}

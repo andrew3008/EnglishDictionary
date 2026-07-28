@@ -243,8 +243,6 @@ public final class ModuleTaxonomyArchRules {
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
             .should().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.otel.javaagent.sampler.SamplerState")
-            .orShould().haveFullyQualifiedName(
                     "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot")
             .orShould().haveFullyQualifiedName(
                     "space.br1440.platform.tracing.otel.validation.ValidationSnapshot")
@@ -292,11 +290,12 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAPackage("..api.manual..")
             .because("api.manual.* переименован в api.span.builder.*; используйте api.span.builder.*");
 
-    /** Holder-managed snapshots остаются иммутабельными (все поля final). */
-    public static final ArchRule SNAPSHOT_FIELDS_ARE_FINAL = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields()
-            .that().areDeclaredInClassesThat().haveSimpleName("SamplerState")
+    /** Единый accepted-state envelope остаётся иммутабельным после публикации. */
+    public static final ArchRule ACCEPTED_POLICY_ENVELOPE_FIELDS_ARE_FINAL =
+            com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields()
+            .that().areDeclaredInClassesThat().haveSimpleName("AcceptedPolicyEnvelope")
             .should().beFinal()
-            .because("VersionedState snapshots должны оставаться иммутабельными (SamplerState)");
+            .because("accepted policy публикуется одним immutable envelope");
 
     /** Holder-managed snapshots остаются иммутабельными (все поля final). */
     public static final ArchRule SCRUBBING_SNAPSHOT_FIELDS_ARE_FINAL = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields()

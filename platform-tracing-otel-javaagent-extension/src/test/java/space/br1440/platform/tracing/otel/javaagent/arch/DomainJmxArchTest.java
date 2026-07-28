@@ -75,23 +75,23 @@ class DomainJmxArchTest {
                             + "тесты конструируют доменные MBean напрямую");
 
     /**
-     * D14 — Только {@link space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar}
-     * имеет право вызывать {@code MBeanServer#registerMBean}.
-     * Ни один другой класс в {@code src/main} не должен регистрировать MBean напрямую.
+     * D14 — platform batch registrar и отдельный P2 private-server owner являются двумя
+     * явными владельцами регистрации на разных MBeanServer.
      */
     @ArchTest
     static final ArchRule only_registrar_calls_registerMBean =
             noClasses()
                     .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
                     .and().doNotHaveSimpleName("PlatformTracingJmxRegistrar")
+                    .and().doNotHaveSimpleName("PrivateControlMBeanServerOwner")
                     .should().callMethod(
                             "javax.management.MBeanServer",
                             "registerMBean",
                             "java.lang.Object",
                             "javax.management.ObjectName")
-                    .because("D14: PlatformTracingJmxRegistrar — единственный владелец "
-                            + "batch-регистрации; ни один другой продакшн-класс не должен "
-                            + "вызывать MBeanServer#registerMBean напрямую");
+                    .because("D14/P2: registration разрешена только platform batch registrar "
+                            + "и exactly-one private-server owner; все остальные production "
+                            + "классы не должны вызывать MBeanServer#registerMBean");
 
     /**
      * Доменные MBean-интерфейсы (имя оканчивается на «MBean») должны реализовываться

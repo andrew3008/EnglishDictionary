@@ -1,0 +1,5 @@
+java.version=21.0.6
+java.vendor=Oracle Corporation
+os.name=Windows 10
+agent=E:\Platform_Traces\platform-tracing-otel-javaagent-extension\build\controlled-agent\opentelemetry-javaagent.jar
+extension=E:\Platform_Traces\platform-tracing-e2e-tests\build\libs\platform-tracing-e2e-tests-0.1.0-SNAPSHOT-private-mbeanserver-spike.jar

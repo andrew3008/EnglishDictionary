@@ -1,0 +1,77 @@
+{
+  "artifactId": "p0-wire-schema-bounds",
+  "contractVersion": 1,
+  "technicalStatus": "COMPLETE",
+  "approvalStatus": "READY_FOR_COMMITTEE_APPROVAL",
+  "enforcementOrder": [
+    "Verify exact CompositeType or TabularType identity",
+    "Reject missing, null and unknown items",
+    "Enforce collection, string and logical payload bounds",
+    "Normalize values",
+    "Validate domain and cross-field invariants",
+    "Compare digest and expected base",
+    "Perform at most one CAS"
+  ],
+  "bounds": {
+    "logicalRequestUtf8Bytes": {"maxInclusive": 32768, "failure": "LIMIT_EXCEEDED"},
+    "routeRatioEntries": {"minInclusive": 0, "maxInclusive": 100, "failure": "LIMIT_EXCEEDED"},
+    "routePrefixUtf16CodeUnits": {"minInclusive": 1, "maxInclusive": 255,
+      "failure": "LIMIT_EXCEEDED"},
+    "runtimeInstanceIdAsciiCharacters": {"exact": 36, "format": "canonical UUID",
+      "failure": "INVALID_VALUE"},
+    "attemptIdAsciiCharacters": {"exact": 36, "format": "canonical UUID",
+      "failure": "INVALID_VALUE"},
+    "sourceRevisionUtf16CodeUnits": {"minInclusive": 0, "maxInclusive": 256,
+      "failure": "LIMIT_EXCEEDED"},
+    "digestAsciiCharacters": {"exact": 64, "format": "lowercase SHA-256 hexadecimal",
+      "failure": "INVALID_VALUE"},
+    "restartRequiredKeys": {"maxInclusive": 32, "failure": "LIMIT_EXCEEDED"},
+    "restartRequiredKeyUtf16CodeUnits": {"minInclusive": 1, "maxInclusive": 128,
+      "failure": "LIMIT_EXCEEDED"},
+    "violationCodes": {"maxInclusive": 16, "failure": "LIMIT_EXCEEDED"}
+  },
+  "numericRules": {
+    "samplingRatio": {
+      "finite": true,
+      "minInclusive": 0.0,
+      "maxInclusive": 1.0,
+      "negativeZeroNormalization": 0.0
+    },
+    "routeRatio": {
+      "finite": true,
+      "minInclusive": 0.0,
+      "maxInclusive": 1.0,
+      "negativeZeroNormalization": 0.0
+    },
+    "expectedAcceptedSequence": {"minInclusive": 0},
+    "acceptedSequence": {"minInclusive": 0}
+  },
+  "stringRules": {
+    "trimmedFields": ["sourceAuthority", "applyTrigger", "diagnosticsLogLevel"],
+    "routePrefix": "Preserve exact nonblank value; reject NUL and ISO control characters",
+    "sourceRevision": "Opaque metadata; empty string means absent; never an ordering token",
+    "freeFormFailureTextAllowed": false
+  },
+  "collectionRules": {
+    "routeRatios": "Duplicate routePrefix is rejected; input order is ignored; normalized representation is immutable and key-sorted",
+    "restartRequiredKeys": "Closed canonical Category B identifiers only; unique and sorted",
+    "violationCodes": "Closed message-code vocabulary only; unique and sorted"
+  },
+  "derivation": {
+    "ratioRange": "Existing SamplingPolicyPropertiesValidator contract",
+    "routeEntryLimit": "New P0 security bound, deliberately aligned with the repository's existing 100-entry sampling policy list ceiling",
+    "routePrefixLimit": "New P0 security bound, deliberately aligned with the repository's existing 255-character sampling-control token ceiling",
+    "payloadLimit": "New P0 process-local decoder resource bound; 32 KiB accommodates 100 maximum route entries and fixed envelope overhead",
+    "note": "The repository had no route-map size or route-prefix length validator. These are explicit new P0 bounds, not misreported historical behavior."
+  },
+  "failClosed": {
+    "oversizedInput": "REJECTED before domain validation and CAS",
+    "unknownField": "REJECTED",
+    "missingField": "REJECTED",
+    "nullField": "REJECTED",
+    "nanOrInfinity": "REJECTED",
+    "duplicateNormalizedRoute": "REJECTED",
+    "acceptedStateOnFailure": "unchanged",
+    "acceptedSequenceOnFailure": "unchanged"
+  }
+}

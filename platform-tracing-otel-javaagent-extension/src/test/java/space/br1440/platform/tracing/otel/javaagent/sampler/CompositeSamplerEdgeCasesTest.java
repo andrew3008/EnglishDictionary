@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
@@ -31,7 +33,7 @@ class CompositeSamplerEdgeCasesTest {
 
     @Test
     void не_падает_на_пустом_списке_значений() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of(), java.util.Map.of(), 0.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of(), java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -43,7 +45,7 @@ class CompositeSamplerEdgeCasesTest {
 
     @Test
     void пустой_префикс_в_конфиге_не_отбрасывает_все_пути() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("", "   ", "/actuator/health"), List.of("on"), java.util.Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("", "   ", "/actuator/health"), List.of("on"), java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -55,7 +57,7 @@ class CompositeSamplerEdgeCasesTest {
 
     @Test
     void null_url_path_не_вызывает_npe() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("/actuator"), List.of("on"), java.util.Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("/actuator"), List.of("on"), java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -67,7 +69,7 @@ class CompositeSamplerEdgeCasesTest {
 
     @Test
     void kill_switch_отменяет_даже_force_и_qa() {
-        SamplerStateHolder holder = new SamplerStateHolder(false, List.of(), List.of("on"), java.util.Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(false, List.of(), List.of("on"), java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -78,7 +80,7 @@ class CompositeSamplerEdgeCasesTest {
 
     @Test
     void форсирование_не_отменяет_drop_paths() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("/actuator"), List.of("on"), java.util.Map.of(), 0.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("/actuator"), List.of("on"), java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -90,7 +92,7 @@ class CompositeSamplerEdgeCasesTest {
 
     @Test
     void qa_сигнал_не_отменяет_drop_paths() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("/actuator"), List.of("on"), java.util.Map.of(), 0.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("/actuator"), List.of("on"), java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)

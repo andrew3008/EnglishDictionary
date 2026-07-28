@@ -1,0 +1,10 @@
+S03_PRIVATE:extensionClassLoader=io.opentelemetry.javaagent.tooling.ExtensionClassLoader
+S03_APP:appClassLoader=jdk.internal.loader.ClassLoaders$AppClassLoader
+S03_APP:compositeDataClassLoader=bootstrap
+S03_APP:M3=PASS
+S03_APP:agentWriterClassLoader=isolated-extension-classloader
+S03_APP:jdkCreateDiscoverable=true
+S03_APP:jdkNewDiscoverable=false
+S03_APP:jdkFindUsesMBeanServerId=true
+S03_APP:jdkDuplicateDefaultDomainsAllowed=true
+S03_APP:jdkReleaseDoesNotUnregister=true

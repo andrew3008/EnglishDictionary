@@ -1,6 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -28,7 +31,8 @@ public final class PlatformPropagationGate {
 
     private static final PlatformPropagationGate SHARED = new PlatformPropagationGate();
 
-    private final AtomicBoolean enabled = new AtomicBoolean(true);
+    private final AtomicReference<AcceptedPolicyAccess> acceptedPolicy =
+            new AtomicReference<>(AcceptedPolicyAccess.isolatedDefaults());
     private final LongAdder gatedInjects = new LongAdder();
     private final LongAdder gatedExtracts = new LongAdder();
 
@@ -37,11 +41,15 @@ public final class PlatformPropagationGate {
     }
 
     public boolean isEnabled() {
-        return enabled.get();
+        return acceptedPolicy.get().current().traceControlHeadersEnabled();
     }
 
     public void setEnabled(boolean value) {
-        enabled.set(value);
+        acceptedPolicy.get().updateTraceControlHeaders(value);
+    }
+
+    public void bindAcceptedPolicy(AcceptedPolicyAccess policy) {
+        acceptedPolicy.set(Objects.requireNonNull(policy, "policy"));
     }
 
     /** Регистрирует пропущенный из-за выключенного гейта inject (диагностика). */

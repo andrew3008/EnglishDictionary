@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * Закрепляет, что путь компиляции снимка из «сырой» конфигурации НЕ бросает исключения, а молча
  * пропускает невалидные записи route-ratio (пустой/null ключ, null значение, ratio вне [0,1]).
- * Это намеренно отличается от fail-fast пути runtime-обновления (см. SamplerPolicyUpdateTest в
+ * Это намеренно отличается от fail-fast пути runtime-обновления accepted policy в
  * otel-extension). Эти две семантики разделены и не должны быть объединены.
  */
 class SamplingPolicyPropertiesLenientTest {

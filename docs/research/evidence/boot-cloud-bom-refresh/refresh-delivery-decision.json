@@ -1,0 +1,54 @@
+{
+  "spikeId": "S-06",
+  "selectedMechanism": "SPRING_CLOUD_CONFIG_MONITOR_AND_BUS",
+  "selectedMechanismDescription": "Config Server Git/monitor webhook publishes refresh intent to Spring Cloud Bus (Kafka binder); each Config Client instance performs ContextRefresher.refresh(); tracing bridge observes EnvironmentChangeEvent only.",
+  "rejectedMechanisms": [
+    {
+      "id": "HTTP_ACTUATOR_REFRESH",
+      "reason": "Application-facing POST /actuator/refresh violates E6 no-HTTP-mutation constraint and current ungated TracingRefreshScopeAutoConfiguration debt"
+    },
+    {
+      "id": "CUSTOM_POLLING_CLIENT",
+      "reason": "Explicitly forbidden by architecture; tracing library must not poll Config Server"
+    },
+    {
+      "id": "DEPLOYMENT_RESTART_ONLY",
+      "reason": "Not selected — runtime refresh remains required for Category A mutation without rollout"
+    }
+  ],
+  "fanOutOwner": {
+    "infrastructureOwner": "Platform Config Server + Kafka/Bus operations team",
+    "applicationOwner": "Service team adds spring-cloud-starter-config and spring-cloud-starter-bus-kafka in CONFIG_SERVER mode only",
+    "tracingBridgeOwner": "platform-tracing-spring-boot-autoconfigure P4 bridge — EnvironmentChangeEvent consumer only; never invokes refresh"
+  },
+  "securityContract": {
+    "status": "CORPORATE_BUS_CONFIRMED",
+    "busTransport": "Approved corporate Kafka hardening, ownership, ACL, identity, durability and isolation contract is defined in corporate-bus-readiness.json",
+    "configServerAccess": "Config Server credentials via Spring Cloud Config standard auth; no tracing-specific HTTP writer",
+    "noApplicationHttpMutation": true,
+    "noTracingMutationEndpoint": false,
+    "legacyRemovalOwner": "P6 coherent namespace and writer cutover"
+  },
+  "deliverySemantics": {
+    "atLeastOnce": true,
+    "duplicatesCoalesceToUnchanged": true,
+    "sourceRevisionNotOrderingToken": true,
+    "completeSnapshotRebuild": true,
+    "singleGenerationCoalescer": true,
+    "singleBoundedStaleRetryInAdapter": true,
+    "initialConfigServerFailureBlocksReadiness": true,
+    "runtimeOutageKeepsLkg": true,
+    "missingCategoryAKeyRejected": true,
+    "notPublishedViaStarters": true
+  },
+  "environmentChangeEventAsLocalTrigger": true,
+  "customPollingClient": false,
+  "applicationFacingHttpMutation": false,
+  "p4ImplementationConsequences": [
+    "Replace TracingRefreshScopeAutoConfiguration mutation path with ConfigServerTracingBridge listening to EnvironmentChangeEvent",
+    "Delete RuntimeConfigApplier direct JMX writes from refresh listener",
+    "Require explicit spring-cloud-starter-config + spring-cloud-starter-bus-kafka on CONFIG_SERVER services",
+    "Config Server enables monitor/webhook to Bus on Git push"
+  ],
+  "repositoryEvidenceForBus": "Exact server/client dependency graphs pass in gradle/s06-approved-stack-resolution. The architecture committee approved the corporate runtime profile; E6 is ready to close. Production verification remains mandatory."
+}

@@ -48,6 +48,19 @@ dependencies {
 
 }
 
+tasks.named('test') {
+    systemProperty 's06.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/boot-cloud-bom-refresh').asFile.absolutePath
+    systemProperty 's07.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/jmx-read-only-delta').asFile.absolutePath
+    systemProperty 's07.baseline.fixture',
+            rootProject.layout.projectDirectory.file(
+                    'platform-tracing-otel-javaagent-extension/src/test/resources/' +
+                            'jmx-management-contract-baseline.json').asFile.absolutePath
+}
+
 def jmhHeapSize = project.findProperty('jmhHeap') ?: '4g'
 
 def hardwareProfileId = {

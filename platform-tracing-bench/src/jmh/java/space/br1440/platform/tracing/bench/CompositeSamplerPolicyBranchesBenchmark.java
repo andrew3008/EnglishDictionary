@@ -13,8 +13,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.infra.Blackhole;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
 
 import java.util.List;
 import java.util.Map;
@@ -61,13 +61,13 @@ public class CompositeSamplerPolicyBranchesBenchmark {
         // Production-like политика: 3 drop-префикса (worst case — матч по последнему),
         // 2 route-ratio с детерминированными исходами (1.0 — всегда sample, 0.0 — всегда drop),
         // глобальный ratio 0.0 — полный проход цепочки детерминированно заканчивается DROP.
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess acceptedPolicy = AcceptedPolicyAccess.isolatedSampling(
                 true,
                 List.of("/metrics", "/health", "/actuator"),
                 List.of("on"),
                 Map.of("/api/v1/critical", 1.0, "/api/v1/noisy", 0.0),
                 0.0);
-        sampler = new CompositeSampler(holder);
+        sampler = new CompositeSampler(acceptedPolicy);
         rootContext = Context.root();
 
         dropPathAttributes = httpAttributes("/actuator/health");

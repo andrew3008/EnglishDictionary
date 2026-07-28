@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
@@ -72,7 +74,7 @@ class SamplingPolicyDecisionOtelAdapterTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("characterizedCases")
     void adapterRequest_producesSameDecisionAsComposite(SamplingDecisionCase c) {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 c.enabled(),
                 c.droppedRoutes(),
                 c.forceRecordValues(),
@@ -94,7 +96,10 @@ class SamplingPolicyDecisionOtelAdapterTest {
                                                 .put("url.path", c.urlPath())
                                                 .build(),
                                 java.util.List.of()),
-                        holder.current().policySnapshot()));
+                        holder.current().samplingEnabled(),
+                        holder.current().samplingRouteRatios(),
+                        holder.current().samplingRatio(),
+                        holder.currentLegacySamplingRules()));
 
         assertThat(adapterResult.getDecision()).isEqualTo(compositeResult.getDecision());
         assertThat(adapterResult.getAttributes().get(REASON))

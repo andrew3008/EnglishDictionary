@@ -9,11 +9,13 @@ import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyUpdateOutcome;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyView;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 
 import java.time.Duration;
-import java.time.Instant;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -70,10 +72,10 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
 
     /**
      * Runtime-политика валидации (Фаза 14): {@code enabled} + {@code strict}. Hot-path
-     * {@code onEnding} читает {@code policyHolder.current()} lock-free; обновление — через
+     * {@code onEnding} читает единый accepted policy lock-free; обновление — через
      * {@link #updateValidationPolicy(boolean, boolean)} (атомарно, last-known-good).
      */
-    private final ValidationPolicyHolder policyHolder;
+    private final AcceptedPolicyAccess acceptedPolicy;
 
     public ValidatingSpanProcessor(boolean strictMode) {
         this(System::currentTimeMillis, strictMode, false);
@@ -88,6 +90,10 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
         this(System::currentTimeMillis, strictMode, strictRuntimeAllowed);
     }
 
+    public ValidatingSpanProcessor(AcceptedPolicyAccess acceptedPolicy) {
+        this(System::currentTimeMillis, acceptedPolicy);
+    }
+
     /**
      * Конструктор для unit-тестов: позволяет управлять виртуальным временем при проверке throttling'а.
      */
@@ -99,10 +105,20 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
         this.clock = clock;
         // Стартовый снимок (enabled=true) — startup-init из agent ConfigProperties: фабрика создаёт
         // процессор только при platform.tracing.validation.enabled=true, strict из props.
-        this.policyHolder = new ValidationPolicyHolder(
-                ValidationSnapshot.fromPolicy(true, strictMode, 1, Instant.now(), "startup"),
-                strictRuntimeAllowed);
+        this.acceptedPolicy =
+                AcceptedPolicyAccess.isolatedValidation(true, strictMode, strictRuntimeAllowed);
         if (strictMode) {
+            log.warn(
+                    "Validation strict mode is enabled at startup. Strict mode is intended for "
+                            + "CI/test/pre-prod diagnostics and may throw from Span.end() on the application "
+                            + "thread. Do not enable in production unless explicitly approved.");
+        }
+    }
+
+    ValidatingSpanProcessor(LongSupplier clock, AcceptedPolicyAccess acceptedPolicy) {
+        this.clock = clock;
+        this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
+        if (acceptedPolicy.current().validationStrict()) {
             log.warn(
                     "Validation strict mode is enabled at startup. Strict mode is intended for "
                             + "CI/test/pre-prod diagnostics and may throw from Span.end() on the application "
@@ -123,8 +139,8 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
     @Override
     public void onEnding(ReadWriteSpan span) {
         // Снимок политики читается lock-free (Фаза 14). enabled=false → passthrough (без валидации).
-        ValidationSnapshot snapshot = policyHolder.current();
-        if (!snapshot.enabled()) {
+        AcceptedPolicyView policy = acceptedPolicy.current();
+        if (!policy.validationEnabled()) {
             return;
         }
 
@@ -136,7 +152,7 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
         if (missing != null) {
             String missingValue = missing.toString();
             span.setAttribute(VALIDATION_MISSING_KEY, missingValue);
-            if (snapshot.strict()) {
+            if (policy.validationStrict()) {
                 throw new TracingValidationException("Span '" + span.getName() + "' экспортируется без обязательных платформенных атрибутов: " + missingValue);
             } else {
                 warnThrottled(span.getName(), missingValue);
@@ -200,12 +216,12 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
 
     /** Текущий runtime-флаг валидации (snapshot). */
     public boolean isEnabled() {
-        return policyHolder.current().enabled();
+        return acceptedPolicy.current().validationEnabled();
     }
 
     /** Текущий runtime-флаг строгого режима (snapshot). */
     public boolean isStrict() {
-        return policyHolder.current().strict();
+        return acceptedPolicy.current().validationStrict();
     }
 
     /**
@@ -213,17 +229,17 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
      * Not part of the mutable policy snapshot.
      */
     public boolean isStrictRuntimeAllowed() {
-        return policyHolder.isStrictRuntimeAllowed();
+        return acceptedPolicy.isStrictRuntimeAllowed();
     }
 
     /** Версия текущего снимка политики валидации. */
     public long getPolicyVersion() {
-        return policyHolder.version();
+        return acceptedPolicy.current().acceptedSequence();
     }
 
     /** Источник текущего снимка политики (startup / JMX / spring-runtime-config). */
     public String getPolicySource() {
-        return policyHolder.current().source();
+        return "accepted-state";
     }
 
     /**
@@ -242,7 +258,9 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
      * @return {@code true} if published; {@code false} if last-known-good retained
      */
     public boolean tryApplyPolicyUpdate(boolean enabled, boolean strict, String source) {
-        return policyHolder.tryApplyPolicyUpdate(enabled, strict, source);
+        AcceptedPolicyUpdateOutcome outcome = acceptedPolicy.updateValidation(enabled, strict);
+        return outcome == AcceptedPolicyUpdateOutcome.APPLIED
+                || outcome == AcceptedPolicyUpdateOutcome.UNCHANGED;
     }
 
     /** Размер кэша rate-limiter — package-private accessor для тестов. */

@@ -9,7 +9,7 @@ import java.util.Objects;
  * Spring-side sampling runtime config schema v1 (PR-6E).
  * <p>
  * Тонкий view домена сэмплирования из {@link TracingProperties.Sampling}. Не является
- * вторым authoritative snapshot — agent-side {@code SamplerStateHolder} остаётся source of truth.
+ * вторым authoritative snapshot — Agent-side accepted policy остаётся source of truth.
  * <p>
  * Runtime-mutable поля schema v1 (публикуются одним атомарным {@code updateSamplingPolicy}):
  * <ul>

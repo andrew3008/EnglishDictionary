@@ -722,6 +722,7 @@ TYPE public final class space.br1440.platform.tracing.otel.runtime.versioned.Ver
 TYPE public final class space.br1440.platform.tracing.otel.sampling.engine.SamplingPolicyEngine
   METHOD public int ruleCount()
   METHOD public java.lang.String ruleNameAt(int)
+  METHOD public space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest,boolean,java.util.Map<java.lang.String,java.lang.Double>,double,space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot)
   METHOD public space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest,space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot)
   METHOD public static space.br1440.platform.tracing.otel.sampling.engine.SamplingPolicyEngine productionEngine()
 TYPE public final enum space.br1440.platform.tracing.otel.sampling.model.ParentContextState
@@ -786,11 +787,13 @@ TYPE public final class space.br1440.platform.tracing.otel.sampling.model.Sampli
   METHOD public boolean isEnabled()
   METHOD public double getDefaultRatio()
   METHOD public java.util.List<java.lang.String> getDroppedRoutes()
+  METHOD public java.util.Map<java.lang.String,java.lang.Double> getRouteRatioMap()
   METHOD public java.util.Set<java.lang.String> getForceRecordValues()
   METHOD public space.br1440.platform.tracing.otel.sampling.model.RouteRatioPrefix[] getRouteRatios()
 TYPE public final class space.br1440.platform.tracing.otel.sampling.policy.ProductionSamplingPolicyChain
   METHOD public int ruleCount()
   METHOD public java.lang.String ruleNameAt(int)
+  METHOD public space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest,boolean,java.util.Map<java.lang.String,java.lang.Double>,double,space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot)
   METHOD public space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision evaluate(space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest,space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot)
   METHOD public static space.br1440.platform.tracing.otel.sampling.policy.ProductionSamplingPolicyChain foundation()
   METHOD public static space.br1440.platform.tracing.otel.sampling.policy.ProductionSamplingPolicyChain production()

@@ -1,0 +1,26 @@
+{
+  "artifactId": "e8-security-debt-acceptance",
+  "status": "READY_FOR_COMMITTEE_APPROVAL",
+  "riskOwner": "platform-tracing team",
+  "scope": "Pre-production only, until coherent P6 cutover",
+  "acceptedCurrentDebt": [
+    "Legacy platform MBeanServer mutations still exist before P6",
+    "Ungated RefreshScope and partial-protocol paths still exist before P6"
+  ],
+  "mandatoryControls": [
+    "Production rollout remains forbidden",
+    "Remote JMX write access is forbidden in shared or external environments",
+    "P6 removes all legacy mutation paths atomically",
+    "Platform MBeanServer has zero writable attributes and zero mutating operations before release",
+    "Private process-local applySnapshot is the only supported production writer after cutover",
+    "Any failed control blocks release regardless of other gate results"
+  ],
+  "notAccepted": [
+    "Production use of legacy writers",
+    "Remote fallback writer",
+    "Generic raw snapshot endpoint",
+    "Secret-bearing runtime policy",
+    "Partial or independently rolled back cutover"
+  ],
+  "committeeAction": "Record explicit time-bounded pre-production acceptance; this artifact does not self-approve the risk"
+}

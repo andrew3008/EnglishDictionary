@@ -1,11 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.jmx;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import javax.management.MBeanServer;
 import javax.management.RuntimeMBeanException;
@@ -16,8 +12,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 
 /**
  * Contract tests for {@link PlatformTracingJmxClient}:
@@ -199,9 +200,10 @@ class PlatformTracingJmxClientTest {
     // -- Helper ---------------------------------------------------------------
 
     private void registerSamplingMBean() throws Exception {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess acceptedPolicy = AcceptedPolicyAccess.isolatedSampling(
                 true, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), 0.42d);
-        PlatformSamplingControl impl = new PlatformSamplingControl(holder, null, new LongAdder());
+        PlatformSamplingControl impl =
+                new PlatformSamplingControl(acceptedPolicy, null, new LongAdder());
         server.registerMBean(impl, PlatformTracingObjectNames.SAMPLING);
     }
 }

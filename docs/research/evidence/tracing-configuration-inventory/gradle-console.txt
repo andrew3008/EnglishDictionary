@@ -1,0 +1,39 @@
+S-04 Gradle verification summary
+
+PASS
+.\gradlew.bat :platform-tracing-spring-boot-autoconfigure:compileTestJava --no-daemon
+
+PASS
+.\gradlew.bat tracingConfigurationInventoryVerify -PupdateTracingConfigurationInventory --no-daemon
+
+PASS
+.\gradlew.bat tracingConfigurationInventoryVerify --no-daemon
+Stable JSON, CSV, Markdown and text artifacts were regenerated in a temporary directory
+and matched the committed evidence.
+
+PASS
+.\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon
+276 tests completed.
+
+PASS WITH GUARDED TASKS
+.\gradlew.bat test --no-daemon
+The Gradle build was successful. platform-tracing-e2e-tests:test and
+platform-tracing-samples:test were reported as SKIPPED and are not claimed as passed.
+
+PASS
+.\gradlew.bat pr0StarterDependencySmoke --no-daemon
+
+PASS
+.\gradlew.bat pr1ModuleTaxonomyVerify --no-daemon
+
+PASS
+.\gradlew.bat pr4ArchitectureFitnessVerify --no-daemon
+
+PASS
+.\gradlew.bat jmxManagementContractVerify --no-daemon
+
+PASS
+.\gradlew.bat privateMBeanServerVerify --no-daemon
+
+The volatile timestamp/hash rewrite made by pr0StarterDependencySmoke was restored to
+the committed HEAD baseline and is not part of S-04.

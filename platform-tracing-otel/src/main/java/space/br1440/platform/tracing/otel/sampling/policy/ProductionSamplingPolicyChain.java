@@ -4,6 +4,8 @@ import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
 
+import java.util.Map;
+
 /** Фиксированная цепочка sampling rules без внешней точки расширения. */
 public final class ProductionSamplingPolicyChain {
 
@@ -33,8 +35,27 @@ public final class ProductionSamplingPolicyChain {
     }
 
     public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
+        return evaluate(
+                request,
+                snapshot.isEnabled(),
+                snapshot.getRouteRatioMap(),
+                snapshot.getDefaultRatio(),
+                snapshot);
+    }
+
+    public SamplingPolicyDecision evaluate(
+            SamplingPolicyRequest request,
+            boolean enabled,
+            Map<String, Double> routeRatios,
+            double defaultRatio,
+            SamplingPolicySnapshot startupRules) {
         for (SamplingPolicyRule rule : rules) {
-            SamplingPolicyDecision decision = rule.evaluate(request, snapshot);
+            SamplingPolicyDecision decision = rule.evaluate(
+                    request,
+                    enabled,
+                    routeRatios,
+                    defaultRatio,
+                    startupRules);
             if (decision != null) {
                 return decision;
             }

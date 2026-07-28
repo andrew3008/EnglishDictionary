@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
@@ -27,7 +29,7 @@ class CompositeSamplerRouteRatioTest {
     @Test
     void route_ratio_1_сэмплирует_при_глобальном_ratio_0() {
         // Route-правило стоит в цепочке ДО DefaultRatioRule — глобальный 0.0 не должен задавить route 1.0.
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of("/api/v1/critical", 1.0), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
@@ -43,7 +45,7 @@ class CompositeSamplerRouteRatioTest {
 
     @Test
     void route_ratio_0_дропает_при_глобальном_ratio_1() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of("/api/v1/noisy", 0.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
@@ -59,7 +61,7 @@ class CompositeSamplerRouteRatioTest {
 
     @Test
     void путь_вне_route_ratios_падает_на_глобальный_ratio() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of("/api/v1/noisy", 0.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
@@ -77,9 +79,9 @@ class CompositeSamplerRouteRatioTest {
     void решение_детерминировано_по_traceId_при_дробном_ratio() {
         // ADR раздел 2.3: traceIdRatioBased — функция traceId; повторные вызовы и независимые
         // инстансы сэмплера с одинаковой конфигурацией обязаны давать одно и то же решение.
-        SamplerStateHolder holderA = new SamplerStateHolder(
+        AcceptedPolicyAccess holderA = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of("/api", 0.5), 0.0);
-        SamplerStateHolder holderB = new SamplerStateHolder(
+        AcceptedPolicyAccess holderB = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of("/api", 0.5), 0.0);
         CompositeSampler samplerA = new CompositeSampler(holderA);
         CompositeSampler samplerB = new CompositeSampler(holderB);
@@ -104,7 +106,7 @@ class CompositeSamplerRouteRatioTest {
         ratios.put("/api", 0.0);
         ratios.put("/api/v2", 0.0);
         ratios.put("/api/v2/orders", 1.0);
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), ratios, 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
@@ -121,7 +123,7 @@ class CompositeSamplerRouteRatioTest {
     @Test
     void hard_drop_сильнее_route_ratio_1() {
         // Порядок цепочки (ADR 2.1): HardDropRule (#2) стоит до RouteRatioRule (#6).
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of("/api/v1/critical"), List.of("on"), Map.of("/api/v1/critical", 1.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 

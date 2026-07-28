@@ -1,0 +1,7 @@
+objectNameCount=8
+liveMBeanInfoMemberCount=63
+mutatingMemberCount=16
+readOnlyMemberCount=47
+councilJavaMethodCount=71
+councilReadOnlyMethodCount=55
+representationDifference=8 getter/setter pairs folded into writable attributes

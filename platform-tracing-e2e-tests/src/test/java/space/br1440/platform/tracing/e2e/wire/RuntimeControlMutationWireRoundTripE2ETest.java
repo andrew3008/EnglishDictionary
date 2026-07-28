@@ -1,6 +1,19 @@
 package space.br1440.platform.tracing.e2e.wire;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.LongAdder;
+
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
@@ -8,22 +21,11 @@ import space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutatio
 import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
 import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
 import space.br1440.platform.tracing.otel.javaagent.control.ReadAppliedStateHandler;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
-
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.CompositeDataSupport;
-import javax.management.openmbean.CompositeType;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.LongAdder;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Проверяет policy-gated JMX wire path с production handler и applier.
@@ -33,15 +35,13 @@ class RuntimeControlMutationWireRoundTripE2ETest {
     @Test
     void disabledMutationRejectsApplyAndPreservesAppliedSnapshot() throws Exception {
         RuntimeFixture fixture = RuntimeFixture.create(false);
-        long versionBefore = fixture.samplerHolder.current().version();
-        String sourceBefore = fixture.samplerHolder.current().source();
+        long sequenceBefore = fixture.acceptedPolicy.current().acceptedSequence();
 
         String result = fixture.mbean.applyPolicy(applyPayload(0.55d));
 
         assertThat(result).startsWith("MUTATION_REJECTED APPLY_RUNTIME_POLICY");
-        assertThat(fixture.samplerHolder.current().defaultRatio()).isEqualTo(0.1d);
-        assertThat(fixture.samplerHolder.current().version()).isEqualTo(versionBefore);
-        assertThat(fixture.samplerHolder.current().source()).isEqualTo(sourceBefore);
+        assertThat(fixture.acceptedPolicy.current().samplingRatio()).isEqualTo(0.1d);
+        assertThat(fixture.acceptedPolicy.current().acceptedSequence()).isEqualTo(sequenceBefore);
     }
 
     @Test
@@ -51,7 +51,7 @@ class RuntimeControlMutationWireRoundTripE2ETest {
         String result = fixture.mbean.applyPolicy(applyPayload(0.55d));
 
         assertThat(result).startsWith("SUCCESS APPLY_RUNTIME_POLICY");
-        assertThat(fixture.samplerHolder.current().defaultRatio()).isEqualTo(0.55d);
+        assertThat(fixture.acceptedPolicy.current().samplingRatio()).isEqualTo(0.55d);
     }
 
     @Test
@@ -75,23 +75,23 @@ class RuntimeControlMutationWireRoundTripE2ETest {
         return new CompositeDataSupport(type, keys, values);
     }
 
-    private record RuntimeFixture(SamplerStateHolder samplerHolder,
+    private record RuntimeFixture(AcceptedPolicyAccess acceptedPolicy,
                                   PlatformControlProtocolMBean mbean) {
 
         static RuntimeFixture create(boolean mutationEnabled) {
-            SamplerStateHolder samplerHolder = new SamplerStateHolder(
+            AcceptedPolicyAccess acceptedPolicy = AcceptedPolicyAccess.isolatedSampling(
                     true, List.of(), List.of(), Collections.emptyMap(), 0.1d);
-            ValidatingSpanProcessor validating = new ValidatingSpanProcessor(false, true);
+            ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
             LongAdder invalidCounter = new LongAdder();
             JmxRuntimePolicyApplier applier = new JmxRuntimePolicyApplier(
-                    new PlatformSamplingControl(samplerHolder, null, invalidCounter),
+                    new PlatformSamplingControl(acceptedPolicy, null, invalidCounter),
                     new PlatformValidationControl(validating, invalidCounter));
             RuntimePolicyControlHandler handler = new RuntimePolicyControlHandler(
                     applier, RuntimeControlMutationPolicy.startupConfigured(mutationEnabled));
             PlatformControlProtocolMBean mbean = new PlatformControlProtocolMBean(
                     TracingControlProtocol.current(), handler,
-                    new ReadAppliedStateHandler(samplerHolder, validating), invalidCounter);
-            return new RuntimeFixture(samplerHolder, mbean);
+                    new ReadAppliedStateHandler(acceptedPolicy), invalidCounter);
+            return new RuntimeFixture(acceptedPolicy, mbean);
         }
     }
 }

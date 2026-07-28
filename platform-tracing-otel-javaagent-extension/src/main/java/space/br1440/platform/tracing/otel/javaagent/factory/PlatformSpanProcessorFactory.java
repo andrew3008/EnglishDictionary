@@ -15,6 +15,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.enums.Scrubbin
 import space.br1440.platform.tracing.otel.javaagent.configuration.spi.JavaAgentExtensionPaths;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
@@ -55,7 +56,8 @@ public final class PlatformSpanProcessorFactory {
 
     public SdkTracerProviderBuilder registerSpanProcessors(SdkTracerProviderBuilder tpBuilder,
                                                            ExtensionConfig extConfig,
-                                                           ConfigProperties config) {
+                                                           ConfigProperties config,
+                                                           AcceptedPolicyAccess acceptedPolicy) {
         try {
             List<SpanProcessor> delegates = new ArrayList<>();
 
@@ -106,17 +108,16 @@ public final class PlatformSpanProcessorFactory {
                 ValidationModeResolver.Resolution resolution = ValidationModeResolver.resolve(
                         extConfig.validation().platformEnvironment(),
                         extConfig.validation().requestedValidationMode());
-                ValidatingSpanProcessor validating = new ValidatingSpanProcessor(
-                        resolution.effectiveMode() == ValidationMode.STRICT,
-                        resolution.strictRuntimeAllowed());
+                ValidatingSpanProcessor validating =
+                        new ValidatingSpanProcessor(acceptedPolicy);
                 delegates.add(validating);
                 jmxRegistrar.setValidating(validating);
                 validatingForHandler = validating;
             } else {
                 // Stub: validation is off at startup but operator may enable
                 // it later via JMX control protocol.
-                ValidatingSpanProcessor stub = new ValidatingSpanProcessor(false, false);
-                stub.tryApplyPolicyUpdate(false, false, "startup");
+                ValidatingSpanProcessor stub =
+                        new ValidatingSpanProcessor(acceptedPolicy);
                 jmxRegistrar.setValidating(stub);
                 validatingForHandler = stub;
             }
@@ -165,6 +166,17 @@ public final class PlatformSpanProcessorFactory {
         }
     }
 
+    SdkTracerProviderBuilder registerSpanProcessors(
+            SdkTracerProviderBuilder tpBuilder,
+            ExtensionConfig extConfig,
+            ConfigProperties config) {
+        return registerSpanProcessors(
+                tpBuilder,
+                extConfig,
+                config,
+                AcceptedPolicyAccess.fromStartup(extConfig));
+    }
+
     // =========================================================================
     // Control-protocol handler wiring
     // =========================================================================
@@ -174,8 +186,8 @@ public final class PlatformSpanProcessorFactory {
      * registrar.
      *
      * <p>This method relies on the registrar having already received the
-     * {@link space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder}
-     * via {@link PlatformTracingJmxRegistrar#setConfigHolder} (done by
+     * accepted policy via {@link PlatformTracingJmxRegistrar#setAcceptedPolicy}
+     * (done by
      * {@link PlatformSamplerFactory}).
      *
      * <p>A shared {@link LongAdder} counter from the registrar is used so
@@ -184,7 +196,7 @@ public final class PlatformSpanProcessorFactory {
      */
     private void wireControlProtocolHandler(ValidatingSpanProcessor validating,
                                             boolean runtimeMutationEnabled) {
-        // samplingControl reuses the already-registered SamplerStateHolder
+        // Sampling control использует уже зарегистрированный accepted owner.
         // inside the registrar — no new state is created.
         PlatformSamplingControl samplingControl = jmxRegistrar.buildSamplingControl();
         LongAdder counter = jmxRegistrar.sharedInvalidConfigCounter();

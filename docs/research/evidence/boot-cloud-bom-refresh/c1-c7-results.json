@@ -1,0 +1,44 @@
+{
+  "spikeId": "S-06",
+  "verificationTask": "bootCloudBomRefreshVerify",
+  "gates": {
+    "C1": {
+      "name": "Root dependency resolution",
+      "status": "PASS",
+      "evidence": "gradle/s06-approved-stack-resolution verifyApprovedStackResolution; root ./gradlew.bat tasks succeeds",
+      "note": "Approved stack Boot 3.5.5 + Cloud 2025.0.0 resolves without 4.1.5"
+    },
+    "C2": {
+      "name": "BOM publication",
+      "status": "PASS",
+      "evidence": "s06CandidateBomPublicationVerify checks generated POM and Gradle module metadata",
+      "currentProductionStatus": "PASS - Cloud BOM 2025.0.0 imported; 4.1.5 constraint absent",
+      "approvedContractStatus": "PASS"
+    },
+    "C3": {
+      "name": "Servlet starter consumer",
+      "status": "PASS",
+      "evidence": "c3PublishedMetadataConsumerVerify + published-servlet-consumer-dependencies.txt"
+    },
+    "C4": {
+      "name": "Reactive starter consumer",
+      "status": "PASS",
+      "evidence": "c6PublishedReactiveConsumerVerify + published-reactive-consumer-dependencies.txt"
+    },
+    "C5": {
+      "name": "Config Client leakage",
+      "status": "PASS",
+      "evidence": "Published consumers receive only the Spring Cloud BOM platform; no Spring Cloud runtime library is present; autoconfigure uses compileOnly spring-cloud-context; starters do not publish Config Client"
+    },
+    "C6": {
+      "name": "Agent extension isolation",
+      "status": "PASS",
+      "evidence": "c3/c6 negative compile probes; build.gradle:472 starter smoke; PR-0 forbiddenTransitive platform-tracing-otel-javaagent-extension"
+    },
+    "C7": {
+      "name": "Approved-stack S-02",
+      "status": "PASS",
+      "evidence": "configProvenanceVerify after realigning configProvenance source set to rootProject.springBootVersion (3.5.5) + 2025.0.0; s02-approved-stack-results.txt"
+    }
+  }
+}

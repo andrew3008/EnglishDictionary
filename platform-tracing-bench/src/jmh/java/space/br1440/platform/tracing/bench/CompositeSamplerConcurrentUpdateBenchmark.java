@@ -14,14 +14,12 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyUpdateOutcome;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerState;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -29,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * runtime-апдейтами конфигурации (Фаза 17, PR-E; ADR-runtime-sampling-policy, инварианты C-2/C-4/C-7).
  * <p>
  * JMH {@code @Group}: 7 reader-потоков гоняют hot-path, 1 writer-поток непрерывно публикует
- * новые снимки через {@code SamplerStateHolder.tryUpdate} (CAS). Это <b>жёстче</b> реальной
+ * новые снимки через one-shot CAS accepted-state owner. Это <b>жёстче</b> реальной
  * эксплуатации (операторские апдейты — единицы в минуту, не тысячи в секунду) — намеренный
  * верхний стресс-режим:
  * <ul>
@@ -49,15 +47,16 @@ public class CompositeSamplerConcurrentUpdateBenchmark {
 
     private static final String TRACE_ID = "0af7651916cd43dd8448eb211c80319c";
 
-    private SamplerStateHolder holder;
+    private AcceptedPolicyAccess acceptedPolicy;
     private CompositeSampler sampler;
     private Context rootContext;
     private Attributes attributes;
 
     @Setup(Level.Trial)
     public void setUp() {
-        holder = new SamplerStateHolder(true, List.of(), List.of("on"), Map.of(), 0.0);
-        sampler = new CompositeSampler(holder);
+        acceptedPolicy = AcceptedPolicyAccess.isolatedSampling(
+                true, List.of(), List.of("on"), Map.of(), 0.0);
+        sampler = new CompositeSampler(acceptedPolicy);
         rootContext = Context.root();
         attributes = Attributes.builder()
                 .put("http.request.method", "GET")
@@ -80,22 +79,15 @@ public class CompositeSamplerConcurrentUpdateBenchmark {
      * идентичен на каждом вызове (control в контексте нет, ratio константен 0.0 →
      * детерминированный full-chain DROP), поэтому метрика {@code sample} не смешивает
      * ветки и сравнима с {@code ratioDropContended} read-only бенча.
-     * Builder side-effect-free — контракт {@code VersionedStateHolder}
-     * (при contention вызывается повторно).
+     * Кандидат строится side-effect-free, скрытые retry и rebase отсутствуют.
      */
     @Benchmark
     @Group("readWhileUpdate")
     @GroupThreads(1)
     public void update(Blackhole bh) {
-        boolean applied = holder.tryUpdate(prev -> new SamplerState(
-                true,
-                List.of(),
-                (prev.version() % 2 == 0) ? Set.of("on") : Set.of("on", "debug"),
-                Map.of(),
-                0.0,
-                prev.version() + 1,
-                Instant.now(),
-                "jmh"));
-        bh.consume(applied);
+        boolean enabled = acceptedPolicy.current().acceptedSequence() % 2L == 0L;
+        AcceptedPolicyUpdateOutcome outcome =
+                acceptedPolicy.updateValidation(enabled, false);
+        bh.consume(outcome);
     }
 }

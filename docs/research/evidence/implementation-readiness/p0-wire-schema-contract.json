@@ -1,0 +1,182 @@
+{
+  "artifactId": "p0-wire-schema-contract",
+  "contractVersion": 1,
+  "technicalStatus": "COMPLETE",
+  "approvalStatus": "READY_FOR_COMMITTEE_APPROVAL",
+  "scope": "Private process-local JMX applySnapshot operation",
+  "operation": {
+    "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+    "name": "applySnapshot",
+    "requestType": "space.br1440.platform.tracing.control.ApplySnapshotRequest.v1",
+    "responseType": "space.br1440.platform.tracing.control.ApplySnapshotResponse.v1",
+    "capability": "CONFIG_SNAPSHOT_V1"
+  },
+  "request": {
+    "typeName": "space.br1440.platform.tracing.control.ApplySnapshotRequest.v1",
+    "rejectUnknownItems": true,
+    "rejectMissingItems": true,
+    "items": [
+      {"name": "protocolVersion", "openType": "SimpleType.INTEGER", "required": true, "constant": 1},
+      {"name": "expectedRuntimeInstanceId", "openType": "SimpleType.STRING", "required": true},
+      {"name": "expectedAcceptedSequence", "openType": "SimpleType.LONG", "required": true},
+      {"name": "attemptId", "openType": "SimpleType.STRING", "required": true},
+      {"name": "sourceAuthority", "openType": "SimpleType.STRING", "required": true,
+        "allowed": ["HELM", "CONFIG_SERVER", "DEV_ACTUATOR"]},
+      {"name": "applyTrigger", "openType": "SimpleType.STRING", "required": true,
+        "allowed": ["INITIAL", "REFRESH", "DEVELOPER_COMMAND"]},
+      {"name": "sourceRevision", "openType": "SimpleType.STRING", "required": true,
+        "absenceEncoding": "empty string; metadata only and never an ordering token"},
+      {"name": "candidateDigest", "openType": "SimpleType.STRING", "required": true},
+      {"name": "runtimePolicy", "openType": "space.br1440.platform.tracing.control.RuntimePolicy.v1",
+        "required": true}
+    ]
+  },
+  "runtimePolicy": {
+    "typeName": "space.br1440.platform.tracing.control.RuntimePolicy.v1",
+    "semantic": "One complete immutable Category A snapshot",
+    "rejectUnknownItems": true,
+    "rejectMissingItems": true,
+    "leafCount": 8,
+    "items": [
+      {"name": "samplingEnabled", "canonicalProperty": "platform.tracing.policy.sampling.enabled",
+        "openType": "SimpleType.BOOLEAN"},
+      {"name": "samplingRatio", "canonicalProperty": "platform.tracing.policy.sampling.ratio",
+        "openType": "SimpleType.DOUBLE"},
+      {"name": "samplingRouteRatios",
+        "canonicalProperty": "platform.tracing.policy.sampling.route-ratios",
+        "openType": "space.br1440.platform.tracing.control.RouteRatios.v1"},
+      {"name": "validationEnabled", "canonicalProperty": "platform.tracing.policy.validation.enabled",
+        "openType": "SimpleType.BOOLEAN"},
+      {"name": "validationStrict", "canonicalProperty": "platform.tracing.policy.validation.strict",
+        "openType": "SimpleType.BOOLEAN"},
+      {"name": "exporterEnabled", "canonicalProperty": "platform.tracing.policy.exporter.enabled",
+        "openType": "SimpleType.BOOLEAN"},
+      {"name": "traceControlHeadersEnabled",
+        "canonicalProperty": "platform.tracing.policy.propagation.trace-control-headers.enabled",
+        "openType": "SimpleType.BOOLEAN"},
+      {"name": "diagnosticsLogLevel",
+        "canonicalProperty": "platform.tracing.policy.diagnostics.log-level",
+        "openType": "SimpleType.STRING",
+        "allowed": ["OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"]}
+    ]
+  },
+  "routeRatios": {
+    "typeName": "space.br1440.platform.tracing.control.RouteRatios.v1",
+    "openType": "TabularType",
+    "rowType": "space.br1440.platform.tracing.control.RouteRatio.v1",
+    "indexNames": ["routePrefix"],
+    "rowItems": [
+      {"name": "routePrefix", "openType": "SimpleType.STRING"},
+      {"name": "ratio", "openType": "SimpleType.DOUBLE"}
+    ],
+    "semantic": "Map<String,Double>; unique routePrefix; deterministic lexicographic key order"
+  },
+  "response": {
+    "typeName": "space.br1440.platform.tracing.control.ApplySnapshotResponse.v1",
+    "rejectUnknownItems": true,
+    "rejectMissingItems": true,
+    "items": [
+      {"name": "protocolVersion", "openType": "SimpleType.INTEGER", "required": true, "constant": 1},
+      {"name": "outcome", "openType": "SimpleType.STRING", "required": true,
+        "allowed": ["APPLIED", "UNCHANGED", "REJECTED", "STALE", "FAILED"]},
+      {"name": "attemptId", "openType": "SimpleType.STRING", "required": true},
+      {"name": "runtimeInstanceId", "openType": "SimpleType.STRING", "required": true},
+      {"name": "acceptedSequence", "openType": "SimpleType.LONG", "required": true},
+      {"name": "payloadDigest", "openType": "SimpleType.STRING", "required": true},
+      {"name": "restartRequired", "openType": "SimpleType.BOOLEAN", "required": true},
+      {"name": "restartRequiredKeys", "openType": "ArrayType(SimpleType.STRING)", "required": true},
+      {"name": "messageCode", "openType": "SimpleType.STRING", "required": true,
+        "allowed": [
+          "NONE",
+          "UNKNOWN_FIELD",
+          "MISSING_REQUIRED_FIELD",
+          "TYPE_MISMATCH",
+          "INVALID_VALUE",
+          "LIMIT_EXCEEDED",
+          "PROTOCOL_VERSION_MISMATCH",
+          "RUNTIME_INSTANCE_MISMATCH",
+          "ACCEPTED_SEQUENCE_MISMATCH",
+          "STRICT_RUNTIME_NOT_ALLOWED",
+          "INTERNAL_FAILURE"
+        ]},
+      {"name": "violationCodes", "openType": "ArrayType(SimpleType.STRING)", "required": true}
+    ]
+  },
+  "managementReadProjections": {
+    "stringLongTable": {
+      "typeName": "space.br1440.platform.tracing.management.StringLongTable.v1",
+      "openType": "TabularType",
+      "rowType": "space.br1440.platform.tracing.management.StringLongEntry.v1",
+      "indexNames": ["key"],
+      "rowItems": [
+        {"name": "key", "openType": "SimpleType.STRING"},
+        {"name": "value", "openType": "SimpleType.LONG"}
+      ],
+      "maxEntries": 128,
+      "maxKeyUtf16CodeUnits": 128,
+      "ordering": "lexicographic key order"
+    },
+    "routeRatios": {
+      "typeName": "space.br1440.platform.tracing.control.RouteRatios.v1",
+      "authority": "routeRatios section and p0-wire-schema-bounds.json"
+    }
+  },
+  "outcomeSemantics": {
+    "APPLIED": "Exactly one successful expected-base CAS; acceptedSequence increments by one",
+    "UNCHANGED": "No CAS; acceptedSequence unchanged",
+    "REJECTED": "Decode, normalization, validation, authority or bound failure; no CAS",
+    "STALE": "Runtime instance, sequence or one-shot CAS mismatch; no retry or rebase in the store",
+    "FAILED": "Internal codec/handler invariant failure; never used for an ordinary stale base"
+  },
+  "canonicalDigest": {
+    "algorithm": "SHA-256",
+    "output": "64 lowercase hexadecimal ASCII characters",
+    "domainSeparator": "platform-tracing-policy-v1",
+    "fieldOrder": [
+      "samplingEnabled",
+      "samplingRatio",
+      "samplingRouteRatios",
+      "validationEnabled",
+      "validationStrict",
+      "exporterEnabled",
+      "traceControlHeadersEnabled",
+      "diagnosticsLogLevel"
+    ],
+    "encoding": [
+      "UTF-8 domain separator followed by one zero byte",
+      "Each scalar is prefixed by its fixed field id",
+      "Booleans use one byte: 0 or 1",
+      "Finite doubles normalize negative zero to positive zero and use big-endian Double.doubleToLongBits",
+      "Route entries are sorted by UTF-8 routePrefix bytes; count and string lengths are big-endian int32",
+      "Log level uses its uppercase ASCII token",
+      "Map.toString, locale-sensitive formatting and sourceRevision are forbidden"
+    ]
+  },
+  "classloaderContract": {
+    "sharedApplicationDto": false,
+    "boundaryTypes": [
+      "javax.management.openmbean.CompositeData",
+      "javax.management.openmbean.TabularData",
+      "JDK primitive wrappers",
+      "java.lang.String",
+      "Open-Type arrays"
+    ],
+    "agentCodecOwner": "platform-tracing-otel-javaagent-extension",
+    "applicationCodecOwner": "platform-tracing-spring-boot-autoconfigure",
+    "implementationRule": "Independent codecs consume this contract and the same golden vectors",
+    "forbidden": [
+      "generic Map payload",
+      "partial snapshot",
+      "string coercion",
+      "application DTO crossing into the Agent classloader",
+      "legacy applyPolicy relocation",
+      "recognized-but-unapplied fields"
+    ]
+  },
+  "categoryBContract": {
+    "includedInAcceptedState": false,
+    "includedInRuntimePolicyCompositeType": false,
+    "rule": "Category B remains startup-owned and may only contribute bounded, secret-safe structural drift diagnostics",
+    "runtimeMutationAttempt": "REJECTED"
+  }
+}

@@ -1,30 +1,5 @@
 ---
-description: Security and privacy guardrails for tracing data, propagation, runtime control, JMX, exporters, Spring configuration, and external integrations.
-globs:
-  - "**/*Security*.java"
-  - "**/*Auth*.java"
-  - "**/*Secret*.java"
-  - "**/*Credential*.java"
-  - "**/*Tls*.java"
-  - "**/*Ssl*.java"
-  - "**/*Trust*.java"
-  - "**/*Scrubb*.java"
-  - "**/*Sensitive*.java"
-  - "**/*Pii*.java"
-  - "**/*Propagation*.java"
-  - "**/*Baggage*.java"
-  - "**/*RuntimeControl*.java"
-  - "**/*Jmx*.java"
-  - "**/*MBean*.java"
-  - "**/*Exporter*.java"
-  - "**/*Endpoint*.java"
-  - "**/*security*/**/*.java"
-  - "**/*scrubbing*/**/*.java"
-  - "**/*control*/**/*.java"
-  - "**/*application*.yml"
-  - "**/*application*.yaml"
-  - "**/*values*.yml"
-  - "**/*values*.yaml"
+description: Apply for security or privacy review involving tracing data, propagation, runtime control, JMX, exporters, configuration, credentials, TLS, or external trust boundaries.
 alwaysApply: false
 ---
 

@@ -1,0 +1,48 @@
+{
+  "spikeId": "S-07",
+  "gate": "E7",
+  "verdict": "APPROVE_EXACT_JMX_DELTA",
+  "e7Recommendation": "READY_TO_CLOSE_E7",
+  "overallResult": "PASS",
+  "selectedReadContractOption": "R3",
+  "weightedScore": 87.4,
+  "productionCodeChanged": false,
+  "baseline": {
+    "objectNames": 8,
+    "members": 63,
+    "readOnly": 47,
+    "mutations": 16
+  },
+  "target": {
+    "platformObjectNames": 8,
+    "platformReadOnlyMembers": 56,
+    "platformMutations": 0,
+    "privateObjectNames": 2,
+    "privateReadMembers": 6,
+    "privateMutations": 1
+  },
+  "counts": {
+    "retainedExact": 32,
+    "clarified": 14,
+    "renamed": 0,
+    "movedPrivate": 0,
+    "deletedObsoleteReads": 5,
+    "replacedReads": 4,
+    "addedPlatformReads": 9,
+    "addedPrivateReads": 6,
+    "deletedMutationsFromPlatform": 16
+  },
+  "privateWriter": {
+    "targetMemberId": "PRIV-W01",
+    "operationName": "applySnapshot",
+    "newReplacementContract": true,
+    "legacyPartialProtocolRelocated": false,
+    "exactPayloadSchemaAuthority": "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json and p0-wire-schema-bounds.json",
+    "exactPayloadSchemaStatus": "READY_FOR_COMMITTEE_APPROVAL"
+  },
+  "externalConsumerBlockersForE7": [],
+  "productionRolloutBlockers": [
+    "external consumer survey and migration notice",
+    "P6 zero-reference and zero-write proof"
+  ]
+}

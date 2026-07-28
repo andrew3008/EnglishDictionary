@@ -46,7 +46,8 @@ SDK-only / без Controlled Agent Distribution не является подде
 | **OTel SDK (via Agent/BOM)** | **1.62.0** | 1.62.0 | `openTelemetryBomVersion` |
 | **OTel Instrumentation BOM** | **2.28.1** | 2.28.1 | Lockstep with agent |
 | **Extension API** | **2.28.1-alpha** | 2.28.1-alpha | `opentelemetry-javaagent-extension-api` |
-| **Spring Cloud Context** | 4.1.x (optional) | 4.1.5 | `@RefreshScope` only; not required |
+| **Spring Cloud release train** | 2025.0.x (optional) | 2025.0.0 | Совместим с Boot 3.5.x; Config/Bus подключаются сервисом явно |
+| **Spring Cloud Context** | 4.3.x (optional) | 4.3.0 | Управляется Spring Cloud BOM; не входит транзитивно в tracing starters |
 | **Collector** | **OTel Collector Contrib 0.154.0** (pin) | e2e module | Tail sampling / redaction / k8sattributes / routing connector YAML from `platform-tracing-collector-config`; Track B+ adoption 2026-06-10; boundary-контракт SDK ↔ Collector — `PlatformSamplingReasons` + `CollectorPolicyContractTest` ([ADR-collector-boundary](decisions/ADR-collector-boundary.md), runbook `collector-pipeline-production.md`) |
 
 ---

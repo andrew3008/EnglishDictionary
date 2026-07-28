@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import org.junit.jupiter.api.Test;
@@ -24,13 +26,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * PR-6D: atomic runtime sampling policy update via JMX bridge → {@link SamplerStateHolder}.
+ * PR-6D: atomic runtime sampling policy update via JMX bridge → {@link AcceptedPolicyAccess}.
  */
 class SamplingPolicyRuntimeUpdateJmxTest {
 
     @Test
     void updateSamplingPolicy_arrays_updatesDomainAndCompositeSampler() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
         PlatformSamplingControl control = new PlatformSamplingControl(holder, sampler, new LongAdder());
@@ -44,11 +46,12 @@ class SamplingPolicyRuntimeUpdateJmxTest {
                 new double[]{1.0},
                 "pr-6d-test");
 
-        SamplerState state = holder.current();
-        assertThat(state.source()).isEqualTo("pr-6d-test");
-        assertThat(state.droppedRoutes()).containsExactly("/actuator");
-        assertThat(state.forceRecordValues()).contains("force-me");
-        assertThat(state.routeRatios()).containsEntry("/api/v1/critical", 1.0);
+        assertThat(holder.currentLegacySamplingRules().getDroppedRoutes())
+                .containsExactly("/actuator");
+        assertThat(holder.currentLegacySamplingRules().getForceRecordValues())
+                .contains("force-me");
+        assertThat(holder.current().samplingRouteRatios())
+                .containsEntry("/api/v1/critical", 1.0);
 
         Context forceContext = Context.root().with(
                 PlatformTraceContextKeys.TRACE_CONTROL,
@@ -76,45 +79,45 @@ class SamplingPolicyRuntimeUpdateJmxTest {
 
     @Test
     void invalidUpdate_keepsLkg_versionUnchanged_incrementsInvalidCounter() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of("/old", 0.2), 0.3);
         LongAdder counter = new LongAdder();
         PlatformSamplingControl control = new PlatformSamplingControl(holder, null, counter);
-        long v0 = holder.version();
+        long v0 = holder.current().acceptedSequence();
 
         assertThatThrownBy(() -> control.updateSamplingPolicy(
                 true, 0.5, null, null, new String[]{"/api"}, new double[]{0.1, 0.2}, "bad"))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThat(holder.version()).isEqualTo(v0);
-        assertThat(holder.current().defaultRatio()).isEqualTo(0.3);
-        assertThat(holder.current().routeRatios()).containsEntry("/old", 0.2);
+        assertThat(holder.current().acceptedSequence()).isEqualTo(v0);
+        assertThat(holder.current().samplingRatio()).isEqualTo(0.3);
+        assertThat(holder.current().samplingRouteRatios()).containsEntry("/old", 0.2);
         assertThat(counter.sum()).isEqualTo(1);
     }
 
     @Test
     void nullForceValue_rejectedWithoutVersionBump() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of(), 0.5);
         PlatformSamplingControl control = new PlatformSamplingControl(holder, null, new LongAdder());
-        long v0 = holder.version();
+        long v0 = holder.current().acceptedSequence();
 
         assertThatThrownBy(() -> control.updateSamplingPolicy(
                 true, 0.5, null, new String[]{null}, null, null, "bad"))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThat(holder.version()).isEqualTo(v0);
+        assertThat(holder.current().acceptedSequence()).isEqualTo(v0);
     }
 
     @Test
     void concurrentUpdateSamplingPolicy_preservesMonotonicVersion() throws Exception {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of(), 0.5);
         PlatformSamplingControl control = new PlatformSamplingControl(holder, null, new LongAdder());
-        long v0 = holder.version();
+        long v0 = holder.current().acceptedSequence();
         int threads = 4;
         int updatesPerThread = 50;
-        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        ExecutorService pool = Executors.newFixedThreadPool(threads + 1);
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(threads);
         AtomicReference<String> violation = new AtomicReference<>();
@@ -148,7 +151,7 @@ class SamplingPolicyRuntimeUpdateJmxTest {
             while (done.getCount() > 0) {
                 try {
                     SamplerHarness.of(sampler).spanKind(SpanKind.SERVER).sample();
-                    if (holder.current().policySnapshot() == null) {
+                    if (holder.current() == null) {
                         violation.compareAndSet(null, "missing snapshot");
                         return;
                     }
@@ -164,7 +167,9 @@ class SamplingPolicyRuntimeUpdateJmxTest {
         pool.shutdownNow();
 
         assertThat(violation.get()).isNull();
-        assertThat(holder.version()).isEqualTo(v0 + (long) threads * updatesPerThread);
+        assertThat(holder.current().acceptedSequence()).isGreaterThan(v0);
+        assertThat(holder.current().acceptedSequence())
+                .isLessThanOrEqualTo(v0 + (long) threads * updatesPerThread);
     }
 
     private static void await(CountDownLatch latch) {

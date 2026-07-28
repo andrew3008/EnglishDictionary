@@ -19,9 +19,9 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.infra.Blackhole;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
 
 import java.util.List;
 import java.util.Map;
@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
  *   <li><b>ratio-drop</b> — полный проход цепочки до {@code DefaultRatioRule}
  *       с ratio 0.0 (худший случай по длине пути без записи).</li>
  * </ul>
- * Контеншн: {@code @Threads(1)} и {@code @Threads(8)} — {@code SamplerStateHolder.current()}
+ * Контеншн: {@code @Threads(1)} и {@code @Threads(8)} — чтение accepted policy
  * обязан оставаться lock-free (atomic snapshot, Фаза 14); деградация p99 под потоками
  * означала бы нарушение инварианта P5.
  * <p>
@@ -68,9 +68,9 @@ public class CompositeSamplerBenchmark {
         // Production-like состояние: enabled, force-значение "on", default ratio 0.0 —
         // гарантирует, что ветка ratio-drop детерминированно доходит до DROP
         // (при 0.1 решение зависело бы от traceId и бенчмарк мерил бы смесь веток).
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess acceptedPolicy = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of(), 0.0);
-        sampler = new CompositeSampler(holder);
+        sampler = new CompositeSampler(acceptedPolicy);
 
         // Ветка 1: форсированная запись через X-Trace-On (см. CompositeSamplerTest.withControl).
         forceHeaderContext = Context.root().with(
@@ -114,7 +114,7 @@ public class CompositeSamplerBenchmark {
                 SpanKind.SERVER, attributes, List.of()));
     }
 
-    // -- Контеншн: 8 потоков на общем SamplerStateHolder ---------------------------------
+    // -- Контеншн: 8 потоков на общем accepted-state owner ---------------------------------
 
     @Benchmark
     @Threads(8)

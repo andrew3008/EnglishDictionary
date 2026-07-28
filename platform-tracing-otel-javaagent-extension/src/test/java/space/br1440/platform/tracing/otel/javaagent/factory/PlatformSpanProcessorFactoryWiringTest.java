@@ -7,7 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -37,7 +37,7 @@ class PlatformSpanProcessorFactoryWiringTest {
 
     private MBeanServer              privateMBeanServer;
     private PlatformTracingJmxRegistrar registrar;
-    private SamplerStateHolder       samplerHolder;
+    private AcceptedPolicyAccess       samplerHolder;
 
     @BeforeEach
     void setUp() {
@@ -45,13 +45,13 @@ class PlatformSpanProcessorFactoryWiringTest {
         privateMBeanServer = MBeanServerFactory.createMBeanServer(
                 "space.br1440.platform.tracing.test");
 
-        samplerHolder = new SamplerStateHolder(
+        samplerHolder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Collections.emptyMap(), 0.1d);
 
         registrar = new PlatformTracingJmxRegistrar(privateMBeanServer);
 
         // Simulate what PlatformSamplerFactory does before factory is called
-        registrar.setConfigHolder(samplerHolder);
+        registrar.setAcceptedPolicy(samplerHolder);
     }
 
     @AfterEach
@@ -140,7 +140,7 @@ class PlatformSpanProcessorFactoryWiringTest {
                 new String[]{CompositeData.class.getName()});
 
         assertThat(result).startsWith("SUCCESS");
-        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.42d);
+        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.42d);
     }
 
     @Test

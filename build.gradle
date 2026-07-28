@@ -80,6 +80,10 @@ subprojects {
                     url = rootProject.layout.buildDirectory.dir('c3-maven-repository')
                 }
                 maven {
+                    name = 'c6Verification'
+                    url = rootProject.layout.buildDirectory.dir('c6-maven-repository')
+                }
+                maven {
                     name = 'pa1PublishedArtifactVerification'
                     url = rootProject.layout.buildDirectory.dir('pa1-published-artifact-maven-repository')
                 }
@@ -666,4 +670,466 @@ tasks.register('pr4ArchitectureFitnessVerify') {
     dependsOn 'pr1ModuleTaxonomyVerify'
     dependsOn 'cp3LegacyPackageVerify'
     dependsOn ':platform-tracing-api:test'
+}
+
+// ---------------------------------------------------------------------------------------------
+// S-02 — Config Server provenance evidence (docs/research/config-server-provenance-step-0b-reproduction.md).
+// Deliberately not wired into check/build: the characterization forks a child Config Server JVM,
+// binds ephemeral loopback ports and requires `git` on PATH. CI and release gates must invoke this
+// task by name; ordinary local `check` stays free of external-process cost.
+// ---------------------------------------------------------------------------------------------
+
+tasks.register('configProvenanceVerify') {
+    group = 'verification'
+    description = 'Runs the isolated Spring Cloud Config provenance characterization (Step 0B evidence).'
+    dependsOn ':platform-tracing-e2e-tests:configProvenanceTest'
+}
+
+def jmxExtensionProject = project(':platform-tracing-otel-javaagent-extension')
+def jmxSpringProject = project(':platform-tracing-spring-boot-autoconfigure')
+
+def jmxManagementContractBaselineTest = tasks.register('jmxManagementContractBaselineTest', Test) {
+    group = 'verification'
+    description = 'Compares all eight live platform MBeans with the committed JSON baseline.'
+    dependsOn jmxExtensionProject.tasks.named('testClasses')
+    testClassesDirs = jmxExtensionProject.sourceSets.test.output.classesDirs
+    classpath = jmxExtensionProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/jmxManagementContractBaselineTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/jmxManagementContractBaselineTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/jmxManagementContractBaselineTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.jmx.DomainMBeanJmxComplianceTest'
+    }
+
+    if (providers.gradleProperty('updateJmxContractBaseline').isPresent()) {
+        systemProperty 'jmx.contract.baseline.update', 'true'
+        systemProperty 'jmx.contract.baseline.path', layout.projectDirectory.file(
+                'platform-tracing-otel-javaagent-extension/src/test/resources/' +
+                        'jmx-management-contract-baseline.json').asFile.absolutePath
+        systemProperty 'jmx.contract.baseline.commit', providers.exec {
+            workingDir rootProject.projectDir
+            commandLine 'git', 'rev-parse', 'HEAD'
+        }.standardOutput.asText.map { it.trim() }.get()
+    }
+}
+
+def jmxObjectNameConsistencyTest = tasks.register('jmxObjectNameConsistencyTest', Test) {
+    group = 'verification'
+    description = 'Verifies the complete Spring/Agent ObjectName duplication inventory.'
+    dependsOn jmxSpringProject.tasks.named('testClasses')
+    testClassesDirs = jmxSpringProject.sourceSets.test.output.classesDirs
+    classpath = jmxSpringProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/jmxObjectNameConsistencyTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/jmxObjectNameConsistencyTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/jmxObjectNameConsistencyTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.jmx.ObjectNameConstantsConsistencyTest'
+    }
+}
+
+tasks.register('jmxManagementContractVerify') {
+    group = 'verification'
+    description = 'Verifies the complete live JMX management baseline and duplicated ObjectNames.'
+    dependsOn jmxManagementContractBaselineTest, jmxObjectNameConsistencyTest
+}
+
+tasks.register('privateMBeanServerVerify') {
+    group = 'verification'
+    description = 'Runs the S-03 private process-local MBeanServer evidence spike.'
+    dependsOn ':platform-tracing-e2e-tests:privateMBeanServerTest'
+}
+
+project(':platform-tracing-spring-boot-autoconfigure') {
+    dependencies {
+        testRuntimeOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    }
+}
+
+def tracingConfigurationInventoryTest = tasks.register(
+        'tracingConfigurationInventoryTest',
+        Test) {
+    group = 'verification'
+    description = 'Regenerates and verifies the deterministic S-04 tracing configuration inventory.'
+    def inventoryProject = project(':platform-tracing-spring-boot-autoconfigure')
+    def extensionProject = project(':platform-tracing-otel-javaagent-extension')
+    dependsOn inventoryProject.tasks.named('testClasses')
+    testClassesDirs = inventoryProject.sourceSets.test.output.classesDirs
+    classpath = inventoryProject.sourceSets.test.runtimeClasspath +
+            extensionProject.sourceSets.main.compileClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/tracingConfigurationInventoryTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/tracingConfigurationInventoryTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/tracingConfigurationInventoryTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching(
+                'space.br1440.platform.tracing.autoconfigure.inventory.' +
+                        'TracingConfigurationInventoryGeneratorTest')
+    }
+    if (providers.gradleProperty('updateTracingConfigurationInventory').isPresent()) {
+        systemProperty 'tracing.configuration.inventory.update', 'true'
+    }
+}
+
+tasks.register('tracingConfigurationInventoryVerify') {
+    group = 'verification'
+    description = 'Verifies committed S-04 inventory artifacts and exact-name dispositions.'
+    dependsOn tracingConfigurationInventoryTest
+}
+
+// ---------------------------------------------------------------------------------------------
+// S-01 accepted-state primitive evidence (Gate E3).
+//
+// Opt-in: НЕ подключается к check/build. Доказательства живут только в test/jmh source set'ах
+// platform-tracing-bench; production-код не участвует. JMH-замер аллокаций запускается отдельно
+// (:platform-tracing-bench:jmh -PjmhInclude=S01AcceptedStateReadBenchmark), потому что forked
+// benchmark добавляет заметный overhead обычной сборке.
+// ---------------------------------------------------------------------------------------------
+
+def acceptedStatePrimitiveTest = tasks.register('acceptedStatePrimitiveTest', Test) {
+    group = 'verification'
+    description = 'Runs the S-01 accepted-state primitive concurrency, publication and allocation evidence.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/acceptedStatePrimitiveTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/acceptedStatePrimitiveTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/acceptedStatePrimitiveTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.acceptedstate.*'
+    }
+}
+
+tasks.register('acceptedStatePrimitiveVerify') {
+    group = 'verification'
+    description = 'Verifies the S-01 accepted policy state primitive evidence for Gate E3.'
+    dependsOn acceptedStatePrimitiveTest
+}
+
+// ---------------------------------------------------------------------------------------------
+// S-06 — Boot/Cloud/BOM and refresh delivery evidence (Gate E6).
+// Opt-in: not wired into check/build. Proves approved dependency baseline, published consumer
+// isolation, and S-02 on the corporate Boot patch; does not mutate production BOM constraints.
+// ---------------------------------------------------------------------------------------------
+
+def c6PublishedProjects = [
+        ':platform-tracing-bom',
+        ':platform-tracing-api',
+        ':platform-tracing-otel',
+        ':platform-tracing-spring-boot-autoconfigure',
+        ':platform-tracing-autoconfigure-webflux',
+        ':platform-tracing-spring-boot-starter-reactive'
+]
+
+def s06EvidenceDir = layout.projectDirectory.dir('docs/research/evidence/boot-cloud-bom-refresh')
+
+tasks.register('s06CandidateBomPublicationVerify') {
+    group = 'verification'
+    description = 'Verifies the generated candidate BOM POM and Gradle metadata (C2).'
+    dependsOn ':platform-tracing-bom:generatePomFileForMavenJavaPublication'
+    dependsOn ':platform-tracing-bom:generateMetadataFileForMavenJavaPublication'
+
+    doLast {
+        File publicationDir = project(':platform-tracing-bom')
+                .layout.buildDirectory.dir('publications/mavenJava').get().asFile
+        File pomFile = new File(publicationDir, 'pom-default.xml')
+        File moduleFile = new File(publicationDir, 'module.json')
+        if (!pomFile.isFile() || !moduleFile.isFile()) {
+            throw new GradleException('Candidate BOM publication metadata was not generated')
+        }
+
+        def pom = new XmlSlurper().parse(pomFile)
+        def dependencies = pom.dependencyManagement.dependencies.dependency
+        def cloudImport = dependencies.find {
+            it.groupId.text() == 'org.springframework.cloud'
+                    && it.artifactId.text() == 'spring-cloud-dependencies'
+        }
+        if (cloudImport.size() != 1
+                || cloudImport.version.text() != '2025.0.0'
+                || cloudImport.type.text() != 'pom'
+                || cloudImport.scope.text() != 'import') {
+            throw new GradleException('Candidate POM must import spring-cloud-dependencies:2025.0.0')
+        }
+        if (dependencies.any {
+            it.groupId.text() == 'org.springframework.cloud'
+                    && it.artifactId.text() == 'spring-cloud-context'
+                    && it.version.text() == '4.1.5'
+        }) {
+            throw new GradleException('Candidate POM must not publish spring-cloud-context:4.1.5')
+        }
+
+        def metadata = new groovy.json.JsonSlurper().parse(moduleFile)
+        metadata.variants.each { variant ->
+            def cloudPlatforms = variant.dependencies.findAll {
+                it.group == 'org.springframework.cloud'
+                        && it.module == 'spring-cloud-dependencies'
+            }
+            if (cloudPlatforms.size() != 1
+                    || cloudPlatforms[0].version?.requires != '2025.0.0'
+                    || cloudPlatforms[0].attributes?.get('org.gradle.category') != 'platform') {
+                throw new GradleException(
+                        "Variant ${variant.name} must import the approved Spring Cloud platform")
+            }
+            if (variant.dependencyConstraints.any {
+                it.group == 'org.springframework.cloud'
+                        && it.module == 'spring-cloud-context'
+                        && it.version?.requires == '4.1.5'
+            }) {
+                throw new GradleException(
+                        "Variant ${variant.name} must not constrain spring-cloud-context:4.1.5")
+            }
+        }
+    }
+}
+
+tasks.register('s06ApprovedStackResolutionVerify') {
+    group = 'verification'
+    description = 'Verifies approved Boot 3.5.5 + Spring Cloud 2025.0.0 resolution (C1).'
+
+    doLast {
+        File fixture = file('gradle/s06-approved-stack-resolution')
+        File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'gradlew.bat' : 'gradlew')
+        List<String> command = []
+        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+            command.addAll(['cmd.exe', '/d', '/c'])
+        }
+        command.add(wrapper.absolutePath)
+        command.addAll(['-p', fixture.absolutePath, 'verifyApprovedStackResolution', '--no-daemon'])
+
+        Process process = new ProcessBuilder(command.collect { it.toString() })
+                .directory(rootDir)
+                .redirectErrorStream(true)
+                .start()
+        String output = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            throw new GradleException("S-06 approved stack resolution failed:\n${output}")
+        }
+        logger.lifecycle('S-06 approved stack resolution verification passed')
+    }
+}
+
+tasks.register('c6PublishedReactiveConsumerVerify') {
+    group = 'verification'
+    description = 'Verifies reactive starter published consumer boundaries (C4).'
+
+    doLast {
+        File repository = layout.buildDirectory.dir('c6-maven-repository').get().asFile
+        File fixture = file('gradle/c6-published-reactive-consumer')
+        File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'gradlew.bat' : 'gradlew')
+
+        def runFixture = { String taskName, Map extraProps = [:] ->
+            List<String> command = []
+            if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+                command.addAll(['cmd.exe', '/d', '/c'])
+            }
+            command.add(wrapper.absolutePath)
+            command.addAll([
+                    '-p', fixture.absolutePath,
+                    taskName,
+                    "-Pc6Repository=${repository.absolutePath}",
+                    "-PplatformTracingVersion=${project.version}",
+                    '--no-daemon'
+            ])
+            extraProps.each { key, value -> command.add("-P${key}=${value}") }
+
+            Process process = new ProcessBuilder(command.collect { it.toString() })
+                    .directory(rootDir)
+                    .redirectErrorStream(true)
+                    .start()
+            String output = process.inputStream.getText('UTF-8')
+            int exitCode = process.waitFor()
+            return [exitCode: exitCode, output: output]
+        }
+
+        def positive = runFixture('verifyPublishedConsumer')
+        if (positive.exitCode != 0) {
+            throw new GradleException("C6 reactive published consumer failed:\n${positive.output}")
+        }
+
+        def negative = runFixture('compileNegativeJava')
+        if (negative.exitCode == 0) {
+            throw new GradleException('C6 negative compile unexpectedly succeeded: core leaked onto compileClasspath')
+        }
+        if (!negative.output.contains('space.br1440.platform.tracing.otel.runtime.otel')) {
+            throw new GradleException("C6 negative compile failed for unexpected reason:\n${negative.output}")
+        }
+
+        File evidenceOutput = s06EvidenceDir.file('published-reactive-consumer-dependencies.txt').asFile
+        def export = runFixture('exportDependencyEvidence', [evidenceOutput: evidenceOutput.absolutePath])
+        if (export.exitCode != 0) {
+            throw new GradleException("C6 dependency evidence export failed:\n${export.output}")
+        }
+
+        logger.lifecycle('C6 reactive published metadata consumer verification passed')
+    }
+}
+
+tasks.register('s06PublishedServletDependencyEvidence') {
+    group = 'verification'
+    description = 'Exports servlet starter published consumer dependency evidence (C3 supplement).'
+
+    doLast {
+        File repository = layout.buildDirectory.dir('c3-maven-repository').get().asFile
+        File fixture = file('gradle/c3-published-consumer')
+        File wrapper = file(System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'gradlew.bat' : 'gradlew')
+        File evidenceOutput = s06EvidenceDir.file('published-servlet-consumer-dependencies.txt').asFile
+
+        List<String> command = []
+        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+            command.addAll(['cmd.exe', '/d', '/c'])
+        }
+        command.add(wrapper.absolutePath)
+        command.addAll([
+                '-p', fixture.absolutePath,
+                'exportDependencyEvidence',
+                "-Pc3Repository=${repository.absolutePath}",
+                "-PplatformTracingVersion=${project.version}",
+                "-PevidenceOutput=${evidenceOutput.absolutePath}",
+                '--no-daemon'
+        ])
+
+        Process process = new ProcessBuilder(command.collect { it.toString() })
+                .directory(rootDir)
+                .redirectErrorStream(true)
+                .start()
+        String output = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            throw new GradleException("S-06 servlet dependency evidence export failed:\n${output}")
+        }
+        logger.lifecycle('S-06 servlet published consumer dependency evidence exported')
+    }
+}
+
+def s06BootCloudBomTest = tasks.register('s06BootCloudBomTest', Test) {
+    group = 'verification'
+    description = 'Runs S-06 evidence consistency and starter leakage proofs.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir('test-results/s06BootCloudBomTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir('test-results/s06BootCloudBomTest')
+    reports.html.outputLocation = layout.buildDirectory.dir('reports/tests/s06BootCloudBomTest')
+    useJUnitPlatform()
+    systemProperty 's06.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/boot-cloud-bom-refresh').asFile.absolutePath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.bootcloudbom.*'
+    }
+}
+
+tasks.register('bootCloudBomRefreshVerify') {
+    group = 'verification'
+    description = 'Verifies S-06 Boot/Cloud/BOM baseline and refresh delivery evidence for Gate E6.'
+    dependsOn s06ApprovedStackResolutionVerify
+    dependsOn s06CandidateBomPublicationVerify
+    dependsOn 'c3PublishedMetadataConsumerVerify'
+    dependsOn s06PublishedServletDependencyEvidence
+    dependsOn c6PublishedReactiveConsumerVerify
+    dependsOn 'configProvenanceVerify'
+    dependsOn s06BootCloudBomTest
+}
+
+gradle.projectsEvaluated {
+    tasks.named('c6PublishedReactiveConsumerVerify').configure {
+        dependsOn c6PublishedProjects.collect { path ->
+            project(path).tasks.named('publishMavenJavaPublicationToC6VerificationRepository')
+        }
+    }
+    tasks.named('s06PublishedServletDependencyEvidence').configure {
+        dependsOn c3PublishedProjects.collect { path ->
+            project(path).tasks.named('publishMavenJavaPublicationToC3VerificationRepository')
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// S-07 — Exact read-only JMX contract delta (Gate E7).
+// Opt-in: not wired into check/build. Proves baseline reproduction, 63-member dispositions,
+// 16 mutation deletions, and before/after arithmetic. Does not mutate production MBeans.
+// ---------------------------------------------------------------------------------------------
+
+def s07JmxReadOnlyDeltaTest = tasks.register('s07JmxReadOnlyDeltaTest', Test) {
+    group = 'verification'
+    description = 'Runs S-07 JMX read-only delta evidence consistency proofs.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir('test-results/s07JmxReadOnlyDeltaTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir('test-results/s07JmxReadOnlyDeltaTest')
+    reports.html.outputLocation = layout.buildDirectory.dir('reports/tests/s07JmxReadOnlyDeltaTest')
+    useJUnitPlatform()
+    systemProperty 's07.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/jmx-read-only-delta').asFile.absolutePath
+    systemProperty 's07.baseline.fixture',
+            rootProject.layout.projectDirectory.file(
+                    'platform-tracing-otel-javaagent-extension/src/test/resources/' +
+                            'jmx-management-contract-baseline.json').asFile.absolutePath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.jmxdelta.*'
+    }
+}
+
+tasks.register('jmxReadOnlyDeltaVerify') {
+    group = 'verification'
+    description = 'Verifies S-07 exact JMX read-only contract delta evidence for Gate E7.'
+    dependsOn 'jmxManagementContractVerify'
+    dependsOn s07JmxReadOnlyDeltaTest
+}
+
+// ---------------------------------------------------------------------------------------------
+// E8 — Implementation readiness package. Opt-in: not wired into check/build.
+// Proves gate-status / cross-gate consistency / readiness package completeness.
+// Does not grant Implementation GO and does not start P1.
+// ---------------------------------------------------------------------------------------------
+
+def e8ImplementationReadinessTest = tasks.register('e8ImplementationReadinessTest', Test) {
+    group = 'verification'
+    description = 'Runs E8 implementation readiness evidence consistency proofs.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/e8ImplementationReadinessTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/e8ImplementationReadinessTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/e8ImplementationReadinessTest')
+    useJUnitPlatform()
+    systemProperty 'e8.evidence.root',
+            rootProject.layout.projectDirectory.dir(
+                    'docs/research/evidence/implementation-readiness').asFile.absolutePath
+    systemProperty 'e8.repo.root',
+            rootProject.layout.projectDirectory.asFile.absolutePath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.readiness.*'
+    }
+}
+
+tasks.register('implementationReadinessVerify') {
+    group = 'verification'
+    description = 'Verifies E8 implementation readiness package completeness and consistency.'
+    dependsOn e8ImplementationReadinessTest
 }

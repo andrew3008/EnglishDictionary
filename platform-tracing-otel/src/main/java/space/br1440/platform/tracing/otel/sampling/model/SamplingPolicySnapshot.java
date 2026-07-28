@@ -2,7 +2,13 @@ package space.br1440.platform.tracing.otel.sampling.model;
 
 import lombok.Getter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 @Getter
 public final class SamplingPolicySnapshot {
@@ -16,6 +22,7 @@ public final class SamplingPolicySnapshot {
     private final List<String> droppedRoutes;
     private final Set<String> forceRecordValues;
     private final RouteRatioPrefix[] routeRatios;
+    private final Map<String, Double> routeRatioMap;
     private final double defaultRatio;
 
     public SamplingPolicySnapshot(boolean enabled,
@@ -27,6 +34,7 @@ public final class SamplingPolicySnapshot {
         this.droppedRoutes = normalizeDropPaths(droppedRoutes);
         this.forceRecordValues = normalizeForceValues(forceRecordValues);
         this.routeRatios = normalizeRouteRatios(routeRatios);
+        this.routeRatioMap = toRouteRatioMap(this.routeRatios);
         this.defaultRatio = defaultRatio;
     }
 
@@ -72,5 +80,16 @@ public final class SamplingPolicySnapshot {
         List<RouteRatioPrefix> sortedRouteRatios = new ArrayList<>(values);
         sortedRouteRatios.sort(ROUTE_RATIO_ORDER);
         return sortedRouteRatios.toArray(RouteRatioPrefix[]::new);
+    }
+
+    private static Map<String, Double> toRouteRatioMap(RouteRatioPrefix[] values) {
+        if (values.length == 0) {
+            return Map.of();
+        }
+        Map<String, Double> result = new LinkedHashMap<>(values.length);
+        for (RouteRatioPrefix value : values) {
+            result.put(value.prefix(), value.ratio());
+        }
+        return Map.copyOf(result);
     }
 }

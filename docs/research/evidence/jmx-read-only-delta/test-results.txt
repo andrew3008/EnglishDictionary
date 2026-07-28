@@ -1,0 +1,32 @@
+S-07 JMX read-only delta verification
+=====================================
+
+jmxManagementContractVerify --rerun-tasks
+  Result: BUILD SUCCESSFUL
+  jmxManagementContractBaselineTest: PASS (live MBeanInfo == committed fixture)
+  jmxObjectNameConsistencyTest: PASS
+
+jmxReadOnlyDeltaVerify --rerun-tasks
+  Result: BUILD SUCCESSFUL
+  s07JmxReadOnlyDeltaTest: PASS (11 independent baseline/target contract tests)
+
+privateMBeanServerVerify --rerun-tasks
+  Result: BUILD SUCCESSFUL
+  privateMBeanServerTest: PASS
+
+Baseline counts verified:
+  ObjectNames=8 Members=63 Read-only=47 Mutations=16
+
+Target arithmetic verified:
+  Platform members=56 Platform mutations=0
+  Private ObjectNames=2 Private reads=6 Private mutations=1
+  Added platform reads=9 Added private reads=6
+
+Corrective proof:
+  63/63 identity and exact Java-signature bijection against baseline fixture
+  Legacy partial applyPolicy deleted; new PRIV-W01 applySnapshot contract added
+  Complete 56-row platform and 7-row private target inventories
+  ObjectName and consumer counts independently recomputed
+
+Verdict evidence:
+  APPROVE_EXACT_JMX_DELTA / READY_TO_CLOSE_E7 / R3

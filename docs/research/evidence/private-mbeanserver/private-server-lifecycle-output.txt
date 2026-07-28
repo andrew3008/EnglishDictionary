@@ -1,0 +1,15 @@
+S03_PRIVATE:event=server-created:begin
+S03_PRIVATE:event=server-created
+S03_PRIVATE:event=marker-registered
+S03_PRIVATE:event=codec-ready
+S03_PRIVATE:event=writer-registered
+S03_PRIVATE:event=state-store-ready
+S03_PRIVATE:event=capability-visible
+S03_APP:M10=PASS
+S03_PRIVATE:event=writer-unregistered
+S03_PRIVATE:event=marker-unregistered
+S03_PRIVATE:event=server-released
+S03_APP:M5=PASS
+launch=1 PASS
+launch=2 PASS
+launch=3 PASS

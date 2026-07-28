@@ -1,0 +1,216 @@
+---
+description: Public API and SPI governance for platform-tracing contracts, extension points, builders, result models, and service-provider metadata.
+globs:
+  - "platform-tracing-api/src/main/java/**/*.java"
+  - "platform-tracing-api/src/test/**/*.java"
+  - "**/META-INF/services/*"
+alwaysApply: false
+---
+
+# Platform API and SPI Rules
+
+## Purpose
+
+Keep the application-facing tracing contract:
+
+- intentional
+- minimal
+- OpenTelemetry-SDK-free
+- Spring-free
+- stable in meaning
+- explicit about failure, lifecycle, and ownership
+
+The solution is pre-production. Direct migration and deletion are preferred over compatibility aliases.
+
+## Public Surface Classification
+
+Every public type must be classified as exactly one of:
+
+1. application-facing API
+2. externally implementable SPI
+3. classloader-neutral wire/control contract
+4. public-for-compilation internal bridge
+5. accidental public type to remove
+
+The default visibility for a new type is package-private.
+
+Do not make a helper public merely to cross a package boundary.
+
+A public-for-compilation internal bridge must:
+
+- have a verified internal consumer
+- be documented as internal
+- have a narrow allowlist
+- be protected by an architecture test
+- remain absent from adoption documentation
+
+## Application API
+
+Application-facing API may contain:
+
+- tracing facades
+- immutable specifications
+- intentional builders
+- annotations
+- value objects
+- result and violation models
+- narrow propagation contracts
+
+It must not expose:
+
+- Spring Framework or Spring Boot types
+- servlet or Reactor adapter types
+- JMX/OpenMBean types
+- OpenTelemetry SDK implementation types
+- exporter, processor, or agent-extension implementations
+- mutable live runtime state
+- internal validation or schema engines
+- internal registries, holders, or service locators
+
+OpenTelemetry API types may appear only when an accepted public-contract decision explicitly requires them. Do not expose SDK implementation types.
+
+## Constructors and Factories
+
+Public construction must make required inputs and invariants obvious.
+
+Prefer:
+
+- explicit static factories with domain names
+- compact immutable value types
+- domain-specific builders for genuinely staged or optional construction
+
+Do not use a generic Lombok builder as a substitute for a domain contract.
+
+Do not let a new field silently change a public Lombok-generated constructor.
+
+Use records publicly only when record components are the intended long-lived contract.
+
+## Result and Error Models
+
+Use explicit result models for:
+
+- untrusted wire input
+- validation violations
+- mutation rejection
+- unsupported protocol operations
+- recoverable runtime outcomes
+
+Do not use:
+
+- boolean-only failure reporting
+- nullable payload plus hidden error
+- exceptions as normal decode/validation flow
+- free-form strings as the only machine-readable error contract
+
+An invalid result must not expose a usable decoded or applied payload.
+
+Violation codes and operation names must be explicit and bounded.
+
+## SPI Admission Criteria
+
+Create an SPI only when all are true:
+
+- an external implementation is a real supported requirement
+- the lifecycle owner is clear
+- ordering and multiplicity semantics are defined
+- failure behavior is defined
+- security invariants cannot be bypassed
+- classloader behavior is understood
+- tests can load at least one external provider implementation
+
+One built-in implementation is not sufficient reason for an SPI.
+
+Prefer constructor composition for mandatory internal strategies.
+
+## ServiceLoader
+
+Use `ServiceLoader` only for a verified external-provider boundary.
+
+Define:
+
+- provider interface
+- provider descriptor
+- classloader used for discovery
+- zero-provider behavior
+- duplicate-provider behavior
+- ordering
+- provider failure behavior
+- lifecycle
+- diagnostics
+
+Do not combine `ServiceLoader` with a static mutable holder.
+
+Remove obsolete `META-INF/services` descriptors when an SPI is removed.
+
+## Mutability and Ownership
+
+Public values should be immutable.
+
+Use defensive copies for collections.
+
+Do not expose:
+
+- mutable internal collections
+- runtime state holders
+- executor ownership
+- live OpenTelemetry objects
+- application-context lookups
+
+A public scope or handle must document:
+
+- owner
+- lifecycle
+- idempotency
+- close behavior
+- cross-thread behavior
+
+## Dependency Contract
+
+For `platform-tracing-api`:
+
+- no Spring dependency
+- no servlet or WebFlux dependency
+- no JMX/OpenMBean implementation dependency
+- no OpenTelemetry SDK implementation dependency
+- no dependency on `platform-tracing-otel`
+- no production dependency on test/sample/benchmark/E2E modules
+
+Use `api` dependencies only when consumer compilation genuinely requires the dependency type.
+
+## Migration
+
+When replacing a pre-production public contract:
+
+1. define the final contract
+2. migrate all production consumers
+3. migrate tests and custom source sets
+4. update samples and documentation
+5. update Javadoc and publication metadata
+6. delete the old contract
+7. add a forbidden-symbol or architecture guard when regression risk is high
+
+Do not add deprecated aliases, forwarding types, or dual old/new paths by default.
+
+## Testing and Verification
+
+For public API changes, verify:
+
+- affected compilation
+- public API tests
+- architecture/public-surface tests
+- Javadoc with warnings enabled
+- dependency and publication metadata
+- absence of removed symbols
+- external SPI fixture when applicable
+
+Run:
+
+```powershell
+.\gradlew.bat :platform-tracing-api:compileJava --no-daemon
+.\gradlew.bat :platform-tracing-api:compileTestJava --no-daemon
+.\gradlew.bat :platform-tracing-api:test --no-daemon
+.\gradlew.bat :platform-tracing-api:javadoc --warning-mode all --no-daemon
+.\gradlew.bat pr1ModuleTaxonomyVerify pr4ArchitectureFitnessVerify --no-daemon
+```
+
+Verify task existence before invoking repository-specific gates.
