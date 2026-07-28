@@ -17,15 +17,13 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Coalescing single-worker for Config Server refresh events.
  * <p>
- * <strong>Generation-based reschedule (fixes infinite loop):</strong>
- * The worker captures the generation counter at start. After apply, it checks
- * if the generation has advanced. Only if new events arrived does it reschedule.
- * If no new events arrived, the worker exits cleanly without rescheduling.
+ * Generation-based reschedule: worker captures generation at start;
+ * reschedules only if generation advanced during apply (new events arrived).
  * <p>
- * Concurrency contract:
- * - {@code generation} is the dirty counter; incremented on each event.
- * - {@code workerScheduled} guards exactly-once scheduling.
- * - Worker compares captured-generation at start vs at end to detect new events.
+ * Sequence contract:
+ *   All authoritative sequence values come from Agent via readAcceptedComplete.
+ *   Application never computes or increments sequence unilaterally.
+ *   lastKnownSequence is refreshed from Agent on APPLIED, UNCHANGED, STALE.
  */
 public final class TracingPolicyRefreshCoalescer {
 
@@ -36,9 +34,10 @@ public final class TracingPolicyRefreshCoalescer {
     private final AcceptedTracingPolicySnapshotReader snapshotReader;
     private final Executor worker;
 
-    private final AtomicLong generation = new AtomicLong(0);
+    private final AtomicLong generation     = new AtomicLong(0);
     private final AtomicBoolean workerScheduled = new AtomicBoolean(false);
 
+    // -1 means: sequence not yet known; Agent will treat it as "apply unconditionally"
     private volatile long lastKnownSequence = -1L;
 
     public TracingPolicyRefreshCoalescer(
@@ -46,8 +45,8 @@ public final class TracingPolicyRefreshCoalescer {
             TracingPolicySnapshotClient snapshotClient,
             AcceptedTracingPolicySnapshotReader snapshotReader) {
         this.manifestBuilder = manifestBuilder;
-        this.snapshotClient = snapshotClient;
-        this.snapshotReader = snapshotReader;
+        this.snapshotClient  = snapshotClient;
+        this.snapshotReader  = snapshotReader;
         this.worker = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "tracing-policy-refresh-worker");
             t.setDaemon(true);
@@ -61,8 +60,8 @@ public final class TracingPolicyRefreshCoalescer {
             AcceptedTracingPolicySnapshotReader snapshotReader,
             Executor worker) {
         this.manifestBuilder = manifestBuilder;
-        this.snapshotClient = snapshotClient;
-        this.snapshotReader = snapshotReader;
+        this.snapshotClient  = snapshotClient;
+        this.snapshotReader  = snapshotReader;
         this.worker = worker;
     }
 
@@ -78,19 +77,14 @@ public final class TracingPolicyRefreshCoalescer {
     }
 
     private void runWorker() {
-        // Capture generation at start of this worker cycle
         long capturedGeneration = generation.get();
         try {
             doApply(false);
         } finally {
-            // Clear scheduled flag BEFORE checking generation
             workerScheduled.set(false);
-            // Reschedule only if new events arrived during this worker cycle
-            // (generation advanced beyond what we captured at start)
             if (generation.get() > capturedGeneration) {
                 scheduleWorkerIfAbsent();
             }
-            // If generation == capturedGeneration: no new events; worker exits cleanly.
         }
     }
 
@@ -105,21 +99,26 @@ public final class TracingPolicyRefreshCoalescer {
         }
 
         long seq = lastKnownSequence;
-        TracingPolicyDeliveryResult result = snapshotClient.applySnapshot(seq, snapshot, TracingPolicySource.CONFIG_SERVER);
-        log.info("Config Server policy refresh: outcome={}, seq={}, staleRetry={}", result, seq, isStaleRetry);
+        TracingPolicyDeliveryResult result =
+                snapshotClient.applySnapshot(seq, snapshot, TracingPolicySource.CONFIG_SERVER);
+        log.info("Config Server policy refresh: outcome={}, seq={}, staleRetry={}",
+                result, seq, isStaleRetry);
 
         switch (result) {
             case APPLIED -> {
-                lastKnownSequence = seq + 1;
-                // Refresh from Agent to stay in sync
-                snapshotReader.currentComplete().ifPresent(c -> lastKnownSequence = c.acceptedSequence());
+                // Refresh from Agent — Agent is authoritative sequence owner
+                snapshotReader.currentComplete()
+                        .ifPresent(c -> lastKnownSequence = c.acceptedSequence());
             }
-            case UNCHANGED -> { /* no-op */ }
+            case UNCHANGED -> {
+                // Sequence unchanged; no refresh, no arithmetic
+                // lastKnownSequence stays as-is
+            }
             case STALE -> {
                 if (!isStaleRetry) {
-                    // Refresh sequence from Agent and retry once
-                    snapshotReader.currentComplete().ifPresent(c -> lastKnownSequence = c.acceptedSequence());
-                    log.info("STALE on Config Server refresh; one bounded retry with refreshed sequence.");
+                    snapshotReader.currentComplete()
+                            .ifPresent(c -> lastKnownSequence = c.acceptedSequence());
+                    log.info("STALE; refreshed sequence from Agent; one bounded retry.");
                     doApply(true);
                 } else {
                     log.warn("STALE on bounded retry; LKG retained.");
@@ -133,11 +132,12 @@ public final class TracingPolicyRefreshCoalescer {
     public TracingPolicyDeliveryResult deliverInitial() {
         try {
             CompleteTracingPolicySnapshot snapshot = manifestBuilder.build();
-            TracingPolicyDeliveryResult result = snapshotClient.applySnapshot(
-                    -1L, snapshot, TracingPolicySource.CONFIG_SERVER);
+            TracingPolicyDeliveryResult result =
+                    snapshotClient.applySnapshot(-1L, snapshot, TracingPolicySource.CONFIG_SERVER);
             if (result == TracingPolicyDeliveryResult.APPLIED ||
                     result == TracingPolicyDeliveryResult.UNCHANGED) {
-                snapshotReader.currentComplete().ifPresent(c -> lastKnownSequence = c.acceptedSequence());
+                snapshotReader.currentComplete()
+                        .ifPresent(c -> lastKnownSequence = c.acceptedSequence());
             }
             return result;
         } catch (TracingPolicyManifestException e) {

@@ -5,34 +5,32 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
 /**
- * Registers {@link TracingControlMvcController} exclusively in the management
- * WebApplicationContext.
+ * Registers {@link TracingControlMvcController} in the management
+ * WebApplicationContext only.
  * <p>
- * Both conditions must be satisfied simultaneously (AND semantics via two
- * @ConditionalOnProperty annotations). The controller is physically absent if either:
- * - authority != ACTUATOR, or
- * - platform.environment != LOCAL
+ * Discovered via:
+ * META-INF/spring/
+ *   org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports
  * <p>
- * This is a hard registration guard, separate from the startup validate() call.
- * Fail-fast from TracingConfigurationAuthorityGuard provides an additional
- * runtime check; this conditional provides physical absence.
+ * Both @ConditionalOnProperty conditions must be true (AND semantics):
+ *   - platform.tracing.configuration.authority = ACTUATOR
+ *   - platform.environment = LOCAL
+ * Physical absence is guaranteed when either condition is false.
  */
 @ManagementContextConfiguration
 @ConditionalOnProperty(
         name = "platform.tracing.configuration.authority",
         havingValue = "ACTUATOR",
-        matchIfMissing = false
-)
+        matchIfMissing = false)
 @ConditionalOnProperty(
         name = "platform.environment",
         havingValue = "LOCAL",
-        matchIfMissing = false
-)
+        matchIfMissing = false)
 public class TracingControlManagementContextConfiguration {
 
     @Bean
     public TracingControlMvcController tracingControlMvcController(
             SpringActuatorTracingPolicyAdapter adapter) {
-        return new TracingControlMvcController(adapter);
+        return new TracingControlMvcController(adapter, "/actuator");
     }
 }

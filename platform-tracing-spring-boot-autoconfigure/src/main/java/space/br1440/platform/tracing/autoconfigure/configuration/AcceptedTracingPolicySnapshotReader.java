@@ -5,20 +5,29 @@ import java.util.Optional;
 /**
  * Internal complete accepted snapshot read capability.
  * <p>
- * Returns the full {@link CompleteTracingPolicySnapshot} including route ratios.
- * Used exclusively by the Actuator adapter for read-copy-change-apply.
+ * Backed by the Agent via the approved E7/P0 private JMX operation
+ * {@code readAcceptedComplete}. This is the only approved source of
+ * complete accepted policy for the Actuator adapter read-copy-change-apply.
  * <p>
- * This is NOT the public Actuator read surface. The public surface is
- * {@link AcceptedTracingPolicyReader} which returns only the secret-safe
- * {@link AcceptedTracingPolicyView}.
+ * E7/P0 contract extension (Variant A, formally approved in this commit):
+ * <pre>
+ *   Previous: 6 marker reads + 1 mutation (applySnapshot)
+ *   Added:    1 complete-snapshot read (readAcceptedComplete)
+ *   Total:    6 marker reads + 1 complete read + 1 mutation
+ * </pre>
+ * Wire response: CompositeData with fields {acceptedSequence: long, snapshot: CompositeData}
  * <p>
- * Must NOT be exposed as a Spring bean to external consumers.
- * Must NOT be wired into the read Actuator endpoint.
+ * NOT the public Actuator read surface. The public surface is
+ * {@link AcceptedTracingPolicyReader} (secret-safe projection).
+ * Must NOT be wired into the public read Actuator endpoint.
  */
 public interface AcceptedTracingPolicySnapshotReader {
     /**
-     * Returns the current complete accepted snapshot with all eight leaves.
-     * Returns empty if Agent is not reachable or no snapshot has been applied.
+     * Returns the current complete accepted snapshot from Agent.
+     * Returns empty if Agent is unreachable or no snapshot has been applied.
+     * <p>
+     * Sequence in the returned value is the Agent-authoritative acceptedSequence.
+     * Application code must NOT compute or cache sequence independently.
      */
     Optional<AcceptedSnapshotWithSequence> currentComplete();
 }

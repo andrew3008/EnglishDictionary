@@ -11,3 +11,4 @@ space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfigu
 space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.kafka.PlatformKafkaAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.kafka.PlatformKafkaOutboundAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration

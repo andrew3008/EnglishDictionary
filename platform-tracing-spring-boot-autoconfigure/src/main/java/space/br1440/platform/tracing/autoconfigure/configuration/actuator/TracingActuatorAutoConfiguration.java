@@ -5,46 +5,44 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.EventListener;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicySnapshotReader;
-import space.br1440.platform.tracing.autoconfigure.configuration.InProcessAcceptedSnapshotStore;
 import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Auto-configuration for P4 unified tracing policy adapters.
  * <p>
- * InProcessAcceptedSnapshotStore is the sole implementation of
- * AcceptedTracingPolicySnapshotReader. No new JMX operations are added.
- * E7/P0 wire contract: 1 mutation (applySnapshot) + 6 marker reads (unchanged).
+ * E7/P0 Variant A: PrivateJmxTracingPolicySnapshotClient calls readAcceptedComplete
+ * (one approved bounded internal read, added to E7 contract).
+ * No InProcessAcceptedSnapshotStore — Agent is the sole accepted-state owner.
  * <p>
- * Control write surface (TracingControlMvcController) is registered via
- * TracingControlManagementContextConfiguration which requires both:
- *   platform.tracing.configuration.authority=ACTUATOR
- *   platform.environment=LOCAL
+ * TracingControlMvcController registered via TracingControlManagementContextConfiguration
+ * (discovered through ManagementContextConfiguration.imports).
+ * Registration requires BOTH: authority=ACTUATOR AND platform.environment=LOCAL.
  */
 @AutoConfiguration
 public class TracingActuatorAutoConfiguration {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public InProcessAcceptedSnapshotStore inProcessAcceptedSnapshotStore() {
-        return new InProcessAcceptedSnapshotStore();
-    }
+    private static final Logger log = LoggerFactory.getLogger(TracingActuatorAutoConfiguration.class);
 
     @Bean
     @ConditionalOnMissingBean(PrivateJmxTracingPolicySnapshotClient.class)
     @ConditionalOnBean({PrivateControlLocator.class, PrivateControlOpenTypeCodec.class})
     public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(
             PrivateControlLocator locator,
-            PrivateControlOpenTypeCodec codec,
-            InProcessAcceptedSnapshotStore store) {
+            PrivateControlOpenTypeCodec codec) {
         PrivateJmxTracingPolicySnapshotClient client =
-                new PrivateJmxTracingPolicySnapshotClient(locator, codec, store);
+                new PrivateJmxTracingPolicySnapshotClient(locator, codec);
         client.initialize();
         return client;
     }
@@ -58,11 +56,11 @@ public class TracingActuatorAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(InProcessAcceptedSnapshotStore.class)
+    @ConditionalOnBean(PrivateJmxTracingPolicySnapshotClient.class)
     @ConditionalOnMissingBean(AcceptedTracingPolicySnapshotReader.class)
     public AcceptedTracingPolicySnapshotReader acceptedTracingPolicySnapshotReader(
-            InProcessAcceptedSnapshotStore store) {
-        return store;
+            PrivateJmxTracingPolicySnapshotClient client) {
+        return client;
     }
 
     @Bean
@@ -81,15 +79,16 @@ public class TracingActuatorAutoConfiguration {
         return new TracingActuatorEndpoint(reader);
     }
 
-    // Actuator adapter: created only when authority=ACTUATOR
-    // Physical absence of the controller is enforced by
-    // TracingControlManagementContextConfiguration (authority=ACTUATOR AND env=LOCAL)
+    /**
+     * Actuator adapter: created only when authority=ACTUATOR.
+     * Physical absence of the controller enforced separately by
+     * TracingControlManagementContextConfiguration (authority=ACTUATOR AND env=LOCAL).
+     */
     @Configuration
     @ConditionalOnProperty(
             name = "platform.tracing.configuration.authority",
             havingValue = "ACTUATOR",
-            matchIfMissing = false
-    )
+            matchIfMissing = false)
     static class ActuatorAdapterConfiguration {
 
         @Bean
@@ -98,6 +97,34 @@ public class TracingActuatorAutoConfiguration {
                 AcceptedTracingPolicySnapshotReader snapshotReader,
                 TracingPolicySnapshotClient snapshotClient) {
             return new SpringActuatorTracingPolicyAdapter(snapshotReader, snapshotClient);
+        }
+
+        /**
+         * On ApplicationReadyEvent, pre-warm snapshotReader by calling
+         * currentComplete() once. This ensures the first Actuator command
+         * is not blocked by an unreachable read.
+         * If Agent is not yet ready, the first command returns FAILED (correct).
+         */
+        @Bean
+        public ActuatorSnapshotReaderWarmup actuatorSnapshotReaderWarmup(
+                AcceptedTracingPolicySnapshotReader snapshotReader) {
+            return new ActuatorSnapshotReaderWarmup(snapshotReader);
+        }
+    }
+
+    static class ActuatorSnapshotReaderWarmup {
+        private final AcceptedTracingPolicySnapshotReader reader;
+        ActuatorSnapshotReaderWarmup(AcceptedTracingPolicySnapshotReader reader) {
+            this.reader = reader;
+        }
+        @EventListener(ApplicationReadyEvent.class)
+        public void onApplicationReady(ApplicationReadyEvent event) {
+            reader.currentComplete().ifPresentOrElse(
+                    s -> log.info("Actuator snapshot reader pre-warmed: sequence={}",
+                            s.acceptedSequence()),
+                    () -> log.info("Actuator snapshot reader pre-warm: Agent not yet reachable; "
+                            + "first command will attempt live read")
+            );
         }
     }
 }
