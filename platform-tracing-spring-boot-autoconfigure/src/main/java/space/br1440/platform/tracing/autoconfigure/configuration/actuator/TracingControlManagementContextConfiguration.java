@@ -2,9 +2,10 @@ package space.br1440.platform.tracing.autoconfigure.configuration.actuator;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration;
+import org.springframework.boot.autoconfigure.condition.AllNestedConditions;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.context.annotation.Conditional;
 
 /**
  * Registers {@link TracingControlMvcController} in the management
@@ -16,26 +17,23 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  *     org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports
  * </pre>
  * <p>
- * <strong>Both</strong> {@code @ConditionalOnProperty} conditions must be true
- * (AND semantics). Note: repeating {@code @ConditionalOnProperty} on a class
- * is NOT AND — only the last annotation is evaluated. We use
- * {@code @ConditionalOnProperties} (plural) to correctly express the conjunction.
- * Physical absence is guaranteed when either condition is false.
+ * <strong>Both</strong> conditions must be true simultaneously (AND semantics):
+ * <ul>
+ *   <li>{@code platform.tracing.configuration.authority = ACTUATOR}</li>
+ *   <li>{@code platform.environment = LOCAL}</li>
+ * </ul>
+ * Repeating {@code @ConditionalOnProperty} on a class does NOT give AND semantics
+ * in Spring Boot: only the last annotation is evaluated by the condition infrastructure.
+ * The correct approach is {@link AllNestedConditions} with both conditions as inner
+ * nested classes — Spring evaluates each independently and requires all to pass.
+ * Physical absence of the controller is guaranteed when either condition is false.
  * <p>
  * Absolute path composition: the management base-path is injected via
- * {@code @Value} and passed to the path-prefix customizer. The controller
- * itself carries only the relative {@code /tracingControl} prefix, which is
- * clean and context-independent.
+ * {@code @Value} and applied via {@code WebMvcConfigurer.configurePathMatch()}.
+ * The controller itself carries only the relative {@code /tracingControl} prefix.
  */
 @ManagementContextConfiguration
-@ConditionalOnProperty(
-        name  = "platform.tracing.configuration.authority",
-        havingValue = "ACTUATOR",
-        matchIfMissing = false)
-@ConditionalOnProperty(
-        name  = "platform.environment",
-        havingValue = "LOCAL",
-        matchIfMissing = false)
+@Conditional(TracingControlManagementContextConfiguration.OnActuatorAndLocalEnvironment.class)
 public class TracingControlManagementContextConfiguration {
 
     @Value("${management.endpoints.web.base-path:/actuator}")
@@ -48,13 +46,13 @@ public class TracingControlManagementContextConfiguration {
     }
 
     /**
-     * Registers a path-prefix for {@link TracingControlMvcController} so that
-     * its relative {@code /tracingControl} mapping resolves to
+     * Registers an absolute path prefix for {@link TracingControlMvcController}
+     * so that its relative {@code /tracingControl} mapping resolves to
      * {@code {managementBasePath}/tracingControl} on the management server.
      * <p>
-     * This is the correct way to compose the absolute route in a Spring Boot
-     * management child context: inject the base-path once here, not inside the
-     * controller or via annotation-level SpEL.
+     * Using {@code WebMvcConfigurer.configurePathMatch()} with
+     * {@code addPathPrefix} is the standard Spring MVC approach for
+     * per-controller absolute-path injection in a child context.
      */
     @Bean
     public org.springframework.web.servlet.config.annotation.WebMvcConfigurer
@@ -76,5 +74,38 @@ public class TracingControlManagementContextConfiguration {
         if (!b.startsWith("/")) b = "/" + b;
         if (b.endsWith("/") && b.length() > 1) b = b.substring(0, b.length() - 1);
         return b;
+    }
+
+    /**
+     * AND conjunction of two {@code @ConditionalOnProperty} conditions.
+     * <p>
+     * {@link AllNestedConditions} evaluates every nested {@code @Condition}
+     * class independently; the outer condition passes only when ALL nested
+     * conditions pass. This is semantically equivalent to:
+     * <pre>
+     *   platform.tracing.configuration.authority == ACTUATOR
+     *   AND
+     *   platform.environment == LOCAL
+     * </pre>
+     * {@code ConfigurationPhase.REGISTER_BEAN} is required because this
+     * configuration registers beans (not component-scan infrastructure).
+     */
+    static final class OnActuatorAndLocalEnvironment extends AllNestedConditions {
+
+        OnActuatorAndLocalEnvironment() {
+            super(ConfigurationPhase.REGISTER_BEAN);
+        }
+
+        @ConditionalOnProperty(
+                name = "platform.tracing.configuration.authority",
+                havingValue = "ACTUATOR",
+                matchIfMissing = false)
+        static class OnActuatorAuthority {}
+
+        @ConditionalOnProperty(
+                name = "platform.environment",
+                havingValue = "LOCAL",
+                matchIfMissing = false)
+        static class OnLocalEnvironment {}
     }
 }
