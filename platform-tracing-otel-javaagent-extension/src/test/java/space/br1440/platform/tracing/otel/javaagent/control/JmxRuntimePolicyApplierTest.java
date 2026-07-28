@@ -2,12 +2,13 @@ package space.br1440.platform.tracing.otel.javaagent.control;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys;
 import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -22,19 +23,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class JmxRuntimePolicyApplierTest {
 
-    private SamplerStateHolder samplerHolder;
+    private AcceptedPolicyAccess samplerHolder;
     private ValidatingSpanProcessor validatingSpanProcessor;
     private JmxRuntimePolicyApplier applier;
 
     @BeforeEach
     void setUp() {
-        samplerHolder = new SamplerStateHolder(
+        samplerHolder = AcceptedPolicyAccess.isolatedSampling(
                 true,
                 List.of(),
                 List.of(),
                 Collections.emptyMap(),
                 0.25d);
-        validatingSpanProcessor = new ValidatingSpanProcessor(false, true);
+        samplerHolder.updateValidation(true, false);
+        validatingSpanProcessor = new ValidatingSpanProcessor(samplerHolder);
 
         PlatformSamplingControl samplingControl =
                 new PlatformSamplingControl(samplerHolder, null, new LongAdder());
@@ -60,12 +62,12 @@ class JmxRuntimePolicyApplierTest {
 
     @Test
     void emptyPayloadDoesNotChangeState() {
-        long samplerVersion = samplerHolder.current().version();
+        long samplerVersion = samplerHolder.current().acceptedSequence();
         long validationVersion = validatingSpanProcessor.getPolicyVersion();
 
         apply(new LinkedHashMap<>());
 
-        assertThat(samplerHolder.current().version()).isEqualTo(samplerVersion);
+        assertThat(samplerHolder.current().acceptedSequence()).isEqualTo(samplerVersion);
         assertThat(validatingSpanProcessor.getPolicyVersion()).isEqualTo(validationVersion);
     }
 
@@ -76,9 +78,8 @@ class JmxRuntimePolicyApplierTest {
 
         apply(payload);
 
-        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.75d);
-        assertThat(samplerHolder.current().enabled()).isTrue();
-        assertThat(samplerHolder.current().source()).isEqualTo("test");
+        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.75d);
+        assertThat(samplerHolder.current().samplingEnabled()).isTrue();
     }
 
     @Test
@@ -88,7 +89,7 @@ class JmxRuntimePolicyApplierTest {
 
         apply(payload);
 
-        assertThat(samplerHolder.current().enabled()).isFalse();
+        assertThat(samplerHolder.current().samplingEnabled()).isFalse();
     }
 
     @Test
@@ -102,7 +103,7 @@ class JmxRuntimePolicyApplierTest {
 
         apply(payload);
 
-        assertThat(samplerHolder.current().routeRatios())
+        assertThat(samplerHolder.current().samplingRouteRatios())
                 .containsEntry("/api", 0.3d)
                 .containsEntry("/health", 0.0d);
     }
@@ -117,9 +118,9 @@ class JmxRuntimePolicyApplierTest {
 
         apply(payload);
 
-        assertThat(samplerHolder.current().droppedRoutes())
+        assertThat(samplerHolder.currentLegacySamplingRules().getDroppedRoutes())
                 .containsExactly("/internal", "/health");
-        assertThat(samplerHolder.current().forceRecordValues())
+        assertThat(samplerHolder.currentLegacySamplingRules().getForceRecordValues())
                 .containsExactlyInAnyOrder("qa", "debug");
     }
 
@@ -132,7 +133,7 @@ class JmxRuntimePolicyApplierTest {
 
         assertThat(validatingSpanProcessor.isEnabled()).isTrue();
         assertThat(validatingSpanProcessor.isStrict()).isTrue();
-        assertThat(validatingSpanProcessor.getPolicySource()).isEqualTo("test");
+        assertThat(validatingSpanProcessor.getPolicySource()).isEqualTo("accepted-state");
     }
 
     @Test
@@ -152,14 +153,14 @@ class JmxRuntimePolicyApplierTest {
     void readOperationProducesNoSideEffects() {
         Map<String, Object> payload = basePayload();
         payload.put(TracingControlProtocolKeys.SAMPLING_RATIO, 0.5d);
-        long samplerVersion = samplerHolder.current().version();
+        long samplerVersion = samplerHolder.current().acceptedSequence();
 
         applier.apply(
                 TracingControlProtocolOperation.READ_APPLIED_STATE,
                 payload,
                 "test");
 
-        assertThat(samplerHolder.current().version()).isEqualTo(samplerVersion);
-        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.25d);
+        assertThat(samplerHolder.current().acceptedSequence()).isEqualTo(samplerVersion);
+        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.25d);
     }
 }

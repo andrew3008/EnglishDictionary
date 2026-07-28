@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -134,7 +134,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void sampler_customizer_с_явным_ratio_создает_SamplerState_с_дефолтным_ratio() {
+    void sampler_customizer_с_явным_ratio_создает_accepted_policy_с_дефолтным_ratio() {
         Recorder recorder = new Recorder();
         new PlatformAutoConfigurationCustomizer().customize(recorder.proxy());
 

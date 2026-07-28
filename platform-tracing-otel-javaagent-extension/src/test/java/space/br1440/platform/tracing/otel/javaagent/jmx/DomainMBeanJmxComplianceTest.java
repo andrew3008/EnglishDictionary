@@ -2,7 +2,14 @@ package space.br1440.platform.tracing.otel.javaagent.jmx;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -14,6 +21,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.LongAdder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,7 +54,7 @@ class DomainMBeanJmxComplianceTest {
     @Test
     void liveManagementContractMatchesCommittedBaseline() throws Exception {
         registrar = new PlatformTracingJmxRegistrar();
-        registrar.setConfigHolder(holderWith(0.5));
+        wireRequiredComponents(registrar, holderWith(0.5));
 
         JmxManagementContractSnapshot.Snapshot snapshot =
                 JmxManagementContractSnapshot.capture(server, OBJECT_NAMES);
@@ -71,6 +79,24 @@ class DomainMBeanJmxComplianceTest {
         assertThat(actual)
                 .withFailMessage(() -> actionableDiff(baseline, actual))
                 .isEqualTo(baseline);
+    }
+
+    private static void wireRequiredComponents(
+            PlatformTracingJmxRegistrar registrar,
+            AcceptedPolicyAccess acceptedPolicy) {
+        CompositeSampler sampler = new CompositeSampler(acceptedPolicy);
+        ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
+        LongAdder counter = registrar.sharedInvalidConfigCounter();
+        PlatformSamplingControl samplingControl =
+                new PlatformSamplingControl(acceptedPolicy, sampler, counter);
+        PlatformValidationControl validationControl =
+                new PlatformValidationControl(validating, counter);
+
+        registrar.setCompositeSampler(sampler);
+        registrar.setValidating(validating);
+        registrar.setControlHandler(new RuntimePolicyControlHandler(
+                new JmxRuntimePolicyApplier(samplingControl, validationControl)));
+        registrar.setAcceptedPolicy(acceptedPolicy);
     }
 
     private static String readBaseline() throws IOException {
@@ -135,8 +161,8 @@ class DomainMBeanJmxComplianceTest {
         return "JMX management contract отличается.";
     }
 
-    private static SamplerStateHolder holderWith(double ratio) {
-        return new SamplerStateHolder(
+    private static AcceptedPolicyAccess holderWith(double ratio) {
+        return AcceptedPolicyAccess.isolatedSampling(
                 true, Collections.emptyList(), Collections.emptyList(), Map.of(), ratio);
     }
 

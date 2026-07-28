@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 
@@ -24,7 +26,7 @@ class SamplingRuleOrderCharacterizationTest {
 
     @Test
     void policy_engine_order_matches_prior_composite_rule_chain() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 

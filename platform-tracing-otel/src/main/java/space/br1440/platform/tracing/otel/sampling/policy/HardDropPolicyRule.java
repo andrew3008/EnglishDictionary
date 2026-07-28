@@ -5,6 +5,8 @@ import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
 
+import java.util.Map;
+
 final class HardDropPolicyRule implements SamplingPolicyRule {
 
     private static final SamplingPolicyDecision DROP = SamplingPolicyDecision.drop(
@@ -17,8 +19,13 @@ final class HardDropPolicyRule implements SamplingPolicyRule {
     }
 
     @Override
-    public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
-        if (snapshot.getDroppedRoutes().isEmpty()) {
+    public SamplingPolicyDecision evaluate(
+            SamplingPolicyRequest request,
+            boolean enabled,
+            Map<String, Double> routeRatios,
+            double defaultRatio,
+            SamplingPolicySnapshot startupRules) {
+        if (startupRules.getDroppedRoutes().isEmpty()) {
             return null;
         }
 
@@ -27,7 +34,7 @@ final class HardDropPolicyRule implements SamplingPolicyRule {
             return null;
         }
 
-        for (String prefix : snapshot.getDroppedRoutes()) {
+        for (String prefix : startupRules.getDroppedRoutes()) {
             if (urlPath.startsWith(prefix)) {
                 return DROP;
             }

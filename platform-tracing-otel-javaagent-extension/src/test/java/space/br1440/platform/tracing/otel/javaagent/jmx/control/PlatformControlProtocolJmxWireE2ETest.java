@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNam
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -66,7 +66,7 @@ class PlatformControlProtocolJmxWireE2ETest {
     }
 
     private MBeanServer              mbeanServer;
-    private SamplerStateHolder       samplerHolder;
+    private AcceptedPolicyAccess       samplerHolder;
     private ValidatingSpanProcessor  validatingProcessor;
     private LongAdder                counter;
     private PlatformControlProtocolMBean mbean;
@@ -75,14 +75,14 @@ class PlatformControlProtocolJmxWireE2ETest {
     void setUp() throws Exception {
         mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
-        samplerHolder = new SamplerStateHolder(
+        samplerHolder = AcceptedPolicyAccess.isolatedSampling(
                 true,
                 List.of(),
                 List.of(),
                 Collections.emptyMap(),
                 0.1d);
 
-        validatingProcessor = new ValidatingSpanProcessor(false, true);
+        validatingProcessor = new ValidatingSpanProcessor(samplerHolder);
         counter             = new LongAdder();
 
         PlatformSamplingControl  samplingControl  =
@@ -98,7 +98,7 @@ class PlatformControlProtocolJmxWireE2ETest {
                         applier, RuntimeControlMutationPolicy.startupConfigured(true));
 
         ReadAppliedStateHandler readHandler =
-                new ReadAppliedStateHandler(samplerHolder, validatingProcessor);
+                new ReadAppliedStateHandler(samplerHolder);
 
         mbean = new PlatformControlProtocolMBean(
                 TracingControlProtocol.current(),
@@ -200,7 +200,7 @@ class PlatformControlProtocolJmxWireE2ETest {
             String result = invokeApply(payload);
 
             assertThat(result).startsWith("SUCCESS");
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.55d);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.55d);
             assertThat(counter.sum()).isZero();
         }
 
@@ -212,7 +212,7 @@ class PlatformControlProtocolJmxWireE2ETest {
 
             invokeApply(payload);
 
-            assertThat(samplerHolder.current().enabled()).isFalse();
+            assertThat(samplerHolder.current().samplingEnabled()).isFalse();
         }
 
         @Test
@@ -242,7 +242,7 @@ class PlatformControlProtocolJmxWireE2ETest {
             String result = invokeApply(payload);
 
             assertThat(result).startsWith("SUCCESS");
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.7d);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.7d);
             assertThat(validatingProcessor.isEnabled()).isTrue();
             assertThat(validatingProcessor.isStrict()).isFalse();
         }
@@ -257,21 +257,21 @@ class PlatformControlProtocolJmxWireE2ETest {
         PlatformControlProtocolMBean disabledMBean = new PlatformControlProtocolMBean(
                 TracingControlProtocol.current(),
                 disabledHandler,
-                new ReadAppliedStateHandler(samplerHolder, validatingProcessor),
+                new ReadAppliedStateHandler(samplerHolder),
                 counter);
         CompositeData payload = buildPayload(
                 new String[]{TracingControlProtocolKeys.SAMPLING_RATIO},
                 new Object[]{0.55d});
-        long versionBefore = samplerHolder.current().version();
-        String sourceBefore = samplerHolder.current().source();
+        long versionBefore = samplerHolder.current().acceptedSequence();
+        String sourceBefore = "accepted-state";
 
         assertThat(disabledMBean.readAppliedState()).isNotNull();
         String result = disabledMBean.applyPolicy(payload);
 
         assertThat(result).startsWith("MUTATION_REJECTED APPLY_RUNTIME_POLICY");
-        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.1d);
-        assertThat(samplerHolder.current().version()).isEqualTo(versionBefore);
-        assertThat(samplerHolder.current().source()).isEqualTo(sourceBefore);
+        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.1d);
+        assertThat(samplerHolder.current().acceptedSequence()).isEqualTo(versionBefore);
+        assertThat("accepted-state").isEqualTo(sourceBefore);
     }
 
     // =========================================================================
@@ -309,11 +309,11 @@ class PlatformControlProtocolJmxWireE2ETest {
 
         @Test
         void decodeRejectionLeavesStateUnchanged() throws Exception {
-            double ratioBefore = samplerHolder.current().defaultRatio();
+            double ratioBefore = samplerHolder.current().samplingRatio();
 
             invokeApply(null); // decode failure
 
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(ratioBefore);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(ratioBefore);
         }
     }
 
@@ -364,7 +364,7 @@ class PlatformControlProtocolJmxWireE2ETest {
         @Test
         void domainRejectionLeavesStateUnchanged() throws Exception {
             boolean enabledBefore = validatingProcessor.isEnabled();
-            double ratioBefore    = samplerHolder.current().defaultRatio();
+            double ratioBefore    = samplerHolder.current().samplingRatio();
 
             CompositeData payload = buildPayload(
                     new String[]{
@@ -374,7 +374,7 @@ class PlatformControlProtocolJmxWireE2ETest {
 
             invokeApply(payload);
 
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(ratioBefore);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(ratioBefore);
             assertThat(validatingProcessor.isEnabled()).isEqualTo(enabledBefore);
         }
     }
@@ -414,14 +414,14 @@ class PlatformControlProtocolJmxWireE2ETest {
 
         @Test
         void readDoesNotMutateState() throws Exception {
-            double ratioBefore = samplerHolder.current().defaultRatio();
-            long versionBefore = samplerHolder.current().version();
+            double ratioBefore = samplerHolder.current().samplingRatio();
+            long versionBefore = samplerHolder.current().acceptedSequence();
 
             invokeRead();
             invokeRead(); // second call to verify idempotency
 
-            assertThat(samplerHolder.current().defaultRatio()).isEqualTo(ratioBefore);
-            assertThat(samplerHolder.current().version()).isEqualTo(versionBefore);
+            assertThat(samplerHolder.current().samplingRatio()).isEqualTo(ratioBefore);
+            assertThat(samplerHolder.current().acceptedSequence()).isEqualTo(versionBefore);
         }
 
         @Test

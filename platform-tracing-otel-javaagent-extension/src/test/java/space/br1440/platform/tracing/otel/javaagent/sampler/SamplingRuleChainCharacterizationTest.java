@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
 import io.opentelemetry.api.trace.SpanKind;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
@@ -20,7 +22,7 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void kill_switch_блокирует_force_qa_route_и_global_ratio() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 false,
                 List.of(),
                 List.of("on"),
@@ -42,7 +44,7 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void hard_drop_раньше_force_header_и_qa() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true,
                 List.of("/internal"),
                 List.of("on"),
@@ -67,7 +69,7 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void force_header_раньше_parent_decision() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
@@ -82,7 +84,7 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void qa_trace_раньше_parent_decision() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("on"), Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
@@ -97,7 +99,7 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void отсутствие_url_path_пропускает_hard_drop_и_route_ratio() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true,
                 List.of("/actuator"),
                 List.of("on"),
@@ -113,7 +115,7 @@ class SamplingRuleChainCharacterizationTest {
 
     @Test
     void custom_force_value_срабатывает_при_совпадении_forceRecordValues() {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of("custom-force"), Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 

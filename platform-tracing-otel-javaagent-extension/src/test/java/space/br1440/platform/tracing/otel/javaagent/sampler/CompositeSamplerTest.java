@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -39,7 +41,7 @@ class CompositeSamplerTest {
 
     @Test
     void форсированная_запись_возвращает_record_and_sample() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of("on"), Map.of(), 0.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of("on"), Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -51,7 +53,7 @@ class CompositeSamplerTest {
 
     @Test
     void отсутствие_сигнала_делегирует_решение_внешнему_семплеру() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of("on"), Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -62,7 +64,7 @@ class CompositeSamplerTest {
 
     @Test
     void наличие_QA_сигнала_включает_запись() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of("on"), Map.of(), 0.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of("on"), Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -74,7 +76,7 @@ class CompositeSamplerTest {
 
     @Test
     void сравнение_кастомных_значений_зависит_от_forceRecordValues() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of("custom-force"), Map.of(), 0.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of("custom-force"), Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -86,7 +88,7 @@ class CompositeSamplerTest {
     
     @Test
     void drop_paths_отбрасывают_спан_если_нет_force_сигнала() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -98,7 +100,7 @@ class CompositeSamplerTest {
 
     @Test
     void force_сигнал_не_переопределяет_hard_drop() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -111,7 +113,7 @@ class CompositeSamplerTest {
 
     @Test
     void qa_сигнал_не_переопределяет_hard_drop() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplerDecisionAssert.assertThat(SamplerHarness.of(sampler)
@@ -124,7 +126,7 @@ class CompositeSamplerTest {
 
     @Test
     void причина_семплирования_от_force_header() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of("on"), Map.of(), 0.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of("on"), Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplingResult result = SamplerHarness.of(sampler)
@@ -137,7 +139,7 @@ class CompositeSamplerTest {
 
     @Test
     void причина_семплирования_от_parent() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of("on"), Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SpanContext parent = SpanContext.create("00000000000000000000000000000001", "0000000000000002",
@@ -153,7 +155,7 @@ class CompositeSamplerTest {
 
     @Test
     void причина_семплирования_от_ratio() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of(), List.of("on"), Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplingResult result = SamplerHarness.of(sampler).sample();
@@ -164,7 +166,7 @@ class CompositeSamplerTest {
 
     @Test
     void причина_семплирования_при_drop_paths() {
-        SamplerStateHolder holder = new SamplerStateHolder(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(true, List.of("/actuator/health"), List.of("on"), Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(holder);
 
         SamplingResult result = SamplerHarness.of(sampler)

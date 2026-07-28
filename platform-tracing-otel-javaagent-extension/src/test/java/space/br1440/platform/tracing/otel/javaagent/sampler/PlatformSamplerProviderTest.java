@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceConte
 import space.br1440.platform.tracing.otel.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
@@ -95,10 +96,17 @@ class PlatformSamplerProviderTest {
 
         // Эмулируем named-провайдер: SDK отдал платформенный sampler как existing.
         Sampler platform = new PlatformSamplerProvider().createSampler(config(Map.of()));
-        Sampler result = factory.buildSampler(platform, sampling(Map.of()));
+        SamplingExtensionConfig sampling = sampling(Map.of());
+        AcceptedPolicyAccess compositionPolicy = AcceptedPolicyAccess.fromSampling(sampling);
+        Sampler result = factory.buildSampler(
+                platform,
+                sampling,
+                compositionPolicy);
 
         // Idempotency-guard: возвращается тот же экземпляр без повторной SafeSampler-обёртки.
         assertThat(result).isSameAs(platform);
+        assertThat(((PlatformManagedSampler) result).platformCompositeSampler().acceptedPolicy())
+                .isSameAs(compositionPolicy);
     }
 
     @Test
@@ -126,8 +134,15 @@ class PlatformSamplerProviderTest {
         PlatformSamplerFactory factory = new PlatformSamplerFactory(registrar);
 
         // Дважды строим поверх не-платформенного existing — защита против статического флага «уже применён».
-        Sampler first = factory.buildSampler(Sampler.alwaysOn(), sampling(Map.of()));
-        Sampler second = factory.buildSampler(Sampler.alwaysOn(), sampling(Map.of()));
+        SamplingExtensionConfig sampling = sampling(Map.of());
+        Sampler first = factory.buildSampler(
+                Sampler.alwaysOn(),
+                sampling,
+                AcceptedPolicyAccess.fromSampling(sampling));
+        Sampler second = factory.buildSampler(
+                Sampler.alwaysOn(),
+                sampling,
+                AcceptedPolicyAccess.fromSampling(sampling));
 
         assertThat(first).isInstanceOf(SafeSampler.class);
         assertThat(second).isInstanceOf(SafeSampler.class);

@@ -2,7 +2,14 @@ package space.br1440.platform.tracing.otel.javaagent.jmx;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+
+import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
+import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -14,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -34,10 +42,10 @@ class PlatformTracingJmxRegistrarTest {
 
     @Test
     void tryRegisterMBeans_регистрирует_все_шесть_доменных_MBean() throws Exception {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Map.of(), 0.5);
         PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar();
-        registrar.setConfigHolder(holder);
+        wireRequiredComponents(registrar, holder);
 
         assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isTrue();
         assertThat(server.isRegistered(PlatformTracingObjectNames.SCRUBBING)).isTrue();
@@ -50,17 +58,19 @@ class PlatformTracingJmxRegistrarTest {
     @Test
     void tryRegisterMBeans_требует_configHolder_перед_регистрацией() {
         PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar();
-        registrar.setCompositeSampler(null);
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
+                true, List.of(), List.of(), Map.of(), 0.5);
+        wireComponentsExceptAcceptedPolicy(registrar, holder);
 
         assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isFalse();
     }
 
     @Test
     void tryRegisterMBeans_идемпотентен_повторный_вызов_не_дублирует_регистрацию() throws Exception {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Map.of(), 0.5);
         PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar();
-        registrar.setConfigHolder(holder);
+        wireRequiredComponents(registrar, holder);
 
         assertThatNoException().isThrownBy(registrar::tryRegisterMBeans);
         assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isTrue();
@@ -68,22 +78,22 @@ class PlatformTracingJmxRegistrarTest {
 
     @Test
     void tryRegisterMBeans_второй_registrar_применяет_REPLACE_EXISTING() throws Exception {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Map.of(), 0.5);
         PlatformTracingJmxRegistrar first = new PlatformTracingJmxRegistrar();
-        first.setConfigHolder(holder);
+        wireRequiredComponents(first, holder);
 
         PlatformTracingJmxRegistrar second = new PlatformTracingJmxRegistrar();
-        assertThatNoException().isThrownBy(() -> second.setConfigHolder(holder));
+        assertThatNoException().isThrownBy(() -> wireRequiredComponents(second, holder));
         assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isTrue();
     }
 
     @Test
     void unregisterAllMBeans_снимает_регистрацию_всех_шести() throws Exception {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Map.of(), 0.5);
         PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar();
-        registrar.setConfigHolder(holder);
+        wireRequiredComponents(registrar, holder);
         assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isTrue();
 
         registrar.unregisterAllMBeans();
@@ -98,10 +108,10 @@ class PlatformTracingJmxRegistrarTest {
 
     @Test
     void concurrentDoubleCall_tryRegisterMBeans_не_нарушает_инварианты() throws Exception {
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Map.of(), 0.5);
         PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar();
-        registrar.setConfigHolder(holder);
+        wireRequiredComponents(registrar, holder);
 
         int threads = 8;
         CountDownLatch start = new CountDownLatch(1);
@@ -144,9 +154,10 @@ class PlatformTracingJmxRegistrarTest {
             }
         };
 
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Map.of(), 0.5);
         PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar(countingSpy);
+        wireComponentsExceptAcceptedPolicy(registrar, holder);
 
         int threads = 8;
         CountDownLatch start = new CountDownLatch(1);
@@ -157,7 +168,7 @@ class PlatformTracingJmxRegistrarTest {
             pool.submit(() -> {
                 try {
                     start.await();
-                    registrar.setConfigHolder(holder);
+                    registrar.setAcceptedPolicy(holder);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
@@ -204,12 +215,13 @@ class PlatformTracingJmxRegistrarTest {
             }
         };
 
-        SamplerStateHolder holder = new SamplerStateHolder(
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
                 true, List.of(), List.of(), Map.of(), 0.5);
         PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar(faultySpy);
+        wireComponentsExceptAcceptedPolicy(registrar, holder);
 
         try {
-            registrar.setConfigHolder(holder);
+            registrar.setAcceptedPolicy(holder);
         } catch (PlatformTracingJmxRegistrationException ex) {
             assertThat(ex.getCause()).isNotNull();
             // Откат упал → его исключение должно быть в suppressed, а не потеряно
@@ -218,5 +230,29 @@ class PlatformTracingJmxRegistrarTest {
         }
         // Если не упало (REPLACE_EXISTING пропустил), проверяем что регистрации корректны
         assertThat(registerCallCount[0]).isGreaterThanOrEqualTo(0);
+    }
+
+    private static void wireRequiredComponents(
+            PlatformTracingJmxRegistrar registrar,
+            AcceptedPolicyAccess acceptedPolicy) {
+        wireComponentsExceptAcceptedPolicy(registrar, acceptedPolicy);
+        registrar.setAcceptedPolicy(acceptedPolicy);
+    }
+
+    private static void wireComponentsExceptAcceptedPolicy(
+            PlatformTracingJmxRegistrar registrar,
+            AcceptedPolicyAccess acceptedPolicy) {
+        CompositeSampler sampler = new CompositeSampler(acceptedPolicy);
+        ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
+        LongAdder counter = registrar.sharedInvalidConfigCounter();
+        PlatformSamplingControl samplingControl =
+                new PlatformSamplingControl(acceptedPolicy, sampler, counter);
+        PlatformValidationControl validationControl =
+                new PlatformValidationControl(validating, counter);
+
+        registrar.setCompositeSampler(sampler);
+        registrar.setValidating(validating);
+        registrar.setControlHandler(new RuntimePolicyControlHandler(
+                new JmxRuntimePolicyApplier(samplingControl, validationControl)));
     }
 }

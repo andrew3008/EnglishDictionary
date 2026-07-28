@@ -657,6 +657,12 @@ Committed consumer inventory различает `CLIENT`, `ACTUATOR`, `HEALTH`, 
 | Exit | E3, E6, E7 closed; E8 explicitly granted |
 | Rollback | evidence commits independently revertible |
 
+**Public-control deletion prerequisite (`p0-public-control-deletion-prerequisite`): CLOSED
+(2026-07-28).** In-repo inventory confirms zero external/non-product FQCN consumers of
+`api.control.protocol` public types; product-module consumers remain and must migrate
+before deletion; committee `legacyDeletionGo` keeps breaking deletion blocked until P6.
+Evidence: `docs/research/public-control-protocol-deletion-prerequisite-p0.md`.
+
 ### P1 — Accepted-state foundation
 
 | | |
@@ -729,10 +735,10 @@ Committed consumer inventory различает `CLIENT`, `ACTUATOR`, `HEALTH`, 
 
 | | |
 |---|---|
-| Preconditions | P5 green; E7 approved delta |
+| Preconditions | P5 green; E7 approved delta; public control deletion prerequisite closed |
 | ДОБАВИТЬ | final names, fail-fast legacy detector |
 | ПЕРЕПИСАТЬ | Agent parser, Spring binding, manifests, fixtures, docs, wire schema |
-| УДАЛИТЬ | все 6 legacy families, RefreshScope mutation, partial protocol, old names |
+| УДАЛИТЬ | все 6 legacy families, RefreshScope mutation, partial protocol, old names, public control types после prerequisite |
 | Tests | 78/29 disposition, deleted-key REJECTED, JMX delta, full build |
 | Exit | no legacy writer/name in supported release |
 | Rollback | **entire unreleased train** |

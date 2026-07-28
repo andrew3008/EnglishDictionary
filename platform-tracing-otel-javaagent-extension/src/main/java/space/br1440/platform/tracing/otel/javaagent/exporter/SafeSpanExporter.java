@@ -7,13 +7,13 @@ import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.otel.javaagent.safety.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.safety.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.LongAdder;
 public final class SafeSpanExporter implements SpanExporter {
 
     private final SpanExporter delegate;
+    private final AcceptedPolicyAccess acceptedPolicy;
 
     private final LongAdder exportBatches = new LongAdder();
     private final LongAdder exportFailures = new LongAdder();
@@ -30,13 +31,19 @@ public final class SafeSpanExporter implements SpanExporter {
     private final LongAdder shutdownFailures = new LongAdder();
     private final AtomicLong lastExportDurationNanos = new AtomicLong();
 
-    private final AtomicBoolean exportEnabled = new AtomicBoolean(true);
     private final LongAdder gatedSpans = new LongAdder();
 
     private final RateLimitedLogger rateLimitedLog = new RateLimitedLogger(log);
 
     public SafeSpanExporter(SpanExporter delegate) {
+        this(delegate, AcceptedPolicyAccess.isolatedDefaults());
+    }
+
+    public SafeSpanExporter(
+            SpanExporter delegate,
+            AcceptedPolicyAccess acceptedPolicy) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
+        this.acceptedPolicy = Objects.requireNonNull(acceptedPolicy, "acceptedPolicy");
     }
 
     @Override
@@ -47,7 +54,7 @@ public final class SafeSpanExporter implements SpanExporter {
 
         int count = spans.size();
 
-        if (!exportEnabled.get()) {
+        if (!acceptedPolicy.current().exporterEnabled()) {
             gatedSpans.add(count);
             return CompletableResultCode.ofSuccess();
         }
@@ -150,11 +157,11 @@ public final class SafeSpanExporter implements SpanExporter {
     }
 
     public boolean isExportEnabled() {
-        return exportEnabled.get();
+        return acceptedPolicy.current().exporterEnabled();
     }
 
     public void setExportEnabled(boolean enabled) {
-        exportEnabled.set(enabled);
+        acceptedPolicy.updateExporter(enabled);
     }
 
     public long getGatedSpans() {

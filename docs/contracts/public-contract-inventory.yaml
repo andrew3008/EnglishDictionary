@@ -584,12 +584,19 @@ inventories:
         evidence:
           - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocol.java
           - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/GoldenWireContractTest.java
+          - docs/research/evidence/public-control-protocol-consumers/decision-summary.json
+          - docs/research/public-control-protocol-deletion-prerequisite-p0.md
         compatibility: major version bump for incompatible wire schema
         owner: platform-tracing
         verification:
           - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolTest.java
           - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/GoldenWireContractTest.java
         disposition: none
+        notes: >-
+          P0 inventory 2026-07-28 closed zero-external-consumer prerequisite
+          (samples/SUPPORTED/MIGRATION FQCN=0). Internal product consumers remain
+          in otel + javaagent-extension. Breaking deletion authorized only at P6
+          coherent cutover (committee legacyDeletionGo BLOCKED_UNTIL_P6).
 
       # --- Utility types ------------------------------------------------------------
 

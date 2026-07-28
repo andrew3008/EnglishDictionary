@@ -76,7 +76,7 @@
   "defaultDrift" : false,
   "defaultOwner" : "Published contract",
   "defaultValue" : "NONE",
-  "documents" : [ "docs/analysis/platform-tracing-configuration/13a-council-consensus-and-dissent-register.md:227", "docs/analysis/platform-tracing-configuration/13b-post-council-repository-spike-plan.md:424", "docs/contracts/public-contract-inventory.yaml:704", "docs/contracts/semantic-contract-map.yaml:509" ],
+  "documents" : [ "docs/analysis/platform-tracing-configuration/13a-council-consensus-and-dissent-register.md:227", "docs/analysis/platform-tracing-configuration/13b-post-council-repository-spike-plan.md:424", "docs/contracts/public-contract-inventory.yaml:711", "docs/contracts/semantic-contract-map.yaml:509" ],
   "duplicateGroup" : "",
   "environmentVariables" : [ ],
   "exactName" : "platform.tracing.semconv.validation.mode",

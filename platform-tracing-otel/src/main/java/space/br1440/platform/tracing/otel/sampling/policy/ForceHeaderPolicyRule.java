@@ -6,6 +6,7 @@ import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
 
 import java.util.Set;
+import java.util.Map;
 
 final class ForceHeaderPolicyRule implements SamplingPolicyRule {
 
@@ -19,12 +20,19 @@ final class ForceHeaderPolicyRule implements SamplingPolicyRule {
     }
 
     @Override
-    public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
-        if (snapshot.getForceRecordValues().isEmpty()) {
+    public SamplingPolicyDecision evaluate(
+            SamplingPolicyRequest request,
+            boolean enabled,
+            Map<String, Double> routeRatios,
+            double defaultRatio,
+            SamplingPolicySnapshot startupRules) {
+        if (startupRules.getForceRecordValues().isEmpty()) {
             return null;
         }
 
-        if (matchesForceValue(snapshot.getForceRecordValues(), request.forceTraceHeaderValue())) {
+        if (matchesForceValue(
+                startupRules.getForceRecordValues(),
+                request.forceTraceHeaderValue())) {
             return FORCE;
         }
 

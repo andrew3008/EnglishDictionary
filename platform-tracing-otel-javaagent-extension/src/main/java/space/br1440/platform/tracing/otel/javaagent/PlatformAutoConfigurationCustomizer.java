@@ -1,27 +1,30 @@
 package space.br1440.platform.tracing.otel.javaagent;
 
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.spi.AutoConfigurationCustomizerOrdering;
 import space.br1440.platform.tracing.otel.javaagent.configuration.spi.PlatformTracingDefaultsProvider;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformExportProcessorFactory;
-import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSpanProcessorFactory;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagatorsDefaultsCustomizer;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+import space.br1440.platform.tracing.otel.javaagent.safety.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSamplers;
-
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
 
 @Slf4j
 public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCustomizerProvider {
@@ -42,6 +45,7 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
      * и переиспользуется всеми factory lambdas.
      */
     private final AtomicReference<ExtensionConfig> extensionConfig = new AtomicReference<>();
+    private final AtomicReference<AcceptedPolicyAccess> acceptedPolicy = new AtomicReference<>();
 
     // Одноразовый guard для диагностической лог-строки platform.tracing.mode.
     private final AtomicBoolean sdkModeLogged = new AtomicBoolean();
@@ -65,7 +69,14 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
         // Диагностика sdk.mode совмещена сюда, чтобы не делать отдельный проход.
         customizer.addPropertiesCustomizer(config -> {
             try {
-                extensionConfig.compareAndSet(null, new ExtensionConfig(config));
+                ExtensionConfig initialized = new ExtensionConfig(config);
+                if (extensionConfig.compareAndSet(null, initialized)) {
+                    AcceptedPolicyAccess policy = AcceptedPolicyAccess.fromStartup(initialized);
+                    acceptedPolicy.set(policy);
+                    PlatformPropagationGate.shared().bindAcceptedPolicy(policy);
+                    PlatformLogControl.shared().bindAcceptedPolicy(policy);
+                    jmxRegistrar.setAcceptedPolicy(policy);
+                }
                 readiness.markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
                 if (!extensionConfig.get().scrubbing().enabled()) {
                     IllegalStateException failure = new IllegalStateException(
@@ -110,7 +121,10 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
         // sampler-customizer'а игнорируется для sampling-домена (уже прочитан в addPropertiesCustomizer).
         customizer.addSamplerCustomizer((existing, config) -> {
             try {
-                Sampler sampler = samplerFactory.buildSampler(existing, extensionConfig.get().sampling());
+                Sampler sampler = samplerFactory.buildSampler(
+                        existing,
+                        extensionConfig.get().sampling(),
+                        acceptedPolicy.get());
                 if (PlatformManagedSamplers.isPlatformManaged(sampler)) {
                     readiness.markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
                 }
@@ -125,7 +139,11 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
         // scrubbing-пути (PR-4). Нельзя использовать метод-референс — сигнатура изменилась.
         customizer.addTracerProviderCustomizer((builder, config) -> {
             try {
-                return spanProcessorFactory.registerSpanProcessors(builder, extensionConfig.get(), config);
+                return spanProcessorFactory.registerSpanProcessors(
+                        builder,
+                        extensionConfig.get(),
+                        config,
+                        acceptedPolicy.get());
             } catch (RuntimeException | Error failure) {
                 readiness.fail("SPAN_PROCESSOR_INITIALIZATION_FAILED", failure);
                 throw failure;
@@ -136,7 +154,7 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
         // config на этапе capture не используется — адаптация сигнатуры здесь, не в factory.
         customizer.addSpanExporterCustomizer((exporter, config) -> {
             try {
-                return exportProcessorFactory.captureExporter(exporter);
+                return exportProcessorFactory.captureExporter(exporter, acceptedPolicy.get());
             } catch (RuntimeException | Error failure) {
                 readiness.fail("EXPORTER_INITIALIZATION_FAILED", failure);
                 throw failure;

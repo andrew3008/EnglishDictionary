@@ -1,6 +1,10 @@
 package space.br1440.platform.tracing.otel.sampling.policy;
 
-import space.br1440.platform.tracing.otel.sampling.model.*;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
+import java.util.Map;
 
 final class RouteRatioPolicyRule implements SamplingPolicyRule {
 
@@ -18,9 +22,13 @@ final class RouteRatioPolicyRule implements SamplingPolicyRule {
     }
 
     @Override
-    public SamplingPolicyDecision evaluate(SamplingPolicyRequest request, SamplingPolicySnapshot snapshot) {
-        RouteRatioPrefix[] routeRatios = snapshot.getRouteRatios();
-        if (routeRatios.length == 0) {
+    public SamplingPolicyDecision evaluate(
+            SamplingPolicyRequest request,
+            boolean enabled,
+            Map<String, Double> routeRatios,
+            double defaultRatio,
+            SamplingPolicySnapshot startupRules) {
+        if (routeRatios.isEmpty()) {
             return null;
         }
 
@@ -29,25 +37,31 @@ final class RouteRatioPolicyRule implements SamplingPolicyRule {
             return null;
         }
 
-        for (RouteRatioPrefix entry : routeRatios) {
-            if (urlPath.startsWith(entry.prefix())) {
-                double ratio = entry.ratio();
-                if (ratio >= 1.0) {
-                    return SAMPLE;
-                }
-
-                if (ratio <= 0.0) {
-                    return DROP;
-                }
-
-                if (TraceIdRatioDecision.shouldSample(request.traceId(), ratio)) {
-                    return SAMPLE;
-                }
-
-                return DROP;
+        String selectedPrefix = null;
+        double selectedRatio = 0.0d;
+        for (Map.Entry<String, Double> entry : routeRatios.entrySet()) {
+            String prefix = entry.getKey();
+            if (urlPath.startsWith(prefix)
+                    && (selectedPrefix == null
+                    || prefix.length() > selectedPrefix.length()
+                    || (prefix.length() == selectedPrefix.length()
+                    && prefix.compareTo(selectedPrefix) < 0))) {
+                selectedPrefix = prefix;
+                selectedRatio = entry.getValue();
             }
         }
 
-        return null;
+        if (selectedPrefix == null) {
+            return null;
+        }
+        if (selectedRatio >= 1.0d) {
+            return SAMPLE;
+        }
+        if (selectedRatio <= 0.0d) {
+            return DROP;
+        }
+        return TraceIdRatioDecision.shouldSample(request.traceId(), selectedRatio)
+                ? SAMPLE
+                : DROP;
     }
 }

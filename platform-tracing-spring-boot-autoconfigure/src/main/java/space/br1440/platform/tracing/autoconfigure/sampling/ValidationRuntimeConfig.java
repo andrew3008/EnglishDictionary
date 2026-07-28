@@ -8,7 +8,7 @@ import java.util.Objects;
  * Spring-side validation runtime config schema v1 (PR-8C).
  * <p>
  * Тонкий view домена validation из {@link TracingProperties.Validation}. Не является
- * вторым authoritative snapshot — agent-side {@code ValidationPolicyHolder} остаётся source of truth.
+ * вторым authoritative snapshot — Agent-side accepted policy остаётся source of truth.
  * <p>
  * Runtime-mutable поля schema v1 (публикуются одним атомарным {@code updateValidationPolicy}):
  * <ul>

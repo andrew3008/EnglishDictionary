@@ -27,8 +27,9 @@ class ValidationRuntimeFoundationTest {
     @Test
     void processor_uses_updated_snapshot_without_reconstruct() {
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(false, true);
-        assertThat(processor.getPolicyVersion()).isEqualTo(1);
-        assertThat(processor.getPolicySource()).isEqualTo("startup");
+        long initialSequence = processor.getPolicyVersion();
+        assertThat(initialSequence).isZero();
+        assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
@@ -40,8 +41,8 @@ class ValidationRuntimeFoundationTest {
         }
 
         assertThat(processor.tryApplyPolicyUpdate(false, false, "test-disable")).isTrue();
-        assertThat(processor.getPolicyVersion()).isEqualTo(2);
-        assertThat(processor.getPolicySource()).isEqualTo("test-disable");
+        assertThat(processor.getPolicyVersion()).isEqualTo(initialSequence + 1);
+        assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
@@ -50,7 +51,7 @@ class ValidationRuntimeFoundationTest {
         }
 
         assertThat(processor.tryApplyPolicyUpdate(true, true, "test-strict")).isTrue();
-        assertThat(processor.getPolicyVersion()).isEqualTo(3);
+        assertThat(processor.getPolicyVersion()).isEqualTo(initialSequence + 2);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("t");
@@ -142,7 +143,7 @@ class ValidationRuntimeFoundationTest {
         }
 
         assertThat(violation.get()).isNull();
-        assertThat(processor.getPolicyVersion()).isGreaterThan(1);
+        assertThat(processor.getPolicyVersion()).isPositive();
     }
 
     private static void await(CountDownLatch latch) {

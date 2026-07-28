@@ -1,0 +1,96 @@
+{
+  "artifactId": "p0-public-control-protocol-consumer-inventory",
+  "decisionDate": "2026-07-28",
+  "headAtInventory": "8f690a7",
+  "scanMethod": [
+    "Enumerate production types under platform-tracing-api/.../api/control/protocol",
+    "rg import space.br1440.platform.tracing.api.control.protocol across **/src/main/**/*.java excluding api module",
+    "rg FQCN/package hits in platform-tracing-samples, README.md, docs/SUPPORTED.md, docs/MIGRATION.md",
+    "Confirm legacy api.control.wire absent from production src/main"
+  ],
+  "publicTypes": [
+    {
+      "fqcn": "space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol",
+      "kind": "final class",
+      "productionMainConsumersOutsideApi": [
+        "platform-tracing-otel-javaagent-extension/.../jmx/control/PlatformControlProtocolMBean.java",
+        "platform-tracing-otel-javaagent-extension/.../jmx/PlatformTracingJmxRegistrar.java"
+      ]
+    },
+    {
+      "fqcn": "space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys",
+      "kind": "final class",
+      "productionMainConsumersOutsideApi": [
+        "platform-tracing-otel/.../ValidationModePolicyValidator.java",
+        "platform-tracing-otel/.../RuntimePolicyControlHandler.java",
+        "platform-tracing-otel/.../RuntimePolicyControlDomainValidator.java",
+        "platform-tracing-otel-javaagent-extension/.../control/JmxRuntimePolicyApplier.java",
+        "platform-tracing-otel-javaagent-extension/.../control/ReadAppliedStateHandler.java"
+      ]
+    },
+    {
+      "fqcn": "space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion",
+      "kind": "record",
+      "productionMainConsumersOutsideApi": []
+    },
+    {
+      "fqcn": "space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation",
+      "kind": "enum",
+      "productionMainConsumersOutsideApi": [
+        "platform-tracing-otel/.../RuntimePolicyControlHandleResult.java",
+        "platform-tracing-otel/.../RuntimePolicyControlHandler.java",
+        "platform-tracing-otel/.../RuntimePolicyControlDomainValidator.java",
+        "platform-tracing-otel/.../RuntimePolicyApplier.java",
+        "platform-tracing-otel/.../RuntimeControlMutationPolicy.java",
+        "platform-tracing-otel-javaagent-extension/.../control/JmxRuntimePolicyApplier.java"
+      ]
+    },
+    {
+      "fqcn": "space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult",
+      "kind": "record",
+      "productionMainConsumersOutsideApi": [
+        "platform-tracing-otel/.../RuntimePolicyControlHandler.java",
+        "platform-tracing-otel-javaagent-extension/.../jmx/control/PlatformControlProtocolMBean.java"
+      ]
+    },
+    {
+      "fqcn": "space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation",
+      "kind": "record",
+      "productionMainConsumersOutsideApi": [
+        "platform-tracing-otel/.../RuntimePolicyControlHandleResult.java"
+      ]
+    },
+    {
+      "fqcn": "space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode",
+      "kind": "enum",
+      "productionMainConsumersOutsideApi": []
+    }
+  ],
+  "productionMainImportSites": [
+    "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/ValidationModePolicyValidator.java",
+    "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyControlHandleResult.java",
+    "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyControlHandler.java",
+    "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyControlDomainValidator.java",
+    "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyApplier.java",
+    "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimeControlMutationPolicy.java",
+    "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/jmx/control/PlatformControlProtocolMBean.java",
+    "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/jmx/PlatformTracingJmxRegistrar.java",
+    "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/JmxRuntimePolicyApplier.java",
+    "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/ReadAppliedStateHandler.java"
+  ],
+  "nonProductBuckets": {
+    "platform-tracing-spring-boot-autoconfigure/src/main": 0,
+    "platform-tracing-samples": 0,
+    "platform-tracing-bench/src/main": 0,
+    "platform-tracing-perf-tests/src/main": 0,
+    "docs/SUPPORTED.md FQCN": 0,
+    "docs/MIGRATION.md FQCN": 0,
+    "README.md FQCN": 0
+  },
+  "classification": {
+    "externalOrApplicationDeveloperConsumers": "NONE_FOUND_IN_REPO",
+    "internalProductConsumers": "PRESENT",
+    "testAndE2EConsumers": "PRESENT_AND_EXPECTED",
+    "historicalDocsReferencingLegacyWirePackage": "PRESENT_AND_NON_BLOCKING"
+  }
+}

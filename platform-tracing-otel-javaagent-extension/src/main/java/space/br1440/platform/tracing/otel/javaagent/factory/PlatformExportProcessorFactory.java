@@ -7,6 +7,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.otel.javaagent.configuration.enums.QueueOverflowPolicy;
 import space.br1440.platform.tracing.otel.javaagent.configuration.QueueExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.PlatformDropOldestExportSpanProcessor;
@@ -31,14 +32,16 @@ public final class PlatformExportProcessorFactory {
         this.jmxRegistrar = jmxRegistrar;
     }
 
-    public SpanExporter captureExporter(SpanExporter exporter) {
+    public SpanExporter captureExporter(
+            SpanExporter exporter,
+            AcceptedPolicyAccess acceptedPolicy) {
         int exporterRegistrationIndex = exporterCount.incrementAndGet();
 
         SafeSpanExporter safeExporter;
         if (exporter instanceof SafeSpanExporter safe) {
             safeExporter = safe;
         } else {
-            safeExporter = new SafeSpanExporter(exporter);
+            safeExporter = new SafeSpanExporter(exporter, acceptedPolicy);
         }
 
         if (exporterRegistrationIndex == 1) {
@@ -52,6 +55,10 @@ public final class PlatformExportProcessorFactory {
         }
 
         return safeExporter;
+    }
+
+    SpanExporter captureExporter(SpanExporter exporter) {
+        return captureExporter(exporter, AcceptedPolicyAccess.isolatedDefaults());
     }
 
     public SpanProcessor maybeReplaceExportProcessor(SpanProcessor processor,

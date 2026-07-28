@@ -1,7 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.safety;
 
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyUpdateOutcome;
 
 /**
  * Runtime-контроль уровня диагностического логирования платформы в classloader'е Java Agent
@@ -51,19 +55,20 @@ public final class PlatformLogControl {
     private static final PlatformLogControl SHARED = new PlatformLogControl();
 
     /** По умолчанию INFO: видны и WARN-диагностика, и однократные recovery-сообщения. */
-    private final AtomicReference<LogLevel> level = new AtomicReference<>(LogLevel.INFO);
+    private final AtomicReference<AcceptedPolicyAccess> acceptedPolicy =
+            new AtomicReference<>(AcceptedPolicyAccess.isolatedDefaults());
 
     public static PlatformLogControl shared() {
         return SHARED;
     }
 
     public LogLevel getLevel() {
-        return level.get();
+        return LogLevel.valueOf(acceptedPolicy.get().current().diagnosticsLogLevel());
     }
 
     public void setLevel(LogLevel newLevel) {
         if (newLevel != null) {
-            level.set(newLevel);
+            acceptedPolicy.get().updateDiagnosticsLogLevel(newLevel.name());
         }
     }
 
@@ -77,16 +82,18 @@ public final class PlatformLogControl {
         if (raw == null) {
             return false;
         }
-        try {
-            level.set(LogLevel.valueOf(raw.trim().toUpperCase(Locale.ROOT)));
-            return true;
-        } catch (IllegalArgumentException ignored) {
-            return false;
-        }
+        AcceptedPolicyUpdateOutcome outcome =
+                acceptedPolicy.get().updateDiagnosticsLogLevel(raw.trim().toUpperCase(Locale.ROOT));
+        return outcome == AcceptedPolicyUpdateOutcome.APPLIED
+                || outcome == AcceptedPolicyUpdateOutcome.UNCHANGED;
+    }
+
+    public void bindAcceptedPolicy(AcceptedPolicyAccess policy) {
+        acceptedPolicy.set(Objects.requireNonNull(policy, "policy"));
     }
 
     /** @return {@code true}, если сообщение указанного уровня должно печататься при текущем пороге. */
     public boolean isEnabled(LogLevel messageLevel) {
-        return messageLevel != LogLevel.OFF && level.get().severity() >= messageLevel.severity();
+        return messageLevel != LogLevel.OFF && getLevel().severity() >= messageLevel.severity();
     }
 }

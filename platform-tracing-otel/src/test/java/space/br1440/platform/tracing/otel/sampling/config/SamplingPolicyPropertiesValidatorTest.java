@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Доменная fail-fast матрица {@link SamplingPolicyPropertiesValidator}.
  * <p>
  * Дополняет lenient-семантику фабрики: одни и те же невалидные данные фабрика молча пропускает,
- * а валидатор отклоняет. Сообщения совпадают с доменной частью SamplerPolicyUpdate.validateDomain,
+ * а валидатор отклоняет. Сообщения совпадают с доменной валидацией accepted policy,
  * чтобы переподключение в P2 не меняло наблюдаемые ошибки.
  */
 class SamplingPolicyPropertiesValidatorTest {

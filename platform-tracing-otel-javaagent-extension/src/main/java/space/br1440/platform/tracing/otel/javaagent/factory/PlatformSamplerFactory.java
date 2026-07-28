@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.factory;
 
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSamplers;
@@ -15,9 +16,13 @@ public final class PlatformSamplerFactory {
         this.jmxRegistrar = jmxRegistrar;
     }
 
-    public Sampler buildSampler(Sampler existing, SamplingExtensionConfig sampling) {
+    public Sampler buildSampler(
+            Sampler existing,
+            SamplingExtensionConfig sampling,
+            AcceptedPolicyAccess acceptedPolicy) {
         CompositeSampler existingComposite = PlatformManagedSamplers.findComposite(existing);
         if (existingComposite != null) {
+            existingComposite.bindAcceptedPolicy(acceptedPolicy);
             registerForJmx(existingComposite);
             return existing;
         }
@@ -29,6 +34,7 @@ public final class PlatformSamplerFactory {
         Sampler built = PlatformSamplerBuilder.build(sampling);
         CompositeSampler composite = PlatformManagedSamplers.findComposite(built);
         if (composite != null) {
+            composite.bindAcceptedPolicy(acceptedPolicy);
             registerForJmx(composite);
         }
 
@@ -36,7 +42,7 @@ public final class PlatformSamplerFactory {
     }
 
     private void registerForJmx(CompositeSampler composite) {
-        jmxRegistrar.setConfigHolder(composite.stateHolder());
+        jmxRegistrar.setAcceptedPolicy(composite.acceptedPolicy());
         jmxRegistrar.setCompositeSampler(composite);
     }
 }

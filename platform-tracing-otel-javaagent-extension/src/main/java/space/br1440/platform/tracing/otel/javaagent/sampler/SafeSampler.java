@@ -29,7 +29,7 @@ import java.util.Objects;
  * <h2>Стратегия fallback (рекомендация Фаза 11.md)</h2>
  * <ol>
  *   <li><b>last-known-good</b> — основной путь: {@link CompositeSampler} уже принимает решения на
- *       базе последнего валидного {@link SamplerState} из {@link SamplerStateHolder}; пока делегат
+ *       базе последнего принятого immutable policy snapshot; пока делегат
  *       работает, действует именно он;</li>
  *   <li><b>fail-closed fallback</b> — если делегат бросил исключение или вернул {@code null},
  *       возвращается {@link SamplingDecision#DROP}; policy failure не может увеличить sampling;</li>

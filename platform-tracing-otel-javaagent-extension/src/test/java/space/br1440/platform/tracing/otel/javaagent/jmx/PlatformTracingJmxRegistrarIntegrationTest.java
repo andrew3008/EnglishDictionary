@@ -8,10 +8,11 @@ import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
 import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
 import space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SamplerStateHolder;
+import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -49,7 +50,7 @@ class PlatformTracingJmxRegistrarIntegrationTest {
 
     private MBeanServer              server;
     private PlatformTracingJmxRegistrar registrar;
-    private SamplerStateHolder       samplerHolder;
+    private AcceptedPolicyAccess       samplerHolder;
     private ValidatingSpanProcessor  validatingProcessor;
 
     @BeforeEach
@@ -59,7 +60,7 @@ class PlatformTracingJmxRegistrarIntegrationTest {
         server = ManagementFactory.getPlatformMBeanServer();
         cleanUp();
 
-        samplerHolder       = new SamplerStateHolder(true, List.of(), List.of(),
+        samplerHolder       = AcceptedPolicyAccess.isolatedSampling(true, List.of(), List.of(),
                 Collections.emptyMap(), 0.2d);
         validatingProcessor = new ValidatingSpanProcessor(false, false);
 
@@ -97,7 +98,8 @@ class PlatformTracingJmxRegistrarIntegrationTest {
 
         registrar.setValidating(validatingProcessor);
         registrar.setControlHandler(handler);
-        registrar.setConfigHolder(samplerHolder); // triggers batch registration
+        registrar.setCompositeSampler(new CompositeSampler(samplerHolder));
+        registrar.setAcceptedPolicy(samplerHolder); // triggers batch registration
     }
 
     private CompositeData buildApplyPayload(String[] extraKeys, Object[] extraVals)
@@ -166,7 +168,7 @@ class PlatformTracingJmxRegistrarIntegrationTest {
                 new String[]{CompositeData.class.getName()});
 
         assertThat(result).startsWith("SUCCESS");
-        assertThat(samplerHolder.current().defaultRatio()).isEqualTo(0.66d);
+        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.66d);
     }
 
     @Test
@@ -203,7 +205,7 @@ class PlatformTracingJmxRegistrarIntegrationTest {
     void secondSetConfigHolderIsIdempotent() {
         wireMinimal();
         // calling setConfigHolder again must not re-register (mbeansRegistered guard)
-        registrar.setConfigHolder(samplerHolder);
+        registrar.setAcceptedPolicy(samplerHolder);
 
         // still exactly one instance per name
         assertThat(server.isRegistered(PlatformTracingObjectNames.CONTROL_PROTOCOL)).isTrue();

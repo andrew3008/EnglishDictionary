@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Описание одного characterization-сценария sampling rule chain.
  * <p>
- * Поля конфигурации соответствуют {@code SamplerStateHolder}; поля ввода — контексту запроса.
+ * Поля конфигурации соответствуют принятой sampling policy; поля ввода — контексту запроса.
  * {@code expectedReason} — значение {@code platform.sampling.reason} или {@code null}, если
  * атрибут на span не проставляется (например, kill switch).
  */

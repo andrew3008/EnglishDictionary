@@ -2,10 +2,8 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.validation.ValidationSnapshot;
-import space.br1440.platform.tracing.otel.javaagent.processor.ValidationPolicyHolder;
-
-import java.time.Instant;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyUpdateOutcome;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -120,15 +118,20 @@ class ValidationEnvironmentGuardTest {
             ValidationModeResolver.Resolution startup =
                     ValidationModeResolver.resolve(PlatformEnvironment.PRODUCTION, ValidationMode.LENIENT);
 
-            ValidationPolicyHolder holder = new ValidationPolicyHolder(
-                    ValidationSnapshot.fromPolicy(true, false, 1, Instant.now(), "startup"),
-                    startup.strictRuntimeAllowed());  // false for production
+            AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedValidation(
+                    true,
+                    false,
+                    startup.strictRuntimeAllowed());
 
-            boolean applied = holder.tryApplyPolicyUpdate(true, true, "runtime-update");
+            AcceptedPolicyUpdateOutcome outcome = holder.updateValidation(true, true);
 
-            assertThat(applied).as("Runtime STRICT update must be rejected in production").isFalse();
-            assertThat(holder.current().strict()).as("Policy must remain LENIENT").isFalse();
-            assertThat(holder.version()).as("Version must not increment on rejection").isEqualTo(1);
+            assertThat(outcome)
+                    .as("Runtime STRICT update must be rejected in production")
+                    .isEqualTo(AcceptedPolicyUpdateOutcome.REJECTED);
+            assertThat(holder.current().validationStrict()).as("Policy must remain LENIENT").isFalse();
+            assertThat(holder.current().acceptedSequence())
+                    .as("Sequence must not increment on rejection")
+                    .isZero();
         }
 
         /** Test 6 — UNKNOWN runtime update LENIENT → STRICT is rejected. */
@@ -138,15 +141,18 @@ class ValidationEnvironmentGuardTest {
             ValidationModeResolver.Resolution startup =
                     ValidationModeResolver.resolve(PlatformEnvironment.UNKNOWN, ValidationMode.LENIENT);
 
-            ValidationPolicyHolder holder = new ValidationPolicyHolder(
-                    ValidationSnapshot.fromPolicy(true, false, 1, Instant.now(), "startup"),
-                    startup.strictRuntimeAllowed());  // false for UNKNOWN
+            AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedValidation(
+                    true,
+                    false,
+                    startup.strictRuntimeAllowed());
 
-            boolean applied = holder.tryApplyPolicyUpdate(true, true, "runtime-update");
+            AcceptedPolicyUpdateOutcome outcome = holder.updateValidation(true, true);
 
-            assertThat(applied).as("Runtime STRICT update must be rejected when environment is UNKNOWN").isFalse();
-            assertThat(holder.current().strict()).isFalse();
-            assertThat(holder.version()).isEqualTo(1);
+            assertThat(outcome)
+                    .as("Runtime STRICT update must be rejected when environment is UNKNOWN")
+                    .isEqualTo(AcceptedPolicyUpdateOutcome.REJECTED);
+            assertThat(holder.current().validationStrict()).isFalse();
+            assertThat(holder.current().acceptedSequence()).isZero();
         }
 
         /** Test 7 — dev/staging runtime update LENIENT → STRICT is allowed. */
@@ -156,17 +162,20 @@ class ValidationEnvironmentGuardTest {
                 ValidationModeResolver.Resolution startup =
                         ValidationModeResolver.resolve(env, ValidationMode.LENIENT);
 
-                ValidationPolicyHolder holder = new ValidationPolicyHolder(
-                        ValidationSnapshot.fromPolicy(true, false, 1, Instant.now(), "startup"),
-                        startup.strictRuntimeAllowed());  // true for dev/staging
+                AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedValidation(
+                        true,
+                        false,
+                        startup.strictRuntimeAllowed());
 
-                boolean applied = holder.tryApplyPolicyUpdate(true, true, "runtime-update");
+                AcceptedPolicyUpdateOutcome outcome = holder.updateValidation(true, true);
 
-                assertThat(applied).as("Runtime STRICT update must be allowed in " + env).isTrue();
-                assertThat(holder.current().strict())
+                assertThat(outcome)
+                        .as("Runtime STRICT update must be allowed in " + env)
+                        .isEqualTo(AcceptedPolicyUpdateOutcome.APPLIED);
+                assertThat(holder.current().validationStrict())
                         .as("Policy must become STRICT after update in " + env)
                         .isTrue();
-                assertThat(holder.version()).isEqualTo(2);
+                assertThat(holder.current().acceptedSequence()).isEqualTo(1L);
             }
         }
     }
