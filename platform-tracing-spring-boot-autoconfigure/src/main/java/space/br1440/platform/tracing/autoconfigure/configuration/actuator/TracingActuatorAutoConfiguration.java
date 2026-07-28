@@ -5,13 +5,13 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.event.EventListener;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicySnapshotReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec;
@@ -106,19 +106,26 @@ public class TracingActuatorAutoConfiguration {
         }
 
         /**
-         * Agent readiness probe: fires on {@link ApplicationStartedEvent}
-         * (before readiness is declared to the platform), not ApplicationReadyEvent.
+         * Agent readiness probe implemented as {@link SmartLifecycle}.
          * <p>
-         * If {@code currentComplete()} succeeds, the Agent is reachable and
-         * PROPOSED_PRIV_R07 is available. If it throws
-         * {@link space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyContractViolationException},
-         * the Agent has not yet implemented {@code readAcceptedComplete} — P4 is blocked.
-         * If it returns empty, the Agent is not yet online — first command will retry.
+         * Contract for authority=ACTUATOR:
+         * <ol>
+         *   <li>Private writer discovery (done at bean init)</li>
+         *   <li>Protocol validation via {@code readAcceptedComplete} (PROPOSED_PRIV_R07)</li>
+         *   <li>Successful complete snapshot decode</li>
+         *   <li>Tracing-configuration readiness = READY</li>
+         * </ol>
+         * {@link SmartLifecycle#start()} is invoked during context refresh, before
+         * readiness is published to the platform. A
+         * {@link TracingPolicyContractViolationException} thrown from {@code start()}
+         * propagates as a {@link org.springframework.context.LifecycleException} and
+         * prevents startup from completing — this is the correct fail-fast behaviour.
          * <p>
-         * Replaces the former {@code ActuatorSnapshotReaderWarmup} which used
-         * {@link org.springframework.boot.context.event.ApplicationReadyEvent}
-         * (too late: readiness already declared) and did not distinguish contract
-         * violations from transport failures.
+         * Transport failures (Agent temporarily offline, empty Optional) are soft:
+         * logged as WARN, startup continues. The first Actuator command retries live.
+         * <p>
+         * Phase: {@link SmartLifecycle#DEFAULT_PHASE} ({@code Integer.MAX_VALUE})
+         * so the probe runs after all application beans are fully started.
          */
         @Bean
         public ActuatorAgentReadinessProbe actuatorAgentReadinessProbe(
@@ -127,24 +134,30 @@ public class TracingActuatorAutoConfiguration {
         }
     }
 
-    static class ActuatorAgentReadinessProbe {
+    static final class ActuatorAgentReadinessProbe implements SmartLifecycle {
+
         private static final Logger probeLog =
                 LoggerFactory.getLogger(ActuatorAgentReadinessProbe.class);
 
         private final AcceptedTracingPolicySnapshotReader reader;
+        private volatile boolean running = false;
 
         ActuatorAgentReadinessProbe(AcceptedTracingPolicySnapshotReader reader) {
             this.reader = reader;
         }
 
         /**
-         * Fires on {@link ApplicationStartedEvent} — after the application context
-         * is fully refreshed but before the readiness state is published.
-         * A contract violation here means the Agent has not implemented
-         * PROPOSED_PRIV_R07 and P4 is completely blocked.
+         * Validates PROPOSED_PRIV_R07 availability during context lifecycle.
+         * <p>
+         * {@link TracingPolicyContractViolationException} — thrown when the Agent
+         * MBean does not expose {@code readAcceptedComplete} (ReflectionException
+         * wrapping). This is a hard contract failure: P4 cannot function without
+         * Agent-side PRIV-R07. The exception propagates and blocks startup.
+         * <p>
+         * Empty Optional — transport/online issue; soft failure, logged as WARN.
          */
-        @EventListener(ApplicationStartedEvent.class)
-        public void onApplicationStarted(ApplicationStartedEvent event) {
+        @Override
+        public void start() {
             try {
                 reader.currentComplete().ifPresentOrElse(
                         s -> probeLog.info(
@@ -154,14 +167,32 @@ public class TracingActuatorAutoConfiguration {
                                 "[P4 readiness probe] Agent not yet reachable (empty result). "
                                 + "First Actuator command will attempt live read.")
                 );
-            } catch (space.br1440.platform.tracing.autoconfigure.configuration
-                     .TracingPolicyContractViolationException e) {
-                probeLog.error(
-                        "[P4 readiness probe] PROPOSED_PRIV_R07 (readAcceptedComplete) is not "
-                        + "implemented on the Agent MBean. P4 is BLOCKED. "
-                        + "Agent PR must implement AggregatePolicyControlMBean.readAcceptedComplete(). "
-                        + "Cause: {}", e.getMessage());
+            } catch (TracingPolicyContractViolationException e) {
+                // Hard failure: re-throw to block context startup.
+                // SmartLifecycle.start() propagates as LifecycleException.
+                throw new TracingPolicyContractViolationException(
+                        "[P4 readiness probe] FATAL: readAcceptedComplete not found on Agent MBean. "
+                        + "PROPOSED_PRIV_R07 is not yet implemented. "
+                        + "Agent PR must expose AggregatePolicyControlMBean.readAcceptedComplete(). "
+                        + "P4 startup is BLOCKED until Agent-side implementation is merged. "
+                        + "Original cause: " + e.getMessage(), e);
             }
+            running = true;
+        }
+
+        @Override
+        public void stop() {
+            running = false;
+        }
+
+        @Override
+        public boolean isRunning() {
+            return running;
+        }
+
+        @Override
+        public int getPhase() {
+            return DEFAULT_PHASE; // Integer.MAX_VALUE: after all other beans
         }
     }
 }
