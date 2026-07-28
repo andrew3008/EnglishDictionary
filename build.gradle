@@ -1082,6 +1082,10 @@ def s07JmxReadOnlyDeltaTest = tasks.register('s07JmxReadOnlyDeltaTest', Test) {
     systemProperty 's07.evidence.root',
             rootProject.layout.projectDirectory.dir(
                     'docs/research/evidence/jmx-read-only-delta').asFile.absolutePath
+    systemProperty 's07.baseline.fixture',
+            rootProject.layout.projectDirectory.file(
+                    'platform-tracing-otel-javaagent-extension/src/test/resources/' +
+                            'jmx-management-contract-baseline.json').asFile.absolutePath
     filter {
         includeTestsMatching 'space.br1440.platform.tracing.bench.jmxdelta.*'
     }

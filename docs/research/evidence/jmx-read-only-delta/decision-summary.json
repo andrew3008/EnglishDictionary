@@ -18,22 +18,31 @@
     "platformReadOnlyMembers": 56,
     "platformMutations": 0,
     "privateObjectNames": 2,
-    "privateReadMembers": 4,
+    "privateReadMembers": 6,
     "privateMutations": 1
   },
   "counts": {
-    "retainedExact": 38,
-    "clarifiedReads": 8,
-    "renamedReads": 0,
-    "deletedReads": 8,
-    "addedReads": 9,
-    "deletedMutationsFromPlatform": 16,
-    "privateOnlyOperations": 1
+    "retainedExact": 32,
+    "clarified": 14,
+    "renamed": 0,
+    "movedPrivate": 0,
+    "deletedObsoleteReads": 5,
+    "replacedReads": 4,
+    "addedPlatformReads": 9,
+    "addedPrivateReads": 6,
+    "deletedMutationsFromPlatform": 16
   },
-  "externalConsumerBlockers": [],
-  "rollbackUnit": "Entire unreleased release train at P6; ObjectName preservation allows dual-server coexistence during P2–P5 without supported dual contract",
-  "openBlockersForE8": [
-    "P0 wire schema contract and bounds",
-    "E8 readiness package and Implementation GO"
+  "privateWriter": {
+    "targetMemberId": "PRIV-W01",
+    "operationName": "applySnapshot",
+    "newReplacementContract": true,
+    "legacyPartialProtocolRelocated": false,
+    "exactPayloadSchemaAuthority": "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json and p0-wire-schema-bounds.json",
+    "exactPayloadSchemaStatus": "READY_FOR_COMMITTEE_APPROVAL"
+  },
+  "externalConsumerBlockersForE7": [],
+  "productionRolloutBlockers": [
+    "external consumer survey and migration notice",
+    "P6 zero-reference and zero-write proof"
   ]
 }

@@ -5,13 +5,15 @@
   "headAtReview": "0f81052557c685b9988d438a6fbd4a5a031aab7a",
   "branch": "refactor/cursor-rules",
   "overallResult": "PASS",
-  "verdict": "IMPLEMENTATION_NOT_READY",
+  "verdict": "READY_FOR_COMMITTEE_APPROVAL",
+  "technicalPackageStatus": "COMPLETE",
   "implementationGo": "NOT_GRANTED",
   "legacyDeletionGo": "BLOCKED",
   "productionCodeChanged": false,
   "cursorPlanChanged": false,
   "architectureDecisionsChanged": false,
   "p1Started": false,
+  "p1MayStartNow": false,
   "gateStatuses": {
     "E1": "CLOSED",
     "E2": "CLOSED",
@@ -20,49 +22,32 @@
     "E5": "CLOSED",
     "E6": "CLOSED",
     "E7": "READY_TO_CLOSE",
-    "E8": "OPEN",
+    "E8": "READY_FOR_COMMITTEE_APPROVAL",
     "E9": "CLOSED"
   },
-  "crossGateConsistency": "CONSISTENT_WITH_OPEN_P0_SCHEMA_GAP",
+  "crossGateConsistency": "CONSISTENT_AND_TECHNICALLY_COMPLETE_PENDING_COMMITTEE_DECISION",
   "materialContradictionsAmongE1ToE7": false,
   "additionalTopologyResearchRequired": false,
-  "p1MayStartNow": false,
-  "whyNotImplementationGo": [
-    "Binding plan requires approved wire schema and bounds before P1 and before E8 closure",
-    "E7 is READY_TO_CLOSE but not formally CLOSED",
-    "§28 committee checklist items remain open",
-    "Committee Implementation GO has not been recorded"
-  ],
-  "whyNotImplementationGoWithLimitations": [
-    "Binding plan does not authorize a limited production implementation phase before wire schema/bounds approval",
-    "No P1 exception exists for Agent-only work under current plan text"
-  ],
-  "whyImplementationNotReady": [
-    "P0 design artifacts remain open while topology decisions are otherwise consistent",
-    "Implementation GO checklist §28 is incomplete"
-  ],
-  "architectureBlockers": [
-    "p0-wire-schema-contract",
-    "p0-wire-schema-bounds",
-    "Agent/App Open Types and bounds approval",
-    "formal E7 closure",
-    "§28 security-debt acceptance",
-    "§28 rollback/scenario acceptance",
-    "committee Implementation GO record"
+  "additionalScopedP0DesignArtifactsRequired": false,
+  "technicalBlockers": [],
+  "committeeActionsRequired": [
+    "Approve p0-wire-schema-contract and p0-wire-schema-bounds",
+    "Record E7 CLOSED",
+    "Accept scenario-acceptance, rollback-acceptance and security-debt-acceptance",
+    "Record E8 CLOSED and Implementation GO"
   ],
   "implementationBlockers": [
-    "No production implementation authorized while GO is NOT_GRANTED",
-    "P1 start forbidden until wire schema/bounds approved"
+    "No production implementation is authorized while Implementation GO is NOT_GRANTED"
   ],
-  "recommendedNextPhase": "P0 wire-schema/bounds + formal E7/§28 closure (not P1)",
+  "recommendedNextPhase": "Committee approval of the completed E8 package; not P1",
   "scores": {
-    "architectureCompleteness": 8,
-    "contractConsistency": 9,
-    "consumerSafety": 8,
-    "migrationClarity": 8,
-    "testability": 9,
-    "operationalReadiness": 6,
-    "implementationReadiness": 5
+    "architectureCompleteness": 10,
+    "contractConsistency": 10,
+    "consumerSafety": 9,
+    "migrationClarity": 10,
+    "testability": 10,
+    "operationalReadiness": 7,
+    "implementationReadiness": 9
   },
   "artifacts": [
     "docs/research/implementation-readiness-review-e8.md",
@@ -70,19 +55,25 @@
     "docs/research/evidence/implementation-readiness/cross-gate-consistency.json",
     "docs/research/evidence/implementation-readiness/remaining-risks.json",
     "docs/research/evidence/implementation-readiness/implementation-readiness.json",
-    "docs/research/evidence/implementation-readiness/decision-summary.json"
+    "docs/research/evidence/implementation-readiness/decision-summary.json",
+    "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json",
+    "docs/research/evidence/implementation-readiness/p0-wire-schema-bounds.json",
+    "docs/research/evidence/implementation-readiness/committee-readiness-checklist.json",
+    "docs/research/evidence/implementation-readiness/scenario-acceptance.json",
+    "docs/research/evidence/implementation-readiness/rollback-acceptance.json",
+    "docs/research/evidence/implementation-readiness/security-debt-acceptance.json"
   ],
   "requiredEvidenceFiles": [
     "gate-status.json",
     "cross-gate-consistency.json",
     "remaining-risks.json",
     "implementation-readiness.json",
-    "decision-summary.json"
-  ],
-  "requiredPriorGateEvidence": {
-    "E3": "docs/research/evidence/accepted-state-primitive/decision-summary.json",
-    "E6": "docs/research/evidence/boot-cloud-bom-refresh/decision-summary.json",
-    "E7": "docs/research/evidence/jmx-read-only-delta/decision-summary.json",
-    "E9": "docs/research/evidence/config-provenance/"
-  }
+    "decision-summary.json",
+    "p0-wire-schema-contract.json",
+    "p0-wire-schema-bounds.json",
+    "committee-readiness-checklist.json",
+    "scenario-acceptance.json",
+    "rollback-acceptance.json",
+    "security-debt-acceptance.json"
+  ]
 }

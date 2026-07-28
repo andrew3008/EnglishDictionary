@@ -1,0 +1,23 @@
+{
+  "artifactId": "e8-scenario-acceptance",
+  "status": "READY_FOR_COMMITTEE_APPROVAL",
+  "scenarios": [
+    {"id": "INITIAL_VALID", "expected": "APPLIED or UNCHANGED; configuration readiness may become ready"},
+    {"id": "INITIAL_MISSING_OR_INVALID", "expected": "REJECTED; accepted state retained; configuration readiness blocked"},
+    {"id": "RUNTIME_REFRESH_VALID", "expected": "Complete snapshot evaluated; APPLIED or UNCHANGED"},
+    {"id": "RUNTIME_REFRESH_INVALID", "expected": "REJECTED; LKG and acceptedSequence retained"},
+    {"id": "STALE_BASE", "expected": "STALE; store performs no retry/rebase; Config bridge may rebuild once"},
+    {"id": "CONFIG_SERVER_OUTAGE_AFTER_READY", "expected": "LKG retained; delivery failure recorded; runtime remains available"},
+    {"id": "STRUCTURAL_DRIFT_INITIAL", "expected": "Readiness blocked; no Category B mutation"},
+    {"id": "STRUCTURAL_DRIFT_AFTER_READY", "expected": "Runtime policy outcome remains orthogonal; restartRequired is true"},
+    {"id": "DISABLED_AUTHORITY", "expected": "No private writer discovery or mutation"},
+    {"id": "AGENT_REMAINS_ACTIVE_WHILE_FACADE_DISABLED", "expected": "No Agent mutation; external Agent remains active"}
+  ],
+  "commonInvariants": [
+    "Exactly eight Category A leaves",
+    "No partial apply",
+    "No hidden retry in Agent store",
+    "No acceptedSequence increment except APPLIED",
+    "No secret or raw Category B value in audit or response"
+  ]
+}

@@ -1,97 +1,46 @@
 {
   "spikeId": "E8",
   "review": "implementation-readiness",
-  "overallConsistency": "CONSISTENT_WITH_OPEN_P0_SCHEMA_GAP",
+  "overallConsistency": "CONSISTENT_AND_TECHNICALLY_COMPLETE_PENDING_COMMITTEE_DECISION",
   "materialContradictionsAmongE1ToE7": [],
   "ownershipChain": [
-    {
-      "stage": "categoryA",
-      "gate": "E5",
-      "owner": "Category A binding decision — exactly eight leaves"
-    },
-    {
-      "stage": "acceptedState",
-      "gate": "E3",
-      "owner": "AcceptedPolicyStateStore / AcceptedPolicyEnvelope / EffectiveTracingPolicy"
-    },
-    {
-      "stage": "provenanceAndDesiredSnapshot",
-      "gate": "E9",
-      "owner": "Config Server provenance + complete desired snapshot rebuild"
-    },
-    {
-      "stage": "refreshDelivery",
-      "gate": "E6",
-      "owner": "Spring Cloud Config Monitor + Bus + Kafka → EnvironmentChangeEvent"
-    },
-    {
-      "stage": "jmxProjection",
-      "gate": "E7",
-      "owner": "Platform MBeanServer read-only R3 projection"
-    },
-    {
-      "stage": "privateWriter",
-      "gate": "E7",
-      "owner": "private aggregate writer (committed disposition: applyPolicy MOVE_TO_PRIVATE_ONLY)",
-      "payloadAuthority": "P0 wire-schema gates"
-    },
-    {
-      "stage": "wireSchema",
-      "gate": "P0",
-      "owner": "p0-wire-schema-contract / p0-wire-schema-bounds",
-      "status": "OPEN",
-      "blocks": ["E8_GO", "P1"]
-    },
-    {
-      "stage": "futureImplementation",
-      "gate": "P1+",
-      "owner": "production implementation phases",
-      "status": "BLOCKED_PENDING_GO"
-    }
+    {"stage": "categoryA", "gate": "E5", "status": "CLOSED",
+      "owner": "Category A binding decision, exactly eight leaves"},
+    {"stage": "acceptedState", "gate": "E3", "status": "CLOSED",
+      "owner": "Single Agent-side immutable accepted envelope and CAS store"},
+    {"stage": "provenanceAndDesiredSnapshot", "gate": "E9", "status": "CLOSED",
+      "owner": "Spring Config Server provenance and complete desired snapshot builder"},
+    {"stage": "refreshDelivery", "gate": "E6", "status": "CLOSED",
+      "owner": "Config Monitor, Bus, Kafka and EnvironmentChangeEvent"},
+    {"stage": "jmxBoundary", "gate": "E7", "status": "READY_TO_CLOSE",
+      "owner": "Read-only platform projection and one private applySnapshot writer"},
+    {"stage": "wireSchema", "gate": "P0", "status": "READY_FOR_COMMITTEE_APPROVAL",
+      "owner": "p0-wire-schema-contract and p0-wire-schema-bounds"},
+    {"stage": "implementationAuthorization", "gate": "E8",
+      "status": "PENDING_COMMITTEE_DECISION", "owner": "Architecture committee"}
   ],
   "absenceChecks": {
-    "duplicateOwnership": {
-      "result": "ABSENT",
-      "note": "Single Agent accepted-state owner selected by E3; Spring rebuilds desired snapshots only"
-    },
-    "contradictingContracts": {
-      "result": "ABSENT",
-      "note": "Closed-gate decisions align; E7 defers payload schema to P0 explicitly"
-    },
-    "twoSourcesOfTruth": {
-      "result": "ABSENT",
-      "note": "E5 allowlist is the only Category A runtime schema authority"
-    },
-    "legacyProtocolResurrection": {
-      "result": "ABSENT_ON_PLATFORM",
-      "note": "Committed E7 deletes all 16 platform mutations and keeps exactly one private aggregate writer; complete-snapshot payload rules remain owned by P0 wire schema"
-    },
-    "runtimeAmbiguity": {
-      "result": "ABSENT",
-      "note": "E6 fixes refresh fan-out; tracing bridge consumes EnvironmentChangeEvent only"
-    }
+    "duplicateOwnership": {"result": "ABSENT"},
+    "contradictingContracts": {"result": "ABSENT"},
+    "twoSourcesOfTruth": {"result": "ABSENT"},
+    "legacyProtocolResurrection": {"result": "ABSENT"},
+    "runtimeAmbiguity": {"result": "ABSENT"},
+    "genericWireMap": {"result": "ABSENT"},
+    "sharedCrossClassloaderDto": {"result": "ABSENT"},
+    "categoryBInAcceptedState": {"result": "ABSENT"}
   },
-  "nonBlockingStaleness": [
-    {
-      "source": "docs/research/evidence/accepted-state-primitive/decision-summary.json",
-      "field": "openItemsNotBlockingE3",
-      "staleClaim": "Private JMX writer transition sequencing (E6, open)",
-      "currentFact": "E6 CLOSED",
-      "severity": "DOCUMENT_STALE_NOT_DECISION_CONFLICT"
-    },
-    {
-      "source": "docs/research/evidence/boot-cloud-bom-refresh/decision-summary.json",
-      "field": "openBlockersForE8",
-      "staleClaim": "E7 JMX read delta",
-      "currentFact": "E7 READY_TO_CLOSE with committed S-07 evidence",
-      "severity": "DOCUMENT_STALE_NOT_DECISION_CONFLICT"
-    }
-  ],
-  "requiredBeforeGo": [
-    "Approve p0-wire-schema-contract",
-    "Approve p0-wire-schema-bounds",
-    "Formally close E7",
-    "Complete remaining §28 committee checklist items",
-    "Committee records Implementation GO"
+  "wireContractResolution": {
+    "schema": "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json",
+    "bounds": "docs/research/evidence/implementation-readiness/p0-wire-schema-bounds.json",
+    "categoryALeafCount": 8,
+    "requestAndResponseOpenTypesExact": true,
+    "agentAndApplicationCodecOwnershipExact": true,
+    "unknownAndMissingFieldsRejected": true
+  },
+  "remainingBeforeGo": [
+    "Committee approves the proposed schema and bounds",
+    "Committee records E7 CLOSED",
+    "Committee accepts scenario, rollback and security-debt records",
+    "Committee records E8 CLOSED and Implementation GO"
   ]
 }

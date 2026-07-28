@@ -1,67 +1,144 @@
 {
   "spikeId": "S-07",
+  "schemaVersion": 2,
+  "platformObjectNameCount": 8,
+  "privateObjectNameCount": 2,
+  "serverScopedIdentity": "The same logical Control ObjectName on platform and private MBeanServers is two server-scoped registrations",
   "objectNames": [
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "decision": "RETAIN_PRIVATE_AND_PLATFORM_SPLIT",
-      "platformSurface": "readAppliedState + accepted-state read attributes; zero mutations",
-      "privateSurface": "exactly one aggregate applyPolicy writer",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only accepted-state projection",
+      "memberCount": 9,
+      "readCount": 9,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "CLIENT",
+        "DOC",
+        "TEST"
+      ]
     },
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "decision": "RETAIN_EXACT",
-      "platformSurface": "read-only; PlatformLogLevel and PropagationEnabled become non-writable",
-      "privateSurface": "none",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only domain diagnostics/projection",
+      "memberCount": 6,
+      "readCount": 6,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "CLIENT"
+      ]
     },
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "decision": "RETAIN_EXACT",
-      "platformSurface": "read-only; ExportEnabled non-writable",
-      "privateSurface": "none",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only domain diagnostics/projection",
+      "memberCount": 8,
+      "readCount": 8,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "CLIENT"
+      ]
     },
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "decision": "RETAIN_EXACT",
-      "platformSurface": "read-only readiness + ConfigDeliveryHealth",
-      "privateSurface": "none",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only domain diagnostics/projection",
+      "memberCount": 14,
+      "readCount": 14,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "HEALTH",
+        "TEST"
+      ]
     },
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "decision": "RETAIN_EXACT",
-      "platformSurface": "read-only processor and watchdog metrics",
-      "privateSurface": "none",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only domain diagnostics/projection",
+      "memberCount": 9,
+      "readCount": 9,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "CLIENT",
+        "NO_NAMED_CONSUMER_FOUND",
+        "TEST"
+      ]
     },
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-      "decision": "RETAIN_EXACT",
-      "platformSurface": "read-only Category A sampling projection and counters",
-      "privateSurface": "none",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only domain diagnostics/projection",
+      "memberCount": 5,
+      "readCount": 5,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "CLIENT",
+        "TEST"
+      ]
     },
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-      "decision": "RETAIN_EXACT",
-      "platformSurface": "read-only Category B scrubbing enabled + metrics",
-      "privateSurface": "none",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only domain diagnostics/projection",
+      "memberCount": 2,
+      "readCount": 2,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "CLIENT"
+      ]
     },
     {
+      "server": "PLATFORM",
       "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-      "decision": "RETAIN_EXACT",
-      "platformSurface": "read-only Category A validation + Category B envelope",
-      "privateSurface": "none",
-      "rename": null
+      "retainedOrNew": "RETAINED_OBJECT_NAME",
+      "purpose": "Read-only domain diagnostics/projection",
+      "memberCount": 3,
+      "readCount": 3,
+      "mutationCount": 0,
+      "consumers": [
+        "ACTUATOR",
+        "CLIENT"
+      ]
+    },
+    {
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+      "retainedOrNew": "NEW_PRIVATE_OBJECT_NAME",
+      "purpose": "Exactly-one discovery, protocol and lifecycle marker",
+      "memberCount": 6,
+      "readCount": 6,
+      "mutationCount": 0,
+      "consumers": [
+        "PRIVATE_LOCATOR"
+      ]
+    },
+    {
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "retainedOrNew": "NEW_PRIVATE_OBJECT_NAME",
+      "purpose": "Strict complete-snapshot aggregate writer",
+      "memberCount": 1,
+      "readCount": 0,
+      "mutationCount": 1,
+      "consumers": [
+        "CONFIG_SERVER_BRIDGE",
+        "DEV_TYPED_JMX_ADAPTER"
+      ]
     }
-  ],
-  "privateDiscoveryObjectName": {
-    "spikeName": "space.br1440.platform.tracing:type=PrivateMarker,name=S03PrivateControlPlane",
-    "productionName": "PROPOSED space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
-    "decision": "RETAIN_EXACT as internal discovery contract (productionize S-03 marker)",
-    "platformVisible": false
-  }
+  ]
 }

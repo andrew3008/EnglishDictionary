@@ -1,38 +1,16 @@
 {
   "spikeId": "S-07",
-  "policy": "Absence of repository consumer is not automatic deletion. Pre-production allows breaking deletion with explicit committee approval or proof member never entered supported contract.",
-  "membersWithNoNamedConsumer": [
-    {
-      "member": "Metrics.DroppedAttributesTotal",
-      "disposition": "RETAIN_EXACT",
-      "risk": "EXTERNAL_UNKNOWN_POSSIBLE",
-      "decision": "Retain as operational processor diagnostic; no deletion without owner survey"
-    },
-    {
-      "member": "Metrics.DroppedEventsTotal",
-      "disposition": "RETAIN_EXACT",
-      "risk": "EXTERNAL_UNKNOWN_POSSIBLE",
-      "decision": "Retain"
-    },
-    {
-      "member": "Metrics.DroppedLinksTotal",
-      "disposition": "RETAIN_EXACT",
-      "risk": "EXTERNAL_UNKNOWN_POSSIBLE",
-      "decision": "Retain"
-    },
-    {
-      "member": "Sampling.resetSamplerCounters",
-      "disposition": "DELETE_MUTATION",
-      "risk": "EXTERNAL_UNKNOWN_POSSIBLE",
-      "decision": "Delete as binding mutation prohibition; remote reset forbidden; S-03 N7 proved remote invoke risk"
-    }
-  ],
-  "publicContractScan": {
-    "SUPPORTED.md": "No current ObjectName literals",
-    "MIGRATION.md": "No ObjectName literals",
-    "docs/contracts": "No ObjectName literals",
-    "publishedObjectNames": "Eight platform ObjectNames are live Standard MBeans — treat as supported management contract until P6 cutover"
-  },
   "e7BlockedExternalOwnerReview": false,
-  "rationale": "No deleted read relies solely on missing consumers. Deleted reads have Category B or single-truth replacement. Deleted mutations are binding."
+  "approvalBasis": [
+    "The solution is pre-production and the binding plan explicitly requires the P6 breaking cutover",
+    "E7 fixes the target contract; it does not perform deletion",
+    "Production rollout remains blocked until migration notice and external-owner survey are complete"
+  ],
+  "productionRolloutBlockers": [
+    "external JMX consumer owner survey",
+    "published migration notice for every deleted or changed member",
+    "P6 zero-reference and zero-write verification"
+  ],
+  "memberLevelEvidence": "consumer-map.json contains all 63 baseline rows and all newly added target rows",
+  "noNamedConsumerPolicy": "NO_NAMED_CONSUMER_FOUND never authorizes deletion; resetSamplerCounters is deleted by the binding zero-mutation rule"
 }

@@ -3,149 +3,51 @@
   "review": "implementation-readiness",
   "headAtReview": "0f81052557c685b9988d438a6fbd4a5a031aab7a",
   "branch": "refactor/cursor-rules",
+  "technicalPackageStatus": "READY_FOR_COMMITTEE_APPROVAL",
   "implementationGo": "NOT_GRANTED",
   "legacyDeletionGo": "BLOCKED",
   "gates": {
-    "E1": {
-      "status": "CLOSED",
-      "subject": "JMX management contract baseline",
-      "evidence": [
-        "platform-tracing-otel-javaagent-extension/src/test/resources/jmx-management-contract-baseline.json",
-        "docs/research/evidence/jmx-contract/baseline-summary.md",
-        "docs/research/evidence/jmx-contract/jmx-consumer-inventory.md"
-      ],
-      "focus": {
-        "acceptedState": "owned_by_E3_not_E1",
-        "categoryA": "owned_by_E5_not_E1",
-        "snapshotSemantics": "before_state_inventory_only"
-      }
-    },
-    "E2": {
-      "status": "CLOSED",
-      "subject": "private process-local MBeanServer",
-      "evidence": [
-        "docs/research/private-mbeanserver-spike-s03.md",
-        "docs/research/evidence/private-mbeanserver/"
-      ],
-      "focus": {
-        "privateMBeanServer": "proven",
-        "remoteIsolation": "proven",
-        "lifecycle": "proven"
-      }
-    },
+    "E1": {"status": "CLOSED", "subject": "JMX management contract baseline"},
+    "E2": {"status": "CLOSED", "subject": "private process-local MBeanServer"},
     "E3": {
       "status": "CLOSED",
       "subject": "accepted-state primitive",
       "verdict": "IMPLEMENT_AGENT_SPECIFIC_PRIMITIVE",
-      "evidence": [
-        "docs/research/accepted-state-primitive-s01.md",
-        "docs/research/evidence/accepted-state-primitive/decision-summary.json"
-      ],
-      "commits": [
-        "fdf81df4daa764e2310f10586b29285491788fd4",
-        "6909f44a1d9957a488c3e144b6f1e4949752aef5"
-      ],
-      "focus": {
-        "acceptedStatePrimitive": "Agent-specific AtomicReference envelope store",
-        "categoryALeaves": 8,
-        "snapshotSemantics": "immutable complete EffectiveTracingPolicy"
-      }
+      "evidence": "docs/research/evidence/accepted-state-primitive/decision-summary.json"
     },
-    "E4": {
-      "status": "CLOSED",
-      "subject": "tracing configuration inventory",
-      "evidence": [
-        "docs/research/tracing-configuration-key-disposition.md",
-        "docs/research/evidence/tracing-configuration-inventory/"
-      ]
-    },
+    "E4": {"status": "CLOSED", "subject": "tracing configuration inventory"},
     "E5": {
       "status": "CLOSED",
       "subject": "Category A eight-leaf binding",
-      "evidence": [
-        "docs/analysis/platform-tracing-configuration/14-category-a-binding-decision.md"
-      ],
       "categoryALeafCount": 8,
       "unknownFields": "REJECTED"
     },
     "E6": {
       "status": "CLOSED",
       "subject": "Boot/Cloud BOM baseline and refresh delivery",
-      "verdict": "APPROVE_BOOT_CLOUD_BASELINE_AND_REFRESH_DELIVERY_CONTRACT",
-      "evidence": [
-        "docs/research/boot-cloud-bom-refresh-s06.md",
-        "docs/research/evidence/boot-cloud-bom-refresh/decision-summary.json"
-      ],
-      "baseline": {
-        "springBoot": "3.5.5",
-        "springCloudTrain": "2025.0.0",
-        "springCloudConfig": "4.3.0"
-      },
-      "refreshDelivery": "SPRING_CLOUD_CONFIG_MONITOR_AND_BUS",
-      "focus": {
-        "bootBaseline": "3.5.5",
-        "cloudBaseline": "2025.0.0",
-        "refreshDelivery": "Config Monitor → Bus → Kafka → EnvironmentChangeEvent"
-      }
+      "baseline": {"springBoot": "3.5.5", "springCloudTrain": "2025.0.0", "springCloudConfig": "4.3.0"}
     },
     "E7": {
       "status": "READY_TO_CLOSE",
       "subject": "exact read-only JMX contract delta",
       "verdict": "APPROVE_EXACT_JMX_DELTA",
-      "e7Recommendation": "READY_TO_CLOSE_E7",
-      "evidence": [
-        "docs/research/jmx-read-only-delta-s07.md",
-        "docs/research/evidence/jmx-read-only-delta/decision-summary.json"
-      ],
-      "commit": "635aa03",
-      "focus": {
-        "jmxReadContract": "R3",
-        "platformAfter": {
-          "objectNames": 8,
-          "readOnlyMembers": 56,
-          "mutations": 0
-        },
-        "privateWriter": {
-          "committedDisposition": "MOVE_TO_PRIVATE_ONLY",
-          "committedOperationName": "applyPolicy",
-          "privateObjectNames": 2,
-          "privateReadMembers": 4,
-          "privateMutations": 1,
-          "exactPayloadSchemaAuthority": "P0 wire-schema gates"
-        },
-        "consumerMigration": "production_rollout_gate",
-        "zeroWritePlatform": "target_after_P6",
-        "evidenceBaseline": "committed S-07 at 635aa03; uncommitted worktree refinements excluded"
-      }
+      "evidence": "docs/research/evidence/jmx-read-only-delta/decision-summary.json",
+      "platformAfter": {"objectNames": 8, "readOnlyMembers": 56, "mutations": 0},
+      "privateWriter": {"operationName": "applySnapshot", "mutations": 1}
     },
     "E8": {
-      "status": "OPEN",
+      "status": "READY_FOR_COMMITTEE_APPROVAL",
       "subject": "implementation readiness package",
-      "verdict": "IMPLEMENTATION_NOT_READY",
-      "evidence": [
-        "docs/research/implementation-readiness-review-e8.md",
-        "docs/research/evidence/implementation-readiness/"
-      ],
+      "verdict": "READY_FOR_COMMITTEE_APPROVAL",
+      "technicalBlockers": [],
       "committeeGo": "NOT_GRANTED"
     },
-    "E9": {
-      "status": "CLOSED",
-      "subject": "Config Server provenance",
-      "evidence": [
-        "docs/research/config-server-provenance-step-0b-reproduction.md",
-        "docs/research/evidence/config-provenance/"
-      ]
-    }
+    "E9": {"status": "CLOSED", "subject": "Config Server provenance"}
   },
-  "expectedIncomingStatus": {
-    "E1": "CLOSED",
-    "E2": "CLOSED",
-    "E3": "CLOSED",
-    "E4": "CLOSED",
-    "E5": "CLOSED",
-    "E6": "CLOSED",
-    "E7": "READY_TO_CLOSE",
-    "E9": "CLOSED",
-    "implementationGo": "NOT_GRANTED"
-  }
+  "requiredCommitteeActions": [
+    "Approve p0-wire-schema-contract and p0-wire-schema-bounds",
+    "Record formal E7 closure",
+    "Accept scenario, rollback and pre-production security-debt records",
+    "Record E8 closure and Implementation GO"
+  ]
 }

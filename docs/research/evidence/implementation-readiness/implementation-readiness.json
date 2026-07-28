@@ -1,87 +1,54 @@
 {
   "spikeId": "E8",
   "review": "implementation-readiness",
-  "verdict": "IMPLEMENTATION_NOT_READY",
+  "verdict": "READY_FOR_COMMITTEE_APPROVAL",
+  "technicalPackageStatus": "COMPLETE",
   "implementationGo": "NOT_GRANTED",
-  "p1MayStartWithoutNewResearchAdrOrArchitectureDecisions": false,
+  "p1MayStartNow": false,
   "additionalTopologyResearchRequired": false,
-  "additionalScopedP0DesignArtifactsRequired": true,
+  "additionalScopedP0DesignArtifactsRequired": false,
+  "technicalBlockers": [],
+  "committeeDecisionItems": [
+    "Approve exact versioned Open-Type schema and bounds",
+    "Formally close E7",
+    "Accept scenario and rollback matrices",
+    "Accept current security debt for pre-production only through P6",
+    "Record E8 closure and Implementation GO"
+  ],
   "scores": {
-    "architectureCompleteness": 8,
-    "contractConsistency": 9,
-    "consumerSafety": 8,
-    "migrationClarity": 8,
-    "testability": 9,
-    "operationalReadiness": 6,
-    "implementationReadiness": 5,
+    "architectureCompleteness": 10,
+    "contractConsistency": 10,
+    "consumerSafety": 9,
+    "migrationClarity": 10,
+    "testability": 10,
+    "operationalReadiness": 7,
+    "implementationReadiness": 9,
     "scale": 10
   },
-  "architectureBlockers": [
-    "p0-wire-schema-contract",
-    "p0-wire-schema-bounds",
-    "Agent/App Open Types and bounds approval",
-    "formal E7 closure",
-    "§28 security-debt acceptance",
-    "§28 rollback/scenario acceptance",
-    "committee Implementation GO record"
-  ],
-  "implementationBlockers": [
-    "P1 blocked by binding-plan requirement that wire schema/bounds be approved before P1",
-    "No production implementation phase is authorized while Implementation GO is NOT_GRANTED"
-  ],
+  "phaseReview": {
+    "P1": {"architectureComplete": true, "implementationOnlyAfterGo": true, "containsUnresolvedDesign": false},
+    "P2": {"architectureComplete": true, "implementationOnlyAfterGo": true, "containsUnresolvedDesign": false},
+    "P3": {"architectureComplete": true, "implementationOnlyAfterGo": true, "containsUnresolvedDesign": false},
+    "P4": {"architectureComplete": true, "implementationOnlyAfterGo": true, "containsUnresolvedDesign": false},
+    "P5": {"architectureComplete": true, "implementationOnlyAfterGo": true, "containsUnresolvedDesign": false},
+    "P6": {"architectureComplete": true, "implementationOnlyAfterGo": true, "containsUnresolvedDesign": false},
+    "P7": {"architectureComplete": true, "implementationOnlyAfterGo": true, "containsUnresolvedDesign": false}
+  },
   "remainingImplementationWork": [
-    "P1 accepted-state model/store/diagnostics after GO",
-    "P2 dual Open-Type codecs and private writer wiring after wire schema",
-    "P3 Category A holder removal",
-    "P4 Config bridge and BOM/SUPPORTED consumer alignment",
-    "P5 fail-closed and latency proofs",
-    "P6 coherent cutover and zero-write platform proof",
-    "P7 docs/samples/migration closure"
+    "P1 accepted-state production implementation",
+    "P2 independent Agent/App codecs and private writer",
+    "P3 holder migration",
+    "P4 Config Server bridge",
+    "P5 fail-closed and latency verification",
+    "P6 coherent cutover",
+    "P7 rollout package"
   ],
   "remainingOperationalWork": [
-    "Execute corporate-bus-readiness verificationRequiredBeforeProduction checks",
+    "Corporate Bus pre-production verification",
     "External JMX consumer survey and migration notice",
-    "Config Server monitor/webhook operational runbooks",
-    "Security-debt acceptance window management before P6"
+    "Config Server monitor and webhook runbooks"
   ],
-  "phaseReview": {
-    "P1": {
-      "architectureComplete": "PARTIAL — Agent accepted-state design complete (E3/E5); wire schema still required by binding plan before P1",
-      "implementationOnly": false,
-      "containsUnresolvedDesign": true
-    },
-    "P2": {
-      "architectureComplete": "PARTIAL — writer topology complete (E2/E7); exact CompositeType/bounds open",
-      "implementationOnly": false,
-      "containsUnresolvedDesign": true
-    },
-    "P3": {
-      "architectureComplete": true,
-      "implementationOnly": true,
-      "containsUnresolvedDesign": false
-    },
-    "P4": {
-      "architectureComplete": true,
-      "implementationOnly": true,
-      "containsUnresolvedDesign": false
-    },
-    "P5": {
-      "architectureComplete": true,
-      "implementationOnly": true,
-      "containsUnresolvedDesign": false
-    },
-    "P6": {
-      "architectureComplete": true,
-      "implementationOnly": true,
-      "containsUnresolvedDesign": false
-    },
-    "P7": {
-      "architectureComplete": true,
-      "implementationOnly": true,
-      "containsUnresolvedDesign": false
-    }
-  },
-  "recommendedNextPhase": "Complete remaining P0 wire-schema/bounds artifacts and formal E7/§28 closure; do not start P1",
+  "recommendedNextPhase": "Architecture committee review; do not start P1 until explicit Implementation GO",
   "productionCodeChanged": false,
   "cursorPlanChanged": false
 }

@@ -1,1502 +1,1853 @@
 ﻿{
-    "spikeId":  "S-07",
-    "memberCount":  63,
-    "requiredFields":  [
-                           "baselineMemberId",
-                           "objectName",
-                           "kind",
-                           "name",
-                           "readable",
-                           "writable",
-                           "returnOpenType",
-                           "parameterOpenTypes",
-                           "currentSemanticMeaning",
-                           "currentImplementationOwner",
-                           "currentRepositoryConsumers",
-                           "externalConsumerStatus",
-                           "targetDisposition",
-                           "targetSemanticMeaning",
-                           "migrationRequirement",
-                           "reason",
-                           "verification"
-                       ],
-    "members":  [
-                    {
-                        "baselineMemberId":  "M01",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-                        "kind":  "OPERATION",
-                        "name":  "applyPolicy",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "MOVE_TO_PRIVATE_ONLY",
-                        "targetSemanticMeaning":  "Single private aggregate writer",
-                        "migrationRequirement":  "P4 private writer; P6 delete platform mutation",
-                        "reason":  "Binding one private writer",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M02",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-                        "kind":  "OPERATION",
-                        "name":  "readAppliedState",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  false,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "REPLACE_WITH_AGGREGATE_READ",
-                        "targetSemanticMeaning":  "Accepted-state metadata CompositeData projection",
-                        "migrationRequirement":  "Rewrite Open Type schema",
-                        "reason":  "Single-truth accepted visibility",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M03",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ConfigAuditTrail",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M04",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ConfigReloadMetrics",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M05",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "InvalidConfigCount",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M06",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "PlatformLogLevel",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Read-only Category A projection; writable=false after P6",
-                        "migrationRequirement":  "Stop setters; mutate via private aggregate writer",
-                        "reason":  "Retain Category A visibility; delete write",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M07",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "PropagationEnabled",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Read-only Category A projection; writable=false after P6",
-                        "migrationRequirement":  "Stop setters; mutate via private aggregate writer",
-                        "reason":  "Retain Category A visibility; delete write",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M08",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SafeWrapperMetrics",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M09",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportDroppedAfterShutdownTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M10",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportDroppedOverflowTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M11",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportEnabled",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Read-only Category A projection; writable=false after P6",
-                        "migrationRequirement":  "Stop setters; mutate via private aggregate writer",
-                        "reason":  "Retain Category A visibility; delete write",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M12",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportFailuresTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M13",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportQueueCapacity",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M14",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportQueueSize",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M15",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportTimeoutsTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M16",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SafeExporterMetrics",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M17",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "Capabilities",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M18",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExportPathProtected",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M19",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ExtensionVersion",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M20",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "FailureCode",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M21",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "FailureMessage",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M22",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "LifecycleState",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M23",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "Profile",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M24",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "PropagationHooksInstalled",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M25",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ProtocolVersion",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M26",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "RequiredCapabilities",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M27",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "RequiredSpanProcessorsInstalled",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M28",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SamplerInstalled",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M29",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SanitizerInstalled",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M30",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ActiveSpanCount",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M31",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ActiveTraceCount",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M32",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "DroppedAttributesTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M33",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "DroppedEventsTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M34",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "DroppedLinksTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M35",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ForcedSpanCloses",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M36",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ForcedTraceCloses",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M37",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ProcessorErrorsByName",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M38",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ProcessorErrorsTotal",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M39",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "DropPathPrefixes",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_OBSOLETE_READ",
-                        "targetSemanticMeaning":  "Category B startup-only; removed from platform JMX",
-                        "migrationRequirement":  "Remove JMX/Actuator mutation and readback",
-                        "reason":  "Category B not Category A",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M40",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ForceRecordValues",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_OBSOLETE_READ",
-                        "targetSemanticMeaning":  "Category B startup-only; removed from platform JMX",
-                        "migrationRequirement":  "Remove JMX/Actuator mutation and readback",
-                        "reason":  "Category B not Category A",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M41",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "RouteRatios",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Read-only Category A projection; writable=false after P6",
-                        "migrationRequirement":  "Stop setters; mutate via private aggregate writer",
-                        "reason":  "Retain Category A visibility; delete write",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M42",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SamplerDecisionCounts",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M43",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SamplerEnabled",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Read-only Category A projection; writable=false after P6",
-                        "migrationRequirement":  "Stop setters; mutate via private aggregate writer",
-                        "reason":  "Retain Category A visibility; delete write",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M44",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SamplingConfigLastUpdatedSource",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_OBSOLETE_READ",
-                        "targetSemanticMeaning":  "Per-domain source removed; use aggregate apply metadata",
-                        "migrationRequirement":  "Migrate to LastAttemptId/LastApplyOutcome",
-                        "reason":  "Eliminate duplicate provenance owners",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M45",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SamplingConfigVersion",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "REPLACE_WITH_AGGREGATE_READ",
-                        "targetSemanticMeaning":  "Replaced by AcceptedSequence on Control",
-                        "migrationRequirement":  "Migrate to Control AcceptedSequence",
-                        "reason":  "Single version owner E3",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M46",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "SamplingRatio",
-                        "readable":  true,
-                        "writable":  true,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Read-only Category A projection; writable=false after P6",
-                        "migrationRequirement":  "Stop setters; mutate via private aggregate writer",
-                        "reason":  "Retain Category A visibility; delete write",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M47",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "OPERATION",
-                        "name":  "getSamplerDecisionCount",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  false,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read operation",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M48",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "OPERATION",
-                        "name":  "resetSamplerCounters",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_MUTATION",
-                        "targetSemanticMeaning":  "Counters monotonic; reset only on restart",
-                        "migrationRequirement":  "Dashboards use rate/increase",
-                        "reason":  "Binding mutation not diagnostic",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M49",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "OPERATION",
-                        "name":  "updateSamplingPolicy",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_MUTATION",
-                        "targetSemanticMeaning":  "Domain setters deleted; not relocated privately",
-                        "migrationRequirement":  "Complete snapshot via private applyPolicy",
-                        "reason":  "Platform zero mutations after P6",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M50",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-                        "kind":  "OPERATION",
-                        "name":  "updateSamplingPolicy",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_MUTATION",
-                        "targetSemanticMeaning":  "Domain setters deleted; not relocated privately",
-                        "migrationRequirement":  "Complete snapshot via private applyPolicy",
-                        "reason":  "Platform zero mutations after P6",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M51",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ScrubbingConfigLastUpdatedSource",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_OBSOLETE_READ",
-                        "targetSemanticMeaning":  "Per-domain source removed; use aggregate apply metadata",
-                        "migrationRequirement":  "Migrate to LastAttemptId/LastApplyOutcome",
-                        "reason":  "Eliminate duplicate provenance owners",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M52",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ScrubbingConfigVersion",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "REPLACE_WITH_AGGREGATE_READ",
-                        "targetSemanticMeaning":  "Replaced by AcceptedSequence on Control",
-                        "migrationRequirement":  "Migrate to Control AcceptedSequence",
-                        "reason":  "Single version owner E3",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M53",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ScrubbingEnabled",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Category B startup scrubbing enabled; read-only",
-                        "migrationRequirement":  "Document Category B",
-                        "reason":  "Structural drift visibility",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M54",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ScrubbingMetrics",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M55",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-                        "kind":  "OPERATION",
-                        "name":  "updateScrubbingPolicy",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_MUTATION",
-                        "targetSemanticMeaning":  "Domain setters deleted; not relocated privately",
-                        "migrationRequirement":  "Complete snapshot via private applyPolicy",
-                        "reason":  "Platform zero mutations after P6",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M56",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-                        "kind":  "OPERATION",
-                        "name":  "updateScrubbingPolicy",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_MUTATION",
-                        "targetSemanticMeaning":  "Domain setters deleted; not relocated privately",
-                        "migrationRequirement":  "Complete snapshot via private applyPolicy",
-                        "reason":  "Platform zero mutations after P6",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M57",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ValidationConfigLastUpdatedSource",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_OBSOLETE_READ",
-                        "targetSemanticMeaning":  "Per-domain source removed; use aggregate apply metadata",
-                        "migrationRequirement":  "Migrate to LastAttemptId/LastApplyOutcome",
-                        "reason":  "Eliminate duplicate provenance owners",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M58",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ValidationConfigVersion",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "REPLACE_WITH_AGGREGATE_READ",
-                        "targetSemanticMeaning":  "Replaced by AcceptedSequence on Control",
-                        "migrationRequirement":  "Migrate to Control AcceptedSequence",
-                        "reason":  "Single version owner E3",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M59",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ValidationEnabled",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M60",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ValidationStrict",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_EXACT",
-                        "targetSemanticMeaning":  "Unchanged read-only diagnostic",
-                        "migrationRequirement":  "None",
-                        "reason":  "Operational read retained",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M61",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-                        "kind":  "ATTRIBUTE",
-                        "name":  "ValidationStrictRuntimeAllowed",
-                        "readable":  true,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "currentSemanticMeaning":  "Attribute exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "RETAIN_SEMANTICS_CLARIFIED",
-                        "targetSemanticMeaning":  "Category B envelope for validation.strict",
-                        "migrationRequirement":  "Clarify Category B ownership",
-                        "reason":  "Security envelope",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M62",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-                        "kind":  "OPERATION",
-                        "name":  "updateValidationPolicy",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_MUTATION",
-                        "targetSemanticMeaning":  "Domain setters deleted; not relocated privately",
-                        "migrationRequirement":  "Complete snapshot via private applyPolicy",
-                        "reason":  "Platform zero mutations after P6",
-                        "verification":  "member-inventory + baseline reproduction"
-                    },
-                    {
-                        "baselineMemberId":  "M63",
-                        "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-                        "kind":  "OPERATION",
-                        "name":  "updateValidationPolicy",
-                        "readable":  false,
-                        "writable":  false,
-                        "returnOpenType":  null,
-                        "parameterOpenTypes":  [
-
-                                               ],
-                        "mutating":  true,
-                        "impact":  3,
-                        "currentSemanticMeaning":  "Operation exposed for management",
-                        "currentImplementationOwner":  "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
-                        "currentRepositoryConsumers":  [
-                                                           "SEE_CONSUMER_MAP"
-                                                       ],
-                        "externalConsumerStatus":  "CLASSIFIED_IN_CONSUMER_MAP",
-                        "targetDisposition":  "DELETE_MUTATION",
-                        "targetSemanticMeaning":  "Domain setters deleted; not relocated privately",
-                        "migrationRequirement":  "Complete snapshot via private applyPolicy",
-                        "reason":  "Platform zero mutations after P6",
-                        "verification":  "member-inventory + baseline reproduction"
-                    }
-                ],
-    "dispositionHistogram":  {
-                                 "DELETE_MUTATION":  7,
-                                 "MOVE_TO_PRIVATE_ONLY":  1,
-                                 "REPLACE_WITH_AGGREGATE_READ":  4,
-                                 "DELETE_OBSOLETE_READ":  5,
-                                 "RETAIN_SEMANTICS_CLARIFIED":  8,
-                                 "RETAIN_EXACT":  38
-                             }
+  "spikeId": "S-07",
+  "schemaVersion": 2,
+  "baselineFixture": "platform-tracing-otel-javaagent-extension/src/test/resources/jmx-management-contract-baseline.json",
+  "memberCount": 63,
+  "identityRule": "baseline ID + server-scoped ObjectName + kind + name + exact Java signature",
+  "openTypeRule": "Baseline is Standard MBeanInfo: exact Java signatures are binding; Open-Type strings classify boundary compatibility without inventing an undeclared CompositeType",
+  "members": [
+    {
+      "baselineMemberId": "M01",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "OPERATION",
+      "name": "applyPolicy",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [
+        "javax.management.openmbean.CompositeData"
+      ],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [
+        "CompositeData; exact CompositeType is not declared by Standard MBeanInfo"
+      ],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean",
+      "currentRepositoryConsumers": [
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Legacy partial applyPolicy operation is deleted and is not relocated",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "replacementTargetMemberIds": [
+        "PRIV-W01"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "P6 deletes legacy partial protocol and string-coercion codec; P2 adds independent strict writer",
+      "reason": "The binding plan prohibits relocating the legacy partial protocol",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M02",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "OPERATION",
+      "name": "readAppliedState",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "javax.management.openmbean.CompositeData",
+      "parameterJavaTypes": [],
+      "returnOpenType": "CompositeData; exact CompositeType is not declared by Standard MBeanInfo",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean",
+      "currentRepositoryConsumers": [
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "REPLACE_WITH_AGGREGATE_READ",
+      "targetSemanticMeaning": "Accepted-state metadata CompositeData projection",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Rewrite Open Type schema",
+      "reason": "Single-truth accepted visibility",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M03",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "ConfigAuditTrail",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "[Ljava.lang.String;",
+      "parameterJavaTypes": [],
+      "returnOpenType": "ArrayType(SimpleType.STRING)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M04",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "ConfigReloadMetrics",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.util.Map",
+      "parameterJavaTypes": [],
+      "returnOpenType": "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Same read meaning projected through deterministic bounded TabularData",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M05",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "InvalidConfigCount",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M06",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "PlatformLogLevel",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Stop setters; mutate via private aggregate writer",
+      "reason": "Retain Category A visibility; delete write",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M07",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "PropagationEnabled",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Stop setters; mutate via private aggregate writer",
+      "reason": "Retain Category A visibility; delete write",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M08",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "SafeWrapperMetrics",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.util.Map",
+      "parameterJavaTypes": [],
+      "returnOpenType": "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Same read meaning projected through deterministic bounded TabularData",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M09",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportDroppedAfterShutdownTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M10",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportDroppedOverflowTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M11",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportEnabled",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Stop setters; mutate via private aggregate writer",
+      "reason": "Retain Category A visibility; delete write",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M12",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportFailuresTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M13",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportQueueCapacity",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "int",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.INTEGER",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M14",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportQueueSize",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "int",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.INTEGER",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M15",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportTimeoutsTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M16",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "SafeExporterMetrics",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.util.Map",
+      "parameterJavaTypes": [],
+      "returnOpenType": "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Same read meaning projected through deterministic bounded TabularData",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M17",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "Capabilities",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "[Ljava.lang.String;",
+      "parameterJavaTypes": [],
+      "returnOpenType": "ArrayType(SimpleType.STRING)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M18",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "ExportPathProtected",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M19",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "ExtensionVersion",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M20",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "FailureCode",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M21",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "FailureMessage",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M22",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "LifecycleState",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M23",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "Profile",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M24",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "PropagationHooksInstalled",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M25",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "ProtocolVersion",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "int",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.INTEGER",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M26",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "RequiredCapabilities",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "[Ljava.lang.String;",
+      "parameterJavaTypes": [],
+      "returnOpenType": "ArrayType(SimpleType.STRING)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M27",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "RequiredSpanProcessorsInstalled",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M28",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "SamplerInstalled",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M29",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "SanitizerInstalled",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl",
+      "currentRepositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M30",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ActiveSpanCount",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "int",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.INTEGER",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M31",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ActiveTraceCount",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "int",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.INTEGER",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M32",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "DroppedAttributesTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M33",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "DroppedEventsTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M34",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "DroppedLinksTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M35",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ForcedSpanCloses",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M36",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ForcedTraceCloses",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M37",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ProcessorErrorsByName",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.util.Map",
+      "parameterJavaTypes": [],
+      "returnOpenType": "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Same read meaning projected through deterministic bounded TabularData",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M38",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ProcessorErrorsTotal",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M39",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "DropPathPrefixes",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "[Ljava.lang.String;",
+      "parameterJavaTypes": [],
+      "returnOpenType": "ArrayType(SimpleType.STRING)",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_OBSOLETE_READ",
+      "targetSemanticMeaning": "Category B startup-only; removed from platform JMX",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Remove JMX/Actuator mutation and readback",
+      "reason": "Category B not Category A",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M40",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "ForceRecordValues",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "[Ljava.lang.String;",
+      "parameterJavaTypes": [],
+      "returnOpenType": "ArrayType(SimpleType.STRING)",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_OBSOLETE_READ",
+      "targetSemanticMeaning": "Category B startup-only; removed from platform JMX",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Remove JMX/Actuator mutation and readback",
+      "reason": "Category B not Category A",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M41",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "RouteRatios",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "java.util.Map",
+      "parameterJavaTypes": [],
+      "returnOpenType": "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Stop setters; mutate via private aggregate writer",
+      "reason": "Retain Category A visibility; delete write",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M42",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplerDecisionCounts",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.util.Map",
+      "parameterJavaTypes": [],
+      "returnOpenType": "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Same read meaning projected through deterministic bounded TabularData",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M43",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplerEnabled",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Stop setters; mutate via private aggregate writer",
+      "reason": "Retain Category A visibility; delete write",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M44",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplingConfigLastUpdatedSource",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_OBSOLETE_READ",
+      "targetSemanticMeaning": "Per-domain source removed; use aggregate apply metadata",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Migrate to LastAttemptId/LastApplyOutcome",
+      "reason": "Eliminate duplicate provenance owners",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M45",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplingConfigVersion",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "REPLACE_WITH_AGGREGATE_READ",
+      "targetSemanticMeaning": "Replaced by AcceptedSequence on Control",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Migrate to Control AcceptedSequence",
+      "reason": "Single version owner E3",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M46",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplingRatio",
+      "readable": true,
+      "writable": true,
+      "returnJavaType": "double",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.DOUBLE",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Stop setters; mutate via private aggregate writer",
+      "reason": "Retain Category A visibility; delete write",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M47",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "getSamplerDecisionCount",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [
+        "java.lang.String",
+        "java.lang.String"
+      ],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [
+        "SimpleType.STRING",
+        "SimpleType.STRING"
+      ],
+      "mutating": false,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read operation",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M48",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "resetSamplerCounters",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "void",
+      "parameterJavaTypes": [],
+      "returnOpenType": "VOID",
+      "parameterOpenTypes": [],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Counters monotonic; reset only on restart",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Dashboards use rate/increase",
+      "reason": "Binding mutation not diagnostic",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M49",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "updateSamplingPolicy",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "void",
+      "parameterJavaTypes": [
+        "boolean",
+        "double",
+        "[Ljava.lang.String;",
+        "[Ljava.lang.String;",
+        "[Ljava.lang.String;",
+        "[D",
+        "java.lang.String"
+      ],
+      "returnOpenType": "VOID",
+      "parameterOpenTypes": [
+        "SimpleType.BOOLEAN",
+        "SimpleType.DOUBLE",
+        "ArrayType(SimpleType.STRING)",
+        "ArrayType(SimpleType.STRING)",
+        "ArrayType(SimpleType.STRING)",
+        "ArrayType(SimpleType.DOUBLE)",
+        "SimpleType.STRING"
+      ],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Domain setters deleted; not relocated privately",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Complete snapshot via private applyPolicy",
+      "reason": "Platform zero mutations after P6",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M50",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "updateSamplingPolicy",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "void",
+      "parameterJavaTypes": [
+        "boolean",
+        "double",
+        "java.util.Map",
+        "[Ljava.lang.String;",
+        "[Ljava.lang.String;"
+      ],
+      "returnOpenType": "VOID",
+      "parameterOpenTypes": [
+        "SimpleType.BOOLEAN",
+        "SimpleType.DOUBLE",
+        "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+        "ArrayType(SimpleType.STRING)",
+        "ArrayType(SimpleType.STRING)"
+      ],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Domain setters deleted; not relocated privately",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Complete snapshot via private applyPolicy",
+      "reason": "Platform zero mutations after P6",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M51",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingConfigLastUpdatedSource",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_OBSOLETE_READ",
+      "targetSemanticMeaning": "Per-domain source removed; use aggregate apply metadata",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Migrate to LastAttemptId/LastApplyOutcome",
+      "reason": "Eliminate duplicate provenance owners",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M52",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingConfigVersion",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "REPLACE_WITH_AGGREGATE_READ",
+      "targetSemanticMeaning": "Replaced by AcceptedSequence on Control",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Migrate to Control AcceptedSequence",
+      "reason": "Single version owner E3",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M53",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingEnabled",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Document Category B",
+      "reason": "Structural drift visibility",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M54",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingMetrics",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.util.Map",
+      "parameterJavaTypes": [],
+      "returnOpenType": "NON_OPEN_STANDARD_MBEAN_TYPE(java.util.Map)",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Same read meaning projected through deterministic bounded TabularData",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M55",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "OPERATION",
+      "name": "updateScrubbingPolicy",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "void",
+      "parameterJavaTypes": [
+        "boolean",
+        "[Ljava.lang.String;"
+      ],
+      "returnOpenType": "VOID",
+      "parameterOpenTypes": [
+        "SimpleType.BOOLEAN",
+        "ArrayType(SimpleType.STRING)"
+      ],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Domain setters deleted; not relocated privately",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Complete snapshot via private applyPolicy",
+      "reason": "Platform zero mutations after P6",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M56",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "OPERATION",
+      "name": "updateScrubbingPolicy",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "void",
+      "parameterJavaTypes": [
+        "boolean",
+        "[Ljava.lang.String;",
+        "java.lang.String"
+      ],
+      "returnOpenType": "VOID",
+      "parameterOpenTypes": [
+        "SimpleType.BOOLEAN",
+        "ArrayType(SimpleType.STRING)",
+        "SimpleType.STRING"
+      ],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.PlatformScrubbingControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Domain setters deleted; not relocated privately",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Complete snapshot via private applyPolicy",
+      "reason": "Platform zero mutations after P6",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M57",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationConfigLastUpdatedSource",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "java.lang.String",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.STRING",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_OBSOLETE_READ",
+      "targetSemanticMeaning": "Per-domain source removed; use aggregate apply metadata",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Migrate to LastAttemptId/LastApplyOutcome",
+      "reason": "Eliminate duplicate provenance owners",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M58",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationConfigVersion",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "long",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.LONG",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "REPLACE_WITH_AGGREGATE_READ",
+      "targetSemanticMeaning": "Replaced by AcceptedSequence on Control",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Migrate to Control AcceptedSequence",
+      "reason": "Single version owner E3",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M59",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationEnabled",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M60",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationStrict",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_EXACT",
+      "targetSemanticMeaning": "Unchanged read-only diagnostic",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED",
+      "migrationRequirement": "None",
+      "reason": "Operational read retained",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M61",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationStrictRuntimeAllowed",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "boolean",
+      "parameterJavaTypes": [],
+      "returnOpenType": "SimpleType.BOOLEAN",
+      "parameterOpenTypes": [],
+      "mutating": false,
+      "currentSemanticMeaning": "Attribute exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "targetSemanticMeaning": "Read-only projection; legacy setter is removed where present",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Clarify Category B ownership",
+      "reason": "Security envelope",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M62",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "OPERATION",
+      "name": "updateValidationPolicy",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "void",
+      "parameterJavaTypes": [
+        "boolean",
+        "boolean"
+      ],
+      "returnOpenType": "VOID",
+      "parameterOpenTypes": [
+        "SimpleType.BOOLEAN",
+        "SimpleType.BOOLEAN"
+      ],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Domain setters deleted; not relocated privately",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Complete snapshot via private applyPolicy",
+      "reason": "Platform zero mutations after P6",
+      "verification": "baseline fixture identity + target-contract bijection"
+    },
+    {
+      "baselineMemberId": "M63",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "OPERATION",
+      "name": "updateValidationPolicy",
+      "readable": false,
+      "writable": false,
+      "returnJavaType": "void",
+      "parameterJavaTypes": [
+        "boolean",
+        "boolean",
+        "java.lang.String"
+      ],
+      "returnOpenType": "VOID",
+      "parameterOpenTypes": [
+        "SimpleType.BOOLEAN",
+        "SimpleType.BOOLEAN",
+        "SimpleType.STRING"
+      ],
+      "mutating": true,
+      "impact": 3,
+      "currentSemanticMeaning": "Operation exposed for management",
+      "currentImplementationOwner": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl",
+      "currentRepositoryConsumers": [
+        "CLIENT",
+        "TEST"
+      ],
+      "externalConsumerStatus": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "targetDisposition": "DELETE_MUTATION",
+      "targetSemanticMeaning": "Domain setters deleted; not relocated privately",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION",
+      "migrationRequirement": "Complete snapshot via private applyPolicy",
+      "reason": "Platform zero mutations after P6",
+      "verification": "baseline fixture identity + target-contract bijection"
+    }
+  ],
+  "dispositionHistogram": {
+    "DELETE_MUTATION": 8,
+    "REPLACE_WITH_AGGREGATE_READ": 4,
+    "RETAIN_EXACT": 32,
+    "RETAIN_SEMANTICS_CLARIFIED": 14,
+    "DELETE_OBSOLETE_READ": 5
+  }
 }

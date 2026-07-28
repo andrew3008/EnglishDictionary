@@ -24,15 +24,28 @@ After P6:
 | Surface | ObjectNames | Members | Mutations |
 | --- | ---: | ---: | ---: |
 | Platform MBeanServer | **8** | **56** read-only | **0** |
-| Private MBeanServer | **2** | **4** read + **1** write | **1** (`applyPolicy`) |
+| Private MBeanServer | **2** | **6** read + **1** write | **1** (`applySnapshot`) |
 
-All **16** semantic mutations leave the platform server. `applyPolicy` moves private-only. `resetSamplerCounters` is deleted. Category B `DropPathPrefixes` / `ForceRecordValues` leave platform JMX. Per-domain `*ConfigVersion` / `*LastUpdatedSource` are replaced by Control aggregate accepted-state attributes.
+All **16** semantic mutations leave the platform server. Legacy partial
+`applyPolicy` is deleted and is not relocated. A separate `ADD_PRIVATE_MUTATION`
+member, `applySnapshot(CompositeData) -> CompositeData`, defines the new strict
+complete-snapshot writer role; its exact payload schema and bounds are defined
+by the E8 P0 wire-schema artifacts and are ready for committee approval.
+`resetSamplerCounters` is deleted. Category B
+`DropPathPrefixes` / `ForceRecordValues` leave platform JMX. Per-domain
+`*ConfigVersion` / `*LastUpdatedSource` are replaced by Control aggregate
+accepted-state attributes.
 
 ---
 
 ## 2. Gate E7 recommendation
 
-`READY_TO_CLOSE_E7` — live baseline matches committed fixture; all 8 ObjectNames and 63 members have exact dispositions; platform after-state has 0 mutations; external-consumer risk does not block; production code unchanged.
+`READY_TO_CLOSE_E7` — live baseline matches committed fixture; all 8 ObjectNames
+and 63 members have exact identities, Java signatures and mutually exclusive
+dispositions; the complete 56-row platform target and 7-row private target are
+machine-readable; platform after-state has 0 mutations; production code is
+unchanged. External owner survey and migration notice remain production-rollout
+gates rather than E7 evidence gaps.
 
 Committee/plan owner closes E7. This spike does not close it autonomously.
 
@@ -87,13 +100,19 @@ Disposition histogram:
 
 | Disposition | Count |
 | --- | ---: |
-| RETAIN_EXACT | 38 |
-| RETAIN_SEMANTICS_CLARIFIED | 8 |
+| RETAIN_EXACT | 32 |
+| RETAIN_SEMANTICS_CLARIFIED | 14 |
 | REPLACE_WITH_AGGREGATE_READ | 4 |
 | DELETE_OBSOLETE_READ | 5 |
-| DELETE_MUTATION | 7 |
-| MOVE_TO_PRIVATE_ONLY | 1 |
+| DELETE_MUTATION | 8 |
+| MOVE_TO_PRIVATE_ONLY | 0 |
 | **Total** | **63** |
+
+The 14 clarified members consist of eight existing strict reads and six
+writable attributes converted to read-only. Six retained `java.util.Map`
+reads are included in the first group and become deterministic bounded
+`TabularData`; therefore they are not incorrectly classified as
+`RETAIN_EXACT`.
 
 ---
 
@@ -119,14 +138,16 @@ All 16 semantic mutations:
 | 3 | Export ExportEnabled (writable) | RETAIN as read-only |
 | 4–5 | Sampling DropPathPrefixes, ForceRecordValues | DELETE_OBSOLETE_READ |
 | 6–8 | Sampling RouteRatios, SamplerEnabled, SamplingRatio | RETAIN as read-only |
-| 9 | Control applyPolicy | **MOVE_TO_PRIVATE_ONLY** |
+| 9 | Control legacy partial applyPolicy | **DELETE_MUTATION**; replacement is new private `PRIV-W01 applySnapshot` |
 | 10–11 | Sampling updateSamplingPolicy ×2 | DELETE_MUTATION |
 | 12 | Sampling resetSamplerCounters | DELETE_MUTATION |
 | 13–14 | Scrubbing updateScrubbingPolicy ×2 | DELETE_MUTATION |
 | 15–16 | Validation updateValidationPolicy ×2 | DELETE_MUTATION |
 
 Platform after P6: **writable attributes = 0**, **mutating operations = 0**.
-Private: **exactly one** aggregate writer. No domain setters on private server.
+Private: six marker reads plus **exactly one new** aggregate writer. The writer
+rejects partial snapshots and unknown fields. No legacy string-coercion codec
+or domain setter survives on the private server.
 
 ---
 
@@ -158,12 +179,24 @@ Added reads (9): RuntimeInstanceId, AcceptedSequence, AcceptedPolicyDigest, Last
 ```text
 Before: ObjectNames 8 | Members 63 | Read-only 47 | Mutations 16
 After:  Platform ON 8 | Platform members 56 | Platform mutations 0
-        Private ON 2 | Private reads 4 | Private mutations 1
-        Added reads 9 | Deleted reads 8 | Renamed reads 0
+        Private ON 2 | Private reads 6 | Private mutations 1
+        Added platform reads 9 | Added private reads 6
         Deleted mutations from platform 16
 ```
 
-Arithmetic identity verified in `before-after-delta.json` (`check: true`).
+Exact formulas, including member IDs:
+
+```text
+Baseline strict reads = 32 retained exact + 8 clarified strict reads
+                      + 4 replacement candidates + 3 deleted strict reads = 47
+Target platform      = 32 retained exact + 8 clarified strict reads
+                      + 6 converted writable attributes
+                      + 1 surviving replacement + 9 new reads = 56
+Target private reads = 0 moved reads + 6 new marker reads = 6
+```
+
+`jmxReadOnlyDeltaVerify` recomputes these counts from baseline and target rows;
+it does not trust a stored boolean result.
 
 ---
 
@@ -182,7 +215,9 @@ Zero-write platform verification: extend S-03 M12 permanently — assert every p
 ## 18. Test strategy
 
 - `jmxManagementContractVerify` — live baseline = fixture
-- `jmxReadOnlyDeltaVerify` — inventory completeness, 16 mutations, arithmetic, R3 decision
+- `jmxReadOnlyDeltaVerify` — exact baseline bijection and signatures, 16
+  mutations, complete target identities, arithmetic, ObjectName and consumer
+  accounting, strict private-writer replacement
 - `privateMBeanServerVerify` — private/platform split evidence (S-03)
 - P6: zero-write scan + consumer migration tests
 
@@ -218,6 +253,10 @@ Rollback unit: entire unreleased train.
 
 ## 21. Remaining blockers
 
-**For E7:** none from evidence — recommend `READY_TO_CLOSE_E7`.
+**For E7:** none from corrected evidence — recommend `READY_TO_CLOSE_E7`.
 
-**For E8 / later:** P0 wire schema + bounds; Implementation GO; P6 zero-write enforcement; optional external JMX consumer survey before production rollout (not an E7 blocker).
+**For E8 / later:** committee approval of the completed P0 wire schema and bounds;
+Implementation GO; P6 zero-write
+and zero-reference enforcement. External JMX consumer survey and migration
+notice are mandatory before production rollout, but do not block the
+pre-production E7 target-contract decision.

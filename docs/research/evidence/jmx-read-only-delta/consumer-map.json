@@ -1,51 +1,1326 @@
 {
   "spikeId": "S-07",
+  "schemaVersion": 2,
   "sourceInventory": "docs/research/evidence/jmx-contract/jmx-consumer-inventory.md",
-  "consumerClasses": [
-    "CLIENT",
-    "ACTUATOR",
-    "HEALTH",
-    "TEST",
-    "BENCHMARK",
-    "PERF",
-    "DOC",
-    "DASHBOARD",
-    "ALERT",
-    "JMX_EXPORTER",
-    "RUNBOOK",
-    "EXTERNAL_UNKNOWN",
-    "NO_NAMED_CONSUMER_FOUND"
-  ],
-  "namedProductionConsumers": [
+  "policy": "Every baseline and added target member has explicit consumers, risk, owner, replacement and zero-reference status",
+  "baselineMembers": [
     {
-      "module": "platform-tracing-spring-boot-autoconfigure",
-      "symbol": "PlatformTracingJmxClient",
-      "role": "CLIENT",
-      "objectNamesCovered": 7,
-      "notes": "Omits Control ObjectName; duplicates seven Agent names"
+      "baselineMemberId": "M01",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "OPERATION",
+      "name": "applyPolicy",
+      "signature": "applyPolicy(javax.management.openmbean.CompositeData)->java.lang.String",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "replacementTargetMemberIds": [
+        "PRIV-W01"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
     },
     {
-      "module": "platform-tracing-spring-boot-autoconfigure",
-      "symbol": "TracingActuatorEndpoint",
-      "role": "ACTUATOR",
-      "objectNamesCovered": "via CLIENT",
-      "notes": "Write path gated by mutation-enabled; read path projects metrics"
+      "baselineMemberId": "M02",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "OPERATION",
+      "name": "readAppliedState",
+      "signature": "readAppliedState()->javax.management.openmbean.CompositeData",
+      "disposition": "REPLACE_WITH_AGGREGATE_READ",
+      "repositoryConsumers": [
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M02"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
     },
     {
-      "module": "platform-tracing-spring-boot-autoconfigure",
-      "symbol": "AgentExtensionObserver",
-      "role": "HEALTH",
-      "objectNamesCovered": ["Readiness/PlatformExtension"],
-      "notes": "Reads readiness attributes for Spring health"
+      "baselineMemberId": "M03",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "ConfigAuditTrail",
+      "signature": "ConfigAuditTrail:[Ljava.lang.String;",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M03"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M04",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "ConfigReloadMetrics",
+      "signature": "ConfigReloadMetrics:java.util.Map",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M04"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M05",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "InvalidConfigCount",
+      "signature": "InvalidConfigCount:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M05"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M06",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "PlatformLogLevel",
+      "signature": "PlatformLogLevel:java.lang.String",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M06"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M07",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "PropagationEnabled",
+      "signature": "PropagationEnabled:boolean",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M07"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M08",
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "kind": "ATTRIBUTE",
+      "name": "SafeWrapperMetrics",
+      "signature": "SafeWrapperMetrics:java.util.Map",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M08"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M09",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportDroppedAfterShutdownTotal",
+      "signature": "ExportDroppedAfterShutdownTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M09"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M10",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportDroppedOverflowTotal",
+      "signature": "ExportDroppedOverflowTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M10"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M11",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportEnabled",
+      "signature": "ExportEnabled:boolean",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M11"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M12",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportFailuresTotal",
+      "signature": "ExportFailuresTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M12"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M13",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportQueueCapacity",
+      "signature": "ExportQueueCapacity:int",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M13"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M14",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportQueueSize",
+      "signature": "ExportQueueSize:int",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M14"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M15",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "ExportTimeoutsTotal",
+      "signature": "ExportTimeoutsTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M15"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M16",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "kind": "ATTRIBUTE",
+      "name": "SafeExporterMetrics",
+      "signature": "SafeExporterMetrics:java.util.Map",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M16"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M17",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "Capabilities",
+      "signature": "Capabilities:[Ljava.lang.String;",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M17"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M18",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "ExportPathProtected",
+      "signature": "ExportPathProtected:boolean",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M18"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M19",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "ExtensionVersion",
+      "signature": "ExtensionVersion:java.lang.String",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M19"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M20",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "FailureCode",
+      "signature": "FailureCode:java.lang.String",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M20"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M21",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "FailureMessage",
+      "signature": "FailureMessage:java.lang.String",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M21"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M22",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "LifecycleState",
+      "signature": "LifecycleState:java.lang.String",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M22"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M23",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "Profile",
+      "signature": "Profile:java.lang.String",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M23"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M24",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "PropagationHooksInstalled",
+      "signature": "PropagationHooksInstalled:boolean",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M24"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M25",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "ProtocolVersion",
+      "signature": "ProtocolVersion:int",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M25"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M26",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "RequiredCapabilities",
+      "signature": "RequiredCapabilities:[Ljava.lang.String;",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M26"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M27",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "RequiredSpanProcessorsInstalled",
+      "signature": "RequiredSpanProcessorsInstalled:boolean",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M27"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M28",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "SamplerInstalled",
+      "signature": "SamplerInstalled:boolean",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M28"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M29",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "SanitizerInstalled",
+      "signature": "SanitizerInstalled:boolean",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "HEALTH",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M29"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M30",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ActiveSpanCount",
+      "signature": "ActiveSpanCount:int",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M30"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M31",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ActiveTraceCount",
+      "signature": "ActiveTraceCount:int",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M31"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M32",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "DroppedAttributesTotal",
+      "signature": "DroppedAttributesTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M32"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M33",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "DroppedEventsTotal",
+      "signature": "DroppedEventsTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M33"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M34",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "DroppedLinksTotal",
+      "signature": "DroppedLinksTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M34"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M35",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ForcedSpanCloses",
+      "signature": "ForcedSpanCloses:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M35"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M36",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ForcedTraceCloses",
+      "signature": "ForcedTraceCloses:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M36"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M37",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ProcessorErrorsByName",
+      "signature": "ProcessorErrorsByName:java.util.Map",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M37"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M38",
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "kind": "ATTRIBUTE",
+      "name": "ProcessorErrorsTotal",
+      "signature": "ProcessorErrorsTotal:long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M38"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M39",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "DropPathPrefixes",
+      "signature": "DropPathPrefixes:[Ljava.lang.String;",
+      "disposition": "DELETE_OBSOLETE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M40",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "ForceRecordValues",
+      "signature": "ForceRecordValues:[Ljava.lang.String;",
+      "disposition": "DELETE_OBSOLETE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M41",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "RouteRatios",
+      "signature": "RouteRatios:java.util.Map",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M41"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M42",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplerDecisionCounts",
+      "signature": "SamplerDecisionCounts:java.util.Map",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M42"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M43",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplerEnabled",
+      "signature": "SamplerEnabled:boolean",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M43"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M44",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplingConfigLastUpdatedSource",
+      "signature": "SamplingConfigLastUpdatedSource:java.lang.String",
+      "disposition": "DELETE_OBSOLETE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M45",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplingConfigVersion",
+      "signature": "SamplingConfigVersion:long",
+      "disposition": "REPLACE_WITH_AGGREGATE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M46",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "ATTRIBUTE",
+      "name": "SamplingRatio",
+      "signature": "SamplingRatio:double",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M46"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M47",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "getSamplerDecisionCount",
+      "signature": "getSamplerDecisionCount(java.lang.String,java.lang.String)->long",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M47"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M48",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "resetSamplerCounters",
+      "signature": "resetSamplerCounters()->void",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "NO_NAMED_CONSUMER_FOUND"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M49",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "updateSamplingPolicy",
+      "signature": "updateSamplingPolicy(boolean,double,[Ljava.lang.String;,[Ljava.lang.String;,[Ljava.lang.String;,[D,java.lang.String)->void",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M50",
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "kind": "OPERATION",
+      "name": "updateSamplingPolicy",
+      "signature": "updateSamplingPolicy(boolean,double,java.util.Map,[Ljava.lang.String;,[Ljava.lang.String;)->void",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M51",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingConfigLastUpdatedSource",
+      "signature": "ScrubbingConfigLastUpdatedSource:java.lang.String",
+      "disposition": "DELETE_OBSOLETE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M52",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingConfigVersion",
+      "signature": "ScrubbingConfigVersion:long",
+      "disposition": "REPLACE_WITH_AGGREGATE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M53",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingEnabled",
+      "signature": "ScrubbingEnabled:boolean",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M53"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M54",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "ATTRIBUTE",
+      "name": "ScrubbingMetrics",
+      "signature": "ScrubbingMetrics:java.util.Map",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M54"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M55",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "OPERATION",
+      "name": "updateScrubbingPolicy",
+      "signature": "updateScrubbingPolicy(boolean,[Ljava.lang.String;)->void",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M56",
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "kind": "OPERATION",
+      "name": "updateScrubbingPolicy",
+      "signature": "updateScrubbingPolicy(boolean,[Ljava.lang.String;,java.lang.String)->void",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "CLIENT",
+        "TEST",
+        "DOC"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M57",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationConfigLastUpdatedSource",
+      "signature": "ValidationConfigLastUpdatedSource:java.lang.String",
+      "disposition": "DELETE_OBSOLETE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M58",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationConfigVersion",
+      "signature": "ValidationConfigVersion:long",
+      "disposition": "REPLACE_WITH_AGGREGATE_READ",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M59",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationEnabled",
+      "signature": "ValidationEnabled:boolean",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M59"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M60",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationStrict",
+      "signature": "ValidationStrict:boolean",
+      "disposition": "RETAIN_EXACT",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M60"
+      ],
+      "zeroReferenceProof": "NOT_APPLICABLE_RETAINED"
+    },
+    {
+      "baselineMemberId": "M61",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "ATTRIBUTE",
+      "name": "ValidationStrictRuntimeAllowed",
+      "signature": "ValidationStrictRuntimeAllowed:boolean",
+      "disposition": "RETAIN_SEMANTICS_CLARIFIED",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [
+        "PLAT-M61"
+      ],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M62",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "OPERATION",
+      "name": "updateValidationPolicy",
+      "signature": "updateValidationPolicy(boolean,boolean)->void",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "CLIENT",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
+    },
+    {
+      "baselineMemberId": "M63",
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "kind": "OPERATION",
+      "name": "updateValidationPolicy",
+      "signature": "updateValidationPolicy(boolean,boolean,java.lang.String)->void",
+      "disposition": "DELETE_MUTATION",
+      "repositoryConsumers": [
+        "CLIENT",
+        "TEST"
+      ],
+      "externalConsumerRisk": "POSSIBLE_UNSURVEYED_PREPRODUCTION_CONSUMER",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+      "replacementTargetMemberIds": [],
+      "zeroReferenceProof": "REQUIRED_AT_P6_AFTER_CONSUMER_MIGRATION"
     }
   ],
-  "migrationOwners": {
-    "CLIENT": "platform-tracing-spring-boot-autoconfigure P4/P6",
-    "ACTUATOR": "platform-tracing-spring-boot-autoconfigure P4/P6",
-    "HEALTH": "platform-tracing-spring-boot-autoconfigure P4/P6",
-    "TEST": "module owners concurrent with P6",
-    "DOC": "docs owners at P6 cutover",
-    "EXTERNAL_UNKNOWN": "architecture committee survey before production rollout (not E7 blocker)"
-  },
-  "dashboardAlertJmxExporter": "NO_NAMED_CONSUMER_FOUND in repository; rate/increase guidance for counters; resetSamplerCounters deleted"
+  "addedTargetMembers": [
+    {
+      "targetMemberId": "PLAT-N01",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "RuntimeInstanceId",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N02",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "AcceptedSequence",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N03",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "AcceptedPolicyDigest",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N04",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "LastApplyOutcome",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N05",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "LastAttemptId",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N06",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "LastFailureCode",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N07",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "StructuralDrift",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N08",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "ATTRIBUTE",
+      "name": "RestartRequired",
+      "repositoryConsumers": [
+        "CLIENT",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PLAT-N09",
+      "server": "PLATFORM",
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "kind": "ATTRIBUTE",
+      "name": "ConfigDeliveryHealth",
+      "repositoryConsumers": [
+        "HEALTH",
+        "ACTUATOR"
+      ],
+      "externalConsumerRisk": "NEW_PREPRODUCTION_CONTRACT",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PRIV-R01",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+      "kind": "ATTRIBUTE",
+      "name": "ProtocolId",
+      "repositoryConsumers": [
+        "PRIVATE_LOCATOR"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PRIV-R02",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+      "kind": "ATTRIBUTE",
+      "name": "ProtocolVersion",
+      "repositoryConsumers": [
+        "PRIVATE_LOCATOR"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PRIV-R03",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+      "kind": "ATTRIBUTE",
+      "name": "RuntimeInstanceId",
+      "repositoryConsumers": [
+        "PRIVATE_LOCATOR"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PRIV-R04",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+      "kind": "ATTRIBUTE",
+      "name": "WriterObjectName",
+      "repositoryConsumers": [
+        "PRIVATE_LOCATOR"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PRIV-R05",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+      "kind": "ATTRIBUTE",
+      "name": "LifecycleState",
+      "repositoryConsumers": [
+        "PRIVATE_LOCATOR"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PRIV-R06",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+      "kind": "ATTRIBUTE",
+      "name": "MarkerSignature",
+      "repositoryConsumers": [
+        "PRIVATE_LOCATOR"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
+      "targetMemberId": "PRIV-W01",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "OPERATION",
+      "name": "applySnapshot",
+      "repositoryConsumers": [
+        "CONFIG_SERVER_BRIDGE",
+        "DEV_TYPED_JMX_ADAPTER"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2/P4)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    }
+  ]
 }

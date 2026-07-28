@@ -1,0 +1,20 @@
+{
+  "artifactId": "e8-rollback-acceptance",
+  "status": "READY_FOR_COMMITTEE_APPROVAL",
+  "units": [
+    {"phase": "P0", "unit": "Evidence and contract artifacts only", "rollback": "Revert P0 evidence commit"},
+    {"phase": "P1", "unit": "Agent accepted-state store and orchestration", "rollback": "Revert P1 while legacy holders remain"},
+    {"phase": "P2", "unit": "Private writer, dual codecs and capability", "rollback": "Revert P2; capability disappears with writer"},
+    {"phase": "P3", "unit": "Category A reader migration", "rollback": "Revert P3 before coherent cutover"},
+    {"phase": "P4", "unit": "Spring authority/provenance bridge", "rollback": "Revert P4; bridge remains unreachable before P6"},
+    {"phase": "P5", "unit": "Fail-closed and performance hardening", "rollback": "Revert P5 together with dependent pre-cutover changes"},
+    {"phase": "P6", "unit": "Entire unreleased namespace/state/writer cutover train", "rollback": "Revert the whole unreleased train; no aliases or dual paths"},
+    {"phase": "P7", "unit": "Documentation, manifests and rollout package", "rollback": "Revert only with the corresponding unreleased code train"}
+  ],
+  "forbidden": [
+    "Independent rollback of namespace, state, writer or manifests after P6",
+    "Compatibility aliases",
+    "Restoring legacy platform-server writers",
+    "Reusing process-local accepted state after JVM restart"
+  ]
+}
