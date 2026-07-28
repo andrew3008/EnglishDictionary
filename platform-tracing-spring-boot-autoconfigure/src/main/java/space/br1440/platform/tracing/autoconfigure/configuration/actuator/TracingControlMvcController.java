@@ -17,21 +17,27 @@ import java.util.Map;
  * {@link TracingControlManagementContextConfiguration} (discovered through
  * META-INF/spring/ManagementContextConfiguration.imports).
  * <p>
- * Architectural note: This is a @RestController on the management port, not a
- * full Spring Boot Actuator @WebEndpoint. This design was chosen because Boot's
- * @WebEndpoint + @Selector model cannot produce eight unambiguous HTTP paths
- * (all map to the same POST /actuator/tracingControl/{segment} predicate).
- * The trade-off: standard Actuator endpoint governance (management.endpoint.<id>.access,
- * EndpointRequest security DSL, endpoint-specific enable/disable) does not apply.
+ * Architectural note: This is a {@code @RestController} on the management port,
+ * not a full Spring Boot Actuator {@code @WebEndpoint}. This design was chosen
+ * because Boot's {@code @WebEndpoint} + {@code @Selector} model cannot produce
+ * eight unambiguous HTTP paths. The trade-off: standard Actuator endpoint
+ * governance ({@code management.endpoint.<id>.access}, {@code EndpointRequest}
+ * security DSL, endpoint-specific enable/disable) does not apply.
  * Exposure is governed by: authority=ACTUATOR AND platform.environment=LOCAL
- * (enforced at both registration-time via @ConditionalOnProperty and startup-time
- * via TracingConfigurationAuthorityGuard.validate()).
+ * (enforced at both registration-time via {@code @ConditionalOnProperty} and
+ * startup-time via {@code TracingConfigurationAuthorityGuard.validate()}).
  * <p>
- * Base path compliance: path prefix is injected from
- * management.endpoints.web.base-path (default /actuator) so that consumers
- * who customise the management base path get correct routes.
+ * This decision requires explicit committee approval as
+ * "management-context local control API" before production promotion.
  * <p>
- * Routes (relative to management base path):
+ * Mapping strategy: the class-level {@code @RequestMapping} carries the full
+ * absolute prefix (management base-path + {@code /tracingControl}), injected
+ * via {@code @Value}. Method-level annotations use only short relative
+ * sub-paths. This avoids instance-field SpEL in annotation values, which is
+ * not a supported Spring MVC mapping mechanism and would cause routes to be
+ * either un-registered or registered as literals.
+ * <p>
+ * Routes (relative to management server root):
  * <pre>
  *   POST {base}/tracingControl/sampling/enabled
  *   POST {base}/tracingControl/sampling/ratio
@@ -44,35 +50,29 @@ import java.util.Map;
  * </pre>
  */
 @RestController
+@RequestMapping("#{@tracingControlMvcControllerPathProvider.basePath}")
 public final class TracingControlMvcController {
 
     private final SpringActuatorTracingPolicyAdapter adapter;
-    private final String base;
 
     public TracingControlMvcController(
-            SpringActuatorTracingPolicyAdapter adapter,
-            @Value("${management.endpoints.web.base-path:/actuator}") String basePath) {
+            SpringActuatorTracingPolicyAdapter adapter) {
         this.adapter = adapter;
-        // Normalise: ensure single leading slash, no trailing slash
-        String b = basePath.trim();
-        if (!b.startsWith("/")) b = "/" + b;
-        if (b.endsWith("/") && b.length() > 1) b = b.substring(0, b.length() - 1);
-        this.base = b;
     }
 
-    @PostMapping("#{tracingControlMvcController.base + '/tracingControl/sampling/enabled'}")
+    @PostMapping("/sampling/enabled")
     public ResponseEntity<Map<String, Object>> setSamplingEnabled(
             @RequestBody SetSamplingEnabledRequest req) {
         return outcome(adapter.setSamplingEnabled(req.enabled()), "sampling.enabled", req.enabled());
     }
 
-    @PostMapping("#{tracingControlMvcController.base + '/tracingControl/sampling/ratio'}")
+    @PostMapping("/sampling/ratio")
     public ResponseEntity<Map<String, Object>> setSamplingRatio(
             @RequestBody SetSamplingRatioRequest req) {
         return outcome(adapter.setSamplingRatio(req.ratio()), "sampling.ratio", req.ratio());
     }
 
-    @PutMapping("#{tracingControlMvcController.base + '/tracingControl/sampling/route-ratios'}")
+    @PutMapping("/sampling/route-ratios")
     public ResponseEntity<Map<String, Object>> replaceSamplingRouteRatios(
             @RequestBody ReplaceSamplingRouteRatiosRequest req) {
         return outcome(adapter.replaceSamplingRouteRatios(req.routeRatios()),
@@ -80,32 +80,32 @@ public final class TracingControlMvcController {
                 req.routeRatios() != null ? req.routeRatios().size() : 0);
     }
 
-    @PostMapping("#{tracingControlMvcController.base + '/tracingControl/validation/enabled'}")
+    @PostMapping("/validation/enabled")
     public ResponseEntity<Map<String, Object>> setValidationEnabled(
             @RequestBody SetValidationEnabledRequest req) {
         return outcome(adapter.setValidationEnabled(req.enabled()), "validation.enabled", req.enabled());
     }
 
-    @PostMapping("#{tracingControlMvcController.base + '/tracingControl/validation/strict'}")
+    @PostMapping("/validation/strict")
     public ResponseEntity<Map<String, Object>> setValidationStrict(
             @RequestBody SetValidationStrictRequest req) {
         return outcome(adapter.setValidationStrict(req.strict()), "validation.strict", req.strict());
     }
 
-    @PostMapping("#{tracingControlMvcController.base + '/tracingControl/exporter/enabled'}")
+    @PostMapping("/exporter/enabled")
     public ResponseEntity<Map<String, Object>> setExporterEnabled(
             @RequestBody SetExporterEnabledRequest req) {
         return outcome(adapter.setExporterEnabled(req.enabled()), "exporter.enabled", req.enabled());
     }
 
-    @PostMapping("#{tracingControlMvcController.base + '/tracingControl/propagation/trace-control-headers-enabled'}")
+    @PostMapping("/propagation/trace-control-headers-enabled")
     public ResponseEntity<Map<String, Object>> setTraceControlHeadersEnabled(
             @RequestBody SetTraceControlHeadersEnabledRequest req) {
         return outcome(adapter.setTraceControlHeadersEnabled(req.enabled()),
                 "propagation.trace-control-headers.enabled", req.enabled());
     }
 
-    @PostMapping("#{tracingControlMvcController.base + '/tracingControl/diagnostics/log-level'}")
+    @PostMapping("/diagnostics/log-level")
     public ResponseEntity<Map<String, Object>> setDiagnosticsLogLevel(
             @RequestBody SetDiagnosticsLogLevelRequest req) {
         return outcome(adapter.setDiagnosticsLogLevel(req.level()),

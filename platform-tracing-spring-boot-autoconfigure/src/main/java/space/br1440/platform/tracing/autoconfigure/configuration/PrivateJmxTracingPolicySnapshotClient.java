@@ -17,9 +17,9 @@ import java.util.Optional;
  * <p>
  * E7/P0 wire contract (after Variant A extension):
  * <pre>
- *   6 marker reads          — unchanged
- *   1 complete-snapshot read: readAcceptedComplete  (NEW, approved Variant A)
- *   1 mutation:             applySnapshot           (unchanged)
+ *   6 marker reads          — unchanged (PRIV-R01..R06)
+ *   1 complete-snapshot read: readAcceptedComplete  (PRIV-R07, approved Variant A)
+ *   1 mutation:             applySnapshot           (PRIV-W01, unchanged)
  * </pre>
  * readAcceptedProjection is NOT called here — removed from wire.
  * <p>
@@ -33,6 +33,12 @@ import java.util.Optional;
  *   MBeanException / RuntimeMBeanException with contract cause → fail-fast
  *   ReflectionException (method not found) → fail-fast (version mismatch)
  *   Transport/IO failures → FAILED
+ * <p>
+ * NOTE: Agent-side AggregatePolicyControlMBean.readAcceptedComplete() has not yet
+ * been implemented. Until that Agent PR is merged and approved, any call to
+ * {@link #currentComplete()} will produce a {@code ReflectionException} which is
+ * classified as a contract violation and thrown as
+ * {@link TracingPolicyContractViolationException}. P4 remains blocked.
  */
 public final class PrivateJmxTracingPolicySnapshotClient
         implements TracingPolicySnapshotClient,
@@ -41,27 +47,31 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
     private static final Logger log = LoggerFactory.getLogger(PrivateJmxTracingPolicySnapshotClient.class);
 
-    private static final String OBJECT_NAME =
-            "space.br1440.platform.tracing:type=Control,name=AggregatePolicyControl";
+    private static final Object[] NO_ARGS = new Object[0];
+    private static final String[] NO_SIG  = new String[0];
 
     private final PrivateControlLocator locator;
     private final PrivateControlOpenTypeCodec codec;
 
     private volatile MBeanServer privateServer;
-    private volatile ObjectName controlObjectName;
+    private volatile ObjectName  controlObjectName;
+    private volatile String      runtimeInstanceId;
 
     public PrivateJmxTracingPolicySnapshotClient(
             PrivateControlLocator locator,
             PrivateControlOpenTypeCodec codec) {
         this.locator = locator;
-        this.codec = codec;
+        this.codec   = codec;
     }
 
     public void initialize() {
         try {
-            this.privateServer = locator.locate();
-            this.controlObjectName = ObjectName.getInstance(OBJECT_NAME);
-            log.info("PrivateJmxTracingPolicySnapshotClient initialized: {}", OBJECT_NAME);
+            PrivateControlLocator.LocatedPrivateControl located = locator.locate();
+            this.privateServer    = located.server();
+            this.controlObjectName = located.writerObjectName();
+            this.runtimeInstanceId = located.runtimeInstanceId();
+            log.info("PrivateJmxTracingPolicySnapshotClient initialized: {} runtimeInstanceId={}",
+                    controlObjectName, runtimeInstanceId);
         } catch (Exception e) {
             throw new TracingConfigurationGuardException(
                     "Cannot initialize snapshot client: private MBeanServer unavailable. " + e.getMessage());
@@ -126,17 +136,25 @@ public final class PrivateJmxTracingPolicySnapshotClient
         return outcome;
     }
 
-    // ── AcceptedTracingPolicySnapshotReader (E7/P0 Variant A — approved) ──────
+    // ── AcceptedTracingPolicySnapshotReader (PRIV-R07, Variant A) ─────────────
 
+    /**
+     * Reads the complete accepted snapshot from the Agent via PRIV-R07
+     * {@code readAcceptedComplete}.
+     * <p>
+     * IMPORTANT: This call will throw {@link TracingPolicyContractViolationException}
+     * (wrapping {@link ReflectionException}) until the Agent MBean exposes
+     * {@code readAcceptedComplete}. P4 remains blocked until that Agent PR is merged.
+     */
     @Override
     public Optional<AcceptedSnapshotWithSequence> currentComplete() {
         MBeanServer server = this.privateServer;
         ObjectName  name   = this.controlObjectName;
         if (server == null || name == null) return Optional.empty();
         try {
-            Object result = server.invoke(name, "readAcceptedComplete", null, null);
+            // Use empty arrays — NOT null — for zero-argument operations
+            Object result = server.invoke(name, "readAcceptedComplete", NO_ARGS, NO_SIG);
             if (result == null) return Optional.empty();
-            // Contract violation if codec cannot decode: fail-fast
             return Optional.of(codec.decodeCompleteWithSequence(result));
         } catch (TracingPolicyContractViolationException e) {
             throw e;
@@ -153,8 +171,11 @@ public final class PrivateJmxTracingPolicySnapshotClient
             log.debug("readAcceptedComplete RuntimeMBeanException: {}", e.getMessage());
             return Optional.empty();
         } catch (ReflectionException e) {
+            // readAcceptedComplete not present on Agent MBean — version mismatch.
+            // This is the expected failure mode until Agent-side PR is merged.
             throw new TracingPolicyContractViolationException(
-                    "readAcceptedComplete not found on Agent MBean — version mismatch", e);
+                    "readAcceptedComplete not found on Agent MBean — Agent-side implementation "
+                    + "required (PRIV-R07). P4 is blocked until Agent PR is merged.", e);
         } catch (Exception e) {
             log.debug("readAcceptedComplete failed (transport): {}", e.getMessage());
             return Optional.empty();
@@ -165,29 +186,39 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
     @Override
     public Optional<AcceptedPolicyProjection> currentProjection() {
-        // Secret-safe projection is assembled from the complete snapshot locally;
-        // no extra JMX operation is invoked. Wire protocol unchanged.
-        return currentComplete().map(this::toProjection);
+        return currentComplete().map(accepted -> toProjection(accepted, this.runtimeInstanceId));
     }
 
-    private AcceptedPolicyProjection toProjection(AcceptedSnapshotWithSequence accepted) {
+    private static AcceptedPolicyProjection toProjection(
+            AcceptedSnapshotWithSequence accepted,
+            String resolvedRuntimeInstanceId) {
+
         CompleteTracingPolicySnapshot s = accepted.snapshot();
+
+        // runtimeInstanceId is authoritative: sourced from PrivateMarker at initialize() time.
+        // It is NOT fabricated — any blank value here signals a genuine locate() failure
+        // that would have thrown at initialization.
         AgentReadinessView readiness = new AgentReadinessView(
-                "unknown",                 // runtimeInstanceId: not in complete snapshot; diagnostic only
+                resolvedRuntimeInstanceId != null ? resolvedRuntimeInstanceId : "",
                 accepted.acceptedSequence(),
                 true
         );
         AcceptedPolicyLeaves leaves = new AcceptedPolicyLeaves(
                 s.samplingEnabled(),
                 s.samplingRatio(),
-                s.samplingRouteRatios().size(),   // count only, no values
+                s.samplingRouteRatios().size(),
                 s.validationEnabled(),
                 s.validationStrict(),
                 s.exporterEnabled(),
                 s.traceControlHeadersEnabled(),
                 s.diagnosticsLogLevel()
         );
-        TracingApplyDiagnostics diag = new TracingApplyDiagnostics("n/a", "n/a");
+        // policyDigest and latestApplyOutcome are NOT part of the readAcceptedComplete
+        // wire response (PRIV-R07). They are exposed exclusively by the separate
+        // applySnapshot response path (PRIV-W01). Returning absent sentinels here
+        // is intentional and contract-correct: callers must not infer these values
+        // from the complete-read path.
+        TracingApplyDiagnostics diag = TracingApplyDiagnostics.notAvailableViaCompleteRead();
         return new AcceptedPolicyProjection(readiness, leaves, diag);
     }
 

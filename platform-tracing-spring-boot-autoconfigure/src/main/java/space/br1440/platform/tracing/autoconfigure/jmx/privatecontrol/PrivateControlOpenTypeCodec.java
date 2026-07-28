@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol;
 
+import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.configuration.CompleteTracingPolicySnapshot;
+
 import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
@@ -7,6 +10,7 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
 import javax.management.openmbean.TabularType;
 import java.util.Collections;
@@ -16,9 +20,20 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 /**
- * Независимый Spring-side codec утверждённого wire contract v1.
+ * Independent Spring-side codec for the approved wire contract v1.
+ * <p>
+ * E7/P0 operations covered:
+ * <ul>
+ *   <li>PRIV-W01 — {@code applySnapshot}: {@link #encodeRequest(PrivateControlSnapshot)},
+ *       {@link #decodeResponse(CompositeData)}</li>
+ *   <li>PRIV-R07 — {@code readAcceptedComplete}: {@link #decodeCompleteWithSequence(Object)}
+ *       (NEW, Variant A — Spring-side decoding only; Agent-side implementation pending
+ *       committee approval and Agent PR)</li>
+ * </ul>
  */
 final class PrivateControlOpenTypeCodec {
+
+    // ── route-ratio subtypes ───────────────────────────────────────────────────
 
     private static final String[] ROUTE_KEYS = {"ratio", "routePrefix"};
     private static final CompositeType ROUTE_ROW = composite(
@@ -29,6 +44,9 @@ final class PrivateControlOpenTypeCodec {
             "space.br1440.platform.tracing.control.RouteRatios.v1",
             ROUTE_ROW,
             new String[]{"routePrefix"});
+
+    // ── applySnapshot request ──────────────────────────────────────────────────
+
     private static final String[] POLICY_KEYS = {
             "diagnosticsLogLevel",
             "exporterEnabled",
@@ -77,6 +95,9 @@ final class PrivateControlOpenTypeCodec {
                     SimpleType.STRING,
                     SimpleType.STRING
             });
+
+    // ── applySnapshot response ─────────────────────────────────────────────────
+
     private static final String[] RESPONSE_KEYS = {
             "acceptedSequence",
             "attemptId",
@@ -104,6 +125,42 @@ final class PrivateControlOpenTypeCodec {
                     SimpleType.STRING,
                     arrayOfStrings()
             });
+
+    // ── readAcceptedComplete response (PRIV-R07, Variant A) ───────────────────
+    //
+    // Wire contract: Agent returns CompositeData with these exact keys.
+    // Spring-side only; Agent-side implementation requires separate committee approval.
+    // Keys are frozen once Agent PR is merged — do not reorder.
+
+    private static final String[] COMPLETE_KEYS = {
+            "acceptedSequence",
+            "diagnosticsLogLevel",
+            "exporterEnabled",
+            "runtimeInstanceId",
+            "samplingEnabled",
+            "samplingRatio",
+            "samplingRouteRatios",
+            "traceControlHeadersEnabled",
+            "validationEnabled",
+            "validationStrict"
+    };
+    private static final CompositeType COMPLETE_RESPONSE = composite(
+            "space.br1440.platform.tracing.control.AcceptedCompleteResponse.v1",
+            COMPLETE_KEYS,
+            new OpenType<?>[]{
+                    SimpleType.LONG,      // acceptedSequence
+                    SimpleType.STRING,    // diagnosticsLogLevel
+                    SimpleType.BOOLEAN,   // exporterEnabled
+                    SimpleType.STRING,    // runtimeInstanceId
+                    SimpleType.BOOLEAN,   // samplingEnabled
+                    SimpleType.DOUBLE,    // samplingRatio
+                    ROUTES,               // samplingRouteRatios
+                    SimpleType.BOOLEAN,   // traceControlHeadersEnabled
+                    SimpleType.BOOLEAN,   // validationEnabled
+                    SimpleType.BOOLEAN    // validationStrict
+            });
+
+    // ── encode ─────────────────────────────────────────────────────────────────
 
     CompositeData encodeRequest(PrivateControlSnapshot snapshot) {
         try {
@@ -147,6 +204,8 @@ final class PrivateControlOpenTypeCodec {
         }
     }
 
+    // ── decode: applySnapshot response ────────────────────────────────────────
+
     PrivateControlResponse decodeResponse(CompositeData response) {
         if (response == null || !RESPONSE.equals(response.getCompositeType())) {
             throw new IllegalArgumentException("Unexpected private control response CompositeType");
@@ -162,6 +221,76 @@ final class PrivateControlOpenTypeCodec {
                 (String[]) response.get("restartRequiredKeys"),
                 (String[]) response.get("violationCodes"));
     }
+
+    // ── decode: readAcceptedComplete (PRIV-R07) ────────────────────────────────
+
+    /**
+     * Decodes the Agent {@code readAcceptedComplete} wire response.
+     * <p>
+     * Contract: Agent MUST return {@code CompositeData} typed with
+     * {@code AcceptedCompleteResponse.v1}; any other type or {@code null}
+     * is a hard contract violation and throws
+     * {@link IllegalArgumentException} — caller maps this to
+     * {@link space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyContractViolationException}.
+     *
+     * @param raw the raw object returned by {@code MBeanServer.invoke}
+     * @return decoded {@link AcceptedSnapshotWithSequence} containing acceptedSequence
+     *         and the full {@link CompleteTracingPolicySnapshot}
+     * @throws IllegalArgumentException if {@code raw} is not a correctly-typed
+     *         {@code CompositeData}
+     */
+    AcceptedSnapshotWithSequence decodeCompleteWithSequence(Object raw) {
+        if (!(raw instanceof CompositeData cd)) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: expected CompositeData, got "
+                    + (raw == null ? "null" : raw.getClass().getName()));
+        }
+        if (!COMPLETE_RESPONSE.equals(cd.getCompositeType())) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: unexpected CompositeType "
+                    + cd.getCompositeType().getTypeName()
+                    + "; expected " + COMPLETE_RESPONSE.getTypeName());
+        }
+
+        long acceptedSequence     = (Long)    cd.get("acceptedSequence");
+        String diagnosticsLogLevel = (String)  cd.get("diagnosticsLogLevel");
+        boolean exporterEnabled    = (Boolean) cd.get("exporterEnabled");
+        boolean samplingEnabled    = (Boolean) cd.get("samplingEnabled");
+        double  samplingRatio      = (Double)  cd.get("samplingRatio");
+        boolean traceControlHeaders= (Boolean) cd.get("traceControlHeadersEnabled");
+        boolean validationEnabled  = (Boolean) cd.get("validationEnabled");
+        boolean validationStrict   = (Boolean) cd.get("validationStrict");
+
+        Map<String, Double> routeRatios = decodeRouteRatios((TabularData) cd.get("samplingRouteRatios"));
+
+        CompleteTracingPolicySnapshot snapshot = new CompleteTracingPolicySnapshot(
+                samplingEnabled,
+                samplingRatio,
+                routeRatios,
+                validationEnabled,
+                validationStrict,
+                exporterEnabled,
+                traceControlHeaders,
+                diagnosticsLogLevel
+        );
+        return new AcceptedSnapshotWithSequence(acceptedSequence, snapshot);
+    }
+
+    private static Map<String, Double> decodeRouteRatios(TabularData tabular) {
+        if (tabular == null || tabular.isEmpty()) return Collections.emptyMap();
+        Map<String, Double> result = new LinkedHashMap<>();
+        for (Object value : tabular.values()) {
+            CompositeData row = (CompositeData) value;
+            String prefix = (String) row.get("routePrefix");
+            Double ratio  = (Double) row.get("ratio");
+            if (prefix != null && ratio != null) {
+                result.put(prefix, ratio);
+            }
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    // ── records ────────────────────────────────────────────────────────────────
 
     record PrivateControlSnapshot(
             String expectedRuntimeInstanceId,
@@ -214,6 +343,8 @@ final class PrivateControlOpenTypeCodec {
             return violationCodes.clone();
         }
     }
+
+    // ── static helpers ─────────────────────────────────────────────────────────
 
     private static CompositeType composite(String name, String[] keys, OpenType<?>[] types) {
         try {
