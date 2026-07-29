@@ -1,0 +1,270 @@
+package space.br1440.platform.tracing.autoconfigure.configuration;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter;
+import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * P5 §20 P5.6 — Authority/posture matrix and physical zero-write proof.
+ *
+ * <p>Covers:
+ * <ul>
+ *   <li>§1  Legal authority×posture combinations — guard starts and exposes bean</li>
+ *   <li>§2  ACTUATOR outside LOCAL — fail-closed</li>
+ *   <li>§3  Local-only positive path — Actuator mutation surface allowed exactly once</li>
+ *   <li>§4  HELM/CONFIG_SERVER — Actuator private-control beans physically absent</li>
+ *   <li>§5  ACTUATOR+SHARED/PRODUCTION — fail-closed before private-control beans</li>
+ *   <li>§6  Local override rejection — DISABLED incompatible with write authorities</li>
+ *   <li>§7  Physical zero-write proof — non-local postures expose no write surface</li>
+ * </ul>
+ */
+class P56AuthorityPostureMatrixTest {
+
+    // ── base runners ─────────────────────────────────────────────────────────
+
+    private final ApplicationContextRunner guardRunner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(
+                    TracingConfigurationAuthorityAutoConfiguration.class));
+
+    private final ApplicationContextRunner actuatorStackRunner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(
+                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingActuatorAutoConfiguration.class));
+
+    // ── §1 Legal authority×posture combinations ───────────────────────────────
+
+    /**
+     * Every documented legal combination must start without error and expose the guard bean
+     * with matching authority and posture values.
+     */
+    @ParameterizedTest(name = "legal: authority={0} posture={1}")
+    @CsvSource({
+            "HELM,LOCAL",
+            "HELM,SHARED",
+            "HELM,PRODUCTION",
+            "CONFIG_SERVER,LOCAL",
+            "CONFIG_SERVER,SHARED",
+            "CONFIG_SERVER,PRODUCTION",
+            "ACTUATOR,LOCAL"
+    })
+    void legalCombination_startsAndExposesGuard(String authority, String posture) {
+        guardRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.environment=" + posture)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(TracingConfigurationAuthorityGuard.class);
+                    TracingConfigurationAuthorityGuard guard =
+                            context.getBean(TracingConfigurationAuthorityGuard.class);
+                    assertThat(guard.authority().name()).isEqualTo(authority);
+                    assertThat(guard.posture().name()).isEqualTo(posture);
+                });
+    }
+
+    // ── §2 ACTUATOR outside LOCAL — fail-closed ───────────────────────────────
+
+    @ParameterizedTest(name = "actuator forbidden: posture={0}")
+    @ValueSource(strings = {"SHARED", "PRODUCTION"})
+    void actuatorOutsideLocal_failsClosed(String posture) {
+        guardRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=ACTUATOR",
+                        "platform.environment=" + posture)
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .satisfiesAnyOf(
+                                    t -> assertThat(t).isInstanceOf(TracingConfigurationGuardException.class),
+                                    t -> assertThat(t.getCause()).isInstanceOf(TracingConfigurationGuardException.class)
+                            );
+                    String msg = context.getStartupFailure().getMessage()
+                            + " / " + (context.getStartupFailure().getCause() == null ? ""
+                                    : context.getStartupFailure().getCause().getMessage());
+                    assertThat(msg).containsIgnoringCase("ACTUATOR authority is forbidden");
+                });
+    }
+
+    // ── §3 Local-only positive path ───────────────────────────────────────────
+
+    /**
+     * ACTUATOR+LOCAL is the only combination where {@code isActuatorMutationSurfaceAllowed()} is
+     * {@code true}.
+     */
+    @Test
+    void actuatorLocal_mutationSurfaceAllowed() {
+        guardRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=ACTUATOR",
+                        "platform.environment=LOCAL")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    TracingConfigurationAuthorityGuard guard =
+                            context.getBean(TracingConfigurationAuthorityGuard.class);
+                    assertThat(guard.isActuatorMutationSurfaceAllowed()).isTrue();
+                });
+    }
+
+    /**
+     * For every legal non-ACTUATOR authority, mutation surface must be {@code false} regardless of
+     * posture.
+     */
+    @ParameterizedTest(name = "no mutation surface: authority={0} posture={1}")
+    @CsvSource({
+            "HELM,LOCAL",
+            "HELM,SHARED",
+            "HELM,PRODUCTION",
+            "CONFIG_SERVER,LOCAL",
+            "CONFIG_SERVER,SHARED",
+            "CONFIG_SERVER,PRODUCTION"
+    })
+    void nonActuatorAuthority_mutationSurfaceNeverAllowed(String authority, String posture) {
+        guardRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.environment=" + posture)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    TracingConfigurationAuthorityGuard guard =
+                            context.getBean(TracingConfigurationAuthorityGuard.class);
+                    assertThat(guard.isActuatorMutationSurfaceAllowed()).isFalse();
+                });
+    }
+
+    // ── §4 HELM/CONFIG_SERVER — Actuator private-control beans physically absent ──
+
+    @ParameterizedTest(name = "no private-control beans: authority={0} posture={1}")
+    @CsvSource({
+            "HELM,LOCAL",
+            "HELM,SHARED",
+            "HELM,PRODUCTION",
+            "CONFIG_SERVER,LOCAL",
+            "CONFIG_SERVER,SHARED",
+            "CONFIG_SERVER,PRODUCTION"
+    })
+    void nonActuatorAuthority_privateControlBeansAbsent(String authority, String posture) {
+        actuatorStackRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.environment=" + posture)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    // Private-control infrastructure must not be created
+                    assertThat(context).doesNotHaveBean(PrivateControlLocator.class);
+                    assertThat(context).doesNotHaveBean(PrivateJmxTracingPolicySnapshotClient.class);
+                    assertThat(context).doesNotHaveBean(SpringActuatorTracingPolicyAdapter.class);
+                });
+    }
+
+    // ── §5 ACTUATOR+SHARED/PRODUCTION — fail-closed before private-control beans ──
+
+    @ParameterizedTest(name = "actuator non-local fail-closed before private beans: posture={0}")
+    @ValueSource(strings = {"SHARED", "PRODUCTION"})
+    void actuatorNonLocal_failsBeforePrivateControlBeansCreated(String posture) {
+        actuatorStackRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=ACTUATOR",
+                        "platform.environment=" + posture)
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    // Must fail before any private-control infrastructure is instantiated
+                    assertThat(context).doesNotHaveBean(PrivateControlLocator.class);
+                    assertThat(context).doesNotHaveBean(PrivateJmxTracingPolicySnapshotClient.class);
+                    assertThat(context).doesNotHaveBean(SpringActuatorTracingPolicyAdapter.class);
+                });
+    }
+
+    // ── §6 Local override rejection ───────────────────────────────────────────
+
+    /**
+     * DISABLED mode is incompatible with any write authority (CONFIG_SERVER or ACTUATOR).
+     */
+    @ParameterizedTest(name = "DISABLED incompatible: authority={0}")
+    @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
+    void disabledMode_withWriteAuthority_failsClosed(String authority) {
+        guardRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.environment=LOCAL",
+                        "platform.tracing.mode=DISABLED")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    String msg = context.getStartupFailure().getMessage()
+                            + " / " + (context.getStartupFailure().getCause() == null ? ""
+                                    : context.getStartupFailure().getCause().getMessage());
+                    assertThat(msg).containsIgnoringCase("Tracing disabled is incompatible");
+                });
+    }
+
+    /**
+     * {@code platform.tracing.configuration.enabled=false} is equivalent to DISABLED mode and must
+     * also be rejected for write authorities.
+     */
+    @ParameterizedTest(name = "configuration.enabled=false incompatible: authority={0}")
+    @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
+    void configurationEnabledFalse_withWriteAuthority_failsClosed(String authority) {
+        guardRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.environment=LOCAL",
+                        "platform.tracing.configuration.enabled=false")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    String msg = context.getStartupFailure().getMessage()
+                            + " / " + (context.getStartupFailure().getCause() == null ? ""
+                                    : context.getStartupFailure().getCause().getMessage());
+                    assertThat(msg).containsIgnoringCase("Tracing disabled is incompatible");
+                });
+    }
+
+    /**
+     * HELM+DISABLED is a valid combination — HELM is read-only and disabled tracing is allowed.
+     */
+    @Test
+    void helmDisabledMode_starts() {
+        guardRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=HELM",
+                        "platform.environment=LOCAL",
+                        "platform.tracing.mode=DISABLED")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    TracingConfigurationAuthorityGuard guard =
+                            context.getBean(TracingConfigurationAuthorityGuard.class);
+                    assertThat(guard.isTracingEnabled()).isFalse();
+                    assertThat(guard.isActuatorMutationSurfaceAllowed()).isFalse();
+                });
+    }
+
+    // ── §7 Physical zero-write proof — non-local postures ────────────────────
+
+    /**
+     * For every non-LOCAL posture with a read-only authority, the Actuator write adapter must be
+     * physically absent from the context (not just returning 403).
+     */
+    @ParameterizedTest(name = "zero-write proof: authority={0} posture={1}")
+    @CsvSource({
+            "HELM,SHARED",
+            "HELM,PRODUCTION",
+            "CONFIG_SERVER,SHARED",
+            "CONFIG_SERVER,PRODUCTION"
+    })
+    void nonLocalPosture_actuatorAdapterPhysicallyAbsent(String authority, String posture) {
+        actuatorStackRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.environment=" + posture)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(SpringActuatorTracingPolicyAdapter.class);
+                });
+    }
+}
