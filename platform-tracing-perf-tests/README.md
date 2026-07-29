@@ -67,7 +67,9 @@ scripts/               раннеры прогонов (PowerShell, remote Docke
 
 Инфраструктура degraded-сценариев: toxiproxy (M8a latency-toxic 200ms; M8c — фоновый
 цикл timeout-toxic 10с/10с), nginx-backpressure (M8b — 60% 429 / 40% 503).
-Perf-admin endpoint SUT (`/perf/admin/*`, мост к `PlatformTracingControl` MBean)
+M10 fixture использует только typed `/perf/private-control/*` команды:
+`readAcceptedComplete → complete snapshot → private applySnapshot`.
+Legacy platform JMX setters и `PlatformTracingControl` не используются.
 используется для M10 reload и сэмплирования export-метрик (queue size, drops по reason).
 
 ## Validity gates

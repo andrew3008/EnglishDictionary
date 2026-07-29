@@ -26,6 +26,9 @@ dependencies {
     jmh project(':platform-tracing-api')
     jmh project(':platform-tracing-otel')
     jmh project(':platform-tracing-otel-javaagent-extension')
+    // P5.7: Spring PRIV-R07 decoder + Agent white-box Access (*Access in agent test).
+    jmh project(':platform-tracing-spring-boot-autoconfigure')
+    jmh project(path: ':platform-tracing-otel-javaagent-extension', configuration: 'jmhWhiteBox')
 
     // OpenTelemetry SDK для построения тестового pipeline'а в бенчмарках.
     jmh 'io.opentelemetry:opentelemetry-sdk'

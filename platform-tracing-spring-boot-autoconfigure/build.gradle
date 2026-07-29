@@ -77,6 +77,10 @@ dependencies {
     testImplementation project(':platform-tracing-otel-javaagent-extension')
     testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
 
+    // Config Server adapter tests (P5.3) construct EnvironmentChangeEvent directly.
+    // Production keeps spring-cloud-context as compileOnly; tests need it on the test classpath.
+    testImplementation 'org.springframework.cloud:spring-cloud-context'
+
     // Версия junit-platform-launcher выравнивается с junit-jupiter-api, чтобы исключить конфликт
     // OutputDirectoryProvider при запуске тестов через Gradle Test Worker.
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

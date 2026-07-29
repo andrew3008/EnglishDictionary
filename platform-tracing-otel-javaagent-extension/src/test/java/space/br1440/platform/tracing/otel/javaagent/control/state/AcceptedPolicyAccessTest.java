@@ -57,6 +57,13 @@ class AcceptedPolicyAccessTest {
                 .isEqualTo(AcceptedPolicyUpdateOutcome.UNCHANGED);
         assertThat(access.current()).isSameAs(initial);
 
+        assertThat(access.updateSampling(
+                initial.samplingEnabled(),
+                initial.samplingRatio(),
+                initial.samplingRouteRatios()))
+                .isEqualTo(AcceptedPolicyUpdateOutcome.UNCHANGED);
+        assertThat(access.current()).isSameAs(initial);
+
         assertThat(access.updateDiagnosticsLogLevel("unsupported"))
                 .isEqualTo(AcceptedPolicyUpdateOutcome.REJECTED);
         assertThat(access.current()).isSameAs(initial);

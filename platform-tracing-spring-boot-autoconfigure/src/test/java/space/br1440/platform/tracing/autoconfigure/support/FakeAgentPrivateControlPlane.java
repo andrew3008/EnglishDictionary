@@ -96,6 +96,8 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
     private volatile String runtimeInstanceId;
     private final AtomicLong acceptedSequence;
     private final AtomicReference<String> nextApplyOutcome = new AtomicReference<>("APPLIED");
+    /** Consumed once by the next {@code applySnapshot}; then falls back to {@link #nextApplyOutcome}. */
+    private final AtomicReference<String> oneShotApplyOutcome = new AtomicReference<>(null);
 
     private FakeAgentPrivateControlPlane(
             MBeanServer server, String runtimeInstanceId, long initialSequence, DynamicMBean writer)
@@ -270,6 +272,14 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
     }
 
     /**
+     * Configures the outcome for exactly one {@code applySnapshot} call.
+     * After that call, subsequent outcomes come from {@link #setNextApplyOutcome(String)}.
+     */
+    public void setOneShotApplyOutcome(String outcome) {
+        oneShotApplyOutcome.set(outcome);
+    }
+
+    /**
      * Simulates an Agent-process restart observed through the private control plane:
      * a new {@code runtimeInstanceId} and a reset accepted-sequence counter, without
      * changing the {@link MBeanServer}/{@link ObjectName} identity a caller has already
@@ -295,7 +305,8 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
     }
 
     private CompositeData encodeApplyOutcome() {
-        String outcome = nextApplyOutcome.get();
+        String oneShot = oneShotApplyOutcome.getAndSet(null);
+        String outcome = oneShot != null ? oneShot : nextApplyOutcome.get();
         long reportedSequence = "APPLIED".equals(outcome)
                 ? acceptedSequence.incrementAndGet()
                 : acceptedSequence.get();

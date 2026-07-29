@@ -193,7 +193,7 @@ try {
             param($csv, $baseUrl)
             while ($true) {
                 try {
-                    $m = Invoke-RestMethod -Uri "$baseUrl/perf/admin/export-metrics" -TimeoutSec 3
+                    $m = Invoke-RestMethod -Uri "$baseUrl/perf/private-control/export-metrics" -TimeoutSec 3
                     $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
                     "$epoch,$($m.queueSize),$($m.queueCapacity),$($m.droppedOverflow),$($m.exportFailures),$($m.exportTimeouts)" |
                         Out-File -Append -Encoding ascii $csv
@@ -212,22 +212,27 @@ try {
             Start-Sleep -Seconds ([int](($warmupMin + $steadyMin / 2) * 60))
             $log = @()
             foreach ($step in @(
-                @{ uri = "/perf/admin/sampling-ratio?value=0.5"; name = "ratio-0.5" },
-                @{ uri = "/perf/admin/sampling-ratio?value=0.1"; name = "ratio-0.1" },
-                @{ uri = "/perf/admin/scrubbing?enabled=false";  name = "scrubbing-off" },
-                @{ uri = "/perf/admin/scrubbing?enabled=true";   name = "scrubbing-on" },
-                @{ uri = "/perf/admin/export?enabled=false";     name = "export-off" },
-                @{ uri = "/perf/admin/export?enabled=true";      name = "export-on" })) {
+                @{ uri = "/perf/private-control/sampling-ratio?value=0.5"; name = "ratio-0.5" },
+                @{ uri = "/perf/private-control/sampling-ratio?value=0.1"; name = "ratio-0.1" },
+                @{ uri = "/perf/private-control/exporter?enabled=false"; name = "exporter-off" },
+                @{ uri = "/perf/private-control/exporter?enabled=true"; name = "exporter-on" },
+                @{ uri = "/perf/private-control/trace-control-headers?enabled=false"; name = "headers-off" },
+                @{ uri = "/perf/private-control/trace-control-headers?enabled=true"; name = "headers-on" })) {
                 $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
                 try {
-                    Invoke-RestMethod -Method Post -Uri "$baseUrl$($step.uri)" -TimeoutSec 5 | Out-Null
-                    $log += "$epoch,$($step.name),ok"
+                    $response = Invoke-RestMethod -Method Post -Uri "$baseUrl$($step.uri)" -TimeoutSec 5
+                    $valid = ($response.outcome -eq "APPLIED" -or $response.outcome -eq "UNCHANGED") `
+                        -and $response.sequenceValid -and $response.digestMatchesCandidate
+                    $status = if ($valid) { "ok" } else { "failed" }
+                    $log += "$epoch,$($step.name),$status,$($response.outcome),$($response.acceptedSequence),$($response.payloadDigest)"
                 } catch {
-                    $log += "$epoch,$($step.name),failed"
+                    $log += "$epoch,$($step.name),failed,HTTP_ERROR,,"
                 }
                 Start-Sleep -Seconds 15
             }
-            $log | Out-File -Encoding ascii (Join-Path $outDir "reload-sequence.csv")
+            "epochMs,action,status,outcome,acceptedSequence,payloadDigest" |
+                Out-File -Encoding ascii (Join-Path $outDir "reload-sequence.csv")
+            $log | Out-File -Append -Encoding ascii (Join-Path $outDir "reload-sequence.csv")
         } -ArgumentList "http://${sutHost}:18080", $WarmupMin, $SteadyMin, $outDir
     }
 
@@ -246,7 +251,8 @@ try {
             Start-Sleep -Seconds ([int]($warmupMin * 60))
             $deadline = (Get-Date).AddMinutes($steadyMin)
             $csv = Join-Path $outDir "reload-storm.csv"
-            "epochMs,action,httpCode,ratio,version,invalidCount" | Out-File -Encoding ascii $csv
+            "epochMs,action,httpCode,ratio,acceptedSequence,rejectedCount,payloadDigest" |
+                Out-File -Encoding ascii $csv
             $toggle = $false
             while ((Get-Date) -lt $deadline) {
                 if ($mode -eq 'invalid') {
@@ -259,16 +265,16 @@ try {
                 $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
                 $code = ""
                 try {
-                    $resp = Invoke-WebRequest -Method Post -Uri "$baseUrl/perf/admin/sampling-ratio?value=$value" `
+                    $resp = Invoke-WebRequest -Method Post -Uri "$baseUrl/perf/private-control/sampling-ratio?value=$value" `
                         -TimeoutSec 5 -UseBasicParsing
                     $code = $resp.StatusCode
                 } catch {
-                    # invalid-storm: 500 от perf-admin = апдейт отвергнут MBean'ом (ожидаемо).
+                    # invalid-storm: 422 означает REJECTED от complete-snapshot writer.
                     $code = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { "ERR" }
                 }
                 $state = $null
-                try { $state = Invoke-RestMethod -Uri "$baseUrl/perf/admin/sampling-state" -TimeoutSec 5 } catch { }
-                "$epoch,$action,$code,$($state.samplingRatio),$($state.configVersion),$($state.invalidConfigCount)" |
+                try { $state = Invoke-RestMethod -Uri "$baseUrl/perf/private-control/state" -TimeoutSec 5 } catch { }
+                "$epoch,$action,$code,$($state.samplingRatio),$($state.acceptedSequence),$($state.rejectedCount),$($state.payloadDigest)" |
                     Out-File -Append -Encoding ascii $csv
                 Start-Sleep -Seconds $intervalSec
             }
@@ -282,6 +288,43 @@ try {
     $k6Exit = Invoke-Compose -AllowFail @("--profile", "load", "up", "--exit-code-from", "k6", "k6")
     if ($reloadJob) { Wait-Job $reloadJob -Timeout 30 | Out-Null; Remove-Job $reloadJob -Force -ErrorAction SilentlyContinue }
     if ($stormJob) { Wait-Job $stormJob -Timeout 30 | Out-Null; Remove-Job $stormJob -Force -ErrorAction SilentlyContinue }
+    $controlFlowValid = $true
+    $reloadCsv = Join-Path $outDir "reload-sequence.csv"
+    if ($env:PERF_RELOAD_SEQUENCE) {
+        $reloadRows = @(Import-Csv $reloadCsv)
+        $controlFlowValid = $reloadRows.Count -eq 6 `
+            -and @($reloadRows | Where-Object { $_.status -ne "ok" }).Count -eq 0
+    }
+    $stormCsv = Join-Path $outDir "reload-storm.csv"
+    if ($env:PERF_RELOAD_STORM) {
+        $stormRows = @(Import-Csv $stormCsv)
+        if ($stormRows.Count -eq 0) {
+            $controlFlowValid = $false
+        } elseif ($env:PERF_RELOAD_STORM -eq "valid") {
+            $previousSequence = -1L
+            foreach ($row in $stormRows) {
+                $sequence = [long]$row.acceptedSequence
+                if ($row.httpCode -ne "200" -or $sequence -le $previousSequence `
+                        -or $row.payloadDigest -notmatch "^[0-9a-f]{64}$") {
+                    $controlFlowValid = $false
+                }
+                $previousSequence = $sequence
+            }
+        } else {
+            $first = $stormRows[0]
+            foreach ($row in $stormRows) {
+                if ($row.httpCode -ne "422" `
+                        -or $row.ratio -ne $first.ratio `
+                        -or $row.acceptedSequence -ne $first.acceptedSequence `
+                        -or $row.payloadDigest -ne $first.payloadDigest) {
+                    $controlFlowValid = $false
+                }
+            }
+            if ([long]$stormRows[-1].rejectedCount -le [long]$first.rejectedCount) {
+                $controlFlowValid = $false
+            }
+        }
+    }
     if ($k6Exit -ne 0) {
         Write-Warning "k6 завершился с кодом $k6Exit — validity gate НЕ пройден (dropped_iterations/thresholds)."
     }
@@ -310,13 +353,15 @@ try {
         jfr          = [bool]$Jfr
         startupMs    = $startupMs
         k6ExitCode   = $k6Exit
-        runValid     = ($k6Exit -eq 0)
+        privateControlFlowValid = $controlFlowValid
+        runValid     = ($k6Exit -eq 0 -and $controlFlowValid)
         scenarioJvmOpts = $env:PERF_SCENARIO_JVM_OPTS
         cpusets      = @{ sut = $env:SUT_CPUSET; collector = $env:COLLECTOR_CPUSET; k6 = $env:K6_CPUSET }
     }
     $summary | ConvertTo-Json -Depth 4 | Out-File -Encoding utf8 (Join-Path $outDir "summary.json")
     Write-Host "=== Готово. runValid=$($summary.runValid)"
-    exit $k6Exit
+    if ($summary.runValid) { exit 0 }
+    exit 1
 }
 finally {
     foreach ($job in @($samplerJob, $flakyJob, $exportMetricsJob)) {

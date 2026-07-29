@@ -94,24 +94,26 @@ public final class ConfigServerPolicyManifestBuilder {
                     if (!propName.startsWith(prefix + ".")) continue;
                     String route = propName.substring(prefix.length() + 1);
                     String val = environment.getProperty(propName);
+                    // Exception text must not echo route prefixes or raw property values
+                    // (P5.5 secret/disclosure canary — operator/log surfaces).
                     if (val == null) {
                         throw new TracingPolicyManifestException(
-                                "Null value for route-ratio key '" + propName + "'");
+                                "Null value for a sampling.route-ratios entry");
                     }
                     double ratio;
                     try {
                         ratio = Double.parseDouble(val);
                     } catch (NumberFormatException e) {
                         throw new TracingPolicyManifestException(
-                                "Invalid double value '" + val + "' for route-ratio key '" + propName + "'");
+                                "Invalid double value for a sampling.route-ratios entry");
                     }
                     if (ratio < 0.0 || ratio > 1.0) {
                         throw new TracingPolicyManifestException(
-                                "Route ratio out of range [0,1]: '" + val + "' for key '" + propName + "'");
+                                "Route ratio out of range [0,1] for a sampling.route-ratios entry");
                     }
                     if (result.containsKey(route)) {
                         throw new TracingPolicyManifestException(
-                                "Duplicate route-ratio key '" + route + "' in Config Server manifest");
+                                "Duplicate route-ratio key in Config Server manifest");
                     }
                     result.put(route, ratio);
                 }
@@ -120,7 +122,7 @@ public final class ConfigServerPolicyManifestBuilder {
             throw e; // re-throw as-is
         } catch (Exception e) {
             throw new TracingPolicyManifestException(
-                    "Unexpected error parsing route-ratios from Config Server: " + e.getMessage());
+                    "Unexpected error parsing route-ratios from Config Server");
         }
         return result;
     }

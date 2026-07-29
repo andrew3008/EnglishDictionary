@@ -9,6 +9,7 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
@@ -16,6 +17,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -95,6 +97,11 @@ class MdcPropagationAsyncIntegrationTest {
     @TestConfiguration
     @EnableAsync
     static class AsyncPropagationTestConfig implements AsyncConfigurer {
+        @Bean
+        PlatformTracingJmxClient platformTracingJmxClient() {
+            return new PlatformTracingJmxClient();
+        }
+
         @Override
         public Executor getAsyncExecutor() {
             // Регистрируем Slf4j MDC accessor в локальном ContextRegistry (Micrometer

@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -84,6 +85,11 @@ class MdcPropagationCompletableFutureTest {
 
     @TestConfiguration
     static class CompletableFuturePropagationConfig {
+
+        @Bean
+        PlatformTracingJmxClient platformTracingJmxClient() {
+            return new PlatformTracingJmxClient();
+        }
 
         @Bean(destroyMethod = "shutdown")
         public ExecutorService wrappingExecutor() {

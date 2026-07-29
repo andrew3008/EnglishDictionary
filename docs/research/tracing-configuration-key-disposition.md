@@ -226,7 +226,7 @@ The published `platform.tracing.semconv.validation.mode` conflicts with the acti
 - **N9 PASS**: enabled, sdk.mode, three removed async aliases and service.k8s-pod-uid are fixture-only with no production reader.
 - **N10 PASS**: Stale sdk.mode documents are listed; SDK_MODE constant resolves to platform.tracing.mode.
 - **N11 PASS**: Actuator environment spelling is a relaxed-binding alias, not another property.
-- **N12 PASS**: PerfAdminController obsolete ObjectNames: CONFIRMED; no production code changed.
+- **N12 PASS**: PerfAdminController obsolete ObjectNames: NOT_FOUND; no production code changed.
 
 ## 13. Proposed namespace families
 

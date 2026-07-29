@@ -14,6 +14,11 @@ configurations {
         canBeConsumed = false
         canBeResolved = true
     }
+    // White-box Access helpers (src/test) for P5.7 JMH in platform-tracing-bench.
+    jmhWhiteBox {
+        canBeConsumed = true
+        canBeResolved = false
+    }
 }
 
 sourceSets {
@@ -91,6 +96,17 @@ jar {
                 'OpenTelemetry-Extension': 'true'
         )
     }
+}
+
+def jmhWhiteBoxJarTask = tasks.register('jmhWhiteBoxJar', Jar) {
+    archiveClassifier.set('jmh-whitebox')
+    dependsOn testClasses
+    from sourceSets.test.output
+    include 'space/br1440/platform/tracing/otel/javaagent/control/state/*Access.class'
+}
+
+artifacts {
+    jmhWhiteBox jmhWhiteBoxJarTask
 }
 
 def agentExtensionJarTask = tasks.register('agentExtensionJar', Jar) {

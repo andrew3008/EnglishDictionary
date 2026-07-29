@@ -434,10 +434,11 @@ public final class PrivateControlOpenTypeCodec {
                         "readAcceptedComplete: route prefix length " + prefix.length()
                         + " is invalid (must be 1.." + MAX_ROUTE_PREFIX_LENGTH + " UTF-16 code units)");
             }
-            requireValidRatio(ratio, "samplingRouteRatios['" + prefix + "']");
+            // Do not echo route prefixes in exception text (P5.5 disclosure canary).
+            requireValidRatio(ratio, "samplingRouteRatios.entry");
             if (result.put(prefix, ratio) != null) {
                 throw new IllegalArgumentException(
-                        "readAcceptedComplete: duplicate route prefix '" + prefix + "'");
+                        "readAcceptedComplete: duplicate route prefix in samplingRouteRatios");
             }
         }
         return Collections.unmodifiableMap(result);

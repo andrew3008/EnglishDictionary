@@ -129,15 +129,29 @@ public final class AcceptedPolicyAccess {
             boolean enabled,
             double ratio,
             Map<String, Double> routeRatios) {
-        return commit(current -> EffectiveTracingPolicy.of(
-                enabled,
-                ratio,
-                routeRatios,
-                current.validationEnabled(),
-                current.validationStrict(),
-                current.exporterEnabled(),
-                current.traceControlHeadersEnabled(),
-                current.diagnosticsLogLevel()));
+        AcceptedPolicyEnvelope witnessed = store.current();
+        EffectiveTracingPolicy current = witnessed.policy();
+        if (enabled == current.samplingEnabled()
+                && Double.compare(ratio, current.samplingRatio()) == 0
+                && Objects.equals(routeRatios, current.samplingRouteRatios())) {
+            return AcceptedPolicyUpdateOutcome.UNCHANGED;
+        }
+
+        EffectiveTracingPolicy candidate;
+        try {
+            candidate = EffectiveTracingPolicy.of(
+                    enabled,
+                    ratio,
+                    routeRatios,
+                    current.validationEnabled(),
+                    current.validationStrict(),
+                    current.exporterEnabled(),
+                    current.traceControlHeadersEnabled(),
+                    current.diagnosticsLogLevel());
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            return AcceptedPolicyUpdateOutcome.REJECTED;
+        }
+        return commit(witnessed, candidate);
     }
 
     public AcceptedPolicyUpdateOutcome updateValidation(boolean enabled, boolean strict) {
@@ -236,6 +250,12 @@ public final class AcceptedPolicyAccess {
         if (candidate.equals(witnessed.policy())) {
             return AcceptedPolicyUpdateOutcome.UNCHANGED;
         }
+        return commit(witnessed, candidate);
+    }
+
+    private AcceptedPolicyUpdateOutcome commit(
+            AcceptedPolicyEnvelope witnessed,
+            EffectiveTracingPolicy candidate) {
         PolicyCommitResult result = store.commit(witnessed.base(), candidate);
         if (result.outcome() == PolicyCommitOutcome.APPLIED) {
             return AcceptedPolicyUpdateOutcome.APPLIED;
