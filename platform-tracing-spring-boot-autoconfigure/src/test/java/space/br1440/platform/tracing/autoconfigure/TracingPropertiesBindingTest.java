@@ -57,28 +57,15 @@ class TracingPropertiesBindingTest {
     }
 
     @Test
-    void bindsSamplingDropPaths() {
+    void doesNotBindCategoryBSamplingDropPathsOrForceRecordValues() {
+        // P6.1: these properties moved to Agent javaagent.sampling.*; Spring must not bind them.
         contextRunner
                 .withPropertyValues(
                         "platform.tracing.sampling.drop-paths[0]=/health",
-                        "platform.tracing.sampling.drop-paths[1]=/metrics")
+                        "platform.tracing.sampling.force-record-header-values[0]=on")
                 .run(ctx -> {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSampling().getDropPaths())
-                            .containsExactly("/health", "/metrics");
-                });
-    }
-
-    @Test
-    void bindsSamplingForceRecordHeaderValues() {
-        contextRunner
-                .withPropertyValues(
-                        "platform.tracing.sampling.force-record-header-values[0]=on",
-                        "platform.tracing.sampling.force-record-header-values[1]=debug")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSampling().getForceRecordHeaderValues())
-                            .containsExactly("on", "debug");
+                    assertThat(properties.getSampling().getRouteRatios()).isEmpty();
                 });
     }
 
@@ -163,25 +150,6 @@ class TracingPropertiesBindingTest {
         contextRunner
                 .withPropertyValues("platform.tracing.log-level=verbose")
                 .run(ctx -> assertThat(ctx.getStartupFailure()).isNotNull());
-    }
-
-    @Test
-    void defaultActuatorMutationEnabled_isFalse() {
-        contextRunner
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getActuator().isMutationEnabled()).isFalse();
-                });
-    }
-
-    @Test
-    void bindsActuatorMutationEnabled() {
-        contextRunner
-                .withPropertyValues("platform.tracing.actuator.mutation-enabled=true")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getActuator().isMutationEnabled()).isTrue();
-                });
     }
 
     @Test

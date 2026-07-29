@@ -10,6 +10,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvide
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.spi.AutoConfigurationCustomizerOrdering;
 import space.br1440.platform.tracing.otel.javaagent.configuration.spi.PlatformTracingDefaultsProvider;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
@@ -46,9 +47,11 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
      */
     private final AtomicReference<ExtensionConfig> extensionConfig = new AtomicReference<>();
     private final AtomicReference<AcceptedPolicyAccess> acceptedPolicy = new AtomicReference<>();
+    private final AtomicReference<AutoCloseable> privateControlPlane = new AtomicReference<>();
 
     // Одноразовый guard для диагностической лог-строки platform.tracing.mode.
     private final AtomicBoolean sdkModeLogged = new AtomicBoolean();
+    private final AtomicBoolean privateControlShutdownHookInstalled = new AtomicBoolean();
 
     @Override
     public int order() {
@@ -71,8 +74,17 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
             try {
                 ExtensionConfig initialized = new ExtensionConfig(config);
                 if (extensionConfig.compareAndSet(null, initialized)) {
+                    // P6.2 activation order: accepted state → private marker/writer →
+                    // (E7 platform read projection is a sibling task) → readiness via factories.
                     AcceptedPolicyAccess policy = AcceptedPolicyAccess.fromStartup(initialized);
                     acceptedPolicy.set(policy);
+                    AutoCloseable privatePlane = policy.activatePrivateControlPlane();
+                    if (!privateControlPlane.compareAndSet(null, privatePlane)) {
+                        closeQuietly(privatePlane);
+                        throw new IllegalStateException(
+                                "Private control plane activated more than once during bootstrap");
+                    }
+                    installPrivateControlShutdownHook();
                     PlatformPropagationGate.shared().bindAcceptedPolicy(policy);
                     PlatformLogControl.shared().bindAcceptedPolicy(policy);
                     jmxRegistrar.setAcceptedPolicy(policy);
@@ -80,7 +92,7 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
                 readiness.markInstalled(PlatformExtensionCapability.CONFIGURATION_LOADED);
                 if (!extensionConfig.get().scrubbing().enabled()) {
                     IllegalStateException failure = new IllegalStateException(
-                            "platform.tracing.scrubbing.enabled=false is forbidden by the secure Agent profile");
+                            ExtensionPropertyNames.SCRUBBING_ENABLED + "=false is forbidden by the secure Agent profile");
                     readiness.fail("SANITIZER_DISABLED_FOR_SECURE_PROFILE", failure);
                     throw failure;
                 }
@@ -172,6 +184,26 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
                 throw failure;
             }
         });
+    }
+
+    private void installPrivateControlShutdownHook() {
+        if (!privateControlShutdownHookInstalled.compareAndSet(false, true)) {
+            return;
+        }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            closeQuietly(privateControlPlane.getAndSet(null));
+        }, "platform-tracing-private-control-shutdown"));
+    }
+
+    private static void closeQuietly(AutoCloseable closeable) {
+        if (closeable == null) {
+            return;
+        }
+        try {
+            closeable.close();
+        } catch (Exception exception) {
+            log.warn("Private control plane cleanup failed: {}", exception.toString());
+        }
     }
 
     private static boolean isJavaAgentRuntime() {

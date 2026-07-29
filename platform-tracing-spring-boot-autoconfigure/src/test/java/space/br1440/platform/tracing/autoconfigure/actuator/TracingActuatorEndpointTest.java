@@ -3,29 +3,24 @@ package space.br1440.platform.tracing.autoconfigure.actuator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
-import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * P6.4: legacy {@code @WriteOperation} / mutation-enabled gate deleted.
+ * This endpoint remains a read-only diagnostics projection.
+ */
 class TracingActuatorEndpointTest {
 
     private TracingProperties properties;
@@ -35,7 +30,6 @@ class TracingActuatorEndpointTest {
     @BeforeEach
     void setUp() {
         properties = new TracingProperties();
-        properties.getActuator().setMutationEnabled(true);
         jmxClient = Mockito.mock(PlatformTracingJmxClient.class);
         when(jmxClient.isAvailable()).thenReturn(true);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.of(0.1d));
@@ -48,58 +42,25 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_по_умолчанию_mutation_disabled_отклоняет_и_не_вызывает_JMX() {
-        properties.getActuator().setMutationEnabled(false);
-
-        assertThatThrownBy(() -> endpoint.updateTracing("samplingRatio", "0.5"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.FORBIDDEN))
-                .hasMessageContaining("mutation is disabled")
-                .hasMessageContaining("platform.tracing.actuator.mutation-enabled=true");
-
-        verify(jmxClient, never()).setRatio(anyDouble());
-        assertThat(properties.getSampling().getRatio()).isEqualTo(0.1d);
+    void endpoint_hasNoWriteOperationMethods() {
+        boolean hasWrite = Arrays.stream(TracingActuatorEndpoint.class.getDeclaredMethods())
+                .map(Method::getAnnotations)
+                .flatMap(Arrays::stream)
+                .anyMatch(annotation -> annotation.annotationType().getSimpleName().equals("WriteOperation"));
+        assertThat(hasWrite).isFalse();
+        assertThat(TracingActuatorEndpoint.class.getDeclaredMethods())
+                .extracting(Method::getName)
+                .doesNotContain("updateTracing");
     }
 
     @Test
-    void writeOperation_mutation_disabled_отклоняет_enabled_без_изменения_properties() {
-        properties.getActuator().setMutationEnabled(false);
-
-        assertThatThrownBy(() -> endpoint.updateTracing("enabled", "false"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.FORBIDDEN));
-
-        assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
-    }
-
-    @Test
-    void readOperation_содержит_actuator_mutationEnabled() {
-        properties.getActuator().setMutationEnabled(false);
-
-        Map<String, Object> info = endpoint.tracing();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> actuator = (Map<String, Object>) info.get("actuator");
-
-        assertThat(actuator).containsEntry("mutationEnabled", false);
-    }
-
-    @Test
-    void readOperation_работает_когда_mutation_disabled() {
-        properties.getActuator().setMutationEnabled(false);
-
-        Map<String, Object> info = endpoint.tracing();
-        assertThat(info).containsKeys("mode", "sampling", "validation", "actuator");
-    }
-
-    @Test
-    void readOperation_формирует_сокращённый_read_model() {
+    void readOperation_формирует_сокращённый_read_model_без_mutation_gate() {
         Map<String, Object> info = endpoint.tracing();
 
-        assertThat(info).containsKeys("mode", "implementation", "sampling", "validation", "actuator",
+        assertThat(info).containsKeys("mode", "implementation", "sampling", "validation",
                 "otelEffective", "resourceEffective", "export", "processors", "config");
-        assertThat(info).doesNotContainKeys("limits", "queue", "exporter", "enriching", "watchdog",
+        assertThat(info).doesNotContainKeys(
+                "actuator", "limits", "queue", "exporter", "enriching", "watchdog",
                 "control", "otelEnvHints", "resourceSpringConfig");
 
         @SuppressWarnings("unchecked")
@@ -119,113 +80,6 @@ class TracingActuatorEndpointTest {
     }
 
     @Test
-    void writeOperation_enabled_не_изменяет_startup_ownership() {
-        assertThatThrownBy(() -> endpoint.updateTracing("enabled", "false"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST))
-                .hasMessageContaining("Unsupported tracing property: enabled");
-        assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
-        verify(jmxClient, never()).setRatio(anyDouble());
-    }
-
-    @Test
-    void writeOperation_samplingRatio_проксирует_в_JMX_и_синхронизирует_properties() {
-        Map<String, Object> result = endpoint.updateTracing("samplingRatio", "0.5");
-
-        verify(jmxClient, times(1)).setRatio(0.5d);
-        assertThat(result.get("appliedValue")).isEqualTo(0.5);
-        assertThat(result.get("previousLiveValue")).isEqualTo(0.1d);
-        assertThat(result.get("previousConfiguredValue")).isEqualTo(0.1d);
-        assertThat(properties.getSampling().getRatio()).isEqualTo(0.5);
-    }
-
-    @Test
-    void writeOperation_samplingRatio_когда_расширение_недоступно_отказывает_до_изменения_properties() {
-        doThrow(new PlatformTracingJmxOperationException("sampling domain not available"))
-                .when(jmxClient).setRatio(anyDouble());
-
-        assertThatThrownBy(() -> endpoint.updateTracing("samplingRatio", "0.5"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
-
-        assertThat(properties.getSampling().getRatio()).isEqualTo(0.1d);
-    }
-
-    @Test
-    void writeOperation_samplingRatio_за_пределами_диапазона_бросает_ResponseStatusException() {
-        assertThatThrownBy(() -> endpoint.updateTracing("samplingRatio", "1.5"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST))
-                .hasMessageContaining("samplingRatio")
-                .hasMessageContaining("[0.0, 1.0]");
-        assertThat(properties.getSampling().getRatio()).isEqualTo(0.1);
-        verify(jmxClient, never()).setRatio(anyDouble());
-    }
-
-    @Test
-    void writeOperation_samplingRatio_не_число_бросает_ResponseStatusException() {
-        assertThatThrownBy(() -> endpoint.updateTracing("samplingRatio", "not-a-number"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST))
-                .hasMessageContaining("samplingRatio must be a number")
-                .hasCauseInstanceOf(NumberFormatException.class);
-        assertThat(properties.getSampling().getRatio()).isEqualTo(0.1);
-        verify(jmxClient, never()).setRatio(anyDouble());
-    }
-
-    @Test
-    void writeOperation_exportEnabled_проксирует_в_JMX_и_синхронизирует_properties() {
-        Map<String, Object> result = endpoint.updateTracing("exportEnabled", "false");
-
-        verify(jmxClient, times(1)).setExportEnabled(false);
-        assertThat(result.get("appliedValue")).isEqualTo(false);
-        assertThat(properties.getExporter().isEnabled()).isFalse();
-    }
-
-    @Test
-    void writeOperation_propagationEnabled_проксирует_в_JMX_и_синхронизирует_properties() {
-        Map<String, Object> result = endpoint.updateTracing("propagationEnabled", "false");
-
-        verify(jmxClient, times(1)).setPropagationEnabled(false);
-        assertThat(result.get("appliedValue")).isEqualTo(false);
-        assertThat(properties.getPropagation().isEnabled()).isFalse();
-    }
-
-    @Test
-    void writeOperation_logLevel_проксирует_в_JMX_и_синхронизирует_properties() {
-        Map<String, Object> result = endpoint.updateTracing("logLevel", "debug");
-
-        verify(jmxClient, times(1)).setPlatformLogLevel("DEBUG");
-        assertThat(result.get("appliedValue")).isEqualTo("DEBUG");
-        assertThat(properties.getLogLevel()).isEqualTo(OtelAgentLogLevel.DEBUG);
-    }
-
-    @Test
-    void writeOperation_logLevel_отклоняет_неизвестный_уровень() {
-        assertThatThrownBy(() -> endpoint.updateTracing("logLevel", "verbose"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST))
-                .hasMessageContaining("Unsupported platform log level: verbose");
-
-        Mockito.verifyNoInteractions(jmxClient);
-    }
-
-    @Test
-    void writeOperation_неизвестный_параметр_бросает_ResponseStatusException() {
-        assertThatThrownBy(() -> endpoint.updateTracing("foobar", "any"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST))
-                .hasMessageContaining("Unsupported tracing property: foobar");
-        verify(jmxClient, never()).setRatio(anyDouble());
-    }
-
-    @Test
     void readOperation_возвращает_текущее_состояние_включая_live_ratio() {
         Map<String, Object> info = endpoint.tracing();
         assertThat(info).containsKeys("mode", "implementation", "sampling", "validation");
@@ -235,8 +89,8 @@ class TracingActuatorEndpointTest {
         assertThat(sampling).containsEntry("ratio", 0.1d);
         assertThat(sampling).containsEntry("liveRatio", 0.1d);
         assertThat(sampling).containsEntry("controlAvailable", true);
-        assertThat(sampling).containsKey("dropPaths");
-        assertThat(sampling).doesNotContainKeys("forceRecordHeader", "qaForceHeader");
+        assertThat(sampling).doesNotContainKeys(
+                "dropPaths", "forceRecordHeaderValues", "forceRecordHeader", "qaForceHeader");
     }
 
     @Test

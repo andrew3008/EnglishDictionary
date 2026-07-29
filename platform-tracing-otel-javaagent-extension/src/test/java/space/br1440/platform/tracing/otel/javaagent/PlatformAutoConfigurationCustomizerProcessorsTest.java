@@ -211,11 +211,11 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder();
         Map<String, String> props = new HashMap<>();
         recorder.primeWithConfig(new MapConfigPropertiesWithList(props,
-                "platform.tracing.scrubbing.built-in-rules",
+                "platform.tracing.javaagent.scrubbing.built-in-rules",
                 List.of("unknown-rule-x", "email")));
         SdkTracerProviderBuilder result = recorder.tracerProviderCustomizer.apply(builder,
                 new MapConfigPropertiesWithList(props,
-                        "platform.tracing.scrubbing.built-in-rules",
+                        "platform.tracing.javaagent.scrubbing.built-in-rules",
                         List.of("unknown-rule-x", "email")));
 
         assertThat(result).isSameAs(builder);
@@ -231,7 +231,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
         Map<String, String> disableAll = Map.of(
                 "platform.tracing.enriching.enabled", "false",
-                "platform.tracing.scrubbing.enabled", "false",
+                "platform.tracing.javaagent.scrubbing.enabled", "false",
                 "platform.tracing.validation.enabled", "false",
                 "platform.tracing.watchdog.enabled", "false"
         );

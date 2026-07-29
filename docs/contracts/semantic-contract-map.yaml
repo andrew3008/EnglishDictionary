@@ -506,7 +506,7 @@ maps:
           - space.br1440.platform.tracing.api.semconv.SemconvValidationMode
           - space.br1440.platform.tracing.api.semconv.SemconvViolationException
         configurationExpressions:
-          - platform.tracing.semconv.validation.mode
+          - platform.tracing.semantic.validation-mode
         springExpressions:
           - bound in SemanticLayerAutoConfiguration
         operationalExpressions:

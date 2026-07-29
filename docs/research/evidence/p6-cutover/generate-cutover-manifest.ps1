@@ -68,9 +68,9 @@ $section61 = @(
   @{ id='CONFIG_PROPERTY-026'; cur='platform.tracing.propagation.outbound.propagate-qa-trace'; fin='platform.tracing.propagation.outbound.propagate-qa-trace'; disp='DELETE_AGENT_KEEP_SPRING'; ob='Agent + Spring'; oa='Spring'; src='S-04 DUPLICATED_ACTIVE' },
   @{ id='CONFIG_PROPERTY-027'; cur='platform.tracing.propagation.outbound.propagate-request-id'; fin='platform.tracing.propagation.outbound.propagate-request-id'; disp='DELETE_AGENT_KEEP_SPRING'; ob='Agent + Spring'; oa='Spring'; src='S-04 DUPLICATED_ACTIVE' },
   @{ id='CONFIG_PROPERTY-028'; cur='platform.tracing.propagation.outbound.trusted-host-patterns'; fin='platform.tracing.propagation.outbound.trusted-host-patterns'; disp='DELETE_AGENT_KEEP_SPRING'; ob='Agent + Spring'; oa='Spring'; src='S-04 DUPLICATED_ACTIVE' },
-  @{ id='RESOURCE_ATTRIBUTE-001'; cur='platform.tracing.policy.version'; fin='platform.tracing.resource.applied-policy-version'; disp='RENAME_RESOURCE_ATTRIBUTE'; ob='Agent'; oa='Agent'; src='namespace conflict §6' },
+  @{ id='RESOURCE_ATTRIBUTE-001'; cur='platform.tracing.resource.applied-policy-version'; fin='platform.tracing.resource.applied-policy-version'; disp='KEEP'; ob='Agent'; oa='Agent'; src='P6.1 APPLIED: renamed from platform.tracing.policy.version' },
   @{ id='CONFIG_PROPERTY-036'; cur='platform.tracing.resource.policy-version'; fin='platform.tracing.resource.policy-version'; disp='KEEP'; ob='Spring'; oa='Spring'; src='separate configuration key' },
-  @{ id='DOCUMENTED_ONLY_KEY-001'; cur='platform.tracing.semconv.validation.mode'; fin='platform.tracing.semantic.validation-mode'; disp='RENAME'; ob='External'; oa='Spring'; src='P7 governance' },
+  @{ id='DOCUMENTED_ONLY_KEY-001'; cur='platform.tracing.semconv.validation.mode'; fin='platform.tracing.semantic.validation-mode'; disp='DELETE'; ob='External'; oa='Spring'; src='P6.1 APPLIED: published contract corrected; stale name DELETE' },
   @{ id='CONFIG_PROPERTY-060'; cur='platform.tracing.semantic.validation-mode'; fin='platform.tracing.semantic.validation-mode'; disp='KEEP'; ob='Spring'; oa='Spring'; src='active Spring semantic-layer key' },
   @{ id='FIXTURE_ONLY_KEY-001'; cur='platform.tracing.async.enabled'; fin='DELETE'; disp='DELETE'; ob='Fixture'; oa='—'; src='S-04 FIXTURE_ONLY' },
   @{ id='FIXTURE_ONLY_KEY-002'; cur='platform.tracing.context-propagation.async.enabled'; fin='DELETE'; disp='DELETE'; ob='Fixture'; oa='—'; src='S-04 FIXTURE_ONLY' },
@@ -91,7 +91,7 @@ $inventoryPath = Join-Path $root 'docs\research\evidence\tracing-configuration-i
 $inventory = Get-Content -Raw -Encoding UTF8 $inventoryPath | ConvertFrom-Json
 $props = @($inventory | Where-Object { $_.kind -eq 'CONFIG_PROPERTY' } | Sort-Object id)
 $envs  = @($inventory | Where-Object { $_.kind -eq 'ENV_VARIABLE' } | Sort-Object id)
-if ($props.Count -ne 77) { throw "Expected 77 CONFIG_PROPERTY, got $($props.Count)" }
+if ($props.Count -ne 76) { throw "Expected 76 CONFIG_PROPERTY, got $($props.Count)" }
 if ($envs.Count -ne 29)  { throw "Expected 29 ENV_VARIABLE, got $($envs.Count)" }
 if ($section61.Count -ne 29) { throw "Expected 29 §6.1 rows, got $($section61.Count)" }
 
@@ -283,7 +283,7 @@ $counts = [ordered]@{
 }
 
 $required = @{
-  CONFIG_PROPERTY = 77
+  CONFIG_PROPERTY = 76
   ENV_VARIABLE = 29
   SECTION_6_1_OVERRIDE = 29
   MUTATION_FAMILY = 6

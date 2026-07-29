@@ -139,8 +139,13 @@ public final class PlatformSamplingControl implements PlatformSamplingControlMBe
             double[] routeRatioValues,
             String source) {
         validateRatio(defaultRatio);
-        validateDropPaths(droppedRoutes);
-        validateForceValues(forceRecordValues);
+        // null drop/force => preserve Agent Category B startup-only state (P6.1 spring reconcile).
+        if (droppedRoutes != null) {
+            validateDropPaths(droppedRoutes);
+        }
+        if (forceRecordValues != null) {
+            validateForceValues(forceRecordValues);
+        }
         Map<String, Double> routeRatios =
                 toRouteRatios(routeRatioPrefixes, routeRatioValues);
 
@@ -157,11 +162,18 @@ public final class PlatformSamplingControl implements PlatformSamplingControlMBe
             return;
         }
 
-        AcceptedPolicyUpdateOutcome dropOutcome =
-                requirePolicy().updateDropPaths(Arrays.asList(droppedRoutes));
-        AcceptedPolicyUpdateOutcome forceOutcome =
-                requirePolicy().updateForceRecordValues(Set.copyOf(Arrays.asList(forceRecordValues)));
-        boolean applied = isAccepted(dropOutcome) && isAccepted(forceOutcome);
+        boolean applied = true;
+        if (droppedRoutes != null) {
+            AcceptedPolicyUpdateOutcome dropOutcome =
+                    requirePolicy().updateDropPaths(Arrays.asList(droppedRoutes));
+            applied = isAccepted(dropOutcome);
+        }
+        if (forceRecordValues != null) {
+            AcceptedPolicyUpdateOutcome forceOutcome =
+                    requirePolicy().updateForceRecordValues(
+                            Set.copyOf(Arrays.asList(forceRecordValues)));
+            applied = applied && isAccepted(forceOutcome);
+        }
         if (!applied) {
             invalidConfigCounter.increment();
         }

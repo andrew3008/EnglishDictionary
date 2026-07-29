@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerTracingPolicyAutoConfiguration;
 
 /**
  * Early production wiring for {@link TracingConfigurationAuthorityGuard}.
@@ -20,12 +21,14 @@ import space.br1440.platform.tracing.autoconfigure.configuration.actuator.Tracin
  * activate inconsistently.
  * <p>
  * Registered first in {@code AutoConfiguration.imports} and ordered before
- * {@link TracingCoreAutoConfiguration} and {@link TracingActuatorAutoConfiguration}.
+ * {@link TracingCoreAutoConfiguration}, {@link TracingActuatorAutoConfiguration}
+ * and {@link ConfigServerTracingPolicyAutoConfiguration}.
  */
 @AutoConfiguration
 @AutoConfigureBefore({
         TracingCoreAutoConfiguration.class,
-        TracingActuatorAutoConfiguration.class
+        TracingActuatorAutoConfiguration.class,
+        ConfigServerTracingPolicyAutoConfiguration.class
 })
 public class TracingConfigurationAuthorityAutoConfiguration {
 

@@ -1,0 +1,82 @@
+{
+  "gate": "P6.1",
+  "taskId": "p6-namespace-conflicts",
+  "status": "CONFLICTS_RESOLVED",
+  "asOf": "2026-07-29",
+  "productionCodeChangedByThisGate": true,
+  "appliedNow": [
+    {
+      "id": "RESOURCE_ATTRIBUTE-001",
+      "action": "RENAME_APPLIED",
+      "from": "platform.tracing.policy.version",
+      "to": "platform.tracing.resource.applied-policy-version",
+      "files": [
+        "platform-tracing-otel-javaagent-extension/.../ExtensionPropertyNames.java",
+        "platform-tracing-otel-javaagent-extension/.../ResourceAttributeResolver.java",
+        "platform-tracing-otel-javaagent-extension/.../PlatformResourceProvider.java",
+        "platform-tracing-spring-boot-autoconfigure/.../ResourceEffectiveSnapshot.java",
+        "platform-tracing-e2e-tests/.../ResourceIdentityAgentSmokeE2ETest.java"
+      ]
+    },
+    {
+      "id": "DOCUMENTED_ONLY_KEY-001",
+      "action": "PUBLISHED_CONTRACT_CORRECTED",
+      "from": "platform.tracing.semconv.validation.mode",
+      "to": "platform.tracing.semantic.validation-mode",
+      "files": [
+        "docs/contracts/public-contract-inventory.yaml",
+        "docs/contracts/semantic-contract-map.yaml"
+      ]
+    }
+  ],
+  "resolvedDecisionsDeferredMechanicalCutover": [
+    {
+      "family": "baggage",
+      "ids": [
+        "CONFIG_PROPERTY-002",
+        "CONFIG_PROPERTY-003",
+        "CONFIG_PROPERTY-004",
+        "CONFIG_PROPERTY-019",
+        "CONFIG_PROPERTY-020",
+        "CONFIG_PROPERTY-021"
+      ],
+      "finalNamespace": "platform.tracing.javaagent.propagation.baggage.*",
+      "sharedLeaves": ["enabled", "deny-patterns"],
+      "distinctLeaves": {
+        "allowlist-keys": "BaggageExtensionConfig / span-attribute consumer",
+        "allowed-keys": "PropagationDefaults / W3C FilteringBaggagePropagator"
+      },
+      "deferredTo": "p6-agent-parser-cutover"
+    },
+    {
+      "family": "force-record",
+      "ids": ["CONFIG_PROPERTY-043", "CONFIG_PROPERTY-044"],
+      "finalName": "platform.tracing.javaagent.sampling.force-record-values",
+      "category": "B_STARTUP_ONLY",
+      "deferredTo": "p6-agent-parser-cutover / p6-spring-binding-cutover"
+    },
+    {
+      "family": "drop-paths-scrubbing-category-b",
+      "ids": ["CONFIG_PROPERTY-040", "CONFIG_PROPERTY-048", "CONFIG_PROPERTY-049"],
+      "finalNamespace": "platform.tracing.javaagent.*",
+      "deferredTo": "p6-agent-parser-cutover / p6-spring-binding-cutover; scrubbing Spring removal also blocked on p6-remove-scrubbing-policy-holder (P6.7)"
+    },
+    {
+      "family": "outbound",
+      "ids": [
+        "CONFIG_PROPERTY-024",
+        "CONFIG_PROPERTY-025",
+        "CONFIG_PROPERTY-026",
+        "CONFIG_PROPERTY-027",
+        "CONFIG_PROPERTY-028"
+      ],
+      "disposition": "DELETE_AGENT_KEEP_SPRING",
+      "deferredTo": "p6-agent-parser-cutover"
+    }
+  ],
+  "evidence": {
+    "resolutionMd": "docs/research/evidence/p6-cutover/namespace-conflict-resolution.md",
+    "cutoverManifest": "docs/research/evidence/p6-cutover/cutover-manifest.json"
+  },
+  "nextGate": "p6-agent-parser-cutover (applies resolved final names in Agent bootstrap)"
+}

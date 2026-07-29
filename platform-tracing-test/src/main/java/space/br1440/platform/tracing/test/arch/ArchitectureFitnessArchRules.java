@@ -74,5 +74,5 @@ public final class ArchitectureFitnessArchRules {
             .and().resideOutsideOfPackage("..tests..")
             .should().dependOnClassesThat().haveSimpleName("TracingControlProtocolValidator")
             .allowEmptyShould(true)
-            .because("RuntimeConfigApplier/Actuator production path must not use Map wire validator yet");
+            .because("Actuator production path must not use Map wire validator yet");
 }

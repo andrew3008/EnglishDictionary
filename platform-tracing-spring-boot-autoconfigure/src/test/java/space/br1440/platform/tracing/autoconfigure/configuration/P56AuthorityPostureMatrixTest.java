@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>§1  Legal authority×posture combinations — guard starts and exposes bean</li>
  *   <li>§2  ACTUATOR outside LOCAL — fail-closed</li>
  *   <li>§3  Local-only positive path — Actuator mutation surface allowed exactly once</li>
- *   <li>§4  HELM/CONFIG_SERVER — Actuator private-control beans physically absent</li>
+ *   <li>§4  HELM — private-control beans physically absent; CONFIG_SERVER wires private apply/read</li>
  *   <li>§5  ACTUATOR+SHARED/PRODUCTION — fail-closed before private-control beans</li>
  *   <li>§6  Local override rejection — DISABLED incompatible with write authorities</li>
  *   <li>§7  Physical zero-write proof — non-local postures expose no write surface</li>
@@ -140,29 +140,64 @@ class P56AuthorityPostureMatrixTest {
                 });
     }
 
-    // ── §4 HELM/CONFIG_SERVER — Actuator private-control beans physically absent ──
+    // ── §4 HELM — private-control beans physically absent ─────────────────────
 
-    @ParameterizedTest(name = "no private-control beans: authority={0} posture={1}")
-    @CsvSource({
-            "HELM,LOCAL",
-            "HELM,SHARED",
-            "HELM,PRODUCTION",
-            "CONFIG_SERVER,LOCAL",
-            "CONFIG_SERVER,SHARED",
-            "CONFIG_SERVER,PRODUCTION"
-    })
-    void nonActuatorAuthority_privateControlBeansAbsent(String authority, String posture) {
+    @ParameterizedTest(name = "HELM no private-control beans: posture={0}")
+    @ValueSource(strings = {"LOCAL", "SHARED", "PRODUCTION"})
+    void helmAuthority_privateControlBeansAbsent(String posture) {
         actuatorStackRunner
                 .withPropertyValues(
-                        "platform.tracing.configuration.authority=" + authority,
+                        "platform.tracing.configuration.authority=HELM",
                         "platform.environment=" + posture)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    // Private-control infrastructure must not be created
                     assertThat(context).doesNotHaveBean(PrivateControlLocator.class);
                     assertThat(context).doesNotHaveBean(PrivateJmxTracingPolicySnapshotClient.class);
                     assertThat(context).doesNotHaveBean(SpringActuatorTracingPolicyAdapter.class);
                 });
+    }
+
+    /**
+     * P6.2: CONFIG_SERVER discovers the private complete-snapshot writer but never
+     * registers an Actuator write adapter.
+     */
+    @ParameterizedTest(name = "CONFIG_SERVER private writer, no Actuator write: posture={0}")
+    @ValueSource(strings = {"LOCAL", "SHARED", "PRODUCTION"})
+    void configServerAuthority_privateControlPresentWithoutActuatorWrite(String posture)
+            throws Exception {
+        try (space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane agent =
+                     space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane
+                             .compliant(java.util.UUID.randomUUID().toString(), 0L)) {
+            new ApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(
+                            TracingConfigurationAuthorityAutoConfiguration.class,
+                            space.br1440.platform.tracing.autoconfigure.configuration.configserver
+                                    .ConfigServerTracingPolicyAutoConfiguration.class))
+                    .withInitializer(context -> {
+                        org.springframework.core.env.MapPropertySource authoritative =
+                                new org.springframework.core.env.MapPropertySource(
+                                        "configserver:platform-tracing-policy",
+                                        java.util.Map.of(
+                                                "platform.tracing.policy.sampling.enabled", "true",
+                                                "platform.tracing.policy.sampling.ratio", "1.0",
+                                                "platform.tracing.policy.validation.enabled", "true",
+                                                "platform.tracing.policy.validation.strict", "false",
+                                                "platform.tracing.policy.exporter.enabled", "true",
+                                                "platform.tracing.policy.propagation.trace-control-headers.enabled",
+                                                "true",
+                                                "platform.tracing.policy.diagnostics.log-level", "INFO"));
+                        context.getEnvironment().getPropertySources().addFirst(authoritative);
+                    })
+                    .withPropertyValues(
+                            "platform.tracing.configuration.authority=CONFIG_SERVER",
+                            "platform.environment=" + posture)
+                    .run(context -> {
+                        assertThat(context).hasNotFailed();
+                        assertThat(context).hasSingleBean(PrivateControlLocator.class);
+                        assertThat(context).hasSingleBean(PrivateJmxTracingPolicySnapshotClient.class);
+                        assertThat(context).doesNotHaveBean(SpringActuatorTracingPolicyAdapter.class);
+                    });
+        }
     }
 
     // ── §5 ACTUATOR+SHARED/PRODUCTION — fail-closed before private-control beans ──

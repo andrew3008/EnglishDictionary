@@ -244,12 +244,12 @@ class S01OwnerInventoryEvidenceTest {
         assertSite("SafeSpanExporter", "PlatformExportControlMBean", "getSafeExporterMetrics");
         assertSite("SafeSpanExporter", "PlatformTracingJmxClient", "getExportMetrics");
         assertSite("SafeSpanExporter", "TracingActuatorEndpoint", "tracing()");
-        assertSite("SafeSpanExporter", "TracingRefreshScopeAutoConfiguration",
-                "tracingEnvironmentChangeListener");
-        assertSite("PlatformPropagationGate", "TracingRefreshScopeAutoConfiguration",
-                "tracingEnvironmentChangeListener");
-        assertSite("PlatformLogControl", "TracingRefreshScopeAutoConfiguration",
-                "tracingEnvironmentChangeListener");
+        assertSite("SafeSpanExporter", "ConfigServerTracingPolicyAdapter",
+                "onEnvironmentChange");
+        assertSite("PlatformPropagationGate", "ConfigServerTracingPolicyAdapter",
+                "onEnvironmentChange");
+        assertSite("PlatformLogControl", "ConfigServerTracingPolicyAdapter",
+                "onEnvironmentChange");
     }
 
     @Test

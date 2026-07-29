@@ -83,7 +83,7 @@ public final class ResourceAttributeResolver {
         builder.put(C_GROUP, resolveCGroup(config).orElse(EnvironmentNormalizer.UNKNOWN));
         builder.put(PLATFORM_ID, resolvePlatformId(config).orElse(EnvironmentNormalizer.UNKNOWN));
 
-        // policy.version — governance-версия контракта идентичности, добавляется всегда.
+        // applied-policy-version — governance-версия контракта идентичности, добавляется всегда.
         builder.put(POLICY_VERSION, policyVersion(config));
 
         return builder.build();
@@ -92,7 +92,8 @@ public final class ResourceAttributeResolver {
     /**
      * Есть ли у резолвера работа — используется в {@code shouldApply()}.
      * <p>
-     * Платформенный provider всегда дополняет governance-атрибут {@code policy.version}, поэтому
+     * Платформенный provider всегда дополняет governance-атрибут
+     * {@code platform.tracing.resource.applied-policy-version}, поэтому
      * если его ещё нет в {@code existing} — работа есть. Дополнительно работа есть, когда можно
      * дополнить {@code service.name} или заданы платформенные {@code c_group}/{@code id}.
      */

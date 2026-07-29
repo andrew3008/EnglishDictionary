@@ -17,6 +17,29 @@ import java.util.UUID;
 class PrivateControlBoundaryTest {
 
     @Test
+    void acceptedPolicyAccess_activatePrivateControlPlane_registersWriterOnPrivateServer()
+            throws Exception {
+        AcceptedPolicyAccess access = AcceptedPolicyAccess.isolatedDefaults();
+        int baselineServers = MBeanServerFactory.findMBeanServer(null).size();
+
+        try (AutoCloseable plane = access.activatePrivateControlPlane()) {
+            assertThat(MBeanServerFactory.findMBeanServer(null)).hasSize(baselineServers + 1);
+            int readyWriters = 0;
+            for (MBeanServer server : MBeanServerFactory.findMBeanServer(null)) {
+                if (server.isRegistered(PrivateControlObjectNames.MARKER)
+                        && server.isRegistered(PrivateControlObjectNames.WRITER)
+                        && "WRITER_READY".equals(
+                        server.getAttribute(PrivateControlObjectNames.MARKER, "LifecycleState"))) {
+                    readyWriters++;
+                }
+            }
+            assertThat(readyWriters).isEqualTo(1);
+        }
+
+        assertThat(MBeanServerFactory.findMBeanServer(null)).hasSize(baselineServers);
+    }
+
+    @Test
     void registersExactlyOnePrivateWriterAndReleasesServer() throws Exception {
         String runtimeId = UUID.randomUUID().toString();
         AcceptedPolicyStateStore store = store(runtimeId);

@@ -38,7 +38,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
                 // scrubbing.enabled = false so collectScrubbingRules is never called
-                if ("platform.tracing.scrubbing.enabled".equals(name)) return false;
+                if ("platform.tracing.javaagent.scrubbing.enabled".equals(name)) return false;
                 return null;
             }
             @Override public Integer getInt(String name) { return null; }
@@ -258,7 +258,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             ExtensionConfig defaultConfig = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String name) { return null; }
                 @Override public Boolean getBoolean(String name) {
-                    if ("platform.tracing.scrubbing.enabled".equals(name)) return false;
+                    if ("platform.tracing.javaagent.scrubbing.enabled".equals(name)) return false;
                     return null;
                 }
                 @Override public Integer getInt(String name) { return null; }
@@ -293,7 +293,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 @Override public String getString(String name) { return null; }
                 @Override public Boolean getBoolean(String name) {
                     // Scrubbing must be off so collectScrubbingRules is never called.
-                    if ("platform.tracing.scrubbing.enabled".equals(name)) return false;
+                    if ("platform.tracing.javaagent.scrubbing.enabled".equals(name)) return false;
                     return null;
                 }
                 @Override public Integer getInt(String name) { return null; }

@@ -708,6 +708,6 @@ inventories:
 
       - entryId: semconv-validation-mode
         externalModule: platform-tracing-spring-boot-autoconfigure
-        externalElement: platform.tracing.semconv.validation.mode
+        externalElement: platform.tracing.semantic.validation-mode
         surface: configuration
-        notes: "Property binding lives outside api module."
+        notes: "P6.1 conflict resolution: renamed from published-but-absent platform.tracing.semconv.validation.mode to the active Spring Semantic.validationMode binding (CONFIG_PROPERTY-060 KEEP)."

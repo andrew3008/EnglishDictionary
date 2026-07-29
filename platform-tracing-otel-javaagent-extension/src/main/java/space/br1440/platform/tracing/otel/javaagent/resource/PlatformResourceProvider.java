@@ -28,7 +28,7 @@ import java.util.function.Supplier;
  * <h2>Что заполняет</h2>
  * <ul>
  *   <li>identity: {@code service.name}, {@code service.version}, {@code deployment.environment.name},
- *       {@code platform.c_group}, {@code platform.id}, {@code platform.tracing.policy.version}
+ *       {@code platform.c_group}, {@code platform.id}, {@code platform.tracing.resource.applied-policy-version}
  *       (через {@link ResourceAttributeResolver});</li>
  *   <li>{@code host.name} — omit-if-unknown (через {@link HostNameResolver}); не трогается, если уже
  *       задан предыдущим провайдером (OTel Host detector);</li>

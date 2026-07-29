@@ -6,7 +6,6 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.RuntimeConfigApplier;
 import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.test.arch.ArchitectureFitnessArchRules;
@@ -52,25 +51,44 @@ class ProductionControlPlaneNotMigratedArchTest {
     }
 
     @Test
-    @DisplayName("RuntimeConfigApplier and TracingActuatorEndpoint remain production entry points")
+    @DisplayName("TracingActuatorEndpoint remains a production entry point")
     void productionEntryPointsExist() {
-        assertThat(RuntimeConfigApplier.class).isNotNull();
         assertThat(TracingActuatorEndpoint.class).isNotNull();
+    }
+
+    @Test
+    @DisplayName("RuntimeConfigApplier class no longer exists in production")
+    void runtimeConfigApplierDeleted() {
+        assertThat(productionClassPresent("space.br1440.platform.tracing.autoconfigure.RuntimeConfigApplier"))
+                .as("RuntimeConfigApplier should have been deleted from production")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("TracingRefreshScopeAutoConfiguration class no longer exists in production")
+    void tracingRefreshScopeAutoConfigurationDeleted() {
+        assertThat(productionClassPresent(
+                "space.br1440.platform.tracing.autoconfigure.TracingRefreshScopeAutoConfiguration"))
+                .as("TracingRefreshScopeAutoConfiguration should have been deleted from production")
+                .isFalse();
     }
 
     @Test
     @DisplayName("SamplingControlClient class no longer exists in production")
     void samplingControlClientDeleted() {
-        boolean oldClassPresent;
-        try {
-            Class.forName("space.br1440.platform.tracing.autoconfigure.sampling.SamplingControlClient");
-            oldClassPresent = true;
-        } catch (ClassNotFoundException e) {
-            oldClassPresent = false;
-        }
-        assertThat(oldClassPresent)
+        assertThat(productionClassPresent(
+                "space.br1440.platform.tracing.autoconfigure.sampling.SamplingControlClient"))
                 .as("SamplingControlClient should have been deleted from production")
                 .isFalse();
+    }
+
+    private static boolean productionClassPresent(String className) {
+        try {
+            Class.forName(className);
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     private static boolean hasPublicMethod(Class<?> type, String name, Class<?>... paramTypes) {

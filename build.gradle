@@ -772,9 +772,7 @@ def tracingConfigurationInventoryTest = tasks.register(
             'reports/tests/tracingConfigurationInventoryTest')
     useJUnitPlatform()
     filter {
-        includeTestsMatching(
-                'space.br1440.platform.tracing.autoconfigure.inventory.' +
-                        'TracingConfigurationInventoryGeneratorTest')
+        includeTestsMatching('space.br1440.platform.tracing.autoconfigure.inventory.*')
     }
     if (providers.gradleProperty('updateTracingConfigurationInventory').isPresent()) {
         systemProperty 'tracing.configuration.inventory.update', 'true'

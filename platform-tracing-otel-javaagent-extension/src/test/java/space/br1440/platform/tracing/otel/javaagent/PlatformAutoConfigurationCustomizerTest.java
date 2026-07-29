@@ -182,7 +182,7 @@ class PlatformAutoConfigurationCustomizerTest {
         // Корректное поведение — просто вернуть тот же builder.
         ConfigProperties props = new MapConfigProperties(Map.of(
                 "platform.tracing.enriching.enabled", "false",
-                "platform.tracing.scrubbing.enabled", "false",
+                "platform.tracing.javaagent.scrubbing.enabled", "false",
                 "platform.tracing.validation.enabled", "false",
                 "platform.tracing.watchdog.enabled", "false",
                 "platform.tracing.classification.enabled", "false",

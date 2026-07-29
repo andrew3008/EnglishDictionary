@@ -2,11 +2,11 @@
     "gate":  "P6.0",
     "name":  "Machine-readable coherent cutover execution manifest",
     "asOf":  "2026-07-29",
-    "capturedAt":  "2026-07-29T19:49:49+03:00",
+    "capturedAt":  "2026-07-29T20:24:24+03:00",
     "status":  "MANIFEST_RECORDED",
     "productionCodeChangedByThisGate":  false,
     "repository":  {
-                       "head":  "27a5e873123d6d976af7fdfa924cd517ddcaf88d",
+                       "head":  "27cbca38066f25edc9358518327af3c40fe5cb1d",
                        "branch":  "master"
                    },
     "preconditions":  {
@@ -27,12 +27,12 @@
     "requiredCounts":  {
                            "MUTATION_FAMILY":  6,
                            "JMX_E1_E7_DELTA":  63,
-                           "CONFIG_PROPERTY":  77,
+                           "CONFIG_PROPERTY":  76,
                            "SECTION_6_1_OVERRIDE":  29,
                            "ENV_VARIABLE":  29
                        },
     "actualCounts":  {
-                         "CONFIG_PROPERTY":  77,
+                         "CONFIG_PROPERTY":  76,
                          "ENV_VARIABLE":  29,
                          "SECTION_6_1_OVERRIDE":  29,
                          "MUTATION_FAMILY":  6,
@@ -42,7 +42,7 @@
                          "DEPLOYMENT_OR_FIXTURE_OCCURRENCE":  390,
                          "LEGACY_NAME_DETECTOR":  1,
                          "DEPLOYMENT_HELM":  1,
-                         "totalRows":  613
+                         "totalRows":  612
                      },
     "forbidden":  [
                       "wildcard migration",
@@ -80,113 +80,10 @@
                  {
                      "section":  "CONFIG_PROPERTY",
                      "inventoryId":  "CONFIG_PROPERTY-002",
-                     "currentNameOrSymbol":  "platform.tracing.baggage.allowlist-keys",
+                     "currentNameOrSymbol":  "platform.tracing.classification.enabled",
                      "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.allowlist-keys",
                      "disposition":  "RENAME_TO_JAVAAGENT",
                      "ownerBefore":  "Agent",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:21[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:277[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:327[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_ALLOWLIST_KEYS:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:21[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:277[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:327[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.baggage.allowlist-keys",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "String",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-003",
-                     "currentNameOrSymbol":  "platform.tracing.baggage.deny-patterns",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.deny-patterns",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:22[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:54[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:13[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:34[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:64[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:276[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_DENY_PATTERNS:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:22[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:54[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:13[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:34[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:64[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:276[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.baggage.deny-patterns",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "List\u003cString\u003e",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-004",
-                     "currentNameOrSymbol":  "platform.tracing.baggage.enabled",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.enabled",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:20[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:51[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:11[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:31[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:56[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:257[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:261[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/propagation/BaggagePropagationCustomizerTest.java:88[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_ENABLED:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:20[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:51[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:11[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:31[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:56[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:257[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:261[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/propagation/BaggagePropagationCustomizerTest.java:88[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.baggage.enabled",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "boolean",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-005",
-                     "currentNameOrSymbol":  "platform.tracing.classification.enabled",
-                     "finalNameOrDisposition":  "platform.tracing.classification.enabled",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ClassificationExtensionConfig.java:20[DIRECT_CALL]"
@@ -198,20 +95,20 @@
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.CLASSIFICATION_ENABLED:String",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ClassificationExtensionConfig.java:20[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.classification.enabled",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "boolean",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-006",
+                     "inventoryId":  "CONFIG_PROPERTY-003",
                      "currentNameOrSymbol":  "platform.tracing.classification.normal-threshold",
-                     "finalNameOrDisposition":  "platform.tracing.classification.normal-threshold",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.deny-patterns",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ClassificationExtensionConfig.java:22[DIRECT_CALL]",
@@ -225,20 +122,20 @@
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ClassificationExtensionConfig.java:22[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:40[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.classification.normal-threshold",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "Duration",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-007",
+                     "inventoryId":  "CONFIG_PROPERTY-004",
                      "currentNameOrSymbol":  "platform.tracing.classification.slow-threshold",
-                     "finalNameOrDisposition":  "platform.tracing.classification.slow-threshold",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.enabled",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ClassificationExtensionConfig.java:21[DIRECT_CALL]",
@@ -254,16 +151,16 @@
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:39[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:322[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.classification.slow-threshold",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "Duration",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-008",
+                     "inventoryId":  "CONFIG_PROPERTY-005",
                      "currentNameOrSymbol":  "platform.tracing.control.runtime-mutation.enabled",
                      "finalNameOrDisposition":  "platform.tracing.control.runtime-mutation.enabled",
                      "disposition":  "KEEP",
@@ -292,7 +189,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-009",
+                     "inventoryId":  "CONFIG_PROPERTY-006",
                      "currentNameOrSymbol":  "platform.tracing.enriching.enabled",
                      "finalNameOrDisposition":  "platform.tracing.enriching.enabled",
                      "disposition":  "KEEP",
@@ -323,7 +220,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-010",
+                     "inventoryId":  "CONFIG_PROPERTY-007",
                      "currentNameOrSymbol":  "platform.tracing.enriching.remote-service-priority",
                      "finalNameOrDisposition":  "platform.tracing.enriching.remote-service-priority",
                      "disposition":  "KEEP",
@@ -348,7 +245,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-011",
+                     "inventoryId":  "CONFIG_PROPERTY-008",
                      "currentNameOrSymbol":  "platform.tracing.exporter.enabled",
                      "finalNameOrDisposition":  "platform.tracing.exporter.enabled",
                      "disposition":  "KEEP",
@@ -373,7 +270,249 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-009",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.propagation.baggage.allowed-keys",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.allowed-keys",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:48[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_ALLOWED_KEYS:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:48[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "List\u003cString\u003e",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-010",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.propagation.baggage.allowlist-keys",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.allowlist-keys",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:21[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:277[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:327[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_ALLOWLIST_KEYS:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:21[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:277[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:327[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "String",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-011",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.propagation.baggage.deny-patterns",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.deny-patterns",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:22[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:54[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:13[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:22[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:52[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:276[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_DENY_PATTERNS:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_DENY_PATTERNS:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:22[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:54[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:13[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:22[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:52[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:276[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "List\u003cString\u003e",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
                      "inventoryId":  "CONFIG_PROPERTY-012",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.propagation.baggage.enabled",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.enabled",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:20[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:51[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:11[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:19[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:44[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:257[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:261[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/propagation/BaggagePropagationCustomizerTest.java:88[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_ENABLED:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_ENABLED:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:20[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:51[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:11[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:19[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:44[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:257[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:261[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/propagation/BaggagePropagationCustomizerTest.java:88[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "boolean",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-013",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.sampling.drop-paths",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.sampling.drop-paths",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:30[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:317[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_DROP_PATHS:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:30[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:317[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "List\u003cString\u003e",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-014",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.sampling.force-record-values",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.sampling.force-record-values",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:29[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:307[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_FORCE_RECORD_VALUES:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:29[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:307[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "List\u003cString\u003e",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-015",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.scrubbing.built-in-rules",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.built-in-rules",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:26[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:26[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "List\u003cString\u003e",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-016",
+                     "currentNameOrSymbol":  "platform.tracing.javaagent.scrubbing.enabled",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.enabled",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolKeys.java:20[DIRECT_CALL]",
+                                                     "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolSchema.java:60[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/PlatformAutoConfigurationCustomizer.java:84[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:25[DIRECT_CALL]",
+                                                     "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyControlDomainValidator.java:50[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Agent"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_ENABLED:String",
+                                            "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolKeys.java:20[DIRECT_CALL]",
+                                            "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolSchema.java:60[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/PlatformAutoConfigurationCustomizer.java:84[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:25[DIRECT_CALL]",
+                                            "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyControlDomainValidator.java:50[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "boolean",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-017",
                      "currentNameOrSymbol":  "platform.tracing.kafka.batch-links-enabled",
                      "finalNameOrDisposition":  "platform.tracing.kafka.batch-links-enabled",
                      "disposition":  "KEEP",
@@ -398,7 +537,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-013",
+                     "inventoryId":  "CONFIG_PROPERTY-018",
                      "currentNameOrSymbol":  "platform.tracing.kafka.mode",
                      "finalNameOrDisposition":  "platform.tracing.kafka.mode",
                      "disposition":  "KEEP",
@@ -423,82 +562,82 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-014",
+                     "inventoryId":  "CONFIG_PROPERTY-019",
                      "currentNameOrSymbol":  "platform.tracing.kafka.propagate-platform-headers",
-                     "finalNameOrDisposition":  "platform.tracing.kafka.propagate-platform-headers",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "Spring application context",
-                     "ownerAfter":  "Spring",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.allowed-keys",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Spring"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Kafka.propagatePlatformHeaders:boolean",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.kafka.propagate-platform-headers",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "boolean",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-015",
+                     "inventoryId":  "CONFIG_PROPERTY-020",
                      "currentNameOrSymbol":  "platform.tracing.kafka.trusted-topic-patterns",
-                     "finalNameOrDisposition":  "platform.tracing.kafka.trusted-topic-patterns",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "Spring application context",
-                     "ownerAfter":  "Spring",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.deny-patterns",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Spring"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Kafka.trustedTopicPatterns:List\u003cString\u003e",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.kafka.trusted-topic-patterns",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "List",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-016",
+                     "inventoryId":  "CONFIG_PROPERTY-021",
                      "currentNameOrSymbol":  "platform.tracing.log-level",
-                     "finalNameOrDisposition":  "platform.tracing.log-level",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "Spring application context",
-                     "ownerAfter":  "Agent runtime policy owner",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.enabled",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Agent runtime policy owner"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#TracingProperties.logLevel:space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.log-level",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "OtelAgentLogLevel",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-017",
+                     "inventoryId":  "CONFIG_PROPERTY-022",
                      "currentNameOrSymbol":  "platform.tracing.metrics.enabled",
                      "finalNameOrDisposition":  "platform.tracing.metrics.enabled",
                      "disposition":  "KEEP",
@@ -523,7 +662,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-018",
+                     "inventoryId":  "CONFIG_PROPERTY-023",
                      "currentNameOrSymbol":  "platform.tracing.mode",
                      "finalNameOrDisposition":  "platform.tracing.mode",
                      "disposition":  "KEEP",
@@ -555,113 +694,36 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-019",
-                     "currentNameOrSymbol":  "platform.tracing.propagation.baggage.allowed-keys",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.allowed-keys",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:60[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_ALLOWED_KEYS:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:60[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.propagation.baggage.allowed-keys",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "List\u003cString\u003e",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-020",
-                     "currentNameOrSymbol":  "platform.tracing.propagation.baggage.deny-patterns",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.deny-patterns",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:64[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_DENY_PATTERNS:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:64[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.propagation.baggage.deny-patterns",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "List\u003cString\u003e",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-021",
-                     "currentNameOrSymbol":  "platform.tracing.propagation.baggage.enabled",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.propagation.baggage.enabled",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:56[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/propagation/BaggagePropagationCustomizerTest.java:88[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_ENABLED:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:56[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/propagation/BaggagePropagationCustomizerTest.java:88[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Â§6 namespace taxonomy; S-04 MOVE_OWNERSHIP) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.propagation.baggage.enabled",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "boolean",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-022",
+                     "inventoryId":  "CONFIG_PROPERTY-024",
                      "currentNameOrSymbol":  "platform.tracing.propagation.enabled",
-                     "finalNameOrDisposition":  "platform.tracing.propagation.enabled",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "Spring application context",
-                     "ownerAfter":  "Agent runtime policy owner",
+                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.enabled",
+                     "disposition":  "DELETE_AGENT_KEEP_SPRING",
+                     "ownerBefore":  "Agent + Spring",
+                     "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Agent runtime policy owner"
+                                                    "target owner readers only: Spring"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Propagation.enabled:boolean",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 DUPLICATED_ACTIVE) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.propagation.enabled",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "boolean",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-023",
+                     "inventoryId":  "CONFIG_PROPERTY-025",
                      "currentNameOrSymbol":  "platform.tracing.propagation.outbound.allow-ip-literals",
-                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.allow-ip-literals",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "Spring application context",
+                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.propagate-force-trace",
+                     "disposition":  "DELETE_AGENT_KEEP_SPRING",
+                     "ownerBefore":  "Agent + Spring",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
@@ -673,32 +735,29 @@
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.allowIpLiterals:boolean",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 DUPLICATED_ACTIVE) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.propagation.outbound.allow-ip-literals",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "boolean",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-024",
+                     "inventoryId":  "CONFIG_PROPERTY-026",
                      "currentNameOrSymbol":  "platform.tracing.propagation.outbound.enabled",
-                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.enabled",
+                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.propagate-qa-trace",
                      "disposition":  "DELETE_AGENT_KEEP_SPRING",
                      "ownerBefore":  "Agent + Spring",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:69[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: Spring"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_ENABLED:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.enabled:boolean",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:69[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 DUPLICATED_ACTIVE) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.propagation.outbound.enabled",
@@ -710,23 +769,20 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-025",
+                     "inventoryId":  "CONFIG_PROPERTY-027",
                      "currentNameOrSymbol":  "platform.tracing.propagation.outbound.propagate-force-trace",
-                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.propagate-force-trace",
+                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.propagate-request-id",
                      "disposition":  "DELETE_AGENT_KEEP_SPRING",
                      "ownerBefore":  "Agent + Spring",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:77[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: Spring"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_PROPAGATE_FORCE:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.propagateForceTrace:boolean",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:77[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 DUPLICATED_ACTIVE) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.propagation.outbound.propagate-force-trace",
@@ -738,23 +794,20 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-026",
+                     "inventoryId":  "CONFIG_PROPERTY-028",
                      "currentNameOrSymbol":  "platform.tracing.propagation.outbound.propagate-qa-trace",
-                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.propagate-qa-trace",
+                     "finalNameOrDisposition":  "platform.tracing.propagation.outbound.trusted-host-patterns",
                      "disposition":  "DELETE_AGENT_KEEP_SPRING",
                      "ownerBefore":  "Agent + Spring",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:81[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: Spring"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_PROPAGATE_QA:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.propagateQaTrace:boolean",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:81[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 DUPLICATED_ACTIVE) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.propagation.outbound.propagate-qa-trace",
@@ -766,70 +819,64 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-027",
+                     "inventoryId":  "CONFIG_PROPERTY-029",
                      "currentNameOrSymbol":  "platform.tracing.propagation.outbound.propagate-request-id",
                      "finalNameOrDisposition":  "platform.tracing.propagation.outbound.propagate-request-id",
-                     "disposition":  "DELETE_AGENT_KEEP_SPRING",
-                     "ownerBefore":  "Agent + Spring",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "Spring application context",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:85[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: Spring"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_PROPAGATE_REQUEST_ID:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.propagateRequestId:boolean",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:85[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 DUPLICATED_ACTIVE) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.propagation.outbound.propagate-request-id",
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "boolean",
-                     "section61Override":  true,
+                     "section61Override":  false,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-028",
+                     "inventoryId":  "CONFIG_PROPERTY-030",
                      "currentNameOrSymbol":  "platform.tracing.propagation.outbound.trusted-host-patterns",
                      "finalNameOrDisposition":  "platform.tracing.propagation.outbound.trusted-host-patterns",
-                     "disposition":  "DELETE_AGENT_KEEP_SPRING",
-                     "ownerBefore":  "Agent + Spring",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "Spring application context",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:73[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: Spring"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_TRUSTED_HOSTS:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.trustedHostPatterns:List\u003cString\u003e",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:73[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 DUPLICATED_ACTIVE) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.propagation.outbound.trusted-host-patterns",
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "List",
-                     "section61Override":  true,
+                     "section61Override":  false,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-029",
+                     "inventoryId":  "CONFIG_PROPERTY-031",
                      "currentNameOrSymbol":  "platform.tracing.propagation.platform-headers.force-trace-header",
                      "finalNameOrDisposition":  "platform.tracing.propagation.platform-headers.force-trace-header",
                      "disposition":  "KEEP",
                      "ownerBefore":  "OpenTelemetry Java Agent extension",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:44[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:32[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
@@ -838,63 +885,7 @@
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_HEADER_FORCE_TRACE:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#PlatformHeadersConfig.forceTraceHeader:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:44[DIRECT_CALL]",
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "String",
-                     "section61Override":  false,
-                     "s04ProposedDisposition":  "KEEP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-030",
-                     "currentNameOrSymbol":  "platform.tracing.propagation.platform-headers.qa-trace-header",
-                     "finalNameOrDisposition":  "platform.tracing.propagation.platform-headers.qa-trace-header",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Spring",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:48[DIRECT_CALL]",
-                                                     "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Spring"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_HEADER_QA_TRACE:String",
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#PlatformHeadersConfig.qaTraceHeader:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:48[DIRECT_CALL]",
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "String",
-                     "section61Override":  false,
-                     "s04ProposedDisposition":  "KEEP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-031",
-                     "currentNameOrSymbol":  "platform.tracing.propagation.platform-headers.request-id-header",
-                     "finalNameOrDisposition":  "platform.tracing.propagation.platform-headers.request-id-header",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Spring",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:52[DIRECT_CALL]",
-                                                     "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Spring"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_HEADER_REQUEST_ID:String",
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#PlatformHeadersConfig.requestIdHeader:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:52[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:32[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
@@ -907,6 +898,62 @@
                  {
                      "section":  "CONFIG_PROPERTY",
                      "inventoryId":  "CONFIG_PROPERTY-032",
+                     "currentNameOrSymbol":  "platform.tracing.propagation.platform-headers.qa-trace-header",
+                     "finalNameOrDisposition":  "platform.tracing.propagation.platform-headers.qa-trace-header",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Spring",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:36[DIRECT_CALL]",
+                                                     "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Spring"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_HEADER_QA_TRACE:String",
+                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#PlatformHeadersConfig.qaTraceHeader:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:36[DIRECT_CALL]",
+                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "String",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-033",
+                     "currentNameOrSymbol":  "platform.tracing.propagation.platform-headers.request-id-header",
+                     "finalNameOrDisposition":  "platform.tracing.propagation.platform-headers.request-id-header",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Spring",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:40[DIRECT_CALL]",
+                                                     "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Spring"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_HEADER_REQUEST_ID:String",
+                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#PlatformHeadersConfig.requestIdHeader:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:40[DIRECT_CALL]",
+                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "String",
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-034",
                      "currentNameOrSymbol":  "platform.tracing.queue.overflow-policy",
                      "finalNameOrDisposition":  "platform.tracing.queue.overflow-policy",
                      "disposition":  "KEEP",
@@ -963,7 +1010,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-033",
+                     "inventoryId":  "CONFIG_PROPERTY-035",
                      "currentNameOrSymbol":  "platform.tracing.resource.detect-container-id",
                      "finalNameOrDisposition":  "platform.tracing.resource.detect-container-id",
                      "disposition":  "KEEP",
@@ -998,12 +1045,12 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-034",
+                     "inventoryId":  "CONFIG_PROPERTY-036",
                      "currentNameOrSymbol":  "platform.tracing.resource.normalize-environment",
-                     "finalNameOrDisposition":  "platform.tracing.resource.normalize-environment",
+                     "finalNameOrDisposition":  "platform.tracing.resource.policy-version",
                      "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Agent",
+                     "ownerBefore":  "Spring",
+                     "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:35[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ResourceExtensionConfig.java:20[DIRECT_CALL]",
@@ -1012,7 +1059,7 @@
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:223[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
+                                                    "target owner readers only: Spring"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.RESOURCE_NORMALIZE_ENVIRONMENT:String",
@@ -1022,16 +1069,16 @@
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:71[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:223[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (separate configuration key) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.resource.normalize-environment",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "String",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-035",
+                     "inventoryId":  "CONFIG_PROPERTY-037",
                      "currentNameOrSymbol":  "platform.tracing.resource.policy-version",
                      "finalNameOrDisposition":  "platform.tracing.resource.policy-version",
                      "disposition":  "KEEP",
@@ -1039,12 +1086,13 @@
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:34[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:47[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ResourceExtensionConfig.java:19[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:12[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:53[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:105[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:171[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:106[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:172[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:173[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:45[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceStartupDiagnostics.java:27[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:227[DIRECT_CALL]",
@@ -1063,12 +1111,13 @@
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.RESOURCE_POLICY_VERSION:String",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:34[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:47[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ResourceExtensionConfig.java:19[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:12[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:53[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:105[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:171[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:106[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:172[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:173[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:45[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceStartupDiagnostics.java:27[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:227[DIRECT_CALL]",
@@ -1090,12 +1139,12 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-036",
+                     "inventoryId":  "CONFIG_PROPERTY-038",
                      "currentNameOrSymbol":  "platform.tracing.resource.validation-mode",
-                     "finalNameOrDisposition":  "platform.tracing.resource.policy-version",
+                     "finalNameOrDisposition":  "platform.tracing.resource.validation-mode",
                      "disposition":  "KEEP",
-                     "ownerBefore":  "Spring",
-                     "ownerAfter":  "Spring",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:36[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ResourceExtensionConfig.java:21[DIRECT_CALL]",
@@ -1106,7 +1155,7 @@
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:184[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Spring"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.RESOURCE_VALIDATION_MODE:String",
@@ -1118,16 +1167,16 @@
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:171[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:184[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (separate configuration key) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.resource.validation-mode",
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "String",
-                     "section61Override":  true,
+                     "section61Override":  false,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-037",
+                     "inventoryId":  "CONFIG_PROPERTY-039",
                      "currentNameOrSymbol":  "platform.tracing.response.expose-request-id-header",
                      "finalNameOrDisposition":  "platform.tracing.response.expose-request-id-header",
                      "disposition":  "KEEP",
@@ -1152,67 +1201,37 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-038",
+                     "inventoryId":  "CONFIG_PROPERTY-040",
                      "currentNameOrSymbol":  "platform.tracing.response.header-name",
-                     "finalNameOrDisposition":  "platform.tracing.response.header-name",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "Spring application context",
-                     "ownerAfter":  "Spring",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.sampling.drop-paths",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent + Spring",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Spring"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Response.headerName:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Decision 14 Â§5 Category B) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.response.header-name",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "String",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-039",
-                     "currentNameOrSymbol":  "platform.tracing.sampling.drop-paths",
-                     "finalNameOrDisposition":  "platform.tracing.policy.sampling.drop-paths",
-                     "disposition":  "MOVE_OWNERSHIP",
+                     "inventoryId":  "CONFIG_PROPERTY-041",
+                     "currentNameOrSymbol":  "platform.tracing.sampling.enabled",
+                     "finalNameOrDisposition":  "platform.tracing.sampling.enabled",
+                     "disposition":  "KEEP",
                      "ownerBefore":  "OpenTelemetry Java Agent extension",
                      "ownerAfter":  "Agent runtime policy owner",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:30[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:317[DIRECT_CALL]",
-                                                     "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent runtime policy owner"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_DROP_PATHS:String",
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Sampling.dropPaths:List\u003cString\u003e",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:30[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:317[DIRECT_CALL]",
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "List",
-                     "section61Override":  false,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-040",
-                     "currentNameOrSymbol":  "platform.tracing.sampling.enabled",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.sampling.drop-paths",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent + Spring",
-                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:25[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:19[DIRECT_CALL]",
@@ -1223,7 +1242,7 @@
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/jmx/privatecontrol/CandidateDigest.java:52[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
+                                                    "target owner readers only: Agent runtime policy owner"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_ENABLED:String",
@@ -1236,97 +1255,45 @@
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/jmx/privatecontrol/CandidateDigest.java:34[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/jmx/privatecontrol/CandidateDigest.java:52[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Decision 14 Â§5 Category B) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.sampling.enabled",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "boolean",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "KEEP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-041",
-                     "currentNameOrSymbol":  "platform.tracing.sampling.force-record-header",
-                     "finalNameOrDisposition":  "platform.tracing.sampling.force-record-header",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Agent runtime policy owner",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:27[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent runtime policy owner"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_FORCE_RECORD_HEADER:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:27[DIRECT_CALL]"
-                                        ],
                      "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
-                     "valueType":  "String",
+                     "valueType":  "boolean",
                      "section61Override":  false,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
                      "inventoryId":  "CONFIG_PROPERTY-042",
-                     "currentNameOrSymbol":  "platform.tracing.sampling.force-record-header-values",
+                     "currentNameOrSymbol":  "platform.tracing.sampling.force-record-header",
                      "finalNameOrDisposition":  "platform.tracing.sampling.force-record-header",
                      "disposition":  "KEEP",
                      "ownerBefore":  "Agent",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:27[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Sampling.forceRecordHeaderValues:List\u003cString\u003e",
-                                            "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_FORCE_RECORD_HEADER:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:27[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 KEEP) supersedes S-04 proposedDisposition=RENAME proposedTargetName=platform.tracing.policy.sampling.force-record-values",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (S-04 KEEP) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.sampling.force-record-header",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
-                     "valueType":  "List",
+                     "valueType":  "String",
                      "section61Override":  true,
-                     "s04ProposedDisposition":  "RENAME"
+                     "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
                      "inventoryId":  "CONFIG_PROPERTY-043",
-                     "currentNameOrSymbol":  "platform.tracing.sampling.force-record-values",
+                     "currentNameOrSymbol":  "platform.tracing.sampling.qa-header",
                      "finalNameOrDisposition":  "platform.tracing.javaagent.sampling.force-record-values",
                      "disposition":  "RENAME_SPELLING_AND_OWNER",
                      "ownerBefore":  "Spring",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:29[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:307[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_FORCE_RECORD_VALUES:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:29[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:307[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Decision 14 Â§5) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.policy.sampling.force-record-values",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "List\u003cString\u003e",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-044",
-                     "currentNameOrSymbol":  "platform.tracing.sampling.qa-header",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.sampling.force-record-values",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:28[DIRECT_CALL]"
@@ -1347,12 +1314,12 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-045",
+                     "inventoryId":  "CONFIG_PROPERTY-044",
                      "currentNameOrSymbol":  "platform.tracing.sampling.ratio",
-                     "finalNameOrDisposition":  "platform.tracing.sampling.ratio",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Agent runtime policy owner",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.sampling.force-record-values",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolKeys.java:12[DIRECT_CALL]",
                                                      "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolSchema.java:53[DIRECT_CALL]",
@@ -1438,7 +1405,7 @@
                                                      "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/sampling/SamplingControlClientWireContractTest.java:58[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Agent runtime policy owner"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_RATIO:String",
@@ -1526,16 +1493,16 @@
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/jmx/privatecontrol/CandidateDigest.java:53[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/sampling/SamplingControlClientWireContractTest.java:58[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Decision 14 Â§5) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.sampling.ratio",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "double",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-046",
+                     "inventoryId":  "CONFIG_PROPERTY-045",
                      "currentNameOrSymbol":  "platform.tracing.sampling.route-ratios",
                      "finalNameOrDisposition":  "platform.tracing.sampling.route-ratios",
                      "disposition":  "KEEP",
@@ -1599,23 +1566,20 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-047",
+                     "inventoryId":  "CONFIG_PROPERTY-046",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.built-in-rules",
-                     "finalNameOrDisposition":  "platform.tracing.scrubbing.built-in-rules",
-                     "disposition":  "MOVE_OWNERSHIP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Agent runtime policy owner",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.built-in-rules",
+                     "disposition":  "DELETE_SPRING_AFTER_P67",
+                     "ownerBefore":  "Spring application context",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:26[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Agent runtime policy owner"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Scrubbing.builtInRules:List\u003cString\u003e",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:26[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
@@ -1623,47 +1587,38 @@
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "List",
                      "section61Override":  false,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
+                     "s04ProposedDisposition":  "DELETE_SPRING_AFTER_P67"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-048",
+                     "inventoryId":  "CONFIG_PROPERTY-047",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.enabled",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.built-in-rules",
-                     "disposition":  "RENAME_TO_JAVAAGENT",
-                     "ownerBefore":  "Agent + Spring",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.enabled",
+                     "disposition":  "DELETE_SPRING_AFTER_P67",
+                     "ownerBefore":  "Spring application context",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolKeys.java:20[DIRECT_CALL]",
-                                                     "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolSchema.java:60[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:25[DIRECT_CALL]",
-                                                     "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyControlDomainValidator.java:50[DIRECT_CALL]",
                                                      "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_ENABLED:String",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Scrubbing.enabled:boolean",
-                                            "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolKeys.java:20[DIRECT_CALL]",
-                                            "platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolSchema.java:60[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:25[DIRECT_CALL]",
-                                            "platform-tracing-otel/src/main/java/space/br1440/platform/tracing/otel/control/protocol/RuntimePolicyControlDomainValidator.java:50[DIRECT_CALL]",
                                             "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Decision 14 Â§5 Category B) supersedes S-04 proposedDisposition=MOVE_OWNERSHIP proposedTargetName=platform.tracing.scrubbing.enabled",
+                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "boolean",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "MOVE_OWNERSHIP"
+                     "section61Override":  false,
+                     "s04ProposedDisposition":  "DELETE_SPRING_AFTER_P67"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-049",
+                     "inventoryId":  "CONFIG_PROPERTY-048",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.hash.key-id",
-                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.enabled",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.built-in-rules",
                      "disposition":  "RENAME_TO_JAVAAGENT",
                      "ownerBefore":  "Agent + Spring",
                      "ownerAfter":  "Agent",
@@ -1688,19 +1643,19 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-050",
+                     "inventoryId":  "CONFIG_PROPERTY-049",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.hmac-key",
-                     "finalNameOrDisposition":  "platform.tracing.scrubbing.hmac-key",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Agent runtime policy owner",
+                     "finalNameOrDisposition":  "platform.tracing.javaagent.scrubbing.enabled",
+                     "disposition":  "RENAME_TO_JAVAAGENT",
+                     "ownerBefore":  "Agent + Spring",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:27[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:285[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformSpanProcessorFactoryScrubbingAdoptionTest.java:208[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Agent runtime policy owner"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_HMAC_KEY:String",
@@ -1708,16 +1663,16 @@
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:285[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformSpanProcessorFactoryScrubbingAdoptionTest.java:208[DIRECT_CALL]"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (Decision 14 Â§5 Category B) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.scrubbing.hmac-key",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
                      "status":  "PENDING_CUTOVER",
                      "valueType":  "String",
-                     "section61Override":  false,
+                     "section61Override":  true,
                      "s04ProposedDisposition":  "KEEP"
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-051",
+                     "inventoryId":  "CONFIG_PROPERTY-050",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.missing-key-policy",
                      "finalNameOrDisposition":  "platform.tracing.scrubbing.missing-key-policy",
                      "disposition":  "KEEP",
@@ -1752,7 +1707,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-052",
+                     "inventoryId":  "CONFIG_PROPERTY-051",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.rules-config",
                      "finalNameOrDisposition":  "platform.tracing.scrubbing.rules-config",
                      "disposition":  "KEEP",
@@ -1783,7 +1738,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-053",
+                     "inventoryId":  "CONFIG_PROPERTY-052",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.rules.extensions",
                      "finalNameOrDisposition":  "platform.tracing.scrubbing.rules.extensions",
                      "disposition":  "KEEP",
@@ -1810,7 +1765,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-054",
+                     "inventoryId":  "CONFIG_PROPERTY-053",
                      "currentNameOrSymbol":  "platform.tracing.scrubbing.rules.validation-mode",
                      "finalNameOrDisposition":  "platform.tracing.scrubbing.rules.validation-mode",
                      "disposition":  "KEEP",
@@ -1835,7 +1790,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-055",
+                     "inventoryId":  "CONFIG_PROPERTY-054",
                      "currentNameOrSymbol":  "platform.tracing.semantic.allow-unsafe-attributes",
                      "finalNameOrDisposition":  "platform.tracing.semantic.allow-unsafe-attributes",
                      "disposition":  "KEEP",
@@ -1860,7 +1815,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-056",
+                     "inventoryId":  "CONFIG_PROPERTY-055",
                      "currentNameOrSymbol":  "platform.tracing.semantic.disabled-reason",
                      "finalNameOrDisposition":  "platform.tracing.semantic.disabled-reason",
                      "disposition":  "KEEP",
@@ -1885,7 +1840,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-057",
+                     "inventoryId":  "CONFIG_PROPERTY-056",
                      "currentNameOrSymbol":  "platform.tracing.semantic.exception.include-message",
                      "finalNameOrDisposition":  "platform.tracing.semantic.exception.include-message",
                      "disposition":  "KEEP",
@@ -1910,7 +1865,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-058",
+                     "inventoryId":  "CONFIG_PROPERTY-057",
                      "currentNameOrSymbol":  "platform.tracing.semantic.exception.include-stacktrace",
                      "finalNameOrDisposition":  "platform.tracing.semantic.exception.include-stacktrace",
                      "disposition":  "KEEP",
@@ -1935,7 +1890,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-059",
+                     "inventoryId":  "CONFIG_PROPERTY-058",
                      "currentNameOrSymbol":  "platform.tracing.semantic.validation-mode",
                      "finalNameOrDisposition":  "platform.tracing.semantic.validation-mode",
                      "disposition":  "KEEP",
@@ -1960,56 +1915,29 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-060",
+                     "inventoryId":  "CONFIG_PROPERTY-059",
                      "currentNameOrSymbol":  "platform.tracing.service.c-group",
-                     "finalNameOrDisposition":  "platform.tracing.semantic.validation-mode",
+                     "finalNameOrDisposition":  "platform.tracing.service.c-group",
                      "disposition":  "KEEP",
-                     "ownerBefore":  "Spring",
-                     "ownerAfter":  "Spring",
+                     "ownerBefore":  "OpenTelemetry Java Agent extension",
+                     "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:52[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:161[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:162[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:41[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:187[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:57[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
-                                                    "target owner readers only: Spring"
+                                                    "target owner readers only: Agent"
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java#PlatformResourceProvider.PROP_C_GROUP:String",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:52[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:161[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:162[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:41[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:187[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:57[DIRECT_CALL]"
-                                        ],
-                     "replacementOrDeletionDiagnostic":  "section 6.1 override (active Spring semantic-layer key) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.service.c-group",
-                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
-                     "status":  "PENDING_CUTOVER",
-                     "valueType":  "String",
-                     "section61Override":  true,
-                     "s04ProposedDisposition":  "KEEP"
-                 },
-                 {
-                     "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-061",
-                     "currentNameOrSymbol":  "platform.tracing.service.container-id",
-                     "finalNameOrDisposition":  "platform.tracing.service.container-id",
-                     "disposition":  "KEEP",
-                     "ownerBefore":  "OpenTelemetry Java Agent extension",
-                     "ownerAfter":  "Agent",
-                     "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java:165[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:129[DIRECT_CALL]"
-                                                 ],
-                     "productionReadersAfter":  [
-                                                    "target owner readers only: Agent"
-                                                ],
-                     "filesOrModules":  [
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java#PlatformResourceProvider.PROP_CONTAINER_ID:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java:165[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:129[DIRECT_CALL]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
                      "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
@@ -2020,7 +1948,34 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-062",
+                     "inventoryId":  "CONFIG_PROPERTY-060",
+                     "currentNameOrSymbol":  "platform.tracing.service.container-id",
+                     "finalNameOrDisposition":  "platform.tracing.semantic.validation-mode",
+                     "disposition":  "KEEP",
+                     "ownerBefore":  "Spring",
+                     "ownerAfter":  "Spring",
+                     "productionReadersBefore":  [
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java:165[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:129[DIRECT_CALL]"
+                                                 ],
+                     "productionReadersAfter":  [
+                                                    "target owner readers only: Spring"
+                                                ],
+                     "filesOrModules":  [
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java#PlatformResourceProvider.PROP_CONTAINER_ID:String",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java:165[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:129[DIRECT_CALL]"
+                                        ],
+                     "replacementOrDeletionDiagnostic":  "section 6.1 override (active Spring semantic-layer key) supersedes S-04 proposedDisposition=KEEP proposedTargetName=platform.tracing.service.container-id",
+                     "verificationRule":  "tracingConfigurationInventoryVerify + legacy-name detector zero hit for currentName when disposition is RENAME/DELETE",
+                     "status":  "PENDING_CUTOVER",
+                     "valueType":  "String",
+                     "section61Override":  true,
+                     "s04ProposedDisposition":  "KEEP"
+                 },
+                 {
+                     "section":  "CONFIG_PROPERTY",
+                     "inventoryId":  "CONFIG_PROPERTY-061",
                      "currentNameOrSymbol":  "platform.tracing.service.environment",
                      "finalNameOrDisposition":  "platform.tracing.service.environment",
                      "disposition":  "KEEP",
@@ -2028,7 +1983,7 @@
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:51[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:156[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:157[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:40[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:186[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:56[DIRECT_CALL]",
@@ -2040,7 +1995,7 @@
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java#PlatformResourceProvider.PROP_ENVIRONMENT:String",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:51[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:156[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:157[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:40[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:186[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:56[DIRECT_CALL]",
@@ -2055,7 +2010,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-063",
+                     "inventoryId":  "CONFIG_PROPERTY-062",
                      "currentNameOrSymbol":  "platform.tracing.service.host",
                      "finalNameOrDisposition":  "platform.tracing.service.host",
                      "disposition":  "KEEP",
@@ -2080,14 +2035,14 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-064",
+                     "inventoryId":  "CONFIG_PROPERTY-063",
                      "currentNameOrSymbol":  "platform.tracing.service.id",
                      "finalNameOrDisposition":  "platform.tracing.service.id",
                      "disposition":  "KEEP",
                      "ownerBefore":  "OpenTelemetry Java Agent extension",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:166[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:167[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:58[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
@@ -2095,7 +2050,7 @@
                                                 ],
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java#PlatformResourceProvider.PROP_ID:String",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:166[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:167[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:58[DIRECT_CALL]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "Apply S-04 disposition exactly; aliases/dual-read/silent-fallback forbidden",
@@ -2107,7 +2062,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-065",
+                     "inventoryId":  "CONFIG_PROPERTY-064",
                      "currentNameOrSymbol":  "platform.tracing.service.name",
                      "finalNameOrDisposition":  "platform.tracing.service.name",
                      "disposition":  "KEEP",
@@ -2115,7 +2070,7 @@
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:49[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:120[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:121[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:25[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:49[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:54[DIRECT_CALL]",
@@ -2132,7 +2087,7 @@
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java#PlatformResourceProvider.PROP_SERVICE_NAME:String",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:49[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:120[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:121[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:25[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:49[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:54[DIRECT_CALL]",
@@ -2152,7 +2107,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-066",
+                     "inventoryId":  "CONFIG_PROPERTY-065",
                      "currentNameOrSymbol":  "platform.tracing.service.version",
                      "finalNameOrDisposition":  "platform.tracing.service.version",
                      "disposition":  "KEEP",
@@ -2160,7 +2115,7 @@
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
                                                      "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:50[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:139[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:140[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:39[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:55[DIRECT_CALL]",
                                                      "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:96[DIRECT_CALL]",
@@ -2172,7 +2127,7 @@
                      "filesOrModules":  [
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProvider.java#PlatformResourceProvider.PROP_SERVICE_VERSION:String",
                                             "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:50[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:139[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:140[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:39[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:55[DIRECT_CALL]",
                                             "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:96[DIRECT_CALL]",
@@ -2187,7 +2142,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-067",
+                     "inventoryId":  "CONFIG_PROPERTY-066",
                      "currentNameOrSymbol":  "platform.tracing.suppression.suppress-micrometer-tracing",
                      "finalNameOrDisposition":  "platform.tracing.suppression.suppress-micrometer-tracing",
                      "disposition":  "KEEP",
@@ -2212,7 +2167,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-068",
+                     "inventoryId":  "CONFIG_PROPERTY-067",
                      "currentNameOrSymbol":  "platform.tracing.test.semconv-strict",
                      "finalNameOrDisposition":  "platform.tracing.test.semconv-strict",
                      "disposition":  "KEEP",
@@ -2237,7 +2192,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-069",
+                     "inventoryId":  "CONFIG_PROPERTY-068",
                      "currentNameOrSymbol":  "platform.tracing.thread-pool-task-executor.enabled",
                      "finalNameOrDisposition":  "platform.tracing.thread-pool-task-executor.enabled",
                      "disposition":  "KEEP",
@@ -2262,7 +2217,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-070",
+                     "inventoryId":  "CONFIG_PROPERTY-069",
                      "currentNameOrSymbol":  "platform.tracing.validation.enabled",
                      "finalNameOrDisposition":  "platform.tracing.validation.enabled",
                      "disposition":  "KEEP",
@@ -2332,7 +2287,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-071",
+                     "inventoryId":  "CONFIG_PROPERTY-070",
                      "currentNameOrSymbol":  "platform.tracing.validation.mode",
                      "finalNameOrDisposition":  "platform.tracing.validation.mode",
                      "disposition":  "KEEP",
@@ -2487,7 +2442,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-072",
+                     "inventoryId":  "CONFIG_PROPERTY-071",
                      "currentNameOrSymbol":  "platform.tracing.validation.strict",
                      "finalNameOrDisposition":  "platform.tracing.validation.strict",
                      "disposition":  "KEEP",
@@ -2587,7 +2542,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-073",
+                     "inventoryId":  "CONFIG_PROPERTY-072",
                      "currentNameOrSymbol":  "platform.tracing.validation.strict-runtime-allowed",
                      "finalNameOrDisposition":  "platform.tracing.validation.strict-runtime-allowed",
                      "disposition":  "KEEP",
@@ -2616,7 +2571,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-074",
+                     "inventoryId":  "CONFIG_PROPERTY-073",
                      "currentNameOrSymbol":  "platform.tracing.watchdog.enabled",
                      "finalNameOrDisposition":  "platform.tracing.watchdog.enabled",
                      "disposition":  "KEEP",
@@ -2651,7 +2606,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-075",
+                     "inventoryId":  "CONFIG_PROPERTY-074",
                      "currentNameOrSymbol":  "platform.tracing.watchdog.scan-interval",
                      "finalNameOrDisposition":  "platform.tracing.watchdog.scan-interval",
                      "disposition":  "KEEP",
@@ -2678,7 +2633,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-076",
+                     "inventoryId":  "CONFIG_PROPERTY-075",
                      "currentNameOrSymbol":  "platform.tracing.watchdog.span-timeout",
                      "finalNameOrDisposition":  "platform.tracing.watchdog.span-timeout",
                      "disposition":  "KEEP",
@@ -2709,7 +2664,7 @@
                  },
                  {
                      "section":  "CONFIG_PROPERTY",
-                     "inventoryId":  "CONFIG_PROPERTY-077",
+                     "inventoryId":  "CONFIG_PROPERTY-076",
                      "currentNameOrSymbol":  "platform.tracing.watchdog.trace-timeout",
                      "finalNameOrDisposition":  "platform.tracing.watchdog.trace-timeout",
                      "disposition":  "KEEP",
@@ -3055,8 +3010,8 @@
                      "ownerBefore":  "Process bootstrap",
                      "ownerAfter":  "OpenTelemetry",
                      "productionReadersBefore":  [
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:65#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]",
-                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:65#OtelEffectiveConfigSnapshot[DIRECT_CALL]"
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:72#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]",
+                                                     "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:72#OtelEffectiveConfigSnapshot[DIRECT_CALL]"
                                                  ],
                      "productionReadersAfter":  [
                                                     "target owner readers only: OpenTelemetry"
@@ -3064,8 +3019,8 @@
                      "filesOrModules":  [
                                             "ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS",
                                             "OtelEffectiveConfigSnapshot",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:65#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]",
-                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:65#OtelEffectiveConfigSnapshot[DIRECT_CALL]"
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:72#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]",
+                                            "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:72#OtelEffectiveConfigSnapshot[DIRECT_CALL]"
                                         ],
                      "replacementOrDeletionDiagnostic":  "Apply S-04 env disposition exactly; no relaxed dual binding",
                      "verificationRule":  "environment-variables.json count=29 and zero legacy env alias readers",
@@ -3844,9 +3799,9 @@
                  {
                      "section":  "SECTION_6_1_OVERRIDE",
                      "inventoryId":  "RESOURCE_ATTRIBUTE-001",
-                     "currentNameOrSymbol":  "platform.tracing.policy.version",
+                     "currentNameOrSymbol":  "platform.tracing.resource.applied-policy-version",
                      "finalNameOrDisposition":  "platform.tracing.resource.applied-policy-version",
-                     "disposition":  "RENAME_RESOURCE_ATTRIBUTE",
+                     "disposition":  "KEEP",
                      "ownerBefore":  "Agent",
                      "ownerAfter":  "Agent",
                      "productionReadersBefore":  [
@@ -3859,10 +3814,10 @@
                                             "plan section 6.1 table",
                                             "docs/research/evidence/tracing-configuration-inventory/inventory.json"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Closed section 6.1 exception #18/30; source=namespace conflict Â§6",
+                     "replacementOrDeletionDiagnostic":  "Closed section 6.1 exception #18/30; source=P6.1 APPLIED: renamed from platform.tracing.policy.version",
                      "verificationRule":  "P6.1 must apply this override before inventory regeneration; mismatch = FAIL",
                      "status":  "PENDING_CUTOVER",
-                     "sourceOfOverride":  "namespace conflict Â§6",
+                     "sourceOfOverride":  "P6.1 APPLIED: renamed from platform.tracing.policy.version",
                      "overrideIndex":  18
                  },
                  {
@@ -3894,7 +3849,7 @@
                      "inventoryId":  "DOCUMENTED_ONLY_KEY-001",
                      "currentNameOrSymbol":  "platform.tracing.semconv.validation.mode",
                      "finalNameOrDisposition":  "platform.tracing.semantic.validation-mode",
-                     "disposition":  "RENAME",
+                     "disposition":  "DELETE",
                      "ownerBefore":  "External",
                      "ownerAfter":  "Spring",
                      "productionReadersBefore":  [
@@ -3907,10 +3862,10 @@
                                             "plan section 6.1 table",
                                             "docs/research/evidence/tracing-configuration-inventory/inventory.json"
                                         ],
-                     "replacementOrDeletionDiagnostic":  "Closed section 6.1 exception #20/30; source=P7 governance",
+                     "replacementOrDeletionDiagnostic":  "Closed section 6.1 exception #20/30; source=P6.1 APPLIED: published contract corrected; stale name DELETE",
                      "verificationRule":  "P6.1 must apply this override before inventory regeneration; mismatch = FAIL",
                      "status":  "PENDING_CUTOVER",
-                     "sourceOfOverride":  "P7 governance",
+                     "sourceOfOverride":  "P6.1 APPLIED: published contract corrected; stale name DELETE",
                      "overrideIndex":  20
                  },
                  {
@@ -13206,7 +13161,7 @@
                  {
                      "section":  "DEPLOYMENT_OR_FIXTURE_OCCURRENCE",
                      "inventoryId":  "OCC-0284",
-                     "currentNameOrSymbol":  "platform.tracing.policy.version",
+                     "currentNameOrSymbol":  "platform.tracing.resource.applied-policy-version",
                      "finalNameOrDisposition":  "APPLY_PROPERTY_ROW_DISPOSITION",
                      "disposition":  "REWRITE_TO_FINAL_NAME_OR_DELETE",
                      "ownerBefore":  "platform-tracing-e2e-tests",

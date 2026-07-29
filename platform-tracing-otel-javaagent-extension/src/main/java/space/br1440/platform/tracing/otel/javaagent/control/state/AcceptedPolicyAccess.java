@@ -125,6 +125,24 @@ public final class AcceptedPolicyAccess {
         return strictRuntimeAllowed;
     }
 
+    /**
+     * Activates the process-local private complete-snapshot control plane for this
+     * accepted-state owner. Exactly one private writer shares {@link #store}.
+     *
+     * <p>Called once from Agent bootstrap ({@code PlatformAutoConfigurationCustomizer}).
+     * Isolated unit fixtures must not call this method.
+     *
+     * @return closeable that unregisters marker/writer and releases the private MBeanServer
+     */
+    public AutoCloseable activatePrivateControlPlane() {
+        PrivateControlMBeanServerOwner owner = new PrivateControlMBeanServerOwner(
+                store.current().runtimeInstanceId(),
+                store,
+                new PolicyValidationConstraints(strictRuntimeAllowed));
+        owner.initialize();
+        return owner;
+    }
+
     public AcceptedPolicyUpdateOutcome updateSampling(
             boolean enabled,
             double ratio,

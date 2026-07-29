@@ -1,0 +1,86 @@
+{
+  "gate": "P6",
+  "task": "p6-legacy-name-fail-fast",
+  "version": "v1",
+  "asOf": "2026-07-29",
+  "sourceManifest": "docs/research/evidence/p6-cutover/cutover-manifest.json",
+  "notes": [
+    "Detector v1: exact-name ban in production main Java and Spring autoconfigure metadata.",
+    "Scrubbing legacy names deferred until P6.7 (Spring still binds scrubbing.enabled and built-in-rules).",
+    "DELETE_AGENT_KEEP_SPRING outbound PROP_* keys are not banned when Spring KEEP names remain valid.",
+    "platform.tracing.policy.version is banned in string literals only (Javadoc migration notes allowed)."
+  ],
+  "scanTargets": [
+    "**/src/main/**/*.java",
+    "platform-tracing-spring-boot-autoconfigure/src/main/resources/**"
+  ],
+  "allowlistedPathPrefixes": [
+    "docs/",
+    "CHANGELOG.md",
+    "MIGRATION.md",
+    "docs/research/evidence/"
+  ],
+  "legacyNames": [
+    {
+      "exactName": "platform.tracing.actuator.mutation-enabled",
+      "disposition": "DELETE",
+      "replacementOrDeletionDiagnostic": "P6.4 deleted legacy Actuator @WriteOperation gate; use DEV_ACTUATOR typed leaf commands only"
+    },
+    {
+      "exactName": "platform.tracing.baggage.allowlist-keys",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.propagation.baggage.allowlist-keys"
+    },
+    {
+      "exactName": "platform.tracing.baggage.deny-patterns",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.propagation.baggage.deny-patterns"
+    },
+    {
+      "exactName": "platform.tracing.baggage.enabled",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.propagation.baggage.enabled"
+    },
+    {
+      "exactName": "platform.tracing.policy.version",
+      "disposition": "RENAME_SPELLING_AND_OWNER",
+      "replacementOrDeletionDiagnostic": "Resource attribute renamed to platform.tracing.resource.applied-policy-version; config key is platform.tracing.resource.policy-version",
+      "literalOnly": true
+    },
+    {
+      "exactName": "platform.tracing.propagation.baggage.allowed-keys",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.propagation.baggage.allowed-keys"
+    },
+    {
+      "exactName": "platform.tracing.propagation.baggage.deny-patterns",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.propagation.baggage.deny-patterns"
+    },
+    {
+      "exactName": "platform.tracing.propagation.baggage.enabled",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.propagation.baggage.enabled"
+    },
+    {
+      "exactName": "platform.tracing.propagation.w3c.diagnostics-only",
+      "disposition": "DELETE",
+      "replacementOrDeletionDiagnostic": "Deleted dead constant PropagationDefaults.PROP_W3C_DIAGNOSTICS_ONLY (NO_READER)"
+    },
+    {
+      "exactName": "platform.tracing.sampling.drop-paths",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.sampling.drop-paths"
+    },
+    {
+      "exactName": "platform.tracing.sampling.force-record-header-values",
+      "disposition": "RENAME_SPELLING_AND_OWNER",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.sampling.force-record-values"
+    },
+    {
+      "exactName": "platform.tracing.sampling.force-record-values",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.sampling.force-record-values"
+    }
+  ]
+}

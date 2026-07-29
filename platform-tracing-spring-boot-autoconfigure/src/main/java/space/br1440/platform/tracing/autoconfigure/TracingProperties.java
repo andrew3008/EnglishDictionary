@@ -48,7 +48,6 @@ public class TracingProperties {
     private final Propagation propagation = new Propagation();
     private final Kafka kafka = new Kafka();
     private final ThreadPoolTaskExecutorPropagation threadPoolTaskExecutor = new ThreadPoolTaskExecutorPropagation();
-    private final Actuator actuator = new Actuator();
 
     @Getter
     @Setter
@@ -63,15 +62,8 @@ public class TracingProperties {
         /** Вероятности сэмплирования по отдельным маршрутам (route). */
         private Map<String, Double> routeRatios = new LinkedHashMap<>();
 
-        /** Значения force-record заголовка ({@code propagation.platformHeaders.forceTraceHeader}). */
-        private List<String> forceRecordHeaderValues = new ArrayList<>(List.of("on"));
-
-        /**
-         * Path-префиксы для head-sampling DROP. Force/QA-заголовки имеют приоритет.
-         */
-        private List<String> dropPaths = new ArrayList<>(List.of(
-                "/actuator/health", "/actuator/prometheus", "/actuator/info"
-        ));
+        // P6.1: force-record-values and drop-paths moved to Agent Category B
+        // (platform.tracing.javaagent.sampling.*). Spring no longer binds them.
     }
 
     @Getter
@@ -220,11 +212,4 @@ public class TracingProperties {
         private boolean enabled = false;
     }
 
-    @Getter
-    @Setter
-    @Accessors(chain = true)
-    public static class Actuator {
-        /** Enables {@code POST /actuator/tracing/{property}/{value}} mutation operations. */
-        private boolean mutationEnabled = false;
-    }
 }

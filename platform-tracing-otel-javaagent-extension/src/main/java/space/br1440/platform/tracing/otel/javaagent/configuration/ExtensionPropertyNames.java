@@ -9,15 +9,15 @@ public final class ExtensionPropertyNames {
     public static final String SAMPLING_ENABLED = "platform.tracing.sampling.enabled";
     public static final String SAMPLING_ROUTE_RATIOS = "platform.tracing.sampling.route-ratios";
     public static final String SAMPLING_FORCE_RECORD_HEADER = "platform.tracing.sampling.force-record-header";
-    public static final String SAMPLING_FORCE_RECORD_VALUES = "platform.tracing.sampling.force-record-values";
+    public static final String SAMPLING_FORCE_RECORD_VALUES = "platform.tracing.javaagent.sampling.force-record-values";
     public static final String SAMPLING_QA_HEADER = "platform.tracing.sampling.qa-header";
-    public static final String SAMPLING_DROP_PATHS = "platform.tracing.sampling.drop-paths";
+    public static final String SAMPLING_DROP_PATHS = "platform.tracing.javaagent.sampling.drop-paths";
 
     public static final String ENRICHING_ENABLED = "platform.tracing.enriching.enabled";
     public static final String ENRICHING_REMOTE_SERVICE_PRIORITY = "platform.tracing.enriching.remote-service-priority";
 
-    public static final String SCRUBBING_ENABLED = "platform.tracing.scrubbing.enabled";
-    public static final String SCRUBBING_BUILT_IN_RULES = "platform.tracing.scrubbing.built-in-rules";
+    public static final String SCRUBBING_ENABLED = "platform.tracing.javaagent.scrubbing.enabled";
+    public static final String SCRUBBING_BUILT_IN_RULES = "platform.tracing.javaagent.scrubbing.built-in-rules";
     public static final String SCRUBBING_HMAC_KEY = "platform.tracing.scrubbing.hmac-key";
     public static final String SCRUBBING_MISSING_KEY_POLICY = "platform.tracing.scrubbing.missing-key-policy";
     public static final String SCRUBBING_HASH_KEY_ID = "platform.tracing.scrubbing.hash.key-id";
@@ -40,7 +40,14 @@ public final class ExtensionPropertyNames {
     public static final String RESOURCE_VALIDATION_MODE = "platform.tracing.resource.validation-mode";
     public static final String RESOURCE_DETECT_CONTAINER_ID = "platform.tracing.resource.detect-container-id";
 
-    public static final String RESOURCE_POLICY_VERSION_ATTR = "platform.tracing.policy.version";
+    /**
+     * Resource attribute key (telemetry contract), not a configuration property.
+     * Renamed in P6.1 from {@code platform.tracing.policy.version} to free the
+     * {@code platform.tracing.policy.*} Category A config namespace (plan §6.1 RESOURCE_ATTRIBUTE-001).
+     * Distinct from {@link #RESOURCE_POLICY_VERSION} (config key that supplies the attribute value).
+     */
+    public static final String RESOURCE_POLICY_VERSION_ATTR =
+            "platform.tracing.resource.applied-policy-version";
 
     public static final String CLASSIFICATION_ENABLED = "platform.tracing.classification.enabled";
     public static final String CLASSIFICATION_SLOW_THRESHOLD = "platform.tracing.classification.slow-threshold";
@@ -53,9 +60,9 @@ public final class ExtensionPropertyNames {
 
     public static final String QUEUE_OVERFLOW_POLICY = "platform.tracing.queue.overflow-policy";
 
-    public static final String BAGGAGE_ENABLED = "platform.tracing.baggage.enabled";
-    public static final String BAGGAGE_ALLOWLIST_KEYS = "platform.tracing.baggage.allowlist-keys";
-    public static final String BAGGAGE_DENY_PATTERNS = "platform.tracing.baggage.deny-patterns";
+    public static final String BAGGAGE_ENABLED = "platform.tracing.javaagent.propagation.baggage.enabled";
+    public static final String BAGGAGE_ALLOWLIST_KEYS = "platform.tracing.javaagent.propagation.baggage.allowlist-keys";
+    public static final String BAGGAGE_DENY_PATTERNS = "platform.tracing.javaagent.propagation.baggage.deny-patterns";
 
     public static final String SDK_MODE = "platform.tracing.mode";
 

@@ -4,19 +4,16 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SamplingRuntimeConfigTest {
 
     @Test
-    void from_извлекает_все_поля_schema_v1() {
+    void from_извлекает_Category_A_поля() {
         TracingProperties.Sampling sampling = new TracingProperties.Sampling()
                 .setEnabled(false)
-                .setRatio(0.25d)
-                .setDropPaths(List.of("/health", "/metrics"))
-                .setForceRecordHeaderValues(List.of("on", "debug"));
+                .setRatio(0.25d);
         LinkedHashMap<String, Double> routeRatios = new LinkedHashMap<>();
         routeRatios.put("/api", 0.5d);
         routeRatios.put("/v2", 0.1d);
@@ -26,8 +23,6 @@ class SamplingRuntimeConfigTest {
 
         assertThat(config.enabled()).isFalse();
         assertThat(config.defaultRatio()).isEqualTo(0.25d);
-        assertThat(config.droppedRoutes()).containsExactly("/health", "/metrics");
-        assertThat(config.forceRecordValues()).containsExactly("on", "debug");
         assertThat(config.routeRatioPrefixes()).containsExactly("/api", "/v2");
         assertThat(config.routeRatioValues()).containsExactly(0.5d, 0.1d);
     }
@@ -47,16 +42,12 @@ class SamplingRuntimeConfigTest {
     }
 
     @Test
-    void from_пустые_и_null_списки_и_карта() {
+    void from_пустая_карта_routeRatios() {
         TracingProperties.Sampling sampling = new TracingProperties.Sampling()
-                .setDropPaths(null)
-                .setForceRecordHeaderValues(null)
                 .setRouteRatios(null);
 
         SamplingRuntimeConfig config = SamplingRuntimeConfig.from(sampling);
 
-        assertThat(config.droppedRoutes()).isEmpty();
-        assertThat(config.forceRecordValues()).isEmpty();
         assertThat(config.routeRatioPrefixes()).isEmpty();
         assertThat(config.routeRatioValues()).isEmpty();
     }

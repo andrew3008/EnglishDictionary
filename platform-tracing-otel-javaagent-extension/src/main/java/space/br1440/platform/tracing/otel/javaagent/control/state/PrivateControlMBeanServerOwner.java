@@ -7,8 +7,10 @@ import java.util.Objects;
 /**
  * Exactly-one lifecycle owner factory-retained private MBeanServer.
  *
- * <p>P2 не подключает этот owner к bootstrap: поддерживаемый writer переключается только
- * в coherent cutover последующих фаз.
+ * <p>P6.2: activated from Agent bootstrap via
+ * {@link AcceptedPolicyAccess#activatePrivateControlPlane()} after accepted state
+ * initialization. Registers marker + private {@code applySnapshot}/{@code readAcceptedComplete}
+ * writer on a process-local server that is never the platform MBeanServer.
  */
 final class PrivateControlMBeanServerOwner implements AutoCloseable {
 

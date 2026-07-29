@@ -13,7 +13,7 @@ public final class PlatformHeaders {
 
     /**
      * Управляющий заголовок принудительной записи trace'а. Если значение распознано как «истинное»
-     * (см. конфигурацию {@code platform.tracing.sampling.force-record-header-values}),
+     * (см. Agent Category B {@code force-record-values}),
      * trace будет записан без проверки необходимости его сэмплирования.
      */
     public static final String X_TRACE_ON = "X-Trace-On";

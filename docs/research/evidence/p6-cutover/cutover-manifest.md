@@ -1,9 +1,11 @@
 # P6.0/P6.1 — Cutover execution manifest
 
-**Gate:** P6.0 (manifest) / P6.1 (property disposition — partial)
-**Verdict:** `MANIFEST_RECORDED`; property disposition `PARTIAL_CUTOVER (1/17 non-KEEP rows complete)`
+**Gate:** P6.0 (manifest) / P6.1 (property disposition partial + namespace conflicts resolved)
+**Verdict:** `MANIFEST_RECORDED`; property disposition `PARTIAL_CUTOVER`; namespace conflicts `CONFLICTS_RESOLVED`
 **As of:** 2026-07-29
-**Production code changed:** yes — one dead-code deletion only (see below)
+**Production code changed:** yes — dead-code DELETE (w3c.diagnostics-only) + resource attribute rename + published semconv contract correction
+
+Namespace conflict resolution: [namespace-conflict-resolution.md](./namespace-conflict-resolution.md) · [p61-namespace-conflicts-decision.json](./p61-namespace-conflicts-decision.json)
 
 Machine-readable: [cutover-manifest.json](./cutover-manifest.json)
 Summary: [decision-summary.json](./decision-summary.json)

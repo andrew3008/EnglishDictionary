@@ -2,19 +2,19 @@
     "gate":  "P6.0",
     "status":  "MANIFEST_RECORDED",
     "asOf":  "2026-07-29",
-    "capturedAt":  "2026-07-29T19:49:49+03:00",
-    "head":  "27a5e873123d6d976af7fdfa924cd517ddcaf88d",
+    "capturedAt":  "2026-07-29T20:24:24+03:00",
+    "head":  "27cbca38066f25edc9358518327af3c40fe5cb1d",
     "branch":  "master",
     "productionCodeChangedByThisGate":  false,
     "requiredCounts":  {
                            "MUTATION_FAMILY":  6,
                            "JMX_E1_E7_DELTA":  63,
-                           "CONFIG_PROPERTY":  77,
+                           "CONFIG_PROPERTY":  76,
                            "SECTION_6_1_OVERRIDE":  29,
                            "ENV_VARIABLE":  29
                        },
     "actualCounts":  {
-                         "CONFIG_PROPERTY":  77,
+                         "CONFIG_PROPERTY":  76,
                          "ENV_VARIABLE":  29,
                          "SECTION_6_1_OVERRIDE":  29,
                          "MUTATION_FAMILY":  6,
@@ -24,7 +24,7 @@
                          "DEPLOYMENT_OR_FIXTURE_OCCURRENCE":  390,
                          "LEGACY_NAME_DETECTOR":  1,
                          "DEPLOYMENT_HELM":  1,
-                         "totalRows":  613
+                         "totalRows":  612
                      },
     "countCheck":  "PASS",
     "evidence":  {

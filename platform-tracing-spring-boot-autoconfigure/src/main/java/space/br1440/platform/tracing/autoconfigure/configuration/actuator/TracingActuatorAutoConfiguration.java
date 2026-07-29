@@ -43,10 +43,9 @@ public class TracingActuatorAutoConfiguration {
 
     /**
      * Discovers the Agent-side private control plane. Gated on
-     * {@code authority=ACTUATOR} — the only authority that reads/mutates the
-     * private control plane from this Spring context today; {@code CONFIG_SERVER}'s
-     * own private-control wiring is a separate, not-yet-registered autoconfiguration
-     * concern and {@code HELM} never touches the private control plane at all.
+     * {@code authority=ACTUATOR}. {@code CONFIG_SERVER} wires the same private
+     * apply/read contract via {@code ConfigServerTracingPolicyAutoConfiguration}.
+     * {@code HELM} never discovers the private control plane from Spring.
      * <p>
      * Previously this bean was never produced in any production autoconfiguration
      * path — {@link PrivateJmxTracingPolicySnapshotClient}'s

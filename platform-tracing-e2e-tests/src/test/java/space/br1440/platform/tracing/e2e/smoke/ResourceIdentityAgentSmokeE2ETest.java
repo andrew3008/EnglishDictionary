@@ -101,7 +101,7 @@ class ResourceIdentityAgentSmokeE2ETest {
                             .containsEntry("service.version", "9.0.1")
                             .containsEntry("deployment.environment.name", "production")
                             .containsEntry("platform.c_group", "smoke-group")
-                            .containsEntry("platform.tracing.policy.version", "2026.06.08");
+                            .containsEntry("platform.tracing.resource.applied-policy-version", "2026.06.08");
                 });
     }
 

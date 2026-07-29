@@ -322,16 +322,16 @@ class TracingConfigurationInventoryGeneratorTest {
                         + "space/br1440/platform/tracing/autoconfigure/TracingProperties.java",
                 "Spring relaxed binding -> platform.tracing.actuator.mutation-enabled",
                 "SPRING_BINDING"));
-        entry.consumers.add("TracingActuatorEndpoint mutation gate");
+        entry.consumers.add("Deleted P6.4 — legacy Actuator @WriteOperation gate");
         entry.environmentVariables.add(alias);
         entry.relaxedBindingAliases.add("platform.tracing.actuator.mutation-enabled");
         entry.valueType = "boolean";
         entry.defaultValue = "false";
         entry.defaultOwner = "Spring";
-        entry.lifecycleOwner = "Spring startup";
-        entry.readerStatus = "REFLECTION_OR_BINDING_READER";
-        entry.consumerStatus = "ACTIVE";
-        entry.currentStatus = "ACTIVE";
+        entry.lifecycleOwner = "N/A";
+        entry.readerStatus = "NO_READER";
+        entry.consumerStatus = "DELETED";
+        entry.currentStatus = "DELETED";
     }
 
     @SuppressWarnings("unchecked")
@@ -511,49 +511,47 @@ class TracingConfigurationInventoryGeneratorTest {
             entry.proposedTargetName = "N/A";
         }
         if ("DOCUMENTED_ONLY_KEY".equals(entry.kind)) {
-            entry.proposedDisposition = "RENAME";
+            // P6.1: published contract corrected to semantic.validation-mode; stale name is delete-only.
+            entry.proposedDisposition = "DELETE";
             entry.proposedTargetName = "platform.tracing.semantic.validation-mode";
-            entry.blockingDecision = "PENDING_GOVERNANCE";
+            entry.blockingDecision = "RESOLVED_P61";
+            entry.currentStatus = "STALE_PUBLISHED_NAME";
         }
         if ("RELAXED_BINDING_ALIAS".equals(entry.kind)) {
+            // P6.4: mutation-enabled gate deleted with legacy Actuator @WriteOperation.
             entry.proposedDisposition = "DELETE";
-            entry.proposedTargetName = "platform.tracing.actuator.mutation-enabled";
+            entry.proposedTargetName = "N/A";
+            entry.blockingDecision = "RESOLVED_P64";
+            entry.currentStatus = "DELETED";
         }
         switch (entry.exactName) {
-            case "platform.tracing.policy.version" -> {
-                entry.proposedDisposition = "RENAME";
+            case "platform.tracing.resource.applied-policy-version" -> {
+                // P6.1 RESOURCE_ATTRIBUTE-001 applied: attribute already at final name.
+                entry.proposedDisposition = "KEEP";
                 entry.proposedTargetName = "platform.tracing.resource.applied-policy-version";
-                entry.blockingDecision = "PENDING_TECHNICAL_DECISION";
+                entry.blockingDecision = "RESOLVED_P61";
             }
-            case "platform.tracing.sampling.force-record-header-values" -> {
-                entry.proposedDisposition = "RENAME";
-                entry.proposedTargetName = "platform.tracing.policy.sampling.force-record-values";
-                entry.blockingDecision = "PENDING_SECURITY";
-            }
-            case "platform.tracing.sampling.force-record-values" -> {
-                entry.proposedDisposition = "MOVE_OWNERSHIP";
-                entry.proposedTargetName = "platform.tracing.policy.sampling.force-record-values";
-                entry.blockingDecision = "PENDING_SECURITY";
-            }
-            case "platform.tracing.sampling.drop-paths" -> {
-                entry.proposedDisposition = "MOVE_OWNERSHIP";
-                entry.proposedTargetName = "platform.tracing.policy.sampling.drop-paths";
-                entry.blockingDecision = "PENDING_SRE";
+            case "platform.tracing.javaagent.sampling.force-record-values",
+                 "platform.tracing.javaagent.sampling.drop-paths",
+                 "platform.tracing.javaagent.scrubbing.enabled",
+                 "platform.tracing.javaagent.scrubbing.built-in-rules",
+                 "platform.tracing.javaagent.propagation.baggage.enabled",
+                 "platform.tracing.javaagent.propagation.baggage.allowlist-keys",
+                 "platform.tracing.javaagent.propagation.baggage.allowed-keys",
+                 "platform.tracing.javaagent.propagation.baggage.deny-patterns" -> {
+                entry.proposedDisposition = "KEEP";
+                entry.proposedTargetName = entry.exactName;
+                entry.proposedTargetOwner = "Agent";
+                entry.blockingDecision = "RESOLVED_P61";
             }
             case "platform.tracing.scrubbing.enabled",
                  "platform.tracing.scrubbing.built-in-rules" -> {
-                entry.proposedDisposition = "MOVE_OWNERSHIP";
-                entry.blockingDecision = "PENDING_SECURITY";
-            }
-            case "platform.tracing.baggage.enabled",
-                 "platform.tracing.baggage.allowlist-keys",
-                 "platform.tracing.baggage.deny-patterns",
-                 "platform.tracing.propagation.baggage.enabled",
-                 "platform.tracing.propagation.baggage.allowed-keys",
-                 "platform.tracing.propagation.baggage.deny-patterns" -> {
-                entry.proposedDisposition = "MOVE_OWNERSHIP";
-                entry.proposedTargetOwner = "Agent propagation owner";
-                entry.blockingDecision = "PENDING_TECHNICAL_DECISION";
+                // Spring still binds legacy names until P6.7 Category B holder deletion.
+                entry.proposedDisposition = "DELETE_SPRING_AFTER_P67";
+                entry.proposedTargetName = "platform.tracing.javaagent.scrubbing."
+                        + (entry.exactName.endsWith("enabled") ? "enabled" : "built-in-rules");
+                entry.proposedTargetOwner = "Agent";
+                entry.blockingDecision = "RESOLVED_P61_PENDING_P67";
             }
             default -> {
             }
@@ -573,12 +571,13 @@ class TracingConfigurationInventoryGeneratorTest {
                         "platform.tracing.sampling.route-ratios",
                         "platform.tracing.policy.sampling.route-ratios", "INCLUDE"),
                 category(entries, "sampling.drop-paths",
-                        "platform.tracing.sampling.drop-paths",
-                        "platform.tracing.policy.sampling.drop-paths", "NEEDS_SRE_DECISION"),
+                        "platform.tracing.javaagent.sampling.drop-paths",
+                        "platform.tracing.javaagent.sampling.drop-paths",
+                        "EXCLUDE_CATEGORY_B"),
                 category(entries, "sampling.force-record-values",
-                        "platform.tracing.sampling.force-record-values",
-                        "platform.tracing.policy.sampling.force-record-values",
-                        "NEEDS_SECURITY_DECISION"),
+                        "platform.tracing.javaagent.sampling.force-record-values",
+                        "platform.tracing.javaagent.sampling.force-record-values",
+                        "EXCLUDE_CATEGORY_B"),
                 category(entries, "validation.enabled",
                         "platform.tracing.validation.enabled",
                         "platform.tracing.policy.validation.enabled", "INCLUDE"),
@@ -629,21 +628,31 @@ class TracingConfigurationInventoryGeneratorTest {
             SourceIndex source) {
         List<Map<String, Object>> values = new ArrayList<>();
         values.add(resolution("N1", "PASS",
-                "Resource attribute only; proposed rename is blocked by technical decision."));
+                "P6.1 applied: resource attribute renamed to "
+                        + "platform.tracing.resource.applied-policy-version; "
+                        + "config key platform.tracing.resource.policy-version remains KEEP."));
         values.add(resolution("N2", "PASS",
-                "Two active Agent families have different consumers; consolidate under one Agent owner."));
+                "P6.1 resolved: both Agent baggage families consolidate under "
+                        + "platform.tracing.javaagent.propagation.baggage.*; "
+                        + "enabled/deny-patterns shared; allowlist-keys (span attrs) and "
+                        + "allowed-keys (W3C propagation) remain distinct leaves."));
         values.add(resolution("N3", "PASS",
-                "Spring/Agent spelling drift confirmed; target force-record-values remains security-gated."));
+                "P6.1 resolved: Spring force-record-header-values and Agent force-record-values "
+                        + "merge to platform.tracing.javaagent.sampling.force-record-values "
+                        + "(Category B startup-only; Decision 14)."));
         values.add(resolution("N4", "PASS",
                 "mode and route-ratios type drift confirmed and represented without String flattening."));
         values.add(resolution("N5", "PASS",
-                "Spring and Agent built-in scrubbing defaults are equal; ownership remains security-gated."));
+                "P6.1 resolved: scrubbing built-in-rules/enabled target "
+                        + "platform.tracing.javaagent.scrubbing.* (Category B; Decision 14); "
+                        + "Spring/Agent defaults equal."));
         values.add(resolution("N6", "PASS",
                 "Five Agent outbound readers have no callers; Spring equivalents remain active."));
         values.add(resolution("N7", "PASS",
-                "w3c.diagnostics-only has no reader and is proposed for deletion."));
+                "P6.1 applied: w3c.diagnostics-only dead constant deleted (NO_READER)."));
         values.add(resolution("N8", "PASS",
-                "Published semconv key conflicts with active semantic.validation-mode."));
+                "P6.1 applied: published contract corrected to "
+                        + "platform.tracing.semantic.validation-mode; stale semconv name is DELETE."));
         values.add(resolution("N9", "PASS",
                 "enabled, sdk.mode, three removed async aliases and service.k8s-pod-uid "
                         + "are fixture-only with no production reader."));
@@ -893,7 +902,8 @@ class TracingConfigurationInventoryGeneratorTest {
 
                 ## 7. Resource attributes and external keys
 
-                `platform.tracing.policy.version` is a resource attribute. `otel.*` names are
+                `platform.tracing.resource.applied-policy-version` is a resource attribute
+                (P6.1 rename from `platform.tracing.policy.version`). `otel.*` names are
                 external OpenTelemetry contracts; `platform.environment` is imported.
 
                 ## 8. Duplicate declarations
@@ -912,8 +922,10 @@ class TracingConfigurationInventoryGeneratorTest {
 
                 ## 11. Documentation/public-contract conflicts
 
-                The published `platform.tracing.semconv.validation.mode` conflicts with the active
-                `platform.tracing.semantic.validation-mode`. Stale `sdk.mode` references remain.
+                P6.1 corrected the published contract to the active
+                `platform.tracing.semantic.validation-mode`; the stale
+                `platform.tracing.semconv.validation.mode` name is DELETE-only in historical docs.
+                Stale `sdk.mode` references remain.
 
                 ## 12. N1-N12 resolution
 
@@ -941,8 +953,11 @@ class TracingConfigurationInventoryGeneratorTest {
 
                 ## 15. Remaining SRE/security/governance decisions
 
-                SRE: `sampling.drop-paths`. Security: `sampling.force-record-values` and scrubbing
-                lifecycle. Governance: correction of the published semconv contract.
+                P6.1 closed the former SRE/security/governance blockers for drop-paths,
+                force-record-values, scrubbing Category B placement (Decision 14) and the
+                published semconv contract correction. Remaining cutover work is mechanical
+                Agent/Spring name application in p6-agent-parser-cutover /
+                p6-spring-binding-cutover and Category B holder deletion in P6.7.
 
                 ## 16. What S-04 proves
 
@@ -1126,22 +1141,22 @@ class TracingConfigurationInventoryGeneratorTest {
                  "platform.tracing.control.runtime-mutation.enabled",
                  "platform.tracing.resource.detect-container-id",
                  "platform.tracing.watchdog.enabled" -> "false";
-            case "platform.tracing.sampling.drop-paths" ->
+            case "platform.tracing.javaagent.sampling.drop-paths" ->
                     "[/actuator/health,/actuator/prometheus,/actuator/info]";
             case "platform.tracing.sampling.force-record-header" -> "X-Trace-On";
             case "platform.tracing.sampling.qa-header" -> "X-QA-Trace";
-            case "platform.tracing.sampling.force-record-values" -> "[on]";
-            case "platform.tracing.scrubbing.built-in-rules" ->
+            case "platform.tracing.javaagent.sampling.force-record-values" -> "[on]";
+            case "platform.tracing.scrubbing.built-in-rules",
+                 "platform.tracing.javaagent.scrubbing.built-in-rules" ->
                     display(BuiltInSpanAttributeScrubbingRules.defaultConfigNames());
             case "platform.tracing.scrubbing.missing-key-policy" -> "mask";
             case "platform.tracing.scrubbing.rules.validation-mode",
                  "platform.tracing.validation.mode",
                  "platform.tracing.resource.validation-mode" -> "LENIENT";
-            case "platform.tracing.baggage.allowlist-keys",
-                 "platform.tracing.propagation.baggage.allowed-keys" ->
+            case "platform.tracing.javaagent.propagation.baggage.allowlist-keys",
+                 "platform.tracing.javaagent.propagation.baggage.allowed-keys" ->
                     "[traffic_source,tenant_class,platform.correlation.id]";
-            case "platform.tracing.baggage.deny-patterns",
-                 "platform.tracing.propagation.baggage.deny-patterns" ->
+            case "platform.tracing.javaagent.propagation.baggage.deny-patterns" ->
                     "[password,secret,token]";
             case "platform.tracing.enriching.remote-service-priority" ->
                     "[peer.service,rpc.service,server.address]";
@@ -1171,7 +1186,7 @@ class TracingConfigurationInventoryGeneratorTest {
         return switch (path.get(0)) {
             case "sampling" -> "SamplingRuntimeConfig -> CompositeSampler";
             case "scrubbing" -> "ScrubbingRuntimeConfig -> ScrubbingSpanProcessor";
-            case "exporter" -> "RuntimeConfigApplier -> SafeSpanExporter";
+            case "exporter" -> "TracingActuatorEndpoint -> SafeSpanExporter";
             case "response" -> "HTTP response tracing filters";
             case "suppression" -> "MicrometerTracingSuppressionResolver";
             case "validation" -> "ValidationRuntimeConfig -> ValidatingSpanProcessor";
@@ -1182,7 +1197,7 @@ class TracingConfigurationInventoryGeneratorTest {
                     "ThreadPoolTaskExecutorContextPropagationBeanPostProcessor";
             case "actuator" -> "TracingActuatorEndpoint mutation gate";
             case "mode" -> "TracingCoreAutoConfiguration";
-            case "log-level" -> "RuntimeConfigApplier -> PlatformLogControl";
+            case "log-level" -> "TracingActuatorEndpoint -> PlatformLogControl";
             default -> "NO_RUNTIME_CONSUMER_FOUND";
         };
     }
@@ -1229,7 +1244,8 @@ class TracingConfigurationInventoryGeneratorTest {
         if (name.equals("platform.environment")) {
             return "ValidationEnvironmentGuard";
         }
-        if (name.equals("platform.tracing.policy.version")) {
+        if (name.equals("platform.tracing.resource.applied-policy-version")
+                || name.equals("platform.tracing.policy.version")) {
             return "ResourceAttributeResolver";
         }
         return "NO_RUNTIME_CONSUMER_FOUND";
@@ -1237,20 +1253,20 @@ class TracingConfigurationInventoryGeneratorTest {
 
     private static List<String> mutationPaths(String name) {
         if (name.startsWith("platform.tracing.sampling.")) {
-            return List.of("JMX Sampling MBean", "RuntimeConfigApplier", "control protocol");
+            return List.of("JMX Sampling MBean", "control protocol");
         }
         if (name.startsWith("platform.tracing.validation.")) {
-            return List.of("JMX Validation MBean", "RuntimeConfigApplier", "control protocol");
+            return List.of("JMX Validation MBean", "control protocol");
         }
         if (name.startsWith("platform.tracing.scrubbing.")) {
-            return List.of("JMX Scrubbing MBean", "RuntimeConfigApplier");
+            return List.of("JMX Scrubbing MBean");
         }
         if ("platform.tracing.exporter.enabled".equals(name)) {
-            return List.of("JMX Export MBean", "RuntimeConfigApplier");
+            return List.of("JMX Export MBean", "TracingActuatorEndpoint");
         }
         if ("platform.tracing.propagation.enabled".equals(name)
                 || "platform.tracing.log-level".equals(name)) {
-            return List.of("JMX Diagnostics MBean", "RuntimeConfigApplier");
+            return List.of("JMX Diagnostics MBean", "TracingActuatorEndpoint");
         }
         return List.of();
     }
@@ -1297,11 +1313,6 @@ class TracingConfigurationInventoryGeneratorTest {
     }
 
     private static List<String> currentNames(Map<String, Entry> entries, String current) {
-        if ("platform.tracing.sampling.force-record-values".equals(current)) {
-            return List.of(
-                    "platform.tracing.sampling.force-record-header-values",
-                    "platform.tracing.sampling.force-record-values");
-        }
         return entries.containsKey(current) ? List.of(current) : List.of();
     }
 

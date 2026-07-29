@@ -190,12 +190,13 @@ public class PlatformTracingJmxClient {
         Objects.requireNonNull(config, "config");
         requireDomain(PlatformTracingJmxObjectNames.SAMPLING, "sampling");
         try {
+            // null drop/force arrays => Agent preserves Category B startup-only state (P6.1).
             server.invoke(PlatformTracingJmxObjectNames.SAMPLING, "updateSamplingPolicy",
                     new Object[]{
                             config.enabled(),
                             config.defaultRatio(),
-                            listToArray(config.droppedRoutes()),
-                            listToArray(config.forceRecordValues()),
+                            null,
+                            null,
                             config.routeRatioPrefixes(),
                             config.routeRatioValues(),
                             SamplingRuntimeConfig.SOURCE

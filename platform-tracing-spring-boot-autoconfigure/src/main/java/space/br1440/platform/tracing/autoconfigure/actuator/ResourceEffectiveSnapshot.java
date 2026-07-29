@@ -36,7 +36,7 @@ final class ResourceEffectiveSnapshot {
                     new String[]{"platform.tracing.service.environment", "PLATFORM_TRACING_SERVICE_ENVIRONMENT"}), false),
             new IdentityKey("platform.c_group", List.<String[]>of(
                     new String[]{"platform.tracing.service.c-group", "PLATFORM_TRACING_SERVICE_C_GROUP"}), false),
-            new IdentityKey("platform.tracing.policy.version", List.<String[]>of(
+            new IdentityKey("platform.tracing.resource.applied-policy-version", List.<String[]>of(
                     new String[]{"platform.tracing.resource.policy-version", "PLATFORM_TRACING_RESOURCE_POLICY_VERSION"}), false)
     );
 

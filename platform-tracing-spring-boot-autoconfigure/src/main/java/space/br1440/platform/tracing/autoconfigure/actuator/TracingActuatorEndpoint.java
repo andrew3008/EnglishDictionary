@@ -1,20 +1,12 @@
 package space.br1440.platform.tracing.autoconfigure.actuator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
-import org.springframework.boot.actuate.endpoint.annotation.Selector;
-import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException;
 import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
 import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 
@@ -29,8 +21,6 @@ import java.util.Map;
  */
 @Endpoint(id = "tracing")
 public class TracingActuatorEndpoint {
-
-    private static final Logger log = LoggerFactory.getLogger(TracingActuatorEndpoint.class);
 
     private static final String SPRING_APPLICATION_NAME = "spring.application.name";
 
@@ -136,8 +126,9 @@ public class TracingActuatorEndpoint {
         samplingInfo.put("liveForceRecordHeaderValues", jmxClient.getLiveForceRecordValues().orElse(null));
         samplingInfo.put("liveRouteRatios", jmxClient.getLiveRouteRatios().orElse(null));
         samplingInfo.put("controlAvailable", jmxClient.isAvailable());
-        samplingInfo.put("forceRecordHeaderValues", properties.getSampling().getForceRecordHeaderValues());
-        samplingInfo.put("dropPaths", properties.getSampling().getDropPaths());
+        // Category B drop-paths / force-record-values are Agent-owned (javaagent.sampling.*);
+        // Spring actuator no longer projects Spring-bound copies.
+
         samplingInfo.put("configVersion", jmxClient.getSamplingConfigVersion().orElse(null));
         samplingInfo.put("configSource", jmxClient.getSamplingConfigLastUpdatedSource().orElse(null));
         samplingInfo.put("invalidConfigCount", jmxClient.getInvalidConfigCount().orElse(null));
@@ -193,115 +184,7 @@ public class TracingActuatorEndpoint {
         configInfo.put("auditTrail", jmxClient.getConfigAuditTrail());
         info.put("config", configInfo);
 
-        info.put("actuator", Map.of(
-                "mutationEnabled", properties.getActuator().isMutationEnabled()
-        ));
         return info;
-    }
-
-    @WriteOperation
-    public Map<String, Object> updateTracing(@Selector String property, @Selector String value) {
-        assertMutationAllowed();
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("property", property);
-        result.put("requestedValue", value);
-
-        switch (property) {
-            case "samplerEnabled" -> {
-                boolean enabled = Boolean.parseBoolean(value);
-                try {
-                    jmxClient.setSamplerEnabled(enabled);
-                } catch (PlatformTracingJmxOperationException e) {
-                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
-                }
-                result.put("status", "updated");
-                result.put("effectiveSamplerEnabled", enabled);
-            }
-            case "samplingRatio" -> {
-                double ratio;
-                try {
-                    ratio = Double.parseDouble(value);
-                } catch (NumberFormatException e) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "samplingRatio must be a number, got: " + value,
-                            e);
-                }
-                if (ratio < 0.0 || ratio > 1.0) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "samplingRatio must be in [0.0, 1.0], got: " + ratio);
-                }
-                Double previousLive = jmxClient.getCurrentRatio().orElse(null);
-                try {
-                    jmxClient.setRatio(ratio);
-                } catch (PlatformTracingJmxOperationException e) {
-                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
-                }
-                double previousProperties = properties.getSampling().getRatio();
-                properties.getSampling().setRatio(ratio);
-                log.info("samplingRatio {} -> {} via actuator endpoint (JMX)",
-                        previousLive != null ? previousLive : previousProperties, ratio);
-                result.put("previousLiveValue", previousLive);
-                result.put("previousConfiguredValue", previousProperties);
-                result.put("appliedValue", ratio);
-            }
-            case "exportEnabled" -> {
-                boolean enabled = Boolean.parseBoolean(value);
-                try {
-                    jmxClient.setExportEnabled(enabled);
-                } catch (PlatformTracingJmxOperationException e) {
-                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
-                }
-                properties.getExporter().setEnabled(enabled);
-                log.info("Export-gate -> {} via actuator endpoint (JMX)", enabled);
-                result.put("status", "updated");
-                result.put("appliedValue", enabled);
-            }
-            case "propagationEnabled" -> {
-                boolean enabled = Boolean.parseBoolean(value);
-                try {
-                    jmxClient.setPropagationEnabled(enabled);
-                } catch (PlatformTracingJmxOperationException e) {
-                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
-                }
-                properties.getPropagation().setEnabled(enabled);
-                log.info("Platform propagation -> {} via actuator endpoint (JMX)", enabled);
-                result.put("status", "updated");
-                result.put("appliedValue", enabled);
-            }
-            case "logLevel" -> {
-                OtelAgentLogLevel level;
-                try {
-                    level = OtelAgentLogLevel.parse(value);
-                } catch (IllegalArgumentException e) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                }
-                try {
-                    jmxClient.setPlatformLogLevel(level.name());
-                } catch (PlatformTracingJmxOperationException e) {
-                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
-                }
-                properties.setLogLevel(level);
-                log.info("Platform log level -> {} via actuator endpoint (JMX)", level);
-                result.put("status", "updated");
-                result.put("appliedValue", level.name());
-            }
-            default -> throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Unsupported tracing property: " + property
-                            + ". Supported: samplerEnabled, samplingRatio, exportEnabled, propagationEnabled, logLevel");
-        }
-        return result;
-    }
-
-    private void assertMutationAllowed() {
-        if (!properties.getActuator().isMutationEnabled()) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Actuator tracing mutation is disabled. Set platform.tracing.actuator.mutation-enabled=true "
-                            + "for local/dev/debug/test/pre-prod only. Direct JMX access is not affected.");
-        }
     }
 
     private String springApplicationName() {

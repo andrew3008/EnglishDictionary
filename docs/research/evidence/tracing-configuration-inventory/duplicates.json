@@ -1,70 +1,40 @@
 [ {
+  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_DENY_PATTERNS:String", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_DENY_PATTERNS:String" ],
+  "defaultDrift" : false,
+  "defaults" : [ "Agent:[password,secret,token]" ],
+  "duplicateGroup" : "duplicate:platform.tracing.javaagent.propagation.baggage.deny-patterns",
+  "exactName" : "platform.tracing.javaagent.propagation.baggage.deny-patterns",
+  "id" : "CONFIG_PROPERTY-011",
+  "targetOwner" : "Agent",
+  "typeDrift" : true,
+  "types" : [ "ExtensionPropertyNames:String", "PropagationDefaults:String" ]
+}, {
+  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_ENABLED:String", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_ENABLED:String" ],
+  "defaultDrift" : false,
+  "defaults" : [ "Agent:NONE" ],
+  "duplicateGroup" : "duplicate:platform.tracing.javaagent.propagation.baggage.enabled",
+  "exactName" : "platform.tracing.javaagent.propagation.baggage.enabled",
+  "id" : "CONFIG_PROPERTY-012",
+  "targetOwner" : "Agent",
+  "typeDrift" : true,
+  "types" : [ "ExtensionPropertyNames:String", "PropagationDefaults:String" ]
+}, {
   "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SDK_MODE:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#TracingProperties.mode:space.br1440.platform.tracing.autoconfigure.support.SdkMode" ],
   "defaultDrift" : true,
   "defaults" : [ "Agent:null", "Spring:AGENT" ],
   "duplicateGroup" : "duplicate:platform.tracing.mode",
   "exactName" : "platform.tracing.mode",
-  "id" : "CONFIG_PROPERTY-018",
+  "id" : "CONFIG_PROPERTY-023",
   "targetOwner" : "Spring",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_ENABLED:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.enabled:boolean" ],
-  "defaultDrift" : false,
-  "defaults" : [ "Agent:false", "Spring:false" ],
-  "duplicateGroup" : "duplicate:platform.tracing.propagation.outbound.enabled",
-  "exactName" : "platform.tracing.propagation.outbound.enabled",
-  "id" : "CONFIG_PROPERTY-024",
-  "targetOwner" : "Spring",
-  "typeDrift" : false,
-  "types" : [ "PropagationDefaults:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_PROPAGATE_FORCE:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.propagateForceTrace:boolean" ],
-  "defaultDrift" : false,
-  "defaults" : [ "Agent:false", "Spring:false" ],
-  "duplicateGroup" : "duplicate:platform.tracing.propagation.outbound.propagate-force-trace",
-  "exactName" : "platform.tracing.propagation.outbound.propagate-force-trace",
-  "id" : "CONFIG_PROPERTY-025",
-  "targetOwner" : "Spring",
-  "typeDrift" : false,
-  "types" : [ "PropagationDefaults:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_PROPAGATE_QA:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.propagateQaTrace:boolean" ],
-  "defaultDrift" : false,
-  "defaults" : [ "Agent:false", "Spring:false" ],
-  "duplicateGroup" : "duplicate:platform.tracing.propagation.outbound.propagate-qa-trace",
-  "exactName" : "platform.tracing.propagation.outbound.propagate-qa-trace",
-  "id" : "CONFIG_PROPERTY-026",
-  "targetOwner" : "Spring",
-  "typeDrift" : false,
-  "types" : [ "PropagationDefaults:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_PROPAGATE_REQUEST_ID:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.propagateRequestId:boolean" ],
-  "defaultDrift" : false,
-  "defaults" : [ "Agent:true", "Spring:true" ],
-  "duplicateGroup" : "duplicate:platform.tracing.propagation.outbound.propagate-request-id",
-  "exactName" : "platform.tracing.propagation.outbound.propagate-request-id",
-  "id" : "CONFIG_PROPERTY-027",
-  "targetOwner" : "Spring",
-  "typeDrift" : false,
-  "types" : [ "PropagationDefaults:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_OUTBOUND_TRUSTED_HOSTS:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Outbound.trustedHostPatterns:List<String>" ],
-  "defaultDrift" : false,
-  "defaults" : [ "Agent:[]", "Spring:[]" ],
-  "duplicateGroup" : "duplicate:platform.tracing.propagation.outbound.trusted-host-patterns",
-  "exactName" : "platform.tracing.propagation.outbound.trusted-host-patterns",
-  "id" : "CONFIG_PROPERTY-028",
-  "targetOwner" : "Spring",
-  "typeDrift" : false,
-  "types" : [ "PropagationDefaults:String" ]
 }, {
   "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_HEADER_FORCE_TRACE:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#PlatformHeadersConfig.forceTraceHeader:String" ],
   "defaultDrift" : false,
   "defaults" : [ "Agent:X-Trace-On", "Spring:X-Trace-On" ],
   "duplicateGroup" : "duplicate:platform.tracing.propagation.platform-headers.force-trace-header",
   "exactName" : "platform.tracing.propagation.platform-headers.force-trace-header",
-  "id" : "CONFIG_PROPERTY-029",
+  "id" : "CONFIG_PROPERTY-031",
   "targetOwner" : "Spring",
   "typeDrift" : false,
   "types" : [ "PropagationDefaults:String" ]
@@ -74,7 +44,7 @@
   "defaults" : [ "Agent:X-QA-Trace", "Spring:X-QA-Trace" ],
   "duplicateGroup" : "duplicate:platform.tracing.propagation.platform-headers.qa-trace-header",
   "exactName" : "platform.tracing.propagation.platform-headers.qa-trace-header",
-  "id" : "CONFIG_PROPERTY-030",
+  "id" : "CONFIG_PROPERTY-032",
   "targetOwner" : "Spring",
   "typeDrift" : false,
   "types" : [ "PropagationDefaults:String" ]
@@ -84,27 +54,17 @@
   "defaults" : [ "Agent:X-Request-Id", "Spring:X-Request-Id" ],
   "duplicateGroup" : "duplicate:platform.tracing.propagation.platform-headers.request-id-header",
   "exactName" : "platform.tracing.propagation.platform-headers.request-id-header",
-  "id" : "CONFIG_PROPERTY-031",
+  "id" : "CONFIG_PROPERTY-033",
   "targetOwner" : "Spring",
   "typeDrift" : false,
   "types" : [ "PropagationDefaults:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_DROP_PATHS:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Sampling.dropPaths:List<String>" ],
-  "defaultDrift" : false,
-  "defaults" : [ "Agent:[/actuator/health,/actuator/prometheus,/actuator/info]", "Spring:[/actuator/health,/actuator/prometheus,/actuator/info]" ],
-  "duplicateGroup" : "duplicate:platform.tracing.sampling.drop-paths",
-  "exactName" : "platform.tracing.sampling.drop-paths",
-  "id" : "CONFIG_PROPERTY-039",
-  "targetOwner" : "Agent runtime policy owner",
-  "typeDrift" : false,
-  "types" : [ "ExtensionPropertyNames:String" ]
 }, {
   "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_ENABLED:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Sampling.enabled:boolean" ],
   "defaultDrift" : false,
   "defaults" : [ "Agent:true", "Spring:true" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.enabled",
   "exactName" : "platform.tracing.sampling.enabled",
-  "id" : "CONFIG_PROPERTY-040",
+  "id" : "CONFIG_PROPERTY-041",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -114,7 +74,7 @@
   "defaults" : [ "Agent:0.1", "Spring:0.1" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.ratio",
   "exactName" : "platform.tracing.sampling.ratio",
-  "id" : "CONFIG_PROPERTY-045",
+  "id" : "CONFIG_PROPERTY-044",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -124,29 +84,9 @@
   "defaults" : [ "Agent:{}", "Spring:{}" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.route-ratios",
   "exactName" : "platform.tracing.sampling.route-ratios",
-  "id" : "CONFIG_PROPERTY-046",
+  "id" : "CONFIG_PROPERTY-045",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : true,
-  "types" : [ "ExtensionPropertyNames:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Scrubbing.builtInRules:List<String>" ],
-  "defaultDrift" : true,
-  "defaults" : [ "Agent:[password,jwt,email,oauth-header,x-auth-header,infra-credential,webhook-token,ssh-credential,user-identity,hardware-identity,location,ip-address]", "Spring:[password,jwt,email,oauth-header,x-auth-header,infra-credential,webhook-token,ssh-credential,user-identity,hardware-identity,location,ip-address]" ],
-  "duplicateGroup" : "duplicate:platform.tracing.scrubbing.built-in-rules",
-  "exactName" : "platform.tracing.scrubbing.built-in-rules",
-  "id" : "CONFIG_PROPERTY-047",
-  "targetOwner" : "Agent runtime policy owner",
-  "typeDrift" : false,
-  "types" : [ "ExtensionPropertyNames:String" ]
-}, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_ENABLED:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Scrubbing.enabled:boolean" ],
-  "defaultDrift" : false,
-  "defaults" : [ "Agent:true", "Spring:true" ],
-  "duplicateGroup" : "duplicate:platform.tracing.scrubbing.enabled",
-  "exactName" : "platform.tracing.scrubbing.enabled",
-  "id" : "CONFIG_PROPERTY-048",
-  "targetOwner" : "Agent runtime policy owner",
-  "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
 }, {
   "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.VALIDATION_ENABLED:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Validation.enabled:boolean" ],
@@ -154,7 +94,7 @@
   "defaults" : [ "Agent:true", "Spring:true" ],
   "duplicateGroup" : "duplicate:platform.tracing.validation.enabled",
   "exactName" : "platform.tracing.validation.enabled",
-  "id" : "CONFIG_PROPERTY-070",
+  "id" : "CONFIG_PROPERTY-069",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -164,7 +104,7 @@
   "defaults" : [ "Agent:false", "Spring:false" ],
   "duplicateGroup" : "duplicate:platform.tracing.validation.strict",
   "exactName" : "platform.tracing.validation.strict",
-  "id" : "CONFIG_PROPERTY-072",
+  "id" : "CONFIG_PROPERTY-071",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]

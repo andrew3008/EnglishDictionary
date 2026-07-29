@@ -84,7 +84,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
             @Override public Boolean getBoolean(String name) {
-                return "platform.tracing.scrubbing.enabled".equals(name) ? Boolean.TRUE : Boolean.FALSE;
+                return "platform.tracing.javaagent.scrubbing.enabled".equals(name) ? Boolean.TRUE : Boolean.FALSE;
             }
             @Override public Integer getInt(String name) { return null; }
             @Override public Long getLong(String name) { return null; }
@@ -315,7 +315,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         @Test
         void builtInRules_override_preserved() {
             ExtensionConfig cfg = configWithListProperty(
-                    "platform.tracing.scrubbing.built-in-rules", List.of("password", "jwt"));
+                    "platform.tracing.javaagent.scrubbing.built-in-rules", List.of("password", "jwt"));
             assertThat(cfg.scrubbing().builtInRules())
                     .as("builtInRules override preserved")
                     .containsExactly("password", "jwt");
