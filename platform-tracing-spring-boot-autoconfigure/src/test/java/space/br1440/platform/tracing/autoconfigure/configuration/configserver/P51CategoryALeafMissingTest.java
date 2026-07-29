@@ -27,22 +27,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * ┬º20 P5.1 ΓÇö Category A leaf missing/deleted invariants.
+ * §20 P5.1 — Category A leaf missing/deleted invariants.
  * <p>
- * Scenario A (initial): missing Category A leaf at startup ΓåÆ
+ * Scenario A (initial): missing Category A leaf at startup →
  *   {@link TracingPolicyRefreshCoalescer#deliverInitial()} throws
- *   {@link TracingPolicyManifestException}  ΓåÆ readiness BLOCKED
+ *   {@link TracingPolicyManifestException}  → readiness BLOCKED
  *   (application context refuses to complete startup).
  * <p>
- * Scenario B (runtime): Category A leaf disappears/deleted after initial delivery ΓåÆ
+ * Scenario B (runtime): Category A leaf disappears/deleted after initial delivery →
  *   runtime refresh does NOT call {@code applySnapshot};
  *   LKG snapshot, digest, runtimeInstanceId, acceptedSequence are ALL immutable.
  * <p>
- * Scenario C (restore): leaf-missing ΓåÆ REJECTED state is cleared ONLY when
+ * Scenario C (restore): leaf-missing → REJECTED state is cleared ONLY when
  *   Config Server delivers an explicit complete snapshot with the leaf present;
  *   no implicit default is injected by the application.
  */
-@DisplayName("┬º20 P5.1 ΓÇô Category A leaf missing/deleted: readiness BLOCKED & runtime REJECTED")
+@DisplayName("§20 P5.1 – Category A leaf missing/deleted: readiness BLOCKED & runtime REJECTED")
 class P51CategoryALeafMissingTest {
 
     // -------------------------------------------------------------------------
@@ -72,11 +72,11 @@ class P51CategoryALeafMissingTest {
     }
 
     // -------------------------------------------------------------------------
-    // Scenario A: initial missing leaf ΓåÆ readiness BLOCKED
+    // Scenario A: initial missing leaf → readiness BLOCKED
     // -------------------------------------------------------------------------
 
     @Nested
-    @DisplayName("A: initial delivery ΓÇö missing leaf ΓåÆ readiness BLOCKED")
+    @DisplayName("A: initial delivery — missing leaf → readiness BLOCKED")
     class InitialMissingLeaf {
 
         @Test
@@ -162,11 +162,11 @@ class P51CategoryALeafMissingTest {
     }
 
     // -------------------------------------------------------------------------
-    // Scenario B: runtime missing/deleted leaf ΓåÆ REJECTED; LKG immutable
+    // Scenario B: runtime missing/deleted leaf → REJECTED; LKG immutable
     // -------------------------------------------------------------------------
 
     @Nested
-    @DisplayName("B: runtime refresh ΓÇö missing/deleted leaf ΓåÆ REJECTED, LKG immutable")
+    @DisplayName("B: runtime refresh — missing/deleted leaf → REJECTED, LKG immutable")
     class RuntimeMissingLeaf {
 
         private TrackingSnapshotClient trackingClient;
@@ -222,7 +222,7 @@ class P51CategoryALeafMissingTest {
                             + "'platform.tracing.policy.sampling.ratio'"));
 
             // Replace the coalescer with failing builder; coalescer holds no external
-            // sequence state visible through public API ΓÇö what we can verify is that
+            // sequence state visible through public API — what we can verify is that
             // applySnapshot was not called again, meaning Agent-side LKG is untouched.
             TracingPolicyRefreshCoalescer failingCoalescer = new TracingPolicyRefreshCoalescer(
                     failingBuilder, trackingClient, trackingReader, Runnable::run);
@@ -280,7 +280,7 @@ class P51CategoryALeafMissingTest {
 
             coalescer.onRefreshEvent();
 
-            // No snapshot was submitted to the agent ΓÇö LKG content in reader is intact
+            // No snapshot was submitted to the agent — LKG content in reader is intact
             assertThat(trackingReader.currentComplete())
                     .isPresent()
                     .map(AcceptedSnapshotWithSequence::snapshot)
@@ -343,7 +343,7 @@ class P51CategoryALeafMissingTest {
         @Test
         @DisplayName("after leaf-missing, an explicit Config Server push with full snapshot restores state")
         void explicitConfigServerPush_restoresAfterLeafMissing() {
-            // Phase 1: builder fails (leaf missing) ΓÇö no delivery
+            // Phase 1: builder fails (leaf missing) — no delivery
             ConfigServerPolicyManifestBuilder failingBuilder =
                     mock(ConfigServerPolicyManifestBuilder.class);
             when(failingBuilder.build())
@@ -358,7 +358,7 @@ class P51CategoryALeafMissingTest {
             failingCoalescer.onRefreshEvent();
             assertThat(client.applyCallCount()).isZero();
 
-            // Phase 2: leaf is restored ΓÇö Config Server pushes a NEW complete snapshot.
+            // Phase 2: leaf is restored — Config Server pushes a NEW complete snapshot.
             // This is modelled as a NEW coalescer that now has the full builder.
             // (In production: Environment is updated, EnvironmentChangeEvent fires,
             //  onRefreshEvent() triggers, manifestBuilder.build() now succeeds.)

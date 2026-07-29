@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for {@link SpanProcessorHarness}.
- * Target: ΓëÑ95 % line coverage, ΓëÑ90 % branch coverage (plan ┬º8.5).
+ * Target: ≥95 % line coverage, ≥90 % branch coverage (plan §8.5).
  */
 class SpanProcessorHarnessTest {
 
@@ -42,7 +42,7 @@ class SpanProcessorHarnessTest {
     }
 
     // -------------------------------------------------------------------------
-    // of(processor) ΓÇö basic construction and span capture
+    // of(processor) — basic construction and span capture
     // -------------------------------------------------------------------------
 
     @Test

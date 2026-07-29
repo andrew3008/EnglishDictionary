@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>Wraps a minimal OTel SDK ({@code SdkTracerProvider} + {@code SimpleSpanProcessor} +
  * {@code InMemorySpanExporter}) so the processor-under-test can be exercised without
- * boilerplate. Must be closed after use ΓÇö either via {@code try-with-resources} or
+ * boilerplate. Must be closed after use — either via {@code try-with-resources} or
  * through {@link SpanProcessorHarnessExtension} which manages the lifecycle automatically.
  *
  * <pre>{@code

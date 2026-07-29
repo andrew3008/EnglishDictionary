@@ -14,21 +14,21 @@ import java.util.function.Supplier;
 /**
  * Thin JUnit 5 Extension wrapping {@link SpanProcessorHarness}.
  *
- * <p>Lifecycle (per-class, mirrors plan v2 ┬º8.5):
+ * <p>Lifecycle (per-class, mirrors plan v2 §8.5):
  * <ul>
- *   <li>{@code beforeAll} ΓÇö creates one {@link SpanProcessorHarness} (and thus one
+ *   <li>{@code beforeAll} — creates one {@link SpanProcessorHarness} (and thus one
  *       {@code OpenTelemetrySdk}) per test class; registers it as
  *       {@link ExtensionContext.Store.CloseableResource} so JUnit calls
  *       {@link SpanProcessorHarness#close()} automatically when the class context closes.</li>
- *   <li>{@code beforeEach} ΓÇö calls {@link io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter#reset()}
+ *   <li>{@code beforeEach} — calls {@link io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter#reset()}
  *       to isolate spans between tests without recreating the SDK.</li>
  * </ul>
  *
  * <p>Two factory methods:
  * <ul>
- *   <li>{@link #of(Supplier)} ΓÇö invokes the supplier once per class (use when the
+ *   <li>{@link #of(Supplier)} — invokes the supplier once per class (use when the
  *       processor is stateful and needs fresh construction per class).</li>
- *   <li>{@link #of(SpanProcessor)} ΓÇö uses the same processor instance for every
+ *   <li>{@link #of(SpanProcessor)} — uses the same processor instance for every
  *       class that registers this extension (use for stateless processors).</li>
  * </ul>
  *
@@ -83,7 +83,7 @@ public final class SpanProcessorHarnessExtension
     }
 
     // -------------------------------------------------------------------------
-    // BeforeAllCallback ΓÇö one SDK per class, auto-closed by JUnit via Store
+    // BeforeAllCallback — one SDK per class, auto-closed by JUnit via Store
     // -------------------------------------------------------------------------
 
     @Override
@@ -96,7 +96,7 @@ public final class SpanProcessorHarnessExtension
     }
 
     // -------------------------------------------------------------------------
-    // BeforeEachCallback ΓÇö reset exporter between tests
+    // BeforeEachCallback — reset exporter between tests
     // -------------------------------------------------------------------------
 
     @Override
@@ -105,7 +105,7 @@ public final class SpanProcessorHarnessExtension
     }
 
     // -------------------------------------------------------------------------
-    // ParameterResolver ΓÇö inject SpanProcessorHarness into test methods
+    // ParameterResolver — inject SpanProcessorHarness into test methods
     // -------------------------------------------------------------------------
 
     @Override
@@ -128,7 +128,7 @@ public final class SpanProcessorHarnessExtension
         CloseableHarness wrapper = rootStore(context).get(HARNESS_KEY, CloseableHarness.class);
         if (wrapper == null) {
             throw new IllegalStateException(
-                    "SpanProcessorHarness not found in JUnit Store ΓÇö " +
+                    "SpanProcessorHarness not found in JUnit Store — " +
                     "ensure SpanProcessorHarnessExtension is declared as " +
                     "@RegisterExtension static.");
         }
@@ -137,7 +137,7 @@ public final class SpanProcessorHarnessExtension
 
     /**
      * Walks up the context tree to find the root non-nested context that owns the harness.
-     * Mirrors the ancestor-lookup pattern in {@code OtelSdkExtension} (┬º8.4).
+     * Mirrors the ancestor-lookup pattern in {@code OtelSdkExtension} (§8.4).
      */
     private ExtensionContext.Store rootStore(ExtensionContext context) {
         ExtensionContext walker = context;
@@ -152,7 +152,7 @@ public final class SpanProcessorHarnessExtension
     }
 
     // -------------------------------------------------------------------------
-    // CloseableResource wrapper ΓÇö JUnit calls close() when Store context closes
+    // CloseableResource wrapper — JUnit calls close() when Store context closes
     // -------------------------------------------------------------------------
 
     private static final class CloseableHarness
