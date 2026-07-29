@@ -298,6 +298,7 @@ public final class AgentHttpSpringSmokeProcessRunner {
                 }
             }
         }
+        P4AuthoritySmokeDefaults.ensure(jvmProperties);
         return jvmProperties;
     }
 

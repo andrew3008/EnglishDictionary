@@ -1133,3 +1133,31 @@ tasks.register('implementationReadinessVerify') {
     description = 'Verifies E8 implementation readiness package completeness and consistency.'
     dependsOn e8ImplementationReadinessTest
 }
+
+// ---------------------------------------------------------------------------------------------
+// PRIV-R07 proposal — addendum evidence for the readAcceptedComplete private read operation,
+// produced after the S-07/E7 baseline review. PENDING_COMMITTEE_APPROVAL; does not close E7.
+// ---------------------------------------------------------------------------------------------
+
+def priv07ProposalTest = tasks.register('priv07ProposalTest', Test) {
+    group = 'verification'
+    description = 'Runs PRIV-R07 proposal evidence consistency proofs.'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir('test-results/priv07ProposalTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir('test-results/priv07ProposalTest')
+    reports.html.outputLocation = layout.buildDirectory.dir('reports/tests/priv07ProposalTest')
+    useJUnitPlatform()
+    systemProperty 'priv07.repo.root', rootProject.layout.projectDirectory.asFile.absolutePath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.bench.priv07.*'
+    }
+}
+
+tasks.register('priv07ProposalVerify') {
+    group = 'verification'
+    description = 'Verifies PROPOSED_PRIV_R07 addendum evidence completeness and consistency.'
+    dependsOn priv07ProposalTest
+}

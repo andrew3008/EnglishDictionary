@@ -126,7 +126,7 @@ todos:
     status: pending
   - id: p4-authority-posture-guard
     content: "P4 ADD: реализовать mode/authority posture guard и fail-fast matrix"
-    status: pending
+    status: completed
   - id: p4-config-server-classifier
     content: "P4 ADD: реализовать per-key Config Server provenance classifier"
     status: pending

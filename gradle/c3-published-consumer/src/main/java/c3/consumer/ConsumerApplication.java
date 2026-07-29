@@ -14,7 +14,9 @@ public class ConsumerApplication {
                         "spring.main.banner-mode=off",
                         "logging.level.root=ERROR",
                         "platform.tracing.enabled=false",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.mode=DISABLED",
+                        "platform.tracing.configuration.authority=HELM",
+                        "platform.environment=LOCAL")
                 .run(args)) {
             if (!context.isActive()) {
                 throw new IllegalStateException("Spring context is not active");

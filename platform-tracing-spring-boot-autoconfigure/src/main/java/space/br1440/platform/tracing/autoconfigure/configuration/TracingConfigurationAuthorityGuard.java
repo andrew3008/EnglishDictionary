@@ -39,6 +39,12 @@ public final class TracingConfigurationAuthorityGuard {
 
     public static TracingConfigurationAuthorityGuard from(Environment env) {
         String rawAuthority = env.getProperty("platform.tracing.configuration.authority", "").trim().toUpperCase();
+        if (rawAuthority.isEmpty()) {
+            throw new TracingConfigurationGuardException(
+                    "Missing platform.tracing.configuration.authority. "
+                            + "Exactly one of HELM, CONFIG_SERVER, ACTUATOR must be selected at startup; "
+                            + "authority fallback is forbidden.");
+        }
         TracingConfigurationAuthority authority;
         try {
             authority = TracingConfigurationAuthority.valueOf(rawAuthority);
@@ -48,7 +54,13 @@ public final class TracingConfigurationAuthorityGuard {
                     "'. Must be one of: HELM, CONFIG_SERVER, ACTUATOR");
         }
         PlatformEnvironmentPosture posture = PlatformEnvironmentPostureResolver.resolve(env);
-        boolean tracingEnabled = env.getProperty("platform.tracing.configuration.enabled", Boolean.class, true);
+        // Mode axis (platform.tracing.mode) and configuration.enabled both map to the
+        // DISABLED half of the P4 mode/authority matrix. Either signal disables tracing.
+        boolean modeDisabled = "DISABLED".equalsIgnoreCase(
+                env.getProperty("platform.tracing.mode", "AGENT").trim());
+        boolean configurationEnabled = env.getProperty(
+                "platform.tracing.configuration.enabled", Boolean.class, true);
+        boolean tracingEnabled = !modeDisabled && configurationEnabled;
         return new TracingConfigurationAuthorityGuard(authority, posture, tracingEnabled);
     }
 

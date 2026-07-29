@@ -1309,6 +1309,21 @@
       "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
     },
     {
+      "targetMemberId": "PRIV-R07",
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "OPERATION",
+      "name": "readAcceptedComplete",
+      "repositoryConsumers": [
+        "CONFIG_SERVER_BRIDGE",
+        "DEV_TYPED_JMX_ADAPTER",
+        "ACTUATOR_READINESS"
+      ],
+      "externalConsumerRisk": "PROCESS_LOCAL_NOT_REMOTELY_EXPOSED",
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2/P4)",
+      "zeroReferenceProof": "NOT_APPLICABLE_NEW_MEMBER"
+    },
+    {
       "targetMemberId": "PRIV-W01",
       "server": "PRIVATE",
       "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",

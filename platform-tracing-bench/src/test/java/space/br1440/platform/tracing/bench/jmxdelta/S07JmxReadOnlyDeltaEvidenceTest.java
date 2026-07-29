@@ -189,7 +189,7 @@ class S07JmxReadOnlyDeltaEvidenceTest {
         assertThat(addedReads).isEqualTo(9);
         assertThat(target.path("platformMembers")).hasSize(56);
         assertThat(delta.path("after").path("platformMembers").asInt()).isEqualTo(56);
-        assertThat(delta.path("after").path("privateReadMembers").asInt()).isEqualTo(6);
+        assertThat(delta.path("after").path("privateReadMembers").asInt()).isEqualTo(7);
     }
 
     @Test
@@ -227,11 +227,11 @@ class S07JmxReadOnlyDeltaEvidenceTest {
     }
 
     @Test
-    @DisplayName("private contract is six marker reads plus one new strict snapshot writer")
+    @DisplayName("private contract is seven private reads (six marker + readAcceptedComplete) plus one writer")
     void privateContractIsNewAndExact() throws IOException {
         JsonNode contract = read("target-read-contract.json");
         JsonNode privateMembers = contract.path("privateMembers");
-        assertThat(privateMembers).hasSize(7);
+        assertThat(privateMembers).hasSize(8);
 
         long reads = privateMembers.findValuesAsText("source").stream()
                 .filter("ADD_PRIVATE_READ"::equals)
@@ -243,7 +243,7 @@ class S07JmxReadOnlyDeltaEvidenceTest {
         for (JsonNode member : privateMembers) {
             objectNames.add(member.path("objectName").asText());
         }
-        assertThat(reads).isEqualTo(6);
+        assertThat(reads).isEqualTo(7);
         assertThat(mutations).isEqualTo(1);
         assertThat(objectNames).hasSize(2);
 
@@ -334,7 +334,11 @@ class S07JmxReadOnlyDeltaEvidenceTest {
         assertThat(summary.path("selectedReadContractOption").asText()).isEqualTo("R3");
         assertThat(summary.path("productionCodeChanged").asBoolean()).isFalse();
         assertThat(summary.path("target").path("platformReadOnlyMembers").asInt()).isEqualTo(56);
-        assertThat(summary.path("target").path("privateReadMembers").asInt()).isEqualTo(6);
+        assertThat(summary.path("target").path("privateReadMembers").asInt()).isEqualTo(7);
+        assertThat(summary.path("privateCompletePolicyReader").path("targetMemberId").asText())
+                .isEqualTo("PRIV-R07");
+        assertThat(summary.path("privateCompletePolicyReader").path("status").asText())
+                .isEqualTo("APPROVED");
         assertThat(summary.path("privateWriter").path("newReplacementContract").asBoolean()).isTrue();
         assertThat(summary.path("privateWriter").path("legacyPartialProtocolRelocated").asBoolean()).isFalse();
     }

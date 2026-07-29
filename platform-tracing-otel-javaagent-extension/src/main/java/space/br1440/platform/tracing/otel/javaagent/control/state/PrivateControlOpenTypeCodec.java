@@ -19,6 +19,9 @@ final class PrivateControlOpenTypeCodec {
 
     private static final int MAX_LOGICAL_REQUEST_BYTES = 32_768;
 
+    /** Same family as {@link #MAX_LOGICAL_REQUEST_BYTES}; committee REQUIRE_EXPLICIT_BOUND for PRIV-R07. */
+    private static final int MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES = 32_768;
+
     DecodedPolicySnapshot decode(CompositeData request) {
         if (request == null) {
             throw rejected(PolicyMessageCode.MISSING_REQUIRED_FIELD, "request is required");
@@ -122,6 +125,11 @@ final class PrivateControlOpenTypeCodec {
      */
     CompositeData encodeAcceptedComplete(AcceptedPolicyView view) {
         Objects.requireNonNull(view, "view");
+        if (logicalSizeAcceptedComplete(view) > MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES) {
+            throw new IllegalStateException(
+                    "AcceptedCompleteSnapshot logical size exceeds "
+                            + MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES + " bytes");
+        }
         try {
             TabularData routes = encodeRouteRatios(view.samplingRouteRatios());
             return new CompositeDataSupport(
@@ -202,6 +210,16 @@ final class PrivateControlOpenTypeCodec {
             }
         }
         for (String routePrefix : policy.samplingRouteRatios().keySet()) {
+            size += routePrefix.getBytes(StandardCharsets.UTF_8).length + 16;
+        }
+        return size;
+    }
+
+    private static int logicalSizeAcceptedComplete(AcceptedPolicyView view) {
+        int size = 64;
+        size += view.runtimeInstanceId().getBytes(StandardCharsets.UTF_8).length;
+        size += view.diagnosticsLogLevel().getBytes(StandardCharsets.UTF_8).length;
+        for (String routePrefix : view.samplingRouteRatios().keySet()) {
             size += routePrefix.getBytes(StandardCharsets.UTF_8).length + 16;
         }
         return size;

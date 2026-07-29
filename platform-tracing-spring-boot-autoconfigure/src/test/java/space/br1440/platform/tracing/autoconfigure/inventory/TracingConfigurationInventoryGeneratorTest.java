@@ -1029,9 +1029,17 @@ class TracingConfigurationInventoryGeneratorTest {
         assertThat(committed)
                 .as("Missing committed inventory artifact. Regenerate with: %s", command)
                 .exists();
-        assertThat(Files.readString(committed, StandardCharsets.UTF_8))
+        // Normalize CRLF/LF: the committed artifact is checked out with the platform's line
+        // ending convention (e.g. core.autocrlf on Windows), while the generator always emits
+        // LF. Without normalization this test is environment-dependent even when content is
+        // identical — see the analogous fix in DomainMBeanJmxComplianceTest.
+        assertThat(normalizeLineEndings(Files.readString(committed, StandardCharsets.UTF_8)))
                 .as("Inventory drift in %s. Regenerate with: %s", committed, command)
-                .isEqualTo(Files.readString(generated, StandardCharsets.UTF_8));
+                .isEqualTo(normalizeLineEndings(Files.readString(generated, StandardCharsets.UTF_8)));
+    }
+
+    private static String normalizeLineEndings(String text) {
+        return text.replace("\r\n", "\n");
     }
 
     private static Path repositoryRoot() {

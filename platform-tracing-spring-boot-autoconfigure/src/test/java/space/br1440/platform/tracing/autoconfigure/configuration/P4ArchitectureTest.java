@@ -60,6 +60,29 @@ class P4ArchitectureTest {
     }
 
     @Test
+    void guardRejectsMissingAuthority() {
+        try {
+            TracingConfigurationAuthorityGuard.from(
+                    new org.springframework.mock.env.MockEnvironment()
+                            .withProperty("platform.environment", "LOCAL"));
+            throw new AssertionError("Expected fail-fast on missing authority");
+        } catch (TracingConfigurationGuardException e) { /* expected */ }
+    }
+
+    @Test
+    void guardRejectsDisabledModeWithConfigServer() {
+        try {
+            TracingConfigurationAuthorityGuard.from(
+                    new org.springframework.mock.env.MockEnvironment()
+                            .withProperty("platform.tracing.configuration.authority", "CONFIG_SERVER")
+                            .withProperty("platform.environment", "LOCAL")
+                            .withProperty("platform.tracing.mode", "DISABLED"))
+                    .validate();
+            throw new AssertionError("Expected fail-fast on DISABLED + CONFIG_SERVER");
+        } catch (TracingConfigurationGuardException e) { /* expected */ }
+    }
+
+    @Test
     void guardRejectsUnknownPosture() {
         try {
             PlatformEnvironmentPostureResolver.resolve(
@@ -109,8 +132,14 @@ class P4ArchitectureTest {
     }
 
     @Test
-    void inProcessStorePreservesRouteRatiosAcrossSingleLeafMutation() {
-        InProcessAcceptedSnapshotStore store = new InProcessAcceptedSnapshotStore();
+    void singleLeafMutationPreservesRouteRatiosWithoutSpringSideCache() {
+        // P4 explicitly forbids a Spring-side accepted-state cache/second source of truth
+        // (see change policy). There is intentionally no InProcessAcceptedSnapshotStore or
+        // equivalent in production; the only accepted-state owner is the Agent, reached via
+        // AcceptedTracingPolicySnapshotReader.currentComplete(). This test proves the withX()
+        // copy primitive itself preserves the other seven leaves — the actual read-copy-change
+        // orchestration is covered by SpringActuatorTracingPolicyAdapterTest against the real
+        // adapter and its real AcceptedTracingPolicySnapshotReader collaborator.
         CompleteTracingPolicySnapshot original = CompleteTracingPolicySnapshot.builder()
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
@@ -121,17 +150,18 @@ class P4ArchitectureTest {
                 .traceControlHeadersEnabled(true)
                 .diagnosticsLogLevel("INFO")
                 .build();
-        store.update(new AcceptedSnapshotWithSequence(10L, original));
 
-        // Simulate single-leaf mutation
-        AcceptedSnapshotWithSequence accepted = store.currentComplete().orElseThrow();
-        CompleteTracingPolicySnapshot mutated = accepted.snapshot().withExporterEnabled(false);
+        CompleteTracingPolicySnapshot mutated = original.withExporterEnabled(false);
 
-        assert mutated.exporterEnabled() == false;
+        assert !mutated.exporterEnabled();
         assert mutated.samplingRouteRatios().size() == 2 :
                 "Route ratios must be preserved; got: " + mutated.samplingRouteRatios().size();
         assert mutated.samplingRouteRatios().get("checkout") == 0.5;
         assert mutated.samplingRouteRatios().get("search") == 0.3;
         assert mutated.samplingEnabled();
+        assert mutated.validationEnabled();
+        assert !mutated.validationStrict();
+        assert mutated.traceControlHeadersEnabled();
+        assert mutated.diagnosticsLogLevel().equals("INFO");
     }
 }

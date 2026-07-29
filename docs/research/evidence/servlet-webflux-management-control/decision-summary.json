@@ -1,0 +1,44 @@
+{
+  "decisionId": "SERVLET_ONLY_MANAGEMENT_CONTROL_API",
+  "status": "SUPERSEDED_BY_P4_WF_PARITY_PATH",
+  "prohibitedStatuses": ["APPROVED", "ACCEPTED", "CLOSED"],
+  "subject": "TracingControlMvcController / TracingControlManagementContextConfiguration Servlet-vs-WebFlux scope",
+  "currentImplementation": {
+    "summary": "Servlet-only management control API",
+    "reason": "TracingControlManagementContextConfiguration depends directly on org.springframework.web.servlet.config.annotation.WebMvcConfigurer (Spring MVC) for absolute-path composition (configurePathMatch/addPathPrefix). No reactive equivalent has been implemented.",
+    "gatingMechanism": "@ConditionalOnClass(WebMvcConfigurer.class) on TracingControlManagementContextConfiguration",
+    "reactiveBehavior": "Control API (TracingControlMvcController, tracingControlPathPrefixConfigurer, and the whole TracingControlManagementContextConfiguration bean definition) is PHYSICALLY ABSENT — not merely inactive — on any classpath lacking spring-webmvc, including a pure WebFlux (spring-webflux, no spring-webmvc) application.",
+    "managementContextTypeNote": "ManagementContextType (from @ManagementContextConfiguration) only distinguishes SAME/CHILD/ANY management-context topology, not Servlet vs WebFlux web stack. Servlet-vs-WebFlux isolation here is therefore enforced entirely by @ConditionalOnClass(WebMvcConfigurer.class), not by ManagementContextType."
+  },
+  "verifiedAbsenceScenarios": [
+    {"authority": "HELM", "environment": "LOCAL", "reason": "authority != ACTUATOR"},
+    {"authority": "CONFIG_SERVER", "environment": "LOCAL", "reason": "authority != ACTUATOR"},
+    {"authority": "ACTUATOR", "environment": "SHARED", "reason": "environment != LOCAL"},
+    {"authority": "ACTUATOR", "environment": "PRODUCTION", "reason": "environment != LOCAL"},
+    {"authority": "ACTUATOR", "environment": "LOCAL", "webMvcConfigurerOnClasspath": false, "reason": "@ConditionalOnClass(WebMvcConfigurer.class) fails — proves the Servlet-only contract self-deactivates rather than failing unpredictably on a reactive-only classpath"}
+  ],
+  "verifiedPresenceScenario": {
+    "authority": "ACTUATOR", "environment": "LOCAL", "webMvcConfigurerOnClasspath": true,
+    "note": "Real two-port SpringApplication boot; controller and configuration beans confirmed present in the management CHILD ApplicationContext specifically (not merely routable), custom management.endpoints.web.base-path applied, route reachable on the management port, absent on the application port, readiness probe reaches RUNNING only after a successful readAcceptedComplete."
+  },
+  "decision": "SUPERSEDED AS CLOSURE PATH. Current Servlet-only behavior remains the implemented and tested baseline, but plan §14.7 forbids Servlet-only as the product end-state. P4-WF is the required closure path (WebFlux parity). P4-WF.0 census and P4-WF.1 minimal design (MINIMAL_DESIGN_ACCEPTED) are complete without production code; implementation waits on P4-WF.2 class-budget Codex gate. Evidence: docs/research/evidence/p4-webflux-parity/.",
+  "p4ClosureImpact": {
+    "classification": "BLOCKER_UNTIL_P4_WF_COMPLETE",
+    "note": "Committee ratification of Servlet-only permanent limitation is no longer an acceptable P4 closure path under the plan. Formal closure requires P4-WF.2–P4-WF.7 (class-budget, implementation, parity/absence tests, reactive Docker E2E) plus PRIV-R07."
+  },
+  "committeeDecisionItems": [
+    "Do not ratify Servlet-only as permanent product limitation for P4 closure",
+    "Track WebFlux parity completion via P4-WF gates (see docs/research/evidence/p4-webflux-parity/ and p4-closure-status)"
+  ],
+  "p4WfProgress": {
+    "P4-WF.0": "COMPLETED",
+    "P4-WF.1": "COMPLETED",
+    "designVerdict": "MINIMAL_DESIGN_ACCEPTED",
+    "P4-WF.2": "PENDING"
+  },
+  "verification": {
+    "absenceTest": "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/configuration/actuator/TracingControlManagementContextAbsenceTest.java",
+    "presenceAndReadinessTest": "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/configuration/actuator/TracingControlManagementChildContextIntegrationTest.java",
+    "routeLevelUnitTest": "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/configuration/actuator/TracingControlMvcControllerHttpTest.java (standaloneSetup — route dispatch only, NOT child-context or classpath-condition proof)"
+  }
+}

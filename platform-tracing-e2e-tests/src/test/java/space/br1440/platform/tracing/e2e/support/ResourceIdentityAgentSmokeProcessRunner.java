@@ -54,6 +54,7 @@ public final class ResourceIdentityAgentSmokeProcessRunner {
         jvmProperties.add("otel.bsp.schedule.delay=200");
         // Идентичность через платформенный namespace (путь PlatformResourceProvider).
         platformServiceProps.forEach((k, v) -> jvmProperties.add(k + "=" + v));
+        P4AuthoritySmokeDefaults.ensure(jvmProperties);
 
         List<String> command = new ArrayList<>();
         command.add(javaBin.toString());

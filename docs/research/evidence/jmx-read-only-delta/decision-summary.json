@@ -7,6 +7,13 @@
   "selectedReadContractOption": "R3",
   "weightedScore": 87.4,
   "productionCodeChanged": false,
+  "privR07Reconcile": {
+    "decision": "RECONCILE_NOW",
+    "decidedBy": "Architecture Committee",
+    "decidedAt": "2026-07-29",
+    "proposalId": "PROPOSED_PRIV_R07",
+    "effect": "privateReadMembers 6→7; addedPrivateReads 6→7; PRIV-R07 added to privateMembers"
+  },
   "baseline": {
     "objectNames": 8,
     "members": 63,
@@ -18,7 +25,7 @@
     "platformReadOnlyMembers": 56,
     "platformMutations": 0,
     "privateObjectNames": 2,
-    "privateReadMembers": 6,
+    "privateReadMembers": 7,
     "privateMutations": 1
   },
   "counts": {
@@ -29,7 +36,7 @@
     "deletedObsoleteReads": 5,
     "replacedReads": 4,
     "addedPlatformReads": 9,
-    "addedPrivateReads": 6,
+    "addedPrivateReads": 7,
     "deletedMutationsFromPlatform": 16
   },
   "privateWriter": {
@@ -39,6 +46,14 @@
     "legacyPartialProtocolRelocated": false,
     "exactPayloadSchemaAuthority": "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json and p0-wire-schema-bounds.json",
     "exactPayloadSchemaStatus": "READY_FOR_COMMITTEE_APPROVAL"
+  },
+  "privateCompletePolicyReader": {
+    "targetMemberId": "PRIV-R07",
+    "operationName": "readAcceptedComplete",
+    "status": "APPROVED",
+    "approvedAt": "2026-07-29",
+    "maximumLogicalPayloadBytes": 32768,
+    "evidence": "docs/research/evidence/priv-r07-proposal/decision-summary.json"
   },
   "externalConsumerBlockersForE7": [],
   "productionRolloutBlockers": [

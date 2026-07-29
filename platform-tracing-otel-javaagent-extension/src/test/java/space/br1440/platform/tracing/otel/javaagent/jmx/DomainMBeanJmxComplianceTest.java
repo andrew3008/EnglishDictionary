@@ -76,9 +76,13 @@ class DomainMBeanJmxComplianceTest {
             return;
         }
 
-        assertThat(actual)
-                .withFailMessage(() -> actionableDiff(baseline, actual))
-                .isEqualTo(baseline);
+        // Normalize CRLF/LF before comparison: the committed baseline resource is checked out
+        // with the platform's line-ending convention (e.g. core.autocrlf on Windows), while
+        // JmxManagementContractSnapshot.toJson always emits LF. Without normalization this test
+        // is environment-dependent even though the actual live contract is unchanged.
+        assertThat(normalizeLineEndings(actual))
+                .withFailMessage(() -> actionableDiff(normalizeLineEndings(baseline), normalizeLineEndings(actual)))
+                .isEqualTo(normalizeLineEndings(baseline));
     }
 
     private static void wireRequiredComponents(
@@ -141,6 +145,10 @@ class DomainMBeanJmxComplianceTest {
             throw new IllegalStateException("Не задано обязательное system property: " + name);
         }
         return value;
+    }
+
+    private static String normalizeLineEndings(String text) {
+        return text.replace("\r\n", "\n");
     }
 
     private static String actionableDiff(String expected, String actual) {

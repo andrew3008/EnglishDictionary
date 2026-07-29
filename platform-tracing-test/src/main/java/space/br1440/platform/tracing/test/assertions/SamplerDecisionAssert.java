@@ -28,6 +28,11 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         return this;
     }
 
+    /** Plan §5.2 alias for {@link #isRecordAndSample()}. */
+    public SamplerDecisionAssert assertSampled() {
+        return isRecordAndSample();
+    }
+
     public SamplerDecisionAssert isRecordOnly() {
         isNotNull();
 
@@ -38,6 +43,11 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         return this;
     }
 
+    /** Plan §5.2 alias for {@link #isRecordOnly()}. */
+    public SamplerDecisionAssert assertRecordOnly() {
+        return isRecordOnly();
+    }
+
     public SamplerDecisionAssert isDrop() {
         isNotNull();
 
@@ -46,6 +56,25 @@ public final class SamplerDecisionAssert extends AbstractAssert<SamplerDecisionA
         }
 
         return this;
+    }
+
+    /** Plan §5.2 alias for {@link #isDrop()}. */
+    public SamplerDecisionAssert assertDropped() {
+        return isDrop();
+    }
+
+    public SamplerDecisionAssert hasDecision(SamplingDecision expected) {
+        isNotNull();
+        Objects.requireNonNull(expected, "expected");
+        if (actual.getDecision() != expected) {
+            failWithMessage("Expected %s, but was: %s", expected, actual.getDecision());
+        }
+        return this;
+    }
+
+    /** Exposes the raw {@link SamplingResult} for custom assertions. */
+    public SamplingResult result() {
+        return actual;
     }
 
     public <T> SamplerDecisionAssert hasAttribute(AttributeKey<T> key, T expectedValue) {

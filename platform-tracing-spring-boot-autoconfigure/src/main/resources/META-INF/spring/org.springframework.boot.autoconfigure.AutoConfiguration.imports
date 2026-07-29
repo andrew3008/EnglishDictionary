@@ -1,3 +1,4 @@
+space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthorityAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.SemanticLayerAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration

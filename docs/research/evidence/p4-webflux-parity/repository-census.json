@@ -1,0 +1,164 @@
+{
+  "gate": "P4-WF.0",
+  "name": "P4-WF PRE-FLIGHT repository census",
+  "status": "COMPLETED",
+  "refreshed": true,
+  "asOf": "2026-07-29",
+  "head": "00b6f54f5fdcfbbd6ed758bca868ac7a11b74ff7",
+  "branch": "master",
+  "workingTree": "dirty (uncommitted P4 / P4-WF work present)",
+  "productionCodeChangedByThisGate": false,
+  "productionClassCountCurrent": {
+    "configurationPackageRecursive": 38,
+    "configurationActuatorPackage": 14,
+    "webFluxModuleMainSources": 15,
+    "webFluxControlSurfaceClasses": 1
+  },
+  "servletManagementImplementation": {
+    "module": "platform-tracing-spring-boot-autoconfigure",
+    "managementContextConfiguration": "space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingControlManagementContextConfiguration",
+    "registrationFile": "platform-tracing-spring-boot-autoconfigure/src/main/resources/META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports",
+    "httpController": "space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingControlMvcController",
+    "servletGating": "@ConditionalOnClass(WebMvcConfigurer.class)",
+    "authorityGating": [
+      "platform.tracing.configuration.authority=ACTUATOR",
+      "platform.environment=LOCAL"
+    ],
+    "pathComposition": "WebMvcConfigurer.configurePathMatch().addPathPrefix(managementBasePath, TracingControlMvcController.class)",
+    "relativePrefix": "/tracingControl",
+    "operations": [
+      {"method": "POST", "relativePath": "/tracingControl/sampling/enabled"},
+      {"method": "POST", "relativePath": "/tracingControl/sampling/ratio"},
+      {"method": "PUT", "relativePath": "/tracingControl/sampling/route-ratios"},
+      {"method": "POST", "relativePath": "/tracingControl/validation/enabled"},
+      {"method": "POST", "relativePath": "/tracingControl/validation/strict"},
+      {"method": "POST", "relativePath": "/tracingControl/exporter/enabled"},
+      {"method": "POST", "relativePath": "/tracingControl/propagation/trace-control-headers-enabled"},
+      {"method": "POST", "relativePath": "/tracingControl/diagnostics/log-level"}
+    ],
+    "controllerResponsibility": "HTTP mapping + outcome status/body shaping only; delegates all mutation to SpringActuatorTracingPolicyAdapter"
+  },
+  "webFluxManagementImplementation": {
+    "module": "platform-tracing-autoconfigure-webflux",
+    "managementContextConfiguration": "space.br1440.platform.tracing.autoconfigure.reactive.TracingControlWebFluxManagementContextConfiguration",
+    "registrationFile": "platform-tracing-autoconfigure-webflux/src/main/resources/META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports",
+    "routerBean": "tracingControlWebFluxRoutes",
+    "stackGating": [
+      "@ConditionalOnClass(DispatcherHandler.class)",
+      "@ConditionalOnWebApplication(type=REACTIVE)"
+    ],
+    "authorityGating": [
+      "platform.tracing.configuration.authority=ACTUATOR",
+      "platform.environment=LOCAL"
+    ],
+    "pathComposition": "absolute RouterFunction paths under {management.endpoints.web.base-path}/tracingControl/...",
+    "operations": 8,
+    "delegatesTo": "SpringActuatorTracingPolicyAdapter",
+    "autoConfigurationImportsContainTracingControl": false,
+    "managementContextImportsContainTracingControl": true
+  },
+  "sharedControlLogic": {
+    "commandAdapter": "space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter",
+    "mainContextWiring": "space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration",
+    "authorityGuard": "space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthorityGuard",
+    "authorityGuardWiring": "space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthorityAutoConfiguration",
+    "privateJmxClient": "space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient",
+    "snapshotReader": "AcceptedTracingPolicySnapshotReader (implemented by PrivateJmxTracingPolicySnapshotClient)",
+    "snapshotClient": "TracingPolicySnapshotClient (implemented by PrivateJmxTracingPolicySnapshotClient)",
+    "readinessProbe": "TracingActuatorAutoConfiguration.ActuatorAgentReadinessProbe",
+    "readModelEndpoint": "TracingActuatorEndpoint",
+    "requestDtos": [
+      "SetSamplingEnabledRequest",
+      "SetSamplingRatioRequest",
+      "ReplaceSamplingRouteRatiosRequest",
+      "SetValidationEnabledRequest",
+      "SetValidationStrictRequest",
+      "SetExporterEnabledRequest",
+      "SetTraceControlHeadersEnabledRequest",
+      "SetDiagnosticsLogLevelRequest"
+    ],
+    "deliveryResult": "TracingPolicyDeliveryResult (APPLIED|UNCHANGED|REJECTED|STALE|FAILED)"
+  },
+  "reactiveClasspathBoundaries": {
+    "starterReactiveModule": "platform-tracing-spring-boot-starter-reactive",
+    "starterReactiveDependsOn": [
+      "platform-tracing-spring-boot-autoconfigure",
+      "platform-tracing-autoconfigure-webflux",
+      "spring-boot-starter-webflux"
+    ],
+    "webfluxAutoConfigurationImports": [
+      "ReactiveTracingAutoConfiguration",
+      "TracingReactorEagerInitConfiguration",
+      "WebFluxSuppressMicrometerTracingAutoConfiguration"
+    ],
+    "runtimeClasspathHasSpringWebMvc": false,
+    "runtimeClasspathHasSpringWebFlux": true,
+    "runtimeClasspathHasWebFluxModule": true,
+    "evidence": ":platform-tracing-spring-boot-starter-reactive:dependencies --configuration runtimeClasspath → NO_WEBMVC; spring-webflux + autoconfigure-webflux present",
+    "currentReactiveControlBehavior": "PRESENT when ACTUATOR+LOCAL on reactive web application via webflux ManagementContextConfiguration.imports"
+  },
+  "existingTests": {
+    "servletRouteUnit": "platform-tracing-spring-boot-autoconfigure/.../TracingControlMvcControllerHttpTest.java",
+    "servletChildContextIntegration": "platform-tracing-spring-boot-autoconfigure/.../TracingControlManagementChildContextIntegrationTest.java",
+    "servletAbsenceMatrix": "platform-tracing-spring-boot-autoconfigure/.../TracingControlManagementContextAbsenceTest.java",
+    "webFluxRouteParity": "platform-tracing-autoconfigure-webflux/.../TracingControlWebFluxRouterHttpTest.java",
+    "webFluxChildContextIntegration": "platform-tracing-spring-boot-autoconfigure/.../TracingControlWebFluxManagementChildContextIntegrationTest.java",
+    "webFluxAbsenceMatrix": "platform-tracing-autoconfigure-webflux/.../TracingControlWebFluxManagementContextAbsenceTest.java",
+    "adapterUnit": "platform-tracing-spring-boot-autoconfigure/.../SpringActuatorTracingPolicyAdapterTest.java",
+    "authorityGuardContext": "platform-tracing-spring-boot-autoconfigure/.../TracingConfigurationAuthorityGuardContextTest.java",
+    "webFluxNoServletArch": "platform-tracing-autoconfigure-webflux/.../WebFluxNoServletMainDepArchTest.java"
+  },
+  "exactGradleTasks": {
+    "aggregateE2E": ":platform-tracing-e2e-tests:test -PrunE2e",
+    "privateMBeanIsolationE2E": ":platform-tracing-e2e-tests:privateMBeanServerTest",
+    "privateMBeanVerifier": "privateMBeanServerVerify",
+    "reactiveStarterSmoke": "pr0StarterDependencySmoke",
+    "reactivePublishedConsumer": "c6PublishedReactiveConsumerVerify",
+    "springAutoconfigureTests": ":platform-tracing-spring-boot-autoconfigure:test",
+    "webfluxModuleTests": ":platform-tracing-autoconfigure-webflux:test",
+    "focusedWebFluxControl": ":platform-tracing-autoconfigure-webflux:test --tests \"space.br1440.platform.tracing.autoconfigure.reactive.TracingControlWebFlux*\"",
+    "focusedWebFluxChildContext": ":platform-tracing-spring-boot-autoconfigure:test --tests \"*TracingControlWebFluxManagementChildContextIntegrationTest\""
+  },
+  "reuseMap": [
+    {
+      "existingClass": "SpringActuatorTracingPolicyAdapter",
+      "reusableResponsibility": "exactly-8 typed DEV leaf mutations; validation; read-copy-change-apply; no retry on STALE",
+      "requiredTransportDelta": "none — inject into WebFlux RouterFunction only"
+    },
+    {
+      "existingClass": "PrivateJmxTracingPolicySnapshotClient",
+      "reusableResponsibility": "private JMX readAcceptedComplete / applySnapshot client",
+      "requiredTransportDelta": "none"
+    },
+    {
+      "existingClass": "TracingConfigurationAuthorityGuard / TracingConfigurationAuthorityAutoConfiguration",
+      "reusableResponsibility": "mode/authority/posture fail-fast before adapters activate",
+      "requiredTransportDelta": "none"
+    },
+    {
+      "existingClass": "ActuatorAgentReadinessProbe",
+      "reusableResponsibility": "ACTUATOR startup readiness via readAcceptedComplete",
+      "requiredTransportDelta": "none"
+    },
+    {
+      "existingClass": "TracingActuatorEndpoint",
+      "reusableResponsibility": "secret-safe read model",
+      "requiredTransportDelta": "none"
+    },
+    {
+      "existingClass": "Set*Request / ReplaceSamplingRouteRatiosRequest records",
+      "reusableResponsibility": "typed request bodies for 8 leaves",
+      "requiredTransportDelta": "none — reused by WebFlux bodyToMono"
+    },
+    {
+      "existingClass": "TracingControlManagementContextConfiguration",
+      "reusableResponsibility": "Servlet management registration + path prefix",
+      "requiredTransportDelta": "MUST NOT absorb WebFlux types"
+    },
+    {
+      "existingClass": "TracingControlWebFluxManagementContextConfiguration",
+      "reusableResponsibility": "WebFlux management registration + RouterFunction transport",
+      "requiredTransportDelta": "already the approved transport delta (1 production class in webflux module)"
+    }
+  ]
+}

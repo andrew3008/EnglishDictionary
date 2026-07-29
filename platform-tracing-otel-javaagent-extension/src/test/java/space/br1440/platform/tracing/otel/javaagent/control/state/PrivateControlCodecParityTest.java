@@ -60,7 +60,7 @@ class PrivateControlCodecParityTest {
         input.put("/a", 0.1d);
         EffectiveTracingPolicy policy = EffectiveTracingPolicy.of(
                 true, 1.0d, input, false, false, true, true, PolicyLogLevel.INFO);
-        AcceptedPolicyStateStore store = new AcceptedPolicyStateStore("r1", policy);
+        AcceptedPolicyStateStore store = new AcceptedPolicyStateStore(UUID.randomUUID().toString(), policy);
         PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
 
         TabularData routes = (TabularData) codec.encodeAcceptedComplete(store.current())
@@ -98,7 +98,7 @@ class PrivateControlCodecParityTest {
     @Test
     void encode_typeName_isExact() throws Exception {
         AcceptedPolicyStateStore store = new AcceptedPolicyStateStore(
-                "r2",
+                UUID.randomUUID().toString(),
                 EffectiveTracingPolicy.of(true, 1.0d, Map.of(), false, false, true, true,
                         PolicyLogLevel.DEBUG));
         PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();

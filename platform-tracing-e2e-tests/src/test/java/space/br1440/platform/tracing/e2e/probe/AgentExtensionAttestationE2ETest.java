@@ -127,6 +127,8 @@ class AgentExtensionAttestationE2ETest {
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
         command.add("-Dotel.javaagent.logging=application");
+        command.add("-Dplatform.tracing.configuration.authority=HELM");
+        command.add("-Dplatform.environment=LOCAL");
         command.addAll(properties);
         if (withAgent) {
             command.add("-javaagent:" + requiredProperty("otel.javaagent.jar"));

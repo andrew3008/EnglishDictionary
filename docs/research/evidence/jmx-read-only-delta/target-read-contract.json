@@ -4,8 +4,9 @@
   "selectedOption": "R3",
   "platformMutationsAfterP6": 0,
   "platformMemberCount": 56,
-  "privateReadMemberCount": 6,
+  "privateReadMemberCount": 7,
   "privateMutationMemberCount": 1,
+  "privR07ReconciledAt": "2026-07-29",
   "platformMembers": [
     {
       "targetMemberId": "PLAT-M02",
@@ -1394,6 +1395,28 @@
         "PRIVATE_LOCATOR"
       ],
       "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)"
+    },
+    {
+      "targetMemberId": "PRIV-R07",
+      "sourceBaselineIds": [],
+      "server": "PRIVATE",
+      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+      "kind": "OPERATION",
+      "name": "readAcceptedComplete",
+      "readable": true,
+      "writable": false,
+      "returnJavaType": "javax.management.openmbean.CompositeData",
+      "parameterJavaTypes": [],
+      "returnOpenType": "CompositeData AcceptedCompleteSnapshot/v1; max logical payload 32768 bytes",
+      "parameterOpenTypes": [],
+      "source": "ADD_PRIVATE_READ",
+      "reason": "Authoritative complete accepted-policy read for Config Server delivery, DEV_ACTUATOR read-copy-change, readiness and runtime-instance detection; Architecture Committee APPROVE 2026-07-29 (PROPOSED_PRIV_R07)",
+      "consumers": [
+        "CONFIG_SERVER_BRIDGE",
+        "DEV_TYPED_JMX_ADAPTER",
+        "ACTUATOR_READINESS"
+      ],
+      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2/P4)"
     },
     {
       "targetMemberId": "PRIV-W01",

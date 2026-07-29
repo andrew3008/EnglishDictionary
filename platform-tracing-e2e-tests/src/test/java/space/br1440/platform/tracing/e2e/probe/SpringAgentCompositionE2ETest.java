@@ -52,6 +52,8 @@ class SpringAgentCompositionE2ETest {
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
         command.add("-Dplatform.tracing.queue.overflow-policy=UPSTREAM");
+        command.add("-Dplatform.tracing.configuration.authority=HELM");
+        command.add("-Dplatform.environment=LOCAL");
         command.add("-Dotel.javaagent.logging=application");
         command.add("-javaagent:" + otelAgentJar);
         command.add("-cp");

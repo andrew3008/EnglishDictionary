@@ -10,7 +10,9 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.management.ReflectionException;
 import javax.management.RuntimeMBeanException;
+import javax.management.openmbean.CompositeData;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Private JMX client implementing three capability interfaces.
@@ -18,7 +20,10 @@ import java.util.Optional;
  * E7/P0 wire contract:
  * <pre>
  *   6 marker reads:             PRIV-R01..R06 (unchanged)
- *   1 complete-snapshot read:   readAcceptedComplete  (PRIV-R07, approved 00b987a)
+ *   1 complete-snapshot read:   readAcceptedComplete  (PROPOSED_PRIV_R07, implemented in 00b987a;
+ *                                                       status PENDING_COMMITTEE_APPROVAL — see
+ *                                                       PrivateControlWriter and
+ *                                                       docs/research/evidence/priv-r07-proposal/)
  *   1 mutation:                 applySnapshot         (PRIV-W01, unchanged)
  * </pre>
  * <p>
@@ -56,6 +61,16 @@ public final class PrivateJmxTracingPolicySnapshotClient
     private volatile MBeanServer privateServer;
     private volatile ObjectName  controlObjectName;
 
+    /**
+     * Runtime identity of the Agent instance that produced the most recent
+     * {@code readAcceptedComplete} snapshot. Populated exclusively from the wire response
+     * inside {@link #currentComplete()} — never from locator-cache, never application-generated.
+     * Used as {@code expectedRuntimeInstanceId} on the immediately following
+     * {@link #applySnapshot} call so that an Agent restart between read and apply is detected
+     * by the Agent (RUNTIME_INSTANCE_MISMATCH) instead of relying on sequence collision alone.
+     */
+    private volatile String lastKnownRuntimeInstanceId;
+
     public PrivateJmxTracingPolicySnapshotClient(
             PrivateControlLocator locator,
             PrivateControlOpenTypeCodec codec) {
@@ -91,21 +106,37 @@ public final class PrivateJmxTracingPolicySnapshotClient
             return TracingPolicyDeliveryResult.FAILED;
         }
 
-        Object encoded;
+        String runtimeInstanceId = this.lastKnownRuntimeInstanceId;
+        if (runtimeInstanceId == null) {
+            throw new TracingConfigurationGuardException(
+                    "applySnapshot called before any successful currentComplete() read; "
+                    + "expectedRuntimeInstanceId is unknown. source=" + source);
+        }
+
+        CompositeData encoded;
         try {
-            encoded = codec.encodeRequest(snapshot);
+            encoded = codec.encodeApplyRequest(
+                    runtimeInstanceId,
+                    expectedSequence,
+                    UUID.randomUUID().toString(),
+                    sourceAuthorityFor(source),
+                    applyTriggerFor(source),
+                    "",
+                    snapshot);
         } catch (Exception e) {
             throw new TracingPolicyContractViolationException(
                     "Codec failed to encode snapshot — programming defect. source=" + source, e);
         }
 
         try {
+            // Exactly one CompositeData argument — matches the Agent applySnapshot
+            // MBeanOperationInfo (single "request" parameter). Do NOT add expectedSequence
+            // or source as separate positional arguments; both are already encoded inside
+            // the request composite.
             Object raw = server.invoke(
                     name, "applySnapshot",
-                    new Object[]{expectedSequence, encoded, source.name()},
-                    new String[]{long.class.getName(),
-                                 "javax.management.openmbean.CompositeData",
-                                 String.class.getName()});
+                    new Object[]{encoded},
+                    new String[]{"javax.management.openmbean.CompositeData"});
             return parseOutcome(raw);
         } catch (TracingPolicyContractViolationException e) {
             throw e;
@@ -141,7 +172,9 @@ public final class PrivateJmxTracingPolicySnapshotClient
         try {
             Object result = server.invoke(name, "readAcceptedComplete", NO_ARGS, NO_SIG);
             if (result == null) return Optional.empty();
-            return Optional.of(codec.decodeCompleteWithSequence(result));
+            AcceptedSnapshotWithSequence decoded = codec.decodeCompleteWithSequence(result);
+            this.lastKnownRuntimeInstanceId = decoded.runtimeInstanceId();
+            return Optional.of(decoded);
         } catch (TracingPolicyContractViolationException e) {
             throw e;
         } catch (MBeanException e) {
@@ -196,17 +229,48 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
+    /**
+     * The Agent {@code applySnapshot} response is a {@code CompositeData} typed
+     * {@code ApplySnapshotResponse.v1} (see {@code PrivateControlWireTypes.RESPONSE}) — never
+     * a bare {@code String}. {@code outcome} is one field inside it.
+     */
     private TracingPolicyDeliveryResult parseOutcome(Object raw) {
-        if (raw instanceof String s) {
-            try { return TracingPolicyDeliveryResult.valueOf(s); }
-            catch (IllegalArgumentException ex) {
+        if (raw instanceof CompositeData) {
+            PrivateControlOpenTypeCodec.PrivateControlResponse response = codec.decodeResponse((CompositeData) raw);
+            try {
+                return TracingPolicyDeliveryResult.valueOf(response.outcome());
+            } catch (IllegalArgumentException ex) {
                 throw new TracingPolicyContractViolationException(
-                        "Unknown applySnapshot outcome: '" + s + "' — Agent/App version mismatch");
+                        "Unknown applySnapshot outcome: '" + response.outcome() + "' — Agent/App version mismatch");
             }
         }
         throw new TracingPolicyContractViolationException(
                 "applySnapshot returned unexpected type: " +
                 (raw == null ? "null" : raw.getClass().getName()));
+    }
+
+    /**
+     * Maps the Spring-side {@link TracingPolicySource} to the Agent {@code PolicySourceAuthority}
+     * token name. NOT a plain {@code .name()} pass-through: Agent has no {@code ACTUATOR} value —
+     * the Actuator adapter is Agent-side {@code DEV_ACTUATOR}. Agent enum:
+     * {@code HELM, CONFIG_SERVER, DEV_ACTUATOR}.
+     */
+    private static String sourceAuthorityFor(TracingPolicySource source) {
+        return switch (source) {
+            case CONFIG_SERVER -> "CONFIG_SERVER";
+            case ACTUATOR -> "DEV_ACTUATOR";
+        };
+    }
+
+    /**
+     * Maps the Spring-side {@link TracingPolicySource} to the Agent {@code PolicyApplyTrigger}
+     * token name. Agent enum: {@code INITIAL, REFRESH, DEVELOPER_COMMAND}.
+     */
+    private static String applyTriggerFor(TracingPolicySource source) {
+        return switch (source) {
+            case CONFIG_SERVER -> "REFRESH";
+            case ACTUATOR -> "DEVELOPER_COMMAND";
+        };
     }
 
     private static boolean isContractCause(Throwable t) {

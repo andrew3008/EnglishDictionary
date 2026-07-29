@@ -33,10 +33,15 @@ dependencies {
     compileOnly 'org.springframework:spring-aop'
     compileOnly 'org.aspectj:aspectjweaver'
 
-    // Servlet- и WebFlux-специфичные классы вынесены в отдельные модули
-    // (platform-tracing-autoconfigure-webmvc, -webflux), поэтому здесь не нужны соответствующие
-    // compileOnly-зависимости. Если какие-то общие классы потребуют web-API в будущем — лучше
-    // вынести их в один из web-модулей, чем тянуть compileOnly обратно в monolith.
+    // Servlet- и WebFlux-специфичные классы в общем случае вынесены в отдельные модули
+    // (platform-tracing-autoconfigure-webmvc, -webflux). P4 POST-MERGE AUDIT DEFECT:
+    // TracingControlManagementContextConfiguration (DEV_ACTUATOR write surface) использует
+    // Servlet-only WebMvcConfigurer напрямую в monolith, что нарушало это правило и не
+    // компилировалось (compileJava failure, confirmed defect). compileOnly добавлена как
+    // минимальное исправление; класс ограничен ManagementContextType.SERVLET +
+    // @ConditionalOnClass ниже. Миграция в platform-tracing-autoconfigure-webmvc остаётся
+    // committee decision, не выполняется в рамках этого аудита (не P5/P6 redesign).
+    compileOnly 'org.springframework:spring-webmvc'
 
     // Spring Boot Actuator: health indicator и /actuator/tracing endpoint.
     compileOnly 'org.springframework.boot:spring-boot-starter-actuator'
@@ -60,6 +65,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    // P4-WF: WebFlux management-control child-context integration test needs the webflux
+    // module's ManagementContextConfiguration.imports on the test classpath.
+    testImplementation project(':platform-tracing-autoconfigure-webflux')
     testImplementation 'org.springframework.boot:spring-boot-starter-aop'
     testImplementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator'

@@ -27,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "platform.tracing.mode=DISABLED",
+                "platform.tracing.configuration.authority=HELM",
+                "platform.environment=LOCAL",
                 "spring.autoconfigure.exclude="
                         + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
                 "platform.tracing.suppression.suppress-micrometer-tracing=false",

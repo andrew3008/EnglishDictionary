@@ -23,15 +23,14 @@ import org.slf4j.LoggerFactory;
 /**
  * Auto-configuration for P4 unified tracing policy adapters.
  * <p>
- * PROPOSED_PRIV_R07 (Variant A): PrivateJmxTracingPolicySnapshotClient calls
- * {@code readAcceptedComplete} (one bounded internal read, proposed for E7 contract).
- * No InProcessAcceptedSnapshotStore — Agent is the sole accepted-state owner.
- * <p>
- * TODO (Agent team): implement AggregatePolicyControlMBean.readAcceptedComplete()
- * and expose correct MBeanInfo / MBeanOperationInfo before P4 can be end-to-end green.
- * Until then every call to AcceptedTracingPolicySnapshotReader.currentComplete()
- * throws TracingPolicyContractViolationException (ReflectionException wrapping).
- * P4 is BLOCKED on that Agent PR.
+ * PRIV-R07 (APPROVED 2026-07-29): PrivateJmxTracingPolicySnapshotClient calls
+ * {@code readAcceptedComplete} (one bounded internal read; Agent-side implemented in
+ * commit 00b987a). No InProcessAcceptedSnapshotStore — Agent is the sole accepted-state
+ * owner. See docs/research/evidence/priv-r07-proposal/decision-summary.json.
+ * If the Agent MBean ever stops exposing {@code readAcceptedComplete} (e.g. rollback),
+ * every call to AcceptedTracingPolicySnapshotReader.currentComplete() throws
+ * TracingPolicyContractViolationException (ReflectionException wrapping) and startup
+ * fails fast for ACTUATOR authority — see {@link ActuatorAgentReadinessProbe}.
  * <p>
  * TracingControlMvcController registered via TracingControlManagementContextConfiguration
  * (discovered through ManagementContextConfiguration.imports).
@@ -41,6 +40,42 @@ import org.slf4j.LoggerFactory;
 public class TracingActuatorAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(TracingActuatorAutoConfiguration.class);
+
+    /**
+     * Discovers the Agent-side private control plane. Gated on
+     * {@code authority=ACTUATOR} — the only authority that reads/mutates the
+     * private control plane from this Spring context today; {@code CONFIG_SERVER}'s
+     * own private-control wiring is a separate, not-yet-registered autoconfiguration
+     * concern and {@code HELM} never touches the private control plane at all.
+     * <p>
+     * Previously this bean was never produced in any production autoconfiguration
+     * path — {@link PrivateJmxTracingPolicySnapshotClient}'s
+     * {@code @ConditionalOnBean({PrivateControlLocator.class, PrivateControlOpenTypeCodec.class})}
+     * could never be satisfied, so a real Spring context with {@code authority=ACTUATOR}
+     * could never successfully wire the private JMX client, the readiness probe's
+     * required {@link AcceptedTracingPolicySnapshotReader} dependency, or
+     * {@link SpringActuatorTracingPolicyAdapter} — a confirmed defect blocking any
+     * real ACTUATOR-authority startup.
+     */
+    @Bean
+    @ConditionalOnMissingBean(PrivateControlLocator.class)
+    @ConditionalOnProperty(
+            name = "platform.tracing.configuration.authority",
+            havingValue = "ACTUATOR",
+            matchIfMissing = false)
+    public PrivateControlLocator privateControlLocator() {
+        return new PrivateControlLocator();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(PrivateControlOpenTypeCodec.class)
+    @ConditionalOnProperty(
+            name = "platform.tracing.configuration.authority",
+            havingValue = "ACTUATOR",
+            matchIfMissing = false)
+    public PrivateControlOpenTypeCodec privateControlOpenTypeCodec() {
+        return new PrivateControlOpenTypeCodec();
+    }
 
     @Bean
     @ConditionalOnMissingBean(PrivateJmxTracingPolicySnapshotClient.class)
@@ -113,7 +148,7 @@ public class TracingActuatorAutoConfiguration {
          * <ol>
          *   <li>Private writer discovery (done at bean init via initialize())</li>
          *   <li>Protocol validation: {@code readAcceptedComplete} must succeed
-         *       (PROPOSED_PRIV_R07)</li>
+         *       (PRIV-R07 — APPROVED 2026-07-29)</li>
          *   <li>Complete snapshot decoded successfully</li>
          *   <li>Tracing-configuration readiness = READY</li>
          * </ol>
@@ -122,8 +157,8 @@ public class TracingActuatorAutoConfiguration {
          * and prevent the context from completing startup:
          * <ul>
          *   <li>{@link TracingPolicyContractViolationException}: Agent MBean does
-         *       not expose {@code readAcceptedComplete} — PROPOSED_PRIV_R07 not
-         *       implemented. Re-thrown as-is.</li>
+         *       not expose {@code readAcceptedComplete} — PRIV-R07 unavailable.
+         *       Re-thrown as-is.</li>
          *   <li>{@link TracingConfigurationGuardException}: Agent is reachable but
          *       returned an empty snapshot — transport or availability issue.
          *       ACTUATOR authority cannot begin read-copy-change without an initial
@@ -154,14 +189,13 @@ public class TracingActuatorAutoConfiguration {
         }
 
         /**
-         * Validates PROPOSED_PRIV_R07 availability and obtains an initial complete
+         * Validates PRIV-R07 availability and obtains an initial complete
          * accepted snapshot during context lifecycle.
          * <p>
          * Hard failures (both block startup via propagation from start()):
          * <ul>
          *   <li>{@link TracingPolicyContractViolationException}: Agent MBean does not
-         *       expose {@code readAcceptedComplete}. Re-thrown directly. P4 is
-         *       BLOCKED until Agent-side PRIV-R07 is implemented.</li>
+         *       expose {@code readAcceptedComplete}. Re-thrown directly.</li>
          *   <li>{@link TracingConfigurationGuardException}: {@code currentComplete()}
          *       returned empty. For ACTUATOR authority an empty snapshot at startup
          *       is not a transient issue — it means the control plane cannot safely
@@ -185,11 +219,10 @@ public class TracingActuatorAutoConfiguration {
 
             } catch (TracingPolicyContractViolationException e) {
                 throw new TracingPolicyContractViolationException(
-                        "[P4 readiness probe] FATAL: readAcceptedComplete not found on Agent MBean. "
-                        + "PROPOSED_PRIV_R07 is not implemented. "
-                        + "Agent PR must expose AggregatePolicyControlMBean.readAcceptedComplete(). "
-                        + "P4 startup is BLOCKED until Agent-side implementation is merged. "
-                        + "Original cause: " + e.getMessage(), e);
+                        "[P4 readiness probe] FATAL: readAcceptedComplete not found on Agent MBean, "
+                        + "or returned a malformed/incompatible response. PRIV-R07 requires a "
+                        + "compatible Agent build. Startup is BLOCKED until a compatible Agent "
+                        + "is attached. Original cause: " + e.getMessage(), e);
             }
             running = true;
         }

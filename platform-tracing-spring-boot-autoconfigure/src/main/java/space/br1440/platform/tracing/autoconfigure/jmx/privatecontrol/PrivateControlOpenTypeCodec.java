@@ -13,10 +13,12 @@ import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
 import javax.management.openmbean.TabularType;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -27,14 +29,14 @@ import java.util.TreeMap;
  *   <li>PRIV-W01 — {@code applySnapshot}: {@link #encodeRequest(PrivateControlSnapshot)},
  *       {@link #decodeResponse(CompositeData)}</li>
  *   <li>PRIV-R07 — {@code readAcceptedComplete}: {@link #decodeCompleteWithSequence(Object)}
- *       (Variant A — Agent-side impl approved in 00b987a; Spring-side decoder fixed
- *       in this commit to match exact Agent schema)</li>
+ *       (APPROVED by Architecture Committee 2026-07-29; explicit 32768-byte logical
+ *       payload bound per {@code payloadBoundDecision=REQUIRE_EXPLICIT_BOUND})</li>
  * </ul>
  * <p>
  * Wire schema authority: {@code PrivateControlWireTypes.ACCEPTED_COMPLETE} (Agent module).
  * Any schema change MUST update both sides atomically.
  */
-final class PrivateControlOpenTypeCodec {
+public final class PrivateControlOpenTypeCodec {
 
     // ── route-ratio subtypes (shared across request, response, and PRIV-R07) ─────
 
@@ -151,8 +153,28 @@ final class PrivateControlOpenTypeCodec {
             "validationStrict",           // Boolean
             "exporterEnabled",            // Boolean
             "traceControlHeadersEnabled", // Boolean
-            "diagnosticsLogLevel"         // String closed: DEBUG|INFO|WARN|ERROR
+            "diagnosticsLogLevel"         // String closed: OFF|ERROR|WARN|INFO|DEBUG|TRACE
     };
+
+    /**
+     * Mirrors the Agent {@code PolicyLogLevel} enum — the sole closed set accepted for
+     * {@code diagnosticsLogLevel} on the wire in either direction.
+     */
+    private static final Set<String> VALID_LOG_LEVELS =
+            Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
+
+    /**
+     * Mirrors the Agent {@code EffectiveTracingPolicyValidator} bounds
+     * ({@code MAX_ROUTE_ENTRIES}, {@code MAX_ROUTE_PREFIX_LENGTH}) enforced when the Agent
+     * itself builds an {@code EffectiveTracingPolicy}. {@code MAX_ROUTE_PREFIX_LENGTH} is a
+     * {@link String#length()} bound — Java UTF-16 code units, not UTF-8 bytes.
+     */
+    private static final int MAX_ROUTE_ENTRIES = 100;
+    private static final int MAX_ROUTE_PREFIX_LENGTH = 255;
+
+    /** Same family as Agent applySnapshot MAX_LOGICAL_REQUEST_BYTES; PRIV-R07 REQUIRE_EXPLICIT_BOUND. */
+    private static final int MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES = 32_768;
+
     private static final CompositeType COMPLETE_RESPONSE = composite(
             ACCEPTED_COMPLETE_TYPE_NAME,
             COMPLETE_KEYS,
@@ -171,7 +193,45 @@ final class PrivateControlOpenTypeCodec {
 
     // ── encode ────────────────────────────────────────────────────────────────
 
-    CompositeData encodeRequest(PrivateControlSnapshot snapshot) {
+    /**
+     * Builds the single-argument {@code applySnapshot} wire request from application-level
+     * pieces, computing {@code candidateDigest} via {@link CandidateDigest} (Agent-algorithm
+     * mirror, verified by a cross-module parity test).
+     * <p>
+     * There is exactly ONE Open-Type argument on the wire — {@code request} — matching the
+     * Agent {@code MBeanOperationInfo} for {@code applySnapshot}. Callers must never pass
+     * additional positional arguments (e.g. sequence, source) alongside this composite; every
+     * field the Agent needs is already inside it.
+     */
+    public CompositeData encodeApplyRequest(
+            String expectedRuntimeInstanceId,
+            long expectedAcceptedSequence,
+            String attemptId,
+            String sourceAuthority,
+            String applyTrigger,
+            String sourceRevision,
+            CompleteTracingPolicySnapshot policy) {
+        String candidateDigest = CandidateDigest.sha256(policy);
+        PrivateControlSnapshot snapshot = new PrivateControlSnapshot(
+                expectedRuntimeInstanceId,
+                expectedAcceptedSequence,
+                attemptId,
+                sourceAuthority,
+                applyTrigger,
+                sourceRevision,
+                candidateDigest,
+                policy.samplingEnabled(),
+                policy.samplingRatio(),
+                policy.samplingRouteRatios(),
+                policy.validationEnabled(),
+                policy.validationStrict(),
+                policy.exporterEnabled(),
+                policy.traceControlHeadersEnabled(),
+                policy.diagnosticsLogLevel());
+        return encodeRequest(snapshot);
+    }
+
+    public CompositeData encodeRequest(PrivateControlSnapshot snapshot) {
         try {
             TabularDataSupport routes = new TabularDataSupport(ROUTES);
             for (Map.Entry<String, Double> route : new TreeMap<>(
@@ -215,7 +275,7 @@ final class PrivateControlOpenTypeCodec {
 
     // ── decode: applySnapshot response ──────────────────────────────────────
 
-    PrivateControlResponse decodeResponse(CompositeData response) {
+    public PrivateControlResponse decodeResponse(CompositeData response) {
         if (response == null || !RESPONSE.equals(response.getCompositeType())) {
             throw new IllegalArgumentException("Unexpected private control response CompositeType");
         }
@@ -246,7 +306,7 @@ final class PrivateControlOpenTypeCodec {
      * @throws IllegalArgumentException if {@code raw} is null, not a
      *         {@code CompositeData}, or has an unexpected {@code CompositeType}
      */
-    AcceptedSnapshotWithSequence decodeCompleteWithSequence(Object raw) {
+    public AcceptedSnapshotWithSequence decodeCompleteWithSequence(Object raw) {
         if (!(raw instanceof CompositeData cd)) {
             throw new IllegalArgumentException(
                     "readAcceptedComplete: expected CompositeData, got "
@@ -258,42 +318,126 @@ final class PrivateControlOpenTypeCodec {
                     + cd.getCompositeType().getTypeName()
                     + "; expected " + COMPLETE_RESPONSE.getTypeName());
         }
+        if (logicalSizeAcceptedComplete(cd) > MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: logical payload exceeds "
+                            + MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES + " bytes");
+        }
 
-        long   acceptedSequence     = (Long)    cd.get("acceptedSequence");
-        String runtimeInstanceId    = (String)  cd.get("runtimeInstanceId");
-        boolean samplingEnabled     = (Boolean) cd.get("samplingEnabled");
-        double  samplingRatio       = (Double)  cd.get("samplingRatio");
-        boolean validationEnabled   = (Boolean) cd.get("validationEnabled");
-        boolean validationStrict    = (Boolean) cd.get("validationStrict");
-        boolean exporterEnabled     = (Boolean) cd.get("exporterEnabled");
-        boolean traceControlHeaders = (Boolean) cd.get("traceControlHeadersEnabled");
-        String  diagnosticsLogLevel = (String)  cd.get("diagnosticsLogLevel");
+        // This decoder is a cross-process, cross-classloader trust boundary: the Agent is
+        // expected to only ever send values within its own EffectiveTracingPolicyValidator
+        // bounds, but Spring must not assume that. Every field is independently re-validated
+        // here — a wire payload is never trusted merely because it typed-matched the
+        // CompositeType and "should" have come from the Agent.
+        long   acceptedSequence     = requireField(cd, "acceptedSequence", Long.class);
+        String runtimeInstanceId    = requireField(cd, "runtimeInstanceId", String.class);
+        boolean samplingEnabled     = requireField(cd, "samplingEnabled", Boolean.class);
+        double  samplingRatio       = requireField(cd, "samplingRatio", Double.class);
+        boolean validationEnabled   = requireField(cd, "validationEnabled", Boolean.class);
+        boolean validationStrict    = requireField(cd, "validationStrict", Boolean.class);
+        boolean exporterEnabled     = requireField(cd, "exporterEnabled", Boolean.class);
+        boolean traceControlHeaders = requireField(cd, "traceControlHeadersEnabled", Boolean.class);
+        String  diagnosticsLogLevel = requireField(cd, "diagnosticsLogLevel", String.class);
+
+        if (acceptedSequence < 0L) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: acceptedSequence must be >= 0, got " + acceptedSequence);
+        }
+        if (runtimeInstanceId.isBlank()) {
+            throw new IllegalArgumentException("readAcceptedComplete: runtimeInstanceId must not be blank");
+        }
+        requireValidRatio(samplingRatio, "samplingRatio");
+        if (!VALID_LOG_LEVELS.contains(diagnosticsLogLevel)) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: diagnosticsLogLevel is not a recognized level: "
+                    + diagnosticsLogLevel);
+        }
 
         Map<String, Double> routeRatios =
-                decodeRouteRatios((TabularData) cd.get("samplingRouteRatios"));
+                decodeRouteRatios(requireField(cd, "samplingRouteRatios", TabularData.class));
 
-        CompleteTracingPolicySnapshot snapshot = new CompleteTracingPolicySnapshot(
-                samplingEnabled,
-                samplingRatio,
-                routeRatios,
-                validationEnabled,
-                validationStrict,
-                exporterEnabled,
-                traceControlHeaders,
-                diagnosticsLogLevel
-        );
+        CompleteTracingPolicySnapshot snapshot = CompleteTracingPolicySnapshot.builder()
+                .samplingEnabled(samplingEnabled)
+                .samplingRatio(samplingRatio)
+                .samplingRouteRatios(routeRatios)
+                .validationEnabled(validationEnabled)
+                .validationStrict(validationStrict)
+                .exporterEnabled(exporterEnabled)
+                .traceControlHeadersEnabled(traceControlHeaders)
+                .diagnosticsLogLevel(diagnosticsLogLevel)
+                .build();
         return new AcceptedSnapshotWithSequence(acceptedSequence, runtimeInstanceId, snapshot);
+    }
+
+    private static int logicalSizeAcceptedComplete(CompositeData cd) {
+        int size = 64;
+        Object runtimeId = cd.get("runtimeInstanceId");
+        if (runtimeId instanceof String text) {
+            size += text.getBytes(StandardCharsets.UTF_8).length;
+        }
+        Object logLevel = cd.get("diagnosticsLogLevel");
+        if (logLevel instanceof String text) {
+            size += text.getBytes(StandardCharsets.UTF_8).length;
+        }
+        Object routes = cd.get("samplingRouteRatios");
+        if (routes instanceof TabularData tabular) {
+            for (Object rawRow : tabular.values()) {
+                if (rawRow instanceof CompositeData row) {
+                    Object prefix = row.get("routePrefix");
+                    if (prefix instanceof String text) {
+                        size += text.getBytes(StandardCharsets.UTF_8).length + 16;
+                    }
+                }
+            }
+        }
+        return size;
+    }
+
+    private static <T> T requireField(CompositeData cd, String key, Class<T> type) {
+        Object value = cd.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("readAcceptedComplete: field '" + key + "' is null");
+        }
+        if (!type.isInstance(value)) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: field '" + key + "' has unexpected type "
+                    + value.getClass().getName());
+        }
+        return type.cast(value);
+    }
+
+    private static void requireValidRatio(double ratio, String fieldName) {
+        if (Double.isNaN(ratio) || Double.isInfinite(ratio)) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: " + fieldName + " must be finite, got " + ratio);
+        }
+        if (ratio < 0.0 || ratio > 1.0) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: " + fieldName + " must be within [0.0, 1.0], got " + ratio);
+        }
     }
 
     private static Map<String, Double> decodeRouteRatios(TabularData tabular) {
         if (tabular == null || tabular.isEmpty()) return Collections.emptyMap();
+        if (tabular.size() > MAX_ROUTE_ENTRIES) {
+            throw new IllegalArgumentException(
+                    "readAcceptedComplete: samplingRouteRatios has " + tabular.size()
+                    + " entries, exceeding the maximum of " + MAX_ROUTE_ENTRIES);
+        }
         Map<String, Double> result = new LinkedHashMap<>();
         for (Object value : tabular.values()) {
             CompositeData row = (CompositeData) value;
-            String prefix = (String) row.get("routePrefix");
-            Double ratio  = (Double) row.get("ratio");
-            if (prefix != null && ratio != null) {
-                result.put(prefix, ratio);
+            String prefix = requireField(row, "routePrefix", String.class);
+            Double ratio  = requireField(row, "ratio", Double.class);
+            if (prefix.isEmpty() || prefix.length() > MAX_ROUTE_PREFIX_LENGTH) {
+                throw new IllegalArgumentException(
+                        "readAcceptedComplete: route prefix length " + prefix.length()
+                        + " is invalid (must be 1.." + MAX_ROUTE_PREFIX_LENGTH + " UTF-16 code units)");
+            }
+            requireValidRatio(ratio, "samplingRouteRatios['" + prefix + "']");
+            if (result.put(prefix, ratio) != null) {
+                throw new IllegalArgumentException(
+                        "readAcceptedComplete: duplicate route prefix '" + prefix + "'");
             }
         }
         return Collections.unmodifiableMap(result);
@@ -301,7 +445,7 @@ final class PrivateControlOpenTypeCodec {
 
     // ── records ────────────────────────────────────────────────────────────────
 
-    record PrivateControlSnapshot(
+    public record PrivateControlSnapshot(
             String expectedRuntimeInstanceId,
             long expectedAcceptedSequence,
             String attemptId,
@@ -318,7 +462,7 @@ final class PrivateControlOpenTypeCodec {
             boolean traceControlHeadersEnabled,
             String diagnosticsLogLevel) {
 
-        PrivateControlSnapshot {
+        public PrivateControlSnapshot {
             samplingRouteRatios = Collections.unmodifiableMap(
                     new LinkedHashMap<>(Objects.requireNonNull(
                             samplingRouteRatios,
@@ -326,7 +470,7 @@ final class PrivateControlOpenTypeCodec {
         }
     }
 
-    record PrivateControlResponse(
+    public record PrivateControlResponse(
             String outcome,
             String attemptId,
             String runtimeInstanceId,
@@ -337,7 +481,7 @@ final class PrivateControlOpenTypeCodec {
             String[] restartRequiredKeys,
             String[] violationCodes) {
 
-        PrivateControlResponse {
+        public PrivateControlResponse {
             restartRequiredKeys = restartRequiredKeys.clone();
             violationCodes = violationCodes.clone();
         }

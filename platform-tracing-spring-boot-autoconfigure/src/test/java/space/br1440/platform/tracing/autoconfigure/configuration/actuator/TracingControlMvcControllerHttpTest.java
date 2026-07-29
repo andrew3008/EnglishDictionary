@@ -59,19 +59,19 @@ class TracingControlMvcControllerHttpTest {
 
         // Stub reader backed by Agent (Variant A)
         AcceptedTracingPolicySnapshotReader stubReader = () ->
-                Optional.of(new AcceptedSnapshotWithSequence(10L, initial));
+                Optional.of(new AcceptedSnapshotWithSequence(10L, "test-runtime-instance", initial));
 
         capturedClient = new CapturingSnapshotClient();
         SpringActuatorTracingPolicyAdapter adapter =
                 new SpringActuatorTracingPolicyAdapter(stubReader, capturedClient);
         TracingControlMvcController controller =
-                new TracingControlMvcController(adapter, "/actuator");
+                new TracingControlMvcController(adapter);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
     @Test
     void post_sampling_enabled_isDistinctRoute() throws Exception {
-        mockMvc.perform(post("/actuator/tracingControl/sampling/enabled")
+        mockMvc.perform(post("/tracingControl/sampling/enabled")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\": false}"))
                 .andExpect(status().isOk())
@@ -80,7 +80,7 @@ class TracingControlMvcControllerHttpTest {
 
     @Test
     void post_sampling_ratio_isDistinctRoute() throws Exception {
-        mockMvc.perform(post("/actuator/tracingControl/sampling/ratio")
+        mockMvc.perform(post("/tracingControl/sampling/ratio")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ratio\": 0.5}"))
                 .andExpect(status().isOk())
@@ -89,7 +89,7 @@ class TracingControlMvcControllerHttpTest {
 
     @Test
     void put_sampling_routeRatios_isDistinctRoute() throws Exception {
-        mockMvc.perform(put("/actuator/tracingControl/sampling/route-ratios")
+        mockMvc.perform(put("/tracingControl/sampling/route-ratios")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"routeRatios\": {\"api\": 0.8}}"))
                 .andExpect(status().isOk())
@@ -98,7 +98,7 @@ class TracingControlMvcControllerHttpTest {
 
     @Test
     void post_validation_enabled_isDistinctRoute() throws Exception {
-        mockMvc.perform(post("/actuator/tracingControl/validation/enabled")
+        mockMvc.perform(post("/tracingControl/validation/enabled")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\": false}"))
                 .andExpect(status().isOk())
@@ -107,7 +107,7 @@ class TracingControlMvcControllerHttpTest {
 
     @Test
     void post_validation_strict_isDistinctRoute() throws Exception {
-        mockMvc.perform(post("/actuator/tracingControl/validation/strict")
+        mockMvc.perform(post("/tracingControl/validation/strict")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"strict\": true}"))
                 .andExpect(status().isOk())
@@ -116,7 +116,7 @@ class TracingControlMvcControllerHttpTest {
 
     @Test
     void post_exporter_enabled_isDistinctRoute() throws Exception {
-        mockMvc.perform(post("/actuator/tracingControl/exporter/enabled")
+        mockMvc.perform(post("/tracingControl/exporter/enabled")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\": false}"))
                 .andExpect(status().isOk())
@@ -125,7 +125,7 @@ class TracingControlMvcControllerHttpTest {
 
     @Test
     void post_propagation_traceControlHeadersEnabled_isDistinctRoute() throws Exception {
-        mockMvc.perform(post("/actuator/tracingControl/propagation/trace-control-headers-enabled")
+        mockMvc.perform(post("/tracingControl/propagation/trace-control-headers-enabled")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\": false}"))
                 .andExpect(status().isOk())
@@ -134,7 +134,7 @@ class TracingControlMvcControllerHttpTest {
 
     @Test
     void post_diagnostics_logLevel_isDistinctRoute() throws Exception {
-        mockMvc.perform(post("/actuator/tracingControl/diagnostics/log-level")
+        mockMvc.perform(post("/tracingControl/diagnostics/log-level")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"level\": \"DEBUG\"}"))
                 .andExpect(status().isOk())
@@ -145,21 +145,21 @@ class TracingControlMvcControllerHttpTest {
     void all_eight_routes_are_not_ambiguous() throws Exception {
         record RouteCase(String method, String path, String body, String expectedLeaf) {}
         RouteCase[] cases = {
-            new RouteCase("POST", "/actuator/tracingControl/sampling/enabled",
+            new RouteCase("POST", "/tracingControl/sampling/enabled",
                     "{\"enabled\":true}",       "sampling.enabled"),
-            new RouteCase("POST", "/actuator/tracingControl/sampling/ratio",
+            new RouteCase("POST", "/tracingControl/sampling/ratio",
                     "{\"ratio\":0.9}",          "sampling.ratio"),
-            new RouteCase("PUT",  "/actuator/tracingControl/sampling/route-ratios",
+            new RouteCase("PUT",  "/tracingControl/sampling/route-ratios",
                     "{\"routeRatios\":{}}",     "sampling.route-ratios"),
-            new RouteCase("POST", "/actuator/tracingControl/validation/enabled",
+            new RouteCase("POST", "/tracingControl/validation/enabled",
                     "{\"enabled\":true}",       "validation.enabled"),
-            new RouteCase("POST", "/actuator/tracingControl/validation/strict",
+            new RouteCase("POST", "/tracingControl/validation/strict",
                     "{\"strict\":false}",       "validation.strict"),
-            new RouteCase("POST", "/actuator/tracingControl/exporter/enabled",
+            new RouteCase("POST", "/tracingControl/exporter/enabled",
                     "{\"enabled\":true}",       "exporter.enabled"),
-            new RouteCase("POST", "/actuator/tracingControl/propagation/trace-control-headers-enabled",
+            new RouteCase("POST", "/tracingControl/propagation/trace-control-headers-enabled",
                     "{\"enabled\":true}",       "propagation.trace-control-headers.enabled"),
-            new RouteCase("POST", "/actuator/tracingControl/diagnostics/log-level",
+            new RouteCase("POST", "/tracingControl/diagnostics/log-level",
                     "{\"level\":\"WARN\"}",     "diagnostics.log-level"),
         };
 
@@ -190,7 +190,7 @@ class TracingControlMvcControllerHttpTest {
     @Test
     void route_ratios_are_preserved_after_exporter_mutation() throws Exception {
         // Proves Actuator adapter does not erase route-ratios when mutating another leaf
-        mockMvc.perform(post("/actuator/tracingControl/exporter/enabled")
+        mockMvc.perform(post("/tracingControl/exporter/enabled")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\": false}"))
                 .andExpect(status().isOk());

@@ -26,8 +26,14 @@ import java.util.function.UnaryOperator;
  */
 public final class SpringActuatorTracingPolicyAdapter {
 
-    private static final int MAX_ROUTE_RATIOS = 64;
-    private static final int MAX_ROUTE_KEY_LENGTH = 256;
+    // Exact mirror of Agent EffectiveTracingPolicyValidator.MAX_ROUTE_ENTRIES /
+    // MAX_ROUTE_PREFIX_LENGTH (PrivateControlOpenTypeCodec, Agent module). These were
+    // previously 64 / 256 here — a wire-parity defect: a submission of 65-100 routes, or a
+    // 256-character key, would pass this pre-check yet be rejected by the real Agent bound
+    // (100 entries, 255 UTF-16 code units), or vice versa. MAX_ROUTE_KEY_LENGTH is a
+    // String#length() bound (UTF-16 code units), matching the Agent's own semantics.
+    private static final int MAX_ROUTE_RATIOS = 100;
+    private static final int MAX_ROUTE_KEY_LENGTH = 255;
 
     private static final java.util.Set<String> VALID_LOG_LEVELS =
             java.util.Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");

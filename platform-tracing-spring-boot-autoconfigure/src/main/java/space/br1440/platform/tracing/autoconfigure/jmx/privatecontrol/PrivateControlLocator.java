@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Строгий application-side locator process-local control plane.
  */
-final class PrivateControlLocator {
+public final class PrivateControlLocator {
 
     static final String PROTOCOL_ID = "platform-tracing-private-control";
     static final int PROTOCOL_VERSION = 1;
@@ -19,7 +19,7 @@ final class PrivateControlLocator {
     static final String WRITER_NAME =
             "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control";
 
-    LocatedPrivateControl locate() {
+    public LocatedPrivateControl locate() {
         ObjectName marker = objectName(MARKER_NAME);
         ObjectName writer = objectName(WRITER_NAME);
         List<LocatedPrivateControl> matches = new ArrayList<>();
@@ -64,7 +64,7 @@ final class PrivateControlLocator {
         }
     }
 
-    record LocatedPrivateControl(
+    public record LocatedPrivateControl(
             MBeanServer server,
             ObjectName writerObjectName,
             String runtimeInstanceId) {

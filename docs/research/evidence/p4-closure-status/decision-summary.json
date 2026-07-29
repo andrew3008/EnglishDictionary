@@ -1,0 +1,62 @@
+{
+  "decisionId": "P4_UNIFIED_TRACING_POLICY_ADAPTERS_CLOSURE",
+  "asOf": "2026-07-29",
+  "headAtLastVerification": "working-tree-uncommitted",
+  "statusAxes": {
+    "technicalImplementation": "COMPLETED",
+    "technicalVerification": "PASS",
+    "architectureCommittee": "PRIV_R07_APPROVED",
+    "formalClosure": "FORMALLY_CLOSED"
+  },
+  "formalClosureVerdict": "FORMALLY_CLOSED",
+  "formalClosureEvidence": "docs/research/evidence/p4-webflux-parity/formal-closure-gate.md",
+  "prohibitedFormalClosureStatuses": ["APPROVED", "ACCEPTED", "CLOSED"],
+  "statusNote": "P4-WF.9 FORMALLY_CLOSED 2026-07-29. Focused Servlet/WebFlux/PRIV-R07 gates PASS. Post-PRIV-R07 Docker E2E on Gentoo (tcp://192.168.100.70:2375, Server 28.0.4) PASS: aggregate 65/0/0 and privateMBean 1/0/0 (skipped=0). PROPOSED_PRIV_R07 APPROVED by Architecture Committee.",
+  "p4WebFluxParity": {
+    "gates": {
+      "P4-WF.0": { "status": "COMPLETED" },
+      "P4-WF.1": { "status": "COMPLETED", "designVerdict": "MINIMAL_DESIGN_ACCEPTED" },
+      "P4-WF.2": { "status": "COMPLETED", "verdict": "CLASS_BUDGET_ACCEPTED" },
+      "P4-WF.3": { "status": "COMPLETED", "newProductionClasses": 1 },
+      "P4-WF.4": { "status": "COMPLETED", "result": "PASS", "rerunAtP4Wf9": "PASS" },
+      "P4-WF.5": { "status": "COMPLETED", "result": "PASS", "rerunAtP4Wf9": "PASS" },
+      "P4-WF.6": { "status": "COMPLETED", "result": "PASS", "rerunAtP4Wf9": "PASS" },
+      "P4-WF.7": {
+        "status": "COMPLETED",
+        "lastGreen": { "suites": 28, "tests": 65, "privateMBean": 1, "skipped": 0 },
+        "rerunAtP4Wf9": "PASS_POST_PRIV_R07",
+        "dockerHost": "tcp://192.168.100.70:2375",
+        "dockerServer": "28.0.4 linux",
+        "elapsed": "9m 32s"
+      },
+      "P4-WF.8": {
+        "status": "COMPLETED",
+        "proposalStatus": "APPROVED",
+        "decidedBy": "Architecture Committee",
+        "decidedAt": "2026-07-29"
+      },
+      "P4-WF.9": {
+        "status": "COMPLETED",
+        "verdict": "FORMALLY_CLOSED",
+        "evidence": "docs/research/evidence/p4-webflux-parity/formal-closure-gate.md",
+        "independentAudit": "eda6581a-b85a-4443-98d3-b56aa1c6c25c",
+        "focusedGatesRerun": "PASS",
+        "aggregateE2ERerun": "PASS (65 tests, 0 failures, 0 skipped)",
+        "privateMBeanE2ERerun": "PASS (1 test, 0 failures, 0 skipped)"
+      }
+    }
+  },
+  "committeeDecisionsRecorded": [
+    {
+      "id": "PROPOSED_PRIV_R07",
+      "status": "APPROVED",
+      "decidedBy": "Architecture Committee",
+      "decidedAt": "2026-07-29"
+    }
+  ],
+  "p5": {
+    "technicalPrerequisite": "SATISFIED",
+    "formalUnblock": "UNBLOCKED_BY_P4_WF_9_FORMALLY_CLOSED"
+  },
+  "remainingForFormalClosure": []
+}

@@ -155,6 +155,7 @@ public final class AgentMdcLoggingProcessRunner {
                 }
             }
         }
+        P4AuthoritySmokeDefaults.ensure(jvmProperties);
         return jvmProperties;
     }
 

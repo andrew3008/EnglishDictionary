@@ -1,0 +1,65 @@
+{
+  "asOf": "2026-07-29",
+  "gates": {
+    "P4-WF.0": { "status": "COMPLETED", "verdict": "CENSUS_COMPLETE" },
+    "P4-WF.1": { "status": "COMPLETED", "verdict": "MINIMAL_DESIGN_ACCEPTED" },
+    "P4-WF.2": {
+      "status": "COMPLETED",
+      "verdict": "CLASS_BUDGET_ACCEPTED",
+      "correction": "placement moved from shared autoconfigure to platform-tracing-autoconfigure-webflux",
+      "evidence": "docs/research/evidence/p4-webflux-parity/class-budget-gate.md"
+    },
+    "P4-WF.3": {
+      "status": "COMPLETED",
+      "newProductionClasses": 1,
+      "fqcn": "space.br1440.platform.tracing.autoconfigure.reactive.TracingControlWebFluxManagementContextConfiguration",
+      "module": "platform-tracing-autoconfigure-webflux",
+      "importsFile": "platform-tracing-autoconfigure-webflux/src/main/resources/META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports",
+      "compile": "PASS (:platform-tracing-autoconfigure-webflux:compileJava)"
+    },
+    "P4-WF.4": {
+      "status": "COMPLETED",
+      "test": "TracingControlWebFluxRouterHttpTest",
+      "result": "PASS"
+    },
+    "P4-WF.5": {
+      "status": "COMPLETED",
+      "test": "TracingControlWebFluxManagementChildContextIntegrationTest",
+      "result": "PASS",
+      "note": "Hybrid autoconfigure test classpath may also load Servlet TracingControl*; pure reactive absence proven elsewhere"
+    },
+    "P4-WF.6": {
+      "status": "COMPLETED",
+      "test": "TracingControlWebFluxManagementContextAbsenceTest",
+      "result": "PASS"
+    },
+    "P4-WF.7": {
+      "status": "COMPLETED",
+      "name": "Docker-backed reactive/aggregate E2E",
+      "dockerHost": "tcp://192.168.100.70:2375",
+      "dockerServer": "28.0.4 linux",
+      "elapsed": "9m 32s",
+      "note": "Re-run at P4-WF.9 after PRIV-R07 payload-bound changes",
+      "aggregate": { "suites": 28, "tests": 65, "failures": 0, "skipped": 0, "result": "PASS" },
+      "privateMBean": { "suites": 1, "tests": 1, "failures": 0, "skipped": 0, "result": "PASS" }
+    },
+    "P4-WF.8": {
+      "status": "COMPLETED",
+      "name": "PROPOSED_PRIV_R07 committee",
+      "proposalStatus": "APPROVED",
+      "decidedBy": "Architecture Committee",
+      "decidedAt": "2026-07-29",
+      "payloadBoundDecision": "REQUIRE_EXPLICIT_BOUND",
+      "s07Reconcile": "RECONCILE_NOW",
+      "packet": "docs/research/evidence/priv-r07-proposal/committee-packet.md"
+    },
+    "P4-WF.9": {
+      "status": "COMPLETED",
+      "verdict": "FORMALLY_CLOSED",
+      "name": "formal P4 closure",
+      "evidence": "docs/research/evidence/p4-webflux-parity/formal-closure-gate.md",
+      "aggregateE2E": "PASS (65/0/0)",
+      "privateMBeanE2E": "PASS (1/0/0)"
+    }
+  }
+}

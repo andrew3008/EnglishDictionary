@@ -1,0 +1,147 @@
+{
+  "proposalId": "PROPOSED_PRIV_R07",
+  "status": "APPROVED",
+  "prohibitedLlmAutoStatuses": ["APPROVED", "ACCEPTED", "CLOSED"],
+  "packetStatus": "DECIDED",
+  "committeePacket": "docs/research/evidence/priv-r07-proposal/committee-packet.md",
+  "packetAssembledAt": "2026-07-29",
+  "humanDecisionRequired": false,
+  "humanDecisionRecord": {
+    "decision": "APPROVE",
+    "decidedBy": "Architecture Committee",
+    "decidedAt": "2026-07-29",
+    "rationale": "The committee approves readAcceptedComplete as the permanent private, read-only authoritative accepted-policy operation. The operation is required for Config Server initial/runtime delivery, DEV_ACTUATOR read-copy-change, application readiness, runtime-instance detection, and Servlet/WebFlux transport parity. It preserves Agent-side state ownership, introduces no additional mutation path, remains inaccessible through the platform MBeanServer and remote JMX, and is supported by executable contract, codec-parity, isolation and Docker E2E evidence.",
+    "payloadBoundDecision": "REQUIRE_EXPLICIT_BOUND",
+    "s07Reconcile": "RECONCILE_NOW"
+  },
+  "followUpActions": {
+    "payloadBound": {
+      "decision": "REQUIRE_EXPLICIT_BOUND",
+      "boundBytes": 32768,
+      "authority": "same constant family as applySnapshot MAX_LOGICAL_REQUEST_BYTES",
+      "enforcement": "Agent encodeAcceptedComplete + Spring decodeCompleteWithSequence"
+    },
+    "s07Reconcile": {
+      "decision": "RECONCILE_NOW",
+      "targetPackage": "docs/research/evidence/jmx-read-only-delta/",
+      "effect": "privateReadMembers 6→7; add PRIV-R07 member; update S07JmxReadOnlyDeltaEvidenceTest"
+    }
+  },
+  "verifierAtPacketAssembly": {
+    "task": "priv07ProposalVerify",
+    "result": "PASS"
+  },
+  "subject": "readAcceptedComplete private read operation (P4 read-copy-change dependency)",
+  "relationToS07": {
+    "note": "Originally an ADDENDUM to S-07/E7 (frozen pre-PRIV-R07 arithmetic). Committee decision s07Reconcile=RECONCILE_NOW folds PRIV-R07 into the S-07 package as of 2026-07-29. Historical pre-reconcile baseline remains documented in exactArithmetic.before.",
+    "s07BaselineFiles": [
+      "docs/research/evidence/jmx-read-only-delta/target-read-contract.json",
+      "docs/research/evidence/jmx-read-only-delta/decision-summary.json",
+      "docs/research/evidence/jmx-read-only-delta/before-after-delta.json",
+      "docs/research/evidence/jmx-read-only-delta/objectname-decision.json"
+    ],
+    "headAtS07Review": "0f81052557c685b9988d438a6fbd4a5a031aab7a",
+    "priv07ImplementedAt": "00b987a92c287492f1c875ee4462e2dd08adaaf5",
+    "priv07ImplementedAfterS07Review": true,
+    "reconciledIntoS07At": "2026-07-29"
+  },
+  "productionCodeChanged": false,
+  "productionCodeAlreadyImplements": true,
+  "targetMember": {
+    "targetMemberId": "PRIV-R07",
+    "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+    "operation": "readAcceptedComplete",
+    "kind": "READ_OPERATION",
+    "parameters": [],
+    "returnJavaType": "javax.management.openmbean.CompositeData",
+    "compositeType": "AcceptedCompleteSnapshot/v1",
+    "impact": "INFO",
+    "exposure": "PRIVATE_MBEAN_SERVER_ONLY",
+    "mutation": false,
+    "source": "space.br1440.platform.tracing.otel.javaagent.control.state.PrivateControlWriter"
+  },
+  "exactArithmetic": {
+    "note": "Computed from the actual S-07 baseline files plus the incremental PRIV-R07 delta.",
+    "before": {
+      "privateMembers": 7,
+      "privateReadMembers": 6,
+      "privateMutations": 1,
+      "completePolicyReadOperations": 0
+    },
+    "after": {
+      "privateMembers": 8,
+      "privateReadMembers": 7,
+      "privateMutations": 1,
+      "completePolicyReadOperations": 1
+    },
+    "delta": {
+      "privateMembers": "+1",
+      "privateReadMembers": "+1",
+      "privateMutations": "+0",
+      "completePolicyReadOperations": "+1"
+    },
+    "platformSurfaceUnaffected": {
+      "platformMembersBefore": 56,
+      "platformMembersAfter": 56,
+      "platformMutationsBefore": 0,
+      "platformMutationsAfter": 0,
+      "reason": "readAcceptedComplete is registered exclusively on the private process-local MBeanServer and is never registered on the platform MBeanServer."
+    },
+    "applySnapshotRemainsSoleMutation": true,
+    "readAcceptedCompleteIsSoleNewCompletePolicyRead": true
+  },
+  "wireSchema": {
+    "rootCompositeTypeName": "AcceptedCompleteSnapshot/v1",
+    "fieldCount": 10,
+    "fields": [
+      {"name": "acceptedSequence", "openType": "SimpleType.LONG", "nullPolicy": "REJECT_NULL", "bounds": ">= 0"},
+      {"name": "runtimeInstanceId", "openType": "SimpleType.STRING", "nullPolicy": "REJECT_NULL", "bounds": "non-blank"},
+      {"name": "samplingEnabled", "openType": "SimpleType.BOOLEAN", "nullPolicy": "REJECT_NULL", "bounds": "n/a"},
+      {"name": "samplingRatio", "openType": "SimpleType.DOUBLE", "nullPolicy": "REJECT_NULL", "bounds": "finite, [0.0, 1.0] inclusive"},
+      {"name": "samplingRouteRatios", "openType": "TabularType space.br1440.platform.tracing.control.RouteRatios.v1", "nullPolicy": "REJECT_NULL", "bounds": "see routeRatios below"},
+      {"name": "validationEnabled", "openType": "SimpleType.BOOLEAN", "nullPolicy": "REJECT_NULL", "bounds": "n/a"},
+      {"name": "validationStrict", "openType": "SimpleType.BOOLEAN", "nullPolicy": "REJECT_NULL", "bounds": "n/a"},
+      {"name": "exporterEnabled", "openType": "SimpleType.BOOLEAN", "nullPolicy": "REJECT_NULL", "bounds": "n/a"},
+      {"name": "traceControlHeadersEnabled", "openType": "SimpleType.BOOLEAN", "nullPolicy": "REJECT_NULL", "bounds": "n/a"},
+      {"name": "diagnosticsLogLevel", "openType": "SimpleType.STRING", "nullPolicy": "REJECT_NULL", "bounds": "closed set: OFF|ERROR|WARN|INFO|DEBUG|TRACE"}
+    ],
+    "routeRowCompositeType": {
+      "name": "space.br1440.platform.tracing.control.RouteRatio.v1",
+      "fields": [
+        {"name": "ratio", "openType": "SimpleType.DOUBLE"},
+        {"name": "routePrefix", "openType": "SimpleType.STRING"}
+      ]
+    },
+    "routeTabularType": {
+      "name": "space.br1440.platform.tracing.control.RouteRatios.v1",
+      "indexNames": ["routePrefix"],
+      "maxEntries": 100,
+      "maxEntriesAuthority": "Agent EffectiveTracingPolicyValidator.MAX_ROUTE_ENTRIES; mirrored by Spring PrivateControlOpenTypeCodec.MAX_ROUTE_ENTRIES",
+      "routeKeyLengthSemantics": "java.lang.String#length() — Java UTF-16 code units, NOT UTF-8 bytes and NOT Unicode code points",
+      "routeKeyMaxLength": 255,
+      "routeKeyMaxLengthAuthority": "Agent EffectiveTracingPolicyValidator.MAX_ROUTE_PREFIX_LENGTH; mirrored by Spring PrivateControlOpenTypeCodec.MAX_ROUTE_PREFIX_LENGTH",
+      "routeRatioBounds": "finite, [0.0, 1.0] inclusive, same as samplingRatio"
+    },
+    "diagnosticsLogLevelClosedSet": ["OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
+    "diagnosticsLogLevelAuthority": "Agent PolicyLogLevel enum",
+    "unknownFieldPolicy": "REJECT — javax.management.openmbean.CompositeType equality requires an exact field-name/OpenType set",
+    "nullFieldPolicy": "REJECT — Spring decoder independently rejects a null value for any of the 10 fields",
+    "maximumLogicalPayloadBound": "EXPLICITLY_BOUNDED: 32768 bytes (UTF-8 logical size; same family as applySnapshot MAX_LOGICAL_REQUEST_BYTES). Enforced on Agent encodeAcceptedComplete and Spring decodeCompleteWithSequence per committee payloadBoundDecision=REQUIRE_EXPLICIT_BOUND."
+  },
+  "p4ClosureImpact": {
+    "classification": "UNBLOCKED",
+    "note": "Committee APPROVE recorded 2026-07-29. Formal P4 closure may proceed to P4-WF.9 after companion follow-ups (explicit payload bound + S-07 reconcile) land."
+  },
+  "committeeDecisionItems": [
+    "DONE: Approve PRIV-R07 as permanent private read-only operation",
+    "DONE (decision): REQUIRE_EXPLICIT_BOUND — implement 32768-byte logical payload bound",
+    "DONE (decision): RECONCILE_NOW — fold into S-07/E7 read-only-delta package"
+  ],
+  "verification": {
+    "consistencyTest": "platform-tracing-bench/src/test/java/space/br1440/platform/tracing/bench/priv07/Priv07ProposalEvidenceTest.java",
+    "verifierTask": "priv07ProposalVerify",
+    "crossModuleWireParityTest": "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/otel/javaagent/control/state/AgentToSpringWireCodecParityTest.java",
+    "dynamicMBeanInvocationContractTest": "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/control/state/PrivateControlWriterInvokeContractTest.java",
+    "privateRegistrationTest": "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/control/state/PrivateControlBoundaryTest.java"
+  }
+}

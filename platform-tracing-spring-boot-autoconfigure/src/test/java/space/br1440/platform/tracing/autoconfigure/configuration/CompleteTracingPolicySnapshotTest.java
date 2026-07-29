@@ -8,6 +8,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class CompleteTracingPolicySnapshotTest {
 
+    // The builder deliberately rejects a partial (fewer than eight leaves) snapshot — see
+    // P4ArchitectureTest.snapshotBuilderRejectsPartialSnapshot() — so every test here supplies
+    // all eight leaves, mirroring the only shape the real production adapters ever build.
+    private static CompleteTracingPolicySnapshot.Builder fullBuilder() {
+        return CompleteTracingPolicySnapshot.builder()
+                .samplingEnabled(true)
+                .samplingRatio(1.0)
+                .samplingRouteRatios(Map.of())
+                .validationEnabled(true)
+                .validationStrict(false)
+                .exporterEnabled(true)
+                .traceControlHeadersEnabled(true)
+                .diagnosticsLogLevel("INFO");
+    }
+
     @Test
     void builderProducesAllEightLeaves() {
         CompleteTracingPolicySnapshot s = CompleteTracingPolicySnapshot.builder()
@@ -33,7 +48,7 @@ class CompleteTracingPolicySnapshotTest {
 
     @Test
     void withMethodsProduceCopyWithOneDiff() {
-        CompleteTracingPolicySnapshot original = CompleteTracingPolicySnapshot.builder()
+        CompleteTracingPolicySnapshot original = fullBuilder()
                 .samplingEnabled(true)
                 .samplingRatio(1.0)
                 .exporterEnabled(true)
@@ -49,7 +64,7 @@ class CompleteTracingPolicySnapshotTest {
     void snapshotIsImmutable() {
         Map<String, Double> mutable = new java.util.HashMap<>();
         mutable.put("/api", 0.5);
-        CompleteTracingPolicySnapshot s = CompleteTracingPolicySnapshot.builder()
+        CompleteTracingPolicySnapshot s = fullBuilder()
                 .samplingRouteRatios(mutable)
                 .build();
         mutable.put("/other", 0.9);
@@ -58,8 +73,8 @@ class CompleteTracingPolicySnapshotTest {
 
     @Test
     void equalSnapshotsAreEqual() {
-        CompleteTracingPolicySnapshot a = CompleteTracingPolicySnapshot.builder().build();
-        CompleteTracingPolicySnapshot b = CompleteTracingPolicySnapshot.builder().build();
+        CompleteTracingPolicySnapshot a = fullBuilder().build();
+        CompleteTracingPolicySnapshot b = fullBuilder().build();
         assertThat(a).isEqualTo(b);
         assertThat(a.hashCode()).isEqualTo(b.hashCode());
     }

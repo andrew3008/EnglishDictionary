@@ -33,7 +33,7 @@ class PrivateControlReadAcceptedCompleteTest {
 
     @Test
     void mBeanInfo_containsReadAcceptedCompleteOperation() {
-        PrivateControlWriter writer = writer("r1", 1.0d, Map.of());
+        PrivateControlWriter writer = writer(UUID.randomUUID().toString(), 1.0d, Map.of());
         MBeanInfo info = writer.getMBeanInfo();
 
         assertThat(info.getOperations())
@@ -42,25 +42,25 @@ class PrivateControlReadAcceptedCompleteTest {
 
     @Test
     void mBeanInfo_readAcceptedComplete_hasZeroParameters() {
-        MBeanOperationInfo op = findOp(writer("r1", 1.0d, Map.of()), "readAcceptedComplete");
+        MBeanOperationInfo op = findOp(writer(UUID.randomUUID().toString(), 1.0d, Map.of()), "readAcceptedComplete");
         assertThat(op.getSignature()).isEmpty();
     }
 
     @Test
     void mBeanInfo_readAcceptedComplete_impactIsINFO() {
-        MBeanOperationInfo op = findOp(writer("r1", 1.0d, Map.of()), "readAcceptedComplete");
+        MBeanOperationInfo op = findOp(writer(UUID.randomUUID().toString(), 1.0d, Map.of()), "readAcceptedComplete");
         assertThat(op.getImpact()).isEqualTo(MBeanOperationInfo.INFO);
     }
 
     @Test
     void mBeanInfo_readAcceptedComplete_returnsCompositeData() {
-        MBeanOperationInfo op = findOp(writer("r1", 1.0d, Map.of()), "readAcceptedComplete");
+        MBeanOperationInfo op = findOp(writer(UUID.randomUUID().toString(), 1.0d, Map.of()), "readAcceptedComplete");
         assertThat(op.getReturnType()).isEqualTo(CompositeData.class.getName());
     }
 
     @Test
     void mBeanInfo_applySnapshot_remainsACTION() {
-        MBeanOperationInfo op = findOp(writer("r1", 1.0d, Map.of()), "applySnapshot");
+        MBeanOperationInfo op = findOp(writer(UUID.randomUUID().toString(), 1.0d, Map.of()), "applySnapshot");
         assertThat(op.getImpact()).isEqualTo(MBeanOperationInfo.ACTION);
     }
 
@@ -81,7 +81,7 @@ class PrivateControlReadAcceptedCompleteTest {
 
     @Test
     void encodes_correctTypeName() throws Exception {
-        CompositeData cd = read(writer("r2", 1.0d, Map.of()));
+        CompositeData cd = read(writer(UUID.randomUUID().toString(), 1.0d, Map.of()));
         assertThat(cd.getCompositeType().getTypeName()).isEqualTo("AcceptedCompleteSnapshot/v1");
     }
 
@@ -93,19 +93,19 @@ class PrivateControlReadAcceptedCompleteTest {
 
     @Test
     void encodes_samplingRatio() throws Exception {
-        assertThat(read(writer("r3", 0.42d, Map.of())).get("samplingRatio")).isEqualTo(0.42d);
+        assertThat(read(writer(UUID.randomUUID().toString(), 0.42d, Map.of())).get("samplingRatio")).isEqualTo(0.42d);
     }
 
     @Test
     void encodes_acceptedSequenceIsZeroOnStartup() throws Exception {
-        assertThat(read(writer("r4", 1.0d, Map.of())).get("acceptedSequence")).isEqualTo(0L);
+        assertThat(read(writer(UUID.randomUUID().toString(), 1.0d, Map.of())).get("acceptedSequence")).isEqualTo(0L);
     }
 
     // ── Route-ratio TabularData ───────────────────────────────────────────────
 
     @Test
     void encodes_emptyRouteMap_asEmptyTabularData() throws Exception {
-        CompositeData cd = read(writer("r5", 1.0d, Map.of()));
+        CompositeData cd = read(writer(UUID.randomUUID().toString(), 1.0d, Map.of()));
         TabularData routes = (TabularData) cd.get("samplingRouteRatios");
         assertThat(routes.size()).isZero();
     }
@@ -116,7 +116,7 @@ class PrivateControlReadAcceptedCompleteTest {
         input.put("/z", 0.9d);
         input.put("/a", 0.1d);
         input.put("/m", 0.5d);
-        PrivateControlWriter writer = writerWithRoutes("r6", input);
+        PrivateControlWriter writer = writerWithRoutes(UUID.randomUUID().toString(), input);
 
         CompositeData cd = read(writer);
         TabularData routes = (TabularData) cd.get("samplingRouteRatios");
@@ -134,7 +134,7 @@ class PrivateControlReadAcceptedCompleteTest {
         for (int i = 0; i < EffectiveTracingPolicyValidator.MAX_ROUTE_ENTRIES; i++) {
             big.put("/route" + i, 0.5d);
         }
-        PrivateControlWriter writer = writerWithRoutes("r7", big);
+        PrivateControlWriter writer = writerWithRoutes(UUID.randomUUID().toString(), big);
         CompositeData cd = read(writer);
         TabularData routes = (TabularData) cd.get("samplingRouteRatios");
         assertThat(routes.size()).isEqualTo(EffectiveTracingPolicyValidator.MAX_ROUTE_ENTRIES);
@@ -148,7 +148,7 @@ class PrivateControlReadAcceptedCompleteTest {
         EffectiveTracingPolicy policy = EffectiveTracingPolicy.of(
                 true, 1.0d, Map.of(), true, false, true, true,
                 PolicyLogLevel.valueOf(level));
-        AcceptedPolicyStateStore store = new AcceptedPolicyStateStore("r8", policy);
+        AcceptedPolicyStateStore store = new AcceptedPolicyStateStore(UUID.randomUUID().toString(), policy);
         PrivateControlWriter writer = new PrivateControlWriter(
                 null, store, new PrivateControlOpenTypeCodec());
         CompositeData cd = read(writer);
@@ -159,7 +159,7 @@ class PrivateControlReadAcceptedCompleteTest {
 
     @Test
     void readAcceptedComplete_doesNotChangeSequence() throws Exception {
-        AcceptedPolicyStateStore store = new AcceptedPolicyStateStore("r9", defaultPolicy());
+        AcceptedPolicyStateStore store = new AcceptedPolicyStateStore(UUID.randomUUID().toString(), defaultPolicy());
         PrivateControlWriter writer = new PrivateControlWriter(
                 null, store, new PrivateControlOpenTypeCodec());
 
@@ -188,9 +188,15 @@ class PrivateControlReadAcceptedCompleteTest {
 
     @Test
     void fieldOrder_matchesCanonicalKeyArray() throws Exception {
-        CompositeData cd = read(writer("r10", 1.0d, Map.of()));
+        // javax.management.openmbean.CompositeType stores its keySet() alphabetically
+        // (backed by a TreeMap), regardless of constructor argument order — this is JDK
+        // behavior, not a wire-contract property. Declaration order in
+        // PrivateControlWireTypes.ACCEPTED_COMPLETE_KEYS still governs the paired types array
+        // and is verified structurally by PrivateControlWireTypes.validate(); field lookup on
+        // the wire is always by name (CompositeData.get(name)), never by position.
+        CompositeData cd = read(writer(UUID.randomUUID().toString(), 1.0d, Map.of()));
         assertThat(cd.getCompositeType().keySet().toArray())
-                .containsExactly((Object[]) PrivateControlWireTypes.ACCEPTED_COMPLETE_KEYS);
+                .containsExactlyInAnyOrder((Object[]) PrivateControlWireTypes.ACCEPTED_COMPLETE_KEYS);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

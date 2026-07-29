@@ -131,13 +131,14 @@
       "server": "PRIVATE",
       "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
       "retainedOrNew": "NEW_PRIVATE_OBJECT_NAME",
-      "purpose": "Strict complete-snapshot aggregate writer",
-      "memberCount": 1,
-      "readCount": 0,
+      "purpose": "Strict complete-snapshot aggregate writer plus authoritative accepted-policy reader (PRIV-R07)",
+      "memberCount": 2,
+      "readCount": 1,
       "mutationCount": 1,
       "consumers": [
         "CONFIG_SERVER_BRIDGE",
-        "DEV_TYPED_JMX_ADAPTER"
+        "DEV_TYPED_JMX_ADAPTER",
+        "ACTUATOR_READINESS"
       ]
     }
   ]

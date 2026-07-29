@@ -1,0 +1,97 @@
+{
+  "gate": "P4-WF.1",
+  "name": "P4-WF DESIGN minimal WebFlux parity",
+  "asOf": "2026-07-29",
+  "status": "COMPLETED",
+  "productionCodeChangedByThisGate": false,
+  "groundedInCensus": "docs/research/evidence/p4-webflux-parity/repository-census.json",
+  "designVerdict": "MINIMAL_DESIGN_ACCEPTED",
+  "blockedReasons": [],
+  "independentReview": {
+    "explorerAgentId": "af92f9e4-54aa-4c54-a536-f4adb8c7488a",
+    "verdict": "MINIMAL_DESIGN_ACCEPTED",
+    "opusAttempt": {
+      "requestId": "285eba2e-6533-4895-ba15-fb77b7a49f90",
+      "result": "MODEL_ERROR timeout — not used"
+    },
+    "evidenceFile": "docs/research/evidence/p4-webflux-parity/minimality-audit.md"
+  },
+  "targetFlow": {
+    "servletTransport": [
+      "TracingControlManagementContextConfiguration",
+      "TracingControlMvcController"
+    ],
+    "webFluxTransport": [
+      "TracingControlWebFluxManagementContextConfiguration"
+    ],
+    "shared": [
+      "SpringActuatorTracingPolicyAdapter",
+      "PrivateJmxTracingPolicySnapshotClient",
+      "TracingConfigurationAuthorityGuard",
+      "ActuatorAgentReadinessProbe",
+      "TracingActuatorEndpoint",
+      "eight Set*/Replace* request records",
+      "TracingPolicyDeliveryResult"
+    ]
+  },
+  "exactFiles": {
+    "create": [
+      "platform-tracing-autoconfigure-webflux/src/main/java/space/br1440/platform/tracing/autoconfigure/reactive/TracingControlWebFluxManagementContextConfiguration.java",
+      "platform-tracing-autoconfigure-webflux/src/main/resources/META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports"
+    ],
+    "doNotModify": [
+      "platform-tracing-spring-boot-autoconfigure ManagementContextConfiguration.imports",
+      "platform-tracing-spring-boot-autoconfigure/build.gradle",
+      "TracingControlManagementContextConfiguration",
+      "TracingControlMvcController",
+      "SpringActuatorTracingPolicyAdapter",
+      "Agent private JMX / wire contracts",
+      "platform-tracing-autoconfigure-webflux AutoConfiguration.imports"
+    ]
+  },
+  "newProductionClass": {
+    "count": 1,
+    "fqcn": "space.br1440.platform.tracing.autoconfigure.reactive.TracingControlWebFluxManagementContextConfiguration",
+    "module": "platform-tracing-autoconfigure-webflux",
+    "stackGates": [
+      "org.springframework.web.reactive.DispatcherHandler",
+      "ConditionalOnWebApplication.Type.REACTIVE"
+    ],
+    "authorityGates": [
+      "platform.tracing.configuration.authority=ACTUATOR",
+      "platform.environment=LOCAL"
+    ],
+    "transport": "RouterFunction<ServerResponse> bean tracingControlWebFluxRoutes",
+    "operations": 8,
+    "blockingPolicy": "Schedulers.boundedElastic for adapter calls"
+  },
+  "classCountProjection": {
+    "webfluxMainBefore": 14,
+    "webfluxMainAfter": 15,
+    "configurationActuatorBefore": 14,
+    "configurationActuatorAfter": 14,
+    "configurationRecursiveBefore": 38,
+    "configurationRecursiveAfter": 38,
+    "webFluxControlSurfaceBefore": 0,
+    "webFluxControlSurfaceAfter": 1
+  },
+  "negativeList": [
+    "TracingControlTransport",
+    "TransportRegistry",
+    "RouteDescriptor",
+    "AbstractTracingControlHandler",
+    "ReactiveTracingPolicyAdapter",
+    "WebFlux-specific request DTOs",
+    "new Gradle module/starter",
+    "second PrivateJmx client / readiness / authority guard",
+    "separate TracingControlWebFluxController + config (2 classes)",
+    "shared meta-annotation for ACTUATOR+LOCAL guards",
+    "WebFlux types in shared autoconfigure",
+    "Servlet-only permanent product limitation ratification"
+  ],
+  "nextGate": {
+    "id": "P4-WF.2",
+    "name": "class-budget Codex gate",
+    "note": "Historically CLASS_BUDGET_ACCEPTED with webflux-module placement; DESIGN does not re-approve that gate"
+  }
+}

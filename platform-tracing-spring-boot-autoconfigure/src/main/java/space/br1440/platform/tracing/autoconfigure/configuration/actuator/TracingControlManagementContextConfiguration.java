@@ -2,8 +2,11 @@ package space.br1440.platform.tracing.autoconfigure.configuration.actuator;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Registers {@link TracingControlMvcController} in the management
@@ -32,8 +35,17 @@ import org.springframework.context.annotation.Bean;
  * Absolute path composition: the management base-path is injected via
  * {@code @Value} and applied via {@code WebMvcConfigurer.configurePathMatch()}.
  * The controller itself carries only the relative {@code /tracingControl} prefix.
+ * <p>
+ * Servlet-only: this configuration depends directly on {@link WebMvcConfigurer},
+ * which is absent from WebFlux (reactive) management contexts.
+ * {@code ManagementContextType} has no SERVLET/REACTIVE distinction (only
+ * SAME / CHILD / ANY — management-context topology, not web stack), so
+ * Servlet-vs-WebFlux isolation here is enforced by {@link ConditionalOnClass}:
+ * a reactive-only application classpath (no {@code spring-webmvc}) never
+ * attempts to load this configuration.
  */
 @ManagementContextConfiguration
+@ConditionalOnClass(WebMvcConfigurer.class)
 @ConditionalOnProperty(
         name = "platform.tracing.configuration.authority",
         havingValue = "ACTUATOR",
@@ -63,13 +75,11 @@ public class TracingControlManagementContextConfiguration {
      * per-controller absolute-path injection in a child context.
      */
     @Bean
-    public org.springframework.web.servlet.config.annotation.WebMvcConfigurer
-            tracingControlPathPrefixConfigurer() {
+    public WebMvcConfigurer tracingControlPathPrefixConfigurer() {
         String base = normalise(managementBasePath);
-        return new org.springframework.web.servlet.config.annotation.WebMvcConfigurer() {
+        return new WebMvcConfigurer() {
             @Override
-            public void configurePathMatch(
-                    org.springframework.web.servlet.config.annotation.PathMatchConfigurer configurer) {
+            public void configurePathMatch(PathMatchConfigurer configurer) {
                 configurer.addPathPrefix(
                         base,
                         clazz -> clazz == TracingControlMvcController.class);

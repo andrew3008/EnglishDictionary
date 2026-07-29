@@ -114,7 +114,7 @@ final class PrivateControlWireTypes {
             "validationStrict",            // Boolean
             "exporterEnabled",             // Boolean
             "traceControlHeadersEnabled",  // Boolean
-            "diagnosticsLogLevel"          // String closed: DEBUG|INFO|WARN|ERROR
+            "diagnosticsLogLevel"          // String closed: OFF|ERROR|WARN|INFO|DEBUG|TRACE (PolicyLogLevel)
     };
 
     /**

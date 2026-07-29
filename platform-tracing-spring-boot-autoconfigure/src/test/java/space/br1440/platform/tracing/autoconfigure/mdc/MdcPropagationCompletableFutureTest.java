@@ -40,7 +40,9 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "spring.application.name=mdc-cf-propagation-test",
                 "spring.autoconfigure.exclude="
                         + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
-                "platform.tracing.mode=DISABLED"
+                "platform.tracing.mode=DISABLED",
+                "platform.tracing.configuration.authority=HELM",
+                "platform.environment=LOCAL"
         })
 class MdcPropagationCompletableFutureTest {
 

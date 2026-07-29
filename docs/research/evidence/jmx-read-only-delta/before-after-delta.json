@@ -184,10 +184,10 @@
     "platformReadOnly": 56,
     "platformMutations": 0,
     "privateObjectNames": 2,
-    "privateReadMembers": 6,
+    "privateReadMembers": 7,
     "privateMutations": 1,
     "addedPlatformReads": 9,
-    "addedPrivateReads": 6,
+    "addedPrivateReads": 7,
     "deletedMutationsFromPlatform": 16
   },
   "targetPlatformArithmetic": {
@@ -258,18 +258,20 @@
   },
   "targetPrivateArithmetic": {
     "movedPrivateReads": 0,
-    "addedPrivateReads": 6,
-    "formula": "0 + 6 = 6",
+    "addedPrivateReads": 7,
+    "formula": "0 + 7 = 7",
     "targetReadMemberIds": [
       "PRIV-R01",
       "PRIV-R02",
       "PRIV-R03",
       "PRIV-R04",
       "PRIV-R05",
-      "PRIV-R06"
+      "PRIV-R06",
+      "PRIV-R07"
     ],
     "targetMutationMemberIds": [
       "PRIV-W01"
-    ]
+    ],
+    "privR07ReconciledAt": "2026-07-29"
   }
 }

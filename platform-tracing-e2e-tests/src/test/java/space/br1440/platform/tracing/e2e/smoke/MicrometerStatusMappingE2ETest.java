@@ -38,7 +38,9 @@ import static org.awaitility.Awaitility.await;
         properties = {
                 "platform.tracing.suppression.suppress-micrometer-tracing=false",
                 "spring.main.allow-bean-definition-overriding=true",
-                "management.tracing.sampling.probability=1.0"
+                "management.tracing.sampling.probability=1.0",
+                "platform.tracing.configuration.authority=HELM",
+                "platform.environment=LOCAL"
         }
 )
 class MicrometerStatusMappingE2ETest {

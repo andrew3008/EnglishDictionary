@@ -82,6 +82,7 @@ public final class AgentJdbcSmokeProcessRunner {
                 }
             }
         }
+        P4AuthoritySmokeDefaults.ensure(jvmProperties);
 
         List<String> command = new ArrayList<>();
         command.add(javaBin.toString());

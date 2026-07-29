@@ -21,7 +21,7 @@ import javax.management.openmbean.CompositeData;
  *   <li>{@code readAcceptedComplete} – PRIV-R07 read-only operation.
  *       Returns one immutable {@link CompositeData} snapshot of the currently
  *       accepted policy. No mutation, no sequence change, no second state owner.
- *       Impact: {@code INFO}. Status: PENDING_COMMITTEE_APPROVAL.</li>
+ *       Impact: {@code INFO}. Status: APPROVED (Architecture Committee, 2026-07-29).</li>
  * </ol>
  *
  * <p>This MBean is absent from the platform {@code MBeanServer} and is never
@@ -51,7 +51,7 @@ final class PrivateControlWriter implements DynamicMBean {
                             MBeanOperationInfo.ACTION),
                     new MBeanOperationInfo(
                             OP_READ,
-                            "Returns immutable accepted-policy snapshot. PRIV-R07. PENDING_COMMITTEE_APPROVAL.",
+                            "Returns immutable accepted-policy snapshot. PRIV-R07. APPROVED.",
                             new MBeanParameterInfo[0],
                             CompositeData.class.getName(),
                             MBeanOperationInfo.INFO)
@@ -95,7 +95,8 @@ final class PrivateControlWriter implements DynamicMBean {
     public Object invoke(String actionName, Object[] params, String[] signature)
             throws MBeanException, ReflectionException {
         if (OP_READ.equals(actionName)
-                && (params == null || params.length == 0)) {
+                && isEmpty(params)
+                && isEmpty(signature)) {
             // Single volatile envelope load — consistent policy + sequence + runtimeInstanceId
             AcceptedPolicyView snapshot = store.current();
             return codec.encodeAcceptedComplete(snapshot);
@@ -103,7 +104,10 @@ final class PrivateControlWriter implements DynamicMBean {
         if (OP_APPLY.equals(actionName)
                 && params != null
                 && params.length == 1
-                && params[0] instanceof CompositeData request) {
+                && params[0] instanceof CompositeData request
+                && signature != null
+                && signature.length == 1
+                && CompositeData.class.getName().equals(signature[0])) {
             String attemptId = extractAttemptId(request);
             try {
                 DecodedPolicySnapshot decoded = codec.decode(request);
@@ -136,6 +140,21 @@ final class PrivateControlWriter implements DynamicMBean {
     @Override
     public MBeanInfo getMBeanInfo() {
         return INFO;
+    }
+
+    /**
+     * Canonical empty-array contract: per the {@link javax.management.MBeanServer#invoke}
+     * Javadoc, {@code null} and a zero-length array are equivalent ways to express
+     * "no arguments" — both are accepted here for {@code readAcceptedComplete}'s
+     * {@code params} and {@code signature}. Any non-empty array (wrong argument count,
+     * or a non-empty signature accompanying empty params) is rejected.
+     */
+    private static boolean isEmpty(Object[] array) {
+        return array == null || array.length == 0;
+    }
+
+    private static boolean isEmpty(String[] array) {
+        return array == null || array.length == 0;
     }
 
     private static String extractAttemptId(CompositeData request) {

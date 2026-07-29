@@ -232,6 +232,7 @@ public final class AgentWebFluxProcessRunner {
                 }
             }
         }
+        P4AuthoritySmokeDefaults.ensure(jvmProperties);
         return jvmProperties;
     }
 

@@ -70,6 +70,8 @@ class KafkaControlledAgentE2ETest {
         command.add("-Dotel.traces.sampler=platform");
         command.add("-Dplatform.tracing.sampling.ratio=1");
         command.add("-Dplatform.tracing.queue.overflow-policy=UPSTREAM");
+        command.add("-Dplatform.tracing.configuration.authority=HELM");
+        command.add("-Dplatform.environment=LOCAL");
         command.add("-Dotel.metrics.exporter=none");
         command.add("-Dotel.logs.exporter=none");
         command.add("-Dotel.bsp.schedule.delay=200");
