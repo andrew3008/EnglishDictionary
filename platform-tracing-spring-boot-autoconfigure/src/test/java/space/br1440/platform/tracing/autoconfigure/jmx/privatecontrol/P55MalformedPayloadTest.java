@@ -1,0 +1,680 @@
+package space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.mock.env.MockEnvironment;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyManifestException;
+import space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerPolicyManifestBuilder;
+import space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerPolicyProvenanceClassifier;
+
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
+import javax.management.openmbean.TabularType;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * P5.5 — Fail-closed for malformed, unknown, missing, null, and oversized Open-Type payload.
+ *
+ * <p>Verifies plan §22 invariants for {@code p5-malformed-payload-tests}:
+ * <ol>
+ *   <li>Null, wrong-type, wrong-schema {@code CompositeData} → {@link IllegalArgumentException}.</li>
+ *   <li>Null or missing required fields → {@link IllegalArgumentException}.</li>
+ *   <li>Out-of-range / invalid scalar values → {@link IllegalArgumentException}.</li>
+ *   <li>Route-ratio violations (empty prefix, oversized prefix, bad ratio, too many
+ *       entries, duplicate prefix) → {@link IllegalArgumentException}.</li>
+ *   <li>Oversized logical payload (&gt;32 768 bytes) → {@link IllegalArgumentException}.</li>
+ *   <li>Malformed {@link ConfigServerPolicyManifestBuilder} Environment values
+ *       (non-numeric, out-of-range, duplicate route keys) →
+ *       {@link TracingPolicyManifestException}.</li>
+ * </ol>
+ *
+ * <p>All tests target the Spring-side Open-Type codec
+ * ({@link PrivateControlOpenTypeCodec}) and the manifest builder; no Agent-side
+ * code is exercised.  Tests are deterministic and require no thread coordination.
+ *
+ * @see PrivateControlOpenTypeCodec
+ * @see ConfigServerPolicyManifestBuilder
+ */
+class P55MalformedPayloadTest {
+
+    // -------------------------------------------------------------------------
+    // Shared wire-type constants (mirrors PrivateControlOpenTypeCodec internals)
+    // -------------------------------------------------------------------------
+
+    private static final String ACCEPTED_COMPLETE_TYPE = "AcceptedCompleteSnapshot/v1";
+    private static final int    MAX_ROUTE_ENTRIES      = 100;
+    private static final int    MAX_ROUTE_PREFIX_LEN   = 255;
+    private static final int    MAX_PAYLOAD_BYTES      = 32_768;
+
+    // Route-ratio sub-types  (mirrors codec static state)
+    private static final CompositeType ROUTE_ROW   = routeRowType();
+    private static final TabularType   ROUTES_TYPE = routesType(ROUTE_ROW);
+
+    // The canonical PRIV-R07 CompositeType
+    private static final CompositeType ACCEPTED_COMPLETE = acceptedCompleteType();
+
+    // A deliberately wrong CompositeType to test schema mismatch
+    private static final CompositeType WRONG_TYPE = wrongCompositeType();
+
+    private final PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
+
+    // =========================================================================
+    // SECTION 1 — null / wrong Java type for raw argument
+    // =========================================================================
+
+    /** P5.5-1a: null raw object → fail-closed. */
+    @Test
+    void decode_complete_null_raw_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(null))
+                .as("null raw MUST throw IllegalArgumentException (fail-closed)")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-1b: raw = String → not CompositeData → fail-closed. */
+    @Test
+    void decode_complete_string_raw_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence("not-composite"))
+                .as("String raw MUST throw IllegalArgumentException")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-1c: raw = Integer → not CompositeData → fail-closed. */
+    @Test
+    void decode_complete_integer_raw_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(42))
+                .as("Integer raw MUST throw IllegalArgumentException")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-1d: CompositeData with wrong CompositeType name → schema mismatch → fail-closed. */
+    @Test
+    void decode_complete_wrong_composite_type_throws() throws OpenDataException {
+        CompositeData wrong = new CompositeDataSupport(
+                WRONG_TYPE,
+                new String[]{"dummy"},
+                new Object[]{"value"});
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(wrong))
+                .as("wrong CompositeType MUST throw IllegalArgumentException")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unexpected CompositeType");
+    }
+
+    // =========================================================================
+    // SECTION 2 — null / missing required fields
+    // =========================================================================
+
+    /** P5.5-2a: acceptedSequence field is null. */
+    @Test
+    void decode_complete_null_accepted_sequence_throws() throws OpenDataException {
+        CompositeData cd = buildCompleteWith(Map.of(
+                "acceptedSequence",           nullSentinel(),
+                "runtimeInstanceId",          "inst-1",
+                "samplingEnabled",            true,
+                "samplingRatio",              1.0,
+                "samplingRouteRatios",        emptyRoutes(),
+                "validationEnabled",          true,
+                "validationStrict",           false,
+                "exporterEnabled",            true,
+                "traceControlHeadersEnabled", true,
+                "diagnosticsLogLevel",        "INFO"
+        ), /* nullFields= */ new String[]{"acceptedSequence"});
+
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+                .as("null acceptedSequence field MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("acceptedSequence");
+    }
+
+    /** P5.5-2b: runtimeInstanceId field is null. */
+    @Test
+    void decode_complete_null_runtime_instance_id_throws() throws OpenDataException {
+        CompositeData cd = buildCompleteWith(Map.of(
+                "acceptedSequence",           1L,
+                "samplingEnabled",            true,
+                "samplingRatio",              1.0,
+                "samplingRouteRatios",        emptyRoutes(),
+                "validationEnabled",          true,
+                "validationStrict",           false,
+                "exporterEnabled",            true,
+                "traceControlHeadersEnabled", true,
+                "diagnosticsLogLevel",        "INFO"
+        ), /* nullFields= */ new String[]{"runtimeInstanceId"});
+
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+                .as("null runtimeInstanceId field MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("runtimeInstanceId");
+    }
+
+    /** P5.5-2c: diagnosticsLogLevel field is null. */
+    @Test
+    void decode_complete_null_diagnostics_log_level_throws() throws OpenDataException {
+        CompositeData cd = buildCompleteWith(Map.of(
+                "acceptedSequence",           1L,
+                "runtimeInstanceId",          "inst-1",
+                "samplingEnabled",            true,
+                "samplingRatio",              1.0,
+                "samplingRouteRatios",        emptyRoutes(),
+                "validationEnabled",          true,
+                "validationStrict",           false,
+                "exporterEnabled",            true,
+                "traceControlHeadersEnabled", true
+        ), /* nullFields= */ new String[]{"diagnosticsLogLevel"});
+
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+                .as("null diagnosticsLogLevel field MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("diagnosticsLogLevel");
+    }
+
+    /** P5.5-2d: samplingEnabled field is null. */
+    @Test
+    void decode_complete_null_sampling_enabled_throws() throws OpenDataException {
+        CompositeData cd = buildCompleteWith(Map.of(
+                "acceptedSequence",           1L,
+                "runtimeInstanceId",          "inst-1",
+                "samplingRatio",              1.0,
+                "samplingRouteRatios",        emptyRoutes(),
+                "validationEnabled",          true,
+                "validationStrict",           false,
+                "exporterEnabled",            true,
+                "traceControlHeadersEnabled", true,
+                "diagnosticsLogLevel",        "INFO"
+        ), /* nullFields= */ new String[]{"samplingEnabled"});
+
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+                .as("null samplingEnabled field MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("samplingEnabled");
+    }
+
+    // =========================================================================
+    // SECTION 3 — invalid scalar values
+    // =========================================================================
+
+    /** P5.5-3a: acceptedSequence < 0. */
+    @Test
+    void decode_complete_negative_sequence_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(-1L, "inst", 1.0, emptyRoutes(), "INFO")))
+                .as("negative acceptedSequence MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("acceptedSequence");
+    }
+
+    /** P5.5-3b: runtimeInstanceId = empty string. */
+    @Test
+    void decode_complete_blank_runtime_instance_id_empty_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "", 1.0, emptyRoutes(), "INFO")))
+                .as("blank (empty) runtimeInstanceId MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("runtimeInstanceId");
+    }
+
+    /** P5.5-3c: runtimeInstanceId = whitespace-only string. */
+    @Test
+    void decode_complete_blank_runtime_instance_id_whitespace_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "   ", 1.0, emptyRoutes(), "INFO")))
+                .as("whitespace-only runtimeInstanceId MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("runtimeInstanceId");
+    }
+
+    /** P5.5-3d/e: samplingRatio out of [0.0, 1.0]. */
+    @ParameterizedTest
+    @ValueSource(doubles = {-0.001, 1.001, -1.0, 2.0, -100.0, 100.0})
+    void decode_complete_out_of_range_sampling_ratio_throws(double ratio) {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", ratio, emptyRoutes(), "INFO")))
+                .as("out-of-range samplingRatio " + ratio + " MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("samplingRatio");
+    }
+
+    /** P5.5-3f: samplingRatio = NaN. */
+    @Test
+    void decode_complete_nan_sampling_ratio_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", Double.NaN, emptyRoutes(), "INFO")))
+                .as("NaN samplingRatio MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("samplingRatio");
+    }
+
+    /** P5.5-3g: samplingRatio = +Infinity. */
+    @Test
+    void decode_complete_infinite_sampling_ratio_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", Double.POSITIVE_INFINITY, emptyRoutes(), "INFO")))
+                .as("+Infinity samplingRatio MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("samplingRatio");
+    }
+
+    /** P5.5-3h: diagnosticsLogLevel = unknown value. */
+    @ParameterizedTest
+    @ValueSource(strings = {"VERBOSE", "ALL", "FATAL", "FINEST", "verbose", "info", "debug", "1", "null"})
+    void decode_complete_unknown_log_level_throws(String level) {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, emptyRoutes(), level)))
+                .as("unknown log level '" + level + "' MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("diagnosticsLogLevel");
+    }
+
+    /** P5.5-3i: diagnosticsLogLevel = empty string. */
+    @Test
+    void decode_complete_empty_log_level_throws() {
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, emptyRoutes(), "")))
+                .as("empty diagnosticsLogLevel MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("diagnosticsLogLevel");
+    }
+
+    // =========================================================================
+    // SECTION 4 — route-ratio violations
+    // =========================================================================
+
+    /** P5.5-4a: route prefix = empty string. */
+    @Test
+    void decode_complete_empty_route_prefix_throws() throws OpenDataException {
+        TabularData routes = routesWith("", 0.5);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("empty route prefix MUST throw")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-4b: route prefix length > MAX_ROUTE_PREFIX_LENGTH (255 UTF-16 code units). */
+    @Test
+    void decode_complete_oversized_route_prefix_throws() throws OpenDataException {
+        String longPrefix = "x".repeat(MAX_ROUTE_PREFIX_LEN + 1);
+        TabularData routes = routesWith(longPrefix, 0.5);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("prefix length > 255 MUST throw")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-4c: route ratio < 0.0. */
+    @Test
+    void decode_complete_route_ratio_below_zero_throws() throws OpenDataException {
+        TabularData routes = routesWith("/api", -0.1);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("route ratio < 0.0 MUST throw")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-4d: route ratio > 1.0. */
+    @Test
+    void decode_complete_route_ratio_above_one_throws() throws OpenDataException {
+        TabularData routes = routesWith("/api", 1.1);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("route ratio > 1.0 MUST throw")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-4e: route ratio = NaN. */
+    @Test
+    void decode_complete_route_ratio_nan_throws() throws OpenDataException {
+        TabularData routes = routesWith("/api", Double.NaN);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("NaN route ratio MUST throw")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** P5.5-4f: too many route entries (MAX_ROUTE_ENTRIES + 1 = 101). */
+    @Test
+    void decode_complete_too_many_route_entries_throws() throws OpenDataException {
+        TabularData routes = new TabularDataSupport(ROUTES_TYPE);
+        for (int i = 0; i <= MAX_ROUTE_ENTRIES; i++) {
+            routes.put(new CompositeDataSupport(
+                    ROUTE_ROW,
+                    new String[]{"ratio", "routePrefix"},
+                    new Object[]{0.5, "/route" + i}));
+        }
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("more than " + MAX_ROUTE_ENTRIES + " route entries MUST throw")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // =========================================================================
+    // SECTION 5 — oversized logical payload
+    // =========================================================================
+
+    /**
+     * P5.5-5a: runtimeInstanceId alone exceeds MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES.
+     * <p>
+     * A 33 000-byte runtimeInstanceId would be pathological in any real deployment;
+     * the codec MUST reject it rather than quietly forwarding unbounded strings.
+     */
+    @Test
+    void decode_complete_oversized_runtime_instance_id_throws() {
+        String oversizedId = "x".repeat(MAX_PAYLOAD_BYTES + 1000);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, oversizedId, 1.0, emptyRoutes(), "INFO")))
+                .as("runtimeInstanceId exceeding payload bound MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("logical payload");
+    }
+
+    /**
+     * P5.5-5b: routes collectively exceed MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES.
+     * <p>
+     * Each route contributes {@code prefixLength + 16} bytes to the logical size.
+     * 300 routes of prefix length 120 = 300 * (120 + 16) = 40 800 bytes, which
+     * exceeds the 32 768-byte bound.
+     */
+    @Test
+    void decode_complete_oversized_routes_payload_throws() throws OpenDataException {
+        TabularData routes = new TabularDataSupport(ROUTES_TYPE);
+        // 300 routes * 120-char prefix = 300 * (120+16) = 40800 bytes logical size
+        for (int i = 0; i < 100; i++) {
+            String prefix = String.format("/route-%s-%s",
+                    "a".repeat(55), String.format("%03d", i)); // ~65 chars each
+            routes.put(new CompositeDataSupport(
+                    ROUTE_ROW,
+                    new String[]{"ratio", "routePrefix"},
+                    new Object[]{0.5, prefix}));
+        }
+        // Build a very long runtimeInstanceId to push total over the bound
+        String bigId = "r".repeat(1024);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, bigId, 1.0, routes, "INFO")))
+                .as("routes + runtimeInstanceId exceeding payload bound MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("logical payload");
+    }
+
+    // =========================================================================
+    // SECTION 6 — decodeResponse — null / wrong CompositeType
+    // =========================================================================
+
+    /** P5.5-6a: null CompositeData to decodeResponse. */
+    @Test
+    void decode_response_null_throws() {
+        assertThatThrownBy(() -> codec.decodeResponse(null))
+                .as("null response CompositeData MUST throw IllegalArgumentException")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("CompositeType");
+    }
+
+    /** P5.5-6b: CompositeData with wrong CompositeType name to decodeResponse. */
+    @Test
+    void decode_response_wrong_type_throws() throws OpenDataException {
+        CompositeData wrong = new CompositeDataSupport(
+                WRONG_TYPE,
+                new String[]{"dummy"},
+                new Object[]{"value"});
+        assertThatThrownBy(() -> codec.decodeResponse(wrong))
+                .as("wrong CompositeType response MUST throw IllegalArgumentException")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("CompositeType");
+    }
+
+    // =========================================================================
+    // SECTION 7 — ConfigServerPolicyManifestBuilder — malformed Environment
+    // =========================================================================
+
+    /**
+     * P5.5-7a: route-ratio value is non-numeric ("not-a-number").
+     * <p>
+     * Plan §12: fail-closed manifest builder; any parse error MUST throw
+     * {@link TracingPolicyManifestException}.
+     */
+    @Test
+    void builder_non_numeric_route_ratio_throws() {
+        MockEnvironment env = fullPolicyEnvironment();
+        env.setProperty(
+                "platform.tracing.policy.sampling.route-ratios./api",
+                "not-a-number");
+
+        ConfigServerPolicyManifestBuilder builder =
+                new ConfigServerPolicyManifestBuilder(env, configServerClassifier(env));
+
+        assertThatThrownBy(builder::build)
+                .as("non-numeric route-ratio value MUST throw TracingPolicyManifestException")
+                .isInstanceOf(TracingPolicyManifestException.class);
+    }
+
+    /** P5.5-7b: route-ratio value > 1.0. */
+    @Test
+    void builder_route_ratio_above_one_throws() {
+        MockEnvironment env = fullPolicyEnvironment();
+        env.setProperty(
+                "platform.tracing.policy.sampling.route-ratios./api",
+                "1.5");
+
+        ConfigServerPolicyManifestBuilder builder =
+                new ConfigServerPolicyManifestBuilder(env, configServerClassifier(env));
+
+        assertThatThrownBy(builder::build)
+                .as("route-ratio > 1.0 MUST throw TracingPolicyManifestException")
+                .isInstanceOf(TracingPolicyManifestException.class);
+    }
+
+    /** P5.5-7c: route-ratio value < 0.0. */
+    @Test
+    void builder_route_ratio_below_zero_throws() {
+        MockEnvironment env = fullPolicyEnvironment();
+        env.setProperty(
+                "platform.tracing.policy.sampling.route-ratios./api",
+                "-0.1");
+
+        ConfigServerPolicyManifestBuilder builder =
+                new ConfigServerPolicyManifestBuilder(env, configServerClassifier(env));
+
+        assertThatThrownBy(builder::build)
+                .as("route-ratio < 0.0 MUST throw TracingPolicyManifestException")
+                .isInstanceOf(TracingPolicyManifestException.class);
+    }
+
+    // =========================================================================
+    // Helper — valid CompositeData constructors
+    // =========================================================================
+
+    private CompositeData validCompleteCd(
+            long seq, String instanceId, double ratio,
+            TabularData routes, String logLevel) {
+        try {
+            return new CompositeDataSupport(
+                    ACCEPTED_COMPLETE,
+                    new String[]{
+                            "acceptedSequence", "runtimeInstanceId",
+                            "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                            "validationEnabled", "validationStrict", "exporterEnabled",
+                            "traceControlHeadersEnabled", "diagnosticsLogLevel"
+                    },
+                    new Object[]{
+                            seq, instanceId,
+                            true, ratio, routes,
+                            true, false, true,
+                            true, logLevel
+                    });
+        } catch (OpenDataException e) {
+            throw new AssertionError("Test helper failed to build CompositeData", e);
+        }
+    }
+
+    /**
+     * Builds a CompositeData using the canonical ACCEPTED_COMPLETE type,
+     * allowing specific fields to be {@code null} by name.
+     * Non-null fields come from the supplied map; entries in {@code nullFields}
+     * are explicitly set to {@code null}.
+     */
+    private CompositeData buildCompleteWith(
+            Map<String, Object> nonNullValues,
+            String[] nullFields) throws OpenDataException {
+
+        String[] keys = {
+                "acceptedSequence", "runtimeInstanceId",
+                "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                "validationEnabled", "validationStrict", "exporterEnabled",
+                "traceControlHeadersEnabled", "diagnosticsLogLevel"
+        };
+        Object[] values = new Object[keys.length];
+        java.util.Set<String> nullSet = java.util.Set.of(nullFields);
+        for (int i = 0; i < keys.length; i++) {
+            if (nullSet.contains(keys[i])) {
+                values[i] = null;
+            } else {
+                values[i] = nonNullValues.getOrDefault(keys[i], defaultFor(keys[i]));
+            }
+        }
+        return new CompositeDataSupport(ACCEPTED_COMPLETE, keys, values);
+    }
+
+    private static Object defaultFor(String key) {
+        return switch (key) {
+            case "acceptedSequence"           -> 1L;
+            case "runtimeInstanceId"          -> "default-inst";
+            case "samplingEnabled",
+                 "validationEnabled",
+                 "exporterEnabled",
+                 "traceControlHeadersEnabled" -> true;
+            case "validationStrict"           -> false;
+            case "samplingRatio"              -> 1.0;
+            case "samplingRouteRatios"        -> emptyRoutes();
+            case "diagnosticsLogLevel"        -> "INFO";
+            default -> throw new IllegalArgumentException("Unknown key: " + key);
+        };
+    }
+
+    /** Returns a sentinel object used as a placeholder for explicit null fields. */
+    private static Object nullSentinel() {
+        return null; // used symbolically — the caller overrides with null in the array
+    }
+
+    // =========================================================================
+    // Helper — TabularData builders
+    // =========================================================================
+
+    private static TabularData emptyRoutes() {
+        return new TabularDataSupport(ROUTES_TYPE);
+    }
+
+    private static TabularData routesWith(String prefix, double ratio) throws OpenDataException {
+        TabularDataSupport routes = new TabularDataSupport(ROUTES_TYPE);
+        routes.put(new CompositeDataSupport(
+                ROUTE_ROW,
+                new String[]{"ratio", "routePrefix"},
+                new Object[]{ratio, prefix}));
+        return routes;
+    }
+
+    // =========================================================================
+    // Helper — Open-Type constructors
+    // =========================================================================
+
+    private static CompositeType routeRowType() {
+        try {
+            return new CompositeType(
+                    "space.br1440.platform.tracing.control.RouteRatio.v1",
+                    "space.br1440.platform.tracing.control.RouteRatio.v1",
+                    new String[]{"ratio", "routePrefix"},
+                    new String[]{"ratio", "routePrefix"},
+                    new OpenType<?>[]{SimpleType.DOUBLE, SimpleType.STRING});
+        } catch (OpenDataException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    private static TabularType routesType(CompositeType rowType) {
+        try {
+            return new TabularType(
+                    "space.br1440.platform.tracing.control.RouteRatios.v1",
+                    "space.br1440.platform.tracing.control.RouteRatios.v1",
+                    rowType,
+                    new String[]{"routePrefix"});
+        } catch (OpenDataException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    private static CompositeType acceptedCompleteType() {
+        try {
+            return new CompositeType(
+                    "AcceptedCompleteSnapshot/v1",
+                    "AcceptedCompleteSnapshot/v1",
+                    new String[]{
+                            "acceptedSequence", "runtimeInstanceId",
+                            "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                            "validationEnabled", "validationStrict", "exporterEnabled",
+                            "traceControlHeadersEnabled", "diagnosticsLogLevel"
+                    },
+                    new String[]{
+                            "acceptedSequence", "runtimeInstanceId",
+                            "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                            "validationEnabled", "validationStrict", "exporterEnabled",
+                            "traceControlHeadersEnabled", "diagnosticsLogLevel"
+                    },
+                    new OpenType<?>[]{
+                            SimpleType.LONG, SimpleType.STRING,
+                            SimpleType.BOOLEAN, SimpleType.DOUBLE, routesType(routeRowType()),
+                            SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                            SimpleType.BOOLEAN, SimpleType.STRING
+                    });
+        } catch (OpenDataException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    private static CompositeType wrongCompositeType() {
+        try {
+            return new CompositeType(
+                    "WrongType/v999", "WrongType/v999",
+                    new String[]{"dummy"}, new String[]{"dummy"},
+                    new OpenType<?>[]{SimpleType.STRING});
+        } catch (OpenDataException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    // =========================================================================
+    // Helper — ConfigServerPolicyManifestBuilder support
+    // =========================================================================
+
+    /**
+     * Builds a {@link MockEnvironment} containing all 7 required Category A leaves
+     * with valid, Config-Server-sourced values (i.e. provenance = CONFIG_SERVER).
+     * Individual test methods add or override specific properties to introduce
+     * malformed values.
+     */
+    private static MockEnvironment fullPolicyEnvironment() {
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("platform.tracing.policy.sampling.enabled",                        "true");
+        env.setProperty("platform.tracing.policy.sampling.ratio",                          "1.0");
+        env.setProperty("platform.tracing.policy.validation.enabled",                      "true");
+        env.setProperty("platform.tracing.policy.validation.strict",                       "false");
+        env.setProperty("platform.tracing.policy.exporter.enabled",                        "true");
+        env.setProperty("platform.tracing.policy.propagation.trace-control-headers.enabled", "true");
+        env.setProperty("platform.tracing.policy.diagnostics.log-level",                   "INFO");
+        return env;
+    }
+
+    /**
+     * Returns a {@link ConfigServerPolicyProvenanceClassifier} that treats every
+     * property in the given {@link MockEnvironment} as coming from Config Server
+     * (i.e. {@code ProvenanceClass.CONFIG_SERVER}).
+     */
+    private static ConfigServerPolicyProvenanceClassifier configServerClassifier(
+            MockEnvironment env) {
+        return key -> ConfigServerPolicyProvenanceClassifier.ProvenanceClass.CONFIG_SERVER;
+    }
+}
