@@ -1,0 +1,114 @@
+{
+  "gate": "P5.9",
+  "verdict": "FAIL",
+  "executedAt": "2026-07-29",
+  "commands": [
+    {
+      "id": "focused-agent",
+      "command": ".\\gradlew.bat :platform-tracing-otel-javaagent-extension:test --no-daemon --rerun-tasks",
+      "status": "PASS",
+      "duration": "25s",
+      "tests": 866,
+      "failures": 0,
+      "skipped": 0
+    },
+    {
+      "id": "focused-spring-full",
+      "command": ".\\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon --rerun-tasks",
+      "status": "FAIL",
+      "duration": "38s",
+      "tests": 595,
+      "failures": 3,
+      "skipped": 0,
+      "findings": [
+        "TracingConfigurationInventoryGeneratorTest.generatedInventoryMatchesCommittedEvidence: inventory drift",
+        "MdcPropagationAsyncIntegrationTest: missing PlatformTracingJmxClient bean",
+        "MdcPropagationCompletableFutureTest: missing PlatformTracingJmxClient bean"
+      ]
+    },
+    {
+      "id": "focused-p5-spring",
+      "command": ".\\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --tests \"*P5*\" --no-daemon --rerun-tasks",
+      "status": "PASS",
+      "duration": "28s",
+      "tests": 200,
+      "failures": 0,
+      "skipped": 0
+    },
+    {
+      "id": "config-provenance",
+      "command": ".\\gradlew.bat configProvenanceVerify --no-daemon --rerun-tasks",
+      "status": "PASS",
+      "duration": "46s"
+    },
+    {
+      "id": "private-mbean-server",
+      "command": ".\\gradlew.bat privateMBeanServerVerify --no-daemon --rerun-tasks",
+      "status": "PASS",
+      "duration": "30s"
+    },
+    {
+      "id": "inventory",
+      "command": ".\\gradlew.bat tracingConfigurationInventoryVerify --no-daemon --rerun-tasks",
+      "status": "FAIL",
+      "duration": "19s",
+      "finding": "Committed tracing-configuration inventory differs from the generated inventory."
+    },
+    {
+      "id": "root-test",
+      "command": ".\\gradlew.bat test --no-daemon --rerun-tasks",
+      "status": "FAIL",
+      "duration": "59s",
+      "finding": "The same three Spring autoconfigure failures reproduced. The ordinary E2E task was SKIPPED and was not counted as PASS."
+    },
+    {
+      "id": "full-build",
+      "command": ".\\gradlew.bat build --no-daemon --rerun-tasks",
+      "status": "FAIL",
+      "duration": "1m09s",
+      "finding": "The same three Spring autoconfigure failures reproduced."
+    },
+    {
+      "id": "docker-e2e",
+      "command": "$env:DOCKER_HOST='tcp://192.168.100.70:2375'; .\\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --no-daemon --rerun-tasks",
+      "status": "PASS",
+      "duration": "9m44s",
+      "tests": 65,
+      "classes": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "id": "p57-budget-contract",
+      "command": ".\\gradlew.bat :platform-tracing-bench:test --tests \"*P57BudgetContractTest\" --no-daemon --rerun-tasks",
+      "status": "PASS",
+      "duration": "14s"
+    },
+    {
+      "id": "p57-formal-jmh",
+      "commands": [
+        "java -Xms2g -Xmx2g -jar platform-tracing-bench/build/libs/platform-tracing-bench-0.1.0-SNAPSHOT-jmh.jar P57AcceptedStateApplyBenchmark -prof gc -rf json -rff docs/research/evidence/p5-execution/p59/jmh/p57-apply-jmh.json",
+        "java -Xms2g -Xmx2g -jar platform-tracing-bench/build/libs/platform-tracing-bench-0.1.0-SNAPSHOT-jmh.jar P57AcceptedStateCodecBenchmark -prof gc -rf json -rff docs/research/evidence/p5-execution/p59/jmh/p57-codec-jmh.json",
+        "java -Xms2g -Xmx2g -jar platform-tracing-bench/build/libs/platform-tracing-bench-0.1.0-SNAPSHOT-jmh.jar P57AcceptedStateDigestBenchmark -prof gc -rf json -rff docs/research/evidence/p5-execution/p59/jmh/p57-digest-jmh.json",
+        "java -Xms2g -Xmx2g -jar platform-tracing-bench/build/libs/platform-tracing-bench-0.1.0-SNAPSHOT-jmh.jar P57AcceptedStateReadBenchmark -prof gc -rf json -rff docs/research/evidence/p5-execution/p59/jmh/p57-read-jmh.json"
+      ],
+      "status": "FAIL",
+      "profile": {
+        "forks": 3,
+        "warmupForks": 2,
+        "warmupIterations": 3,
+        "warmupTimeSeconds": 5,
+        "measurementIterations": 5,
+        "measurementTimeSeconds": 5
+      },
+      "finding": "applyUnchanged measured 280.000006 B/op against the committed 0 B/op contract. applyApplied and applyStale do not assert the returned outcome on each invocation and do not reliably isolate the named branch."
+    },
+    {
+      "id": "m10",
+      "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10 -DockerHost tcp://192.168.100.70:2375",
+      "status": "BLOCKED_INFRASTRUCTURE",
+      "finding": "Docker endpoint became unreachable during docker compose build. M10c and M10d were not run. Independently, the macro harness still uses the forbidden PerfAdmin/PlatformTracingControl path."
+    }
+  ]
+}

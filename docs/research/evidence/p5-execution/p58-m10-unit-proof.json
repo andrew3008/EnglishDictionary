@@ -1,0 +1,26 @@
+{
+  "gate": "P5.8",
+  "name": "M10/M10c/M10d production-flow unit proof",
+  "asOf": "2026-07-29",
+  "status": "COMPLETED_UNIT",
+  "sourcePr": "https://github.com/andrew3008/EnglishDictionary/pull/40",
+  "localFile": "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/configuration/configserver/P58M10ProductionFlowTest.java",
+  "productionCodeChanged": false,
+  "command": ".\\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --tests space.br1440.platform.tracing.autoconfigure.configuration.configserver.P58M10ProductionFlowTest --no-daemon",
+  "result": {
+    "tests": 16,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "verdict": "PASS"
+  },
+  "localFixesFromPr": [
+    "Typed Queue/Optional/AtomicReference generics (PR used raw types)",
+    "Repository 4-space formatting and import layout",
+    "Assert allAppliedSources are CONFIG_SERVER across STALE retry",
+    "Clarified no PerfAdmin/legacy writer path in fixture"
+  ],
+  "residuals": [
+    "Macro platform-tracing-perf-tests M10/m10c/m10d still documents PerfAdmin/PlatformTracingControl — rewrite before counting harness evidence in P5.9"
+  ]
+}

@@ -1,0 +1,41 @@
+
+E:\Platform_Traces>if "Windows_NT" == "Windows_NT" setlocal
+
+E:\Platform_Traces>set DIRNAME=E:\Platform_Traces\
+
+E:\Platform_Traces>if "E:\Platform_Traces\" == "" set DIRNAME=.
+
+E:\Platform_Traces>set APP_BASE_NAME=gradlew
+
+E:\Platform_Traces>set APP_HOME=E:\Platform_Traces\
+
+E:\Platform_Traces>for %i in ("E:\Platform_Traces\") do set APP_HOME=%~fi
+
+E:\Platform_Traces>set APP_HOME=E:\Platform_Traces\
+
+E:\Platform_Traces>set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+
+E:\Platform_Traces>if defined JAVA_HOME goto findJavaFromJavaHome
+
+E:\Platform_Traces>set JAVA_HOME=G:\JavaFrameworks\jdk-21.0.6
+
+E:\Platform_Traces>set JAVA_EXE=G:\JavaFrameworks\jdk-21.0.6/bin/java.exe
+
+E:\Platform_Traces>if exist "G:\JavaFrameworks\jdk-21.0.6/bin/java.exe" goto execute
+
+E:\Platform_Traces>set CLASSPATH=E:\Platform_Traces\\gradle\wrapper\gradle-wrapper.jar
+
+E:\Platform_Traces>"G:\JavaFrameworks\jdk-21.0.6/bin/java.exe" "-Xmx64m" "-Xms64m"   "-Dorg.gradle.appname=gradlew" -classpath "E:\Platform_Traces\\gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain :platform-tracing-perf-tests:prepareSutDockerContext -q
+
+E:\Platform_Traces>if "0" == "0" goto mainEnd
+
+E:\Platform_Traces>if "Windows_NT" == "Windows_NT" endlocal
+
+=== TERMINAL FAILURE (captured by the invoking PowerShell session) ===
+docker compose build failed before container startup.
+Docker API request:
+  http://192.168.100.70:2375/v1.24/containers/json
+Failure:
+  dial tcp 192.168.100.70:2375: connectex: the endpoint did not respond.
+Exit classification:
+  BLOCKED_INFRASTRUCTURE

@@ -1,0 +1,369 @@
+{
+  "gate": "P5.0",
+  "name": "P5 PRE-FLIGHT baseline census and task resolution",
+  "asOf": "2026-07-29",
+  "capturedAt": "2026-07-29T13:52:06+03:00",
+  "status": "COMPLETED",
+  "verdict": "BASELINE_RECORDED",
+  "productionCodeChangedByThisGate": false,
+  "preconditions": {
+    "p4FormalClosure": "FORMALLY_CLOSED",
+    "p4FormalClosureEvidence": "docs/research/evidence/p4-webflux-parity/formal-closure-gate.md",
+    "privR07": "APPROVED",
+    "p5Unblocked": true
+  },
+  "repository": {
+    "head": "84f448800db5851cc6ab9bbfc3f7a8e3d6d643e7",
+    "branch": "master",
+    "headSubject": "P5 Part_2 Tests",
+    "recentCommits": [
+      "84f4488 P5 Part_2 Tests",
+      "fddbe1c P5 Part 1",
+      "00b6f54 Merge pull request #26 from andrew3008/feature/p4-unified-tracing-policy-adapters"
+    ],
+    "workingTree": {
+      "dirty": true,
+      "changedFileCount": 2,
+      "inventory": [
+        { "path": "docs/analysis/plans/immutable_config_namespace_split_ba8da442.plan.md", "status": "M" },
+        { "path": "docs/otel-junit-extensions-plan-v2.md", "status": "M" }
+      ],
+      "untrackedEvidence": []
+    }
+  },
+  "toolchain": {
+    "java": {
+      "version": "21.0.6",
+      "vendor": "Oracle Corporation",
+      "full": "Java(TM) SE Runtime Environment (build 21.0.6+8-LTS-188)"
+    },
+    "gradle": {
+      "version": "8.14",
+      "launcherJvm": "21.0.6",
+      "os": "Windows 10 10.0 amd64"
+    },
+    "git": "2.33.0.windows.2",
+    "host": {
+      "computerName": "DESKTOP-OEGBG7F",
+      "os": "Microsoft Windows NT 10.0.19045.0"
+    }
+  },
+  "environment": {
+    "docker": {
+      "status": "AVAILABLE",
+      "dockerHost": "tcp://192.168.100.70:2375",
+      "serverVersion": "28.0.4",
+      "serverOs": "linux",
+      "serverArch": "amd64",
+      "note": "Gentoo T480 lab; required for -PrunE2e and M10/perf scenarios"
+    },
+    "gitCli": {
+      "status": "AVAILABLE",
+      "requiredBy": ["configProvenanceVerify", "ConfigServerGitProcessCharacterizationTest"]
+    },
+    "k6": {
+      "status": "NOT_ON_PATH",
+      "note": "Local k6 binary absent; perf harness may use Docker image on DOCKER_HOST — verify at P5.8 execution time"
+    },
+    "jmh": {
+      "module": "platform-tracing-bench",
+      "tasksResolved": [
+        "platform-tracing-bench:jmh",
+        "platform-tracing-bench:jmhCompareBaseline",
+        "platform-tracing-bench:jmhRunBaselineBatches",
+        "platform-tracing-bench:jmhSaveBaseline",
+        "platform-tracing-bench:jmhValidateBatchResults"
+      ],
+      "committedBaselinePresent": true,
+      "committedBaselinePath": "platform-tracing-bench/baselines/windows-i5-13500-pr0/results.json",
+      "acceptedStateBenchmarksPresent": [
+        "space.br1440.platform.tracing.bench.acceptedstate.S01AcceptedStateReadBenchmark",
+        "space.br1440.platform.tracing.bench.acceptedstate.S01AcceptedStateContendedBenchmark"
+      ],
+      "p57RequiredBenchmarksMissing": [
+        "Agent encodeAcceptedComplete",
+        "Spring decodeCompleteWithSequence",
+        "APPLIED/UNCHANGED/STALE applySnapshot path",
+        "digest compute"
+      ]
+    },
+    "configServerFixtures": {
+      "status": "PRESENT",
+      "sourceSet": "platform-tracing-e2e-tests/src/configProvenance/java",
+      "classes": [
+        "space.br1440.platform.tracing.e2e.configserver.support.ConfigClientHarness",
+        "space.br1440.platform.tracing.e2e.configserver.support.ConfigServerResponseStub",
+        "space.br1440.platform.tracing.e2e.configserver.ConfigServerTestApplication",
+        "space.br1440.platform.tracing.e2e.configserver.ConfigServerProcessApplication",
+        "space.br1440.platform.tracing.e2e.configserver.ConfigServerProvenanceCharacterizationTest",
+        "space.br1440.platform.tracing.e2e.configserver.ConfigServerGitProcessCharacterizationTest"
+      ],
+      "tasks": [
+        "configProvenanceVerify",
+        ":platform-tracing-e2e-tests:configProvenanceTest"
+      ],
+      "priorEvidence": "docs/research/evidence/config-provenance/"
+    },
+    "jmxRmiFixtures": {
+      "status": "PRESENT",
+      "privateMBeanSourceSets": [
+        "platform-tracing-e2e-tests/src/privateMBeanServerExtension/java",
+        "platform-tracing-e2e-tests/src/privateMBeanServerApp/java"
+      ],
+      "classes": [
+        "space.br1440.platform.tracing.e2e.jmx.privateplane.PrivateMBeanServerExtension",
+        "space.br1440.platform.tracing.e2e.jmx.privateplane.PrivateMBeanServerRemoteClientMain",
+        "space.br1440.platform.tracing.e2e.jmx.PrivateMBeanServerIsolationE2ETest",
+        "space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane"
+      ],
+      "tasks": [
+        "privateMBeanServerVerify",
+        ":platform-tracing-e2e-tests:privateMBeanServerTest"
+      ],
+      "priorEvidence": "docs/research/evidence/private-mbeanserver/"
+    }
+  },
+  "symbolCorrections": {
+    "CompleteTracingPolicyManifestBuilder": {
+      "exists": false,
+      "actualProductionClass": "space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerPolicyManifestBuilder",
+      "path": "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/configuration/configserver/ConfigServerPolicyManifestBuilder.java"
+    }
+  },
+  "productionSymbols": {
+    "servletControl": {
+      "module": "platform-tracing-spring-boot-autoconfigure",
+      "managementContextConfiguration": "space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingControlManagementContextConfiguration",
+      "httpController": "space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingControlMvcController",
+      "adapter": "space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter"
+    },
+    "webFluxControl": {
+      "module": "platform-tracing-autoconfigure-webflux",
+      "managementContextConfiguration": "space.br1440.platform.tracing.autoconfigure.reactive.TracingControlWebFluxManagementContextConfiguration",
+      "importsFile": "platform-tracing-autoconfigure-webflux/src/main/resources/META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports"
+    },
+    "configServer": {
+      "coalescer": "space.br1440.platform.tracing.autoconfigure.configuration.configserver.TracingPolicyRefreshCoalescer",
+      "adapter": "space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerTracingPolicyAdapter",
+      "manifestBuilder": "space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerPolicyManifestBuilder",
+      "provenanceClassifier": "space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerPolicyProvenanceClassifier"
+    },
+    "privateControlCodecs": {
+      "spring": "space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec",
+      "agent": "space.br1440.platform.tracing.otel.javaagent.control.state.PrivateControlOpenTypeCodec"
+    },
+    "acceptedStateOwners": {
+      "agentCoordinator": "space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyCoordinator",
+      "agentStore": "space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyStateStore",
+      "agentWriter": "space.br1440.platform.tracing.otel.javaagent.control.state.PrivateControlWriter",
+      "springSnapshotClient": "space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient",
+      "springSnapshotInterface": "space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient"
+    },
+    "categoryALeaves": {
+      "count": 8,
+      "propertyKeys": [
+        "platform.tracing.policy.sampling.enabled",
+        "platform.tracing.policy.sampling.ratio",
+        "platform.tracing.policy.sampling.route-ratios",
+        "platform.tracing.policy.validation.enabled",
+        "platform.tracing.policy.validation.strict",
+        "platform.tracing.policy.exporter.enabled",
+        "platform.tracing.policy.propagation.trace-control-headers.enabled",
+        "platform.tracing.policy.diagnostics.log-level"
+      ],
+      "javaComponents": [
+        "samplingEnabled",
+        "samplingRatio",
+        "samplingRouteRatios",
+        "validationEnabled",
+        "validationStrict",
+        "exporterEnabled",
+        "traceControlHeadersEnabled",
+        "diagnosticsLogLevel"
+      ]
+    }
+  },
+  "existingP5Tests": {
+    "p5Prefixed": [
+      {
+        "fqcn": "space.br1440.platform.tracing.autoconfigure.configuration.configserver.P51CategoryALeafMissingTest",
+        "path": "platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/configuration/configserver/P51CategoryALeafMissingTest.java",
+        "gate": "P5.1",
+        "planStatus": "COMPLETED"
+      }
+    ],
+    "relevantExisting": {
+      "coalescer": "TracingPolicyRefreshCoalescerTest",
+      "authority": "TracingConfigurationAuthorityGuardContextTest",
+      "wireParity": [
+        "AgentToSpringWireCodecParityTest",
+        "PrivateControlCodecParityTest",
+        "PrivateControlOpenTypeCodecTest"
+      ],
+      "webFlux": [
+        "TracingControlWebFluxRouterHttpTest",
+        "TracingControlWebFluxManagementContextAbsenceTest",
+        "TracingControlWebFluxManagementChildContextIntegrationTest"
+      ]
+    }
+  },
+  "evidenceLocations": {
+    "p5Execution": "docs/research/evidence/p5-execution/",
+    "p4Closure": [
+      "docs/research/evidence/p4-closure-status/",
+      "docs/research/evidence/p4-webflux-parity/",
+      "docs/research/evidence/priv-r07-proposal/"
+    ],
+    "performanceBudgetContract": "docs/tracing/performance-budgets.yaml",
+    "m10Scenarios": [
+      "platform-tracing-perf-tests/scenarios/m10.env",
+      "platform-tracing-perf-tests/scenarios/m10c.env",
+      "platform-tracing-perf-tests/scenarios/m10d.env"
+    ]
+  },
+  "resolvedCommands": {
+    "p51Focused": {
+      "task": ":platform-tracing-spring-boot-autoconfigure:test",
+      "filter": "--tests space.br1440.platform.tracing.autoconfigure.configuration.configserver.P51CategoryALeafMissingTest",
+      "resolved": true
+    },
+    "p59Minimum": [
+      {
+        "command": ".\\gradlew.bat :platform-tracing-otel-javaagent-extension:test --no-daemon --rerun-tasks",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon --rerun-tasks",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat :platform-tracing-autoconfigure-webflux:test --no-daemon --rerun-tasks",
+        "resolved": true,
+        "note": "WebFlux parity module; not listed in plan §P5.9 snippet but required by P4 control surface"
+      },
+      {
+        "command": ".\\gradlew.bat configProvenanceVerify --no-daemon --rerun-tasks",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat privateMBeanServerVerify --no-daemon --rerun-tasks",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat tracingConfigurationInventoryVerify --no-daemon --rerun-tasks",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat test --no-daemon --rerun-tasks",
+        "resolved": true,
+        "note": "Root test; e2e module skipped without -PrunE2e"
+      },
+      {
+        "command": ".\\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --no-daemon --rerun-tasks",
+        "resolved": true,
+        "correction": "Plan §P5.9 lists this task without -PrunE2e; without the property the suite is SKIPPED (onlyIf guard). Mandatory P5 E2E MUST use -PrunE2e and DOCKER_HOST."
+      },
+      {
+        "command": ".\\gradlew.bat :platform-tracing-e2e-tests:privateMBeanServerTest --no-daemon --rerun-tasks",
+        "resolved": true
+      }
+    ],
+    "jmh": [
+      {
+        "command": ".\\gradlew.bat :platform-tracing-bench:jmh --no-daemon",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat :platform-tracing-bench:jmhCompareBaseline --no-daemon",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat :platform-tracing-bench:jmhRunBaselineBatches --no-daemon",
+        "resolved": true
+      }
+    ],
+    "m10": [
+      {
+        "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10 -DockerHost tcp://192.168.100.70:2375",
+        "resolved": true,
+        "kind": "powershell-script",
+        "notAGradleTask": true
+      },
+      {
+        "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10c -DockerHost tcp://192.168.100.70:2375",
+        "resolved": true,
+        "kind": "powershell-script",
+        "notAGradleTask": true
+      },
+      {
+        "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10d -DockerHost tcp://192.168.100.70:2375",
+        "resolved": true,
+        "kind": "powershell-script",
+        "notAGradleTask": true
+      }
+    ],
+    "architectureFitness": [
+      {
+        "command": ".\\gradlew.bat pr4ArchitectureFitnessVerify --no-daemon",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat priv07ProposalVerify --no-daemon",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat acceptedStatePrimitiveVerify --no-daemon",
+        "resolved": true
+      },
+      {
+        "command": ".\\gradlew.bat jmxReadOnlyDeltaVerify --no-daemon",
+        "resolved": true
+      }
+    ]
+  },
+  "blockersAndRisks": [
+    {
+      "id": "P5_7_BUDGET_CONTRACT_GAP",
+      "severity": "BLOCKER_FOR_P5_7",
+      "status": "RECORDED_NOT_PASS",
+      "detail": "docs/tracing/performance-budgets.yaml has dynconf-no-stall (M10) and generic jmh-*-regression budgets, but no exact committed thresholds for Agent encode / Spring decode / applySnapshot APPLIED|UNCHANGED|STALE / digest. P5.7 contract says missing exact thresholds → BLOCKED_BUDGET_MISSING. Do not invent percentages."
+    },
+    {
+      "id": "P5_7_BENCHMARK_IMPL_GAP",
+      "severity": "BLOCKER_FOR_P5_7",
+      "status": "RECORDED_NOT_PASS",
+      "detail": "Only S01AcceptedStateReadBenchmark and S01AcceptedStateContendedBenchmark exist. No JMH classes for encodeAcceptedComplete, Spring decode, or apply outcomes."
+    },
+    {
+      "id": "P5_8_M10_LEGACY_CONTROL_PATH",
+      "severity": "BLOCKER_FOR_P5_8_UNTIL_REWRITE",
+      "status": "RECORDED_NOT_PASS",
+      "detail": "platform-tracing-perf-tests/README.md documents /perf/admin/* bridged to PlatformTracingControl MBean. P5.8 forbids legacy platform JMX setters / RuntimeConfigApplier / partial applyPolicy / PerfAdmin path even in fixtures. M10 must be rewritten to Config Server or typed DEV → private applySnapshot before execution counts as PASS."
+    },
+    {
+      "id": "P5_9_E2E_PROPERTY_CORRECTION",
+      "severity": "COMMAND_CORRECTION",
+      "status": "RESOLVED_IN_BASELINE",
+      "detail": "Mandatory aggregate E2E command is :platform-tracing-e2e-tests:test -PrunE2e (with DOCKER_HOST). Omitting -PrunE2e yields SKIPPED and must be treated as BLOCKED, not PASS."
+    },
+    {
+      "id": "K6_LOCAL_ABSENT",
+      "severity": "ENVIRONMENT_NOTE",
+      "status": "RECORDED_NOT_PASS",
+      "detail": "k6 not on PATH on DESKTOP-OEGBG7F. Confirm Docker-backed k6 path on Gentoo before counting M10/perf harness SMOKE/REFERENCE."
+    },
+    {
+      "id": "M10_BUDGET_PENDING",
+      "severity": "BUDGET_STATUS",
+      "status": "RECORDED_NOT_PASS",
+      "detail": "performance-budgets.yaml id dynconf-no-stall status=PENDING evidence=null. Formal P5.8/P5.9 cannot claim PASS against an unvalidated PENDING hard budget without measured evidence."
+    }
+  ],
+  "acceptance": {
+    "baselineReferencesCurrentHead": true,
+    "plannedCommandsResolveToRealTasks": true,
+    "missingEnvironmentRecordedAsBlockerNotPass": true,
+    "workingTreeFullyInventoried": true,
+    "productionCodeUnchanged": true
+  }
+}

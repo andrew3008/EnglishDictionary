@@ -1,0 +1,27 @@
+{
+  "gate": "P5.9",
+  "capturedAt": "2026-07-29",
+  "repository": "https://github.com/andrew3008/EnglishDictionary.git",
+  "branch": "master",
+  "head": "84f448800db5851cc6ab9bbfc3f7a8e3d6d643e7",
+  "operatingSystem": "Microsoft Windows 10.0.19045",
+  "cpu": {
+    "name": "13th Gen Intel(R) Core(TM) i5-13500",
+    "cores": 14,
+    "logicalProcessors": 20
+  },
+  "java": "21.0.6+8-LTS-188",
+  "gradle": "8.14",
+  "powershell": "5.1.19041.6456",
+  "docker": {
+    "host": "tcp://192.168.100.70:2375",
+    "serverVersionAtE2eStart": "28.0.4",
+    "serverOs": "linux",
+    "serverKernel": "6.12.31-gentoo",
+    "statusAtM10Start": "UNREACHABLE"
+  },
+  "worktree": {
+    "clean": false,
+    "note": "P5 candidate files were uncommitted. Unrelated and concurrent user changes were excluded from the evidence commit."
+  }
+}

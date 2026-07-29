@@ -1,0 +1,156 @@
+[
+    {
+        "benchmark":  "applyApplied",
+        "score":  46.074,
+        "error":  21.860,
+        "unit":  "ns/op",
+        "alloc":  352.000015,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "applyStale",
+        "score":  189.512,
+        "error":  19.552,
+        "unit":  "ns/op",
+        "alloc":  970.666715,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "applyUnchanged",
+        "score":  21.515,
+        "error":  0.200,
+        "unit":  "ns/op",
+        "alloc":  280.000006,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "digestFiveRoutes",
+        "score":  841.412,
+        "error":  4.286,
+        "unit":  "ns/op",
+        "alloc":  1656.000069,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "digestNoRoutes",
+        "score":  560.827,
+        "error":  72.382,
+        "unit":  "ns/op",
+        "alloc":  704.000046,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "decodeFiveRoutes",
+        "score":  785.608,
+        "error":  278.986,
+        "unit":  "ns/op",
+        "alloc":  1176.000064,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "decodeNoRoutes",
+        "score":  381.599,
+        "error":  141.442,
+        "unit":  "ns/op",
+        "alloc":  320.000031,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "encodeFiveRoutes",
+        "score":  1260.567,
+        "error":  302.456,
+        "unit":  "ns/op",
+        "alloc":  2576.000103,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "encodeNoRoutes",
+        "score":  447.163,
+        "error":  6.455,
+        "unit":  "ns/op",
+        "alloc":  760.000036,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "currentViewNoRoutes",
+        "score":  1.128,
+        "error":  0.132,
+        "unit":  "ns/op",
+        "alloc":  0,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "fullProjectionFiveRoutes",
+        "score":  1.747,
+        "error":  0.029,
+        "unit":  "ns/op",
+        "alloc":  0,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "fullProjectionNoRoutes",
+        "score":  3.215,
+        "error":  0.069,
+        "unit":  "ns/op",
+        "alloc":  0,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "readSamplingEnabledFiveRoutes",
+        "score":  0.896,
+        "error":  0.014,
+        "unit":  "ns/op",
+        "alloc":  0,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    },
+    {
+        "benchmark":  "readSamplingEnabledNoRoutes",
+        "score":  1.071,
+        "error":  0.321,
+        "unit":  "ns/op",
+        "alloc":  0,
+        "allocUnit":  "B/op",
+        "forks":  3,
+        "warmupIterations":  3,
+        "measurementIterations":  5
+    }
+]

@@ -1,0 +1,22 @@
+{
+  "gate": "P5.8/P5.9",
+  "scenario": "m10",
+  "status": "BLOCKED_INFRASTRUCTURE",
+  "head": "84f448800db5851cc6ab9bbfc3f7a8e3d6d643e7",
+  "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10 -DockerHost tcp://192.168.100.70:2375",
+  "encodingAdapter": "Windows PowerShell 5.1 source was read explicitly as UTF-8 in memory; the repository file was not modified.",
+  "observed": [
+    "prepareSutDockerContext completed",
+    "docker compose build could not connect to tcp://192.168.100.70:2375",
+    "no warmup or steady-state workload started",
+    "no result JSON, sequence/digest assertion, sanitized runtime log set or trace observation was produced"
+  ],
+  "notRun": [
+    "m10c",
+    "m10d"
+  ],
+  "independentContractBlocker": {
+    "status": "FAIL",
+    "reason": "The macro harness still invokes /perf/admin/* and PerfAdminController, which bridges to legacy PlatformTracingControl. P5.8 forbids this path even in fixtures."
+  }
+}
