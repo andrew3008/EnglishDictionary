@@ -1,0 +1,141 @@
+{
+  "gate": "P5.7",
+  "capturedAt": "2026-07-29T19:39:58+03:00",
+  "verifiedCommit": "d170ef36d925217d0843b52cda811084154408e3",
+  "executionBaseHead": "a7516c4cf49a8be15efd581357664f077fe13c4f",
+  "java": "21.0.6",
+  "profile": {
+    "forks": 3,
+    "warmupForks": 2,
+    "warmupIterations": 3,
+    "warmupSeconds": 5,
+    "measurementIterations": 5,
+    "measurementSeconds": 5,
+    "profiler": "gc"
+  },
+  "verdict": "PASS",
+  "results": [
+    {
+      "benchmark": "applyApplied",
+      "scoreNsPerOp": 153.336,
+      "allocationBytesPerOp": 168.0,
+      "budgetNsPerOp": 600,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "applyStale",
+      "scoreNsPerOp": 1.851,
+      "allocationBytesPerOp": 0.000000155437,
+      "outcomeCheckedOnEveryInvocation": true,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "applyUnchanged",
+      "scoreNsPerOp": 7.680,
+      "allocationBytesPerOp": 0.000000625989,
+      "budgetNsPerOp": 250,
+      "outcomeCheckedOnEveryInvocation": true,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "decodeFiveRoutes",
+      "scoreNsPerOp": 1180.675,
+      "allocationBytesPerOp": 1176.0,
+      "budgetNsPerOp": 25000,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "decodeNoRoutes",
+      "scoreNsPerOp": 545.403,
+      "allocationBytesPerOp": 320.0,
+      "budgetNsPerOp": 20000,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "encodeFiveRoutes",
+      "scoreNsPerOp": 1940.385,
+      "allocationBytesPerOp": 2576.0,
+      "budgetNsPerOp": 20000,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "encodeNoRoutes",
+      "scoreNsPerOp": 432.748,
+      "allocationBytesPerOp": 760.0,
+      "budgetNsPerOp": 15000,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "digestFiveRoutes",
+      "scoreNsPerOp": 1044.272,
+      "allocationBytesPerOp": 1656.0,
+      "budgetNsPerOp": 1200,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "digestNoRoutes",
+      "scoreNsPerOp": 501.716,
+      "allocationBytesPerOp": 714.667,
+      "budgetNsPerOp": 800,
+      "status": "PASS"
+    },
+    {
+      "benchmark": "currentViewNoRoutes",
+      "scoreNsPerOp": 0.877,
+      "allocationBytesPerOp": 0.0000000714749,
+      "allocationBudgetBytesPerOp": 0,
+      "status": "PASS_BELOW_MEASUREMENT_FLOOR"
+    },
+    {
+      "benchmark": "fullProjectionFiveRoutes",
+      "scoreNsPerOp": 2.620,
+      "allocationBytesPerOp": 0.00000021355,
+      "allocationBudgetBytesPerOp": 0,
+      "status": "PASS_BELOW_MEASUREMENT_FLOOR"
+    },
+    {
+      "benchmark": "fullProjectionNoRoutes",
+      "scoreNsPerOp": 2.099,
+      "allocationBytesPerOp": 0.000000175389,
+      "allocationBudgetBytesPerOp": 0,
+      "status": "PASS_BELOW_MEASUREMENT_FLOOR"
+    },
+    {
+      "benchmark": "readSamplingEnabledFiveRoutes",
+      "scoreNsPerOp": 0.896,
+      "allocationBytesPerOp": 0.0000000730065,
+      "allocationBudgetBytesPerOp": 0,
+      "status": "PASS_BELOW_MEASUREMENT_FLOOR"
+    },
+    {
+      "benchmark": "readSamplingEnabledNoRoutes",
+      "scoreNsPerOp": 0.895,
+      "allocationBytesPerOp": 0.0000000729446,
+      "allocationBudgetBytesPerOp": 0,
+      "status": "PASS_BELOW_MEASUREMENT_FLOOR"
+    }
+  ],
+  "rawEvidence": [
+    {
+      "path": "p57-apply-jmh.json",
+      "sha256": "5BE01AAFFF520BC4A1DB8CC185B2E35414B192218F0C39834802F19DB2B9FBAB"
+    },
+    {
+      "path": "p57-codec-jmh.json",
+      "sha256": "AF51A3BCF50EFA182D36182CD1F5358B444E1A5A343F10E388C0BD5CBCE15392"
+    },
+    {
+      "path": "p57-digest-jmh.json",
+      "sha256": "D6CEBD7998BF18B8215398B9C122B8954F6EDD96AC65CF8C175F647066ECF206"
+    },
+    {
+      "path": "p57-read-jmh.json",
+      "sha256": "EFA9B438D41B81FB09AACF5C9CC7DE1F20E073F3DD9BDB682B6493F9D3346910"
+    }
+  ],
+  "limitations": [
+    "Windows host showed material inter-fork frequency variance in digest and projection scores.",
+    "Absolute contract checks use the aggregate JMH score; raw iterations are retained without filtering.",
+    "This run is P5 absolute-budget evidence, not a compatible before/after release baseline."
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "gate": "P5.9",
+  "capturedAt": "2026-07-29T19:39:58+03:00",
+  "verifiedCommit": "d170ef36d925217d0843b52cda811084154408e3",
+  "executionBaseHead": "a7516c4cf49a8be15efd581357664f077fe13c4f",
+  "branch": "master",
+  "results": [
+    {
+      "command": ".\\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "51s"
+    },
+    {
+      "command": ".\\gradlew.bat tracingConfigurationInventoryVerify --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "28s"
+    },
+    {
+      "command": ".\\gradlew.bat :platform-tracing-otel-javaagent-extension:test --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "35s"
+    },
+    {
+      "command": ".\\gradlew.bat configProvenanceVerify --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "48s"
+    },
+    {
+      "command": ".\\gradlew.bat privateMBeanServerVerify --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "37s"
+    },
+    {
+      "command": ".\\gradlew.bat test --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "1m15s",
+      "note": "The opt-in E2E task is skipped by design in the root test command and is tracked separately."
+    },
+    {
+      "command": ".\\gradlew.bat build --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "1m21s",
+      "note": "validateCollectorConfigs logged an unreachable Docker endpoint but did not fail the build."
+    },
+    {
+      "command": ".\\gradlew.bat pr4ArchitectureFitnessVerify pr1ModuleTaxonomyVerify --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "1m04s"
+    },
+    {
+      "command": ".\\gradlew.bat :platform-tracing-otel-javaagent-extension:test --tests '*AcceptedPolicyAccessTest' --no-daemon --rerun-tasks",
+      "result": "PASS",
+      "duration": "27s",
+      "note": "Direct regression for sampling UNCHANGED preserving the same immutable envelope."
+    },
+    {
+      "command": "PowerShell parser over UTF-8 run-perf-scenario.ps1",
+      "result": "PASS"
+    },
+    {
+      "command": "legacy perf mutation scan",
+      "result": "PASS",
+      "note": "No PerfAdmin, /perf/admin, PlatformTracingControl, platform MBean setters, updateScrubbingPolicy, or setExportEnabled remains in perf source/scripts/scenarios."
+    },
+    {
+      "command": "docker version with DOCKER_HOST=tcp://192.168.100.70:2375",
+      "result": "FAILED_INFRASTRUCTURE",
+      "duration": "about 60s",
+      "error": "dial tcp 192.168.100.70:2375: connectex: connection attempt timed out"
+    },
+    {
+      "command": ".\\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --no-daemon --rerun-tasks",
+      "result": "NOT_RUN",
+      "blockedBy": "Docker endpoint unreachable"
+    },
+    {
+      "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10 -DockerHost tcp://192.168.100.70:2375",
+      "result": "NOT_RUN",
+      "blockedBy": "Docker endpoint unreachable"
+    },
+    {
+      "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10c -DockerHost tcp://192.168.100.70:2375",
+      "result": "NOT_RUN",
+      "blockedBy": "Docker endpoint unreachable"
+    },
+    {
+      "command": ".\\platform-tracing-perf-tests\\scripts\\run-perf-scenario.ps1 -Scenario m10d -DockerHost tcp://192.168.100.70:2375",
+      "result": "NOT_RUN",
+      "blockedBy": "Docker endpoint unreachable"
+    }
+  ],
+  "jmh": {
+    "result": "PASS",
+    "summary": "jmh/summary.json"
+  },
+  "scopedDiffCheck": "PASS",
+  "globalDiffCheck": {
+    "result": "FAIL_PREEXISTING_UNRELATED",
+    "path": "docs/otel-junit-extensions-plan-v2.md",
+    "line": 349,
+    "finding": "trailing whitespace"
+  }
+}
