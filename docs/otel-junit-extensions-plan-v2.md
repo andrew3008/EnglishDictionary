@@ -190,7 +190,7 @@ private ExtensionContext.Store rootStore(ExtensionContext context) {
 }
 ```
 
-### 5.2. `SamplerHarness` (plain class)
+### 5.2. `SamplerHarness` (plain class) — **DONE**
 
 **Тип:** обычный класс. **Не Extension.**
 
@@ -235,7 +235,7 @@ void healthcheck_дропается() {
 }
 ```
 
-### 5.3. `SamplerHarnessExtension` (thin optional wrapper)
+### 5.3. `SamplerHarnessExtension` (thin optional wrapper) — **DONE**
 
 ```java
 @RegisterExtension
@@ -250,7 +250,7 @@ void healthcheck_дропается(SamplerHarness h) {
 
 Тонкая обёртка: `ParameterResolver` для инжекта `SamplerHarness` + reset перед каждым тестом. Если sampler stateless — даже extension не нужен.
 
-### 5.4. `SpanProcessorHarness` / `SpanProcessorHarnessExtension`
+### 5.4. `SpanProcessorHarness` / `SpanProcessorHarnessExtension` — **DONE**
 
 Аналогично: harness — обычный класс, обёртка опциональна.
 
@@ -338,15 +338,16 @@ public final class SpanAssertions {
 
 ### Фаза 2 — `SamplerHarness` + `SpanProcessorHarness` (3-4 дня)
 
-| # | Задача | Acceptance |
-|---|---|---|
-| 2.1 | Реализовать `SamplerHarness` + `SamplerDecisionAssert` | Unit-тесты harness: headers, url.path, kind, parent context |
-| 2.2 | Реализовать `SamplerHarnessExtension` (тонкая обёртка с `ParameterResolver`) | Unit-тесты |
-| 2.3 | Переписать [`CompositeSamplerTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/sampler/CompositeSamplerTest.java), `CompositeSamplerEdgeCasesTest` | Boilerplate `AttributesBuilder + shouldSample(...)` → одна fluent-строка |
-| 2.4 | Реализовать `SpanProcessorHarness` + `SpanProcessorHarnessExtension` | Unit-тесты |
-| 2.5 | Перевести `ScrubbingSpanProcessor*Test`, `SpanWatchdogProcessor*Test` | Совместимость поведения |
+| # | Задача | Acceptance | Статус |
+|---|---|---|---|
+| 2.1 | Реализовать `SamplerHarness` + `SamplerDecisionAssert` | Unit-тесты harness: headers, url.path, kind, parent context | **DONE** — `SamplerHarness` расширен (`withHeader`/`withUrlPath`/`withKind`/`sample(String)`); aliases в `assertions.SamplerDecisionAssert`; `SamplerHarnessTest` (13) |
+| 2.2 | Реализовать `SamplerHarnessExtension` (тонкая обёртка с `ParameterResolver`) | Unit-тесты | **DONE** — `SamplerHarnessExtension` + `SamplerHarnessExtensionTest` (4) |
+| 2.3 | Переписать [`CompositeSamplerTest`](../platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/sampler/CompositeSamplerTest.java), `CompositeSamplerEdgeCasesTest` | Boilerplate `AttributesBuilder + shouldSample(...)` → одна fluent-строка | open |
+| 2.4 | Реализовать `SpanProcessorHarness` + `SpanProcessorHarnessExtension` | Unit-тесты | **DONE** — harness API (`spans`/`reset`/`tracer()`/`forceFlush`); Extension per-class + `CloseableResource`; `SpanProcessorHarnessTest` (12) + `SpanProcessorHarnessExtensionTest` (12) |
+| 2.5 | Перевести `ScrubbingSpanProcessor*Test`, `SpanWatchdogProcessor*Test` | Совместимость поведения | open |
 
-**DoD:** все sampler/processor тесты используют harness. Метрика: число строк в перечисленных тестах −40-50 %.
+**DoD:** все sampler/processor тесты используют harness. Метрика: число строк в перечисленных тестах −40-50 %.  
+*(инфраструктура 2.1/2.2/2.4 закрыта; DoD фазы ждёт 2.3 и 2.5)*
 
 ### Фаза 3 — Зачистка и приёмка (1-2 дня)
 
@@ -527,13 +528,15 @@ dependencies {
 
 ### 8.5. Тесты самих extension'ов
 
-| Тест | Покрытие |
-|---|---|
-| `OtelSdkExtensionLifecycleTest` | Один SDK на класс; `reset()` между тестами; `close()` ровно один раз |
-| `OtelSdkExtensionNestedTest` | `@Nested` без пересоздания SDK; outer.span() видит inner.span() (если такого требования нет — фиксируем «нет» в тесте) |
-| `OtelSdkExtensionBuilderTest` | Добавление SpanProcessor'а; Sampler по умолчанию `alwaysOn` |
-| `SamplerHarnessTest` | headers / url.path / kind / parent; `assertSampled` / `assertDropped` / `hasDecision` |
-| `SpanProcessorHarnessTest` | Чистый процессор без extension; `try-with-resources`; SDK закрыт |
+| Тест | Покрытие | Статус |
+|---|---|---|
+| `OtelSdkExtensionLifecycleTest` | Один SDK на класс; `reset()` между тестами; `close()` ровно один раз | open / частично (есть `OtelSdkExtension`) |
+| `OtelSdkExtensionNestedTest` | `@Nested` без пересоздания SDK; outer.span() видит inner.span() (если такого требования нет — фиксируем «нет» в тесте) | open |
+| `OtelSdkExtensionBuilderTest` | Добавление SpanProcessor'а; Sampler по умолчанию `alwaysOn` | open |
+| `SamplerHarnessTest` | headers / url.path / kind / parent; `assertSampled` / `assertDropped` / `hasDecision` | **DONE** |
+| `SamplerHarnessExtensionTest` | ParameterResolver; reset между тестами; `@Nested`; null-guard | **DONE** |
+| `SpanProcessorHarnessTest` | Чистый процессор без extension; `try-with-resources`; SDK закрыт | **DONE** |
+| `SpanProcessorHarnessExtensionTest` | per-class SDK; exporter reset; ParameterResolver; `@Nested`; factories | **DONE** |
 
 **Целевое покрытие:** строки ≥95 %, ветки ≥90 %. Это test utility, неполное покрытие здесь = баги в реальных тестах.
 
@@ -574,15 +577,15 @@ dependencies {
 
 ## 10. Чек-лист code review
 
-- [ ] Никакого `static` состояния в Extension-классах (всё в `ExtensionContext.Store`).
+- [x] Никакого `static` состояния в Extension-классах (всё в `ExtensionContext.Store`). — подтверждено для `SamplerHarnessExtension` / `SpanProcessorHarnessExtension`
 - [ ] Никакого `buildAndRegisterGlobal()` в тестах (включая Spring test config).
 - [ ] `SdkResource` реализует `ExtensionContext.Store.CloseableResource`, а не голый `AutoCloseable`.
-- [ ] `@Nested`-lookup покрыт unit-тестом на 2+ уровня вложенности.
-- [ ] Каждый Extension помечен `final`, конструктор скрыт через factory (`create()` / `builder()`).
-- [ ] Внешние API extension'ов задокументированы JavaDoc с @since.
+- [x] `@Nested`-lookup покрыт unit-тестом. — `SpanProcessorHarnessExtensionTest$NestedTests`, `SamplerHarnessExtensionTest$NestedTests` (1 уровень; 2+ для `OtelSdkExtension` ещё open)
+- [x] Каждый Extension помечен `final`, конструктор скрыт через factory (`of(...)` / `builder()`). — для harness extensions
+- [x] Внешние API extension'ов задокументированы JavaDoc с @since. — harness / extensions §5.2–5.4
 - [ ] В `docs/testing.md` есть рабочий пример с реальным `@RegisterExtension static`.
 - [ ] ArchUnit-правило про `buildAndRegisterGlobal()` зелёное.
-- [ ] Старые тесты, переписанные на новую инфраструктуру, не потеряли ни одного `@Test` метода (diff-проверка).
+- [ ] Старые тесты, переписанные на новую инфраструктуру, не потеряли ни одного `@Test` метода (diff-проверка). — ждёт 2.3 / 2.5
 - [ ] Build CI зелёный на JDK 21.
 
 ---

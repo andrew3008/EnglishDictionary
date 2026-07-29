@@ -1,0 +1,91 @@
+﻿{
+    "gate":  "P6.0",
+    "status":  "MANIFEST_RECORDED",
+    "asOf":  "2026-07-29",
+    "capturedAt":  "2026-07-29T19:49:49+03:00",
+    "head":  "27a5e873123d6d976af7fdfa924cd517ddcaf88d",
+    "branch":  "master",
+    "productionCodeChangedByThisGate":  false,
+    "requiredCounts":  {
+                           "MUTATION_FAMILY":  6,
+                           "JMX_E1_E7_DELTA":  63,
+                           "CONFIG_PROPERTY":  77,
+                           "SECTION_6_1_OVERRIDE":  29,
+                           "ENV_VARIABLE":  29
+                       },
+    "actualCounts":  {
+                         "CONFIG_PROPERTY":  77,
+                         "ENV_VARIABLE":  29,
+                         "SECTION_6_1_OVERRIDE":  29,
+                         "MUTATION_FAMILY":  6,
+                         "JMX_E1_E7_DELTA":  63,
+                         "PUBLIC_CONTROL_TYPE":  7,
+                         "PUBLIC_CONTROL_CONSUMER_SITE":  10,
+                         "DEPLOYMENT_OR_FIXTURE_OCCURRENCE":  390,
+                         "LEGACY_NAME_DETECTOR":  1,
+                         "DEPLOYMENT_HELM":  1,
+                         "totalRows":  613
+                     },
+    "countCheck":  "PASS",
+    "evidence":  {
+                     "generator":  "docs/research/evidence/p6-cutover/generate-cutover-manifest.ps1",
+                     "manifest":  "docs/research/evidence/p6-cutover/cutover-manifest.json"
+                 },
+    "blockersForP6CodeCutover":  [
+                                     "p5-verification-package (P5.9) still pending",
+                                     "legacy-name detector not yet implemented (LEGACY_DETECTOR-001)",
+                                     "macro perf M10/PerfAdmin rewrite residual from P5.8"
+                                 ],
+    "nextGate":  "P6.1 property/env and namespace cutover (uses this manifest as checklist)",
+    "p61PropertyDispositionProgress":  {
+                                           "completed":  [
+                                                             {
+                                                                 "evidence":  "PropagationDefaults.java PROP_W3C_DIAGNOSTICS_ONLY removed; S-04 inventory regenerated 78-\u003e77; TracingConfigurationInventoryGeneratorTest PASS",
+                                                                 "id":  "CONFIG_PROPERTY-032",
+                                                                 "action":  "DELETE"
+                                                             }
+                                                         ],
+                                           "deferredToDownstreamTask":  [
+                                                                            {
+                                                                                "ids":  [
+                                                                                            "CONFIG_PROPERTY-002",
+                                                                                            "CONFIG_PROPERTY-003",
+                                                                                            "CONFIG_PROPERTY-004",
+                                                                                            "CONFIG_PROPERTY-019",
+                                                                                            "CONFIG_PROPERTY-020",
+                                                                                            "CONFIG_PROPERTY-021"
+                                                                                        ],
+                                                                                "reason":  "Baggage families collide across two independent production code paths (BaggageExtensionConfig span-attribute allowlist vs PropagationDefaults/BaggagePropagationCustomizer W3C propagation); resolving the family conflict is explicitly scoped to p6-namespace-conflicts (P6.1), not a pure name rename",
+                                                                                "deferredTo":  "p6-namespace-conflicts"
+                                                                            },
+                                                                            {
+                                                                                "ids":  [
+                                                                                            "CONFIG_PROPERTY-024",
+                                                                                            "CONFIG_PROPERTY-025",
+                                                                                            "CONFIG_PROPERTY-026",
+                                                                                            "CONFIG_PROPERTY-027",
+                                                                                            "CONFIG_PROPERTY-028"
+                                                                                        ],
+                                                                                "reason":  "Requires atomic Agent+Spring reader switch and depends on RuntimeConfigApplier reaching zero-ref (P6.10); deleting the Agent-side mirror in isolation would violate the one-unreleased-train invariant",
+                                                                                "deferredTo":  "p6-agent-parser-cutover / p6-spring-binding-cutover"
+                                                                            },
+                                                                            {
+                                                                                "ids":  [
+                                                                                            "CONFIG_PROPERTY-040",
+                                                                                            "CONFIG_PROPERTY-043",
+                                                                                            "CONFIG_PROPERTY-044"
+                                                                                        ],
+                                                                                "reason":  "Same atomic Agent+Spring switch dependency as outbound rows; force-record spelling+ownership merge additionally requires the P6.1 namespace-conflict resolution",
+                                                                                "deferredTo":  "p6-agent-parser-cutover / p6-spring-binding-cutover / p6-namespace-conflicts"
+                                                                            },
+                                                                            {
+                                                                                "ids":  [
+                                                                                            "CONFIG_PROPERTY-048",
+                                                                                            "CONFIG_PROPERTY-049"
+                                                                                        ],
+                                                                                "reason":  "Spring TracingProperties.Scrubbing feeds the still-active Category B legacy runtime-mutation path (RuntimeConfigApplier.updateScrubbingPolicy -\u003e PlatformScrubbingControl -\u003e ScrubbingPolicyHolder); removing the Spring binding before that path is deleted would silently break live runtime mutation. Explicitly reserved for P6.7 (delete Category B ScrubbingPolicyHolder)",
+                                                                                "deferredTo":  "p6-scrubbing-category-b-deletion (plan section 20 P6.7)"
+                                                                            }
+                                                                        ]
+                                       }
+}

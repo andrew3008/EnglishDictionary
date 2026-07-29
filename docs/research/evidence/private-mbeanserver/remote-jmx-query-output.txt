@@ -5,7 +5,7 @@ S03_REMOTE:readOnlyProjectionVisible=true
 S03_REMOTE:currentPlatformWriteInvoked=true
 
 === ManagementAgent.start_local ===
-76392:
+32692:
 Command executed successfully
 
 S03_REMOTE:platformNameCount=9

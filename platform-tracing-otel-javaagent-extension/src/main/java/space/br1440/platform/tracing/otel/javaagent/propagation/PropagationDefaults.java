@@ -8,8 +8,6 @@ import static space.br1440.platform.tracing.otel.javaagent.factory.FactoryUtils.
 
 public final class PropagationDefaults {
 
-    public static final String PROP_W3C_DIAGNOSTICS_ONLY = "platform.tracing.propagation.w3c.diagnostics-only";
-
     public static final String PROP_BAGGAGE_ENABLED = "platform.tracing.propagation.baggage.enabled";
     public static final String PROP_BAGGAGE_ALLOWED_KEYS = "platform.tracing.propagation.baggage.allowed-keys";
     public static final String PROP_BAGGAGE_DENY_PATTERNS = "platform.tracing.propagation.baggage.deny-patterns";

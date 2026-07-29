@@ -94,7 +94,7 @@
   "defaults" : [ "Agent:[/actuator/health,/actuator/prometheus,/actuator/info]", "Spring:[/actuator/health,/actuator/prometheus,/actuator/info]" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.drop-paths",
   "exactName" : "platform.tracing.sampling.drop-paths",
-  "id" : "CONFIG_PROPERTY-040",
+  "id" : "CONFIG_PROPERTY-039",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -104,7 +104,7 @@
   "defaults" : [ "Agent:true", "Spring:true" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.enabled",
   "exactName" : "platform.tracing.sampling.enabled",
-  "id" : "CONFIG_PROPERTY-041",
+  "id" : "CONFIG_PROPERTY-040",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -114,7 +114,7 @@
   "defaults" : [ "Agent:0.1", "Spring:0.1" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.ratio",
   "exactName" : "platform.tracing.sampling.ratio",
-  "id" : "CONFIG_PROPERTY-046",
+  "id" : "CONFIG_PROPERTY-045",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -124,7 +124,7 @@
   "defaults" : [ "Agent:{}", "Spring:{}" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.route-ratios",
   "exactName" : "platform.tracing.sampling.route-ratios",
-  "id" : "CONFIG_PROPERTY-047",
+  "id" : "CONFIG_PROPERTY-046",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -134,7 +134,7 @@
   "defaults" : [ "Agent:[password,jwt,email,oauth-header,x-auth-header,infra-credential,webhook-token,ssh-credential,user-identity,hardware-identity,location,ip-address]", "Spring:[password,jwt,email,oauth-header,x-auth-header,infra-credential,webhook-token,ssh-credential,user-identity,hardware-identity,location,ip-address]" ],
   "duplicateGroup" : "duplicate:platform.tracing.scrubbing.built-in-rules",
   "exactName" : "platform.tracing.scrubbing.built-in-rules",
-  "id" : "CONFIG_PROPERTY-048",
+  "id" : "CONFIG_PROPERTY-047",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -144,7 +144,7 @@
   "defaults" : [ "Agent:true", "Spring:true" ],
   "duplicateGroup" : "duplicate:platform.tracing.scrubbing.enabled",
   "exactName" : "platform.tracing.scrubbing.enabled",
-  "id" : "CONFIG_PROPERTY-049",
+  "id" : "CONFIG_PROPERTY-048",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -154,7 +154,7 @@
   "defaults" : [ "Agent:true", "Spring:true" ],
   "duplicateGroup" : "duplicate:platform.tracing.validation.enabled",
   "exactName" : "platform.tracing.validation.enabled",
-  "id" : "CONFIG_PROPERTY-071",
+  "id" : "CONFIG_PROPERTY-070",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -164,7 +164,7 @@
   "defaults" : [ "Agent:false", "Spring:false" ],
   "duplicateGroup" : "duplicate:platform.tracing.validation.strict",
   "exactName" : "platform.tracing.validation.strict",
-  "id" : "CONFIG_PROPERTY-073",
+  "id" : "CONFIG_PROPERTY-072",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]

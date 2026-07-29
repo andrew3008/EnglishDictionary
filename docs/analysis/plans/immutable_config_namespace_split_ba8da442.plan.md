@@ -155,8 +155,8 @@ todos:
     content: "P4 REWRITE: сделать Actuator tracing endpoint read-only и secret-safe"
     status: pending
   - id: p5-complete-manifest-tests
-    content: "P5 TEST: доказать initial missing-key readiness block и runtime missing-key REJECTED с LKG"
-    status: pending
+    content: "P5 TEST COMPLETED: initial missing-key readiness BLOCKED + runtime missing-key REJECTED с immutable LKG/digest/runtimeInstanceId/acceptedSequence; restore только explicit Config Server push (P51CategoryALeafMissingTest)"
+    status: completed
   - id: p5-refresh-storm-tests
     content: "P5 TEST: доказать convergence generation/dirty worker и отсутствие потерянного final refresh"
     status: pending
@@ -525,6 +525,11 @@ Production tests **ОБЯЗАНЫ** сохранить M1–M12 и N1–N7 invar
 | Initial load | candidate **REJECTED**; application configuration readiness **blocked** |
 | Runtime refresh | candidate **REJECTED**; accepted policy unchanged; `acceptedSequence` unchanged; LKG retained |
 
+**Evidence (P5 / §20 P5.1 — CLOSED):** `P51CategoryALeafMissingTest` в `platform-tracing-spring-boot-autoconfigure` доказывает:
+- A — `deliverInitial()` → `TracingPolicyManifestException` (readiness BLOCKED), `applySnapshot` не вызывается;
+- B — runtime `onRefreshEvent` при missing leaf → `applySnapshot` не вызывается; LKG snapshot / sequence / `runtimeInstanceId` неизменны;
+- C — восстановление только через explicit Config Server push; HELM/`helmBootstrapDefaults` не инъектируются.
+
 Возврат к default: Config Server **ОБЯЗАН** опубликовать explicit canonical default value.
 
 **ЗАПРЕЩЕНО** восстанавливать deleted managed key из HELM bootstrap, current accepted state, Spring field default, Java primitive default или другого PropertySource.
@@ -794,7 +799,7 @@ Required proof:
 - private JMX lifecycle, marker ambiguity, attach/RMI isolation;
 - full mode-authority matrix;
 - S-02 provenance и non-optional import;
-- complete eight-leaf manifest и **deleted-key REJECTED semantics (C-01)**;
+- complete eight-leaf manifest и **deleted-key REJECTED semantics (C-01)** — **CLOSED** unit proof: `P51CategoryALeafMissingTest` (полный Spring/Agent E2E path ещё open);
 - deleted legacy key behavior без aliases;
 - refresh storm coalescing и one bounded stale retry;
 - secret canary;
