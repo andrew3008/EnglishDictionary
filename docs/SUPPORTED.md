@@ -6,8 +6,9 @@
 |------|----------|
 | **Product** | `spring-boot-platform-tracing` |
 | **Version** | `0.1.0-SNAPSHOT` (Фаза 1) |
-| **Дата** | 2026-06-10 |
+| **Дата** | 2026-07-30 |
 | **Статус** | **Official compatibility envelope** для architecture board и потребителей |
+| **P6/P7 note** | P5.9 PASS; P6.10 zero-legacy PASS; P6.11 coherent PASS (E2E/M10 reused from P5.9). P7 docs/scorecard under `docs/research/evidence/p7-docs/`. **Production rollout FORBIDDEN** until Architecture Committee GO (P7.8). |
 
 ---
 
@@ -197,30 +198,53 @@ platform:
 
 ---
 
-## Dynamic configuration — policy vs topology (Фаза 14)
+## Configuration authority and runtime policy (P6 cutover)
 
-Часть параметров меняется **в рантайме без рестарта JVM** («policy»), часть фиксируется **на старте**
-(«topology»). Канал управления — JMX-мост `PlatformTracingControl` (agent CL ↔ application CL) и
-Spring `RuntimeConfigApplier` на `RefreshScopeRefreshedEvent`. Подробности и обоснование:
-[ADR-runtime-config-policy-vs-topology.md](./decisions/ADR-runtime-config-policy-vs-topology.md).
+Exactly one technological authority is selected at startup via
+`platform.tracing.configuration.authority`. Authority fallback and dual writers are forbidden.
+Agent-side enum uses `DEV_ACTUATOR` for the Spring `ACTUATOR` authority.
 
-| Домен | Runtime-mutable (policy) | Startup-only (topology) |
-|-------|--------------------------|--------------------------|
-| **Sampling** | `enabled`, `ratio`, `route-ratios`, `drop-paths`, `force-record-values` | — |
-| **Scrubbing** | `enabled`, набор встроенных правил (reload) | SPI custom-правила (classloader Агента) |
-| **Validation** | `enabled`, `strict` | — |
-| **Export** | export-gate `exporter.enabled` (kill-switch) | OTLP endpoint, retry, BSP queue, processor chain |
-| **Propagation** | `propagation.enabled` (платформенные заголовки) | набор пропагаторов, W3C (зона Агента) |
-| **Facade** | `facade.enabled` (no-op span scope) | — |
-| **Diagnostics** | `log-level` (agent-CL) — app-CL через `/actuator/loggers` | — |
+| Authority | When | Spring private-control discovery | Mutation path |
+|-----------|------|----------------------------------|---------------|
+| **HELM** | Production / shared startup-only | **None** (no Spring writer beans) | Agent bootstrap parser builds initial Category A policy from env/system properties; no Spring runtime write; no Actuator write surface |
+| **CONFIG_SERVER** | Complete eight-leaf manifest delivery | Locator / codec / snapshot client / coalescer | Complete manifest → private `applySnapshot` only |
+| **ACTUATOR** (+ `platform.environment=LOCAL`) | Local/dev typed leaves only | Actuator management controller + private snapshot client | Eight typed Category A leaves → private `applySnapshot` (Agent authority label `DEV_ACTUATOR`) |
+| **DISABLED** | `platform.tracing.mode=DISABLED` or `platform.tracing.configuration.enabled=false` | **No** Config Server / Actuator private-control discovery | Incompatible with `CONFIG_SERVER` / `ACTUATOR` (fail-fast); with `HELM` → no writer, no Actuator write surface |
 
-Гарантии: каждый домен публикуется **атомарно** (один снимок = один CAS), при невалидном апдейте
-сохраняется **last-known-good**. Export-gate выключает экспорт, **не ломая propagation** (span'ы
-создаются и пропагируются, но не уходят в backend). Наблюдаемость перезагрузки —
-`platform.tracing.config.*` (Prometheus) + секция `config` в `/actuator/tracing` (включая
-audit-trail последних изменений). Runtime-апдейты через `POST /actuator/tracing/{property}/{value}`
-поддерживают: `enabled`, `samplerEnabled`, `samplingRatio`, `exportEnabled`, `propagationEnabled`,
-`logLevel`.
+**Category A** live policy is owned by Agent `AcceptedPolicyAccess`. The sole mutation operation is
+private `applySnapshot` (plus `readAcceptedComplete`) on the private control plane.
+Platform-domain JMX MBeans and the Control read projection are **READ-ONLY**; operators must not
+treat platform JMX as a writer.
+
+**Category B** (startup Agent parser, not Spring Category A leaves) final names live under
+`platform.tracing.javaagent.*`, including:
+
+- `platform.tracing.javaagent.scrubbing.enabled` / `.built-in-rules`
+- `platform.tracing.javaagent.sampling.drop-paths` / `.force-record-values`
+- `platform.tracing.javaagent.propagation.baggage.enabled` / `.allowlist-keys` / `.deny-patterns`
+
+**No-alias policy.** Legacy property names, dual-read bindings, deprecated bridges, and
+compatibility aliases are not supported. Deleted names fail fast or are ignored by Spring
+with no silent remap — migrate to the final name in the same release train.
+
+**Whole-train rollback.** After the P6 cutover, rollback unit is the **entire unreleased release
+train**. State, property names, writers, manifests, and readers must not be rolled back
+independently. Accepted policy is process-local and rebuilt from the selected authority after restart.
+
+Deleted legacy writers (do not document or call): `RuntimeConfigApplier` / RefreshScope mutation,
+Actuator `@WriteOperation` on `/actuator/tracing`, public `api.control.protocol` /
+`otel.control.protocol`, `ScrubbingPolicyHolder`, Spring Category B scrubbing/sampling bindings.
+Evidence: `docs/research/evidence/p6-cutover/`.
+
+`GET /actuator/tracing` remains a read diagnostics surface. Topology vs policy semantics for
+startup-only Agent keys are unchanged in spirit; see
+[ADR-runtime-config-policy-vs-topology.md](./decisions/ADR-runtime-config-policy-vs-topology.md)
+for historical rationale (implementation details in that ADR may predate the private-writer cutover).
+
+Operator runbooks and final-name examples:
+[runbook/runtime-policy-control.md](./runbook/runtime-policy-control.md),
+[runbook/jmx-consumer-migration.md](./runbook/jmx-consumer-migration.md),
+[examples/README.md](./examples/README.md).
 
 ---
 

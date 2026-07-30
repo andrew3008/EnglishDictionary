@@ -1,16 +1,9 @@
 {
-  "spikeId": "S-07",
-  "e7BlockedExternalOwnerReview": false,
-  "approvalBasis": [
-    "The solution is pre-production and the binding plan explicitly requires the P6 breaking cutover",
-    "E7 fixes the target contract; it does not perform deletion",
-    "Production rollout remains blocked until migration notice and external-owner survey are complete"
-  ],
-  "productionRolloutBlockers": [
-    "external JMX consumer owner survey",
-    "published migration notice for every deleted or changed member",
-    "P6 zero-reference and zero-write verification"
-  ],
-  "memberLevelEvidence": "consumer-map.json contains all 63 baseline rows and all newly added target rows",
-  "noNamedConsumerPolicy": "NO_NAMED_CONSUMER_FOUND never authorizes deletion; resetSamplerCounters is deleted by the binding zero-mutation rule"
+    "e7BlockedExternalOwnerReview":  false,
+    "spikeId":  "S-07",
+    "productionRolloutBlockers":  [
+                                      "external consumer survey and migration notice",
+                                      "P6 zero-reference and zero-write proof"
+                                  ],
+    "notes":  "Post-P6.6 live domain baseline has zero mutating members; Control projection is read-only."
 }

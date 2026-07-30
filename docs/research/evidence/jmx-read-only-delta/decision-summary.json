@@ -1,63 +1,59 @@
 {
-  "spikeId": "S-07",
-  "gate": "E7",
-  "verdict": "APPROVE_EXACT_JMX_DELTA",
-  "e7Recommendation": "READY_TO_CLOSE_E7",
-  "overallResult": "PASS",
-  "selectedReadContractOption": "R3",
-  "weightedScore": 87.4,
-  "productionCodeChanged": false,
-  "privR07Reconcile": {
-    "decision": "RECONCILE_NOW",
-    "decidedBy": "Architecture Committee",
-    "decidedAt": "2026-07-29",
-    "proposalId": "PROPOSED_PRIV_R07",
-    "effect": "privateReadMembers 6→7; addedPrivateReads 6→7; PRIV-R07 added to privateMembers"
-  },
-  "baseline": {
-    "objectNames": 8,
-    "members": 63,
-    "readOnly": 47,
-    "mutations": 16
-  },
-  "target": {
-    "platformObjectNames": 8,
-    "platformReadOnlyMembers": 56,
-    "platformMutations": 0,
-    "privateObjectNames": 2,
-    "privateReadMembers": 7,
-    "privateMutations": 1
-  },
-  "counts": {
-    "retainedExact": 32,
-    "clarified": 14,
-    "renamed": 0,
-    "movedPrivate": 0,
-    "deletedObsoleteReads": 5,
-    "replacedReads": 4,
-    "addedPlatformReads": 9,
-    "addedPrivateReads": 7,
-    "deletedMutationsFromPlatform": 16
-  },
-  "privateWriter": {
-    "targetMemberId": "PRIV-W01",
-    "operationName": "applySnapshot",
-    "newReplacementContract": true,
-    "legacyPartialProtocolRelocated": false,
-    "exactPayloadSchemaAuthority": "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json and p0-wire-schema-bounds.json",
-    "exactPayloadSchemaStatus": "READY_FOR_COMMITTEE_APPROVAL"
-  },
-  "privateCompletePolicyReader": {
-    "targetMemberId": "PRIV-R07",
-    "operationName": "readAcceptedComplete",
-    "status": "APPROVED",
-    "approvedAt": "2026-07-29",
-    "maximumLogicalPayloadBytes": 32768,
-    "evidence": "docs/research/evidence/priv-r07-proposal/decision-summary.json"
-  },
-  "externalConsumerBlockersForE7": [],
-  "productionRolloutBlockers": [
-    "external consumer survey and migration notice",
-    "P6 zero-reference and zero-write proof"
-  ]
+    "spikeId":  "S-07",
+    "postP66LiveContract":  true,
+    "externalConsumerBlockersForE7":  [
+
+                                      ],
+    "baseline":  {
+                     "readOnly":  52,
+                     "objectNames":  7,
+                     "mutations":  0,
+                     "members":  52
+                 },
+    "gate":  "E7",
+    "productionCodeChanged":  false,
+    "target":  {
+                   "privateReadMembers":  7,
+                   "platformMutations":  0,
+                   "platformObjectNames":  8,
+                   "platformReadOnlyMembers":  60,
+                   "privateObjectNames":  2,
+                   "privateMutations":  1
+               },
+    "weightedScore":  87.4,
+    "counts":  {
+                   "addedPrivateReads":  7,
+                   "clarified":  0,
+                   "replacedReads":  0,
+                   "renamed":  0,
+                   "movedPrivate":  0,
+                   "deletedObsoleteReads":  0,
+                   "deletedMutationsFromPlatform":  0,
+                   "retainedExact":  52,
+                   "addedPlatformReads":  8
+               },
+    "verdict":  "APPROVE_EXACT_JMX_DELTA",
+    "selectedReadContractOption":  "R3",
+    "e7Recommendation":  "READY_TO_CLOSE_E7",
+    "overallResult":  "PASS",
+    "privateCompletePolicyReader":  {
+                                        "maximumLogicalPayloadBytes":  32768,
+                                        "targetMemberId":  "PRIV-R07",
+                                        "evidence":  "docs/research/evidence/priv-r07-proposal/decision-summary.json",
+                                        "approvedAt":  "2026-07-29",
+                                        "operationName":  "readAcceptedComplete",
+                                        "status":  "APPROVED"
+                                    },
+    "productionRolloutBlockers":  [
+                                      "external consumer survey and migration notice",
+                                      "P6 zero-reference and zero-write proof"
+                                  ],
+    "privateWriter":  {
+                          "newReplacementContract":  true,
+                          "targetMemberId":  "PRIV-W01",
+                          "operationName":  "applySnapshot",
+                          "exactPayloadSchemaAuthority":  "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json and p0-wire-schema-bounds.json",
+                          "legacyPartialProtocolRelocated":  false,
+                          "exactPayloadSchemaStatus":  "READY_FOR_COMMITTEE_APPROVAL"
+                      }
 }

@@ -1,0 +1,81 @@
+﻿{
+    "gate": "P5.9",
+    "capturedAt": "2026-07-30T14:20:00+03:00",
+    "verifiedCommit": "dca9f946918ef81ec4b9eb82b2b3844a3648d6e6",
+    "branch": "master",
+    "evidenceDir": "docs/research/evidence/p5-execution/p59-p6cutover-rerun",
+    "dockerHost": "tcp://192.168.100.70:2375",
+    "results": [
+        {
+            "command": ".\\gradlew.bat :platform-tracing-otel-javaagent-extension:test --no-daemon --rerun-tasks",
+            "result": "PASS"
+        },
+        {
+            "command": ".\\gradlew.bat :platform-tracing-spring-boot-autoconfigure:test --no-daemon --rerun-tasks",
+            "result": "PASS"
+        },
+        {
+            "command": ".\\gradlew.bat configProvenanceVerify --no-daemon --rerun-tasks",
+            "result": "PASS"
+        },
+        {
+            "command": ".\\gradlew.bat privateMBeanServerVerify --no-daemon --rerun-tasks",
+            "result": "PASS"
+        },
+        {
+            "command": ".\\gradlew.bat tracingConfigurationInventoryVerify --no-daemon --rerun-tasks",
+            "result": "PASS"
+        },
+        {
+            "command": ".\\gradlew.bat test --no-daemon --rerun-tasks",
+            "result": "PASS",
+            "note": "e2e:test SKIPPED by design without -PrunE2e"
+        },
+        {
+            "command": ".\\gradlew.bat build --no-daemon",
+            "result": "PASS"
+        },
+        {
+            "command": ".\\gradlew.bat pr4ArchitectureFitnessVerify pr1ModuleTaxonomyVerify --no-daemon --rerun-tasks",
+            "result": "PASS"
+        },
+        {
+            "command": "formal JMH P57 apply/codec/digest/read -f3 -wf2 -wi3 -w5s -i5 -r5s -prof gc",
+            "result": "PASS",
+            "summary": "jmh/summary.json"
+        },
+        {
+            "command": "legacy perf mutation scan",
+            "result": "PASS"
+        },
+        {
+            "command": ".\\gradlew.bat :platform-tracing-e2e-tests:test -PrunE2e --no-daemon --rerun-tasks",
+            "result": "PASS",
+            "evidence": "e2e-runE2e.log",
+            "note": "55 tests, BUILD SUCCESSFUL in 9m 21s"
+        },
+        {
+            "command": "run-perf-scenario.ps1 -Scenario m10 (2+10 @ 500)",
+            "result": "PASS",
+            "evidence": "m10/2026-07-30_131557/m10/summary.json"
+        },
+        {
+            "command": "run-perf-scenario.ps1 -Scenario m10c (2+10 @ 500)",
+            "result": "PASS",
+            "evidence": "m10c/2026-07-30_132818/m10c/summary.json"
+        },
+        {
+            "command": "run-perf-scenario.ps1 -Scenario m10d (2+10 @ 500)",
+            "result": "PASS",
+            "evidence": "m10d/2026-07-30_140735/m10d/summary.json",
+            "note": "clean rerun after scenario-env leak fix; seqDrift=0, rejected 1->299"
+        }
+    ],
+    "jmh": {
+        "summary": "jmh/summary.json",
+        "result": "PASS",
+        "applyUnchangedNsPerOp": 7.744,
+        "applyAppliedNsPerOp": 154.239
+    },
+    "verdict": "PASS"
+}

@@ -1,0 +1,2 @@
+started utc=2026-07-30T12:57:18.6207862+03:00 warmupMin=1 steadyMin=4 stepSleep=15 baseUrl=http://192.168.100.70:18080
+completed utc=2026-07-30T13:01:48.8106381+03:00

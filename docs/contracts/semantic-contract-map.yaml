@@ -10,7 +10,7 @@
 version: 1
 schema: semantic-contract-map.schema.json
 methodology: platform-development-api-design-week-02
-updatedAt: "2026-07-29"
+updatedAt: "2026-07-30"
 publicContractInventory: docs/contracts/public-contract-inventory.yaml
 
 maps:
@@ -367,9 +367,10 @@ maps:
           - space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule
           - space.br1440.platform.tracing.api.spi.ScrubbingDecision
         configurationExpressions:
-          - TracingControlProtocolKeys.SCRUBBING_*
+          - platform.tracing.javaagent.scrubbing.enabled
+          - platform.tracing.javaagent.scrubbing.built-in-rules
         springExpressions:
-          - ServiceLoader + optional Spring-assembled rule lists in agent extension
+          - ServiceLoader rule lists in agent extension (Spring Category B scrubbing binding deleted)
         operationalExpressions:
           - scrubbing rule name in metrics/logs on fire
         exclusions:

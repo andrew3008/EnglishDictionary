@@ -13,7 +13,6 @@ public class ConsumerApplication {
                 .properties(
                         "spring.main.banner-mode=off",
                         "logging.level.root=ERROR",
-                        "platform.tracing.enabled=false",
                         "platform.tracing.mode=DISABLED",
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=LOCAL")

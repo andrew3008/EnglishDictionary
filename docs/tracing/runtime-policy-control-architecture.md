@@ -9,9 +9,13 @@ surfaces but share the same JMX infrastructure.
 Normative ADRs and runbooks:
 
 - [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md)
-- [runtime-sampling-control.md](runtime-sampling-control.md) — operational runbook (historical filename; covers all three policy domains)
+- [../runbook/runtime-policy-control.md](../runbook/runtime-policy-control.md) — **canonical** post-P6 operator runbook
+- [runtime-sampling-control.md](runtime-sampling-control.md) — filename retained for links; superseded pointer only
+- [../runbook/jmx-consumer-migration.md](../runbook/jmx-consumer-migration.md) — E7/P6.6 JMX consumer migration
 - [platform-tracing-sampling-characterization.md](../architecture/platform-tracing-sampling-characterization.md)
 - [platform-tracing-scrubbing-validation-characterization.md](../architecture/platform-tracing-scrubbing-validation-characterization.md)
+
+> **Cutover note:** Sections below may still describe pre-P6 holders, Actuator `@WriteOperation`, or domain JMX mutators. Those writers are deleted. Use the canonical runbook for operations.
 
 ## Three policy domains
 

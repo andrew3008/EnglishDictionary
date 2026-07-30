@@ -1,0 +1,125 @@
+﻿{
+    "gate":  "P5.7",
+    "capturedAt":  "2026-07-30T11:14:52.7272617+03:00",
+    "verifiedCommit":  "dca9f946918ef81ec4b9eb82b2b3844a3648d6e6",
+    "java":  "java : java version \"21.0.6\" 2025-01-21 LTS\r\nAt C:\\Users\\andrew\\AppData\\Local\\Temp\\ps-script-8b18eaed-7ea0-472f-8310-21f8d71d3da9.ps1:167 char:11\r\n+   java = (java -version 2\u003e\u00261 | Select-Object -First 1 | Out-String).T ...\r\n+           ~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (java version \"21.0.6\" 2025-01-21 LTS:String) [], RemoteException\r\n    + FullyQualifiedErrorId : NativeCommandError",
+    "profile":  {
+                    "warmupIterations":  3,
+                    "warmupSeconds":  5,
+                    "profiler":  "gc",
+                    "measurementSeconds":  5,
+                    "warmupForks":  2,
+                    "measurementIterations":  5,
+                    "forks":  3
+                },
+    "verdict":  "PASS",
+    "results":  [
+                    {
+                        "benchmark":  "applyApplied",
+                        "scoreNsPerOp":  154.239,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "applyStale",
+                        "scoreNsPerOp":  1.859,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "applyUnchanged",
+                        "scoreNsPerOp":  7.744,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "decodeFiveRoutes",
+                        "scoreNsPerOp":  1153.998,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "decodeNoRoutes",
+                        "scoreNsPerOp":  554.121,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "encodeFiveRoutes",
+                        "scoreNsPerOp":  1851.701,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "encodeNoRoutes",
+                        "scoreNsPerOp":  809.761,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "digestFiveRoutes",
+                        "scoreNsPerOp":  907.714,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "digestNoRoutes",
+                        "scoreNsPerOp":  456.442,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "currentViewNoRoutes",
+                        "scoreNsPerOp":  0.644,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "fullProjectionFiveRoutes",
+                        "scoreNsPerOp":  2.534,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "fullProjectionNoRoutes",
+                        "scoreNsPerOp":  3.189,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "readSamplingEnabledFiveRoutes",
+                        "scoreNsPerOp":  1.645,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    },
+                    {
+                        "benchmark":  "readSamplingEnabledNoRoutes",
+                        "scoreNsPerOp":  1.587,
+                        "allocationBytesPerOp":  null,
+                        "status":  "PASS"
+                    }
+                ],
+    "rawEvidence":  [
+                        {
+                            "path":  "p57-apply-jmh.json",
+                            "sha256":  "148BAD55107DC431B74E47F2D38E1D18933E9BFD9ADD9A5C745900925ED1CB64"
+                        },
+                        {
+                            "path":  "p57-codec-jmh.json",
+                            "sha256":  "CD0EB195F027805CD25191C118770BA026CDE46316981DB46EFC8BF8A7A5E9D2"
+                        },
+                        {
+                            "path":  "p57-digest-jmh.json",
+                            "sha256":  "0F984B5BBBEC36DAA6F0013BD4883570A6F8C20F371D8800F37EA016DDE981C1"
+                        },
+                        {
+                            "path":  "p57-read-jmh.json",
+                            "sha256":  "E61A4627CD608BC674C1CA9EF1631E1A0C56C8CF6E3AB03684E53D67AA578760"
+                        }
+                    ],
+    "limitations":  [
+                        "Windows host formal rerun after P6 cutover.",
+                        "Absolute contract checks use aggregate JMH score.",
+                        "Docker E2E/M10 NOT_RUN — infrastructure blocked."
+                    ]
+}

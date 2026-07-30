@@ -139,7 +139,7 @@
 
 ## 7. Runtime-управление (операции SRE)
 
-Полный runbook: [runtime-sampling-control.md](runtime-sampling-control.md). Нормативные решения: [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md).
+Полный runbook: [../runbook/runtime-policy-control.md](../runbook/runtime-policy-control.md) (canonical; [runtime-sampling-control.md](runtime-sampling-control.md) is a supersession pointer). Нормативные решения: [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md).
 
 Два транспорта управления политикой **без рестарта** приложения:
 
@@ -189,7 +189,7 @@
 - Перф-отчёт: [architecture-committee-review.md](perf-results/2026-06-10_official/architecture-committee-review.md)
 - Перф-модель и SLA: [ADR-performance-model.md](../decisions/ADR-performance-model.md)
 - Граница SDK↔Collector: [ADR-collector-boundary.md](../decisions/ADR-collector-boundary.md)
-- Runtime sampling: [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md) + [runtime-sampling-control.md](runtime-sampling-control.md)
+- Runtime sampling: [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md) + [../runbook/runtime-policy-control.md](../runbook/runtime-policy-control.md)
 - Export-safety: [ADR-safe-span-exporter-v1.md](../decisions/ADR-safe-span-exporter-v1.md)
 - Очередь drop-oldest: [ADR-drop-oldest-export-processor-v1.md](../decisions/ADR-drop-oldest-export-processor-v1.md)
 - Policy vs topology: [ADR-runtime-config-policy-vs-topology.md](../decisions/ADR-runtime-config-policy-vs-topology.md)

@@ -1,1506 +1,1946 @@
 {
-  "spikeId": "S-07",
-  "schemaVersion": 2,
-  "selectedOption": "R3",
-  "platformMutationsAfterP6": 0,
-  "platformMemberCount": 56,
-  "privateReadMemberCount": 7,
-  "privateMutationMemberCount": 1,
-  "privR07ReconciledAt": "2026-07-29",
-  "platformMembers": [
-    {
-      "targetMemberId": "PLAT-M02",
-      "sourceBaselineIds": [
-        "M02"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "OPERATION",
-      "name": "readAppliedState",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.CompositeData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "CompositeData; exact CompositeType is not declared by Standard MBeanInfo",
-      "parameterOpenTypes": [],
-      "source": "REPLACEMENT_READ",
-      "reason": "Accepted-state metadata CompositeData projection",
-      "consumers": [
-        "TEST",
-        "DOC"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M03",
-      "sourceBaselineIds": [
-        "M03"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "kind": "ATTRIBUTE",
-      "name": "ConfigAuditTrail",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "[Ljava.lang.String;",
-      "parameterJavaTypes": [],
-      "returnOpenType": "ArrayType(SimpleType.STRING)",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M04",
-      "sourceBaselineIds": [
-        "M04"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "kind": "ATTRIBUTE",
-      "name": "ConfigReloadMetrics",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.TabularData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "TabularType space.br1440.platform.tracing.management.StringLongTable.v1; max 128 entries; key max 128 UTF-16 code units",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Same read meaning projected through deterministic bounded TabularData",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M05",
-      "sourceBaselineIds": [
-        "M05"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "kind": "ATTRIBUTE",
-      "name": "InvalidConfigCount",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M06",
-      "sourceBaselineIds": [
-        "M06"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "kind": "ATTRIBUTE",
-      "name": "PlatformLogLevel",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "CONVERTED_WRITABLE_ATTRIBUTE",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M07",
-      "sourceBaselineIds": [
-        "M07"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "kind": "ATTRIBUTE",
-      "name": "PropagationEnabled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "CONVERTED_WRITABLE_ATTRIBUTE",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M08",
-      "sourceBaselineIds": [
-        "M08"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
-      "kind": "ATTRIBUTE",
-      "name": "SafeWrapperMetrics",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.TabularData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "TabularType space.br1440.platform.tracing.management.StringLongTable.v1; max 128 entries; key max 128 UTF-16 code units",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Same read meaning projected through deterministic bounded TabularData",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M09",
-      "sourceBaselineIds": [
-        "M09"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "ExportDroppedAfterShutdownTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M10",
-      "sourceBaselineIds": [
-        "M10"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "ExportDroppedOverflowTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M11",
-      "sourceBaselineIds": [
-        "M11"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "ExportEnabled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "CONVERTED_WRITABLE_ATTRIBUTE",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M12",
-      "sourceBaselineIds": [
-        "M12"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "ExportFailuresTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M13",
-      "sourceBaselineIds": [
-        "M13"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "ExportQueueCapacity",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "int",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.INTEGER",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M14",
-      "sourceBaselineIds": [
-        "M14"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "ExportQueueSize",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "int",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.INTEGER",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M15",
-      "sourceBaselineIds": [
-        "M15"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "ExportTimeoutsTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M16",
-      "sourceBaselineIds": [
-        "M16"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
-      "kind": "ATTRIBUTE",
-      "name": "SafeExporterMetrics",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.TabularData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "TabularType space.br1440.platform.tracing.management.StringLongTable.v1; max 128 entries; key max 128 UTF-16 code units",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Same read meaning projected through deterministic bounded TabularData",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M17",
-      "sourceBaselineIds": [
-        "M17"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "Capabilities",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "[Ljava.lang.String;",
-      "parameterJavaTypes": [],
-      "returnOpenType": "ArrayType(SimpleType.STRING)",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M18",
-      "sourceBaselineIds": [
-        "M18"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "ExportPathProtected",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M19",
-      "sourceBaselineIds": [
-        "M19"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "ExtensionVersion",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M20",
-      "sourceBaselineIds": [
-        "M20"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "FailureCode",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M21",
-      "sourceBaselineIds": [
-        "M21"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "FailureMessage",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M22",
-      "sourceBaselineIds": [
-        "M22"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "LifecycleState",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M23",
-      "sourceBaselineIds": [
-        "M23"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "Profile",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M24",
-      "sourceBaselineIds": [
-        "M24"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "PropagationHooksInstalled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M25",
-      "sourceBaselineIds": [
-        "M25"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "ProtocolVersion",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "int",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.INTEGER",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M26",
-      "sourceBaselineIds": [
-        "M26"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "RequiredCapabilities",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "[Ljava.lang.String;",
-      "parameterJavaTypes": [],
-      "returnOpenType": "ArrayType(SimpleType.STRING)",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M27",
-      "sourceBaselineIds": [
-        "M27"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "RequiredSpanProcessorsInstalled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M28",
-      "sourceBaselineIds": [
-        "M28"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "SamplerInstalled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M29",
-      "sourceBaselineIds": [
-        "M29"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "SanitizerInstalled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "HEALTH",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M30",
-      "sourceBaselineIds": [
-        "M30"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "ActiveSpanCount",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "int",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.INTEGER",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M31",
-      "sourceBaselineIds": [
-        "M31"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "ActiveTraceCount",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "int",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.INTEGER",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M32",
-      "sourceBaselineIds": [
-        "M32"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "DroppedAttributesTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "NO_NAMED_CONSUMER_FOUND"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M33",
-      "sourceBaselineIds": [
-        "M33"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "DroppedEventsTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "NO_NAMED_CONSUMER_FOUND"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M34",
-      "sourceBaselineIds": [
-        "M34"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "DroppedLinksTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "NO_NAMED_CONSUMER_FOUND"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M35",
-      "sourceBaselineIds": [
-        "M35"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "ForcedSpanCloses",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M36",
-      "sourceBaselineIds": [
-        "M36"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "ForcedTraceCloses",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M37",
-      "sourceBaselineIds": [
-        "M37"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "ProcessorErrorsByName",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.TabularData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "TabularType space.br1440.platform.tracing.management.StringLongTable.v1; max 128 entries; key max 128 UTF-16 code units",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Same read meaning projected through deterministic bounded TabularData",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M38",
-      "sourceBaselineIds": [
-        "M38"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
-      "kind": "ATTRIBUTE",
-      "name": "ProcessorErrorsTotal",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M41",
-      "sourceBaselineIds": [
-        "M41"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-      "kind": "ATTRIBUTE",
-      "name": "RouteRatios",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.TabularData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "TabularType space.br1440.platform.tracing.control.RouteRatios.v1; max 100 entries; routePrefix max 255 UTF-16 code units",
-      "parameterOpenTypes": [],
-      "source": "CONVERTED_WRITABLE_ATTRIBUTE",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M42",
-      "sourceBaselineIds": [
-        "M42"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-      "kind": "ATTRIBUTE",
-      "name": "SamplerDecisionCounts",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.TabularData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "TabularType space.br1440.platform.tracing.management.StringLongTable.v1; max 128 entries; key max 128 UTF-16 code units",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Same read meaning projected through deterministic bounded TabularData",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR",
-        "TEST"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M43",
-      "sourceBaselineIds": [
-        "M43"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-      "kind": "ATTRIBUTE",
-      "name": "SamplerEnabled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "CONVERTED_WRITABLE_ATTRIBUTE",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M46",
-      "sourceBaselineIds": [
-        "M46"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-      "kind": "ATTRIBUTE",
-      "name": "SamplingRatio",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "double",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.DOUBLE",
-      "parameterOpenTypes": [],
-      "source": "CONVERTED_WRITABLE_ATTRIBUTE",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M47",
-      "sourceBaselineIds": [
-        "M47"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
-      "kind": "OPERATION",
-      "name": "getSamplerDecisionCount",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [
-        "java.lang.String",
-        "java.lang.String"
-      ],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [
-        "SimpleType.STRING",
-        "SimpleType.STRING"
-      ],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read operation",
-      "consumers": [
-        "CLIENT"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M53",
-      "sourceBaselineIds": [
-        "M53"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-      "kind": "ATTRIBUTE",
-      "name": "ScrubbingEnabled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M54",
-      "sourceBaselineIds": [
-        "M54"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
-      "kind": "ATTRIBUTE",
-      "name": "ScrubbingMetrics",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.TabularData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "TabularType space.br1440.platform.tracing.management.StringLongTable.v1; max 128 entries; key max 128 UTF-16 code units",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Same read meaning projected through deterministic bounded TabularData",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M59",
-      "sourceBaselineIds": [
-        "M59"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-      "kind": "ATTRIBUTE",
-      "name": "ValidationEnabled",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M60",
-      "sourceBaselineIds": [
-        "M60"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-      "kind": "ATTRIBUTE",
-      "name": "ValidationStrict",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "RETAINED_BASELINE_READ",
-      "reason": "Unchanged read-only diagnostic",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-M61",
-      "sourceBaselineIds": [
-        "M61"
-      ],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
-      "kind": "ATTRIBUTE",
-      "name": "ValidationStrictRuntimeAllowed",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "CLARIFIED_BASELINE_READ",
-      "reason": "Read-only projection; legacy setter is removed where present",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension domain JMX owner (P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N01",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "RuntimeInstanceId",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N02",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "AcceptedSequence",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "long",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.LONG",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N03",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "AcceptedPolicyDigest",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N04",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "LastApplyOutcome",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N05",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "LastAttemptId",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N06",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "LastFailureCode",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N07",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "StructuralDrift",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N08",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "ATTRIBUTE",
-      "name": "RestartRequired",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "boolean",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.BOOLEAN",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "CLIENT",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension control owner (P2/P6)"
-    },
-    {
-      "targetMemberId": "PLAT-N09",
-      "sourceBaselineIds": [],
-      "server": "PLATFORM",
-      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
-      "kind": "ATTRIBUTE",
-      "name": "ConfigDeliveryHealth",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_NEW_READ",
-      "reason": "Accepted-state or delivery-health projection required by R3",
-      "consumers": [
-        "HEALTH",
-        "ACTUATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension readiness owner (P6)"
-    }
-  ],
-  "privateMembers": [
-    {
-      "targetMemberId": "PRIV-R01",
-      "sourceBaselineIds": [],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
-      "kind": "ATTRIBUTE",
-      "name": "ProtocolId",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_PRIVATE_READ",
-      "reason": "S-03 exactly-one discovery and lifecycle contract",
-      "consumers": [
-        "PRIVATE_LOCATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)"
-    },
-    {
-      "targetMemberId": "PRIV-R02",
-      "sourceBaselineIds": [],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
-      "kind": "ATTRIBUTE",
-      "name": "ProtocolVersion",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "int",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.INTEGER",
-      "parameterOpenTypes": [],
-      "source": "ADD_PRIVATE_READ",
-      "reason": "S-03 exactly-one discovery and lifecycle contract",
-      "consumers": [
-        "PRIVATE_LOCATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)"
-    },
-    {
-      "targetMemberId": "PRIV-R03",
-      "sourceBaselineIds": [],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
-      "kind": "ATTRIBUTE",
-      "name": "RuntimeInstanceId",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_PRIVATE_READ",
-      "reason": "S-03 exactly-one discovery and lifecycle contract",
-      "consumers": [
-        "PRIVATE_LOCATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)"
-    },
-    {
-      "targetMemberId": "PRIV-R04",
-      "sourceBaselineIds": [],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
-      "kind": "ATTRIBUTE",
-      "name": "WriterObjectName",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_PRIVATE_READ",
-      "reason": "S-03 exactly-one discovery and lifecycle contract",
-      "consumers": [
-        "PRIVATE_LOCATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)"
-    },
-    {
-      "targetMemberId": "PRIV-R05",
-      "sourceBaselineIds": [],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
-      "kind": "ATTRIBUTE",
-      "name": "LifecycleState",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_PRIVATE_READ",
-      "reason": "S-03 exactly-one discovery and lifecycle contract",
-      "consumers": [
-        "PRIVATE_LOCATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)"
-    },
-    {
-      "targetMemberId": "PRIV-R06",
-      "sourceBaselineIds": [],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
-      "kind": "ATTRIBUTE",
-      "name": "MarkerSignature",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "java.lang.String",
-      "parameterJavaTypes": [],
-      "returnOpenType": "SimpleType.STRING",
-      "parameterOpenTypes": [],
-      "source": "ADD_PRIVATE_READ",
-      "reason": "S-03 exactly-one discovery and lifecycle contract",
-      "consumers": [
-        "PRIVATE_LOCATOR"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2)"
-    },
-    {
-      "targetMemberId": "PRIV-R07",
-      "sourceBaselineIds": [],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "OPERATION",
-      "name": "readAcceptedComplete",
-      "readable": true,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.CompositeData",
-      "parameterJavaTypes": [],
-      "returnOpenType": "CompositeData AcceptedCompleteSnapshot/v1; max logical payload 32768 bytes",
-      "parameterOpenTypes": [],
-      "source": "ADD_PRIVATE_READ",
-      "reason": "Authoritative complete accepted-policy read for Config Server delivery, DEV_ACTUATOR read-copy-change, readiness and runtime-instance detection; Architecture Committee APPROVE 2026-07-29 (PROPOSED_PRIV_R07)",
-      "consumers": [
-        "CONFIG_SERVER_BRIDGE",
-        "DEV_TYPED_JMX_ADAPTER",
-        "ACTUATOR_READINESS"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2/P4)"
-    },
-    {
-      "targetMemberId": "PRIV-W01",
-      "sourceBaselineIds": [],
-      "replacedBaselineMemberIds": [
-        "M01"
-      ],
-      "server": "PRIVATE",
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "kind": "OPERATION",
-      "name": "applySnapshot",
-      "readable": false,
-      "writable": false,
-      "returnJavaType": "javax.management.openmbean.CompositeData",
-      "parameterJavaTypes": [
-        "javax.management.openmbean.CompositeData"
-      ],
-      "returnOpenType": "CompositeData; exact CompositeType is not declared by Standard MBeanInfo",
-      "parameterOpenTypes": [
-        "CompositeData; exact CompositeType is not declared by Standard MBeanInfo"
-      ],
-      "source": "ADD_PRIVATE_MUTATION",
-      "reason": "New strict complete-snapshot aggregate writer; not the legacy partial applyPolicy contract",
-      "consumers": [
-        "CONFIG_SERVER_BRIDGE",
-        "DEV_TYPED_JMX_ADAPTER"
-      ],
-      "migrationOwner": "platform-tracing-otel-javaagent-extension private server owner (P2/P4)"
-    }
-  ],
-  "privateWriterContract": {
-    "targetMemberId": "PRIV-W01",
-    "status": "E7_MEMBER_AND_ROLE_BOUND_P0_PAYLOAD_SCHEMA_READY_FOR_COMMITTEE_APPROVAL",
-    "legacyPartialApplyPolicyDeleted": true,
-    "operationName": "applySnapshot",
-    "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-    "requestJavaType": "javax.management.openmbean.CompositeData",
-    "responseJavaType": "javax.management.openmbean.CompositeData",
-    "completeSnapshotSemantics": "All eight Category A leaves plus the approved envelope are required; patch/partial apply is rejected",
-    "requiredCategoryALeaves": [
-      "sampling.enabled",
-      "sampling.ratio",
-      "sampling.route-ratios",
-      "validation.enabled",
-      "validation.strict",
-      "exporter.enabled",
-      "propagation.trace-control-headers.enabled",
-      "diagnostics.log-level"
-    ],
-    "unknownFieldBehavior": "REJECT",
-    "optimisticConcurrencyMetadata": [
-      "runtimeInstanceId",
-      "expectedAcceptedSequence"
-    ],
-    "exactCompositeTypeAuthority": [
-      "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json",
-      "docs/research/evidence/implementation-readiness/p0-wire-schema-bounds.json"
-    ],
-    "prohibitedCompatibility": [
-      "legacy partial applyPolicy relocation",
-      "string-coercion codec",
-      "generic raw Map",
-      "recognized-but-unapplied fields",
-      "domain-specific setters"
-    ]
-  },
-  "acceptedStateVisibility": {
-    "mode": "SELECTED_NON_SENSITIVE_VALUES_PLUS_DIGEST_AND_SEQUENCE",
-    "forbidden": [
-      "raw secrets",
-      "unbounded failure text",
-      "exception stack traces",
-      "Category B drop-paths/force-record as runtime JMX",
-      "scrubbing rule composition as Category A"
-    ]
-  },
-  "counterReset": {
-    "resetSamplerCounters": "DELETE_MUTATION",
-    "semantics": "monotonic for process lifetime; reset only on JVM restart; dashboards use rate/increase"
-  },
-  "openTypeRules": [
-    "Exact baseline Java signatures come from committed Standard MBeanInfo",
-    "Target Map reads are deterministic bounded TabularData projections",
-    "No Java collection types cross the target JMX boundary",
-    "Exact aggregate CompositeType fields and bounds are defined by the E8 P0 wire-schema artifacts"
-  ]
+    "spikeId":  "S-07",
+    "platformMutationsAfterP6":  0,
+    "selectedOption":  "R3",
+    "privateReadMemberCount":  7,
+    "platformMembers":  [
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M01",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ConfigAuditTrail",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M01"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "[Ljava.lang.String;",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "ArrayType(SimpleType.STRING)",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M02",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ConfigReloadMetrics",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M02"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.util.Map",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "TabularType or Map; Standard MBeanInfo declares java.util.Map",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M03",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "InvalidConfigCount",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M03"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M04",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "PlatformLogLevel",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M04"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M05",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "PropagationEnabled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M05"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M06",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SafeWrapperMetrics",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M06"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.util.Map",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "TabularType or Map; Standard MBeanInfo declares java.util.Map",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M07",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportDroppedAfterShutdownTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M07"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M08",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportDroppedOverflowTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M08"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M09",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportEnabled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M09"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M10",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportFailuresTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M10"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M11",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportQueueCapacity",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M11"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "int",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.INTEGER",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M12",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportQueueSize",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M12"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "int",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.INTEGER",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M13",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportTimeoutsTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M13"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M14",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SafeExporterMetrics",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M14"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.util.Map",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "TabularType or Map; Standard MBeanInfo declares java.util.Map",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M15",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "Capabilities",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M15"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "[Ljava.lang.String;",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "ArrayType(SimpleType.STRING)",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M16",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExportPathProtected",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M16"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M17",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ExtensionVersion",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M17"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M18",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "FailureCode",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M18"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M19",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "FailureMessage",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M19"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M20",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "LifecycleState",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M20"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M21",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "Profile",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M21"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M22",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "PropagationHooksInstalled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M22"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M23",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ProtocolVersion",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M23"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "int",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.INTEGER",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M24",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "RequiredCapabilities",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M24"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "[Ljava.lang.String;",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "ArrayType(SimpleType.STRING)",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M25",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "RequiredSpanProcessorsInstalled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M25"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M26",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SamplerInstalled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M26"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M27",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SanitizerInstalled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M27"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M28",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ActiveSpanCount",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M28"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "int",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.INTEGER",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M29",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ActiveTraceCount",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M29"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "int",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.INTEGER",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M30",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "DroppedAttributesTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M30"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M31",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "DroppedEventsTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M31"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M32",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "DroppedLinksTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M32"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M33",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ForcedSpanCloses",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M33"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M34",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ForcedTraceCloses",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M34"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M35",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ProcessorErrorsByName",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M35"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.util.Map",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "TabularType or Map; Standard MBeanInfo declares java.util.Map",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M36",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ProcessorErrorsTotal",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M36"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M37",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "RouteRatios",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M37"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.util.Map",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "TabularType or Map; Standard MBeanInfo declares java.util.Map",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M38",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SamplerDecisionCounts",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M38"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.util.Map",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "TabularType or Map; Standard MBeanInfo declares java.util.Map",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M39",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SamplerEnabled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M39"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M40",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SamplingConfigLastUpdatedSource",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M40"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M41",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SamplingConfigVersion",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M41"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M42",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "SamplingRatio",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M42"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "double",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.DOUBLE",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M43",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "getSamplerDecisionCount",
+                                "parameterJavaTypes":  [
+                                                           "java.lang.String",
+                                                           "java.lang.String"
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M43"
+                                                      ],
+                                "kind":  "OPERATION",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+                                                           "SimpleType.STRING",
+                                                           "SimpleType.STRING"
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M44",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ScrubbingConfigLastUpdatedSource",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M44"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M45",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ScrubbingConfigVersion",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M45"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M46",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ScrubbingEnabled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M46"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M47",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ScrubbingMetrics",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M47"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.util.Map",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "TabularType or Map; Standard MBeanInfo declares java.util.Map",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M48",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ValidationConfigLastUpdatedSource",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M48"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M49",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ValidationConfigVersion",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M49"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M50",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ValidationEnabled",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M50"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M51",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ValidationStrict",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M51"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "Live post-P6.6 read-only domain member",
+                                "targetMemberId":  "PLAT-M52",
+                                "source":  "RETAINED_BASELINE_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "ValidationStrictRuntimeAllowed",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+                                                          "M52"
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension domain JMX owner (P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-01",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "RuntimeInstanceId",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-02",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "AcceptedSequence",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "long",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.LONG",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-03",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "AcceptedPolicyDigest",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-04",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "LastApplyOutcome",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-05",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "LastAttemptId",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-06",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "LastFailureCode",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "java.lang.String",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.STRING",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-07",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "StructuralDrift",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            },
+                            {
+                                "reason":  "E7 PlatformControlReadProjection read-only attribute",
+                                "targetMemberId":  "PLAT-CTRL-08",
+                                "source":  "ADD_NEW_READ",
+                                "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                "consumers":  [
+                                                  "ACTUATOR",
+                                                  "CLIENT",
+                                                  "TEST"
+                                              ],
+                                "name":  "RestartRequired",
+                                "parameterJavaTypes":  [
+
+                                                       ],
+                                "sourceBaselineIds":  [
+
+                                                      ],
+                                "kind":  "ATTRIBUTE",
+                                "writable":  false,
+                                "readable":  true,
+                                "returnJavaType":  "boolean",
+                                "parameterOpenTypes":  [
+
+                                                       ],
+                                "migrationOwner":  "platform-tracing-otel-javaagent-extension control owner (P2/P6)",
+                                "returnOpenType":  "SimpleType.BOOLEAN",
+                                "server":  "PLATFORM"
+                            }
+                        ],
+    "privateMembers":  [
+                           {
+                               "reason":  "S-03 private marker discovery",
+                               "targetMemberId":  "PRIV-R01",
+                               "source":  "ADD_PRIVATE_READ",
+                               "objectName":  "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "ProtocolId",
+                               "parameterJavaTypes":  {
+
+                                                      },
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "ATTRIBUTE",
+                               "writable":  false,
+                               "readable":  true,
+                               "returnJavaType":  "java.lang.String",
+                               "parameterOpenTypes":  [
+
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "SimpleType.STRING",
+                               "server":  "PRIVATE"
+                           },
+                           {
+                               "reason":  "S-03 private marker discovery",
+                               "targetMemberId":  "PRIV-R02",
+                               "source":  "ADD_PRIVATE_READ",
+                               "objectName":  "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "ProtocolVersion",
+                               "parameterJavaTypes":  {
+
+                                                      },
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "ATTRIBUTE",
+                               "writable":  false,
+                               "readable":  true,
+                               "returnJavaType":  "int",
+                               "parameterOpenTypes":  [
+
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "SimpleType.INTEGER",
+                               "server":  "PRIVATE"
+                           },
+                           {
+                               "reason":  "S-03 private marker discovery",
+                               "targetMemberId":  "PRIV-R03",
+                               "source":  "ADD_PRIVATE_READ",
+                               "objectName":  "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "RuntimeInstanceId",
+                               "parameterJavaTypes":  {
+
+                                                      },
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "ATTRIBUTE",
+                               "writable":  false,
+                               "readable":  true,
+                               "returnJavaType":  "java.lang.String",
+                               "parameterOpenTypes":  [
+
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "SimpleType.STRING",
+                               "server":  "PRIVATE"
+                           },
+                           {
+                               "reason":  "S-03 private marker discovery",
+                               "targetMemberId":  "PRIV-R04",
+                               "source":  "ADD_PRIVATE_READ",
+                               "objectName":  "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "WriterObjectName",
+                               "parameterJavaTypes":  {
+
+                                                      },
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "ATTRIBUTE",
+                               "writable":  false,
+                               "readable":  true,
+                               "returnJavaType":  "java.lang.String",
+                               "parameterOpenTypes":  [
+
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "SimpleType.STRING",
+                               "server":  "PRIVATE"
+                           },
+                           {
+                               "reason":  "S-03 private marker discovery",
+                               "targetMemberId":  "PRIV-R05",
+                               "source":  "ADD_PRIVATE_READ",
+                               "objectName":  "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "LifecycleState",
+                               "parameterJavaTypes":  {
+
+                                                      },
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "ATTRIBUTE",
+                               "writable":  false,
+                               "readable":  true,
+                               "returnJavaType":  "java.lang.String",
+                               "parameterOpenTypes":  [
+
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "SimpleType.STRING",
+                               "server":  "PRIVATE"
+                           },
+                           {
+                               "reason":  "S-03 private marker discovery",
+                               "targetMemberId":  "PRIV-R06",
+                               "source":  "ADD_PRIVATE_READ",
+                               "objectName":  "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "MarkerSignature",
+                               "parameterJavaTypes":  {
+
+                                                      },
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "ATTRIBUTE",
+                               "writable":  false,
+                               "readable":  true,
+                               "returnJavaType":  "java.lang.String",
+                               "parameterOpenTypes":  [
+
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "SimpleType.STRING",
+                               "server":  "PRIVATE"
+                           },
+                           {
+                               "reason":  "PRIV-R07 accepted complete reader",
+                               "targetMemberId":  "PRIV-R07",
+                               "source":  "ADD_PRIVATE_READ",
+                               "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "readAcceptedComplete",
+                               "parameterJavaTypes":  {
+
+                                                      },
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "OPERATION",
+                               "writable":  false,
+                               "readable":  true,
+                               "returnJavaType":  "javax.management.openmbean.CompositeData",
+                               "parameterOpenTypes":  [
+
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "CompositeData; exact CompositeType is not declared by Standard MBeanInfo",
+                               "server":  "PRIVATE"
+                           },
+                           {
+                               "reason":  "Sole private complete-snapshot writer",
+                               "targetMemberId":  "PRIV-W01",
+                               "source":  "ADD_PRIVATE_MUTATION",
+                               "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                               "consumers":  [
+                                                 "PRIVATE_LOCATOR",
+                                                 "TEST"
+                                             ],
+                               "name":  "applySnapshot",
+                               "parameterJavaTypes":  "javax.management.openmbean.CompositeData",
+                               "sourceBaselineIds":  [
+
+                                                     ],
+                               "kind":  "OPERATION",
+                               "writable":  false,
+                               "readable":  false,
+                               "returnJavaType":  "javax.management.openmbean.CompositeData",
+                               "parameterOpenTypes":  [
+                                                          "CompositeData; exact CompositeType is not declared by Standard MBeanInfo"
+                                                      ],
+                               "migrationOwner":  "platform-tracing-otel-javaagent-extension private server owner (P2)",
+                               "returnOpenType":  "CompositeData; exact CompositeType is not declared by Standard MBeanInfo",
+                               "server":  "PRIVATE"
+                           }
+                       ],
+    "postP66LiveContract":  true,
+    "privateWriterContract":  {
+                                  "targetMemberId":  "PRIV-W01",
+                                  "status":  "E7_MEMBER_AND_ROLE_BOUND_P0_PAYLOAD_SCHEMA_READY_FOR_COMMITTEE_APPROVAL",
+                                  "legacyPartialApplyPolicyDeleted":  true,
+                                  "operationName":  "applySnapshot",
+                                  "objectName":  "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
+                                  "requestJavaType":  "javax.management.openmbean.CompositeData",
+                                  "responseJavaType":  "javax.management.openmbean.CompositeData",
+                                  "completeSnapshotSemantics":  "All eight Category A leaves plus the approved envelope are required; patch/partial apply is rejected",
+                                  "requiredCategoryALeaves":  [
+                                                                  "sampling.enabled",
+                                                                  "sampling.ratio",
+                                                                  "sampling.route-ratios",
+                                                                  "validation.enabled",
+                                                                  "validation.strict",
+                                                                  "exporter.enabled",
+                                                                  "propagation.trace-control-headers.enabled",
+                                                                  "diagnostics.log-level"
+                                                              ],
+                                  "unknownFieldBehavior":  "REJECT",
+                                  "optimisticConcurrencyMetadata":  [
+                                                                        "runtimeInstanceId",
+                                                                        "expectedAcceptedSequence"
+                                                                    ],
+                                  "exactCompositeTypeAuthority":  [
+                                                                      "docs/research/evidence/implementation-readiness/p0-wire-schema-contract.json",
+                                                                      "docs/research/evidence/implementation-readiness/p0-wire-schema-bounds.json"
+                                                                  ],
+                                  "prohibitedCompatibility":  [
+                                                                  "legacy partial applyPolicy relocation",
+                                                                  "string-coercion codec",
+                                                                  "generic raw Map",
+                                                                  "recognized-but-unapplied fields",
+                                                                  "domain-specific setters"
+                                                              ]
+                              },
+    "platformMemberCount":  60,
+    "schemaVersion":  3,
+    "privateMutationMemberCount":  1
 }

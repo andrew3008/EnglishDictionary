@@ -11,7 +11,7 @@
 version: 1
 schema: public-contract-inventory.schema.json
 methodology: platform-development-api-design-week-01
-updatedAt: "2026-07-29"
+updatedAt: "2026-07-30"
 semanticContractMap: docs/contracts/semantic-contract-map.yaml
 
 inventories:
@@ -492,7 +492,8 @@ inventories:
         compatibility: enum constant additions only
         owner: platform-tracing
         verification:
-          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/control/protocol/ValidationModePolicyValidatorTest.java
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/semconv/AttributePolicyTest.java
+          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/SemanticLayerAutoConfigurationTest.java
         disposition: none
         semanticConceptIds: [semconv-validation-mode]
 
@@ -560,12 +561,6 @@ inventories:
           - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MdcPropagationAsyncIntegrationTest.java
         disposition: none
 
-        notes: >-
-          P0 inventory 2026-07-28 closed zero-external-consumer prerequisite
-          (samples/SUPPORTED/MIGRATION FQCN=0). Internal product consumers remain
-          in otel + javaagent-extension. Breaking deletion authorized only at P6
-          coherent cutover (committee legacyDeletionGo BLOCKED_UNTIL_P6).
-
       # --- Utility types ------------------------------------------------------------
 
       - id: throwing-supplier
@@ -618,7 +613,7 @@ inventories:
         intendedStatus: supported-api
         effectiveUsage: match
         guarantees:
-          - "DefaultSpanSpecBuilder, SpanSpecImpl, ImmutableSpanRelationshipSpec, protocol decoder/schema are not public API"
+          - "DefaultSpanSpecBuilder, SpanSpecImpl, ImmutableSpanRelationshipSpec are not public API"
           - "Public factories on interfaces are the supported construction path"
         evidence:
           - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/span/spec/DefaultSpanSpecBuilder.java

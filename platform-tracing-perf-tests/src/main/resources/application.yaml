@@ -11,6 +11,14 @@ spring:
   application:
     name: perf-sut
 
+# M10 private-control fixture talks to the Agent private writer directly.
+# HELM: Agent bootstrap owns accepted state; Spring writer discovery stays absent.
+platform:
+  environment: PRODUCTION
+  tracing:
+    configuration:
+      authority: HELM
+
 management:
   endpoints:
     web:

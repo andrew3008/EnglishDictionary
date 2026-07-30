@@ -1,0 +1,34 @@
+# CONFIG_SERVER authority — complete Category A manifest (final names).
+# Deliver via Config Server property sources only (local overrides rejected).
+# Spring applies via private applySnapshot; no Actuator write surface.
+
+platform:
+  tracing:
+    mode: AGENT
+    configuration:
+      enabled: true
+      authority: CONFIG_SERVER
+    # Required Category A leaves (seven scalars + optional route-ratios map)
+    policy:
+      sampling:
+        enabled: true
+        ratio: 0.25
+        route-ratios:
+          /api/checkout: 1.0
+          /api/search: 0.01
+      validation:
+        enabled: true
+        strict: false
+      exporter:
+        enabled: true
+      propagation:
+        trace-control-headers:
+          enabled: true
+      diagnostics:
+        log-level: INFO
+
+# Category B remains Agent startup (Helm/env), not these Config Server leaves:
+#   platform.tracing.javaagent.scrubbing.enabled
+#   platform.tracing.javaagent.sampling.drop-paths
+#   platform.tracing.javaagent.sampling.force-record-values
+#   platform.tracing.javaagent.propagation.baggage.*

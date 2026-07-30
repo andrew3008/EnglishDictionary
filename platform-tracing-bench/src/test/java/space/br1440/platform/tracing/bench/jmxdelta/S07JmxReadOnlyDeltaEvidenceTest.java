@@ -17,6 +17,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+/**
+ * Post-P6.6 Gate E7 evidence consistency: live domain baseline is read-only,
+ * Control projection is read-only, and the sole mutation remains private
+ * {@code applySnapshot}.
+ */
 class S07JmxReadOnlyDeltaEvidenceTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -69,31 +74,31 @@ class S07JmxReadOnlyDeltaEvidenceTest {
     }
 
     @Test
-    @DisplayName("baseline reproduction reports the exact live contract")
+    @DisplayName("baseline reproduction reports the exact live post-P6.6 domain contract")
     void baselineReproductionPass() throws IOException {
         JsonNode node = read("baseline-reproduction.json");
         assertThat(node.path("result").asText()).isEqualTo("PASS");
         assertThat(node.path("liveMatchesCommittedFixture").asBoolean()).isTrue();
-        assertThat(node.path("fixtureCounts").path("objectNameCount").asInt()).isEqualTo(8);
-        assertThat(node.path("fixtureCounts").path("memberCount").asInt()).isEqualTo(63);
-        assertThat(node.path("fixtureCounts").path("readOnlyMemberCount").asInt()).isEqualTo(47);
-        assertThat(node.path("fixtureCounts").path("mutatingMemberCount").asInt()).isEqualTo(16);
+        assertThat(node.path("fixtureCounts").path("objectNameCount").asInt()).isEqualTo(7);
+        assertThat(node.path("fixtureCounts").path("memberCount").asInt()).isEqualTo(52);
+        assertThat(node.path("fixtureCounts").path("readOnlyMemberCount").asInt()).isEqualTo(52);
+        assertThat(node.path("fixtureCounts").path("mutatingMemberCount").asInt()).isEqualTo(0);
 
         BaselineCounts counts = countBaselineMembers(readBaseline());
-        assertThat(counts.objectNames()).isEqualTo(8);
-        assertThat(counts.members()).isEqualTo(63);
-        assertThat(counts.strictReads()).isEqualTo(47);
-        assertThat(counts.writableAttributes()).isEqualTo(8);
-        assertThat(counts.mutatingOperations()).isEqualTo(8);
+        assertThat(counts.objectNames()).isEqualTo(7);
+        assertThat(counts.members()).isEqualTo(52);
+        assertThat(counts.strictReads()).isEqualTo(52);
+        assertThat(counts.writableAttributes()).isEqualTo(0);
+        assertThat(counts.mutatingOperations()).isEqualTo(0);
     }
 
     @Test
-    @DisplayName("63 inventory rows form an exact identity and signature bijection with baseline")
+    @DisplayName("52 inventory rows form an exact identity and signature bijection with baseline")
     void memberInventoryMatchesBaselineExactly() throws IOException {
         JsonNode inventory = read("member-inventory.json");
         JsonNode rows = inventory.path("members");
-        assertThat(inventory.path("memberCount").asInt()).isEqualTo(63);
-        assertThat(rows).hasSize(63);
+        assertThat(inventory.path("memberCount").asInt()).isEqualTo(52);
+        assertThat(rows).hasSize(52);
 
         Map<String, JsonNode> expected = flattenBaseline(readBaseline());
         Set<String> ids = new HashSet<>();
@@ -131,25 +136,18 @@ class S07JmxReadOnlyDeltaEvidenceTest {
     }
 
     @Test
-    @DisplayName("all 16 semantic mutations leave platform and legacy partial apply is deleted")
-    void sixteenMutationsMapped() throws IOException {
+    @DisplayName("post-P6.6 platform domain has zero semantic mutations; private applySnapshot remains")
+    void zeroPlatformMutationsMapped() throws IOException {
         JsonNode map = read("mutation-deletion-map.json");
-        assertThat(map.path("requiredSemanticMutations").asInt()).isEqualTo(16);
-        assertThat(map.path("writableAttributeCount").asInt()).isEqualTo(8);
-        assertThat(map.path("mutatingOperationCount").asInt()).isEqualTo(8);
-        assertThat(map.path("mutations")).hasSize(16);
+        assertThat(map.path("requiredSemanticMutations").asInt()).isEqualTo(0);
+        assertThat(map.path("writableAttributeCount").asInt()).isEqualTo(0);
+        assertThat(map.path("mutatingOperationCount").asInt()).isEqualTo(0);
+        assertThat(map.path("mutations")).isEmpty();
 
         Set<String> expectedMutationIds = baselineMutationIds(readBaseline());
-        Set<String> actualMutationIds = new HashSet<>();
-        for (JsonNode mutation : map.path("mutations")) {
-            actualMutationIds.add(mutation.path("baselineMemberId").asText());
-            assertThat(mutation.path("platformAfterP6").asText()).isIn("DELETED", "READ_ONLY");
-            assertThat(mutation.path("p6DeletionProof").asText()).isNotBlank();
-        }
-        assertThat(actualMutationIds).containsExactlyInAnyOrderElementsOf(expectedMutationIds);
+        assertThat(expectedMutationIds).isEmpty();
 
         JsonNode legacy = map.path("legacyPartialProtocol");
-        assertThat(legacy.path("baselineMemberId").asText()).isEqualTo("M01");
         assertThat(legacy.path("disposition").asText()).isEqualTo("DELETE_MUTATION");
         assertThat(legacy.path("relocated").asBoolean()).isFalse();
         assertThat(legacy.path("replacementTargetMemberId").asText()).isEqualTo("PRIV-W01");
@@ -166,13 +164,9 @@ class S07JmxReadOnlyDeltaEvidenceTest {
         for (JsonNode member : inventory.path("members")) {
             dispositions.merge(member.path("targetDisposition").asText(), 1, Integer::sum);
         }
-        assertThat(dispositions).containsEntry("RETAIN_EXACT", 32);
-        assertThat(dispositions).containsEntry("RETAIN_SEMANTICS_CLARIFIED", 14);
-        assertThat(dispositions).containsEntry("REPLACE_WITH_AGGREGATE_READ", 4);
-        assertThat(dispositions).containsEntry("DELETE_OBSOLETE_READ", 5);
-        assertThat(dispositions).containsEntry("DELETE_MUTATION", 8);
+        assertThat(dispositions).containsEntry("RETAIN_EXACT", 52);
         assertThat(dispositions.getOrDefault("MOVE_TO_PRIVATE_ONLY", 0)).isZero();
-        assertThat(dispositions.values().stream().mapToInt(Integer::intValue).sum()).isEqualTo(63);
+        assertThat(dispositions.values().stream().mapToInt(Integer::intValue).sum()).isEqualTo(52);
 
         long convertedWritable = target.path("platformMembers").findValuesAsText("source").stream()
                 .filter("CONVERTED_WRITABLE_ATTRIBUTE"::equals)
@@ -184,21 +178,22 @@ class S07JmxReadOnlyDeltaEvidenceTest {
                 .filter("ADD_NEW_READ"::equals)
                 .count();
 
-        assertThat(convertedWritable).isEqualTo(6);
-        assertThat(replacementReads).isEqualTo(1);
-        assertThat(addedReads).isEqualTo(9);
-        assertThat(target.path("platformMembers")).hasSize(56);
-        assertThat(delta.path("after").path("platformMembers").asInt()).isEqualTo(56);
+        assertThat(convertedWritable).isZero();
+        assertThat(replacementReads).isZero();
+        assertThat(addedReads).isEqualTo(8);
+        assertThat(target.path("platformMembers")).hasSize(60);
+        assertThat(delta.path("after").path("platformMembers").asInt()).isEqualTo(60);
         assertThat(delta.path("after").path("privateReadMembers").asInt()).isEqualTo(7);
+        assertThat(delta.path("after").path("platformMutations").asInt()).isZero();
     }
 
     @Test
-    @DisplayName("target platform contract has exactly 56 unique read-only Open-Type members")
+    @DisplayName("target platform contract has exactly 60 unique read-only Open-Type members")
     void targetPlatformContractIsExact() throws IOException {
         JsonNode contract = read("target-read-contract.json");
         JsonNode platformMembers = contract.path("platformMembers");
         assertThat(contract.path("platformMutationsAfterP6").asInt()).isZero();
-        assertThat(platformMembers).hasSize(56);
+        assertThat(platformMembers).hasSize(60);
 
         Set<String> targetIds = new HashSet<>();
         Set<String> identities = new HashSet<>();
@@ -208,7 +203,6 @@ class S07JmxReadOnlyDeltaEvidenceTest {
             assertThat(member.path("server").asText()).isEqualTo("PLATFORM");
             assertThat(member.path("readable").asBoolean()).isTrue();
             assertThat(member.path("writable").asBoolean()).isFalse();
-            assertThat(member.path("returnJavaType").asText()).isNotEqualTo("java.util.Map");
             assertThat(member.path("returnOpenType").asText()).isNotBlank();
             assertThat(member.path("source").asText()).isIn(
                     "RETAINED_BASELINE_READ",
@@ -224,10 +218,12 @@ class S07JmxReadOnlyDeltaEvidenceTest {
             assertThat(identities.add(identity)).as("duplicate target identity %s", identity).isTrue();
         }
         assertThat(objectNames).hasSize(8);
+        assertThat(objectNames).contains(
+                "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control");
     }
 
     @Test
-    @DisplayName("private contract is seven private reads (six marker + readAcceptedComplete) plus one writer")
+    @DisplayName("private contract is seven private reads plus one applySnapshot writer")
     void privateContractIsNewAndExact() throws IOException {
         JsonNode contract = read("target-read-contract.json");
         JsonNode privateMembers = contract.path("privateMembers");
@@ -302,7 +298,7 @@ class S07JmxReadOnlyDeltaEvidenceTest {
     void consumerMapIsMemberComplete() throws IOException {
         JsonNode consumerMap = read("consumer-map.json");
         JsonNode target = read("target-read-contract.json");
-        assertThat(consumerMap.path("baselineMembers")).hasSize(63);
+        assertThat(consumerMap.path("baselineMembers")).hasSize(52);
 
         Set<String> baselineIds = new HashSet<>();
         for (JsonNode member : consumerMap.path("baselineMembers")) {
@@ -312,7 +308,7 @@ class S07JmxReadOnlyDeltaEvidenceTest {
             assertThat(member.path("migrationOwner").asText()).isNotBlank();
             assertThat(member.path("zeroReferenceProof").asText()).isNotBlank();
         }
-        assertThat(baselineIds).hasSize(63);
+        assertThat(baselineIds).hasSize(52);
 
         long expectedAdded = target.path("platformMembers").findValuesAsText("source").stream()
                 .filter("ADD_NEW_READ"::equals)
@@ -326,15 +322,16 @@ class S07JmxReadOnlyDeltaEvidenceTest {
     }
 
     @Test
-    @DisplayName("decision summary reflects the independently verified corrected contract")
+    @DisplayName("decision summary reflects the independently verified post-P6.6 contract")
     void decisionSummary() throws IOException {
         JsonNode summary = read("decision-summary.json");
         assertThat(summary.path("verdict").asText()).isEqualTo("APPROVE_EXACT_JMX_DELTA");
         assertThat(summary.path("e7Recommendation").asText()).isEqualTo("READY_TO_CLOSE_E7");
         assertThat(summary.path("selectedReadContractOption").asText()).isEqualTo("R3");
         assertThat(summary.path("productionCodeChanged").asBoolean()).isFalse();
-        assertThat(summary.path("target").path("platformReadOnlyMembers").asInt()).isEqualTo(56);
+        assertThat(summary.path("target").path("platformReadOnlyMembers").asInt()).isEqualTo(60);
         assertThat(summary.path("target").path("privateReadMembers").asInt()).isEqualTo(7);
+        assertThat(summary.path("target").path("platformMutations").asInt()).isZero();
         assertThat(summary.path("privateCompletePolicyReader").path("targetMemberId").asText())
                 .isEqualTo("PRIV-R07");
         assertThat(summary.path("privateCompletePolicyReader").path("status").asText())

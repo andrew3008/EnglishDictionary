@@ -17,36 +17,44 @@ class PlatformExtensionReadinessJmxTest {
     @Test
     void readinessIsPublishedBeforeDomainMBeansAndDoesNotClaimReady() throws Exception {
         MBeanServer server = MBeanServerFactory.createMBeanServer();
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+        try {
+            PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
 
-        new PlatformTracingJmxRegistrar(server, readiness);
+            new PlatformTracingJmxRegistrar(server, readiness);
 
-        assertThat(server.isRegistered(PlatformTracingObjectNames.EXTENSION_READINESS)).isTrue();
-        assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isFalse();
-        assertThat(server.getAttribute(
-                PlatformTracingObjectNames.EXTENSION_READINESS, "LifecycleState"))
-                .isEqualTo("INITIALIZING");
-        assertThat((String[]) server.getAttribute(
-                PlatformTracingObjectNames.EXTENSION_READINESS, "Capabilities"))
-                .isEmpty();
+            assertThat(server.isRegistered(PlatformTracingObjectNames.EXTENSION_READINESS)).isTrue();
+            assertThat(server.isRegistered(PlatformTracingObjectNames.SAMPLING)).isFalse();
+            assertThat(server.getAttribute(
+                    PlatformTracingObjectNames.EXTENSION_READINESS, "LifecycleState"))
+                    .isEqualTo("INITIALIZING");
+            assertThat((String[]) server.getAttribute(
+                    PlatformTracingObjectNames.EXTENSION_READINESS, "Capabilities"))
+                    .isEmpty();
+        } finally {
+            MBeanServerFactory.releaseMBeanServer(server);
+        }
     }
 
     @Test
     void mbeanReflectsOnlyActuallyMarkedCapabilities() throws Exception {
         MBeanServer server = MBeanServerFactory.createMBeanServer();
-        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
-        new PlatformTracingJmxRegistrar(server, readiness);
+        try {
+            PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+            new PlatformTracingJmxRegistrar(server, readiness);
 
-        readiness.markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
+            readiness.markInstalled(PlatformExtensionCapability.PLATFORM_SAMPLER_INSTALLED);
 
-        String[] capabilities = (String[]) server.getAttribute(
-                PlatformTracingObjectNames.EXTENSION_READINESS, "Capabilities");
-        assertThat(Arrays.asList(capabilities)).containsExactly("PLATFORM_SAMPLER_INSTALLED");
-        assertThat(server.getAttribute(
-                PlatformTracingObjectNames.EXTENSION_READINESS, "SamplerInstalled"))
-                .isEqualTo(true);
-        assertThat(server.getAttribute(
-                PlatformTracingObjectNames.EXTENSION_READINESS, "SanitizerInstalled"))
-                .isEqualTo(false);
+            String[] capabilities = (String[]) server.getAttribute(
+                    PlatformTracingObjectNames.EXTENSION_READINESS, "Capabilities");
+            assertThat(Arrays.asList(capabilities)).containsExactly("PLATFORM_SAMPLER_INSTALLED");
+            assertThat(server.getAttribute(
+                    PlatformTracingObjectNames.EXTENSION_READINESS, "SamplerInstalled"))
+                    .isEqualTo(true);
+            assertThat(server.getAttribute(
+                    PlatformTracingObjectNames.EXTENSION_READINESS, "SanitizerInstalled"))
+                    .isEqualTo(false);
+        } finally {
+            MBeanServerFactory.releaseMBeanServer(server);
+        }
     }
 }

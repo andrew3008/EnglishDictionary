@@ -1,0 +1,9 @@
+﻿{
+    "remoteResult":  "FAILED_INFRASTRUCTURE",
+    "capturedAt":  "2026-07-30T10:36:32.1952919+03:00",
+    "remoteDockerHost":  "tcp://192.168.100.70:2375",
+    "commit":  "dca9f946918ef81ec4b9eb82b2b3844a3648d6e6",
+    "desktopLinuxError":  "docker : error during connect: Get \"http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.24/version\": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified. At C:\\Users\\andrew\\AppData\\Local\\Temp\\ps-script-ee2088f8",
+    "desktopLinuxResult":  "FAILED_INFRASTRUCTURE",
+    "remoteError":  "docker : error during connect: Get \"http://192.168.100.70:2375/v1.24/version\": dial tcp 192.168.100.70:2375: connectex: A connection attempt failed because the connected party did not properly respond after a period of time, or established "
+}

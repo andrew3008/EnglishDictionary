@@ -114,6 +114,7 @@ public class TracingActuatorAutoConfiguration {
 
     @Bean
     @ConditionalOnAvailableEndpoint(endpoint = TracingActuatorEndpoint.class)
+    @ConditionalOnBean(AcceptedTracingPolicyReader.class)
     @ConditionalOnMissingBean(TracingActuatorEndpoint.class)
     public TracingActuatorEndpoint tracingActuatorEndpoint(
             AcceptedTracingPolicyReader reader) {

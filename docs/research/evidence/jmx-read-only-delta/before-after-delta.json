@@ -1,277 +1,119 @@
-﻿{
-  "spikeId": "S-07",
-  "schemaVersion": 2,
-  "before": {
-    "objectNames": 8,
-    "members": 63,
-    "readOnly": 47,
-    "mutations": 16,
-    "writableAttributes": 8,
-    "mutatingOperations": 8
-  },
-  "dispositionArithmetic": {
-    "retainedExact": {
-      "count": 32,
-      "baselineMemberIds": [
-        "M03",
-        "M05",
-        "M09",
-        "M10",
-        "M12",
-        "M13",
-        "M14",
-        "M15",
-        "M17",
-        "M18",
-        "M19",
-        "M20",
-        "M21",
-        "M22",
-        "M23",
-        "M24",
-        "M25",
-        "M26",
-        "M27",
-        "M28",
-        "M29",
-        "M30",
-        "M31",
-        "M32",
-        "M33",
-        "M34",
-        "M35",
-        "M36",
-        "M38",
-        "M47",
-        "M59",
-        "M60"
-      ]
-    },
-    "clarified": {
-      "count": 14,
-      "baselineMemberIds": [
-        "M04",
-        "M06",
-        "M07",
-        "M08",
-        "M11",
-        "M16",
-        "M37",
-        "M41",
-        "M42",
-        "M43",
-        "M46",
-        "M53",
-        "M54",
-        "M61"
-      ]
-    },
-    "renamed": {
-      "count": 0,
-      "baselineMemberIds": []
-    },
-    "movedPrivate": {
-      "count": 0,
-      "baselineMemberIds": []
-    },
-    "deletedMutations": {
-      "count": 8,
-      "baselineMemberIds": [
-        "M01",
-        "M48",
-        "M49",
-        "M50",
-        "M55",
-        "M56",
-        "M62",
-        "M63"
-      ]
-    },
-    "deletedObsoleteReads": {
-      "count": 5,
-      "baselineMemberIds": [
-        "M39",
-        "M40",
-        "M44",
-        "M51",
-        "M57"
-      ]
-    },
-    "replacedWithAggregateRead": {
-      "count": 4,
-      "baselineMemberIds": [
-        "M02",
-        "M45",
-        "M52",
-        "M58"
-      ]
-    }
-  },
-  "baselineReadReconciliation": {
-    "retainedExactReadIds": [
-      "M03",
-      "M05",
-      "M09",
-      "M10",
-      "M12",
-      "M13",
-      "M14",
-      "M15",
-      "M17",
-      "M18",
-      "M19",
-      "M20",
-      "M21",
-      "M22",
-      "M23",
-      "M24",
-      "M25",
-      "M26",
-      "M27",
-      "M28",
-      "M29",
-      "M30",
-      "M31",
-      "M32",
-      "M33",
-      "M34",
-      "M35",
-      "M36",
-      "M38",
-      "M47",
-      "M59",
-      "M60"
-    ],
-    "clarifiedBaselineReadIds": [
-      "M04",
-      "M08",
-      "M16",
-      "M37",
-      "M42",
-      "M53",
-      "M54",
-      "M61"
-    ],
-    "convertedWritableAttributeIds": [
-      "M06",
-      "M07",
-      "M11",
-      "M41",
-      "M43",
-      "M46"
-    ],
-    "replacedBaselineReadIds": [
-      "M02",
-      "M45",
-      "M52",
-      "M58"
-    ],
-    "deletedStrictReadIds": [
-      "M44",
-      "M51",
-      "M57"
-    ],
-    "deletedWritableAttributeIds": [
-      "M39",
-      "M40"
-    ],
-    "strictReadFormula": "32 + 8 + 4 + 3 = 47",
-    "semanticMemberFormula": "32 + 14 + 4 + 5 + 8 = 63"
-  },
-  "after": {
-    "platformObjectNames": 8,
-    "platformMembers": 56,
-    "platformReadOnly": 56,
-    "platformMutations": 0,
-    "privateObjectNames": 2,
-    "privateReadMembers": 7,
-    "privateMutations": 1,
-    "addedPlatformReads": 9,
-    "addedPrivateReads": 7,
-    "deletedMutationsFromPlatform": 16
-  },
-  "targetPlatformArithmetic": {
-    "retainedExact": 32,
-    "clarifiedBaselineReads": 8,
-    "convertedWritableAttributes": 6,
-    "survivingReplacementReads": 1,
-    "addedPlatformReads": 9,
-    "formula": "32 + 8 + 6 + 1 + 9 = 56",
-    "targetMemberIds": [
-      "PLAT-M02",
-      "PLAT-M03",
-      "PLAT-M04",
-      "PLAT-M05",
-      "PLAT-M06",
-      "PLAT-M07",
-      "PLAT-M08",
-      "PLAT-M09",
-      "PLAT-M10",
-      "PLAT-M11",
-      "PLAT-M12",
-      "PLAT-M13",
-      "PLAT-M14",
-      "PLAT-M15",
-      "PLAT-M16",
-      "PLAT-M17",
-      "PLAT-M18",
-      "PLAT-M19",
-      "PLAT-M20",
-      "PLAT-M21",
-      "PLAT-M22",
-      "PLAT-M23",
-      "PLAT-M24",
-      "PLAT-M25",
-      "PLAT-M26",
-      "PLAT-M27",
-      "PLAT-M28",
-      "PLAT-M29",
-      "PLAT-M30",
-      "PLAT-M31",
-      "PLAT-M32",
-      "PLAT-M33",
-      "PLAT-M34",
-      "PLAT-M35",
-      "PLAT-M36",
-      "PLAT-M37",
-      "PLAT-M38",
-      "PLAT-M41",
-      "PLAT-M42",
-      "PLAT-M43",
-      "PLAT-M46",
-      "PLAT-M47",
-      "PLAT-M53",
-      "PLAT-M54",
-      "PLAT-M59",
-      "PLAT-M60",
-      "PLAT-M61",
-      "PLAT-N01",
-      "PLAT-N02",
-      "PLAT-N03",
-      "PLAT-N04",
-      "PLAT-N05",
-      "PLAT-N06",
-      "PLAT-N07",
-      "PLAT-N08",
-      "PLAT-N09"
-    ]
-  },
-  "targetPrivateArithmetic": {
-    "movedPrivateReads": 0,
-    "addedPrivateReads": 7,
-    "formula": "0 + 7 = 7",
-    "targetReadMemberIds": [
-      "PRIV-R01",
-      "PRIV-R02",
-      "PRIV-R03",
-      "PRIV-R04",
-      "PRIV-R05",
-      "PRIV-R06",
-      "PRIV-R07"
-    ],
-    "targetMutationMemberIds": [
-      "PRIV-W01"
-    ],
-    "privR07ReconciledAt": "2026-07-29"
-  }
+{
+    "before":  {
+                   "objectNames":  7,
+                   "readOnly":  52,
+                   "mutations":  0,
+                   "writableAttributes":  0,
+                   "mutatingOperations":  0,
+                   "members":  52
+               },
+    "schemaVersion":  3,
+    "spikeId":  "S-07",
+    "dispositionArithmetic":  {
+                                  "movedPrivate":  {
+                                                       "count":  0,
+                                                       "baselineMemberIds":  [
+
+                                                                             ]
+                                                   },
+                                  "clarified":  {
+                                                    "count":  0,
+                                                    "baselineMemberIds":  [
+
+                                                                          ]
+                                                },
+                                  "replacedWithAggregateRead":  {
+                                                                    "count":  0,
+                                                                    "baselineMemberIds":  [
+
+                                                                                          ]
+                                                                },
+                                  "renamed":  {
+                                                  "count":  0,
+                                                  "baselineMemberIds":  [
+
+                                                                        ]
+                                              },
+                                  "deletedMutations":  {
+                                                           "count":  0,
+                                                           "baselineMemberIds":  [
+
+                                                                                 ]
+                                                       },
+                                  "retainedExact":  {
+                                                        "count":  52,
+                                                        "baselineMemberIds":  [
+                                                                                  "M01",
+                                                                                  "M02",
+                                                                                  "M03",
+                                                                                  "M04",
+                                                                                  "M05",
+                                                                                  "M06",
+                                                                                  "M07",
+                                                                                  "M08",
+                                                                                  "M09",
+                                                                                  "M10",
+                                                                                  "M11",
+                                                                                  "M12",
+                                                                                  "M13",
+                                                                                  "M14",
+                                                                                  "M15",
+                                                                                  "M16",
+                                                                                  "M17",
+                                                                                  "M18",
+                                                                                  "M19",
+                                                                                  "M20",
+                                                                                  "M21",
+                                                                                  "M22",
+                                                                                  "M23",
+                                                                                  "M24",
+                                                                                  "M25",
+                                                                                  "M26",
+                                                                                  "M27",
+                                                                                  "M28",
+                                                                                  "M29",
+                                                                                  "M30",
+                                                                                  "M31",
+                                                                                  "M32",
+                                                                                  "M33",
+                                                                                  "M34",
+                                                                                  "M35",
+                                                                                  "M36",
+                                                                                  "M37",
+                                                                                  "M38",
+                                                                                  "M39",
+                                                                                  "M40",
+                                                                                  "M41",
+                                                                                  "M42",
+                                                                                  "M43",
+                                                                                  "M44",
+                                                                                  "M45",
+                                                                                  "M46",
+                                                                                  "M47",
+                                                                                  "M48",
+                                                                                  "M49",
+                                                                                  "M50",
+                                                                                  "M51",
+                                                                                  "M52"
+                                                                              ]
+                                                    },
+                                  "deletedObsoleteReads":  {
+                                                               "count":  0,
+                                                               "baselineMemberIds":  [
+
+                                                                                     ]
+                                                           }
+                              },
+    "after":  {
+                  "platformReadOnly":  60,
+                  "addedPrivateReads":  7,
+                  "privateReadMembers":  7,
+                  "privateObjectNames":  2,
+                  "platformMembers":  60,
+                  "privateMutations":  1,
+                  "deletedMutationsFromPlatform":  0,
+                  "platformMutations":  0,
+                  "addedPlatformReads":  8,
+                  "platformObjectNames":  8
+              }
 }

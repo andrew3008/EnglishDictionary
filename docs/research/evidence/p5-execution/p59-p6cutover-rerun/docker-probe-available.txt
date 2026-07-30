@@ -1,0 +1,5 @@
+﻿# Docker re-probe after Gentoo available
+capturedAt=2026-07-30T11:35:37.2130407+03:00
+commit=dca9f946918ef81ec4b9eb82b2b3844a3648d6e6
+DOCKER_HOST=tcp://192.168.100.70:2375
+server=28.0.4 linux/amd64

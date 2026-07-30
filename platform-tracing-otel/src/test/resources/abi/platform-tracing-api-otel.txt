@@ -76,78 +76,6 @@ TYPE public final record space.br1440.platform.tracing.api.context.RequestTraceC
   METHOD public java.lang.String requestId()
   METHOD public java.lang.String spanId()
   METHOD public java.lang.String traceId()
-TYPE public final class space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
-  METHOD public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult decode(java.util.Map<java.lang.String,java.lang.Object>)
-  METHOD public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion version()
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol current()
-TYPE public final record space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult
-  CTOR public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult(boolean,java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation>,java.util.Map<java.lang.String,java.lang.Object>,java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation>)
-  METHOD public boolean valid()
-  METHOD public final boolean equals(java.lang.Object)
-  METHOD public final int hashCode()
-  METHOD public final java.lang.String toString()
-  METHOD public java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation> violations()
-  METHOD public java.util.Map<java.lang.String,java.lang.Object> normalizedPayload()
-  METHOD public java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation> operation()
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult failure(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation>)
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult failure(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation)
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult success(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.Map<java.lang.String,java.lang.Object>)
-TYPE public final class space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys
-  FIELD public static final java.lang.String CONTRACT_VERSION
-  FIELD public static final java.lang.String DIAGNOSTICS_REQUEST_ID
-  FIELD public static final java.lang.String DIAGNOSTICS_TIMESTAMP
-  FIELD public static final java.lang.String ENRICHING_ENABLED
-  FIELD public static final java.lang.String EXPORT_ENABLED
-  FIELD public static final java.lang.String OPERATION
-  FIELD public static final java.lang.String PROPAGATION_ENABLED
-  FIELD public static final java.lang.String SAMPLING_DROP_PATH_PREFIXES
-  FIELD public static final java.lang.String SAMPLING_FORCE_HEADER_ENABLED
-  FIELD public static final java.lang.String SAMPLING_FORCE_HEADER_VALUES
-  FIELD public static final java.lang.String SAMPLING_KILL_SWITCH_ENABLED
-  FIELD public static final java.lang.String SAMPLING_QA_TRACE_ENABLED
-  FIELD public static final java.lang.String SAMPLING_RATIO
-  FIELD public static final java.lang.String SAMPLING_ROUTE_RATIOS
-  FIELD public static final java.lang.String SCRUBBING_ENABLED
-  FIELD public static final java.lang.String SCRUBBING_MODE
-  FIELD public static final java.lang.String SCRUBBING_RULE_NAMES
-  FIELD public static final java.lang.String SOURCE
-  FIELD public static final java.lang.String VALIDATION_ENABLED
-  FIELD public static final java.lang.String VALIDATION_MODE
-  FIELD public static final java.lang.String VALIDATION_STRICT
-TYPE public final enum space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation APPLY_RUNTIME_POLICY
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation READ_APPLIED_STATE
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation VALIDATE_RUNTIME_POLICY
-  METHOD public java.lang.String wireValue()
-  METHOD public static java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation> parse(java.lang.String)
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation valueOf(java.lang.String)
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation[] values()
-TYPE public final record space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion
-  CTOR public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion(int)
-  METHOD public final boolean equals(java.lang.Object)
-  METHOD public final int hashCode()
-  METHOD public final java.lang.String toString()
-  METHOD public int major()
-  METHOD public static java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion> parse(java.lang.Object)
-TYPE public final record space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation
-  CTOR public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation(java.lang.String,java.lang.String,java.lang.String,java.lang.String,space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode)
-  METHOD public final boolean equals(java.lang.Object)
-  METHOD public final int hashCode()
-  METHOD public final java.lang.String toString()
-  METHOD public java.lang.String actualType()
-  METHOD public java.lang.String expectedType()
-  METHOD public java.lang.String key()
-  METHOD public java.lang.String reason()
-  METHOD public space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode code()
-TYPE public final enum space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode INVALID_VALUE
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode MISSING_REQUIRED_KEY
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode OPERATION_NOT_ALLOWED
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode TYPE_MISMATCH
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode UNKNOWN_KEY
-  FIELD public static final space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode UNSUPPORTED_VERSION
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode valueOf(java.lang.String)
-  METHOD public static space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode[] values()
 TYPE public abstract interface space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource
   METHOD public abstract java.util.Optional<java.lang.String> resolve()
 TYPE public final class space.br1440.platform.tracing.api.mdc.TracingMdcKeys
@@ -487,60 +415,6 @@ TYPE public final class space.br1440.platform.tracing.otel.context.DefaultActive
   METHOD public java.util.Optional<java.lang.String> requestId()
   METHOD public java.util.Optional<java.lang.String> spanId()
   METHOD public java.util.Optional<java.lang.String> traceId()
-TYPE public final record space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationDecision
-  CTOR public space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationDecision(boolean,java.lang.String)
-  METHOD public boolean allowed()
-  METHOD public final boolean equals(java.lang.Object)
-  METHOD public final int hashCode()
-  METHOD public final java.lang.String toString()
-  METHOD public java.lang.String reason()
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationDecision permitted()
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationDecision rejected(java.lang.String)
-TYPE public abstract interface space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationPolicy
-  METHOD public abstract space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationDecision evaluate(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation)
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationPolicy startupConfigured(boolean)
-TYPE public abstract interface space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyApplier
-  METHOD public abstract void apply(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.Map<java.lang.String,java.lang.Object>,java.lang.String)
-TYPE public final class space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlDomainValidator
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult validate(java.util.Map<java.lang.String,java.lang.Object>)
-TYPE public final record space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult
-  CTOR public space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult(space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus,java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation>,java.util.List<java.lang.String>)
-  METHOD public boolean isRejected()
-  METHOD public boolean isSuccess()
-  METHOD public final boolean equals(java.lang.Object)
-  METHOD public final int hashCode()
-  METHOD public final java.lang.String toString()
-  METHOD public java.util.List<java.lang.String> violations()
-  METHOD public java.util.Optional<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation> operation()
-  METHOD public space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus status()
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult decodeRejected(java.util.List<space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation>)
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult domainRejected(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.util.List<java.lang.String>)
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult mutationRejected(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation,java.lang.String)
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult success(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation)
-TYPE public static final enum space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus
-  FIELD public static final space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus DECODE_REJECTED
-  FIELD public static final space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus DOMAIN_REJECTED
-  FIELD public static final space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus MUTATION_REJECTED
-  FIELD public static final space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus SUCCESS
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus valueOf(java.lang.String)
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult$HandleStatus[] values()
-TYPE public final class space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler
-  CTOR public space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler(space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyApplier)
-  CTOR public space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler(space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyApplier,space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationPolicy)
-  METHOD public space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandleResult handle(space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult)
-TYPE public final record space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult
-  CTOR public space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult(boolean,java.util.List<java.lang.String>)
-  METHOD public boolean valid()
-  METHOD public final boolean equals(java.lang.Object)
-  METHOD public final int hashCode()
-  METHOD public final java.lang.String toString()
-  METHOD public java.util.List<java.lang.String> violations()
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult invalid(java.lang.String)
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult success()
-TYPE public final class space.br1440.platform.tracing.otel.control.protocol.ValidationModePolicyValidator
-  FIELD public static final java.lang.String MODE_LOG_ONLY
-  FIELD public static final java.lang.String MODE_STRICT
-  METHOD public static space.br1440.platform.tracing.otel.control.protocol.TracingControlDomainValidationResult validate(java.util.Map<java.lang.String,java.lang.Object>)
 TYPE public final class space.br1440.platform.tracing.otel.exception.ExceptionMessagePolicy
   CTOR public space.br1440.platform.tracing.otel.exception.ExceptionMessagePolicy(boolean,boolean)
   METHOD public java.lang.String sanitizeOrNull(java.lang.Throwable)

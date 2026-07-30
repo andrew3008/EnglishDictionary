@@ -1,4 +1,4 @@
-# Раннер перф-сценария (Фаза 17, PR-3): полный жизненный цикл одного прогона Mx/S1.
+﻿# Раннер перф-сценария (Фаза 17, PR-3): полный жизненный цикл одного прогона Mx/S1.
 #
 #   .\run-perf-scenario.ps1 -Scenario m5 [-Rate 500] [-WarmupMin 2] [-SteadyMin 10] [-Jfr]
 #                           [-DockerHost tcp://192.168.100.70:2375] [-OutRoot ..\..\docs\tracing\perf-results]
@@ -35,6 +35,22 @@ $envFile = Join-Path $moduleDir "scenarios\$Scenario.env"
 if (-not (Test-Path $envFile)) {
     throw "Неизвестный сценарий '$Scenario': нет файла $envFile"
 }
+# Clear scenario-scoped flags before load. `& run-perf-scenario.ps1` shares the caller
+# process env, so m10's PERF_RELOAD_SEQUENCE must not leak into m10c/m10d.
+@(
+    'PERF_RELOAD_SEQUENCE',
+    'PERF_RELOAD_STORM',
+    'PERF_RELOAD_STORM_INTERVAL_SEC',
+    'PERF_SAMPLE_EXPORT_METRICS',
+    'PERF_TOXIPROXY',
+    'PERF_BACKPRESSURE',
+    'PERF_COMPOSE_PROFILES',
+    'PERF_SCENARIO_JVM_OPTS',
+    'SCENARIO_ID',
+    'SUT_CPUSET',
+    'COLLECTOR_CPUSET',
+    'K6_CPUSET'
+) | ForEach-Object { Remove-Item "env:$_" -ErrorAction SilentlyContinue }
 # Переменные сценария экспортируются в процесс: compose подставит их при интерполяции.
 Get-Content $envFile | Where-Object { $_ -match '^\s*[^#=]+=' } | ForEach-Object {
     $name, $value = $_ -split '=', 2
@@ -84,10 +100,50 @@ function Invoke-Compose {
     return $exit
 }
 
-$samplerJob = $null
+# Start-Job is starved while this script blocks on docker/k6 console I/O (Windows PS 5.1).
+# Workers run as separate powershell.exe processes.
+$workerDir = Join-Path $PSScriptRoot "workers"
+$psExe = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
+function Start-WorkerProcess {
+    param([Parameter(Mandatory = $true)][string]$ScriptName, [Parameter(Mandatory = $true)][string[]]$WorkerArgs)
+    $scriptPath = Join-Path $workerDir $ScriptName
+    if (-not (Test-Path $scriptPath)) { throw "Worker script missing: $scriptPath" }
+    $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scriptPath) + $WorkerArgs
+    return Start-Process -FilePath $psExe -ArgumentList $argList -PassThru -WindowStyle Hidden
+}
+function Stop-WorkerProcess {
+    param($Process)
+    if (-not $Process) { return }
+    try {
+        $Process.Refresh()
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
+    } catch { }
+}
+function Stop-StrayPerfWorkers {
+    # Host-side workers talk to published :18080; a leaked m10c storm must not mutate the next SUT.
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.CommandLine -and (
+                $_.CommandLine -match 'reload-storm-worker\.ps1' -or
+                $_.CommandLine -match 'reload-sequence-worker\.ps1' -or
+                $_.CommandLine -match 'rss-cpu-sampler-worker\.ps1' -or
+                $_.CommandLine -match 'export-metrics-sampler-worker\.ps1'
+            )
+        } |
+        ForEach-Object {
+            Write-Host "=== stopping stray perf worker pid=$($_.ProcessId)"
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+}
+$samplerProc = $null
 $flakyJob = $null
-$exportMetricsJob = $null
+$exportMetricsProc = $null
+$reloadProc = $null
+$stormProc = $null
 try {
+    Stop-StrayPerfWorkers
     # --- 2. Сборка и запуск стенда -------------------------------------------------------
     & (Join-Path $repoRoot "gradlew.bat") ":platform-tracing-perf-tests:prepareSutDockerContext" -q
     if ($LASTEXITCODE -ne 0) { throw "prepareSutDockerContext failed" }
@@ -166,74 +222,34 @@ try {
     # --- 3. Фоновое сэмплирование RSS/CPU -------------------------------------------------
     $samplesCsv = Join-Path $outDir "rss-cpu-samples.csv"
     "epochMs,vmRssKb,utimeTicks,stimeTicks,threads" | Out-File -Encoding ascii $samplesCsv
-    $samplerJob = Start-Job -ScriptBlock {
-        param($csv, $dockerHost, $project)
-        if ($dockerHost) { $env:DOCKER_HOST = $dockerHost }
-        while ($true) {
-            try {
-                $status = docker exec perf-sut sh -c "grep -E 'VmRSS|Threads' /proc/1/status; cat /proc/1/stat" 2>$null
-                if ($LASTEXITCODE -eq 0 -and $status) {
-                    $rssKb = (($status | Select-String 'VmRSS:\s+(\d+)').Matches.Groups[1].Value)
-                    $threads = (($status | Select-String 'Threads:\s+(\d+)').Matches.Groups[1].Value)
-                    $statLine = ($status | Select-Object -Last 1) -split '\s+'
-                    # /proc/1/stat: поля 14/15 — utime/stime в clock ticks.
-                    $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-                    "$epoch,$rssKb,$($statLine[13]),$($statLine[14]),$threads" | Out-File -Append -Encoding ascii $csv
-                }
-            } catch { }
-            Start-Sleep -Seconds 5
-        }
-    } -ArgumentList $samplesCsv, $env:DOCKER_HOST, "perf-$Scenario"
+    $samplerProc = Start-WorkerProcess -ScriptName "rss-cpu-sampler-worker.ps1" -WorkerArgs @(
+        "-Csv", $samplesCsv,
+        "-DockerHost", "$($env:DOCKER_HOST)"
+    )
 
     # --- 3a. Сэмплирование export-метрик (queue saturation / degraded evidence) -----------
     if ($env:PERF_SAMPLE_EXPORT_METRICS) {
         $exportCsv = Join-Path $outDir "export-metrics-samples.csv"
         "epochMs,queueSize,queueCapacity,droppedOverflow,exportFailures,exportTimeouts" | Out-File -Encoding ascii $exportCsv
-        $exportMetricsJob = Start-Job -ScriptBlock {
-            param($csv, $baseUrl)
-            while ($true) {
-                try {
-                    $m = Invoke-RestMethod -Uri "$baseUrl/perf/private-control/export-metrics" -TimeoutSec 3
-                    $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-                    "$epoch,$($m.queueSize),$($m.queueCapacity),$($m.droppedOverflow),$($m.exportFailures),$($m.exportTimeouts)" |
-                        Out-File -Append -Encoding ascii $csv
-                } catch { }
-                Start-Sleep -Seconds 5
-            }
-        } -ArgumentList $exportCsv, "http://${sutHost}:18080"
+        $exportMetricsProc = Start-WorkerProcess -ScriptName "export-metrics-sampler-worker.ps1" -WorkerArgs @(
+            "-Csv", $exportCsv,
+            "-BaseUrl", "http://${sutHost}:18080"
+        )
     }
 
     # --- 3b. M10: reload-последовательность в середине steady-фазы ------------------------
-    $reloadJob = $null
     if ($env:PERF_RELOAD_SEQUENCE) {
-        $reloadJob = Start-Job -ScriptBlock {
-            param($baseUrl, $warmupMin, $steadyMin, $outDir)
-            # Ждём середину steady-окна, затем серия runtime-апдейтов с фиксацией времени.
-            Start-Sleep -Seconds ([int](($warmupMin + $steadyMin / 2) * 60))
-            $log = @()
-            foreach ($step in @(
-                @{ uri = "/perf/private-control/sampling-ratio?value=0.5"; name = "ratio-0.5" },
-                @{ uri = "/perf/private-control/sampling-ratio?value=0.1"; name = "ratio-0.1" },
-                @{ uri = "/perf/private-control/exporter?enabled=false"; name = "exporter-off" },
-                @{ uri = "/perf/private-control/exporter?enabled=true"; name = "exporter-on" },
-                @{ uri = "/perf/private-control/trace-control-headers?enabled=false"; name = "headers-off" },
-                @{ uri = "/perf/private-control/trace-control-headers?enabled=true"; name = "headers-on" })) {
-                $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-                try {
-                    $response = Invoke-RestMethod -Method Post -Uri "$baseUrl$($step.uri)" -TimeoutSec 5
-                    $valid = ($response.outcome -eq "APPLIED" -or $response.outcome -eq "UNCHANGED") `
-                        -and $response.sequenceValid -and $response.digestMatchesCandidate
-                    $status = if ($valid) { "ok" } else { "failed" }
-                    $log += "$epoch,$($step.name),$status,$($response.outcome),$($response.acceptedSequence),$($response.payloadDigest)"
-                } catch {
-                    $log += "$epoch,$($step.name),failed,HTTP_ERROR,,"
-                }
-                Start-Sleep -Seconds 15
-            }
-            "epochMs,action,status,outcome,acceptedSequence,payloadDigest" |
-                Out-File -Encoding ascii (Join-Path $outDir "reload-sequence.csv")
-            $log | Out-File -Append -Encoding ascii (Join-Path $outDir "reload-sequence.csv")
-        } -ArgumentList "http://${sutHost}:18080", $WarmupMin, $SteadyMin, $outDir
+        # Step gap scales with steady window so short smokes still finish before k6 exits.
+        # Full 10m steady keeps the historical 15s gap (6 steps fit mid-window).
+        $reloadStepSleepSec = [Math]::Max(2, [Math]::Min(15, [int](($SteadyMin * 60) / 12)))
+        $reloadProc = Start-WorkerProcess -ScriptName "reload-sequence-worker.ps1" -WorkerArgs @(
+            "-BaseUrl", "http://${sutHost}:18080",
+            "-WarmupMin", "$WarmupMin",
+            "-SteadyMin", "$SteadyMin",
+            "-OutDir", $outDir,
+            "-StepSleepSec", "$reloadStepSleepSec"
+        )
+        Write-Host "=== reload sequence worker pid=$($reloadProc.Id) (mid-steady; stepSleep=${reloadStepSleepSec}s)"
     }
 
     # --- 3c. M10c/M10d: config storm на всю steady-фазу ------------------------------------
@@ -241,63 +257,69 @@ try {
     # invalid: ratio=5.0 каждый раз (каждый вызов отвергается: LKG, версия не растёт,
     #          InvalidConfigCount растёт). Состояние сэмплируется в reload-storm.csv —
     #          evidence для ADR-runtime-sampling-policy (C-5/C-7).
-    $stormJob = $null
     if ($env:PERF_RELOAD_STORM) {
         # Без оператора '??': скрипт должен работать и под Windows PowerShell 5.1.
         $stormInterval = 2
         if ($env:PERF_RELOAD_STORM_INTERVAL_SEC) { $stormInterval = [int]$env:PERF_RELOAD_STORM_INTERVAL_SEC }
-        $stormJob = Start-Job -ScriptBlock {
-            param($baseUrl, $mode, $intervalSec, $warmupMin, $steadyMin, $outDir)
-            Start-Sleep -Seconds ([int]($warmupMin * 60))
-            $deadline = (Get-Date).AddMinutes($steadyMin)
-            $csv = Join-Path $outDir "reload-storm.csv"
-            "epochMs,action,httpCode,ratio,acceptedSequence,rejectedCount,payloadDigest" |
-                Out-File -Encoding ascii $csv
-            $toggle = $false
-            while ((Get-Date) -lt $deadline) {
-                if ($mode -eq 'invalid') {
-                    $value = "5.0"; $action = "ratio-invalid-5.0"
-                } else {
-                    $toggle = -not $toggle
-                    $value = if ($toggle) { "0.5" } else { "0.1" }
-                    $action = "ratio-$value"
-                }
-                $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-                $code = ""
-                try {
-                    $resp = Invoke-WebRequest -Method Post -Uri "$baseUrl/perf/private-control/sampling-ratio?value=$value" `
-                        -TimeoutSec 5 -UseBasicParsing
-                    $code = $resp.StatusCode
-                } catch {
-                    # invalid-storm: 422 означает REJECTED от complete-snapshot writer.
-                    $code = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { "ERR" }
-                }
-                $state = $null
-                try { $state = Invoke-RestMethod -Uri "$baseUrl/perf/private-control/state" -TimeoutSec 5 } catch { }
-                "$epoch,$action,$code,$($state.samplingRatio),$($state.acceptedSequence),$($state.rejectedCount),$($state.payloadDigest)" |
-                    Out-File -Append -Encoding ascii $csv
-                Start-Sleep -Seconds $intervalSec
-            }
-        } -ArgumentList "http://${sutHost}:18080", $env:PERF_RELOAD_STORM,
-            $stormInterval, $WarmupMin, $SteadyMin, $outDir
-        Write-Host "=== reload storm ($($env:PERF_RELOAD_STORM)) запущен: интервал ${stormInterval}с на всю steady-фазу"
+        $stormProc = Start-WorkerProcess -ScriptName "reload-storm-worker.ps1" -WorkerArgs @(
+            "-BaseUrl", "http://${sutHost}:18080",
+            "-Mode", "$($env:PERF_RELOAD_STORM)",
+            "-IntervalSec", "$stormInterval",
+            "-WarmupMin", "$WarmupMin",
+            "-SteadyMin", "$SteadyMin",
+            "-OutDir", $outDir
+        )
+        Write-Host "=== reload storm ($($env:PERF_RELOAD_STORM)) worker pid=$($stormProc.Id); interval ${stormInterval}s"
     }
 
     # --- 4. Нагрузка (k6, open model) ------------------------------------------------------
     Write-Host "=== k6: warmup ${WarmupMin}m + steady ${SteadyMin}m @ ${Rate} req/s"
     $k6Exit = Invoke-Compose -AllowFail @("--profile", "load", "up", "--exit-code-from", "k6", "k6")
-    if ($reloadJob) { Wait-Job $reloadJob -Timeout 30 | Out-Null; Remove-Job $reloadJob -Force -ErrorAction SilentlyContinue }
-    if ($stormJob) { Wait-Job $stormJob -Timeout 30 | Out-Null; Remove-Job $stormJob -Force -ErrorAction SilentlyContinue }
+    # Reload/storm workers should finish during the k6 window; wait briefly after k6 for file flush.
+    if ($reloadProc) {
+        $reloadWaitSec = [Math]::Max(30, [int](($WarmupMin + $SteadyMin / 2.0) * 60) `
+            + (6 * [Math]::Max(2, [Math]::Min(15, [int](($SteadyMin * 60) / 12)))) `
+            + 60 - [int](($WarmupMin + $SteadyMin) * 60))
+        try { Wait-Process -Id $reloadProc.Id -Timeout $reloadWaitSec -ErrorAction SilentlyContinue } catch { }
+        $reloadProc.Refresh()
+        if (-not $reloadProc.HasExited) {
+            Write-Warning "reload sequence worker still running after ${reloadWaitSec}s; forcing stop"
+            Stop-WorkerProcess $reloadProc
+        }
+    }
+    if ($stormProc) {
+        try { Wait-Process -Id $stormProc.Id -Timeout 120 -ErrorAction SilentlyContinue } catch { }
+        $stormProc.Refresh()
+        if (-not $stormProc.HasExited) {
+            Write-Warning "reload storm worker still running after 120s; forcing stop"
+            Stop-WorkerProcess $stormProc
+        }
+    }
+    Stop-StrayPerfWorkers
     $controlFlowValid = $true
     $reloadCsv = Join-Path $outDir "reload-sequence.csv"
     if ($env:PERF_RELOAD_SEQUENCE) {
-        $reloadRows = @(Import-Csv $reloadCsv)
-        $controlFlowValid = $reloadRows.Count -eq 6 `
-            -and @($reloadRows | Where-Object { $_.status -ne "ok" }).Count -eq 0
+        if (-not (Test-Path $reloadCsv)) {
+            Write-Warning "reload-sequence.csv missing — privateControlFlowValid=false"
+            $controlFlowValid = $false
+        } else {
+            $reloadRows = @(Import-Csv $reloadCsv)
+            $controlFlowValid = $reloadRows.Count -eq 6 `
+                -and @($reloadRows | Where-Object { $_.status -ne "ok" }).Count -eq 0
+            if (-not $controlFlowValid) {
+                Write-Warning "reload-sequence invalid (rows=$($reloadRows.Count)); see $reloadCsv"
+            }
+        }
     }
     $stormCsv = Join-Path $outDir "reload-storm.csv"
     if ($env:PERF_RELOAD_STORM) {
-        $stormRows = @(Import-Csv $stormCsv)
+        if (-not (Test-Path $stormCsv)) {
+            Write-Warning "reload-storm.csv missing — privateControlFlowValid=false"
+            $controlFlowValid = $false
+            $stormRows = @()
+        } else {
+            $stormRows = @(Import-Csv $stormCsv)
+        }
         if ($stormRows.Count -eq 0) {
             $controlFlowValid = $false
         } elseif ($env:PERF_RELOAD_STORM -eq "valid") {
@@ -364,8 +386,12 @@ try {
     exit 1
 }
 finally {
-    foreach ($job in @($samplerJob, $flakyJob, $exportMetricsJob)) {
-        if ($job) { Stop-Job $job -ErrorAction SilentlyContinue; Remove-Job $job -Force -ErrorAction SilentlyContinue }
+    foreach ($proc in @($samplerProc, $exportMetricsProc, $reloadProc, $stormProc)) {
+        Stop-WorkerProcess $proc
+    }
+    if ($flakyJob) {
+        Stop-Job $flakyJob -ErrorAction SilentlyContinue
+        Remove-Job $flakyJob -Force -ErrorAction SilentlyContinue
     }
     try { Invoke-Compose @("--profile", "load", "down", "-v", "--remove-orphans") } catch { }
 }

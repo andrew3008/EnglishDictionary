@@ -21,22 +21,35 @@ class PrivateControlBoundaryTest {
             throws Exception {
         AcceptedPolicyAccess access = AcceptedPolicyAccess.isolatedDefaults();
         int baselineServers = MBeanServerFactory.findMBeanServer(null).size();
+        int baselinePrivateReady = countReadyPrivateWriters();
 
         try (AutoCloseable plane = access.activatePrivateControlPlane()) {
             assertThat(MBeanServerFactory.findMBeanServer(null)).hasSize(baselineServers + 1);
-            int readyWriters = 0;
-            for (MBeanServer server : MBeanServerFactory.findMBeanServer(null)) {
-                if (server.isRegistered(PrivateControlObjectNames.MARKER)
-                        && server.isRegistered(PrivateControlObjectNames.WRITER)
-                        && "WRITER_READY".equals(
-                        server.getAttribute(PrivateControlObjectNames.MARKER, "LifecycleState"))) {
-                    readyWriters++;
-                }
-            }
-            assertThat(readyWriters).isEqualTo(1);
+            // Count only private-domain servers. Platform MBeanServer also hosts the E7
+            // read-only Control projection under the same WRITER ObjectName, but never MARKER.
+            assertThat(countReadyPrivateWriters())
+                    .as("ready private writers before=%s after activation", baselinePrivateReady)
+                    .isEqualTo(baselinePrivateReady + 1);
         }
 
         assertThat(MBeanServerFactory.findMBeanServer(null)).hasSize(baselineServers);
+        assertThat(countReadyPrivateWriters()).isEqualTo(baselinePrivateReady);
+    }
+
+    private static int countReadyPrivateWriters() throws Exception {
+        int readyWriters = 0;
+        for (MBeanServer server : MBeanServerFactory.findMBeanServer(null)) {
+            if (!PrivateControlObjectNames.PRIVATE_DOMAIN.equals(server.getDefaultDomain())) {
+                continue;
+            }
+            if (server.isRegistered(PrivateControlObjectNames.MARKER)
+                    && server.isRegistered(PrivateControlObjectNames.WRITER)
+                    && "WRITER_READY".equals(
+                    server.getAttribute(PrivateControlObjectNames.MARKER, "LifecycleState"))) {
+                readyWriters++;
+            }
+        }
+        return readyWriters;
     }
 
     @Test

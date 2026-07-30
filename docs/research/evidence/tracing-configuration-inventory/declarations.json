@@ -634,7 +634,7 @@
   "id" : "RELAXED_BINDING_ALIAS-001",
   "kind" : "RELAXED_BINDING_ALIAS"
 }, {
-  "declaration" : "platform-tracing-perf-harness/config/k8s/perf-app-configmap.yaml:12",
+  "declaration" : "docs/research/evidence/p6-cutover/p69-deployment-manifest-cutover.md:18",
   "exactName" : "PLATFORM_TRACING_ACTUATOR_MUTATION_ENABLED",
   "id" : "RELAXED_BINDING_ALIAS-001",
   "kind" : "RELAXED_BINDING_ALIAS"

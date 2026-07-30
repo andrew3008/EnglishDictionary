@@ -1,0 +1,24 @@
+# ACTUATOR authority + LOCAL posture (Agent label: DEV_ACTUATOR).
+# Typed /tracingControl leaves only → private applySnapshot.
+# Forbidden in SHARED/PRODUCTION.
+
+platform:
+  environment: LOCAL
+  tracing:
+    mode: AGENT
+    configuration:
+      enabled: true
+      authority: ACTUATOR
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,tracing
+  endpoint:
+    tracing:
+      enabled: true
+
+# Do NOT set platform.tracing.actuator.mutation-enabled (deleted / banned).
+# Do NOT POST /actuator/tracing/{property}/{value} (deleted).
+# Use docs/examples/dev-actuator-typed-leaves.sh for leaf commands.

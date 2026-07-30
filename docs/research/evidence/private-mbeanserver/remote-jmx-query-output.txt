@@ -2,14 +2,14 @@ S03_REMOTE:platformNameCount=9
 S03_REMOTE:privateWriterVisible=false
 S03_REMOTE:privateWriterInvocationRejected=true
 S03_REMOTE:readOnlyProjectionVisible=true
-S03_REMOTE:currentPlatformWriteInvoked=true
+S03_REMOTE:platformWriteRejected=true
 
 === ManagementAgent.start_local ===
-32692:
+53708:
 Command executed successfully
 
 S03_REMOTE:platformNameCount=9
 S03_REMOTE:privateWriterVisible=false
 S03_REMOTE:privateWriterInvocationRejected=true
 S03_REMOTE:readOnlyProjectionVisible=true
-S03_REMOTE:currentPlatformWriteInvoked=true
+S03_REMOTE:platformWriteRejected=true

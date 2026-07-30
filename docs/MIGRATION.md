@@ -2,6 +2,7 @@
 
 Документ содержит несколько разделов, каждый соответствует одной волне изменений.
 
+- [P6 cutover: authorities, writers, Category B names](#p6-cutover-authorities-writers-category-b-names)
 - [`context-propagation.async` → `context-propagation.thread-pool-task-executor`](#context-propagationasync--context-propagationthread-pool-task-executor)
 - [`context-propagation.thread-pool-task-executor` → `thread-pool-task-executor` (flatten)](#context-propagationthread-pool-task-executor--thread-pool-task-executor-flatten)
 - [`suppression.suppress-micrometer-tracing`: auto-derive из Agent presence](#suppressionsuppress-micrometer-tracing-auto-derive-из-agent-presence)
@@ -9,6 +10,64 @@
 - [v0.1.0 default changes (Wave R1+)](#v010-default-changes-wave-r1) — alignment shared defaults Spring ↔ Agent
 - [Wave 2c: `micrometer-tracing-bridge-otel` opt-in](#wave-2c-micrometer-tracing-bridge-otel-opt-in)
 - [v1.x: `DROP_OLDEST` export processor (default)](#v1x-drop_oldest-export-processor-default)
+
+---
+
+## P6 cutover: authorities, writers, Category B names
+
+| Поле | Значение |
+|------|----------|
+| **Тип изменения** | Breaking: writer ownership, public control surface, Category B property namespaces |
+| **Статус verification** | Production cutover recorded; P5.9 PASS; P6.10 zero-legacy PASS; P6.11 coherent PASS. See `docs/research/evidence/p6-cutover/` and `p7-docs/`. Production rollout still requires committee GO (P7.8). |
+| **Aliases** | **None** — dual-path / compatibility aliases forbidden |
+
+### Authority selection
+
+Set exactly one:
+
+```properties
+platform.tracing.configuration.authority=HELM
+# or CONFIG_SERVER
+# or ACTUATOR   # requires platform.environment=LOCAL (Agent label: DEV_ACTUATOR)
+```
+
+| Authority | Operator action |
+|-----------|-----------------|
+| HELM | Provide Category A / Category B as Agent startup env/`-D` only. Do **not** expect Spring private-control discovery or Actuator typed writes. |
+| CONFIG_SERVER | Deliver a **complete** eight-leaf Category A manifest; Spring applies via private `applySnapshot` only. |
+| ACTUATOR + LOCAL | Use the eight typed `/actuator/tracingControl/...` leaves only. No generic `@WriteOperation` on `/actuator/tracing`. |
+| DISABLED (`mode=DISABLED` or `configuration.enabled=false`) | No Spring private-control discovery. Incompatible with CONFIG_SERVER / ACTUATOR. |
+
+### Deleted mutation surfaces (do not call)
+
+| Deleted | Replacement |
+|---------|-------------|
+| `RuntimeConfigApplier` / RefreshScope mutation | CONFIG_SERVER complete manifest → private `applySnapshot`, or HELM restart |
+| Actuator `@WriteOperation` / `platform.tracing.actuator.mutation-enabled` | ACTUATOR+LOCAL typed leaves → private `applySnapshot` |
+| Public `api.control.protocol` / `otel.control.protocol` / platform `applyPolicy` | Private writer + platform **read-only** JMX / Control projection |
+| Domain JMX setters / mutating ops | Private `applySnapshot` only |
+| `ScrubbingPolicyHolder` + Spring `platform.tracing.scrubbing.enabled` / `.built-in-rules` | Agent Category B `platform.tracing.javaagent.scrubbing.*` |
+
+Platform JMX domain MBeans and Control projection are **READ-ONLY**.
+
+### Final Category B property names
+
+| Legacy / Spring-removed | Final Agent name |
+|-------------------------|------------------|
+| `platform.tracing.scrubbing.enabled` | `platform.tracing.javaagent.scrubbing.enabled` |
+| `platform.tracing.scrubbing.built-in-rules` | `platform.tracing.javaagent.scrubbing.built-in-rules` |
+| `platform.tracing.sampling.drop-paths` | `platform.tracing.javaagent.sampling.drop-paths` |
+| `platform.tracing.sampling.force-record-values` / `force-record-header-values` | `platform.tracing.javaagent.sampling.force-record-values` |
+| `platform.tracing.propagation.baggage.*` (Agent mirrors) | `platform.tracing.javaagent.propagation.baggage.*` |
+
+### Rollback
+
+Rollback unit after cutover = **entire unreleased release train**. Do not mix old writers with new property names.
+
+See also [SUPPORTED.md](./SUPPORTED.md) § Configuration authority and runtime policy,
+[runbook/runtime-policy-control.md](./runbook/runtime-policy-control.md),
+[runbook/jmx-consumer-migration.md](./runbook/jmx-consumer-migration.md),
+and [examples/README.md](./examples/README.md).
 
 ---
 
@@ -94,13 +153,15 @@ Spring `TracingProperties` больше не содержит зеркал agent
 | `platform.tracing.service-names.*` | Удалить (мёртвый код) |
 | `platform.tracing.enriching.*` | Мигрировать на agent: `platform.tracing.enriching.*` |
 | `platform.tracing.watchdog.*` | Мигрировать на agent: `platform.tracing.watchdog.*` |
-| `platform.tracing.control.*` | Мигрировать на agent: `platform.tracing.control.*` |
-| `platform.tracing.propagation.baggage.*` | Мигрировать на agent: `platform.tracing.propagation.baggage.*` |
+| `platform.tracing.control.*` (legacy Spring mirror / public protocol) | Public control protocol deleted. Runtime mutation: private `applySnapshot` via CONFIG_SERVER or ACTUATOR+LOCAL. Platform JMX is read-only. Remaining Agent gate keys (e.g. `platform.tracing.control.runtime-mutation.enabled`) stay Agent-side — not Spring Category A leaves |
+| `platform.tracing.propagation.baggage.*` (Agent) | `platform.tracing.javaagent.propagation.baggage.*` (no Spring dual-bind) |
 | `platform.tracing.exporter.otlp.*` | Мигрировать на agent/env: `OTEL_EXPORTER_OTLP_*` |
 | `platform.tracing.service.version/environment/c-group/container-id` | Мигрировать на agent: `platform.tracing.service.*` |
 | `platform.tracing.service.name` | Удалить из Spring binding; app-plane: `spring.application.name`; agent Resource: `OTEL_SERVICE_NAME` / `-Dplatform.tracing.service.name` / `PLATFORM_TRACING_SERVICE_NAME` |
-| `platform.tracing.sampling.force-record-header/qa-force-header` | Использовать `platform.tracing.propagation.platform-headers.*` |
-| `platform.tracing.scrubbing.rules-config` | Agent-side `ScrubbingRulesLoader` (extension) |
+| `platform.tracing.sampling.force-record-header/qa-force-header` | Header names: `platform.tracing.propagation.platform-headers.*` (where still bound); force-record **values**: `platform.tracing.javaagent.sampling.force-record-values` |
+| `platform.tracing.sampling.drop-paths` / Spring `force-record-header-values` | `platform.tracing.javaagent.sampling.drop-paths` / `.force-record-values` |
+| `platform.tracing.scrubbing.enabled` / `.built-in-rules` (Spring) | `platform.tracing.javaagent.scrubbing.enabled` / `.built-in-rules` |
+| `platform.tracing.scrubbing.rules-config` | Agent-side `ScrubbingRulesLoader` (extension); key remains Agent Category B family where still defined |
 | `platform.tracing.validation.strict-runtime-allowed` | **Agent-канал** — `-Dplatform.tracing.validation.strict-runtime-allowed=...` |
 | `platform.tracing.diagnostics.dual-channel-warn` | Удалить (диагностика удалена) |
 | `platform.tracing.diagnostics.drop-oldest-aspiration-*` | Удалить (диагностика удалена) |

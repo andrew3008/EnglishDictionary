@@ -4,6 +4,33 @@
 
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), версии — [Semantic Versioning](https://semver.org/lang/ru/).
 
+## [Unreleased] — P6 cutover (authority / private writer / Category B)
+
+### Breaking Changes
+
+- **Runtime policy mutation** is private-only: Agent `AcceptedPolicyAccess` + private
+  `applySnapshot` / `readAcceptedComplete`. Platform-domain JMX MBeans and Control projection
+  are read-only. No dual-path or compatibility aliases.
+- **Authorities:** `platform.tracing.configuration.authority=HELM|CONFIG_SERVER|ACTUATOR`.
+  HELM has no Spring writer discovery. CONFIG_SERVER delivers a complete eight-leaf manifest
+  to private `applySnapshot`. ACTUATOR requires `platform.environment=LOCAL` (Agent label
+  `DEV_ACTUATOR`) and exposes eight typed `/actuator/tracingControl/...` leaves only.
+  DISABLED / `configuration.enabled=false` discovers no Spring private-control beans and
+  fail-fasts with CONFIG_SERVER/ACTUATOR.
+- **Deleted writers / surfaces:** `RuntimeConfigApplier` and RefreshScope mutation;
+  Actuator `@WriteOperation` on `/actuator/tracing` and `platform.tracing.actuator.mutation-enabled`;
+  public `api.control.protocol` / `otel.control.protocol` and platform `applyPolicy`;
+  domain JMX mutating attributes/operations; `ScrubbingPolicyHolder`; Spring Category B
+  scrubbing/sampling bindings for drop-paths / force-record-values / scrubbing enabled+rules.
+- **Final Category B names** (Agent parser): `platform.tracing.javaagent.scrubbing.*`,
+  `platform.tracing.javaagent.sampling.drop-paths` / `.force-record-values`,
+  `platform.tracing.javaagent.propagation.baggage.*`.
+- **Rollback unit** after cutover = entire unreleased release train (not per-writer / per-name).
+- Verification status: P5.9 PASS; P6.10 zero-legacy PASS; P6.11 coherent PASS
+  (`docs/research/evidence/p6-cutover/`, `p5-execution/p59-p6cutover-rerun/`).
+  Production rollout FORBIDDEN until Architecture Committee GO (P7.8).
+  See SUPPORTED.md / MIGRATION.md.
+
 ## [Unreleased] — Spring properties surface purge
 
 ### Breaking Changes

@@ -1,7 +1,5 @@
 objectNameCount=8
-liveMBeanInfoMemberCount=63
-mutatingMemberCount=16
-readOnlyMemberCount=47
-councilJavaMethodCount=71
-councilReadOnlyMethodCount=55
-representationDifference=8 getter/setter pairs folded into writable attributes
+liveMBeanInfoMemberCount=read-only platform projection
+mutatingMemberCount=0
+readOnlyMemberCount=all platform domain members
+note=P6.6/P6.8 platform SamplingRatio setAttribute rejected remotely

@@ -1,0 +1,72 @@
+﻿[
+    {
+        "check":  "RuntimeConfigApplier",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "updateScrubbingPolicy",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "ScrubbingPolicyHolder",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "PlatformControlProtocolMBean",
+        "hits":  1,
+        "sample":  "E:\\Platform_Traces\\platform-tracing-otel-javaagent-extension\\src\\main\\java\\space\\br1440\\platform\\tracing\\otel\\javaagent\\jmx\\PlatformTracingJmxRegistrar.java:52:* \u003cp\u003eP6.5/P6.6: legacy platform {@code PlatformControlProtocolMBean.applyPolicy} is not"
+    },
+    {
+        "check":  "setExportEnabled",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "perf/admin",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "api.control.protocol package",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "otel.control.protocol package",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "legacy scrubbing.enabled prop",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "legacy scrubbing.built-in-rules",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "legacy sampling.drop-paths",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "actuator.mutation-enabled",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "WriteOperation",
+        "hits":  0,
+        "sample":  ""
+    },
+    {
+        "check":  "dual-read alias comment",
+        "hits":  0,
+        "sample":  ""
+    }
+]

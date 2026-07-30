@@ -1,0 +1,28 @@
+﻿{
+  "gate": "P7.7",
+  "capturedAt": "2026-07-30T15:52:00+03:00",
+  "verifiedWorkingTreeBaseSha": "dca9f946918ef81ec4b9eb82b2b3844a3648d6e6",
+  "verdict": "PASS_WORKING_TREE",
+  "note": "Local gates re-verified after inventory regen. Docker E2E/M10/JMH reused from P5.9. Clean-checkout after commit still required for immutable release SHA.",
+  "results": [
+    { "name": "failfast", "result": "PASS" },
+    { "name": "configProvenance", "result": "PASS" },
+    { "name": "privateMBean", "result": "PASS" },
+    { "name": "inventory", "result": "PASS", "note": "regenerated -PupdateTracingConfigurationInventory --rerun-tasks" },
+    { "name": "arch", "result": "PASS" },
+    { "name": "c3", "result": "PASS" },
+    { "name": "c6", "result": "PASS" },
+    { "name": "build", "result": "PASS" },
+    { "name": "zero-legacy-scan", "result": "PASS", "hits": 0 },
+    { "name": "active-gradle-modules", "result": "PASS", "count": 16 }
+  ],
+  "reused": {
+    "p59E2e": "docs/research/evidence/p5-execution/p59-p6cutover-rerun/e2e-runE2e.log",
+    "p59M10": "docs/research/evidence/p5-execution/p59-p6cutover-rerun/m10/2026-07-30_131557",
+    "p59M10c": "docs/research/evidence/p5-execution/p59-p6cutover-rerun/m10c/2026-07-30_132818",
+    "p59M10d": "docs/research/evidence/p5-execution/p59-p6cutover-rerun/m10d/2026-07-30_140735",
+    "p59Jmh": "docs/research/evidence/p5-execution/p59-p6cutover-rerun/jmh/summary.json",
+    "p610": "docs/research/evidence/p6-cutover/p610-zero-legacy-verification.md",
+    "p611": "docs/research/evidence/p6-cutover/p611-coherent/verdict.md"
+  }
+}

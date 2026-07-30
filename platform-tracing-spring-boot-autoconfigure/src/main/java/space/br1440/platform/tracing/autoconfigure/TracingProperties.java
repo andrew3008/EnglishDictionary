@@ -39,8 +39,6 @@ public class TracingProperties {
     private OtelAgentLogLevel logLevel = OtelAgentLogLevel.INFO;
 
     private final Sampling sampling = new Sampling();
-    // P6.7: scrubbing enabled/built-in-rules moved to Agent Category B
-    // (platform.tracing.javaagent.scrubbing.*). Spring no longer binds them.
     private final Exporter exporter = new Exporter();
     private final Response response = new Response();
     private final Suppression suppression = new Suppression();
@@ -62,9 +60,6 @@ public class TracingProperties {
 
         /** Вероятности сэмплирования по отдельным маршрутам (route). */
         private Map<String, Double> routeRatios = new LinkedHashMap<>();
-
-        // P6.1: force-record-values and drop-paths moved to Agent Category B
-        // (platform.tracing.javaagent.sampling.*). Spring no longer binds them.
     }
 
     @Getter

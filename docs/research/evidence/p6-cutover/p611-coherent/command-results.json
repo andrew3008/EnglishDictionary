@@ -1,0 +1,14 @@
+﻿{
+    "gate":  "P6.11",
+    "capturedAt":  "2026-07-30T15:46:51.8160813+03:00",
+    "verdict":  "PASS",
+    "e2ePolicy":  "REUSE_P59_NO_RERUN",
+    "p59E2e":  "docs/research/evidence/p5-execution/p59-p6cutover-rerun/e2e-runE2e.log",
+    "p59M10":  {
+                   "m10c":  "m10c/2026-07-30_132818",
+                   "m10":  "m10/2026-07-30_131557",
+                   "m10d":  "m10d/2026-07-30_140735"
+               },
+    "p610":  "docs/research/evidence/p6-cutover/p610-zero-legacy-verification.md",
+    "localLog":  "gate-local-final.log"
+}
