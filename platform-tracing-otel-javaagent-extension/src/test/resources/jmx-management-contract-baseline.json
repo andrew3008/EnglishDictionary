@@ -1,66 +1,12 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "62158867d9309eab29ce8de3f05db8e3b9300b1b",
+  "generatedFromCommit": "f8adbf7eada67a8d1cac0e1108e8bdc3caa21c05",
   "javaVersion": "21.0.6",
-  "objectNameCount": 8,
-  "memberCount": 63,
-  "readOnlyMemberCount": 47,
-  "mutatingMemberCount": 16,
+  "objectNameCount": 7,
+  "memberCount": 52,
+  "readOnlyMemberCount": 52,
+  "mutatingMemberCount": 0,
   "objectNames": [
-    {
-      "objectName": "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control",
-      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean",
-      "description": "Information on the management interface of the MBean",
-      "descriptor": [
-        {
-          "name": "immutableInfo",
-          "value": "true"
-        },
-        {
-          "name": "interfaceClassName",
-          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMXBean"
-        },
-        {
-          "name": "mxbean",
-          "value": "false"
-        }
-      ],
-      "attributes": [
-      ],
-      "operations": [
-        {
-          "name": "applyPolicy",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "javax.management.openmbean.CompositeData",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
-        },
-        {
-          "name": "readAppliedState",
-          "description": "Operation exposed for management",
-          "arguments": [
-          ],
-          "returnJavaType": "javax.management.openmbean.CompositeData",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": false
-        }
-      ],
-      "notifications": [
-      ]
-    },
     {
       "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
       "className": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl",
@@ -117,7 +63,7 @@
           "descriptor": [
           ],
           "readable": true,
-          "writable": true,
+          "writable": false,
           "isIs": false
         },
         {
@@ -127,7 +73,7 @@
           "descriptor": [
           ],
           "readable": true,
-          "writable": true,
+          "writable": false,
           "isIs": true
         },
         {
@@ -192,7 +138,7 @@
           "descriptor": [
           ],
           "readable": true,
-          "writable": true,
+          "writable": false,
           "isIs": true
         },
         {
@@ -541,33 +487,13 @@
       ],
       "attributes": [
         {
-          "name": "DropPathPrefixes",
-          "description": "Attribute exposed for management",
-          "javaType": "[Ljava.lang.String;",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": true,
-          "isIs": false
-        },
-        {
-          "name": "ForceRecordValues",
-          "description": "Attribute exposed for management",
-          "javaType": "[Ljava.lang.String;",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": true,
-          "isIs": false
-        },
-        {
           "name": "RouteRatios",
           "description": "Attribute exposed for management",
           "javaType": "java.util.Map",
           "descriptor": [
           ],
           "readable": true,
-          "writable": true,
+          "writable": false,
           "isIs": false
         },
         {
@@ -587,7 +513,7 @@
           "descriptor": [
           ],
           "readable": true,
-          "writable": true,
+          "writable": false,
           "isIs": true
         },
         {
@@ -617,7 +543,7 @@
           "descriptor": [
           ],
           "readable": true,
-          "writable": true,
+          "writable": false,
           "isIs": false
         }
       ],
@@ -646,123 +572,6 @@
           ],
           "impact": 3,
           "mutating": false
-        },
-        {
-          "name": "resetSamplerCounters",
-          "description": "Operation exposed for management",
-          "arguments": [
-          ],
-          "returnJavaType": "void",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
-        },
-        {
-          "name": "updateSamplingPolicy",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p2",
-              "description": "",
-              "javaType": "double",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p3",
-              "description": "",
-              "javaType": "[Ljava.lang.String;",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p4",
-              "description": "",
-              "javaType": "[Ljava.lang.String;",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p5",
-              "description": "",
-              "javaType": "[Ljava.lang.String;",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p6",
-              "description": "",
-              "javaType": "[D",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p7",
-              "description": "",
-              "javaType": "java.lang.String",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "void",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
-        },
-        {
-          "name": "updateSamplingPolicy",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p2",
-              "description": "",
-              "javaType": "double",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p3",
-              "description": "",
-              "javaType": "java.util.Map",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p4",
-              "description": "",
-              "javaType": "[Ljava.lang.String;",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p5",
-              "description": "",
-              "javaType": "[Ljava.lang.String;",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "void",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
         }
       ],
       "notifications": [
@@ -829,63 +638,6 @@
         }
       ],
       "operations": [
-        {
-          "name": "updateScrubbingPolicy",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p2",
-              "description": "",
-              "javaType": "[Ljava.lang.String;",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "void",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
-        },
-        {
-          "name": "updateScrubbingPolicy",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p2",
-              "description": "",
-              "javaType": "[Ljava.lang.String;",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p3",
-              "description": "",
-              "javaType": "java.lang.String",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "void",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
-        }
       ],
       "notifications": [
       ]
@@ -961,63 +713,6 @@
         }
       ],
       "operations": [
-        {
-          "name": "updateValidationPolicy",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p2",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "void",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
-        },
-        {
-          "name": "updateValidationPolicy",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p2",
-              "description": "",
-              "javaType": "boolean",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p3",
-              "description": "",
-              "javaType": "java.lang.String",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "void",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": true
-        }
       ],
       "notifications": [
       ]

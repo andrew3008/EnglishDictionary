@@ -6,9 +6,10 @@
   "sourceManifest": "docs/research/evidence/p6-cutover/cutover-manifest.json",
   "notes": [
     "Detector v1: exact-name ban in production main Java and Spring autoconfigure metadata.",
-    "Scrubbing legacy names deferred until P6.7 (Spring still binds scrubbing.enabled and built-in-rules).",
+    "P6.7: Spring scrubbing.enabled / built-in-rules banned after Category B holder deletion.",
     "DELETE_AGENT_KEEP_SPRING outbound PROP_* keys are not banned when Spring KEEP names remain valid.",
-    "platform.tracing.policy.version is banned in string literals only (Javadoc migration notes allowed)."
+    "platform.tracing.policy.version is banned in string literals only (Javadoc migration notes allowed).",
+    "Other platform.tracing.scrubbing.* Agent keys (hmac-key, rules-config, etc.) remain KEEP and are not banned."
   ],
   "scanTargets": [
     "**/src/main/**/*.java",
@@ -81,6 +82,16 @@
       "exactName": "platform.tracing.sampling.force-record-values",
       "disposition": "RENAME_TO_JAVAAGENT",
       "replacementOrDeletionDiagnostic": "Use platform.tracing.javaagent.sampling.force-record-values"
+    },
+    {
+      "exactName": "platform.tracing.scrubbing.built-in-rules",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "P6.7: use platform.tracing.javaagent.scrubbing.built-in-rules; Spring TracingProperties.Scrubbing deleted"
+    },
+    {
+      "exactName": "platform.tracing.scrubbing.enabled",
+      "disposition": "RENAME_TO_JAVAAGENT",
+      "replacementOrDeletionDiagnostic": "P6.7: use platform.tracing.javaagent.scrubbing.enabled; Spring TracingProperties.Scrubbing deleted"
     }
   ]
 }

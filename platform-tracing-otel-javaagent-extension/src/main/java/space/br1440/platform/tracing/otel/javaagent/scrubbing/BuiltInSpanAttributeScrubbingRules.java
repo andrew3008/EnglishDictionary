@@ -9,9 +9,11 @@ import java.util.Locale;
 /**
  * Реестр встроенных правил scrubbing'а, релевантных домену UMS.
  * <p>
- * Каждая константа enum хранит <b>имя конфигурации</b> ({@code platform.tracing.scrubbing.built-in-rules})
- * и <b>приоритет first-match</b> (меньше = выше). Логика срабатывания — в отдельных классах
- * {@link PasswordKeyRule}, {@link JwtRule} и т.д., наследующих {@link AbstractBuiltInRule}.
+ * Каждая константа enum хранит <b>имя конфигурации</b> и <b>приоритет first-match</b>
+ * (меньше = выше). Авторитетный Category B ключ —
+ * {@code platform.tracing.javaagent.scrubbing.built-in-rules} (P6.7; Spring binding deleted).
+ * Логика срабатывания — в отдельных классах {@link PasswordKeyRule}, {@link JwtRule} и т.д.,
+ * наследующих {@link AbstractBuiltInRule}.
  * <p>
  * SPI-расширения через {@link java.util.ServiceLoader} в этот enum не входят.
  */
@@ -107,7 +109,8 @@ public enum BuiltInSpanAttributeScrubbingRules {
     }
 
     /**
-     * Дефолтный список имён встроенных правил для {@code platform.tracing.scrubbing.built-in-rules}.
+     * Дефолтный список имён встроенных правил для
+     * {@code platform.tracing.javaagent.scrubbing.built-in-rules}.
      * Порядок — логический (для документации/YAML), не порядок исполнения: процессор сортирует
      * по {@link #priority()}.
      */

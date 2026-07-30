@@ -39,8 +39,7 @@ class SemanticContractMapContractTest {
             "span-specification",
             "span-handle",
             "manual-span-factory",
-            "attribute-scrubbing-rule",
-            "tracing-control-protocol"
+            "attribute-scrubbing-rule"
     );
 
     private static Map<String, Object> root;

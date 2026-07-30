@@ -155,19 +155,25 @@ class S01OwnerInventoryEvidenceTest {
     }
 
     @Test
-    @DisplayName("ScrubbingPolicyHolder stays in the inventory as a Category B owner that does not migrate")
-    void scrubbingHolderIsInventoriedButNotMigrated() {
+    @DisplayName("ScrubbingPolicyHolder Category B deletion is recorded as completed in P6.7")
+    void scrubbingHolderDeletionCompleted() {
         // when
         JsonNode holder = ownerByClass("ScrubbingPolicyHolder");
 
         // then
-        assertThat(holder).as("ScrubbingPolicyHolder must not be hidden from the inventory").isNotNull();
+        assertThat(holder).as("ScrubbingPolicyHolder must remain inventoried after deletion").isNotNull();
         assertThat(holder.get("migratesToAcceptedState").asBoolean())
                 .as("scrubbing is Category B and is not accepted runtime state")
                 .isFalse();
+        assertThat(holder.get("isCurrentMutableProductionOwner").asBoolean())
+                .as("holder must no longer be a live mutable production owner")
+                .isFalse();
         assertThat(holder.get("categoryALeaves").size()).isZero();
+        assertThat(holder.get("futureDeletionPhase").asText())
+                .contains("COMPLETED");
+        assertThat(holder.get("zeroReferenceProof").asText())
+                .contains("0 files");
         assertNonBlank(holder, "replacement", "ScrubbingPolicyHolder");
-        assertNonBlank(holder, "futureDeletionPhase", "ScrubbingPolicyHolder");
         assertNonBlank(holder, "planCorrectionRequired", "ScrubbingPolicyHolder");
     }
 

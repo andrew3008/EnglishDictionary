@@ -1,18 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
+import javax.management.MBeanInfo;
+import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
-import javax.management.ObjectName;
-import javax.management.openmbean.CompositeData;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -22,26 +23,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Verifies that {@link PlatformSpanProcessorFactory#registerSpanProcessors}
- * correctly wires the {@code RuntimePolicyControlHandler} into the
- * registrar and that the {@code PlatformControlProtocolMBean} is
- * registered and operational after the factory call.
- *
- * <p>An isolated (non-platform) {@link MBeanServer} is used so these
- * tests never pollute or conflict with other tests or the platform server.
- *
- * <p>The test uses a minimal {@link ConfigProperties} implementation that
- * returns default/empty values for all lookups so we avoid loading real
- * scrubbing rules.
+ * registers read-only domain MBeans and does not register legacy control protocol.
  */
 class PlatformSpanProcessorFactoryWiringTest {
 
-    private MBeanServer              privateMBeanServer;
+    private MBeanServer privateMBeanServer;
     private PlatformTracingJmxRegistrar registrar;
-    private AcceptedPolicyAccess       samplerHolder;
+    private AcceptedPolicyAccess samplerHolder;
 
     @BeforeEach
     void setUp() {
-        // Isolated MBeanServer: never touches ManagementFactory.getPlatformMBeanServer()
         privateMBeanServer = MBeanServerFactory.createMBeanServer(
                 "space.br1440.platform.tracing.test");
 
@@ -49,8 +40,6 @@ class PlatformSpanProcessorFactoryWiringTest {
                 true, List.of(), List.of(), Collections.emptyMap(), 0.1d);
 
         registrar = new PlatformTracingJmxRegistrar(privateMBeanServer);
-
-        // Simulate what PlatformSamplerFactory does before factory is called
         registrar.setAcceptedPolicy(samplerHolder);
     }
 
@@ -59,9 +48,68 @@ class PlatformSpanProcessorFactoryWiringTest {
         MBeanServerFactory.releaseMBeanServer(privateMBeanServer);
     }
 
-    // =========================================================================
-    // Helpers
-    // =========================================================================
+    @Test
+    void controlProtocolMBeanNotRegisteredAfterRegisterSpanProcessors() throws Exception {
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+
+        factory.registerSpanProcessors(
+                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig());
+
+        assertThat(privateMBeanServer.isRegistered(
+                PlatformTracingObjectNames.CONTROL_PROTOCOL)).isFalse();
+    }
+
+    @Test
+    void allSixDomainMBeansRegisteredByFactory() throws Exception {
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+        factory.registerSpanProcessors(
+                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig());
+
+        for (javax.management.ObjectName name : List.of(
+                PlatformTracingObjectNames.SAMPLING,
+                PlatformTracingObjectNames.SCRUBBING,
+                PlatformTracingObjectNames.VALIDATION,
+                PlatformTracingObjectNames.EXPORT,
+                PlatformTracingObjectNames.PROCESSOR_METRICS,
+                PlatformTracingObjectNames.DIAGNOSTICS)) {
+            assertThat(privateMBeanServer.isRegistered(name))
+                    .as("Expected MBean to be registered: " + name)
+                    .isTrue();
+        }
+    }
+
+    @Test
+    void registeredDomainMBeansExposeNoMutatingOperations() throws Exception {
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+        factory.registerSpanProcessors(
+                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig());
+
+        for (javax.management.ObjectName name : List.of(
+                PlatformTracingObjectNames.SAMPLING,
+                PlatformTracingObjectNames.SCRUBBING,
+                PlatformTracingObjectNames.VALIDATION,
+                PlatformTracingObjectNames.EXPORT,
+                PlatformTracingObjectNames.PROCESSOR_METRICS,
+                PlatformTracingObjectNames.DIAGNOSTICS)) {
+            MBeanInfo info = privateMBeanServer.getMBeanInfo(name);
+            assertThat(info.getOperations())
+                    .allMatch(operation -> operation.getImpact() != MBeanOperationInfo.ACTION
+                            && operation.getImpact() != MBeanOperationInfo.ACTION_INFO);
+            assertThat(info.getAttributes())
+                    .allMatch(attribute -> !attribute.isWritable());
+        }
+    }
+
+    @Test
+    void samplingMBeanReflectsAcceptedPolicy() throws Exception {
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+        factory.registerSpanProcessors(
+                SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig());
+
+        double ratio = (double) privateMBeanServer.getAttribute(
+                PlatformTracingObjectNames.SAMPLING, "SamplingRatio");
+        assertThat(ratio).isEqualTo(0.1d);
+    }
 
     private ConfigProperties minimalConfig() {
         return new EmptyConfigProperties();
@@ -69,123 +117,10 @@ class PlatformSpanProcessorFactoryWiringTest {
 
     private space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig
             minimalExtensionConfig() {
-        // Build an ExtensionConfig with all features disabled except
-        // a no-op stub that lets the factory run to completion.
-        // We use the test-friendly overload that accepts a ConfigProperties.
         return new space.br1440.platform.tracing.otel.javaagent.configuration
                 .ExtensionConfig(minimalConfig());
     }
 
-    private space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig
-            mutationEnabledExtensionConfig() {
-        return new space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig(
-                new EmptyConfigProperties() {
-                    @Override
-                    public Boolean getBoolean(String name) {
-                        return "platform.tracing.control.runtime-mutation.enabled".equals(name)
-                                ? Boolean.TRUE : null;
-                    }
-                });
-    }
-
-    private SdkTracerProviderBuilder stubBuilder() {
-        // Real builder; we don't care about its output in these tests.
-        return io.opentelemetry.sdk.trace.SdkTracerProvider.builder();
-    }
-
-    // =========================================================================
-    // Tests
-    // =========================================================================
-
-    @Test
-    void controlProtocolMBeanRegisteredAfterRegisterSpanProcessors() throws Exception {
-        PlatformSpanProcessorFactory factory =
-                new PlatformSpanProcessorFactory(registrar);
-
-        factory.registerSpanProcessors(
-                stubBuilder(), minimalExtensionConfig(), minimalConfig());
-
-        assertThat(privateMBeanServer.isRegistered(
-                PlatformTracingObjectNames.CONTROL_PROTOCOL)).isTrue();
-    }
-
-    @Test
-    void controlProtocolMBeanRespondsToApplyPolicyViaServer() throws Exception {
-        PlatformSpanProcessorFactory factory =
-                new PlatformSpanProcessorFactory(registrar);
-        factory.registerSpanProcessors(
-                stubBuilder(), mutationEnabledExtensionConfig(), minimalConfig());
-
-        // Build a minimal APPLY_RUNTIME_POLICY CompositeData
-        String[]      keys  = {
-                "contractVersion",
-                "operation",
-                "sampling.ratio"};
-        String[]      descs = keys;
-        javax.management.openmbean.OpenType<?>[] types = {
-                javax.management.openmbean.SimpleType.INTEGER,
-                javax.management.openmbean.SimpleType.STRING,
-                javax.management.openmbean.SimpleType.DOUBLE};
-        Object[] vals = {1, "APPLY_RUNTIME_POLICY", 0.42d};
-        javax.management.openmbean.CompositeType ct =
-                new javax.management.openmbean.CompositeType(
-                        "P", "p", keys, descs, types);
-        CompositeData payload =
-                new javax.management.openmbean.CompositeDataSupport(ct, keys, vals);
-
-        String result = (String) privateMBeanServer.invoke(
-                PlatformTracingObjectNames.CONTROL_PROTOCOL,
-                "applyPolicy",
-                new Object[]{payload},
-                new String[]{CompositeData.class.getName()});
-
-        assertThat(result).startsWith("SUCCESS");
-        assertThat(samplerHolder.current().samplingRatio()).isEqualTo(0.42d);
-    }
-
-    @Test
-    void controlProtocolMBeanReadAppliedStateAvailable() throws Exception {
-        PlatformSpanProcessorFactory factory =
-                new PlatformSpanProcessorFactory(registrar);
-        factory.registerSpanProcessors(
-                stubBuilder(), minimalExtensionConfig(), minimalConfig());
-
-        CompositeData state = (CompositeData) privateMBeanServer.invoke(
-                PlatformTracingObjectNames.CONTROL_PROTOCOL,
-                "readAppliedState",
-                new Object[]{},
-                new String[]{});
-
-        assertThat(state).isNotNull();
-        assertThat(state.getCompositeType().keySet())
-                .contains("sampling.ratio");
-    }
-
-    @Test
-    void allSevenMBeansRegisteredByFactory() throws Exception {
-        PlatformSpanProcessorFactory factory =
-                new PlatformSpanProcessorFactory(registrar);
-        factory.registerSpanProcessors(
-                stubBuilder(), minimalExtensionConfig(), minimalConfig());
-
-        for (ObjectName name : List.of(
-                PlatformTracingObjectNames.SAMPLING,
-                PlatformTracingObjectNames.SCRUBBING,
-                PlatformTracingObjectNames.VALIDATION,
-                PlatformTracingObjectNames.EXPORT,
-                PlatformTracingObjectNames.PROCESSOR_METRICS,
-                PlatformTracingObjectNames.DIAGNOSTICS,
-                PlatformTracingObjectNames.CONTROL_PROTOCOL)) {
-            assertThat(privateMBeanServer.isRegistered(name))
-                    .as("Expected MBean to be registered: " + name)
-                    .isTrue();
-        }
-    }
-
-    /**
-     * Минимальная конфигурация для wiring-тестов: все значения отсутствуют,
-     * default-методы интерфейса возвращают переданные fallback'и.
-     */
     private static class EmptyConfigProperties implements ConfigProperties {
 
         @Override

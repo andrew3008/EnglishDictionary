@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
-import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyUpdateOutcome;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyView;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 
@@ -72,8 +71,9 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
 
     /**
      * Runtime-политика валидации (Фаза 14): {@code enabled} + {@code strict}. Hot-path
-     * {@code onEnding} читает единый accepted policy lock-free; обновление — через
-     * {@link #updateValidationPolicy(boolean, boolean)} (атомарно, last-known-good).
+     * {@code onEnding} читает единый accepted policy lock-free; обновление — только через
+     * {@link AcceptedPolicyAccess#updateValidation(boolean, boolean)} / private
+     * {@code applySnapshot} (атомарно, last-known-good).
      */
     private final AcceptedPolicyAccess acceptedPolicy;
 
@@ -237,30 +237,9 @@ public final class ValidatingSpanProcessor implements ExtendedSpanProcessor {
         return acceptedPolicy.current().acceptedSequence();
     }
 
-    /** Источник текущего снимка политики (startup / JMX / spring-runtime-config). */
+    /** Источник текущего снимка политики (startup / accepted-state / private control). */
     public String getPolicySource() {
         return "accepted-state";
-    }
-
-    /**
-     * Атомарно обновляет политику валидации одним вызовом (Фаза 14, один домен = один апдейт):
-     * runtime enable/disable + strict/warn.
-     *
-     * @return {@code true}, если применено; {@code false} — сохранён last-known-good
-     */
-    public boolean updateValidationPolicy(boolean enabled, boolean strict) {
-        return tryApplyPolicyUpdate(enabled, strict, "JMX");
-    }
-
-    /**
-     * Атомарно публикует полную политику валидации (PR-8A): validate → build snapshot → CAS.
-     *
-     * @return {@code true} if published; {@code false} if last-known-good retained
-     */
-    public boolean tryApplyPolicyUpdate(boolean enabled, boolean strict, String source) {
-        AcceptedPolicyUpdateOutcome outcome = acceptedPolicy.updateValidation(enabled, strict);
-        return outcome == AcceptedPolicyUpdateOutcome.APPLIED
-                || outcome == AcceptedPolicyUpdateOutcome.UNCHANGED;
     }
 
     /** Размер кэша rate-limiter — package-private accessor для тестов. */

@@ -3,14 +3,12 @@ package space.br1440.platform.tracing.otel.javaagent.jmx;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
-import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
+import javax.management.MBeanInfo;
+import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.io.IOException;
@@ -21,12 +19,11 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.LongAdder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Защищает полный live-контракт восьми production MBean от неявного изменения.
+ * Защищает live-контракт production read-only MBean от неявного изменения.
  */
 class DomainMBeanJmxComplianceTest {
 
@@ -38,7 +35,6 @@ class DomainMBeanJmxComplianceTest {
             PlatformTracingObjectNames.EXPORT,
             PlatformTracingObjectNames.PROCESSOR_METRICS,
             PlatformTracingObjectNames.DIAGNOSTICS,
-            PlatformTracingObjectNames.CONTROL_PROTOCOL,
             PlatformTracingObjectNames.EXTENSION_READINESS);
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
@@ -76,13 +72,35 @@ class DomainMBeanJmxComplianceTest {
             return;
         }
 
-        // Normalize CRLF/LF before comparison: the committed baseline resource is checked out
-        // with the platform's line-ending convention (e.g. core.autocrlf on Windows), while
-        // JmxManagementContractSnapshot.toJson always emits LF. Without normalization this test
-        // is environment-dependent even though the actual live contract is unchanged.
         assertThat(normalizeLineEndings(actual))
                 .withFailMessage(() -> actionableDiff(normalizeLineEndings(baseline), normalizeLineEndings(actual)))
                 .isEqualTo(normalizeLineEndings(baseline));
+    }
+
+    @Test
+    void platformDomainMBeansExposeNoMutatingOperations() throws Exception {
+        registrar = new PlatformTracingJmxRegistrar();
+        wireRequiredComponents(registrar, holderWith(0.5));
+
+        for (ObjectName name : List.of(
+                PlatformTracingObjectNames.SAMPLING,
+                PlatformTracingObjectNames.SCRUBBING,
+                PlatformTracingObjectNames.VALIDATION,
+                PlatformTracingObjectNames.EXPORT,
+                PlatformTracingObjectNames.PROCESSOR_METRICS,
+                PlatformTracingObjectNames.DIAGNOSTICS)) {
+            MBeanInfo info = server.getMBeanInfo(name);
+            assertThat(info.getOperations())
+                    .allMatch(operation -> operation.getImpact() != MBeanOperationInfo.ACTION
+                            && operation.getImpact() != MBeanOperationInfo.ACTION_INFO);
+            assertThat(info.getAttributes())
+                    .allMatch(attribute -> !attribute.isWritable());
+        }
+    }
+
+    @Test
+    void legacyControlProtocolMBeanNotRegisteredOnPlatformServer() {
+        assertThat(server.isRegistered(PlatformTracingObjectNames.CONTROL_PROTOCOL)).isFalse();
     }
 
     private static void wireRequiredComponents(
@@ -90,16 +108,9 @@ class DomainMBeanJmxComplianceTest {
             AcceptedPolicyAccess acceptedPolicy) {
         CompositeSampler sampler = new CompositeSampler(acceptedPolicy);
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
-        LongAdder counter = registrar.sharedInvalidConfigCounter();
-        PlatformSamplingControl samplingControl =
-                new PlatformSamplingControl(acceptedPolicy, sampler, counter);
-        PlatformValidationControl validationControl =
-                new PlatformValidationControl(validating, counter);
 
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
-        registrar.setControlHandler(new RuntimePolicyControlHandler(
-                new JmxRuntimePolicyApplier(samplingControl, validationControl)));
         registrar.setAcceptedPolicy(acceptedPolicy);
     }
 

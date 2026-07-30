@@ -105,13 +105,11 @@ class TracingActuatorEndpointTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> scrubbing = (Map<String, Object>) info.get("scrubbing");
-        assertThat(scrubbing).containsEntry("enabled", true);
         assertThat(scrubbing).containsKeys("liveEnabled", "configVersion", "configSource", "liveRuleCount");
         assertThat(scrubbing).containsEntry("customRulesSource", "otel-agent-spi");
         assertThat(scrubbing).containsEntry("customRulesVisible", false);
-        assertThat(scrubbing).containsKey("builtInRules");
         assertThat(scrubbing).containsKey("note");
-        assertThat(scrubbing).doesNotContainKey("rulesConfig");
+        assertThat(scrubbing).doesNotContainKeys("enabled", "builtInRules", "rulesConfig");
     }
 
     @Test

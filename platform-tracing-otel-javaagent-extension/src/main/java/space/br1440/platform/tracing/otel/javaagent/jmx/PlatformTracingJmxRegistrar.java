@@ -1,14 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx;
 
 import lombok.extern.slf4j.Slf4j;
-import space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol;
-import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyApplier;
-import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
-import space.br1440.platform.tracing.otel.javaagent.control.ReadAppliedStateHandler;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
-import space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMBean;
-import space.br1440.platform.tracing.otel.javaagent.jmx.control.PlatformControlProtocolMXBean;
 import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl;
@@ -47,14 +41,17 @@ import java.util.concurrent.atomic.LongAdder;
  *
  * <h2>MBeans registered (in order)</h2>
  * <ol>
- *   <li>PlatformSamplingControl</li>
- *   <li>PlatformScrubbingControl</li>
- *   <li>PlatformValidationControl</li>
- *   <li>PlatformExportControl</li>
+ *   <li>PlatformSamplingControl (read-only)</li>
+ *   <li>PlatformScrubbingControl (read-only after P6.6; Category B mutation removed P6.7)</li>
+ *   <li>PlatformValidationControl (read-only)</li>
+ *   <li>PlatformExportControl (read-only)</li>
  *   <li>PlatformProcessorMetricsControl</li>
- *   <li>PlatformDiagnosticsControl</li>
- *   <li>PlatformControlProtocolMBean  (unified control-protocol facade)</li>
+ *   <li>PlatformDiagnosticsControl (read-only)</li>
  * </ol>
+ *
+ * <p>P6.5/P6.6: legacy platform {@code PlatformControlProtocolMBean.applyPolicy} is not
+ * registered here. E7 read-only Control projection is owned by
+ * {@code PrivateControlMBeanServerOwner} on the platform MBeanServer.
  */
 @Slf4j
 public final class PlatformTracingJmxRegistrar {
@@ -73,7 +70,6 @@ public final class PlatformTracingJmxRegistrar {
     private final AtomicReference<ValidatingSpanProcessor>               registeredValidating      = new AtomicReference<>();
     private final AtomicReference<PlatformDropOldestExportSpanProcessor> registeredExportProcessor = new AtomicReference<>();
     private final AtomicReference<SafeSpanExporter>                      registeredSafeExporter    = new AtomicReference<>();
-    private final AtomicReference<RuntimePolicyControlHandler>           controlHandler            = new AtomicReference<>();
 
     private volatile boolean mbeansRegistered;
 
@@ -129,9 +125,7 @@ public final class PlatformTracingJmxRegistrar {
 
     public void setValidating(ValidatingSpanProcessor validating) {
         registeredValidating.set(validating);
-        if (!refreshControlProtocolMBeanIfReady()) {
-            tryRegisterMBeans();
-        }
+        tryRegisterMBeans();
     }
 
     public void setExportProcessor(PlatformDropOldestExportSpanProcessor exportProcessor) {
@@ -142,22 +136,6 @@ public final class PlatformTracingJmxRegistrar {
     public void setSafeExporter(SafeSpanExporter safeExporter) {
         registeredSafeExporter.set(safeExporter);
         tryRegisterMBeans();
-    }
-
-    /**
-     * Sets the unified control-protocol handler and triggers batch
-     * registration if the minimum prerequisite (configHolder) is already set.
-     *
-     * <p>Must be called <em>after</em> both
-     * {@link #setAcceptedPolicy(AcceptedPolicyAccess)} and
-     * {@link #setValidating(ValidatingSpanProcessor)} to guarantee that the
-     * applier inside the handler references live JMX-visible holders.
-     */
-    public void setControlHandler(RuntimePolicyControlHandler handler) {
-        controlHandler.set(handler);
-        if (!refreshControlProtocolMBeanIfReady()) {
-            tryRegisterMBeans();
-        }
     }
 
     // =========================================================================
@@ -205,8 +183,7 @@ public final class PlatformTracingJmxRegistrar {
     public PlatformSamplingControl buildSamplingControl() {
         return new PlatformSamplingControl(
                 registeredAcceptedPolicy.get(),
-                registeredCompositeSampler.get(),
-                sharedInvalidConfigCounter);
+                registeredCompositeSampler.get());
     }
 
     // =========================================================================
@@ -232,7 +209,6 @@ public final class PlatformTracingJmxRegistrar {
             unregisterSilently(server, PlatformTracingObjectNames.EXPORT);
             unregisterSilently(server, PlatformTracingObjectNames.PROCESSOR_METRICS);
             unregisterSilently(server, PlatformTracingObjectNames.DIAGNOSTICS);
-            unregisterSilently(server, PlatformTracingObjectNames.CONTROL_PROTOCOL);
             unregisterSilently(server, PlatformTracingObjectNames.EXTENSION_READINESS);
             mbeansRegistered = false;
         }
@@ -245,24 +221,16 @@ public final class PlatformTracingJmxRegistrar {
     private void registerAllOrRollback() {
         MBeanServer server = mbeanServer;
 
-        PlatformSamplingControl   samplingControl   = buildSamplingControl();
-        PlatformValidationControl validationControl = new PlatformValidationControl(
-                registeredValidating.get(), sharedInvalidConfigCounter);
-
-        PlatformControlProtocolMBean controlMBean = buildControlProtocolMBean(
-                samplingControl, validationControl);
-
-        Object[]     mbeans = {
-                samplingControl,
-                new PlatformScrubbingControl(registeredScrubbing.get(), sharedInvalidConfigCounter),
-                validationControl,
+        Object[] mbeans = {
+                buildSamplingControl(),
+                new PlatformScrubbingControl(registeredScrubbing.get()),
+                new PlatformValidationControl(registeredValidating.get()),
                 new PlatformExportControl(this::getExportProcessor, this::getSafeExporter),
                 new PlatformProcessorMetricsControl(
                         registeredWatchdog.get(),
                         registeredComposite.get(),
                         registeredMetrics.get()),
-                new PlatformDiagnosticsControl(sharedInvalidConfigCounter),
-                standardControlMBean(controlMBean)
+                new PlatformDiagnosticsControl(sharedInvalidConfigCounter)
         };
         ObjectName[] names = {
                 PlatformTracingObjectNames.SAMPLING,
@@ -270,8 +238,7 @@ public final class PlatformTracingJmxRegistrar {
                 PlatformTracingObjectNames.VALIDATION,
                 PlatformTracingObjectNames.EXPORT,
                 PlatformTracingObjectNames.PROCESSOR_METRICS,
-                PlatformTracingObjectNames.DIAGNOSTICS,
-                PlatformTracingObjectNames.CONTROL_PROTOCOL
+                PlatformTracingObjectNames.DIAGNOSTICS
         };
 
         List<ObjectName> registered = new ArrayList<>(names.length);
@@ -293,15 +260,14 @@ public final class PlatformTracingJmxRegistrar {
                     registered.size(), primaryFailure.getMessage());
             rollback(server, registered, primaryFailure);
         } else {
-            log.info("Domain MBeans registered: sampling={}, scrubbing={}, validation={}, "
-                    + "export={}, processorMetrics={}, diagnostics={}, controlProtocol={}",
+            log.info("Domain MBeans registered (read-only): sampling={}, scrubbing={}, validation={}, "
+                    + "export={}, processorMetrics={}, diagnostics={}",
                     PlatformTracingObjectNames.SAMPLING_OBJECT_NAME_STR,
                     PlatformTracingObjectNames.SCRUBBING_OBJECT_NAME_STR,
                     PlatformTracingObjectNames.VALIDATION_OBJECT_NAME_STR,
                     PlatformTracingObjectNames.EXPORT_OBJECT_NAME_STR,
                     PlatformTracingObjectNames.PROCESSOR_METRICS_OBJECT_NAME_STR,
-                    PlatformTracingObjectNames.DIAGNOSTICS_OBJECT_NAME_STR,
-                    PlatformTracingObjectNames.CONTROL_PROTOCOL_OBJECT_NAME_STR);
+                    PlatformTracingObjectNames.DIAGNOSTICS_OBJECT_NAME_STR);
         }
     }
 
@@ -309,10 +275,6 @@ public final class PlatformTracingJmxRegistrar {
             throws Exception {
         if (server.isRegistered(name)) server.unregisterMBean(name);
         server.registerMBean(mbean, name);
-    }
-
-    private static StandardMBean standardControlMBean(PlatformControlProtocolMBean mbean) {
-        return new StandardMBean(mbean, PlatformControlProtocolMXBean.class, false);
     }
 
     private void registerReadinessMBean() {
@@ -329,62 +291,6 @@ public final class PlatformTracingJmxRegistrar {
             throw new PlatformTracingJmxRegistrationException(
                     "Extension readiness MBean registration failed: " + e.getMessage(), e);
         }
-    }
-
-    private boolean refreshControlProtocolMBeanIfReady() {
-        synchronized (this) {
-            if (!mbeansRegistered
-                    || registeredAcceptedPolicy.get() == null
-                    || registeredValidating.get() == null
-                    || controlHandler.get() == null) {
-                return false;
-            }
-
-            PlatformSamplingControl samplingControl = buildSamplingControl();
-            PlatformValidationControl validationControl = new PlatformValidationControl(
-                    registeredValidating.get(), sharedInvalidConfigCounter);
-            try {
-                replaceExisting(
-                        mbeanServer,
-                        validationControl,
-                        PlatformTracingObjectNames.VALIDATION);
-                replaceExisting(
-                        mbeanServer,
-                        standardControlMBean(buildControlProtocolMBean(samplingControl, validationControl)),
-                        PlatformTracingObjectNames.CONTROL_PROTOCOL);
-                log.info("Validation and control-protocol MBeans refreshed with live handler: {}",
-                        PlatformTracingObjectNames.CONTROL_PROTOCOL_OBJECT_NAME_STR);
-                return true;
-            } catch (Exception e) {
-                throw new PlatformTracingJmxRegistrationException(
-                        "Control-protocol MBean refresh failed: " + e.getMessage(), e);
-            }
-        }
-    }
-
-    private PlatformControlProtocolMBean buildControlProtocolMBean(
-            PlatformSamplingControl samplingControl,
-            PlatformValidationControl validationControl) {
-        RuntimePolicyControlHandler handler = controlHandler.get();
-        if (handler != null
-                && registeredAcceptedPolicy.get() != null
-                && registeredValidating.get() != null) {
-            ReadAppliedStateHandler readHandler = new ReadAppliedStateHandler(
-                    registeredAcceptedPolicy.get());
-            return new PlatformControlProtocolMBean(
-                    TracingControlProtocol.current(),
-                    handler,
-                    readHandler,
-                    sharedInvalidConfigCounter);
-        }
-
-        log.warn("PlatformControlProtocolMBean registered without a control handler: "
-                + "applyPolicy will return DECODE_REJECTED until handler is set.");
-        return new PlatformControlProtocolMBean(
-                TracingControlProtocol.current(),
-                new RuntimePolicyControlHandler(new NoOpApplier()),
-                new ReadAppliedStateHandler(registeredAcceptedPolicy.get()),
-                sharedInvalidConfigCounter);
     }
 
     private static void rollback(MBeanServer server,
@@ -410,17 +316,4 @@ public final class PlatformTracingJmxRegistrar {
         }
     }
 
-    // =========================================================================
-    // Inner: no-op applier (fallback when handler not yet wired)
-    // =========================================================================
-
-    private static final class NoOpApplier implements RuntimePolicyApplier {
-        @Override
-        public void apply(
-                space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation operation,
-                java.util.Map<String, Object> normalizedPayload,
-                String source) {
-            // intentionally no-op
-        }
-    }
 }

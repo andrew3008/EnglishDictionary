@@ -12,7 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Characterization loader + processor runtime policy (PR-5B).
+ * Characterization loader + immutable startup Category B scrubbing policy.
  */
 class ScrubbingLoaderCharacterizationTest {
 
@@ -33,14 +33,12 @@ class ScrubbingLoaderCharacterizationTest {
     }
 
     @Test
-    void updateScrubbingPolicy_disabled_preserves_sensitive_values() {
+    void startup_policy_is_immutable_and_scrubs_password() {
         ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(
                 List.of(BuiltInSpanAttributeScrubbingRules.resolve("password")));
         assertThat(processor.isEnabled()).isTrue();
-
-        boolean applied = processor.updateScrubbingPolicy(false, List.of("password"));
-        assertThat(applied).isTrue();
-        assertThat(processor.isEnabled()).isFalse();
+        assertThat(processor.getPolicyVersion()).isEqualTo(1L);
+        assertThat(processor.getPolicySource()).isEqualTo("startup");
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor)) {
             Tracer tracer = h.tracer("t");
@@ -48,8 +46,8 @@ class ScrubbingLoaderCharacterizationTest {
             span.setAttribute("db.password", "supersecret");
             span.end();
 
-            ScrubbingAssertions.assertStringAttributePreserved(
-                    h.exporter().getFinishedSpanItems().get(0), "db.password", "supersecret");
+            ScrubbingAssertions.assertStringAttributeEmpty(
+                    h.exporter().getFinishedSpanItems().get(0), "db.password");
         }
     }
 }

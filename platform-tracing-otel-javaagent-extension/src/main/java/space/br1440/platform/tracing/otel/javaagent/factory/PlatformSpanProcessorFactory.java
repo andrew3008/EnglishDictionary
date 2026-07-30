@@ -5,20 +5,13 @@ import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
-import space.br1440.platform.tracing.otel.control.protocol.RuntimeControlMutationPolicy;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ValidationMode;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ValidationModeResolver;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.enums.ScrubbingMissingKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.configuration.enums.ScrubbingRulesValidationMode;
 import space.br1440.platform.tracing.otel.javaagent.configuration.spi.JavaAgentExtensionPaths;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.EnrichingSpanProcessor;
@@ -43,7 +36,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.concurrent.atomic.LongAdder;
 
 @Slf4j
 public final class PlatformSpanProcessorFactory {
@@ -94,36 +86,19 @@ public final class PlatformSpanProcessorFactory {
                 }
             }
 
-            // --- Validation + control-protocol handler wiring ---
+            // --- Validation ---
             //
-            // The control-protocol handler is always wired here so that
-            // PlatformControlProtocolMBean is available regardless of
-            // whether validation is enabled in config.  When validation
-            // is disabled the ValidatingSpanProcessor used inside the
-            // applier is a no-op stub (enabled=false, strict=false).
-
-            ValidatingSpanProcessor validatingForHandler;
+            // ValidatingSpanProcessor is registered for read-only domain MBean
+            // projection. Runtime mutation uses the private applySnapshot plane.
 
             if (extConfig.validation().enabled()) {
-                ValidationModeResolver.Resolution resolution = ValidationModeResolver.resolve(
-                        extConfig.validation().platformEnvironment(),
-                        extConfig.validation().requestedValidationMode());
                 ValidatingSpanProcessor validating =
                         new ValidatingSpanProcessor(acceptedPolicy);
                 delegates.add(validating);
                 jmxRegistrar.setValidating(validating);
-                validatingForHandler = validating;
             } else {
-                // Stub: validation is off at startup but operator may enable
-                // it later via JMX control protocol.
-                ValidatingSpanProcessor stub =
-                        new ValidatingSpanProcessor(acceptedPolicy);
-                jmxRegistrar.setValidating(stub);
-                validatingForHandler = stub;
+                jmxRegistrar.setValidating(new ValidatingSpanProcessor(acceptedPolicy));
             }
-
-            wireControlProtocolHandler(validatingForHandler,
-                    extConfig.control().runtimeMutationEnabled());
 
             // --- Remaining optional processors ---
 
@@ -175,44 +150,6 @@ public final class PlatformSpanProcessorFactory {
                 extConfig,
                 config,
                 AcceptedPolicyAccess.fromStartup(extConfig));
-    }
-
-    // =========================================================================
-    // Control-protocol handler wiring
-    // =========================================================================
-
-    /**
-     * Builds and wires the {@link RuntimePolicyControlHandler} into the
-     * registrar.
-     *
-     * <p>This method relies on the registrar having already received the
-     * accepted policy via {@link PlatformTracingJmxRegistrar#setAcceptedPolicy}
-     * (done by
-     * {@link PlatformSamplerFactory}).
-     *
-     * <p>A shared {@link LongAdder} counter from the registrar is used so
-     * that failed control-protocol invocations are reflected in the
-     * diagnostics MBean together with other invalid-config events.
-     */
-    private void wireControlProtocolHandler(ValidatingSpanProcessor validating,
-                                            boolean runtimeMutationEnabled) {
-        // Sampling control использует уже зарегистрированный accepted owner.
-        // inside the registrar — no new state is created.
-        PlatformSamplingControl samplingControl = jmxRegistrar.buildSamplingControl();
-        LongAdder counter = jmxRegistrar.sharedInvalidConfigCounter();
-
-        PlatformValidationControl validationControl =
-                new PlatformValidationControl(validating, counter);
-
-        JmxRuntimePolicyApplier applier =
-                new JmxRuntimePolicyApplier(samplingControl, validationControl);
-
-        RuntimePolicyControlHandler handler =
-                new RuntimePolicyControlHandler(
-                        applier,
-                        RuntimeControlMutationPolicy.startupConfigured(runtimeMutationEnabled));
-
-        jmxRegistrar.setControlHandler(handler);
     }
 
     // =========================================================================

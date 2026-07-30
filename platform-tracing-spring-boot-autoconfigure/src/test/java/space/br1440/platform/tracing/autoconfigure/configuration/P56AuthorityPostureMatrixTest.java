@@ -301,6 +301,23 @@ class P56AuthorityPostureMatrixTest {
                 });
     }
 
+    /**
+     * P6.10 residual: HELM+DISABLED (legal) must not expose any Actuator write adapter.
+     * Complements {@link #helmDisabledMode_starts()} which already asserts the mutation-surface flag.
+     */
+    @Test
+    void helmDisabled_actuatorWriteAdapterPhysicallyAbsent() {
+        actuatorStackRunner
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=HELM",
+                        "platform.environment=PRODUCTION",
+                        "platform.tracing.mode=DISABLED")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(SpringActuatorTracingPolicyAdapter.class);
+                });
+    }
+
     private static void assertGuardFailure(AssertableApplicationContext context, String messageFragment) {
         assertThat(context).hasFailed();
         Throwable failure = context.getStartupFailure();

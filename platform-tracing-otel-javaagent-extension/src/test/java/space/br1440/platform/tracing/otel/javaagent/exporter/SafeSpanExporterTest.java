@@ -5,11 +5,13 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -146,7 +148,8 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("Export-gate (Фаза 14): выключенный экспорт отбрасывает batch, делегат не вызывается, success")
     void exportGateDropsBatchWithoutCallingDelegate() {
-        java.util.concurrent.atomic.AtomicInteger delegateCalls = new java.util.concurrent.atomic.AtomicInteger();
+        AtomicInteger delegateCalls = new AtomicInteger();
+        AcceptedPolicyAccess access = AcceptedPolicyAccess.isolatedDefaults();
         SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
@@ -155,9 +158,9 @@ class SafeSpanExporterTest {
             }
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
-        });
+        }, access);
 
-        safe.setExportEnabled(false);
+        access.updateExporter(false);
         CompletableResultCode gated = safe.export(spansOfSize(4));
 
         assertThat(gated.isSuccess()).as("gate возвращает success, BSP не ретраит").isTrue();
@@ -168,7 +171,7 @@ class SafeSpanExporterTest {
         assertThat(safe.getExportFailures()).as("gate — не отказ транспорта").isZero();
         assertThat(safe.getDroppedSpans()).isZero();
 
-        safe.setExportEnabled(true);
+        access.updateExporter(true);
         safe.export(spansOfSize(2));
         assertThat(delegateCalls.get()).as("после включения делегат снова вызывается").isEqualTo(1);
         assertThat(safe.getExportedSpans()).isEqualTo(2);

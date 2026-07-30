@@ -35,19 +35,22 @@ class ProductionControlPlaneNotMigratedArchTest {
                     .because("SamplingControlClient удалён; Spring-side JMX-клиент — PlatformTracingJmxClient");
 
     @Test
-    @DisplayName("PlatformTracingJmxClient retains primitive JMX write methods")
-    void jmxClientPrimitiveMethodsPresent() {
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "setRatio", double.class)).isTrue();
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "updateSamplingPolicy",
-                space.br1440.platform.tracing.autoconfigure.sampling.SamplingRuntimeConfig.class))
-                .isTrue();
+    @DisplayName("PlatformTracingJmxClient exposes read-only domain awareness methods")
+    void jmxClientReadOnlyMethodsPresent() {
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "allMBeansAvailable")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getMBeansStatus")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getCurrentRatio")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "isSamplerEnabled")).isTrue();
     }
 
     @Test
-    @DisplayName("PlatformTracingJmxClient exposes allMBeansAvailable and getMBeansStatus")
-    void jmxClientDomainAwarenessMethodsPresent() {
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "allMBeansAvailable")).isTrue();
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getMBeansStatus")).isTrue();
+    @DisplayName("PlatformTracingJmxClient no longer exposes JMX mutation methods")
+    void jmxClientMutationMethodsAbsent() {
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "setRatio", double.class)).isFalse();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "updateSamplingPolicy",
+                space.br1440.platform.tracing.autoconfigure.sampling.SamplingRuntimeConfig.class))
+                .isFalse();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "setSamplerEnabled", boolean.class)).isFalse();
     }
 
     @Test

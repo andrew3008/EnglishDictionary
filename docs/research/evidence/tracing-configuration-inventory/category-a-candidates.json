@@ -110,24 +110,24 @@
   "type" : "OtelAgentLogLevel"
 }, {
   "candidate" : "scrubbing.built-in-rules",
-  "canonicalCurrentNames" : [ "platform.tracing.scrubbing.built-in-rules" ],
-  "consumer" : [ "ScrubbingRuntimeConfig -> ScrubbingSpanProcessor" ],
-  "currentMutationPaths" : [ "JMX Scrubbing MBean" ],
+  "canonicalCurrentNames" : [ "platform.tracing.javaagent.scrubbing.built-in-rules" ],
+  "consumer" : [ "ScrubbingExtensionConfig -> ScrubbingSpanProcessor" ],
+  "currentMutationPaths" : [ ],
   "default" : "[password,jwt,email,oauth-header,x-auth-header,infra-credential,webhook-token,ssh-credential,user-identity,hardware-identity,location,ip-address]",
   "performanceRelevantBehavior" : "Rule compilation and processor pipeline composition",
-  "preliminaryResult" : "EXCLUDE",
-  "proposedTargetName" : "N/A",
+  "preliminaryResult" : "EXCLUDE_CATEGORY_B",
+  "proposedTargetName" : "platform.tracing.javaagent.scrubbing.built-in-rules",
   "securityClassification" : "NON_SECRET",
-  "type" : "List"
+  "type" : "List<String>"
 }, {
   "candidate" : "scrubbing.enabled",
-  "canonicalCurrentNames" : [ "platform.tracing.scrubbing.enabled" ],
-  "consumer" : [ "ScrubbingRuntimeConfig -> ScrubbingSpanProcessor" ],
-  "currentMutationPaths" : [ "JMX Scrubbing MBean" ],
+  "canonicalCurrentNames" : [ "platform.tracing.javaagent.scrubbing.enabled" ],
+  "consumer" : [ "ScrubbingExtensionConfig -> ScrubbingSpanProcessor" ],
+  "currentMutationPaths" : [ ],
   "default" : "true",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
-  "preliminaryResult" : "EXCLUDE",
-  "proposedTargetName" : "N/A",
+  "preliminaryResult" : "EXCLUDE_CATEGORY_B",
+  "proposedTargetName" : "platform.tracing.javaagent.scrubbing.enabled",
   "securityClassification" : "NON_SECRET",
   "type" : "boolean"
 } ]

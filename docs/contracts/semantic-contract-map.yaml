@@ -10,7 +10,7 @@
 version: 1
 schema: semantic-contract-map.schema.json
 methodology: platform-development-api-design-week-02
-updatedAt: "2026-07-25"
+updatedAt: "2026-07-29"
 publicContractInventory: docs/contracts/public-contract-inventory.yaml
 
 maps:
@@ -418,7 +418,7 @@ maps:
         javaExpressions:
           - space.br1440.platform.tracing.api.propagation.PlatformHeaders
         configurationExpressions:
-          - platform.tracing.sampling.force-record-header-values
+          - platform.tracing.javaagent.sampling.force-record-values
         springExpressions:
           - response header filters in webmvc/webflux autoconfigure
         operationalExpressions:
@@ -470,28 +470,6 @@ maps:
           - not metrics tags for high-cardinality ids
         evolutionRule: key renames breaking for logging pipelines
         inventoryEntryIds: [tracing-mdc-keys]
-
-      - id: tracing-control-protocol
-        canonicalTerm: Tracing control protocol
-        definition: Versioned wire map protocol for runtime control of sampling/scrubbing/validation/export flags.
-        role: value
-        invariants:
-          - TracingControlProtocol.current() is sole public decode entry
-          - Keys in TracingControlProtocolKeys are stable wire names
-          - Decoder/schema remain package-private
-        lifecycle: decode-only request; major version for incompatible schema
-        javaExpressions:
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys
-        configurationExpressions: []
-        springExpressions: []
-        operationalExpressions:
-          - JMX/actuator control plane in agent/autoconfigure modules
-        exclusions:
-          - not public Java configuration object
-          - not ad-hoc JSON schema without version field
-        evolutionRule: incompatible wire changes require protocol major bump
-        inventoryEntryIds: [tracing-control-protocol]
 
       - id: semconv-validation-mode
         canonicalTerm: Semconv validation mode

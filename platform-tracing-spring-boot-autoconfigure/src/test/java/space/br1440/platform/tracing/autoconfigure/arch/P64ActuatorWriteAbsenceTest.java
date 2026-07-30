@@ -17,19 +17,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * P6.4 / P6.10 fragment: legacy production Actuator write surface is physically absent.
+ *
+ * <p>Unit/source absence. Spring descriptor + HTTP route absence is covered by
+ * {@link P64ActuatorZeroWriteProofTest}. Production posture write-adapter absence is
+ * covered by {@code P56AuthorityPostureMatrixTest}.
  */
 class P64ActuatorWriteAbsenceTest {
 
     @Test
     @DisplayName("Legacy TracingActuatorEndpoint has zero @WriteOperation methods")
     void legacyEndpoint_hasNoWriteOperations() {
-        long writeOps = Arrays.stream(TracingActuatorEndpoint.class.getDeclaredMethods())
-                .filter(method -> method.isAnnotationPresent(WriteOperation.class))
-                .count();
-        assertThat(writeOps).isZero();
+        assertNoWriteOperations(TracingActuatorEndpoint.class);
         assertThat(Arrays.stream(TracingActuatorEndpoint.class.getDeclaredMethods())
                 .map(Method::getName))
                 .doesNotContain("updateTracing", "assertMutationAllowed");
+    }
+
+    @Test
+    @DisplayName("Configuration TracingActuatorEndpoint (tracingPolicy) has zero @WriteOperation methods")
+    void configurationEndpoint_hasNoWriteOperations() {
+        assertNoWriteOperations(
+                space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorEndpoint.class);
     }
 
     @Test
@@ -69,5 +77,14 @@ class P64ActuatorWriteAbsenceTest {
                     .count();
             assertThat(hits).isZero();
         }
+    }
+
+    private static void assertNoWriteOperations(Class<?> endpointClass) {
+        long writeOps = Arrays.stream(endpointClass.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(WriteOperation.class))
+                .count();
+        assertThat(writeOps)
+                .as("%s must not declare @WriteOperation", endpointClass.getName())
+                .isZero();
     }
 }

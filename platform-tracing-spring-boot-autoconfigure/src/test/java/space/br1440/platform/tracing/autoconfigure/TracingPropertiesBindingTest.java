@@ -84,30 +84,6 @@ class TracingPropertiesBindingTest {
     }
 
     @Test
-    void bindsScrubbingEnabled() {
-        contextRunner
-                .withPropertyValues("platform.tracing.scrubbing.enabled=false")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getScrubbing().isEnabled()).isFalse();
-                });
-    }
-
-    @Test
-    void bindsScrubbingBuiltInRules() {
-        contextRunner
-                .withPropertyValues(
-                        "platform.tracing.scrubbing.built-in-rules[0]=password",
-                        "platform.tracing.scrubbing.built-in-rules[1]=jwt",
-                        "platform.tracing.scrubbing.built-in-rules[2]=email")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getScrubbing().getBuiltInRules())
-                            .containsExactly("password", "jwt", "email");
-                });
-    }
-
-    @Test
     void bindsValidationEnabled() {
         contextRunner
                 .withPropertyValues("platform.tracing.validation.enabled=false")
@@ -159,20 +135,6 @@ class TracingPropertiesBindingTest {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
                     assertThat(properties.getValidation().isEnabled()).isTrue();
                     assertThat(properties.getValidation().isStrict()).isFalse();
-                });
-    }
-
-    @Test
-    void defaultScrubbingBuiltInRules_matchesUmsList() {
-        contextRunner
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getScrubbing().getBuiltInRules())
-                            .containsExactly(
-                                    "password", "jwt", "email", "oauth-header", "x-auth-header",
-                                    "infra-credential", "webhook-token", "ssh-credential",
-                                    "user-identity", "hardware-identity", "location", "ip-address"
-                            );
                 });
     }
 

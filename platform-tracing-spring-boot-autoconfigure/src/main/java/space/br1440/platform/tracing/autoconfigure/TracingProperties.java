@@ -39,7 +39,8 @@ public class TracingProperties {
     private OtelAgentLogLevel logLevel = OtelAgentLogLevel.INFO;
 
     private final Sampling sampling = new Sampling();
-    private final Scrubbing scrubbing = new Scrubbing();
+    // P6.7: scrubbing enabled/built-in-rules moved to Agent Category B
+    // (platform.tracing.javaagent.scrubbing.*). Spring no longer binds them.
     private final Exporter exporter = new Exporter();
     private final Response response = new Response();
     private final Suppression suppression = new Suppression();
@@ -64,21 +65,6 @@ public class TracingProperties {
 
         // P6.1: force-record-values and drop-paths moved to Agent Category B
         // (platform.tracing.javaagent.sampling.*). Spring no longer binds them.
-    }
-
-    @Getter
-    @Setter
-    @Accessors(chain = true)
-    public static class Scrubbing {
-        /** Runtime-переключатель (kill-switch) для скраббинга, изменяемый на лету (JMX reconcile). */
-        private boolean enabled = true;
-
-        /** Встроенные правила scrubbing (runtime-mutable, JMX reconcile). */
-        private List<String> builtInRules = new ArrayList<>(List.of(
-                "password", "jwt", "email", "oauth-header", "x-auth-header",
-                "infra-credential", "webhook-token", "ssh-credential",
-                "user-identity", "hardware-identity", "location", "ip-address"
-        ));
     }
 
     @Getter

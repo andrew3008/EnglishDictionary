@@ -171,10 +171,11 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         Object ratio = server.getAttribute(objectName, "SamplingRatio");
         assertThat(ratio).isEqualTo(0.42d);
 
-        // setSamplingRatio через JMX обновляет состояние.
-        server.setAttribute(objectName,
-                new javax.management.Attribute("SamplingRatio", 0.9d));
-        assertThat(server.getAttribute(objectName, "SamplingRatio")).isEqualTo(0.9d);
+        // P6.6/P6.8: platform SamplingRatio is read-only; setAttribute must fail.
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
+                () -> server.setAttribute(objectName,
+                        new javax.management.Attribute("SamplingRatio", 0.9d)));
+        assertThat(server.getAttribute(objectName, "SamplingRatio")).isEqualTo(0.42d);
     }
 
     @Test
@@ -358,9 +359,9 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
                 .isEqualTo("space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
     }
 
-    /** Ratio при установке через MBean подвергается валидации. */
+    /** Platform SamplingRatio attribute is not writable after P6.6/P6.8 cutover. */
     @Test
-    void невалидное_значение_setSamplingRatio_отвергается_через_JMX() throws Exception {
+    void setSamplingRatio_через_platform_JMX_отвергается() throws Exception {
         Recorder recorder = new Recorder();
         new PlatformAutoConfigurationCustomizer().customize(recorder.proxy());
         // PR-5: ratio поступает из addPropertiesCustomizer (extensionConfig).
@@ -369,8 +370,6 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
         ObjectName objectName = PlatformTracingObjectNames.SAMPLING;
 
-        // setAttribute с 2.0 → IllegalArgumentException, оборачиваемое JMX в MBeanException/RuntimeMBeanException.
-        // Проверим целевое исключение через invoke().
         org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
                 () -> server.setAttribute(objectName, new javax.management.Attribute("SamplingRatio", 2.0d)));
 

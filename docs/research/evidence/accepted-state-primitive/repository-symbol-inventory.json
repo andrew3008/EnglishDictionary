@@ -74,8 +74,8 @@
       "ownsVersion": false,
       "verdict": "cannot express the E3 contract"
     },
-    "productionConsumers": ["SamplerStateHolder", "ScrubbingPolicyHolder", "ValidationPolicyHolder"],
-    "correctedBy": "S-01-C1: only SamplerStateHolder and ValidationPolicyHolder migrate to accepted Category A state. ScrubbingPolicyHolder is Category B and is replaced by immutable Agent startup configuration, so VersionedStateHolder loses its last consumer only after the Category B cutover, not after the accepted-state migration.",
+    "productionConsumers": [],
+    "correctedBy": "S-01-C1 + P6.7: SamplerStateHolder and ValidationPolicyHolder migrated to accepted Category A state (P3). ScrubbingPolicyHolder deleted in P6.7 (immutable Agent startup Category B). VersionedStateHolder now has zero production consumers.",
     "companionType": {
       "symbol": "VersionedState",
       "kind": "interface",
@@ -499,15 +499,15 @@
         "class": "ScrubbingPolicyHolder",
         "module": "platform-tracing-otel-javaagent-extension",
         "package": "space.br1440.platform.tracing.otel.javaagent.scrubbing",
-        "stateField": "VersionedStateHolder<ScrubbingSnapshot> holder; ScrubbingSnapshot.version starts at 1 (ScrubbingSpanProcessor ctor line 111)",
+        "stateField": "DELETED — ScrubbingSpanProcessor now holds private final ScrubbingSnapshot policy (startup version=1, source=startup)",
         "categoryALeaves": [],
         "migratesToAcceptedState": false,
-        "isCurrentMutableProductionOwner": true,
+        "isCurrentMutableProductionOwner": false,
         "isFieldOfEffectiveTracingPolicy": false,
-        "replacement": "immutable Agent startup Category B configuration. Not accepted Category A state, not a field of EffectiveTracingPolicy, and not carried by the accepted envelope",
-        "futureDeletionPhase": "NOT P3 accepted-state migration. Deletion belongs to the coherent Category B namespace cutover — plan tasks p6-agent-parser-cutover, p6-delete-domain-jmx-writes and p6-coherent-cutover — because the holder can only disappear once platform.tracing.javaagent.scrubbing.* is startup-immutable and PlatformScrubbingControl.updateScrubbingPolicy is gone. Exact phase must be agreed with that cutover.",
-        "planCorrectionRequired": "RESOLVED — p3-remove-domain-holders now removes only SamplerStateHolder and ValidationPolicyHolder; p6-remove-scrubbing-policy-holder binds ScrubbingPolicyHolder deletion to the coherent Category B cutover.",
-        "zeroReferenceProof": "rg ScrubbingPolicyHolder over **/src/main/java matches ScrubbingPolicyHolder, ScrubbingSpanProcessor:439/453 and PlatformScrubbingControl:63. Scrubbing state is not exposed by ReadAppliedStateHandler at all, so no read surface has to migrate."
+        "replacement": "immutable Agent startup Category B configuration via ScrubbingSpanProcessor final ScrubbingSnapshot; Spring TracingProperties.Scrubbing binding deleted",
+        "futureDeletionPhase": "COMPLETED P6.7 — p6-remove-scrubbing-policy-holder: ScrubbingPolicyHolder/ScrubbingPolicyUpdate deleted; PlatformScrubbingControl remains read-only; Spring scrubbing.enabled/built-in-rules binding deleted",
+        "planCorrectionRequired": "RESOLVED — P6.7 completed Category B holder deletion; VersionedStateHolder productionConsumers is empty",
+        "zeroReferenceProof": "rg ScrubbingPolicyHolder over **/src/main/java matches 0 files after P6.7 deletion"
       }
     ],
     "accessSites": [
@@ -1189,47 +1189,17 @@
       {
         "owner": "ScrubbingPolicyHolder",
         "module": "platform-tracing-otel-javaagent-extension",
-        "package": "space.br1440.platform.tracing.otel.javaagent.scrubbing",
-        "class": "ScrubbingPolicyHolder",
-        "method": "current(), tryApplyPolicyUpdate(boolean, String[], String), tryUpdate(UnaryOperator)",
-        "stateField": "VersionedStateHolder<ScrubbingSnapshot>",
-        "role": "OWNER_FIELD",
-        "currentMutationEntryPoint": "PlatformScrubbingControl.updateScrubbingPolicy:63 and ScrubbingSpanProcessor:439/453",
-        "currentGate": "none",
-        "targetCategoryALeaf": "NONE_CATEGORY_B",
-        "futureP1Replacement": "immutable Agent startup Category B configuration. NOT a field of EffectiveTracingPolicy and NOT carried by the accepted envelope",
-        "futureDeletionPhase": "coherent Category B namespace cutover — p6-agent-parser-cutover with p6-delete-domain-jmx-writes and p6-coherent-cutover. NOT the P3 accepted-state migration; see planCorrectionRequired on the owner entry",
-        "zeroReferenceProof": "reference set in src/main/java is ScrubbingPolicyHolder, ScrubbingSpanProcessor:439/453, PlatformScrubbingControl:63. ReadAppliedStateHandler does not read scrubbing state, so no read surface migrates"
-      },
-      {
-        "owner": "ScrubbingPolicyHolder",
-        "module": "platform-tracing-otel-javaagent-extension",
-        "package": "space.br1440.platform.tracing.otel.javaagent.scrubbing",
+        "package": "space.br1440.platform.tracing.otel.javaagent.processor",
         "class": "ScrubbingSpanProcessor",
-        "method": "onEnding(...)",
-        "stateField": "ScrubbingSnapshot via ScrubbingPolicyHolder.current()",
+        "method": "onEnding(...) reads private final ScrubbingSnapshot policy",
+        "stateField": "private final ScrubbingSnapshot policy (startup-immutable)",
         "role": "READER_HOT",
-        "currentMutationEntryPoint": "line 453, reached from line 439",
-        "currentGate": "none",
+        "currentMutationEntryPoint": "NONE — mutation APIs deleted in P6.7",
+        "currentGate": "startup-only; factory constructs processor only when javaagent.scrubbing.enabled=true",
         "targetCategoryALeaf": "NONE_CATEGORY_B",
-        "futureP1Replacement": "reads immutable startup configuration; no runtime read of accepted state is needed once scrubbing is startup-only",
-        "futureDeletionPhase": "coherent Category B namespace cutover — p6-agent-parser-cutover",
-        "zeroReferenceProof": "per-span hot path; unaffected by the accepted-state store because the value stops changing at runtime"
-      },
-      {
-        "owner": "ScrubbingPolicyHolder",
-        "module": "platform-tracing-otel-javaagent-extension",
-        "package": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing",
-        "class": "PlatformScrubbingControl",
-        "method": "updateScrubbingPolicy(...) line 63",
-        "stateField": "ScrubbingSnapshot via ScrubbingPolicyHolder",
-        "role": "WRITER",
-        "currentMutationEntryPoint": "platform JMX control path",
-        "currentGate": "none. JmxRuntimePolicyApplier does not route scrubbing fields either, so the unified protocol cannot reach this owner",
-        "targetCategoryALeaf": "NONE_CATEGORY_B",
-        "futureP1Replacement": "deleted; a Category B value has no runtime writer",
-        "futureDeletionPhase": "P6 DELETE — p6-delete-domain-jmx-writes, sequenced with the Category B cutover",
-        "zeroReferenceProof": "removing this writer is the precondition that makes scrubbing genuinely startup-immutable"
+        "futureP1Replacement": "COMPLETED — immutable Agent startup Category B configuration",
+        "futureDeletionPhase": "COMPLETED P6.7 — p6-remove-scrubbing-policy-holder",
+        "zeroReferenceProof": "rg ScrubbingPolicyHolder over **/src/main/java matches 0 files; updateScrubbingPolicy production refs = 0"
       }
     ],
     "crossOwnerFindings": [

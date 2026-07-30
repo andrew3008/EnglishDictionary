@@ -65,13 +65,13 @@ public class ValidatingSpanProcessorBenchmark {
 
     @Setup(Level.Trial)
     public void setUp() {
-        disabledProcessor = new ValidatingSpanProcessor(false);
-        disabledProcessor.tryApplyPolicyUpdate(false, false, "bench");
+        disabledProcessor = new ValidatingSpanProcessor(
+                AcceptedPolicyAccess.isolatedValidation(false, false, true));
 
         lenientProcessor = new ValidatingSpanProcessor(false);
         lenientMissingProcessor = new ValidatingSpanProcessor(false);
-        strictValidProcessor = new ValidatingSpanProcessor(false, true);
-        strictValidProcessor.tryApplyPolicyUpdate(true, true, "bench");
+        strictValidProcessor = new ValidatingSpanProcessor(
+                AcceptedPolicyAccess.isolatedValidation(true, true, true));
         strictMissingProcessor = new ValidatingSpanProcessor(true, true);
 
         lenientAccess = AcceptedPolicyAccess.isolatedValidation(true, false, true);

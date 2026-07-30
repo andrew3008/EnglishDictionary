@@ -2,41 +2,28 @@ package space.br1440.platform.tracing.autoconfigure.jmx;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.br1440.platform.tracing.autoconfigure.sampling.SamplingRuntimeConfig;
-import space.br1440.platform.tracing.autoconfigure.sampling.ScrubbingRuntimeConfig;
-import space.br1440.platform.tracing.autoconfigure.sampling.ValidationRuntimeConfig;
 
-import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import javax.management.RuntimeMBeanException;
 import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Spring-side JMX-клиент шести доменных MBean платформенной плоскости управления трассировкой.
  * <p>
  * Заменяет {@code SamplingControlClient} (удалён). Знает ObjectName всех шести доменов;
- * маршрутизирует каждую операцию к нужному MBean. Мутирующие вызовы выполняются с
- * fail-closed семантикой: если MBean домена недоступен, бросается
- * {@link PlatformTracingJmxOperationException}. Читающие вызовы деградируют грациозно
- * (возвращают {@link Optional#empty()} / пустые коллекции / сентинели).
+ * выполняет только читающие вызовы и деградирует грациозно
+ * (возвращает {@link Optional#empty()} / пустые коллекции / сентинели), если MBean домена
+ * недоступен.
  */
 public class PlatformTracingJmxClient {
 
     private static final Logger log = LoggerFactory.getLogger(PlatformTracingJmxClient.class);
-
-    private static final String[] NO_ARGS = new String[0];
-    private static final String[] BOOL_SIG = {boolean.class.getName()};
-    private static final String[] DOUBLE_SIG = {double.class.getName()};
-    private static final String[] STRING_ARRAY_SIG = {String[].class.getName()};
-    private static final String[] STRING_SIG = {String.class.getName()};
 
     private final MBeanServer server;
 
@@ -160,61 +147,6 @@ public class PlatformTracingJmxClient {
         return Collections.emptyMap();
     }
 
-    // -- Sampling: mutations ---------------------------------------------------
-
-    public void setSamplerEnabled(boolean enabled) {
-        requireDomain(PlatformTracingJmxObjectNames.SAMPLING, "sampling");
-        invoke(PlatformTracingJmxObjectNames.SAMPLING, "setSamplerEnabled",
-                new Object[]{enabled}, BOOL_SIG, "setSamplerEnabled");
-    }
-
-    public void setRatio(double newRatio) {
-        requireDomain(PlatformTracingJmxObjectNames.SAMPLING, "sampling");
-        invoke(PlatformTracingJmxObjectNames.SAMPLING, "setSamplingRatio",
-                new Object[]{newRatio}, DOUBLE_SIG, "setSamplingRatio");
-    }
-
-    public void setDropPathPrefixes(List<String> prefixes) {
-        requireDomain(PlatformTracingJmxObjectNames.SAMPLING, "sampling");
-        invoke(PlatformTracingJmxObjectNames.SAMPLING, "setDropPathPrefixes",
-                new Object[]{listToArray(prefixes)}, STRING_ARRAY_SIG, "setDropPathPrefixes");
-    }
-
-    public void setForceRecordValues(List<String> values) {
-        requireDomain(PlatformTracingJmxObjectNames.SAMPLING, "sampling");
-        invoke(PlatformTracingJmxObjectNames.SAMPLING, "setForceRecordValues",
-                new Object[]{listToArray(values)}, STRING_ARRAY_SIG, "setForceRecordValues");
-    }
-
-    public void updateSamplingPolicy(SamplingRuntimeConfig config) {
-        Objects.requireNonNull(config, "config");
-        requireDomain(PlatformTracingJmxObjectNames.SAMPLING, "sampling");
-        try {
-            // null drop/force arrays => Agent preserves Category B startup-only state (P6.1).
-            server.invoke(PlatformTracingJmxObjectNames.SAMPLING, "updateSamplingPolicy",
-                    new Object[]{
-                            config.enabled(),
-                            config.defaultRatio(),
-                            null,
-                            null,
-                            config.routeRatioPrefixes(),
-                            config.routeRatioValues(),
-                            SamplingRuntimeConfig.SOURCE
-                    },
-                    new String[]{
-                            boolean.class.getName(),
-                            double.class.getName(),
-                            String[].class.getName(),
-                            String[].class.getName(),
-                            String[].class.getName(),
-                            double[].class.getName(),
-                            String.class.getName()
-                    });
-        } catch (Exception e) {
-            handleJmxException("updateSamplingPolicy", e);
-        }
-    }
-
     // -- Scrubbing: reads ------------------------------------------------------
 
     public Optional<Boolean> isScrubbingEnabled() {
@@ -250,20 +182,6 @@ public class PlatformTracingJmxClient {
         return Collections.emptyMap();
     }
 
-    // -- Scrubbing: mutations --------------------------------------------------
-
-    public void updateScrubbingPolicy(ScrubbingRuntimeConfig config) {
-        Objects.requireNonNull(config, "config");
-        requireDomain(PlatformTracingJmxObjectNames.SCRUBBING, "scrubbing");
-        try {
-            server.invoke(PlatformTracingJmxObjectNames.SCRUBBING, "updateScrubbingPolicy",
-                    new Object[]{config.enabled(), config.ruleNames(), ScrubbingRuntimeConfig.SOURCE},
-                    new String[]{boolean.class.getName(), String[].class.getName(), String.class.getName()});
-        } catch (Exception e) {
-            handleJmxException("updateScrubbingPolicy", e);
-        }
-    }
-
     // -- Validation: reads -----------------------------------------------------
 
     public Optional<Boolean> isValidationEnabled() {
@@ -284,31 +202,6 @@ public class PlatformTracingJmxClient {
 
     public Optional<String> getValidationConfigLastUpdatedSource() {
         return getStringAttribute(PlatformTracingJmxObjectNames.VALIDATION, "ValidationConfigLastUpdatedSource");
-    }
-
-    // -- Validation: mutations -------------------------------------------------
-
-    public void updateValidationPolicy(ValidationRuntimeConfig config) {
-        Objects.requireNonNull(config, "config");
-        requireDomain(PlatformTracingJmxObjectNames.VALIDATION, "validation");
-        try {
-            server.invoke(PlatformTracingJmxObjectNames.VALIDATION, "updateValidationPolicy",
-                    new Object[]{config.enabled(), config.strict(), ValidationRuntimeConfig.SOURCE},
-                    new String[]{boolean.class.getName(), boolean.class.getName(), String.class.getName()});
-        } catch (Exception e) {
-            handleJmxException("updateValidationPolicy", e);
-        }
-    }
-
-    public void updateValidationPolicy(boolean enabled, boolean strict) {
-        requireDomain(PlatformTracingJmxObjectNames.VALIDATION, "validation");
-        try {
-            server.invoke(PlatformTracingJmxObjectNames.VALIDATION, "updateValidationPolicy",
-                    new Object[]{enabled, strict},
-                    new String[]{boolean.class.getName(), boolean.class.getName()});
-        } catch (Exception e) {
-            handleJmxException("updateValidationPolicy", e);
-        }
     }
 
     // -- Export: reads ---------------------------------------------------------
@@ -347,14 +240,6 @@ public class PlatformTracingJmxClient {
             log.debug("JMX: SafeExporterMetrics failed: {}", e.getMessage());
         }
         return Collections.emptyMap();
-    }
-
-    // -- Export: mutations -----------------------------------------------------
-
-    public void setExportEnabled(boolean enabled) {
-        requireDomain(PlatformTracingJmxObjectNames.EXPORT, "export");
-        invoke(PlatformTracingJmxObjectNames.EXPORT, "setExportEnabled",
-                new Object[]{enabled}, BOOL_SIG, "setExportEnabled");
     }
 
     // -- ProcessorMetrics: reads -----------------------------------------------
@@ -434,52 +319,7 @@ public class PlatformTracingJmxClient {
         return Collections.emptyMap();
     }
 
-    // -- Diagnostics: mutations ------------------------------------------------
-
-    public void setPropagationEnabled(boolean enabled) {
-        requireDomain(PlatformTracingJmxObjectNames.DIAGNOSTICS, "diagnostics");
-        invoke(PlatformTracingJmxObjectNames.DIAGNOSTICS, "setPropagationEnabled",
-                new Object[]{enabled}, BOOL_SIG, "setPropagationEnabled");
-    }
-
-    public void setPlatformLogLevel(String level) {
-        requireDomain(PlatformTracingJmxObjectNames.DIAGNOSTICS, "diagnostics");
-        invoke(PlatformTracingJmxObjectNames.DIAGNOSTICS, "setPlatformLogLevel",
-                new Object[]{level}, STRING_SIG, "setPlatformLogLevel");
-    }
-
     // -- Internal helpers ------------------------------------------------------
-
-    private void requireDomain(ObjectName name, String domainLabel) {
-        if (!server.isRegistered(name)) {
-            throw new PlatformTracingJmxOperationException(
-                    "Платформенный MBean домена '" + domainLabel + "' недоступен: " + name + " не зарегистрирован");
-        }
-    }
-
-    private void invoke(ObjectName name, String operation, Object[] args, String[] sig, String opLabel) {
-        try {
-            server.invoke(name, operation, args, sig);
-        } catch (Exception e) {
-            handleJmxException(opLabel, e);
-        }
-    }
-
-    private void handleJmxException(String operation, Exception e) {
-        if (e instanceof InstanceNotFoundException) {
-            throw new PlatformTracingJmxOperationException(
-                    "MBean пропал из реестра JMX при вызове " + operation, e);
-        }
-        if (e instanceof RuntimeMBeanException rme) {
-            Throwable target = rme.getTargetException();
-            if (target instanceof IllegalArgumentException iae) throw iae;
-            if (target instanceof RuntimeException re) throw re;
-        }
-        Throwable cause = e.getCause();
-        if (cause instanceof IllegalArgumentException iae) throw iae;
-        throw new PlatformTracingJmxOperationException(
-                "Ошибка JMX-вызова " + operation + ": " + e.getMessage(), e);
-    }
 
     private Optional<Long> getLongAttribute(ObjectName name, String attribute) {
         if (!server.isRegistered(name)) return Optional.empty();
@@ -556,10 +396,6 @@ public class PlatformTracingJmxClient {
             log.debug("JMX: {} failed: {}", attribute, e.getMessage());
         }
         return Optional.empty();
-    }
-
-    private static String[] listToArray(List<String> values) {
-        return values == null || values.isEmpty() ? new String[0] : values.toArray(new String[0]);
     }
 
     private static List<String> arrayToList(String[] arr) {

@@ -20,17 +20,6 @@ sourceSets {
             srcDir 'src/testExtension/resources'
         }
     }
-    // Test-only JMX wire round-trip harness. Packaged into a dedicated test-only OTel extension JAR
-    // (testJmxWireExtensionJar) and loaded via otel.javaagent.extensions in the E2E child JVM, so the
-    // MBean is registered in the Agent ExtensionClassLoader. Replaces the removed production jmx.spike.
-    jmxWireExtension {
-        java {
-            srcDir 'src/jmxWireExtension/java'
-        }
-        resources {
-            srcDir 'src/jmxWireExtension/resources'
-        }
-    }
     readinessFixtureExtension {
         java {
             srcDir 'src/readinessFixtureExtension/java'
@@ -177,12 +166,6 @@ dependencies {
     testExtensionCompileOnly project(':platform-tracing-api')
     testExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
 
-    // Test-only JMX wire round-trip extension JAR (harness for MapWireRoundTripE2ETest).
-    // platform-tracing-api предоставляет TracingControlProtocol.current().decode(...); spi — для провайдера.
-    jmxWireExtensionCompileOnly project(':platform-tracing-api')
-    jmxWireExtensionCompileOnly project(':platform-tracing-otel')
-    jmxWireExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
-
     // Test-only extension, публикующий управляемые состояния readiness для packaged E1 matrix.
     readinessFixtureExtensionImplementation platform(project(':platform-tracing-bom'))
     readinessFixtureExtensionCompileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
@@ -195,8 +178,6 @@ dependencies {
     e1ConsumerImplementation platform(project(':platform-tracing-bom'))
     e1ConsumerImplementation project(':platform-tracing-spring-boot-starter-servlet')
 
-    // App-CL сторона E2E (MapWireRoundTripMain) использует константы MBean и маркеры харнесса.
-    testImplementation sourceSets.jmxWireExtension.output
     testImplementation sourceSets.e1Consumer.output
 
     // Step 0B / S-06 approved production stack: Boot baseline from gradle.properties (3.5.5)
@@ -254,24 +235,6 @@ tasks.named('processTestExtensionResources') {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
-// Test-only extension JAR с JMX wire round-trip харнессом (WireRoundTripTest*).
-// Загружается через otel.javaagent.extensions; OTel Agent создаёт отдельный ExtensionClassLoader
-// на каждый JAR, поэтому platform-tracing-api embedded внутрь, чтобы TracingControlProtocol.current().decode(...)
-// был доступен в CL расширения. Это test-only артефакт, в production agentExtensionJar не входит.
-tasks.register('testJmxWireExtensionJar', Jar) {
-    archiveClassifier.set('jmx-wire')
-    dependsOn project(':platform-tracing-api').tasks.named('jar')
-    dependsOn project(':platform-tracing-otel').tasks.named('jar')
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from sourceSets.jmxWireExtension.output
-    from { zipTree(project(':platform-tracing-api').jar.archiveFile) }
-    from { zipTree(project(':platform-tracing-otel').jar.archiveFile) }
-}
-
-tasks.named('processJmxWireExtensionResources') {
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-}
-
 tasks.register('testReadinessFixtureExtensionJar', Jar) {
     archiveClassifier.set('readiness-fixture')
     from sourceSets.readinessFixtureExtension.output
@@ -317,7 +280,7 @@ test {
     useJUnitPlatform()
     dependsOn verifyExtensionDeps, ':platform-tracing-otel-javaagent-extension:agentExtensionJar', customRuleJar,
               ':platform-tracing-otel-javaagent-extension:platformExtendedAgentJar',
-              testClassLoaderProbeJar, testJmxWireExtensionJar, testReadinessFixtureExtensionJar,
+              testClassLoaderProbeJar, testReadinessFixtureExtensionJar,
               testE2FailureAgentJar
     // E2E-тесты тяжёлые: даём им полный таймаут и не запускаем параллельно.
     maxParallelForks = 1
@@ -343,8 +306,6 @@ test {
         systemProperty 'smoke.custom.rule.jar', customRuleJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.test.classloader.probe.extension.jar',
                 testClassLoaderProbeJar.archiveFile.get().asFile.absolutePath
-        systemProperty 'smoke.jmx.wire.extension.jar',
-                testJmxWireExtensionJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.readiness.fixture.extension.jar',
                 testReadinessFixtureExtensionJar.archiveFile.get().asFile.absolutePath
     }

@@ -28,5 +28,3 @@ platform:
     service:
       name: platform-tracing-perf-harness
       environment: perf-harness
-    actuator:
-      mutation-enabled: false

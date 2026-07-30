@@ -15,7 +15,6 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.IpAddressRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingPolicyHolder;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
@@ -33,6 +32,10 @@ import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Вычищает чувствительные данные из значений атрибутов span'ов до экспорта.
+ * <p>
+ * <b>Category B (Agent).</b> Политика scrubbing'а фиксируется при startup как иммутабельный
+ * {@link ScrubbingSnapshot}: нет CAS/LKG-обновлений и нет runtime mutation через JMX.
+ * Hot-path {@code onEnding} читает финальный снимок, собранный фабрикой из agent ConfigProperties.
  * <p>
  * Работает на этапе {@code onEnding} (когда {@link ReadWriteSpan} ещё допускает перезапись
  * атрибутов, в т.ч. добавленных обогатителями). Для каждого атрибута применяется первое
@@ -69,11 +72,10 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     /**
-     * Runtime-политика scrubbing'а (Фаза 14 / PR-7A–7B): enabled + скомпилированные обёртки правил.
-     * Hot-path {@code onEnding} читает {@code policyHolder.current()} lock-free; обновление —
-     * через {@link #tryApplyPolicyUpdate(boolean, String[], String)} (атомарно, last-known-good).
+     * Иммутабельная startup-политика Category B: enabled + скомпилированные обёртки правил.
+     * Hot-path {@code onEnding} читает этот снимок напрямую; runtime mutation отсутствует.
      */
-    private final ScrubbingPolicyHolder policyHolder;
+    private final ScrubbingSnapshot policy;
     private final byte[] hmacKey;
     private final boolean hasHmacKey;
 
@@ -104,11 +106,8 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
     public ScrubbingSpanProcessor(List<SpanAttributeScrubbingRule> rules, String hmacKey, boolean failFast) {
         // Каждое правило оборачивается собственным circuit breaker'ом (изоляция ошибок, PR-4),
         // затем список clamp'ится и детерминированно сортируется (PR-3). Стартовый снимок
-        // (enabled=true) — startup-init из agent ConfigProperties (фабрика создаёт процессор только
-        // при platform.tracing.scrubbing.enabled=true).
-        // Стартовый снимок (enabled=true) — startup-init из agent ConfigProperties.
-        this.policyHolder = new ScrubbingPolicyHolder(
-                ScrubbingSnapshot.fromRules(true, rules, 1, Instant.now(), "startup"));
+        // (enabled=true, version=1, source=startup) фиксируется навсегда — Category B freeze.
+        this.policy = ScrubbingSnapshot.fromRules(true, rules, 1, Instant.now(), "startup");
 
         this.hasHmacKey = Strings.isNotBlank(hmacKey);
         if (!hasHmacKey && failFast) {
@@ -144,12 +143,11 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
     @Override
     public void onEnding(ReadWriteSpan span) {
         try {
-            // Снимок политики читается lock-free (Фаза 14). enabled=false → passthrough.
-            ScrubbingSnapshot snapshot = policyHolder.current();
-            if (!snapshot.enabled()) {
+            // Иммутабельный startup-снимок. enabled=false → passthrough (только если так собран снимок).
+            if (!policy.enabled()) {
                 return;
             }
-            List<RuleExecutionWrapper> wrappers = snapshot.wrappers();
+            List<RuleExecutionWrapper> wrappers = policy.wrappers();
             if (wrappers.isEmpty()) {
                 return;
             }
@@ -412,61 +410,37 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
         return hashMissingKey.sum();
     }
 
-    // -- Runtime-политика (Фаза 14) ---------------------------------------------------------------
+    // -- Startup-политика (Category B, read-only) -------------------------------------------------
 
-    /** Текущий runtime-флаг scrubbing'а (snapshot). */
+    /** Startup-флаг scrubbing'а (иммутабельный snapshot). */
     public boolean isEnabled() {
-        return policyHolder.current().enabled();
+        return policy.enabled();
     }
 
-    /** Версия текущего снимка политики scrubbing'а. */
+    /** Версия startup-снимка политики scrubbing'а. */
     public long getPolicyVersion() {
-        return policyHolder.version();
+        return policy.version();
     }
 
-    /** Источник последнего успешного обновления scrubbing'а. */
+    /** Источник startup-снимка ({@code "startup"}). */
     public String getPolicySource() {
-        return policyHolder.current().source();
-    }
-
-    /**
-     * Атомарно обновляет политику scrubbing'а одним вызовом (PR-7B).
-     *
-     * @param ruleNames {@code null} — сохранить текущие правила (меняется только {@code enabled})
-     */
-    public boolean updateScrubbingPolicy(boolean enabled, List<String> ruleNames) {
-        String[] names = ruleNames == null ? null : ruleNames.toArray(new String[0]);
-        return tryApplyPolicyUpdate(enabled, names, "JMX");
-    }
-
-    /**
-     * Validates scrubbing domain for JMX pre-check (throws {@link IllegalArgumentException} on invalid input).
-     */
-    public void validatePolicyUpdateDomain(String[] ruleNames) {
-        policyHolder.validatePolicyUpdateDomain(ruleNames);
-    }
-
-    /**
-     * Атомарно публикует полную политику scrubbing'а (PR-7B): validate → compile → CAS.
-     */
-    public boolean tryApplyPolicyUpdate(boolean enabled, String[] ruleNames, String source) {
-        return policyHolder.tryApplyPolicyUpdate(enabled, ruleNames, source);
+        return policy.source();
     }
 
     // -- Наблюдаемость circuit breaker'ов (PR-4/PR-6) ---------------------------------------------
 
     /** Число загруженных правил (после dedup/clamp). */
     public long getRuleCount() {
-        return policyHolder.current().wrappers().size();
+        return policy.wrappers().size();
     }
 
     /** Число правил, чей circuit breaker сейчас в состоянии OPEN. */
     public long getOpenBreakerCount() {
-        return policyHolder.current().wrappers().stream().filter(w -> w.getBreaker().isOpen()).count();
+        return policy.wrappers().stream().filter(w -> w.getBreaker().isOpen()).count();
     }
 
     /** Суммарное число сбоев правил, зафиксированных circuit breaker'ами. */
     public long getTotalBreakerFailures() {
-        return policyHolder.current().wrappers().stream().mapToLong(w -> w.getBreaker().getTotalFailures()).sum();
+        return policy.wrappers().stream().mapToLong(w -> w.getBreaker().getTotalFailures()).sum();
     }
 }

@@ -111,7 +111,7 @@ class AgentExtensionFailClosedSecurityE2ETest {
                 List.of(
                         "otel.traces.sampler=always_on",
                         "otel.instrumentation.http.server.capture-request-headers=authorization",
-                        "platform.tracing.scrubbing.enabled=false",
+                        "platform.tracing.javaagent.scrubbing.enabled=false",
                         "platform.tracing.suppression.suppress-micrometer-tracing=true"),
                 PROCESS_TIMEOUT,
                 2_000L,

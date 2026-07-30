@@ -11,7 +11,7 @@
 version: 1
 schema: public-contract-inventory.schema.json
 methodology: platform-development-api-design-week-01
-updatedAt: "2026-07-25"
+updatedAt: "2026-07-29"
 semanticContractMap: docs/contracts/semantic-contract-map.yaml
 
 inventories:
@@ -560,38 +560,6 @@ inventories:
           - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MdcPropagationAsyncIntegrationTest.java
         disposition: none
 
-      # --- Control protocol (wire) --------------------------------------------------
-
-      - id: tracing-control-protocol
-        surface: wire
-        element: space.br1440.platform.tracing.api.control.protocol.TracingControlProtocol
-        elementKind: protocol
-        relatedElements:
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolKeys
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolVersion
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolDecodeResult
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolation
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolViolationCode
-          - space.br1440.platform.tracing.api.control.protocol.TracingControlProtocolOperation
-        consumers: [control-plane, platform-module]
-        status: supported-api
-        intendedStatus: supported-api
-        effectiveUsage: match
-        guarantees:
-          - "TracingControlProtocol.current() is versioned decode facade"
-          - "TracingControlProtocolKeys string values are stable wire field names"
-          - "Decoder/schema classes remain package-private; only decode surface is public"
-        evidence:
-          - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocol.java
-          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/GoldenWireContractTest.java
-          - docs/research/evidence/public-control-protocol-consumers/decision-summary.json
-          - docs/research/public-control-protocol-deletion-prerequisite-p0.md
-        compatibility: major version bump for incompatible wire schema
-        owner: platform-tracing
-        verification:
-          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/TracingControlProtocolTest.java
-          - platform-tracing-api/src/test/java/space/br1440/platform/tracing/api/control/protocol/GoldenWireContractTest.java
-        disposition: none
         notes: >-
           P0 inventory 2026-07-28 closed zero-external-consumer prerequisite
           (samples/SUPPORTED/MIGRATION FQCN=0). Internal product consumers remain

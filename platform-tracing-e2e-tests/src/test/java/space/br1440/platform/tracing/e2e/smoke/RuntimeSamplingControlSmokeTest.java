@@ -29,8 +29,8 @@ import static org.awaitility.Awaitility.await;
  *   <li>перф-гейт M10 — reload под нагрузкой не деградирует p99/queue (но не проверяет
  *       корректность самого решения).</li>
  * </ul>
- * Здесь доказывается именно <b>семантика</b> runtime-смены: смена ratio через JMX
- * (in-process MBean, без рестарта child-JVM) реально меняет export rate, а {@code X-Trace-On}
+ * Здесь доказывается именно <b>семантика</b> runtime-смены: смена ratio через private
+ * {@code applySnapshot} (без рестарта child-JVM) реально меняет export rate, а {@code X-Trace-On}
  * после смены продолжает пробивать ratio 0.0 (приоритет {@code ForceHeaderRule} над
  * ratio-правилами — порядок цепочки из ADR, раздел 2.1).
  * <p>
@@ -109,11 +109,11 @@ class RuntimeSamplingControlSmokeTest {
                 assertThat(app.httpGet("/phase1", Map.of())).isEqualTo(200);
             }
 
-            // --- Runtime-смена ratio 1.0 -> 0.0 через JMX (без рестарта процесса).
+            // --- Runtime-смена ratio 1.0 -> 0.0 через private applySnapshot (без рестарта).
             LongLivedAgentSmokeProcess.PostResult update =
                     app.httpPost("/admin/sampling-ratio?value=0.0");
             assertThat(update.code())
-                    .as("Смена ratio через MBean должна пройти. Body: %s; output:\n%s",
+                    .as("Смена ratio через private applySnapshot должна пройти. Body: %s; output:\n%s",
                             update.body(), app.output())
                     .isEqualTo(200);
             // Версия конфигурации выросла => апдейт принят agent-side holder'ом, а не потерян

@@ -2,6 +2,9 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing;
 
 import java.util.Map;
 
+/**
+ * P6.6: platform Scrubbing MBean mutations deleted. Category B holder removal is P6.7.
+ */
 @SuppressWarnings("unused")
 public interface PlatformScrubbingControlMBean {
 
@@ -9,12 +12,7 @@ public interface PlatformScrubbingControlMBean {
 
     boolean isScrubbingEnabled();
 
-    void updateScrubbingPolicy(boolean enabled, String[] ruleNames);
-
-    void updateScrubbingPolicy(boolean enabled, String[] ruleNames, String source);
-
     long getScrubbingConfigVersion();
 
     String getScrubbingConfigLastUpdatedSource();
-
 }

@@ -41,7 +41,7 @@ class P6LegacyNameFailFastTest {
         Path root = repositoryRoot();
         LegacyNamesInventory inventory = LegacyNamesInventory.load(root.resolve(LEGACY_NAMES_V1));
 
-        assertThat(inventory.legacyNames()).hasSize(12);
+        assertThat(inventory.legacyNames()).hasSize(14);
         assertThat(inventory.legacyNames().stream().map(LegacyNameEntry::exactName).toList())
                 .containsExactly(
                         "platform.tracing.actuator.mutation-enabled",
@@ -55,7 +55,9 @@ class P6LegacyNameFailFastTest {
                         "platform.tracing.propagation.w3c.diagnostics-only",
                         "platform.tracing.sampling.drop-paths",
                         "platform.tracing.sampling.force-record-header-values",
-                        "platform.tracing.sampling.force-record-values");
+                        "platform.tracing.sampling.force-record-values",
+                        "platform.tracing.scrubbing.built-in-rules",
+                        "platform.tracing.scrubbing.enabled");
 
         List<String> exactNames = inventory.legacyNames().stream()
                 .map(LegacyNameEntry::exactName)

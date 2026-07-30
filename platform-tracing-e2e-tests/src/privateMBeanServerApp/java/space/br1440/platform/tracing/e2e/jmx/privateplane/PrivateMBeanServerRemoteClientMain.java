@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.e2e.jmx.privateplane;
 
 import com.sun.tools.attach.VirtualMachine;
 
+import javax.management.Attribute;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
@@ -44,19 +45,23 @@ public final class PrivateMBeanServerRemoteClientMain {
             }
 
             boolean projectionVisible = connection.isRegistered(new ObjectName(PROJECTION_NAME));
-            boolean currentWriteInvoked = false;
+            boolean platformWriteRejected = false;
             ObjectName sampling = new ObjectName(SAMPLING_NAME);
             if (connection.isRegistered(sampling)) {
-                connection.invoke(sampling, "resetSamplerCounters", new Object[0], new String[0]);
-                currentWriteInvoked = true;
+                try {
+                    connection.setAttribute(sampling, new Attribute("SamplingRatio", 0.5d));
+                } catch (Exception expected) {
+                    // P6.6/P6.8: platform SamplingRatio is read-only; remote mutation must fail.
+                    platformWriteRejected = true;
+                }
             }
 
             emit("platformNameCount=" + platformNames.size());
             emit("privateWriterVisible=" + writerVisible);
             emit("privateWriterInvocationRejected=" + invocationRejected);
             emit("readOnlyProjectionVisible=" + projectionVisible);
-            emit("currentPlatformWriteInvoked=" + currentWriteInvoked);
-            if (writerVisible || !invocationRejected || !projectionVisible || !currentWriteInvoked) {
+            emit("platformWriteRejected=" + platformWriteRejected);
+            if (writerVisible || !invocationRejected || !projectionVisible || !platformWriteRejected) {
                 throw new IllegalStateException("Remote isolation assertion failed");
             }
         }

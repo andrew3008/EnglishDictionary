@@ -51,7 +51,6 @@ class PublicContractInventoryContractTest {
             "platform-headers",
             "platform-attributes",
             "tracing-mdc-keys",
-            "tracing-control-protocol",
             "no-otel-compile-surface"
     );
 

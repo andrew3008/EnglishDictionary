@@ -12,12 +12,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.configuration.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
+import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec;
 import space.br1440.platform.tracing.e2e.support.AgentHttpSpringSmokeProcessRunner;
 
-import javax.management.Attribute;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -25,10 +29,9 @@ import java.util.concurrent.TimeUnit;
  * Дочерний main для e2e smoke runtime-управления sampling'ом (PR-C, ADR-runtime-sampling-policy).
  * <p>
  * В отличие от {@link AgentSpringForceSamplingSmokeMain} живёт <b>несколько фаз</b>: тест шлёт
- * серию запросов, меняет ratio на лету через {@code POST /admin/sampling-ratio} (in-process
- * {@link MBeanServer} — та же стандартная точка обмена application-CL ↔ agent-CL, что и в
- * {@code PerfAdminController} перф-стенда), шлёт вторую серию и завершает процесс через
- * {@code POST /admin/shutdown}.
+ * серию запросов, меняет ratio на лету через {@code POST /admin/sampling-ratio} (private
+ * {@code applySnapshot} fixture — тот же путь, что и {@code PerfPrivateControlController}),
+ * шлёт вторую серию и завершает процесс через {@code POST /admin/shutdown}.
  * <p>
  * Контракт READY/args см. {@link AgentHttpSpringSmokeProcessRunner}.
  */
@@ -84,11 +87,9 @@ public class RuntimeSamplingControlSmokeMain {
     @RestController
     static class SmokeController {
 
-        private static final String MBEAN_OBJECT_NAME =
-                "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl";
-
         private final CountDownLatch shutdownLatch;
-        private final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        private final PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
+        private volatile PrivateJmxTracingPolicySnapshotClient client;
 
         SmokeController(CountDownLatch shutdownLatch) {
             this.shutdownLatch = shutdownLatch;
@@ -105,16 +106,33 @@ public class RuntimeSamplingControlSmokeMain {
         }
 
         /**
-         * Runtime-смена head-sampling ratio через платформенный MBean. Возвращает новую версию
-         * конфигурации — тест проверяет, что апдейт реально принят agent-side holder'ом
+         * Runtime-смена head-sampling ratio через private {@code applySnapshot}.
+         * Возвращает новую accepted sequence — тест проверяет, что апдейт принят
          * (инвариант C-6 ADR: каждый апдейт версионирован).
          */
         @PostMapping("/admin/sampling-ratio")
         ResponseEntity<String> setSamplingRatio(@RequestParam("value") double value) {
             try {
-                ObjectName name = new ObjectName(MBEAN_OBJECT_NAME);
-                mbeanServer.setAttribute(name, new Attribute("SamplingRatio", value));
-                Object version = mbeanServer.getAttribute(name, "SamplingConfigVersion");
+                PrivateJmxTracingPolicySnapshotClient snapshotClient = client();
+                Optional<AcceptedSnapshotWithSequence> current = snapshotClient.currentComplete();
+                if (current.isEmpty()) {
+                    return ResponseEntity.internalServerError().body("private-control-unavailable");
+                }
+                AcceptedSnapshotWithSequence before = current.get();
+                CompleteTracingPolicySnapshot candidate =
+                        before.snapshot().withSamplingRatio(value);
+                TracingPolicyDeliveryResult outcome = snapshotClient.applySnapshot(
+                        before.acceptedSequence(),
+                        candidate,
+                        TracingPolicySource.ACTUATOR);
+                if (outcome != TracingPolicyDeliveryResult.APPLIED
+                        && outcome != TracingPolicyDeliveryResult.UNCHANGED) {
+                    return ResponseEntity.internalServerError()
+                            .body("outcome=" + outcome.name());
+                }
+                Optional<AcceptedSnapshotWithSequence> after = snapshotClient.currentComplete();
+                long version = after.map(AcceptedSnapshotWithSequence::acceptedSequence)
+                        .orElse(before.acceptedSequence());
                 return ResponseEntity.ok("ratio=" + value + ";version=" + version);
             } catch (Exception e) {
                 return ResponseEntity.internalServerError().body(String.valueOf(e));
@@ -125,6 +143,24 @@ public class RuntimeSamplingControlSmokeMain {
         String shutdown() {
             shutdownLatch.countDown();
             return "bye";
+        }
+
+        private PrivateJmxTracingPolicySnapshotClient client() {
+            PrivateJmxTracingPolicySnapshotClient current = client;
+            if (current != null) {
+                return current;
+            }
+            synchronized (this) {
+                current = client;
+                if (current == null) {
+                    current = new PrivateJmxTracingPolicySnapshotClient(
+                            new PrivateControlLocator(),
+                            codec);
+                    current.initialize();
+                    client = current;
+                }
+                return current;
+            }
         }
     }
 }

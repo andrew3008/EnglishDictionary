@@ -1,13 +1,12 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.export;
 
-import lombok.RequiredArgsConstructor;
-import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
-import space.br1440.platform.tracing.otel.javaagent.jmx.support.JmxConfigReloadRecorder;
-import space.br1440.platform.tracing.otel.javaagent.processor.PlatformDropOldestExportSpanProcessor;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
+
+import lombok.RequiredArgsConstructor;
+import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.processor.PlatformDropOldestExportSpanProcessor;
 
 @SuppressWarnings("resource")
 @RequiredArgsConstructor
@@ -28,17 +27,6 @@ public final class PlatformExportControl implements PlatformExportControlMBean {
     public boolean isExportEnabled() {
         SafeSpanExporter exporter = safeExporterOrNull();
         return (exporter != null) && exporter.isExportEnabled();
-    }
-
-    @Override
-    public void setExportEnabled(boolean enabled) {
-        SafeSpanExporter exporter = safeExporterOrNull();
-        if (exporter == null) {
-            throw new IllegalStateException("SafeSpanExporter is not registered");
-        }
-
-        exporter.setExportEnabled(enabled);
-        JmxConfigReloadRecorder.record("export", true, -1L);
     }
 
     @Override

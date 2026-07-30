@@ -8,9 +8,9 @@ import java.util.Objects;
  * Spring-side sampling runtime config for Category A reconcile (enabled / ratio / route-ratios).
  * <p>
  * Category B startup-only leaves ({@code drop-paths}, {@code force-record-values}) are owned by
- * the Agent under {@code platform.tracing.javaagent.sampling.*}. This view therefore passes
- * {@code null} for those arrays so the Agent {@code updateSamplingPolicy} preserves accepted
- * Category B state (P6.1 spring-binding cutover).
+ * the Agent under {@code platform.tracing.javaagent.sampling.*}. Runtime mutation of Category A
+ * leaves uses the private {@code applySnapshot} plane ({@code AcceptedPolicyAccess.updateSampling}),
+ * not platform JMX writes (P6.1 / P6.8).
  */
 public record SamplingRuntimeConfig(
         boolean enabled,

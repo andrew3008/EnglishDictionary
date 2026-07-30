@@ -21,24 +21,8 @@ import java.util.Set;
  */
 final class JmxManagementContractSnapshot {
 
-    private static final Set<String> MUTATING_OPERATIONS = Set.of(
-            operation(PlatformTracingObjectNames.SAMPLING, "updateSamplingPolicy",
-                    "boolean", "double", "java.util.Map", "[Ljava.lang.String;", "[Ljava.lang.String;"),
-            operation(PlatformTracingObjectNames.SAMPLING, "updateSamplingPolicy",
-                    "boolean", "double", "[Ljava.lang.String;", "[Ljava.lang.String;",
-                    "[Ljava.lang.String;", "[D", "java.lang.String"),
-            operation(PlatformTracingObjectNames.SAMPLING, "resetSamplerCounters"),
-            operation(PlatformTracingObjectNames.SCRUBBING, "updateScrubbingPolicy",
-                    "boolean", "[Ljava.lang.String;"),
-            operation(PlatformTracingObjectNames.SCRUBBING, "updateScrubbingPolicy",
-                    "boolean", "[Ljava.lang.String;", "java.lang.String"),
-            operation(PlatformTracingObjectNames.VALIDATION, "updateValidationPolicy",
-                    "boolean", "boolean"),
-            operation(PlatformTracingObjectNames.VALIDATION, "updateValidationPolicy",
-                    "boolean", "boolean", "java.lang.String"),
-            operation(PlatformTracingObjectNames.CONTROL_PROTOCOL, "applyPolicy",
-                    "javax.management.openmbean.CompositeData")
-    );
+    /** P6.5/P6.6: platform domain MBeans are read-only; mutations use private control plane. */
+    private static final Set<String> MUTATING_OPERATIONS = Set.of();
 
     private JmxManagementContractSnapshot() {
     }

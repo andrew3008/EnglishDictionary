@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -37,8 +37,9 @@ class ValidationPolicyCharacterizationTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("characterizedCases")
     void matrix_case(ValidationDecisionCase c) {
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(c.strict());
-        processor.updateValidationPolicy(c.enabled(), c.strict());
+        AcceptedPolicyAccess access =
+                AcceptedPolicyAccess.isolatedValidation(c.enabled(), c.strict(), true);
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
             Tracer tracer = h.tracer("validation-characterization");

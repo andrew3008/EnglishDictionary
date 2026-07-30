@@ -4,7 +4,7 @@
   "defaults" : [ "Agent:[password,secret,token]" ],
   "duplicateGroup" : "duplicate:platform.tracing.javaagent.propagation.baggage.deny-patterns",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.deny-patterns",
-  "id" : "CONFIG_PROPERTY-011",
+  "id" : "CONFIG_PROPERTY-010",
   "targetOwner" : "Agent",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String", "PropagationDefaults:String" ]
@@ -14,7 +14,7 @@
   "defaults" : [ "Agent:NONE" ],
   "duplicateGroup" : "duplicate:platform.tracing.javaagent.propagation.baggage.enabled",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.enabled",
-  "id" : "CONFIG_PROPERTY-012",
+  "id" : "CONFIG_PROPERTY-011",
   "targetOwner" : "Agent",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String", "PropagationDefaults:String" ]
@@ -24,7 +24,7 @@
   "defaults" : [ "Agent:null", "Spring:AGENT" ],
   "duplicateGroup" : "duplicate:platform.tracing.mode",
   "exactName" : "platform.tracing.mode",
-  "id" : "CONFIG_PROPERTY-023",
+  "id" : "CONFIG_PROPERTY-022",
   "targetOwner" : "Spring",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -34,7 +34,7 @@
   "defaults" : [ "Agent:X-Trace-On", "Spring:X-Trace-On" ],
   "duplicateGroup" : "duplicate:platform.tracing.propagation.platform-headers.force-trace-header",
   "exactName" : "platform.tracing.propagation.platform-headers.force-trace-header",
-  "id" : "CONFIG_PROPERTY-031",
+  "id" : "CONFIG_PROPERTY-030",
   "targetOwner" : "Spring",
   "typeDrift" : false,
   "types" : [ "PropagationDefaults:String" ]
@@ -44,7 +44,7 @@
   "defaults" : [ "Agent:X-QA-Trace", "Spring:X-QA-Trace" ],
   "duplicateGroup" : "duplicate:platform.tracing.propagation.platform-headers.qa-trace-header",
   "exactName" : "platform.tracing.propagation.platform-headers.qa-trace-header",
-  "id" : "CONFIG_PROPERTY-032",
+  "id" : "CONFIG_PROPERTY-031",
   "targetOwner" : "Spring",
   "typeDrift" : false,
   "types" : [ "PropagationDefaults:String" ]
@@ -54,7 +54,7 @@
   "defaults" : [ "Agent:X-Request-Id", "Spring:X-Request-Id" ],
   "duplicateGroup" : "duplicate:platform.tracing.propagation.platform-headers.request-id-header",
   "exactName" : "platform.tracing.propagation.platform-headers.request-id-header",
-  "id" : "CONFIG_PROPERTY-033",
+  "id" : "CONFIG_PROPERTY-032",
   "targetOwner" : "Spring",
   "typeDrift" : false,
   "types" : [ "PropagationDefaults:String" ]
@@ -64,7 +64,7 @@
   "defaults" : [ "Agent:true", "Spring:true" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.enabled",
   "exactName" : "platform.tracing.sampling.enabled",
-  "id" : "CONFIG_PROPERTY-041",
+  "id" : "CONFIG_PROPERTY-040",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -74,7 +74,7 @@
   "defaults" : [ "Agent:0.1", "Spring:0.1" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.ratio",
   "exactName" : "platform.tracing.sampling.ratio",
-  "id" : "CONFIG_PROPERTY-044",
+  "id" : "CONFIG_PROPERTY-043",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -84,7 +84,7 @@
   "defaults" : [ "Agent:{}", "Spring:{}" ],
   "duplicateGroup" : "duplicate:platform.tracing.sampling.route-ratios",
   "exactName" : "platform.tracing.sampling.route-ratios",
-  "id" : "CONFIG_PROPERTY-045",
+  "id" : "CONFIG_PROPERTY-044",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -94,7 +94,7 @@
   "defaults" : [ "Agent:true", "Spring:true" ],
   "duplicateGroup" : "duplicate:platform.tracing.validation.enabled",
   "exactName" : "platform.tracing.validation.enabled",
-  "id" : "CONFIG_PROPERTY-069",
+  "id" : "CONFIG_PROPERTY-066",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]
@@ -104,7 +104,7 @@
   "defaults" : [ "Agent:false", "Spring:false" ],
   "duplicateGroup" : "duplicate:platform.tracing.validation.strict",
   "exactName" : "platform.tracing.validation.strict",
-  "id" : "CONFIG_PROPERTY-071",
+  "id" : "CONFIG_PROPERTY-068",
   "targetOwner" : "Agent runtime policy owner",
   "typeDrift" : false,
   "types" : [ "ExtensionPropertyNames:String" ]

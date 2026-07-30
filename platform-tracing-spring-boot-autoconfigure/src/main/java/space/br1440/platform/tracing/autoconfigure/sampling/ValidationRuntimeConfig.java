@@ -10,7 +10,8 @@ import java.util.Objects;
  * Тонкий view домена validation из {@link TracingProperties.Validation}. Не является
  * вторым authoritative snapshot — Agent-side accepted policy остаётся source of truth.
  * <p>
- * Runtime-mutable поля schema v1 (публикуются одним атомарным {@code updateValidationPolicy}):
+ * Runtime-mutable поля schema v1 (публикуются через private {@code applySnapshot} /
+ * {@code AcceptedPolicyAccess.updateValidation}):
  * <ul>
  *   <li>{@code platform.tracing.validation.enabled}</li>
  *   <li>{@code platform.tracing.validation.strict}</li>

@@ -544,15 +544,6 @@ class TracingConfigurationInventoryGeneratorTest {
                 entry.proposedTargetOwner = "Agent";
                 entry.blockingDecision = "RESOLVED_P61";
             }
-            case "platform.tracing.scrubbing.enabled",
-                 "platform.tracing.scrubbing.built-in-rules" -> {
-                // Spring still binds legacy names until P6.7 Category B holder deletion.
-                entry.proposedDisposition = "DELETE_SPRING_AFTER_P67";
-                entry.proposedTargetName = "platform.tracing.javaagent.scrubbing."
-                        + (entry.exactName.endsWith("enabled") ? "enabled" : "built-in-rules");
-                entry.proposedTargetOwner = "Agent";
-                entry.blockingDecision = "RESOLVED_P61_PENDING_P67";
-            }
             default -> {
             }
         }
@@ -595,11 +586,13 @@ class TracingConfigurationInventoryGeneratorTest {
                         "platform.tracing.log-level",
                         "platform.tracing.policy.diagnostics.log-level", "INCLUDE"),
                 category(entries, "scrubbing.built-in-rules",
-                        "platform.tracing.scrubbing.built-in-rules",
-                        "N/A", "EXCLUDE"),
+                        "platform.tracing.javaagent.scrubbing.built-in-rules",
+                        "platform.tracing.javaagent.scrubbing.built-in-rules",
+                        "EXCLUDE_CATEGORY_B"),
                 category(entries, "scrubbing.enabled",
-                        "platform.tracing.scrubbing.enabled",
-                        "N/A", "EXCLUDE"));
+                        "platform.tracing.javaagent.scrubbing.enabled",
+                        "platform.tracing.javaagent.scrubbing.enabled",
+                        "EXCLUDE_CATEGORY_B"));
     }
 
     private static Map<String, Object> category(
@@ -643,9 +636,9 @@ class TracingConfigurationInventoryGeneratorTest {
         values.add(resolution("N4", "PASS",
                 "mode and route-ratios type drift confirmed and represented without String flattening."));
         values.add(resolution("N5", "PASS",
-                "P6.1 resolved: scrubbing built-in-rules/enabled target "
+                "P6.1/P6.7 resolved: scrubbing built-in-rules/enabled owned solely by "
                         + "platform.tracing.javaagent.scrubbing.* (Category B; Decision 14); "
-                        + "Spring/Agent defaults equal."));
+                        + "Spring binding deleted."));
         values.add(resolution("N6", "PASS",
                 "Five Agent outbound readers have no callers; Spring equivalents remain active."));
         values.add(resolution("N7", "PASS",
@@ -666,7 +659,7 @@ class TracingConfigurationInventoryGeneratorTest {
                 .isEmpty() ? "NOT_FOUND" : "CONFIRMED";
         values.add(resolution("N12", "PASS",
                 "PerfAdminController obsolete ObjectNames: " + perfFinding
-                        + "; no production code changed."));
+                        + "; PerfPrivateControlController replaced it; no production code changed."));
         return List.copyOf(values);
     }
 
@@ -689,9 +682,11 @@ class TracingConfigurationInventoryGeneratorTest {
                 .containsExactly("N1", "N2", "N3", "N4", "N5", "N6",
                         "N7", "N8", "N9", "N10", "N11", "N12");
 
-        TracingProperties spring = new TracingProperties();
-        assertThat(spring.getScrubbing().getBuiltInRules())
-                .containsExactlyElementsOf(BuiltInSpanAttributeScrubbingRules.defaultConfigNames());
+        assertThat(BuiltInSpanAttributeScrubbingRules.defaultConfigNames())
+                .containsExactly(
+                        "password", "jwt", "email", "oauth-header", "x-auth-header",
+                        "infra-credential", "webhook-token", "ssh-credential",
+                        "user-identity", "hardware-identity", "location", "ip-address");
     }
 
     private static void writeArtifacts(
@@ -913,8 +908,8 @@ class TracingConfigurationInventoryGeneratorTest {
                 ## 9. Type/default drift
 
                 Confirmed type drift: `platform.tracing.mode` and
-                `platform.tracing.sampling.route-ratios`. Scrubbing defaults currently match but
-                have two owners.
+                `platform.tracing.sampling.route-ratios`. Scrubbing built-in-rules/enabled are
+                Agent Category B only after P6.7 (no Spring default owner).
 
                 ## 10. Dead and fixture-only names
 
@@ -955,9 +950,8 @@ class TracingConfigurationInventoryGeneratorTest {
 
                 P6.1 closed the former SRE/security/governance blockers for drop-paths,
                 force-record-values, scrubbing Category B placement (Decision 14) and the
-                published semconv contract correction. Remaining cutover work is mechanical
-                Agent/Spring name application in p6-agent-parser-cutover /
-                p6-spring-binding-cutover and Category B holder deletion in P6.7.
+                published semconv contract correction. P6.7 deleted Spring scrubbing binding
+                for enabled/built-in-rules (Agent Category B only).
 
                 ## 16. What S-04 proves
 
@@ -1125,7 +1119,7 @@ class TracingConfigurationInventoryGeneratorTest {
     private static String inferAgentDefault(String name) {
         return switch (name) {
             case "platform.tracing.sampling.enabled",
-                 "platform.tracing.scrubbing.enabled",
+                 "platform.tracing.javaagent.scrubbing.enabled",
                  "platform.tracing.validation.enabled",
                  "platform.tracing.baggage.enabled",
                  "platform.tracing.classification.enabled",
@@ -1146,8 +1140,7 @@ class TracingConfigurationInventoryGeneratorTest {
             case "platform.tracing.sampling.force-record-header" -> "X-Trace-On";
             case "platform.tracing.sampling.qa-header" -> "X-QA-Trace";
             case "platform.tracing.javaagent.sampling.force-record-values" -> "[on]";
-            case "platform.tracing.scrubbing.built-in-rules",
-                 "platform.tracing.javaagent.scrubbing.built-in-rules" ->
+            case "platform.tracing.javaagent.scrubbing.built-in-rules" ->
                     display(BuiltInSpanAttributeScrubbingRules.defaultConfigNames());
             case "platform.tracing.scrubbing.missing-key-policy" -> "mask";
             case "platform.tracing.scrubbing.rules.validation-mode",
@@ -1185,7 +1178,6 @@ class TracingConfigurationInventoryGeneratorTest {
     private static String springConsumer(List<String> path) {
         return switch (path.get(0)) {
             case "sampling" -> "SamplingRuntimeConfig -> CompositeSampler";
-            case "scrubbing" -> "ScrubbingRuntimeConfig -> ScrubbingSpanProcessor";
             case "exporter" -> "TracingActuatorEndpoint -> SafeSpanExporter";
             case "response" -> "HTTP response tracing filters";
             case "suppression" -> "MicrometerTracingSuppressionResolver";
@@ -1253,10 +1245,10 @@ class TracingConfigurationInventoryGeneratorTest {
 
     private static List<String> mutationPaths(String name) {
         if (name.startsWith("platform.tracing.sampling.")) {
-            return List.of("JMX Sampling MBean", "control protocol");
+            return List.of("JMX Sampling MBean");
         }
         if (name.startsWith("platform.tracing.validation.")) {
-            return List.of("JMX Validation MBean", "control protocol");
+            return List.of("JMX Validation MBean");
         }
         if (name.startsWith("platform.tracing.scrubbing.")) {
             return List.of("JMX Scrubbing MBean");
@@ -1308,8 +1300,7 @@ class TracingConfigurationInventoryGeneratorTest {
     }
 
     private static boolean knownDefaultDrift(String name) {
-        return "platform.tracing.mode".equals(name)
-                || "platform.tracing.scrubbing.built-in-rules".equals(name);
+        return "platform.tracing.mode".equals(name);
     }
 
     private static List<String> currentNames(Map<String, Entry> entries, String current) {

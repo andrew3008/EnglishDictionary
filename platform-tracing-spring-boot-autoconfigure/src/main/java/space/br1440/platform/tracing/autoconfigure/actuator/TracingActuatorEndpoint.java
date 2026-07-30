@@ -145,8 +145,8 @@ public class TracingActuatorEndpoint {
         ));
 
         Map<String, Object> scrubbingInfo = new LinkedHashMap<>();
-        scrubbingInfo.put("enabled", properties.getScrubbing().isEnabled());
-        scrubbingInfo.put("builtInRules", properties.getScrubbing().getBuiltInRules());
+        // Category B scrubbing enabled/built-in-rules are Agent-owned
+        // (javaagent.scrubbing.*); Spring actuator projects live JMX only.
         scrubbingInfo.put("liveEnabled", jmxClient.isScrubbingEnabled().orElse(null));
         scrubbingInfo.put("configVersion", jmxClient.getScrubbingConfigVersion().orElse(null));
         scrubbingInfo.put("configSource", jmxClient.getScrubbingConfigLastUpdatedSource().orElse(null));

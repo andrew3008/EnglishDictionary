@@ -97,7 +97,7 @@ Tail-drop health-трейсов (`drop-successful-infra-noise`) держит и�
 заметная доля `num_traces`.
 
 **Рекомендация:**
-1. **Head (первичный):** на SDK задать `platform.tracing.sampling.drop-paths=/actuator/health,/health,/ready,/live,/metrics`
+1. **Head (первичный):** на SDK задать `platform.tracing.javaagent.sampling.drop-paths=/actuator/health,/health,/ready,/live,/metrics`
    — health-span'ы не покидают приложение вообще (`HardDropRule`, reason `drop_path`).
 2. **Tail (backstop):** политика `drop-successful-infra-noise` остаётся для сервисов
    без SDK-настройки. ERROR health-check'и сохраняются всегда (not-error sub-policy).

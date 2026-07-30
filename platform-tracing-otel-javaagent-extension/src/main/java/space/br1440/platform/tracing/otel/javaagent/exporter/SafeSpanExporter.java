@@ -160,10 +160,6 @@ public final class SafeSpanExporter implements SpanExporter {
         return acceptedPolicy.current().exporterEnabled();
     }
 
-    public void setExportEnabled(boolean enabled) {
-        acceptedPolicy.updateExporter(enabled);
-    }
-
     public long getGatedSpans() {
         return gatedSpans.sum();
     }

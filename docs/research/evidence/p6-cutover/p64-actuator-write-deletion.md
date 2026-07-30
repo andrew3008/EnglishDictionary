@@ -33,5 +33,5 @@
 
 ## Residual (sibling tasks)
 
-- `p6-production-actuator-zero-write-proof` — HTTP route 404 matrix beyond unit absence
+- `p6-production-actuator-zero-write-proof` — **CLOSED** by [p64-actuator-zero-write-proof.md](./p64-actuator-zero-write-proof.md) (descriptor + bean + in-process HTTP; Docker matrix remains PARTIAL)
 - Inventory regenerate (CONFIG_PROPERTY count drop after mutation-enabled field removal)

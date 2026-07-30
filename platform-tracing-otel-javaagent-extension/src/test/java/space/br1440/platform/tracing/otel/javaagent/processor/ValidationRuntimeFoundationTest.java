@@ -5,6 +5,8 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyUpdateOutcome;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
 import space.br1440.platform.tracing.test.assertions.ValidationAssertions;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
@@ -26,7 +28,8 @@ class ValidationRuntimeFoundationTest {
 
     @Test
     void processor_uses_updated_snapshot_without_reconstruct() {
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(false, true);
+        AcceptedPolicyAccess access = AcceptedPolicyAccess.isolatedValidation(true, false, true);
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
         long initialSequence = processor.getPolicyVersion();
         assertThat(initialSequence).isZero();
         assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
@@ -40,7 +43,8 @@ class ValidationRuntimeFoundationTest {
                     PlatformAttributes.PLATFORM_RESULT);
         }
 
-        assertThat(processor.tryApplyPolicyUpdate(false, false, "test-disable")).isTrue();
+        assertThat(access.updateValidation(false, false))
+                .isEqualTo(AcceptedPolicyUpdateOutcome.APPLIED);
         assertThat(processor.getPolicyVersion()).isEqualTo(initialSequence + 1);
         assertThat(processor.getPolicySource()).isEqualTo("accepted-state");
 
@@ -50,7 +54,8 @@ class ValidationRuntimeFoundationTest {
             ValidationAssertions.assertMissingAbsent(h.exporter().getFinishedSpanItems().get(0));
         }
 
-        assertThat(processor.tryApplyPolicyUpdate(true, true, "test-strict")).isTrue();
+        assertThat(access.updateValidation(true, true))
+                .isEqualTo(AcceptedPolicyUpdateOutcome.APPLIED);
         assertThat(processor.getPolicyVersion()).isEqualTo(initialSequence + 2);
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(processor, Resource.empty())) {
@@ -77,8 +82,9 @@ class ValidationRuntimeFoundationTest {
     }
 
     @Test
-    void concurrent_updateValidationPolicy_and_onEnding_never_throws() throws Exception {
-        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(false);
+    void concurrent_updateValidation_and_onEnding_never_throws() throws Exception {
+        AcceptedPolicyAccess access = AcceptedPolicyAccess.isolatedValidation(true, false, true);
+        ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
 
         int threads = 6;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
@@ -93,7 +99,7 @@ class ValidationRuntimeFoundationTest {
                     await(start);
                     try {
                         for (int i = 0; i < 100; i++) {
-                            processor.tryApplyPolicyUpdate(i % 2 == 0, i % 3 == 0, "concurrent");
+                            access.updateValidation(i % 2 == 0, i % 3 == 0);
                         }
                     } finally {
                         writersDone.countDown();

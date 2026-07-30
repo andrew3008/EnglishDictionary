@@ -131,7 +131,7 @@ class PrivateMBeanServerIsolationE2ETest {
                 .contains("S03_REMOTE:privateWriterVisible=false")
                 .contains("S03_REMOTE:privateWriterInvocationRejected=true")
                 .contains("S03_REMOTE:readOnlyProjectionVisible=true")
-                .contains("S03_REMOTE:currentPlatformWriteInvoked=true");
+                .contains("S03_REMOTE:platformWriteRejected=true");
     }
 
     private static ProcessResult runJcmdAndAttach(String pid) throws Exception {
@@ -272,16 +272,14 @@ class PrivateMBeanServerIsolationE2ETest {
                 N5 PASS
                 N6 PASS
                 N7 PASS
-                CURRENT_SECURITY_RISK_CONFIRMED
+                PLATFORM_WRITE_REJECTED
                 """, StandardCharsets.UTF_8);
         Files.writeString(directory.resolve("jmx-current-surface-summary.txt"), """
                 objectNameCount=8
-                liveMBeanInfoMemberCount=63
-                mutatingMemberCount=16
-                readOnlyMemberCount=47
-                councilJavaMethodCount=71
-                councilReadOnlyMethodCount=55
-                representationDifference=8 getter/setter pairs folded into writable attributes
+                liveMBeanInfoMemberCount=read-only platform projection
+                mutatingMemberCount=0
+                readOnlyMemberCount=all platform domain members
+                note=P6.6/P6.8 platform SamplingRatio setAttribute rejected remotely
                 """, StandardCharsets.UTF_8);
         Files.writeString(directory.resolve("gradle-console.txt"), """
                 Task: :platform-tracing-e2e-tests:privateMBeanServerTest

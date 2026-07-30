@@ -3,11 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.otel.control.protocol.RuntimePolicyControlHandler;
-import space.br1440.platform.tracing.otel.javaagent.control.JmxRuntimePolicyApplier;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
-import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
-import space.br1440.platform.tracing.otel.javaagent.jmx.validation.PlatformValidationControl;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
@@ -21,7 +17,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.LongAdder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -140,8 +135,7 @@ class PlatformTracingJmxRegistrarTest {
     }
 
     @Test
-    void spy_registerMBean_вызывается_ровно_6_раз_при_параллельных_вызовах() throws Exception {
-        // Ручной spy-счётчик без Mockito: делегирующий MBeanServer с AtomicInteger.
+    void spy_registerMBean_вызывается_ровно_7_раз_при_параллельных_вызовах() throws Exception {
         AtomicInteger registerCallCount = new AtomicInteger();
         MBeanServer countingSpy = new DelegatingMBeanServer(server) {
             @Override
@@ -181,15 +175,13 @@ class PlatformTracingJmxRegistrarTest {
         assertThat(done.await(10, TimeUnit.SECONDS)).isTrue();
         pool.shutdownNow();
 
-        // Readiness регистрируется в конструкторе, затем единым batch регистрируются 7 domain MBeans.
         assertThat(registerCallCount.get())
-                .as("readiness + 7 domain MBeans должны регистрироваться ровно один раз")
-                .isEqualTo(8);
+                .as("readiness + 6 domain MBeans должны регистрироваться ровно один раз")
+                .isEqualTo(7);
     }
 
     @Test
     void rollback_addSuppressed_присутствует_если_откат_падает() throws Exception {
-        // Ручной spy: 4-й registerMBean падает; unregister для SCRUBBING тоже падает.
         final int[] registerCallCount = {0};
         MBeanServer faultySpy = new DelegatingMBeanServer(server) {
             @Override
@@ -224,12 +216,20 @@ class PlatformTracingJmxRegistrarTest {
             registrar.setAcceptedPolicy(holder);
         } catch (PlatformTracingJmxRegistrationException ex) {
             assertThat(ex.getCause()).isNotNull();
-            // Откат упал → его исключение должно быть в suppressed, а не потеряно
             assertThat(ex.getSuppressed()).isNotEmpty();
             return;
         }
-        // Если не упало (REPLACE_EXISTING пропустил), проверяем что регистрации корректны
         assertThat(registerCallCount[0]).isGreaterThanOrEqualTo(0);
+    }
+
+    @Test
+    void legacyControlProtocolMBeanNotRegistered() throws Exception {
+        AcceptedPolicyAccess holder = AcceptedPolicyAccess.isolatedSampling(
+                true, List.of(), List.of(), Map.of(), 0.5);
+        PlatformTracingJmxRegistrar registrar = new PlatformTracingJmxRegistrar();
+        wireRequiredComponents(registrar, holder);
+
+        assertThat(server.isRegistered(PlatformTracingObjectNames.CONTROL_PROTOCOL)).isFalse();
     }
 
     private static void wireRequiredComponents(
@@ -244,15 +244,8 @@ class PlatformTracingJmxRegistrarTest {
             AcceptedPolicyAccess acceptedPolicy) {
         CompositeSampler sampler = new CompositeSampler(acceptedPolicy);
         ValidatingSpanProcessor validating = new ValidatingSpanProcessor(acceptedPolicy);
-        LongAdder counter = registrar.sharedInvalidConfigCounter();
-        PlatformSamplingControl samplingControl =
-                new PlatformSamplingControl(acceptedPolicy, sampler, counter);
-        PlatformValidationControl validationControl =
-                new PlatformValidationControl(validating, counter);
 
         registrar.setCompositeSampler(sampler);
         registrar.setValidating(validating);
-        registrar.setControlHandler(new RuntimePolicyControlHandler(
-                new JmxRuntimePolicyApplier(samplingControl, validationControl)));
     }
 }
