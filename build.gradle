@@ -807,7 +807,10 @@ def acceptedStatePrimitiveTest = tasks.register('acceptedStatePrimitiveTest', Te
             'test-results/acceptedStatePrimitiveTest')
     reports.html.outputLocation = layout.buildDirectory.dir(
             'reports/tests/acceptedStatePrimitiveTest')
-    useJUnitPlatform()
+    useJUnitPlatform {
+        // Topology FQCN snapshot is a separate evidence task (s01OwnerInventoryEvidenceVerify).
+        excludeTags 's01-inventory-evidence'
+    }
     filter {
         includeTestsMatching 'space.br1440.platform.tracing.bench.acceptedstate.*'
     }
@@ -817,6 +820,31 @@ tasks.register('acceptedStatePrimitiveVerify') {
     group = 'verification'
     description = 'Verifies the S-01 accepted policy state primitive evidence for Gate E3.'
     dependsOn acceptedStatePrimitiveTest
+}
+
+// Exact owner/access-site FQCN topology (rename-sensitive). Not part of ordinary test/check.
+def s01OwnerInventoryEvidenceTest = tasks.register('s01OwnerInventoryEvidenceTest', Test) {
+    group = 'verification'
+    description = 'Runs S-01 exact owner/access-site inventory topology evidence (release/evidence).'
+    def benchProject = project(':platform-tracing-bench')
+    dependsOn benchProject.tasks.named('testClasses')
+    testClassesDirs = benchProject.sourceSets.test.output.classesDirs
+    classpath = benchProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/s01OwnerInventoryEvidenceTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/s01OwnerInventoryEvidenceTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/s01OwnerInventoryEvidenceTest')
+    useJUnitPlatform {
+        includeTags 's01-inventory-evidence'
+    }
+}
+
+tasks.register('s01OwnerInventoryEvidenceVerify') {
+    group = 'verification'
+    description = 'Verifies S-01 exact inventory topology for architecture/release review.'
+    dependsOn s01OwnerInventoryEvidenceTest
 }
 
 // ---------------------------------------------------------------------------------------------

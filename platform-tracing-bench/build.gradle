@@ -52,6 +52,11 @@ dependencies {
 }
 
 tasks.named('test') {
+    useJUnitPlatform {
+        // Exact FQCN/method topology is evidence/release work (s01OwnerInventoryEvidenceVerify).
+        // Ordinary aggregate test keeps rename-resistant S-01 semantic fitness only.
+        excludeTags 's01-inventory-evidence'
+    }
     systemProperty 's06.evidence.root',
             rootProject.layout.projectDirectory.dir(
                     'docs/research/evidence/boot-cloud-bom-refresh').asFile.absolutePath
