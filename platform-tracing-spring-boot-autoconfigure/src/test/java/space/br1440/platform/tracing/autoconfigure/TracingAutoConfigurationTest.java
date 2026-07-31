@@ -32,7 +32,7 @@ class TracingAutoConfigurationTest {
                     TracingMetricsAutoConfiguration.class,
                     TracingAopAutoConfiguration.class,
                     TracingObservationAutoConfiguration.class,
-                    TracingActuatorAutoConfiguration.class
+                    TracingDiagnosticsActuatorAutoConfiguration.class
             ));
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner

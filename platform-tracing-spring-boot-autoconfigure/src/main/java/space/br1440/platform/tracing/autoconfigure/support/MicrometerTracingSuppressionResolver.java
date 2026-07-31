@@ -17,6 +17,10 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
  * Используется как из {@code @Conditional}-классов (до создания бина {@link TracingProperties}),
  * так и из бинов, которым нужно эффективное значение — оба читают один и тот же {@link Environment},
  * что исключает расхождение между условием активации авто-конфигурации и диагностикой.
+ * <p>
+ * Свойство намеренно не имеет соответствующего поля в {@link TracingProperties} (POJO): значение
+ * должно быть доступно до создания бина {@code TracingProperties} (на фазе {@code @Conditional}),
+ * поэтому единственным источником истины является {@link Environment}, а не биндинг в POJO.
  */
 public final class MicrometerTracingSuppressionResolver {
 

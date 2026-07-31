@@ -64,7 +64,7 @@ public class SemanticLayerAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ExceptionMessagePolicy platformExceptionMessagePolicy(TracingProperties properties) {
-        TracingProperties.Semantic.Exception ex = properties.getSemantic().getException();
+        TracingProperties.Semantic.ExceptionEvent ex = properties.getSemantic().getException();
         return new ExceptionMessagePolicy(ex.isIncludeMessage(), ex.isIncludeStacktrace());
     }
 

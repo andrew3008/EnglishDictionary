@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,23 +14,23 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.ConfigurableEnvironment;
 
-import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicySnapshotReader;
-import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient;
+import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient;
-import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
-import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec;
 
 /**
  * P6.2: CONFIG_SERVER authority wiring onto the private complete-snapshot writer.
  *
- * <p>Registers locator/codec/snapshot client, complete-manifest builder, coalescer and
- * EnvironmentChangeEvent adapter. Does <strong>not</strong> register any Actuator write
- * surface. HELM and DISABLED never load this configuration.
+ * <p>Registers complete-manifest builder, coalescer and EnvironmentChangeEvent adapter.
+ * Shared private JMX beans are registered by
+ * {@link PrivateJmxControlAutoConfiguration}.
+ * Does <strong>not</strong> register any Actuator write surface. HELM and DISABLED never
+ * load this configuration.
  */
 @AutoConfiguration
+@AutoConfigureAfter(PrivateJmxControlAutoConfiguration.class)
 @ConditionalOnClass(EnvironmentChangeEvent.class)
 @ConditionalOnProperty(
         name = "platform.tracing.configuration.enabled",
@@ -40,50 +41,6 @@ import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateCon
         havingValue = "CONFIG_SERVER",
         matchIfMissing = false)
 public class ConfigServerTracingPolicyAutoConfiguration {
-
-    @Bean
-    @ConditionalOnMissingBean(PrivateControlLocator.class)
-    public PrivateControlLocator privateControlLocator() {
-        return new PrivateControlLocator();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(PrivateControlOpenTypeCodec.class)
-    public PrivateControlOpenTypeCodec privateControlOpenTypeCodec() {
-        return new PrivateControlOpenTypeCodec();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(PrivateJmxTracingPolicySnapshotClient.class)
-    public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(
-            PrivateControlLocator locator,
-            PrivateControlOpenTypeCodec codec) {
-        PrivateJmxTracingPolicySnapshotClient client =
-                new PrivateJmxTracingPolicySnapshotClient(locator, codec);
-        client.initialize();
-        return client;
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(TracingPolicySnapshotClient.class)
-    public TracingPolicySnapshotClient tracingPolicySnapshotClientAlias(
-            PrivateJmxTracingPolicySnapshotClient client) {
-        return client;
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(AcceptedTracingPolicySnapshotReader.class)
-    public AcceptedTracingPolicySnapshotReader acceptedTracingPolicySnapshotReader(
-            PrivateJmxTracingPolicySnapshotClient client) {
-        return client;
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(AcceptedTracingPolicyReader.class)
-    public AcceptedTracingPolicyReader acceptedTracingPolicyReader(
-            PrivateJmxTracingPolicySnapshotClient client) {
-        return client;
-    }
 
     @Bean
     @ConditionalOnMissingBean(ConfigServerPolicyProvenanceClassifier.class)

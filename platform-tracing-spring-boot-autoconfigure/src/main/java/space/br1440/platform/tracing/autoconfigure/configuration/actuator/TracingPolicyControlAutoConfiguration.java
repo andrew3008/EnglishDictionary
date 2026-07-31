@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.configuration.actuator;
 
 import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -10,12 +11,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicySnapshotReader;
+import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient;
-import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
-import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,77 +32,15 @@ import org.slf4j.LoggerFactory;
  * TracingPolicyContractViolationException (ReflectionException wrapping) and startup
  * fails fast for ACTUATOR authority — see {@link ActuatorAgentReadinessProbe}.
  * <p>
+ * Shared private JMX beans are registered by {@link PrivateJmxControlAutoConfiguration}.
+ * <p>
  * TracingControlMvcController registered via TracingControlManagementContextConfiguration
  * (discovered through ManagementContextConfiguration.imports).
  * Registration requires BOTH: authority=ACTUATOR AND platform.environment=LOCAL.
  */
 @AutoConfiguration
-public class TracingActuatorAutoConfiguration {
-
-    private static final Logger log = LoggerFactory.getLogger(TracingActuatorAutoConfiguration.class);
-
-    /**
-     * Discovers the Agent-side private control plane. Gated on
-     * {@code authority=ACTUATOR}. {@code CONFIG_SERVER} wires the same private
-     * apply/read contract via {@code ConfigServerTracingPolicyAutoConfiguration}.
-     * {@code HELM} never discovers the private control plane from Spring.
-     * <p>
-     * Previously this bean was never produced in any production autoconfiguration
-     * path — {@link PrivateJmxTracingPolicySnapshotClient}'s
-     * {@code @ConditionalOnBean({PrivateControlLocator.class, PrivateControlOpenTypeCodec.class})}
-     * could never be satisfied, so a real Spring context with {@code authority=ACTUATOR}
-     * could never successfully wire the private JMX client, the readiness probe's
-     * required {@link AcceptedTracingPolicySnapshotReader} dependency, or
-     * {@link SpringActuatorTracingPolicyAdapter} — a confirmed defect blocking any
-     * real ACTUATOR-authority startup.
-     */
-    @Bean
-    @ConditionalOnMissingBean(PrivateControlLocator.class)
-    @ConditionalOnProperty(
-            name = "platform.tracing.configuration.authority",
-            havingValue = "ACTUATOR",
-            matchIfMissing = false)
-    public PrivateControlLocator privateControlLocator() {
-        return new PrivateControlLocator();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(PrivateControlOpenTypeCodec.class)
-    @ConditionalOnProperty(
-            name = "platform.tracing.configuration.authority",
-            havingValue = "ACTUATOR",
-            matchIfMissing = false)
-    public PrivateControlOpenTypeCodec privateControlOpenTypeCodec() {
-        return new PrivateControlOpenTypeCodec();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(PrivateJmxTracingPolicySnapshotClient.class)
-    @ConditionalOnBean({PrivateControlLocator.class, PrivateControlOpenTypeCodec.class})
-    public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(
-            PrivateControlLocator locator,
-            PrivateControlOpenTypeCodec codec) {
-        PrivateJmxTracingPolicySnapshotClient client =
-                new PrivateJmxTracingPolicySnapshotClient(locator, codec);
-        client.initialize();
-        return client;
-    }
-
-    @Bean
-    @ConditionalOnBean(PrivateJmxTracingPolicySnapshotClient.class)
-    @ConditionalOnMissingBean(TracingPolicySnapshotClient.class)
-    public TracingPolicySnapshotClient tracingPolicySnapshotClientAlias(
-            PrivateJmxTracingPolicySnapshotClient client) {
-        return client;
-    }
-
-    @Bean
-    @ConditionalOnBean(PrivateJmxTracingPolicySnapshotClient.class)
-    @ConditionalOnMissingBean(AcceptedTracingPolicySnapshotReader.class)
-    public AcceptedTracingPolicySnapshotReader acceptedTracingPolicySnapshotReader(
-            PrivateJmxTracingPolicySnapshotClient client) {
-        return client;
-    }
+@AutoConfigureAfter(PrivateJmxControlAutoConfiguration.class)
+public class TracingPolicyControlAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(PrivateJmxTracingPolicySnapshotClient.class)
@@ -113,12 +51,12 @@ public class TracingActuatorAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnAvailableEndpoint(endpoint = TracingActuatorEndpoint.class)
+    @ConditionalOnAvailableEndpoint(endpoint = AcceptedPolicyActuatorEndpoint.class)
     @ConditionalOnBean(AcceptedTracingPolicyReader.class)
-    @ConditionalOnMissingBean(TracingActuatorEndpoint.class)
-    public TracingActuatorEndpoint tracingActuatorEndpoint(
+    @ConditionalOnMissingBean(AcceptedPolicyActuatorEndpoint.class)
+    public AcceptedPolicyActuatorEndpoint acceptedPolicyActuatorEndpoint(
             AcceptedTracingPolicyReader reader) {
-        return new TracingActuatorEndpoint(reader);
+        return new AcceptedPolicyActuatorEndpoint(reader);
     }
 
     /**

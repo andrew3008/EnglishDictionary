@@ -18,7 +18,7 @@
 ## Проблема
 
 Платформа возвращает клиенту HTTP-заголовок `X-Request-Id` (настраиваемый через
-`platform.tracing.response.header-name`) для корреляции запроса с логами и трассировкой.
+`platform.tracing.request-id-header.name`) для корреляции запроса с логами и трассировкой.
 Нужно зафиксировать семантику: что именно попадает в этот заголовок.
 
 ## Решение
@@ -50,12 +50,12 @@
 ```yaml
 platform:
   tracing:
-    response:
-      expose-request-id-header: true   # default: true
-      header-name: X-Request-Id      # значение = trace-id
+    request-id-header:
+      enabled: true         # default: true; opt-out записи X-Request-Id
+      name: X-Request-Id    # значение = trace-id
 ```
 
-Отключение: `expose-request-id-header: false` — заголовок primary не выставляется;
+Отключение: `request-id-header.enabled: false` — заголовок primary не выставляется;
 фильтр остаётся активным, `X-Trace-Id` и identity boundary продолжают работать
 (см. Javadoc фильтров).
 

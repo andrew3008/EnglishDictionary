@@ -224,7 +224,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
                 s.traceControlHeadersEnabled(),
                 s.diagnosticsLogLevel()
         );
-        return new AcceptedPolicyProjection(readiness, leaves, TracingApplyDiagnostics.absent());
+        return new AcceptedPolicyProjection(readiness, leaves);
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────

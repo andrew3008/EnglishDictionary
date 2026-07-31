@@ -69,7 +69,7 @@ Classification: **FACT** = directly observed in repository; **ASSUMPTION** = inf
 | 11 | **Accepted prior decision:** Typed span builders MUST NOT use Micrometer Observation ([ADR-typed-span-api-semantic-layer.md](./ADR-typed-span-api-semantic-layer.md) rejects Observation for builders). | FACT |
 | 12 | **Accepted prior decision:** HTTP duplicate spans with Agent mitigated by opt-in `platform.tracing.suppression.suppress-micrometer-tracing` ([ADR-suppress-micrometer-tracing.md](./ADR-suppress-micrometer-tracing.md)). | FACT |
 | 13 | **ASSUMPTION:** Post-refactor `DefaultTracingImplementation` will continue direct OTel `Tracer` usage consistent with ADR-otel-direct-integration and typed-span ADR. | ASSUMPTION |
-| 14 | **OPEN QUESTION:** Exact production rollout matrix for `suppress-micrometer-tracing` vs bridge-otel dev path vs Agent-only — documented in MIGRATION.md but fleet-specific defaults are operational, not code. | OPEN QUESTION |
+| 14 | **OPEN QUESTION:** Exact production rollout matrix for `suppress-micrometer-tracing` vs bridge-otel dev path vs Agent-only — fleet-specific defaults are operational, not code. | OPEN QUESTION |
 
 ---
 

@@ -77,7 +77,7 @@ public class ReactiveTracingAutoConfiguration {
      * и привязывающего edge {@code requestId} на границе запроса.
      * <p>
      * Фильтр регистрируется всегда. Запись {@code X-Request-Id} гейтится
-     * {@code platform.tracing.response.expose-request-id-header}; {@code X-Trace-Id} и identity
+     * {@code platform.tracing.request-id-header.enabled}; {@code X-Trace-Id} и identity
      * boundary не зависят от этого флага.
      * <p>
      * Порядок выставлен близко к началу реактивной цепочки фильтров, чтобы заголовок

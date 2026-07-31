@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -25,19 +25,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 class P64ActuatorWriteAbsenceTest {
 
     @Test
-    @DisplayName("Legacy TracingActuatorEndpoint has zero @WriteOperation methods")
+    @DisplayName("LegacyTracingDiagnosticsEndpoint has zero @WriteOperation methods")
     void legacyEndpoint_hasNoWriteOperations() {
-        assertNoWriteOperations(TracingActuatorEndpoint.class);
-        assertThat(Arrays.stream(TracingActuatorEndpoint.class.getDeclaredMethods())
+        assertNoWriteOperations(LegacyTracingDiagnosticsEndpoint.class);
+        assertThat(Arrays.stream(LegacyTracingDiagnosticsEndpoint.class.getDeclaredMethods())
                 .map(Method::getName))
                 .doesNotContain("updateTracing", "assertMutationAllowed");
     }
 
     @Test
-    @DisplayName("Configuration TracingActuatorEndpoint (tracingPolicy) has zero @WriteOperation methods")
+    @DisplayName("AcceptedPolicyActuatorEndpoint (tracingPolicy) has zero @WriteOperation methods")
     void configurationEndpoint_hasNoWriteOperations() {
         assertNoWriteOperations(
-                space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorEndpoint.class);
+                space.br1440.platform.tracing.autoconfigure.configuration.actuator.AcceptedPolicyActuatorEndpoint.class);
     }
 
     @Test

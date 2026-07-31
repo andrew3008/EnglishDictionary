@@ -35,14 +35,16 @@ platform:
 > Обновление (2026-07-24): ключ переименован из `context-propagation.async.enabled` в
 > `context-propagation.thread-pool-task-executor.enabled`. Он называет единственный поддерживаемый
 > ресурс интеграции, а не создаёт впечатление общего переключателя async tracing. Свойство `mode`
-> удалено как speculative extension point: единственное значение не влияло на поведение BPP —
-> см. `docs/MIGRATION.md`.
+> удалено как speculative extension point: единственное значение не влияло на поведение BPP.
 >
 > Обновление (2026-07-24, продолжение): обёртка `context-propagation` убрана (flatten) —
 > у неё был ровно один child, сама она нигде не читалась через POJO-геттер, а имя коллизировало
 > с несвязанным `TracingProperties.Propagation` (межсервисные HTTP-заголовки) и с нативным Spring
-> `spring.reactor.context-propagation`. Новый ключ: `platform.tracing.thread-pool-task-executor.enabled`
-> — см. `docs/MIGRATION.md`.
+> `spring.reactor.context-propagation`. Новый ключ: `platform.tracing.thread-pool-task-executor.enabled`.
+>
+> Обновление (2026-07-30): вложенный POJO `TracingProperties.ThreadPoolTaskExecutorPropagation`
+> удалён. YAML-ключ без изменений; gate остаётся `@ConditionalOnProperty` на
+> `TracingAsyncContextAutoConfiguration` (POJO-геттер в production не вызывался).
 
 При `enabled=true`:
 
@@ -62,7 +64,7 @@ worker-thread:
 
 Переносится только OTel Context + MDC (через `ContextSnapshotFactory.captureAll()`), span автоматически не создаётся. Создание span'а — задача прикладного кода через `@Traced` или `TraceOperations.inSpan`.
 
-Свойство `mode` (в v0.1.0 объявленное как открытый enum-String для forward-compatibility будущих режимов) удалено (2026-07-24): единственное значение никогда не имело альтернативы и не передавалось в BPP — см. `docs/MIGRATION.md`.
+Свойство `mode` (в v0.1.0 объявленное как открытый enum-String для forward-compatibility будущих режимов) удалено (2026-07-24): единственное значение никогда не имело альтернативы и не передавалось в BPP.
 
 ### Ordering
 

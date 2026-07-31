@@ -6,7 +6,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.test.arch.ArchitectureFitnessArchRules;
 
@@ -38,7 +38,7 @@ class ProductionControlPlaneNotMigratedArchTest {
     @DisplayName("PlatformTracingJmxClient exposes read-only domain awareness methods")
     void jmxClientReadOnlyMethodsPresent() {
         assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "allMBeansAvailable")).isTrue();
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getMBeansStatus")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getMBeansStatus")).isFalse();
         assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getCurrentRatio")).isTrue();
         assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "isSamplerEnabled")).isTrue();
     }
@@ -47,16 +47,39 @@ class ProductionControlPlaneNotMigratedArchTest {
     @DisplayName("PlatformTracingJmxClient no longer exposes JMX mutation methods")
     void jmxClientMutationMethodsAbsent() {
         assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "setRatio", double.class)).isFalse();
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "updateSamplingPolicy",
-                space.br1440.platform.tracing.autoconfigure.sampling.SamplingRuntimeConfig.class))
-                .isFalse();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "updateSamplingPolicy")).isFalse();
         assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "setSamplerEnabled", boolean.class)).isFalse();
     }
 
     @Test
-    @DisplayName("TracingActuatorEndpoint remains a production entry point")
+    @DisplayName("Deleted Spring reconcile DTOs no longer exist in production")
+    void springReconcileDtosDeleted() {
+        assertThat(productionClassPresent(
+                "space.br1440.platform.tracing.autoconfigure.sampling.SamplingRuntimeConfig"))
+                .as("SamplingRuntimeConfig should have been deleted from production")
+                .isFalse();
+        assertThat(productionClassPresent(
+                "space.br1440.platform.tracing.autoconfigure.sampling.ValidationRuntimeConfig"))
+                .as("ValidationRuntimeConfig should have been deleted from production")
+                .isFalse();
+        assertThat(productionClassPresent(
+                "space.br1440.platform.tracing.autoconfigure.sampling.SamplingRouteRatiosWire"))
+                .as("SamplingRouteRatiosWire should have been deleted from production")
+                .isFalse();
+        assertThat(productionClassPresent(
+                "space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxOperationException"))
+                .as("PlatformTracingJmxOperationException should have been deleted from production")
+                .isFalse();
+        assertThat(productionClassPresent(
+                "space.br1440.platform.tracing.autoconfigure.sampling.SamplingControlUnavailableException"))
+                .as("SamplingControlUnavailableException should have been deleted from production")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("LegacyTracingDiagnosticsEndpoint remains a production entry point")
     void productionEntryPointsExist() {
-        assertThat(TracingActuatorEndpoint.class).isNotNull();
+        assertThat(LegacyTracingDiagnosticsEndpoint.class).isNotNull();
     }
 
     @Test

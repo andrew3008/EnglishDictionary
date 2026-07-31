@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingPolicyControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +27,7 @@ class TracingConfigurationAuthorityGuardContextTest {
     private final ApplicationContextRunner actuatorStackRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
-                    TracingActuatorAutoConfiguration.class));
+                    TracingPolicyControlAutoConfiguration.class));
 
     @Test
     void missingAuthority_failsClosed() {
@@ -156,7 +156,10 @@ class TracingConfigurationAuthorityGuardContextTest {
     }
 
     @Test
-    void configServerDoesNotActivateActuatorPrivateControlBeans() {
+    void configServerDoesNotActivateActuatorWriteAdapterFromActuatorAutoConfig() {
+        // Private JMX for CONFIG_SERVER is owned by PrivateJmxControlAutoConfiguration +
+        // ConfigServerTracingPolicyAutoConfiguration. The ACTUATOR auto-config alone must not
+        // register an Actuator write adapter (or private-control beans) under CONFIG_SERVER.
         actuatorStackRunner
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=CONFIG_SERVER",

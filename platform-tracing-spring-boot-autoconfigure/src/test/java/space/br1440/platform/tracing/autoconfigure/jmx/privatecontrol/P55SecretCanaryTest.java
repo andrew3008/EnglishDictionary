@@ -11,7 +11,7 @@ import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTraci
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyManifestException;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySource;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.configuration.actuator.AcceptedPolicyActuatorEndpoint;
 import space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerPolicyManifestBuilder;
 import space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerPolicyProvenanceClassifier;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane;
@@ -138,7 +138,7 @@ class P55SecretCanaryTest {
                 7L, "runtime-" + UUID.randomUUID(), snapshotWithRouteCanary());
 
         AcceptedTracingPolicyReader reader = () -> Optional.of(project(accepted));
-        Map<String, Object> body = new TracingActuatorEndpoint(reader).tracingPolicy();
+        Map<String, Object> body = new AcceptedPolicyActuatorEndpoint(reader).tracingPolicy();
 
         assertAbsent(stringifyObject(body), ALL_CANARIES);
         assertThat(stringifyObject(body)).contains("sampling.route-ratios.count");
@@ -208,8 +208,7 @@ class P55SecretCanaryTest {
                         s.validationStrict(),
                         s.exporterEnabled(),
                         s.traceControlHeadersEnabled(),
-                        s.diagnosticsLogLevel()),
-                space.br1440.platform.tracing.autoconfigure.configuration.TracingApplyDiagnostics.absent());
+                        s.diagnosticsLogLevel()));
     }
 
     private static MockEnvironment authoritativeEnv() {

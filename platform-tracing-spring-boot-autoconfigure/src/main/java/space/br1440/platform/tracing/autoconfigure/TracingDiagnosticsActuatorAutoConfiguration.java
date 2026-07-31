@@ -13,7 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
@@ -29,7 +29,7 @@ import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
 @AutoConfigureAfter(TracingCoreAutoConfiguration.class)
 @ConditionalOnClass({Endpoint.class, HealthIndicator.class})
 @ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
-public class TracingActuatorAutoConfiguration {
+public class TracingDiagnosticsActuatorAutoConfiguration {
 
     @Bean(name = "tracingHealthIndicator")
     @ConditionalOnMissingBean(name = "tracingHealthIndicator")
@@ -43,13 +43,13 @@ public class TracingActuatorAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnAvailableEndpoint
-    public TracingActuatorEndpoint tracingActuatorEndpoint(TraceOperations traceOperations,
+    public LegacyTracingDiagnosticsEndpoint tracingDiagnosticsEndpoint(TraceOperations traceOperations,
                                                             TracingProperties properties,
                                                             PlatformTracingJmxClient platformTracingJmxClient,
                                                             ObjectProvider<SdkModeDiagnostics> sdkModeDiagnostics,
                                                             SpanFactoryDiagnostics spanFactoryDiagnostics,
                                                             Environment environment) {
-        return new TracingActuatorEndpoint(traceOperations, properties, platformTracingJmxClient,
+        return new LegacyTracingDiagnosticsEndpoint(traceOperations, properties, platformTracingJmxClient,
                 sdkModeDiagnostics.getIfAvailable(), spanFactoryDiagnostics, environment);
     }
 }

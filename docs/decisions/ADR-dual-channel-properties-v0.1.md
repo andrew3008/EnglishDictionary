@@ -74,13 +74,12 @@
 
 ### Behavior change
 
-- `TracingProperties.Queue.exportTimeout` default: `100ms` → `5000ms` (см. CHANGELOG.md, MIGRATION.md). Это behavior change for default configuration, **not** API breaking change.
+- `TracingProperties.Queue.exportTimeout` default: `100ms` → `5000ms`. Это behavior change for default configuration, **not** API breaking change.
 
 ## Checklist реализации
 
 - [x] Alignment в `TracingProperties.java` (Queue.exportTimeout 100ms → 5000ms + cross-ref на agent BSP defaults).
 - [x] `SharedDefaultsAlignmentTest` в autoconfigure-тестах.
-- [x] CHANGELOG.md + `docs/MIGRATION.md` секция «v0.1.0 default changes».
 - [x] `DualChannelDriftDiagnostics` + регистрация в `TracingObservationAutoConfiguration` + unit-test (4 кейса).
 - [x] Runbook секция «Dual-channel WARN: когда и почему».
 

@@ -11,7 +11,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
@@ -45,7 +45,7 @@ class SpringBootContextMatrixTest {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
-                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode()).isEqualTo("ENABLED");
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).toActuatorMap().get("mode")).isEqualTo("ENABLED");
                 });
     }
 
@@ -58,7 +58,7 @@ class SpringBootContextMatrixTest {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class).state().mode())
                             .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
-                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode())
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).toActuatorMap().get("mode"))
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
                 });
     }
@@ -79,7 +79,7 @@ class SpringBootContextMatrixTest {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(MeteredTracingRuntime.class);
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(DefaultTraceOperations.class);
-                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode()).isEqualTo("ENABLED");
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).toActuatorMap().get("mode")).isEqualTo("ENABLED");
                 });
     }
 
@@ -89,7 +89,7 @@ class SpringBootContextMatrixTest {
                 .run(context -> {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
-                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode()).isEqualTo("ENABLED");
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).toActuatorMap().get("mode")).isEqualTo("ENABLED");
                 });
     }
 
@@ -97,7 +97,7 @@ class SpringBootContextMatrixTest {
     void actuatorEndpoint_includesspanFactorySectionInAllMatrixPaths() {
         controlledAgentRunner
                 .run(context -> {
-                    TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
+                    LegacyTracingDiagnosticsEndpoint endpoint = new LegacyTracingDiagnosticsEndpoint(
                             context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),

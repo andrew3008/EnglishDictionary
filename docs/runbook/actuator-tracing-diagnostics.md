@@ -2,7 +2,7 @@
 
 > `/actuator/tracing` is diagnostic only. It does not close `RG-CONTROLLED-AGENT` or `RG-IDENTITY-TRUST`; **PRODUCTION ROLLOUT FORBIDDEN** while either gate is open.
 
-Операторский гайд для SRE: как читать секции `otelEffective` и `otelEnvHints`, и что делать при расхождении Spring-конфига с фактическим OTel Agent.
+Операторский гайд для SRE: как читать live-диагностику Agent/JMX и секцию `otelEffective`.
 
 ## Эндпоинт
 
@@ -12,24 +12,33 @@ GET /actuator/tracing
 
 Требует включённого Spring Boot Actuator и exposure эндпоинта `tracing` (см. `management.endpoints.web.exposure.include`).
 
-## Две секции OTel-конфига
+Secret-safe accepted Category A policy — отдельный эндпоинт:
 
-| Секция | Что показывает | Источник данных |
-|--------|----------------|-----------------|
-| **`otelEffective`** | Фактически применённые (или ожидаемые по JVM) значения OTel SDK | `-Dotel.*`, `OTEL_*`, платформенные дефолты extension SPI, дефолты OTel SDK |
-| **`otelEnvHints`** | Рекомендуемые `OTEL_*` env vars из текущего `platform.tracing.*` | `TracingProperties` + `DurationToMillis` (integer-ms для duration) |
+```http
+GET /actuator/tracingPolicy
+```
 
-**Важно:** `otelEnvHints` — подсказка для Helm/Deployment, **не** автоматический bridge. Agent classloader изолирован от Spring; изменение `application.yml` без выставления `OTEL_*` не меняет BSP/limits в agent.
+## Что показывает `/actuator/tracing`
 
-## Секция `sdk` (режим работы, Фаза 15)
+| Секция | Назначение |
+|--------|------------|
+| `mode` / `sdk` / `spanFactory` | Режим starter и готовность Controlled Agent |
+| `otelEffective` / `resourceEffective` | Фактические JVM/env значения OTel SDK (секреты маскируются как `***`) |
+| `sampling` | Live Agent/JMX: `liveRatio`, `liveSamplerEnabled`, **count** override (`routeRatioCount`), `configVersion`, `configSource` |
+| `validation` / `scrubbing` | Live Agent/JMX состояние (без Spring desired mirrors) |
+| `export` / `processors` / `config` | Ops metrics; `config.auditTrail` — bounded incident history |
 
-`GET /actuator/tracing` содержит секцию `sdk` — резолв режима относительно OpenTelemetry SDK:
+**Удалено (wave2 disclosure hardening):** raw `liveRouteRatios` / `liveDropPaths` / `liveForceRecordHeaderValues` values и hardcoded scrubbing strings (`customRulesSource` / `customRulesVisible` / `note`). Compatibility aliases запрещены.
+
+**Удалено ранее:** секция `otelEnvHints` (Spring→Agent hint bridge). Agent-конфигурация задаётся только через `OTEL_*` / Agent bootstrap keys.
+
+## Секция `sdk`
 
 ```json
 "sdk": {
   "mode": "AGENT",
   "configuredMode": "AGENT",
- "agentDetected": true,
+  "agentDetected": true,
   "runtimeState": "AGENT_READY",
   "extensionFailureCode": ""
 }
@@ -38,151 +47,44 @@ GET /actuator/tracing
 | Поле | Значение |
 |------|----------|
 | `mode` | production mode: `AGENT` или `DISABLED` |
-| `configuredMode` | значение `platform.tracing.mode` как задал оператор |
-| `agentDetected` | обнаружен ли OTel Java Agent в JVM |
-| `runtimeState` | проверенное startup-состояние Controlled Agent |
-| `extensionFailureCode` | безопасный машинный код; полный Agent failure message не раскрывается |
+| `configuredMode` | значение `platform.tracing.mode` |
+| `agentDetected` | обнаружен ли OTel Java Agent |
+| `runtimeState` | startup-состояние Controlled Agent |
+| `extensionFailureCode` | безопасный машинный код |
 
-**Назначение — диагностика, не создание SDK** (agent-first): starter не создаёт собственный SDK ни в одном
-режиме. `AGENT` требует compatible `READY` и полный mandatory capability profile.
-`NoopTraceOperations` активен только при корректном `DISABLED` и полном отсутствии Agent/runtime.
-Application `OpenTelemetry` bean запрещён. Подробности —
-[ADR-sdk-mode-detection.md](../decisions/ADR-sdk-mode-detection.md).
-
-**Типичная диагностика:**
-
-- startup failure `AGENT_MISSING`/`EXTENSION_MISSING` → проверить Controlled Agent distribution и verifier.
-- `CAPABILITY_MISSING`/`EXTENSION_FAILED` → deployment не готов; не обходить ошибку stock Agent'ом.
-- `mode=DISABLED` → одновременно нужны отсутствие Agent и любого application SDK.
-- `agentDetected=false` при ожидаемом агенте → проверить путь `-javaagent` и `otel.javaagent.extensions`.
+Подробности — [ADR-sdk-mode-detection.md](../decisions/ADR-sdk-mode-detection.md).
 
 ## Иерархия приоритетов (`otelEffective.source`)
 
 1. `system-property` — `-Dotel.bsp.max.queue.size=8192`
 2. `env-var` — `OTEL_BSP_MAX_QUEUE_SIZE=8192`
-3. `default-platform` — дефолт из `platform-tracing-otel-javaagent-extension` (`PlatformTracingDefaultsProvider`)
+3. `default-platform` — дефолт из `platform-tracing-otel-javaagent-extension`
 4. `default-otel-sdk` — встроенный дефолт OTel SDK (значение `null` в JSON)
 
 Секреты (`headers`, `token`, `password`, …) маскируются как `***`.
 
 ## Типичный сценарий: «в YAML одно, в проде другое»
 
-**Симптом:** `queue.export-timeout: 100ms` в `application.yml`, но traces «медленно» экспортируются или таймауты другие.
+**Симптом:** ожидаемый BSP timeout не совпадает с фактическим поведением экспорта.
 
-**Диагностика:**
+**Диагностика:** смотреть `otelEffective` — поле `source` показывает, откуда Agent реально взял значение. Spring `application.yml` **не** пробрасывается в Agent classloader автоматически.
 
-```json
-"otelEffective": {
-  "otel.bsp.export.timeout": {
-    "source": "default-platform",
-    "value": "5000",
-    "envVarName": "OTEL_BSP_EXPORT_TIMEOUT"
-  }
-},
-"otelEnvHints": {
-  "OTEL_BSP_EXPORT_TIMEOUT": {
-    "otelProperty": "otel.bsp.export.timeout",
-    "suggestedValue": "100",
-    "springProperty": "platform.tracing.queue.export-timeout"
-  }
-}
-```
+**Исправление для prod:** выставить нужный `OTEL_*` в Helm/Deployment и перезапустить pod; после деплоя `otelEffective` должен показать `source: env-var`.
 
-**Интерпретация:** Spring говорит 100ms (`otelEnvHints`), agent использует 5000ms (`default-platform` из extension). Расхождение ожидаемо (dual-channel R1).
+## Sampling counts (wave2)
 
-**Исправление для prod:** добавить в Helm/Deployment:
+| Поле | Семантика |
+|------|-----------|
+| `routeRatioCount` | Число route-ratio overrides; `0` = успешно прочитана пустая карта; `null` = JMX unavailable |
 
-```yaml
-env:
-  - name: OTEL_BSP_EXPORT_TIMEOUT
-    value: "100"
-```
-
-Перезапуск pod → `otelEffective` должен показать `source: env-var`, `value: "100"`.
-
-## Синхронизация Helm с `application.yml`
-
-1. `GET /actuator/tracing` → скопировать `otelEnvHints`.
-2. Для каждого ключа `OTEL_*` выставить `suggestedValue` в chart values.
-3. После деплоя убедиться, что `otelEffective` совпадает с hints (или с осознанным override через env).
-
-Покрытые свойства в hints (Wave 3+):
-
-- `OTEL_BSP_MAX_QUEUE_SIZE` ← `platform.tracing.queue.max-size`
-- `OTEL_BSP_MAX_EXPORT_BATCH_SIZE` ← `platform.tracing.queue.export-batch-size`
-- `OTEL_BSP_EXPORT_TIMEOUT` ← `platform.tracing.queue.export-timeout` (integer-ms)
-- `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT` ← `platform.tracing.limits.max-attributes`
-- `OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT` ← `platform.tracing.limits.max-attribute-value-length`
-- `OTEL_SPAN_EVENT_COUNT_LIMIT` ← `platform.tracing.limits.max-events`
+`dropPathCount` / `forceRecordValueCount` **удалены** (post-P6.6: platform SAMPLING MBean больше не
+экспонирует `DropPathPrefixes` / `ForceRecordValues`, поэтому эти counts всегда были `null` и не несли
+диагностической ценности). Raw route patterns / drop paths / force-record values **не** экспонируются через HTTP.
 
 ## Связанные документы
 
 - [Final architecture](../architecture/platform-tracing-final-architecture.md)
-- [Identity model](../decisions/ADR-identity-model-trace-request-correlation.md)
-- [traceability.md](../tracing/traceability.md) — PR-1.A/B/C закрыты
-- [MIGRATION.md](../MIGRATION.md) — MDC / bridge-otel
-- [mdc-logging-production.md](./mdc-logging-production.md) — MDC rollout
-
-## Dual-channel WARN: когда и почему
-
-С v0.1.0 (Wave R1+) на старте приложения может появляться WARN от
-`DualChannelDriftDiagnostics`:
-
-```
-Dual-channel drift: Spring platform.tracing.queue.export-timeout=100
-vs OTel agent effective otel.bsp.export.timeout=5000 (source=env-var).
-Spring-сторона не пробрасывается в Agent автоматически
-(см. ADR-dual-channel-properties-v0.1).
-Если требуется одинаковое значение — выровняйте через OTEL_BSP_EXPORT_TIMEOUT=100
-(см. otelEnvHints в /actuator/tracing).
-WARN does not mean application misconfiguration.
-It means two independent config channels (Spring vs OTel Agent) differ.
-```
-
-### Когда WARN появляется
-
-Ровно при выполнении ВСЕХ трёх условий по одной из whitelist shared properties:
-
-1. `effective.source` — `system-property` или `env-var` (override действительно задан);
-2. `effective.value != springValue` (значения двух каналов реально отличаются);
-3. property входит в whitelist shared values:
-   - `OTEL_BSP_MAX_QUEUE_SIZE` ↔ `platform.tracing.queue.max-size`
-   - `OTEL_BSP_MAX_EXPORT_BATCH_SIZE` ↔ `platform.tracing.queue.export-batch-size`
-   - `OTEL_BSP_EXPORT_TIMEOUT` ↔ `platform.tracing.queue.export-timeout`
-   - `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT` ↔ `platform.tracing.limits.max-attributes`
-   - `OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT` ↔ `platform.tracing.limits.max-attribute-value-length`
-   - `OTEL_SPAN_EVENT_COUNT_LIMIT` ↔ `platform.tracing.limits.max-events`
-
-Если `source=default-platform` (override отсутствует) — WARN **не появляется**, даже если
-Spring-значение формально отличается. Это by design: значения по умолчанию выровнены
-в Wave R1+ (см. CHANGELOG.md, MIGRATION.md).
-
-### Что делать
-
-- **WARN — diagnostic-only сигнал, не misconfiguration.** Само наличие двух каналов
-  с разными значениями — нормальное состояние dual-channel контракта v0.1
-  (см. [ADR-dual-channel-properties-v0.1.md](../decisions/ADR-dual-channel-properties-v0.1.md)).
-- Если расхождение нежелательно — выровняйте каналы:
-  - либо привести Spring YAML к значению `OTEL_*` env;
-  - либо привести `OTEL_*` env к Spring-значению (см. `otelEnvHints` секцию выше).
-
-### Отключение WARN
-
-```yaml
-platform:
-  tracing:
-    diagnostics:
-      dual-channel-warn: false
-```
-
-Применяйте только когда расхождение осознанное и постоянное (например, в тестовых
-окружениях с намеренно агрессивными OTel env).
-
-## Troubleshooting
-
-| Проблема | Проверка |
-|----------|----------|
-| `otelEffective` пустой / 404 | Actuator exposure, `platform.tracing.mode=AGENT` |
-| Все BSP — `default-platform`, env не применяется | Имя env: `OTEL_BSP_*` (underscore), не `otel.bsp.*` |
-| `export-timeout` не число | OTel SPEC: только integer-ms, без суффикса `ms` |
-| Контракт extension ↔ actuator | CI: `OtelEffectiveConfigSnapshotDefaultsContractTest` |
+- [ADR-spring-owns-only-what-spring-applies](../decisions/ADR-spring-owns-only-what-spring-applies.md)
+- [Runtime policy control](./runtime-policy-control.md)
+- [Wave2 consumer census](../research/evidence/overhead-simplify-wave2/contract-consumer-census.md)
+- [mdc-logging-production.md](./mdc-logging-production.md)

@@ -75,7 +75,7 @@ platform:
 
 ## Связанные артефакты
 
-- `TracingProperties.Suppression`
+- `MicrometerTracingSuppressionResolver.java` (единственный источник эффективного значения; читает `Environment` напрямую, без POJO-биндинга — значение нужно до создания бина `TracingProperties`)
 - `WebMvcSuppressMicrometerTracingAutoConfiguration.java`
 - `OtelAgentDetector.java`
 - `SuppressMicrometerTracingMetricsTest.java`

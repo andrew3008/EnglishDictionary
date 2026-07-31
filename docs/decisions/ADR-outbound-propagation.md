@@ -69,10 +69,15 @@ platform:
         propagate-qa-trace: false
         propagate-request-id: true
     kafka:
-      mode: agent-compatible            # agent-compatible | disabled
-      propagate-platform-headers: false
-      trusted-topic-patterns: []
+      propagate-platform-headers: false # master switch for Kafka inject (secure-by-default)
+      trusted-topic-patterns: []        # label-aware glob; empty → DENY
 ```
+
+> Обновление (2026-07-30): `platform.tracing.kafka.mode` удалён. Двойной gate
+> (`propagate-platform-headers` + `mode=agent-compatible|disabled`) выровнен с HTTP-моделью:
+> один opt-in boolean + trusted patterns. Значение `mode=disabled` при `propagate=true`
+> (бин есть, policy DENY_ALL) больше не поддерживается — выключайте inject через
+> `propagate-platform-headers=false`.
 
 ## Последствия
 

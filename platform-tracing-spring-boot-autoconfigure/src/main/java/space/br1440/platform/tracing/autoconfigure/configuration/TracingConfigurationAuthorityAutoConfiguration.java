@@ -9,7 +9,8 @@ import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxControlAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingPolicyControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerTracingPolicyAutoConfiguration;
 
 /**
@@ -21,13 +22,14 @@ import space.br1440.platform.tracing.autoconfigure.configuration.configserver.Co
  * activate inconsistently.
  * <p>
  * Registered first in {@code AutoConfiguration.imports} and ordered before
- * {@link TracingCoreAutoConfiguration}, {@link TracingActuatorAutoConfiguration}
+ * {@link TracingCoreAutoConfiguration}, {@link TracingPolicyControlAutoConfiguration}
  * and {@link ConfigServerTracingPolicyAutoConfiguration}.
  */
 @AutoConfiguration
 @AutoConfigureBefore({
         TracingCoreAutoConfiguration.class,
-        TracingActuatorAutoConfiguration.class,
+        PrivateJmxControlAutoConfiguration.class,
+        TracingPolicyControlAutoConfiguration.class,
         ConfigServerTracingPolicyAutoConfiguration.class
 })
 public class TracingConfigurationAuthorityAutoConfiguration {

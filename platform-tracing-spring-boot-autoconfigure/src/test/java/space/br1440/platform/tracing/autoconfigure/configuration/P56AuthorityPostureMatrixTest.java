@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingPolicyControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +38,7 @@ class P56AuthorityPostureMatrixTest {
     private final ApplicationContextRunner actuatorStackRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
-                    TracingActuatorAutoConfiguration.class));
+                    TracingPolicyControlAutoConfiguration.class));
 
     // ── §1 Legal authority×posture combinations ───────────────────────────────
 
@@ -171,6 +171,7 @@ class P56AuthorityPostureMatrixTest {
             new ApplicationContextRunner()
                     .withConfiguration(AutoConfigurations.of(
                             TracingConfigurationAuthorityAutoConfiguration.class,
+                            PrivateJmxControlAutoConfiguration.class,
                             space.br1440.platform.tracing.autoconfigure.configuration.configserver
                                     .ConfigServerTracingPolicyAutoConfiguration.class))
                     .withInitializer(context -> {

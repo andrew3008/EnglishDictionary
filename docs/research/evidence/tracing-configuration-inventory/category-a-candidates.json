@@ -1,7 +1,7 @@
 [ {
   "candidate" : "sampling.enabled",
   "canonicalCurrentNames" : [ "platform.tracing.sampling.enabled" ],
-  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler", "SamplingRuntimeConfig -> CompositeSampler" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler" ],
   "currentMutationPaths" : [ "JMX Sampling MBean" ],
   "default" : "true",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
@@ -12,7 +12,7 @@
 }, {
   "candidate" : "sampling.ratio",
   "canonicalCurrentNames" : [ "platform.tracing.sampling.ratio" ],
-  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler", "SamplingRuntimeConfig -> CompositeSampler" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler" ],
   "currentMutationPaths" : [ "JMX Sampling MBean" ],
   "default" : "0.1",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
@@ -23,14 +23,14 @@
 }, {
   "candidate" : "sampling.route-ratios",
   "canonicalCurrentNames" : [ "platform.tracing.sampling.route-ratios" ],
-  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler", "SamplingRuntimeConfig -> CompositeSampler" ],
+  "consumer" : [ "SamplingExtensionConfig -> CompositeSampler" ],
   "currentMutationPaths" : [ "JMX Sampling MBean" ],
   "default" : "{}",
   "performanceRelevantBehavior" : "Bounded collection lookup on sampling hot path",
   "preliminaryResult" : "INCLUDE",
   "proposedTargetName" : "platform.tracing.policy.sampling.route-ratios",
   "securityClassification" : "NON_SECRET",
-  "type" : "Map"
+  "type" : "Map<String,String>"
 }, {
   "candidate" : "sampling.drop-paths",
   "canonicalCurrentNames" : [ "platform.tracing.javaagent.sampling.drop-paths" ],
@@ -56,7 +56,7 @@
 }, {
   "candidate" : "validation.enabled",
   "canonicalCurrentNames" : [ "platform.tracing.validation.enabled" ],
-  "consumer" : [ "ValidationExtensionConfig -> ValidatingSpanProcessor", "ValidationRuntimeConfig -> ValidatingSpanProcessor" ],
+  "consumer" : [ "ValidationExtensionConfig -> ValidatingSpanProcessor" ],
   "currentMutationPaths" : [ "JMX Validation MBean" ],
   "default" : "true",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
@@ -67,7 +67,7 @@
 }, {
   "candidate" : "validation.strict",
   "canonicalCurrentNames" : [ "platform.tracing.validation.strict" ],
-  "consumer" : [ "ValidationExtensionConfig -> ValidatingSpanProcessor", "ValidationRuntimeConfig -> ValidatingSpanProcessor" ],
+  "consumer" : [ "ValidationExtensionConfig -> ValidatingSpanProcessor" ],
   "currentMutationPaths" : [ "JMX Validation MBean" ],
   "default" : "false",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
@@ -77,9 +77,9 @@
   "type" : "boolean"
 }, {
   "candidate" : "exporter.enabled",
-  "canonicalCurrentNames" : [ "platform.tracing.exporter.enabled" ],
-  "consumer" : [ "TracingActuatorEndpoint -> SafeSpanExporter" ],
-  "currentMutationPaths" : [ "JMX Export MBean", "TracingActuatorEndpoint" ],
+  "canonicalCurrentNames" : [ "platform.tracing.policy.exporter.enabled" ],
+  "consumer" : [ "SafeSpanExporter / PlatformExportControl" ],
+  "currentMutationPaths" : [ "JMX Export MBean", "LegacyTracingDiagnosticsEndpoint" ],
   "default" : "true",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
   "preliminaryResult" : "INCLUDE",
@@ -88,26 +88,26 @@
   "type" : "boolean"
 }, {
   "candidate" : "propagation.trace-control-headers.enabled",
-  "canonicalCurrentNames" : [ "platform.tracing.propagation.enabled" ],
-  "consumer" : [ "Platform propagation adapters" ],
-  "currentMutationPaths" : [ "JMX Diagnostics MBean", "TracingActuatorEndpoint" ],
+  "canonicalCurrentNames" : [ "platform.tracing.policy.propagation.trace-control-headers.enabled" ],
+  "consumer" : [ "PlatformPropagationGate / InboundTraceControlPropagator" ],
+  "currentMutationPaths" : [ "private applySnapshot", "ACTUATOR typed leaf" ],
   "default" : "true",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
   "preliminaryResult" : "INCLUDE",
   "proposedTargetName" : "platform.tracing.policy.propagation.trace-control-headers.enabled",
-  "securityClassification" : "NON_SECRET",
+  "securityClassification" : "SECRET_OR_SENSITIVE",
   "type" : "boolean"
 }, {
   "candidate" : "diagnostics.log-level",
   "canonicalCurrentNames" : [ "platform.tracing.log-level" ],
-  "consumer" : [ "TracingActuatorEndpoint -> PlatformLogControl" ],
-  "currentMutationPaths" : [ "JMX Diagnostics MBean", "TracingActuatorEndpoint" ],
-  "default" : "INFO",
+  "consumer" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
+  "currentMutationPaths" : [ ],
+  "default" : "NONE",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",
   "preliminaryResult" : "INCLUDE",
   "proposedTargetName" : "platform.tracing.policy.diagnostics.log-level",
   "securityClassification" : "NON_SECRET",
-  "type" : "OtelAgentLogLevel"
+  "type" : "UNKNOWN"
 }, {
   "candidate" : "scrubbing.built-in-rules",
   "canonicalCurrentNames" : [ "platform.tracing.javaagent.scrubbing.built-in-rules" ],

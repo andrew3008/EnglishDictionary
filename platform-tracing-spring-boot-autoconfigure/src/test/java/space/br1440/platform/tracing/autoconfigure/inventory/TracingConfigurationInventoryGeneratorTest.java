@@ -116,6 +116,9 @@ class TracingConfigurationInventoryGeneratorTest {
                 field -> field.getName().startsWith("PROP_"));
 
         addConditionalFixture(entries, source);
+        addConditionalOnPropertyGates(entries, source);
+        addCategoryATraceControlHeadersEnabled(entries, source);
+        addCategoryAExporterEnabled(entries, source);
         addFixtureAndDocumentedNames(entries, source);
         addRelaxedBindingAlias(entries, source);
         addEnvironmentAndOtelNames(entries, source);
@@ -260,6 +263,163 @@ class TracingConfigurationInventoryGeneratorTest {
         entry.fixtures.addAll(source.references(name, SourceIndex::isFixture));
     }
 
+    /**
+     * Opt-in gates consumed only via {@code @ConditionalOnProperty}; no POJO leaves in
+     * {@code TracingProperties} (binding overhead removed).
+     */
+    private static void addConditionalOnPropertyGates(
+            Map<String, Entry> entries,
+            SourceIndex source) {
+        addConditionalOnPropertyGate(
+                entries,
+                source,
+                "platform.tracing.thread-pool-task-executor.enabled",
+                "platform-tracing-spring-boot-autoconfigure/src/main/java/"
+                        + "space/br1440/platform/tracing/autoconfigure/async/"
+                        + "TracingAsyncContextAutoConfiguration.java",
+                "ThreadPoolTaskExecutorContextPropagationBeanPostProcessor");
+        addConditionalOnPropertyGate(
+                entries,
+                source,
+                "platform.tracing.kafka.batch-links-enabled",
+                "platform-tracing-spring-boot-autoconfigure/src/main/java/"
+                        + "space/br1440/platform/tracing/autoconfigure/kafka/"
+                        + "PlatformKafkaAutoConfiguration.java",
+                "KafkaBatchLinksAspect");
+        addConditionalOnPropertyGate(
+                entries,
+                source,
+                "platform.tracing.kafka.propagate-platform-headers",
+                "platform-tracing-spring-boot-autoconfigure/src/main/java/"
+                        + "space/br1440/platform/tracing/autoconfigure/kafka/"
+                        + "PlatformKafkaOutboundAutoConfiguration.java",
+                "PlatformKafkaProducerFactoryCustomizer");
+        addSuppressMicrometerTracingGate(entries, source);
+    }
+
+    /**
+     * {@code suppress-micrometer-tracing} is read directly from {@link org.springframework.core.env.Environment}
+     * by {@code MicrometerTracingSuppressionResolver} — not via a {@code TracingProperties} POJO leaf. This is
+     * required because the effective value (explicit override, else auto-derived from OTel Agent presence) must
+     * be resolvable during the {@code @Conditional} phase, before the {@code TracingProperties} bean exists.
+     */
+    private static void addSuppressMicrometerTracingGate(
+            Map<String, Entry> entries,
+            SourceIndex source) {
+        String name = "platform.tracing.suppression.suppress-micrometer-tracing";
+        String declarationPath = "platform-tracing-spring-boot-autoconfigure/src/main/java/"
+                + "space/br1440/platform/tracing/autoconfigure/support/MicrometerTracingSuppressionResolver.java";
+        Entry entry = entries.computeIfAbsent(name, Entry::new);
+        entry.kind = "CONFIG_PROPERTY";
+        entry.prefixFamily = family(name);
+        entry.declarations.add(location(declarationPath, "MicrometerTracingSuppressionResolver.PROPERTY_NAME", "Boolean"));
+        entry.readers.add(link(declarationPath, "Environment.getProperty(PROPERTY_NAME, Boolean.class)", "ENVIRONMENT_READ"));
+        entry.consumers.add("MicrometerTracingSuppressionResolver");
+        entry.valueType = "Boolean";
+        entry.defaultValue = "null (auto-derive: OtelAgentDetector.isAgentPresent())";
+        entry.defaultDefinitions.add("Environment:null -> OtelAgentDetector.isAgentPresent()");
+        entry.defaultOwner = "Spring startup";
+        entry.lifecycleOwner = "Spring application context";
+        entry.readerStatus = "ACTIVE_READER";
+        entry.consumerStatus = "ACTIVE";
+        entry.currentStatus = "ACTIVE";
+        entry.documents.addAll(source.references(name, SourceIndex::isDocumentation));
+        entry.fixtures.addAll(source.references(name, SourceIndex::isFixture));
+    }
+
+    private static void addConditionalOnPropertyGate(
+            Map<String, Entry> entries,
+            SourceIndex source,
+            String name,
+            String declarationPath,
+            String consumer) {
+        Entry entry = entries.computeIfAbsent(name, Entry::new);
+        entry.kind = "CONFIG_PROPERTY";
+        entry.prefixFamily = family(name);
+        entry.declarations.add(location(declarationPath, "@ConditionalOnProperty", "boolean"));
+        entry.readers.add(link(declarationPath, "@ConditionalOnProperty", "SPRING_BINDING"));
+        entry.consumers.add(consumer);
+        entry.valueType = "boolean";
+        entry.defaultValue = "false";
+        entry.defaultDefinitions.add("Spring:@ConditionalOnProperty matchIfMissing=false");
+        entry.defaultOwner = "Spring startup";
+        entry.lifecycleOwner = "Spring application context";
+        entry.readerStatus = "ACTIVE_READER";
+        entry.consumerStatus = "ACTIVE";
+        entry.currentStatus = "ACTIVE";
+        entry.documents.addAll(source.references(name, SourceIndex::isDocumentation));
+        entry.fixtures.addAll(source.references(name, SourceIndex::isFixture));
+    }
+
+    /**
+     * Category A kill-switch for inbound platform control headers. Owned by AcceptedPolicy /
+     * {@code PlatformPropagationGate}; the former Spring mirror
+     * {@code platform.tracing.propagation.enabled} was deleted as a dead POJO leaf.
+     */
+    private static void addCategoryATraceControlHeadersEnabled(
+            Map<String, Entry> entries,
+            SourceIndex source) {
+        String name = "platform.tracing.policy.propagation.trace-control-headers.enabled";
+        String declarationPath =
+                "platform-tracing-otel-javaagent-extension/src/main/java/"
+                        + "space/br1440/platform/tracing/otel/javaagent/propagation/"
+                        + "PlatformPropagationGate.java";
+        Entry entry = entries.computeIfAbsent(name, Entry::new);
+        entry.kind = "CONFIG_PROPERTY";
+        entry.prefixFamily = family(name);
+        entry.declarations.add(location(
+                declarationPath, "AcceptedPolicyAccess.traceControlHeadersEnabled", "boolean"));
+        entry.readers.add(link(declarationPath, "PlatformPropagationGate.isEnabled", "DIRECT_CALL"));
+        entry.consumers.add("PlatformPropagationGate / InboundTraceControlPropagator");
+        entry.valueType = "boolean";
+        entry.defaultValue = "true";
+        entry.defaultDefinitions.add("AcceptedPolicyAccess.isolatedDefaults:true");
+        entry.defaultOwner = "Agent runtime policy owner";
+        entry.lifecycleOwner = "OpenTelemetry Java Agent extension";
+        entry.readerStatus = "ACTIVE_READER";
+        entry.consumerStatus = "ACTIVE";
+        entry.currentStatus = "ACTIVE";
+        entry.documents.addAll(source.references(name, SourceIndex::isDocumentation));
+        entry.fixtures.addAll(source.references(name, SourceIndex::isFixture));
+    }
+
+    /**
+     * Category A export kill-switch. Owned by AcceptedPolicy / {@code SafeSpanExporter};
+     * the former Spring mirror {@code platform.tracing.exporter.enabled}
+     * ({@code TracingProperties.Exporter}) was deleted as a dead POJO leaf after
+     * {@code RuntimeConfigApplier} removal.
+     */
+    private static void addCategoryAExporterEnabled(
+            Map<String, Entry> entries,
+            SourceIndex source) {
+        String name = "platform.tracing.policy.exporter.enabled";
+        String declarationPath =
+                "platform-tracing-spring-boot-autoconfigure/src/main/java/"
+                        + "space/br1440/platform/tracing/autoconfigure/configuration/configserver/"
+                        + "ConfigServerPolicyManifestBuilder.java";
+        Entry entry = entries.computeIfAbsent(name, Entry::new);
+        entry.kind = "CONFIG_PROPERTY";
+        entry.prefixFamily = family(name);
+        entry.declarations.add(location(
+                declarationPath, "ConfigServerPolicyManifestBuilder.REQUIRED_KEYS", "boolean"));
+        entry.readers.add(link(
+                "platform-tracing-otel-javaagent-extension/src/main/java/"
+                        + "space/br1440/platform/tracing/otel/javaagent/exporter/SafeSpanExporter.java",
+                "AcceptedPolicyAccess.exporterEnabled",
+                "DIRECT_CALL"));
+        entry.consumers.add("SafeSpanExporter / PlatformExportControl");
+        entry.valueType = "boolean";
+        entry.defaultValue = "true";
+        entry.defaultDefinitions.add("AcceptedPolicyAccess.isolatedDefaults:true");
+        entry.defaultOwner = "Agent runtime policy owner";
+        entry.lifecycleOwner = "OpenTelemetry Java Agent extension";
+        entry.readerStatus = "ACTIVE_READER";
+        entry.consumerStatus = "ACTIVE";
+        entry.currentStatus = "ACTIVE";
+        entry.documents.addAll(source.references(name, SourceIndex::isDocumentation));
+        entry.fixtures.addAll(source.references(name, SourceIndex::isFixture));
+    }
+
     private static void addFixtureAndDocumentedNames(
             Map<String, Entry> entries,
             SourceIndex source) {
@@ -271,6 +431,13 @@ class TracingConfigurationInventoryGeneratorTest {
         fixture(entries, source, "platform.tracing.context-propagation.async.enabled");
         fixture(entries, source,
                 "platform.tracing.context-propagation.thread-pool-task-executor.enabled");
+        fixture(entries, source, "platform.tracing.kafka.mode");
+        fixture(entries, source, "platform.tracing.propagation.enabled");
+        fixture(entries, source, "platform.tracing.exporter.enabled");
+        fixture(entries, source, "platform.tracing.response.enabled");
+        fixture(entries, source, "platform.tracing.response.header-name");
+        fixture(entries, source, "platform.tracing.response.expose-request-id-header");
+        fixture(entries, source, "platform.tracing.log-level");
         fixture(entries, source, "platform.tracing.service.k8s-pod-uid");
 
         Entry conflicting = entries.computeIfAbsent(
@@ -576,10 +743,10 @@ class TracingConfigurationInventoryGeneratorTest {
                         "platform.tracing.validation.strict",
                         "platform.tracing.policy.validation.strict", "INCLUDE"),
                 category(entries, "exporter.enabled",
-                        "platform.tracing.exporter.enabled",
+                        "platform.tracing.policy.exporter.enabled",
                         "platform.tracing.policy.exporter.enabled", "INCLUDE"),
                 category(entries, "propagation.trace-control-headers.enabled",
-                        "platform.tracing.propagation.enabled",
+                        "platform.tracing.policy.propagation.trace-control-headers.enabled",
                         "platform.tracing.policy.propagation.trace-control-headers.enabled",
                         "INCLUDE"),
                 category(entries, "diagnostics.log-level",
@@ -1177,19 +1344,11 @@ class TracingConfigurationInventoryGeneratorTest {
 
     private static String springConsumer(List<String> path) {
         return switch (path.get(0)) {
-            case "sampling" -> "SamplingRuntimeConfig -> CompositeSampler";
-            case "exporter" -> "TracingActuatorEndpoint -> SafeSpanExporter";
-            case "response" -> "HTTP response tracing filters";
-            case "suppression" -> "MicrometerTracingSuppressionResolver";
-            case "validation" -> "ValidationRuntimeConfig -> ValidatingSpanProcessor";
+            case "request-id-header" -> "HTTP response tracing filters";
             case "semantic" -> "SemanticLayerAutoConfiguration";
             case "propagation" -> "Platform propagation adapters";
             case "kafka" -> "Kafka tracing adapters";
-            case "thread-pool-task-executor" ->
-                    "ThreadPoolTaskExecutorContextPropagationBeanPostProcessor";
-            case "actuator" -> "TracingActuatorEndpoint mutation gate";
             case "mode" -> "TracingCoreAutoConfiguration";
-            case "log-level" -> "TracingActuatorEndpoint -> PlatformLogControl";
             default -> "NO_RUNTIME_CONSUMER_FOUND";
         };
     }
@@ -1253,12 +1412,14 @@ class TracingConfigurationInventoryGeneratorTest {
         if (name.startsWith("platform.tracing.scrubbing.")) {
             return List.of("JMX Scrubbing MBean");
         }
-        if ("platform.tracing.exporter.enabled".equals(name)) {
-            return List.of("JMX Export MBean", "TracingActuatorEndpoint");
+        if ("platform.tracing.policy.exporter.enabled".equals(name)) {
+            return List.of("JMX Export MBean", "LegacyTracingDiagnosticsEndpoint");
         }
-        if ("platform.tracing.propagation.enabled".equals(name)
-                || "platform.tracing.log-level".equals(name)) {
-            return List.of("JMX Diagnostics MBean", "TracingActuatorEndpoint");
+        if ("platform.tracing.policy.propagation.trace-control-headers.enabled".equals(name)) {
+            return List.of("private applySnapshot", "ACTUATOR typed leaf");
+        }
+        if ("platform.tracing.policy.diagnostics.log-level".equals(name)) {
+            return List.of("private applySnapshot", "ACTUATOR typed leaf");
         }
         return List.of();
     }
@@ -1543,8 +1704,7 @@ class TracingConfigurationInventoryGeneratorTest {
         }
 
         static boolean isDocumentation(String path) {
-            return path.startsWith("docs/") || path.equals("README.md")
-                    || path.equals("CHANGELOG.md");
+            return path.startsWith("docs/") || path.equals("README.md");
         }
 
         static boolean isFixture(String path) {

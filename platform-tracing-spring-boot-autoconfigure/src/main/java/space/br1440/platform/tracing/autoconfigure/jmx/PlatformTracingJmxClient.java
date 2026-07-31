@@ -7,7 +7,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,20 +55,6 @@ public class PlatformTracingJmxClient {
         return allMBeansAvailable();
     }
 
-    /**
-     * @return статус каждого домена (зарегистрирован ли его MBean).
-     */
-    public Map<TracingControlDomain, Boolean> getMBeansStatus() {
-        Map<TracingControlDomain, Boolean> status = new EnumMap<>(TracingControlDomain.class);
-        status.put(TracingControlDomain.SAMPLING, server.isRegistered(PlatformTracingJmxObjectNames.SAMPLING));
-        status.put(TracingControlDomain.SCRUBBING, server.isRegistered(PlatformTracingJmxObjectNames.SCRUBBING));
-        status.put(TracingControlDomain.VALIDATION, server.isRegistered(PlatformTracingJmxObjectNames.VALIDATION));
-        status.put(TracingControlDomain.EXPORT, server.isRegistered(PlatformTracingJmxObjectNames.EXPORT));
-        status.put(TracingControlDomain.PROCESSOR_METRICS, server.isRegistered(PlatformTracingJmxObjectNames.PROCESSOR_METRICS));
-        status.put(TracingControlDomain.DIAGNOSTICS, server.isRegistered(PlatformTracingJmxObjectNames.DIAGNOSTICS));
-        return Collections.unmodifiableMap(status);
-    }
-
     // -- Sampling: reads -------------------------------------------------------
 
     public Optional<Double> getCurrentRatio() {
@@ -80,32 +65,20 @@ public class PlatformTracingJmxClient {
         return getBooleanAttribute(PlatformTracingJmxObjectNames.SAMPLING, "SamplerEnabled");
     }
 
-    public Optional<List<String>> getLiveDropPathPrefixes() {
-        return getStringArrayAttribute(PlatformTracingJmxObjectNames.SAMPLING, "DropPathPrefixes")
-                .map(PlatformTracingJmxClient::arrayToList);
-    }
-
-    public Optional<List<String>> getLiveForceRecordValues() {
-        return getStringArrayAttribute(PlatformTracingJmxObjectNames.SAMPLING, "ForceRecordValues")
-                .map(PlatformTracingJmxClient::arrayToList);
-    }
-
-    public Optional<Map<String, Double>> getLiveRouteRatios() {
+    /**
+     * Count of live route-ratio overrides. Empty means JMX unavailable / malformed —
+     * never coerced to {@code 0}.
+     */
+    public Optional<Integer> getLiveRouteRatioCount() {
         ObjectName name = PlatformTracingJmxObjectNames.SAMPLING;
         if (!server.isRegistered(name)) return Optional.empty();
         try {
             Object value = server.getAttribute(name, "RouteRatios");
             if (value instanceof Map<?, ?> raw) {
-                Map<String, Double> typed = new LinkedHashMap<>(raw.size());
-                for (Map.Entry<?, ?> entry : raw.entrySet()) {
-                    if (entry.getKey() instanceof String key && entry.getValue() instanceof Double ratio) {
-                        typed.put(key, ratio);
-                    }
-                }
-                return Optional.of(Collections.unmodifiableMap(typed));
+                return Optional.of(raw.size());
             }
         } catch (Exception e) {
-            log.debug("JMX: RouteRatios failed: {}", e.getMessage());
+            log.debug("JMX: RouteRatios count failed: {}", e.getMessage());
         }
         return Optional.empty();
     }
@@ -385,20 +358,4 @@ public class PlatformTracingJmxClient {
         }
     }
 
-    private Optional<String[]> getStringArrayAttribute(ObjectName name, String attribute) {
-        if (!server.isRegistered(name)) return Optional.empty();
-        try {
-            Object value = server.getAttribute(name, attribute);
-            if (value instanceof String[] arr) {
-                return Optional.of(arr.clone());
-            }
-        } catch (Exception e) {
-            log.debug("JMX: {} failed: {}", attribute, e.getMessage());
-        }
-        return Optional.empty();
-    }
-
-    private static List<String> arrayToList(String[] arr) {
-        return arr.length == 0 ? List.of() : List.of(arr);
-    }
 }

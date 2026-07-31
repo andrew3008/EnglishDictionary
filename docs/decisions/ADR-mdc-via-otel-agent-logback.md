@@ -15,7 +15,7 @@
 - `micrometer-tracing-bridge-otel` **не** публикует `traceId`/`spanId`/`traceFlags` в SLF4J MDC на HTTP-boundary threads;
 - `spring-boot-starter-platform-logging` **только читает** MDC (`%maskedMDC`, `LogstashEncoder`) и ожидает ключи **`traceId`**, **`spanId`**, **`traceFlags`** (camelCase, v1 contract).
 
-Interim-зависимость `micrometer-tracing-bridge-otel` (до Wave 2c — транзитивная `api`) не покрывала production path с Agent + suppress; с Wave 2c — `compileOnly`, opt-in для dev — [MIGRATION.md](../MIGRATION.md).
+Interim-зависимость `micrometer-tracing-bridge-otel` (до Wave 2c — транзитивная `api`) не покрывала production path с Agent + suppress; с Wave 2c — `compileOnly`, opt-in для dev (explicit dependency on the consumer classpath).
 
 ## Разделение ответственности
 
@@ -104,7 +104,7 @@ Tracing-стартер **не** поставляет logback layout — это �
 
 ## Wave 2c (выполнено 2026-05-25)
 
-`micrometer-tracing-bridge-otel`: `api` → `compileOnly` в `platform-tracing-spring-boot-autoconfigure` (не транзитивен потребителям). Grace period и opt-in для dev/staging — [MIGRATION.md](../MIGRATION.md). PlantUML: `platform-tracing-11-mdc-writer-reader-split` в `docs/architecture/Components_v2.puml`.
+`micrometer-tracing-bridge-otel`: `api` → `compileOnly` в `platform-tracing-spring-boot-autoconfigure` (не транзитивен потребителям). Opt-in для dev/staging — явная зависимость у потребителя. PlantUML: `platform-tracing-11-mdc-writer-reader-split` в `docs/architecture/Components_v2.puml`.
 
 ## Wave 2d (выполнено 2026-05-25)
 
@@ -118,7 +118,6 @@ SRE runbook + финализация docs после slimming: [runbook/mdc-logg
 ## Связанные артефакты
 
 - `docs/SUPPORTED.md` — required JVM flags + logging checklist
-- `docs/MIGRATION.md` — Wave 2c bridge-otel opt-in + grace period
 - `docs/runbook/mdc-logging-production.md` — SRE rollout (Wave 2d)
 - `spring-boot-starter-platform-logging` README — «MDC-контракт с platform-tracing v1»
 - `platform-tracing-e2e-tests/.../AgentMdcPlatformLoggingAgentE2ETest.java`

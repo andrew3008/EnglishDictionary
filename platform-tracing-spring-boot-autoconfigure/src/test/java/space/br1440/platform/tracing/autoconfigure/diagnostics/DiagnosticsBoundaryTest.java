@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import space.br1440.platform.tracing.autoconfigure.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.TracingDiagnosticsActuatorAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
 import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
@@ -48,7 +48,7 @@ class DiagnosticsBoundaryTest {
                 .withPropertyValues(
                         "platform.tracing.mode=DISABLED")
                 .run(context -> {
-                    TracingActuatorEndpoint endpoint = new TracingActuatorEndpoint(
+                    LegacyTracingDiagnosticsEndpoint endpoint = new LegacyTracingDiagnosticsEndpoint(
                             context.getBean(TraceOperations.class),
                             context.getBean(TracingProperties.class),
                             context.getBean(PlatformTracingJmxClient.class),
@@ -172,11 +172,13 @@ class DiagnosticsBoundaryTest {
         };
 
         SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(testPrimary);
-        TracingDiagnosticsView view = diagnostics.view();
+        Map<String, Object> spanFactory = diagnostics.toActuatorMap();
 
-        assertThat(view.mode()).isEqualTo("UNKNOWN");
-        assertThat(view.reason()).isEqualTo("custom-primary");
-        assertThat(view.details()).containsEntry("marker", "true");
+        assertThat(spanFactory.get("mode")).isEqualTo("UNKNOWN");
+        assertThat(spanFactory.get("reason")).isEqualTo("custom-primary");
+        @SuppressWarnings("unchecked")
+        Map<String, String> details = (Map<String, String>) spanFactory.get("details");
+        assertThat(details).containsEntry("marker", "true");
         assertThat(diagnostics.toActuatorMap().get("mode")).isEqualTo("UNKNOWN");
     }
 

@@ -21,11 +21,11 @@ import static org.mockito.Mockito.when;
  * P6.4: legacy {@code @WriteOperation} / mutation-enabled gate deleted.
  * This endpoint remains a read-only diagnostics projection.
  */
-class TracingActuatorEndpointTest {
+class LegacyTracingDiagnosticsEndpointTest {
 
     private TracingProperties properties;
     private PlatformTracingJmxClient jmxClient;
-    private TracingActuatorEndpoint endpoint;
+    private LegacyTracingDiagnosticsEndpoint endpoint;
 
     @BeforeEach
     void setUp() {
@@ -33,7 +33,7 @@ class TracingActuatorEndpointTest {
         jmxClient = Mockito.mock(PlatformTracingJmxClient.class);
         when(jmxClient.isAvailable()).thenReturn(true);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.of(0.1d));
-        endpoint = new TracingActuatorEndpoint(
+        endpoint = new LegacyTracingDiagnosticsEndpoint(
                 NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,
@@ -43,12 +43,12 @@ class TracingActuatorEndpointTest {
 
     @Test
     void endpoint_hasNoWriteOperationMethods() {
-        boolean hasWrite = Arrays.stream(TracingActuatorEndpoint.class.getDeclaredMethods())
+        boolean hasWrite = Arrays.stream(LegacyTracingDiagnosticsEndpoint.class.getDeclaredMethods())
                 .map(Method::getAnnotations)
                 .flatMap(Arrays::stream)
                 .anyMatch(annotation -> annotation.annotationType().getSimpleName().equals("WriteOperation"));
         assertThat(hasWrite).isFalse();
-        assertThat(TracingActuatorEndpoint.class.getDeclaredMethods())
+        assertThat(LegacyTracingDiagnosticsEndpoint.class.getDeclaredMethods())
                 .extracting(Method::getName)
                 .doesNotContain("updateTracing");
     }
@@ -76,7 +76,8 @@ class TracingActuatorEndpointTest {
 
         assertThat(validation).doesNotContainKey("strictRuntimeAllowed");
         assertThat(validation).doesNotContainKey("strictRuntimeAllowedNote");
-        assertThat(validation).containsKeys("enabled", "strict", "liveStrictRuntimeAllowed");
+        assertThat(validation).doesNotContainKeys("enabled", "strict");
+        assertThat(validation).containsKeys("liveStrictRuntimeAllowed");
     }
 
     @Test
@@ -86,11 +87,12 @@ class TracingActuatorEndpointTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> sampling = (Map<String, Object>) info.get("sampling");
-        assertThat(sampling).containsEntry("ratio", 0.1d);
         assertThat(sampling).containsEntry("liveRatio", 0.1d);
         assertThat(sampling).containsEntry("controlAvailable", true);
         assertThat(sampling).doesNotContainKeys(
-                "dropPaths", "forceRecordHeaderValues", "forceRecordHeader", "qaForceHeader");
+                "enabled", "ratio", "routeRatios", "samplerEnabled",
+                "dropPaths", "forceRecordHeaderValues", "forceRecordHeader", "qaForceHeader",
+                "dropPathCount", "forceRecordValueCount");
     }
 
     @Test
@@ -99,17 +101,15 @@ class TracingActuatorEndpointTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> validation = (Map<String, Object>) info.get("validation");
-        assertThat(validation).containsEntry("enabled", true);
-        assertThat(validation).containsEntry("strict", false);
+        assertThat(validation).doesNotContainKeys("enabled", "strict");
         assertThat(validation).containsKeys("liveEnabled", "liveStrict", "configVersion", "configSource");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> scrubbing = (Map<String, Object>) info.get("scrubbing");
         assertThat(scrubbing).containsKeys("liveEnabled", "configVersion", "configSource", "liveRuleCount");
-        assertThat(scrubbing).containsEntry("customRulesSource", "otel-agent-spi");
-        assertThat(scrubbing).containsEntry("customRulesVisible", false);
-        assertThat(scrubbing).containsKey("note");
-        assertThat(scrubbing).doesNotContainKeys("enabled", "builtInRules", "rulesConfig");
+        assertThat(scrubbing).doesNotContainKeys(
+                "customRulesSource", "customRulesVisible", "note",
+                "enabled", "builtInRules", "rulesConfig");
     }
 
     @Test
@@ -118,13 +118,12 @@ class TracingActuatorEndpointTest {
         when(jmxClient.isValidationStrict()).thenReturn(Optional.of(true));
         when(jmxClient.getValidationConfigVersion()).thenReturn(Optional.of(5L));
         when(jmxClient.getValidationConfigLastUpdatedSource()).thenReturn(Optional.of("spring-runtime-config"));
-        properties.getValidation().setStrict(false);
 
         Map<String, Object> info = endpoint.tracing();
         @SuppressWarnings("unchecked")
         Map<String, Object> validation = (Map<String, Object>) info.get("validation");
 
-        assertThat(validation).containsEntry("strict", false);
+        assertThat(validation).doesNotContainKey("strict");
         assertThat(validation).containsEntry("liveStrict", true);
         assertThat(validation).containsEntry("configVersion", 5L);
         assertThat(validation).containsEntry("configSource", "spring-runtime-config");
@@ -132,9 +131,7 @@ class TracingActuatorEndpointTest {
 
     @Test
     void readOperation_sampling_scrubbing_live_fields_present() {
-        when(jmxClient.getLiveDropPathPrefixes()).thenReturn(Optional.of(java.util.List.of("/health")));
-        when(jmxClient.getLiveForceRecordValues()).thenReturn(Optional.of(java.util.List.of("on")));
-        when(jmxClient.getLiveRouteRatios()).thenReturn(Optional.of(Map.of("/api", 0.5d)));
+        when(jmxClient.getLiveRouteRatioCount()).thenReturn(Optional.of(1));
         when(jmxClient.getSamplingConfigLastUpdatedSource()).thenReturn(Optional.of("JMX"));
         when(jmxClient.isScrubbingEnabled()).thenReturn(Optional.of(false));
         when(jmxClient.getScrubbingConfigVersion()).thenReturn(Optional.of(3L));
@@ -144,8 +141,12 @@ class TracingActuatorEndpointTest {
         Map<String, Object> info = endpoint.tracing();
         @SuppressWarnings("unchecked")
         Map<String, Object> sampling = (Map<String, Object>) info.get("sampling");
-        assertThat(sampling).containsKeys("enabled", "routeRatios", "liveDropPaths", "liveForceRecordHeaderValues",
-                "liveRouteRatios", "configSource");
+        assertThat(sampling).containsEntry("routeRatioCount", 1);
+        assertThat(sampling).containsKeys("configSource", "liveSamplerEnabled");
+        assertThat(sampling).doesNotContainKeys(
+                "enabled", "routeRatios", "samplerEnabled",
+                "liveDropPaths", "liveForceRecordHeaderValues", "liveRouteRatios",
+                "dropPathCount", "forceRecordValueCount");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> scrubbing = (Map<String, Object>) info.get("scrubbing");
@@ -207,7 +208,7 @@ class TracingActuatorEndpointTest {
                 sysProps::get, envVars::get);
         ResourceEffectiveSnapshot resourceSnapshot = new ResourceEffectiveSnapshot(
                 sysProps::get, envVars::get);
-        TracingActuatorEndpoint custom = new TracingActuatorEndpoint(
+        LegacyTracingDiagnosticsEndpoint custom = new LegacyTracingDiagnosticsEndpoint(
                 NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,

@@ -704,13 +704,13 @@
         "targetCategoryALeaf": "exporter.enabled",
         "futureP1Replacement": "reads the read-only accepted-policy projection rather than a mutable exporter-local flag",
         "futureDeletionPhase": "P6 ADAPT — p0-e7-jmx-read-delta",
-        "zeroReferenceProof": "getExportMetrics() has one production caller, TracingActuatorEndpoint.tracing(); getSafeExporterMetrics() performs MBeanServer.getAttribute(EXPORT, \"SafeExporterMetrics\")"
+        "zeroReferenceProof": "getExportMetrics() has one production caller, LegacyTracingDiagnosticsEndpoint.tracing(); getSafeExporterMetrics() performs MBeanServer.getAttribute(EXPORT, \"SafeExporterMetrics\")"
       },
       {
         "owner": "SafeSpanExporter",
         "module": "platform-tracing-spring-boot-autoconfigure",
         "package": "space.br1440.platform.tracing.autoconfigure.actuator",
-        "class": "TracingActuatorEndpoint",
+        "class": "LegacyTracingDiagnosticsEndpoint",
         "method": "tracing() line 149",
         "stateField": "SafeSpanExporter.exportEnabled nested under export.safeExporter.export_enabled",
         "role": "READER_DELIVERY",
@@ -725,7 +725,7 @@
         "owner": "SafeSpanExporter",
         "module": "platform-tracing-spring-boot-autoconfigure",
         "package": "space.br1440.platform.tracing.autoconfigure.actuator",
-        "class": "TracingActuatorEndpoint",
+        "class": "LegacyTracingDiagnosticsEndpoint",
         "method": "updateTracing(\"exportEnabled\", value) lines 249-259",
         "stateField": "SafeSpanExporter.exportEnabled via PlatformTracingJmxClient",
         "role": "WRITER_INDIRECT",
@@ -890,7 +890,7 @@
         "owner": "PlatformPropagationGate",
         "module": "platform-tracing-spring-boot-autoconfigure",
         "package": "space.br1440.platform.tracing.autoconfigure.actuator",
-        "class": "TracingActuatorEndpoint",
+        "class": "LegacyTracingDiagnosticsEndpoint",
         "method": "updateTracing(\"propagationEnabled\", value) lines 261-271",
         "stateField": "PlatformPropagationGate.shared().enabled via PlatformTracingJmxClient",
         "role": "WRITER_INDIRECT",
@@ -1055,7 +1055,7 @@
         "owner": "PlatformLogControl",
         "module": "platform-tracing-spring-boot-autoconfigure",
         "package": "space.br1440.platform.tracing.autoconfigure.actuator",
-        "class": "TracingActuatorEndpoint",
+        "class": "LegacyTracingDiagnosticsEndpoint",
         "method": "updateTracing(\"logLevel\", value) lines 273-285",
         "stateField": "PlatformLogControl.shared().level via PlatformTracingJmxClient",
         "role": "WRITER_INDIRECT",
@@ -1208,8 +1208,8 @@
       "P6.3/P6.4: RuntimeConfigApplier and legacy Actuator @WriteOperation/mutation-enabled deleted. Spring delivery is ConfigServerTracingPolicyAdapter → private applySnapshot; DEV_ACTUATOR typed leaves remain LOCAL-only. Domain platform JMX writes remain until P6.6.",
       "RuntimeControlMutationPolicy applies only to the unified protocol handler, and the unified protocol reaches none of these three owners. The gate and the reachable owners are disjoint sets.",
       "export.enabled and propagation.enabled are accepted by TracingControlProtocolSchema and counted as valid mutation keys by RuntimePolicyControlDomainValidator, but JmxRuntimePolicyApplier ignores them, so a payload containing only those keys is reported SUCCESS while changing nothing. diagnostics.log-level has no wire key at all.",
-      "Spring can write propagation.trace-control-headers.enabled and diagnostics.log-level but cannot read either back: PlatformTracingJmxClient exposes no getter, and TracingActuatorEndpoint's read model omits both. exporter.enabled is observable only as a metric inside SpanExporterMetrics.EXPORT_ENABLED.",
-      "TracingActuatorEndpoint additionally mirrors exportEnabled into properties.getExporter().setEnabled(...) at line 256, creating a second mutable representation of one Category A leaf inside the Spring context."
+      "Spring can write propagation.trace-control-headers.enabled and diagnostics.log-level but cannot read either back: PlatformTracingJmxClient exposes no getter, and LegacyTracingDiagnosticsEndpoint's read model omits both. exporter.enabled is observable only as a metric inside SpanExporterMetrics.EXPORT_ENABLED.",
+      "LegacyTracingDiagnosticsEndpoint additionally mirrors exportEnabled into properties.getExporter().setEnabled(...) at line 256, creating a second mutable representation of one Category A leaf inside the Spring context."
     ]
   }
 }

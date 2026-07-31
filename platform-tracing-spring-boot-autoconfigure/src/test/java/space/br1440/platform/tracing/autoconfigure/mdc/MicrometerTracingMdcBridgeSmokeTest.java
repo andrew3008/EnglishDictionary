@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (G2-MDC-e2e): Agent + {@code suppress-micrometer-tracing=true} + OpenTelemetryAppender.
  * <p>
  * Проверяет регистрацию bridge-bean'ов Spring Boot Actuator при явном opt-in зависимости
- * (см. {@code docs/MIGRATION.md}).
+ * (см. {@code ADR-mdc-via-otel-agent-logback}).
  */
 @Tag("bridge-otel-path")
 class MicrometerTracingMdcBridgeSmokeTest {

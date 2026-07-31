@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingPolicyControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +33,7 @@ class P56DisabledNoDiscoveryTest {
     private final ApplicationContextRunner actuatorStackRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
-                    TracingActuatorAutoConfiguration.class));
+                    TracingPolicyControlAutoConfiguration.class));
 
     private final ApplicationContextRunner guardRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(

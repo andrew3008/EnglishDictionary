@@ -12,37 +12,35 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Slice 7: stable JSON contract for {@link TracingDiagnosticsView}.
+ * Slice 7: stable JSON contract for {@link SpanFactoryDiagnostics#toActuatorMap()}.
  */
-class TracingDiagnosticsViewJsonContractTest {
+class SpanFactoryDiagnosticsJsonContractTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     void actuatorMap_serializesStableTopLevelKeysOnly() throws Exception {
-        TracingDiagnosticsView view = new TracingDiagnosticsView(
-                "ENABLED",
-                null,
-                Map.of("source", "test"));
+        SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(
+                NoOpTracingRuntime.noop());
 
         @SuppressWarnings("unchecked")
         Map<String, Object> json = OBJECT_MAPPER.readValue(
-                OBJECT_MAPPER.writeValueAsString(view.toActuatorMap()),
+                OBJECT_MAPPER.writeValueAsString(diagnostics.toActuatorMap()),
                 Map.class);
 
         assertThat(json.keySet()).containsExactlyInAnyOrder("mode", "details");
-        assertThat(json.get("mode")).isEqualTo("ENABLED");
-        assertThat(json.get("details")).isEqualTo(Map.of("source", "test"));
+        assertThat(json.get("mode")).isEqualTo("NOOP");
+        assertThat(json.get("details")).isEqualTo(Map.of());
     }
 
     @Test
     void actuatorMap_includesReasonWhenPresent() throws Exception {
-        TracingDiagnosticsView view = TracingDiagnosticsMapper.fromState(
-                NoOpTracingRuntime.disabledByConfiguration("platform.tracing.mode=DISABLED").state());
+        SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(
+                NoOpTracingRuntime.disabledByConfiguration("platform.tracing.mode=DISABLED"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> json = OBJECT_MAPPER.readValue(
-                OBJECT_MAPPER.writeValueAsString(view.toActuatorMap()),
+                OBJECT_MAPPER.writeValueAsString(diagnostics.toActuatorMap()),
                 Map.class);
 
         assertThat(json.keySet()).containsExactlyInAnyOrder("mode", "reason", "details");
@@ -53,10 +51,11 @@ class TracingDiagnosticsViewJsonContractTest {
 
     @Test
     void internalTestMode_mapsToUnknownPublicMode() {
-        TracingDiagnosticsView view = TracingDiagnosticsMapper.fromState(new TestModeTracingRuntime().state());
+        SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(new TestModeTracingRuntime());
 
-        assertThat(view.mode()).isEqualTo("UNKNOWN");
-        assertThat(view.reason()).isEqualTo("test-primary");
+        Map<String, Object> map = diagnostics.toActuatorMap();
+        assertThat(map.get("mode")).isEqualTo("UNKNOWN");
+        assertThat(map.get("reason")).isEqualTo("test-primary");
     }
 
     @Test
@@ -69,9 +68,13 @@ class TracingDiagnosticsViewJsonContractTest {
                 "UNKNOWN");
 
         for (TracingMode internal : TracingMode.values()) {
-            String mapped = TracingDiagnosticsMapper.toPublicMode(internal);
+            String mapped = modeFrom(new TestModeTracingRuntimeWithMode(internal));
             assertThat(approved).contains(mapped);
         }
+    }
+
+    private static String modeFrom(space.br1440.platform.tracing.otel.runtime.TracingRuntime runtime) {
+        return (String) new SpanFactoryDiagnostics(runtime).toActuatorMap().get("mode");
     }
 
     private static final class TestModeTracingRuntime implements space.br1440.platform.tracing.otel.runtime.TracingRuntime {
@@ -115,7 +118,6 @@ class TracingDiagnosticsViewJsonContractTest {
             return identityDelegate.currentCorrelationId();
         }
 
-
         @Override
         public void recordException(
                 space.br1440.platform.tracing.api.span.spec.SpanHandle span, Throwable throwable) {
@@ -132,6 +134,83 @@ class TracingDiagnosticsViewJsonContractTest {
                 @Override
                 public java.util.Optional<String> reason() {
                     return java.util.Optional.of("test-primary");
+                }
+
+                @Override
+                public Map<String, String> details() {
+                    return Map.of();
+                }
+            };
+        }
+
+        @Override
+        public space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy attributePolicy() {
+            return new space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy();
+        }
+    }
+
+    private static final class TestModeTracingRuntimeWithMode implements space.br1440.platform.tracing.otel.runtime.TracingRuntime {
+
+        private final TracingMode mode;
+        private final space.br1440.platform.tracing.otel.runtime.TracingRuntime identityDelegate =
+                NoOpTracingRuntime.noop();
+
+        private TestModeTracingRuntimeWithMode(TracingMode mode) {
+            this.mode = mode;
+        }
+
+        @Override
+        public space.br1440.platform.tracing.api.span.spec.SpanHandle startSpan(
+                space.br1440.platform.tracing.api.span.spec.SpanSpec spec) {
+            return space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle.INSTANCE;
+        }
+
+        @Override
+        public space.br1440.platform.tracing.api.context.ActiveTraceContextView currentTraceContext() {
+            return identityDelegate.currentTraceContext();
+        }
+
+        @Override
+        public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(String correlationId) {
+            return identityDelegate.openCorrelationScope(correlationId);
+        }
+
+        @Override
+        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(String requestId) {
+            return identityDelegate.openRequestIdentityScope(requestId);
+        }
+
+        @Override
+        public String requireCanonicalCorrelationId(String correlationId) {
+            return identityDelegate.requireCanonicalCorrelationId(correlationId);
+        }
+
+        @Override
+        public Optional<String> currentRequestId() {
+            return identityDelegate.currentRequestId();
+        }
+
+        @Override
+        public Optional<String> currentCorrelationId() {
+            return identityDelegate.currentCorrelationId();
+        }
+
+        @Override
+        public void recordException(
+                space.br1440.platform.tracing.api.span.spec.SpanHandle span, Throwable throwable) {
+        }
+
+        @Override
+        public space.br1440.platform.tracing.otel.runtime.state.TracingState state() {
+            return new space.br1440.platform.tracing.otel.runtime.state.TracingState() {
+                @Override
+                public TracingMode mode() {
+                    return mode;
+                }
+
+                @Override
+                public Optional<String> reason() {
+                    return Optional.empty();
                 }
 
                 @Override

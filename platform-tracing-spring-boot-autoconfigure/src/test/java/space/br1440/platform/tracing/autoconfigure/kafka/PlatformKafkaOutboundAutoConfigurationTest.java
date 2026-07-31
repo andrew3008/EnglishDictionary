@@ -29,4 +29,25 @@ class PlatformKafkaOutboundAutoConfigurationTest {
             assertThat(context).hasBean("platformOutboundPropagation");
         });
     }
+
+    @Test
+    void deleted_kafka_mode_is_ignored_when_propagate_enabled() {
+        contextRunner
+                .withPropertyValues("platform.tracing.kafka.mode=disabled")
+                .run(context -> assertThat(context)
+                        .hasSingleBean(PlatformKafkaProducerFactoryCustomizer.class));
+    }
+
+    @Test
+    void propagate_false_does_not_register_customizer() {
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(
+                        PlatformKafkaOutboundAutoConfiguration.class,
+                        PlatformOutboundPropagationAutoConfiguration.class))
+                .withBean(TracingProperties.class, TracingProperties::new)
+                .withBean(RequestIdentityBoundarySupport.class,
+                        () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
+                .run(context -> assertThat(context)
+                        .doesNotHaveBean(PlatformKafkaProducerFactoryCustomizer.class));
+    }
 }

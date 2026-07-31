@@ -17,13 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 /**
- * Тест секции {@code processors} в выводе {@link TracingActuatorEndpoint#tracing()}.
+ * Тест секции {@code processors} в выводе {@link LegacyTracingDiagnosticsEndpoint#tracing()}.
  */
-class TracingActuatorEndpointProcessorErrorsTest {
+class LegacyTracingDiagnosticsEndpointProcessorErrorsTest {
 
     private TracingProperties properties;
     private PlatformTracingJmxClient jmxClient;
-    private TracingActuatorEndpoint endpoint;
+    private LegacyTracingDiagnosticsEndpoint endpoint;
 
     @BeforeEach
     void setUp() {
@@ -31,7 +31,7 @@ class TracingActuatorEndpointProcessorErrorsTest {
         jmxClient = Mockito.mock(PlatformTracingJmxClient.class);
         when(jmxClient.isAvailable()).thenReturn(true);
         when(jmxClient.getCurrentRatio()).thenReturn(Optional.of(0.1d));
-        endpoint = new TracingActuatorEndpoint(
+        endpoint = new LegacyTracingDiagnosticsEndpoint(
                 NoopTraceOperations.INSTANCE,
                 properties,
                 jmxClient,

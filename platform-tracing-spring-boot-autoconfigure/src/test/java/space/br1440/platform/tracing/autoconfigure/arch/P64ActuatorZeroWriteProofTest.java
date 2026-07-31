@@ -28,10 +28,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import space.br1440.platform.tracing.autoconfigure.TracingActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.TracingDiagnosticsActuatorAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.actuator.TracingActuatorEndpoint;
+import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
 import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter;
 import space.br1440.platform.tracing.autoconfigure.configuration.actuator.TracingControlMvcController;
@@ -67,7 +67,7 @@ class P64ActuatorZeroWriteProofTest {
     /**
      * Full {@code @EnableAutoConfiguration} pulls TracingCore / OTel ownership that is
      * unrelated to Actuator write absence. HTTP proofs register a real
-     * {@link TracingActuatorEndpoint} bean and exclude the heavy tracing stack
+     * {@link LegacyTracingDiagnosticsEndpoint} bean and exclude the heavy tracing stack
      * (same approach as {@code TracingControlManagementChildContextIntegrationTest}).
      */
     private static final String[] EXCLUDED_UNRELATED_AUTOCONFIGURATIONS = {
@@ -76,7 +76,7 @@ class P64ActuatorZeroWriteProofTest {
             "space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingObservationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.TracingActuatorAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingDiagnosticsActuatorAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.RequestContextSupplierAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration",
@@ -94,7 +94,7 @@ class P64ActuatorZeroWriteProofTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
                     TracingCoreAutoConfiguration.class,
-                    TracingActuatorAutoConfiguration.class))
+                    TracingDiagnosticsActuatorAutoConfiguration.class))
             .withInitializer(ControlledAgentTestRuntime::initialize)
             .withPropertyValues(
                     "platform.tracing.configuration.authority=HELM",
@@ -107,11 +107,11 @@ class P64ActuatorZeroWriteProofTest {
     void helmProductionContext_registersReadOnlyTracingEndpoint() {
         readOnlyEndpointRunner.run(context -> {
             assertThat(context).hasNotFailed();
-            assertThat(context).hasSingleBean(TracingActuatorEndpoint.class);
+            assertThat(context).hasSingleBean(LegacyTracingDiagnosticsEndpoint.class);
             assertThat(context).doesNotHaveBean(SpringActuatorTracingPolicyAdapter.class);
             assertThat(context).doesNotHaveBean(TracingControlMvcController.class);
 
-            TracingActuatorEndpoint endpoint = context.getBean(TracingActuatorEndpoint.class);
+            LegacyTracingDiagnosticsEndpoint endpoint = context.getBean(LegacyTracingDiagnosticsEndpoint.class);
             long writeOps = Arrays.stream(endpoint.getClass().getDeclaredMethods())
                     .filter(method -> method.isAnnotationPresent(WriteOperation.class))
                     .count();
@@ -149,7 +149,7 @@ class P64ActuatorZeroWriteProofTest {
                 .withConfiguration(AutoConfigurations.of(
                         TracingConfigurationAuthorityAutoConfiguration.class,
                         space.br1440.platform.tracing.autoconfigure.configuration.actuator
-                                .TracingActuatorAutoConfiguration.class))
+                                .TracingPolicyControlAutoConfiguration.class))
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=PRODUCTION",
@@ -172,7 +172,7 @@ class P64ActuatorZeroWriteProofTest {
                 "management.endpoint.tracing.enabled=true",
                 "server.port=0")) {
 
-            assertThat(context.getBean(TracingActuatorEndpoint.class)).isNotNull();
+            assertThat(context.getBean(LegacyTracingDiagnosticsEndpoint.class)).isNotNull();
             assertWebEndpointHasNoWriteOperations(context);
 
             int port = Integer.parseInt(context.getEnvironment().getProperty("local.server.port"));
@@ -234,7 +234,7 @@ class P64ActuatorZeroWriteProofTest {
                 .withConfiguration(AutoConfigurations.of(
                         TracingConfigurationAuthorityAutoConfiguration.class,
                         space.br1440.platform.tracing.autoconfigure.configuration.actuator
-                                .TracingActuatorAutoConfiguration.class))
+                                .TracingPolicyControlAutoConfiguration.class))
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=" + authority,
                         "platform.environment=" + posture);
@@ -243,10 +243,12 @@ class P64ActuatorZeroWriteProofTest {
             runner = new ApplicationContextRunner()
                     .withConfiguration(AutoConfigurations.of(
                             TracingConfigurationAuthorityAutoConfiguration.class,
+                            space.br1440.platform.tracing.autoconfigure.configuration
+                                    .PrivateJmxControlAutoConfiguration.class,
                             space.br1440.platform.tracing.autoconfigure.configuration.configserver
                                     .ConfigServerTracingPolicyAutoConfiguration.class,
                             space.br1440.platform.tracing.autoconfigure.configuration.actuator
-                                    .TracingActuatorAutoConfiguration.class))
+                                    .TracingPolicyControlAutoConfiguration.class))
                     .withInitializer(context -> {
                         org.springframework.core.env.MapPropertySource authoritative =
                                 new org.springframework.core.env.MapPropertySource(
@@ -339,11 +341,11 @@ class P64ActuatorZeroWriteProofTest {
     static class ReadOnlyTracingEndpointApp {
 
         @Bean
-        TracingActuatorEndpoint tracingActuatorEndpoint() {
+        LegacyTracingDiagnosticsEndpoint tracingDiagnosticsEndpoint() {
             PlatformTracingJmxClient jmxClient = Mockito.mock(PlatformTracingJmxClient.class);
             when(jmxClient.isAvailable()).thenReturn(false);
             when(jmxClient.getCurrentRatio()).thenReturn(Optional.empty());
-            return new TracingActuatorEndpoint(
+            return new LegacyTracingDiagnosticsEndpoint(
                     NoopTraceOperations.INSTANCE,
                     new TracingProperties(),
                     jmxClient,

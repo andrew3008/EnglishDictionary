@@ -4,7 +4,7 @@
 |-------|-------|
 | Audience | Dashboard / ops script / Actuator client owners |
 | Evidence | `docs/research/evidence/jmx-read-only-delta/` (S-07 / E7) |
-| Related | [runtime-policy-control.md](runtime-policy-control.md), [MIGRATION.md](../MIGRATION.md) |
+| Related | [runtime-policy-control.md](runtime-policy-control.md), [SUPPORTED.md](../SUPPORTED.md) |
 
 Formal **P5.9 PASS** / full-**P6 PASS** are **not** claimed here. This note records the **post-P6.6 live JMX posture** from committed E7/S-07 evidence.
 

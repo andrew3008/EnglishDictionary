@@ -15,8 +15,14 @@
 
 Удалить из Spring `TracingProperties` все C/D/E поля. Оставить только:
 
-- **A** — Spring применяет (facade wiring, propagation outbound, semantic, kafka, response, aop, suppression)
-- **B** — JMX reconcile (sampling, scrubbing, validation, exporter.enabled, propagation.enabled, logLevel)
+- **A** — Spring применяет (mode, request-id-header, semantic, propagation outbound/platform-headers, kafka trusted topics, thread-pool-task-executor gate via Environment).
+- **Category A runtime policy** — не зеркалируется в `TracingProperties`. Живой namespace:
+  `platform.tracing.policy.*` (Config Server / ACTUATOR private JMX → Agent accepted state).
+  Export kill-switch: `platform.tracing.policy.exporter.enabled`.
+  Inbound platform-header kill-switch:
+  `platform.tracing.policy.propagation.trace-control-headers.enabled`.
+  Sampling / validation / diagnostics.log-level — только `platform.tracing.policy.*` (+ Agent
+  bootstrap keys `platform.tracing.sampling.*` / `validation.*` where still declared by the extension).
 
 Agent-канал (`OTEL_*`, `PLATFORM_TRACING_*`, `PlatformTracingDefaultsProvider`, `ExtensionPropertyNames`) остаётся единственным источником истины для SDK limits/queue/exporter/resource/enriching/watchdog/baggage.
 
@@ -50,6 +56,12 @@ Agent-канал (`OTEL_*`, `PLATFORM_TRACING_*`, `PlatformTracingDefaultsProvid
 ## Actuator read-model
 
 `GET /actuator/tracing` больше не содержит секций `limits`, `queue`, `exporter`, `enriching`, `watchdog`, `control`, `otelEnvHints`, `resourceSpringConfig`. Agent-effective состояние — через `otelEffective` и `resourceEffective`.
+
+Секции `sampling` / `validation` на `/actuator/tracing` проецируют **только live JMX** (без Spring desired mirrors).
+Для sampling overrides HTTP отдаёт только bounded count (`routeRatioCount`),
+не raw route/drop/force values (wave2 disclosure hardening). `dropPathCount` / `forceRecordValueCount` удалены
+(post-audit remediation): post-P6.6 platform SAMPLING MBean больше не экспонирует `DropPathPrefixes` /
+`ForceRecordValues`, поэтому эти counts были всегда `null`. Secret-safe accepted policy — `GET /actuator/tracingPolicy`.
 
 ## Последствия
 

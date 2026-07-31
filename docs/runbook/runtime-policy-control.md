@@ -4,7 +4,7 @@
 |-------|-------|
 | Audience | SRE / on-call / platform operators |
 | Scope | Authority postures, private `applySnapshot`, readiness, LKG, STALE, drift, rollback |
-| Related | [SUPPORTED.md](../SUPPORTED.md) § Configuration authority; [MIGRATION.md](../MIGRATION.md) § P6 cutover; [jmx-consumer-migration.md](jmx-consumer-migration.md) |
+| Related | [SUPPORTED.md](../SUPPORTED.md) § Configuration authority; [jmx-consumer-migration.md](jmx-consumer-migration.md) |
 | Status | Operator guidance for post-P6 cutover code. Formal **P5.9 PASS** / full-**P6 PASS** are **not** claimed. |
 
 **No dual-path / aliases.** Do not use deleted writers or banned legacy property names.
@@ -207,7 +207,8 @@ After the P6 cutover, the rollback unit is the **entire unreleased release train
 
 **Allowed:** Coordinated revert of app starter + Agent extension + Config Server / Helm manifests + operator docs as one train. Accepted policy is process-local and rebuilt from the selected authority after restart.
 
-See [MIGRATION.md](../MIGRATION.md) § Rollback and plan §25.
+Rollback unit = entire unreleased release train (app starter + Agent extension +
+Config Server / Helm manifests + operator docs). See plan §25.
 
 ---
 

@@ -1,11 +1,16 @@
 package space.br1440.platform.tracing.autoconfigure;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Configuration;
 
-import space.br1440.platform.tracing.autoconfigure.diagnostics.OtelAgentLogLevel;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Проверяет корректный bind вложенных свойств {@link TracingProperties} из {@code application.properties}.
  */
+@ExtendWith(OutputCaptureExtension.class)
 class TracingPropertiesBindingTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
@@ -37,104 +43,83 @@ class TracingPropertiesBindingTest {
     }
 
     @Test
-    void bindsSamplingEnabled() {
-        contextRunner
-                .withPropertyValues("platform.tracing.sampling.enabled=false")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSampling().isEnabled()).isFalse();
-                });
-    }
-
-    @Test
-    void bindsSamplingRatio() {
-        contextRunner
-                .withPropertyValues("platform.tracing.sampling.ratio=0.42")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSampling().getRatio()).isEqualTo(0.42d);
-                });
-    }
-
-    @Test
-    void doesNotBindCategoryBSamplingDropPathsOrForceRecordValues() {
-        // P6.1: these properties moved to Agent javaagent.sampling.*; Spring must not bind them.
+    void deletedCategoryASpringMirrorsAreNotBound() {
+        // sampling / validation / log-level removed from TracingProperties; values must not bind.
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.sampling.drop-paths[0]=/health",
-                        "platform.tracing.sampling.force-record-header-values[0]=on")
+                        "platform.tracing.sampling.enabled=false",
+                        "platform.tracing.sampling.ratio=0.42",
+                        "platform.tracing.validation.enabled=false",
+                        "platform.tracing.validation.strict=true")
                 .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSampling().getRouteRatios()).isEmpty();
+                    assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
                 });
     }
 
+    /**
+     * {@code platform.tracing.log-level} has no Agent-bootstrap replacement (deleted
+     * {@code OtelAgentLogLevel}); the startup guard fails fast instead of silently ignoring it.
+     */
     @Test
-    void bindsSamplingRouteRatios() {
+    void obsoleteSpringOnlyLogLevelKeyFailsStartupFast() {
+        contextRunner
+                .withConfiguration(AutoConfigurations.of(TracingConfigurationAuthorityAutoConfiguration.class))
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=HELM",
+                        "platform.environment=LOCAL",
+                        "platform.tracing.log-level=warn")
+                .run(ctx -> {
+                    assertThat(ctx).hasFailed();
+                    Throwable failure = ctx.getStartupFailure();
+                    assertThat(failure)
+                            .as("startup failure must be or wrap TracingConfigurationGuardException")
+                            .matches(t -> t instanceof TracingConfigurationGuardException
+                                    || t.getCause() instanceof TracingConfigurationGuardException);
+                    String message = failure.getMessage()
+                            + (failure.getCause() == null ? "" : failure.getCause().getMessage());
+                    assertThat(message).contains("platform.tracing.log-level");
+                });
+    }
+
+    /**
+     * Agent-bootstrap KEEP keys (sampling/validation) may legally appear in the shared Spring
+     * Environment — the Agent extension reads them directly — so startup must still succeed, but
+     * the guard must make their presence explicit instead of a silent no-op success claim.
+     */
+    @Test
+    void agentBootstrapKeepKeysInSpringEnvironmentSucceedButAreNotSilent(CapturedOutput output) {
+        contextRunner
+                .withConfiguration(AutoConfigurations.of(TracingConfigurationAuthorityAutoConfiguration.class))
+                .withPropertyValues(
+                        "platform.tracing.configuration.authority=HELM",
+                        "platform.environment=LOCAL",
+                        "platform.tracing.sampling.enabled=false",
+                        "platform.tracing.sampling.ratio=0.42",
+                        "platform.tracing.validation.enabled=false",
+                        "platform.tracing.validation.strict=true")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    TracingProperties properties = ctx.getBean(TracingProperties.class);
+                    assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
+                });
+        assertThat(output).contains("platform.tracing.sampling.enabled");
+        assertThat(output).contains("platform.tracing.sampling.ratio");
+        assertThat(output).contains("platform.tracing.validation.enabled");
+        assertThat(output).contains("platform.tracing.validation.strict");
+    }
+
+    @Test
+    void bindsRequestIdHeader() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.sampling.route-ratios[/api]=0.5",
-                        "platform.tracing.sampling.route-ratios[/checkout]=1.0")
+                        "platform.tracing.request-id-header.enabled=false",
+                        "platform.tracing.request-id-header.name=X-Custom-Request-Id")
                 .run(ctx -> {
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getSampling().getRouteRatios())
-                            .containsEntry("/api", 0.5d)
-                            .containsEntry("/checkout", 1.0d);
-                });
-    }
-
-    @Test
-    void bindsValidationEnabled() {
-        contextRunner
-                .withPropertyValues("platform.tracing.validation.enabled=false")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getValidation().isEnabled()).isFalse();
-                });
-    }
-
-    @Test
-    void bindsValidationStrict() {
-        contextRunner
-                .withPropertyValues("platform.tracing.validation.strict=true")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getValidation().isStrict()).isTrue();
-                });
-    }
-
-    @Test
-    void bindsPlatformLogLevelAsEnum() {
-        contextRunner
-                .withPropertyValues("platform.tracing.log-level=warn")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getLogLevel()).isEqualTo(OtelAgentLogLevel.WARN);
-                });
-    }
-
-    @Test
-    void defaultPlatformLogLevelIsInfo() {
-        contextRunner.run(ctx -> {
-            TracingProperties properties = ctx.getBean(TracingProperties.class);
-            assertThat(properties.getLogLevel()).isEqualTo(OtelAgentLogLevel.INFO);
-        });
-    }
-
-    @Test
-    void rejectsUnknownPlatformLogLevel() {
-        contextRunner
-                .withPropertyValues("platform.tracing.log-level=verbose")
-                .run(ctx -> assertThat(ctx.getStartupFailure()).isNotNull());
-    }
-
-    @Test
-    void defaultValidationValues_preserved() {
-        contextRunner
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getValidation().isEnabled()).isTrue();
-                    assertThat(properties.getValidation().isStrict()).isFalse();
+                    assertThat(properties.getRequestIdHeader().isEnabled()).isFalse();
+                    assertThat(properties.getRequestIdHeader().getName()).isEqualTo("X-Custom-Request-Id");
                 });
     }
 

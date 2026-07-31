@@ -20,7 +20,7 @@ import java.util.Map;
  * ({@link OtelEffectiveConfigSnapshot}, {@link ResourceEffectiveSnapshot}).
  */
 @Endpoint(id = "tracing")
-public class TracingActuatorEndpoint {
+public class LegacyTracingDiagnosticsEndpoint {
 
     private static final String SPRING_APPLICATION_NAME = "spring.application.name";
 
@@ -34,7 +34,7 @@ public class TracingActuatorEndpoint {
 
     private SdkModeDiagnostics sdkModeDiagnostics;
 
-    public TracingActuatorEndpoint(TraceOperations traceOperations,
+    public LegacyTracingDiagnosticsEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
                                    SpanFactoryDiagnostics spanFactoryDiagnostics,
@@ -43,7 +43,7 @@ public class TracingActuatorEndpoint {
                 new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot(), environment);
     }
 
-    public TracingActuatorEndpoint(TraceOperations traceOperations,
+    public LegacyTracingDiagnosticsEndpoint(TraceOperations traceOperations,
                                    TracingProperties properties,
                                    PlatformTracingJmxClient jmxClient,
                                    SdkModeDiagnostics sdkModeDiagnostics,
@@ -53,7 +53,7 @@ public class TracingActuatorEndpoint {
                 new OtelEffectiveConfigSnapshot(), new ResourceEffectiveSnapshot(), environment);
     }
 
-    TracingActuatorEndpoint(TraceOperations traceOperations,
+    LegacyTracingDiagnosticsEndpoint(TraceOperations traceOperations,
                             TracingProperties properties,
                             PlatformTracingJmxClient jmxClient,
                             OtelEffectiveConfigSnapshot otelEffectiveSnapshot,
@@ -64,7 +64,7 @@ public class TracingActuatorEndpoint {
                 otelEffectiveSnapshot, resourceEffectiveSnapshot, environment);
     }
 
-    TracingActuatorEndpoint(TraceOperations traceOperations,
+    LegacyTracingDiagnosticsEndpoint(TraceOperations traceOperations,
                             TracingProperties properties,
                             PlatformTracingJmxClient jmxClient,
                             SdkModeDiagnostics sdkModeDiagnostics,
@@ -115,33 +115,24 @@ public class TracingActuatorEndpoint {
                 "name", nullSafe(springApplicationName())
         ));
 
+        // Sampling desired Spring mirrors removed; live state is Agent/JMX-owned
+        // (and Category A policy is platform.tracing.policy.sampling.*).
         Map<String, Object> samplingInfo = new LinkedHashMap<>();
-        samplingInfo.put("enabled", properties.getSampling().isEnabled());
-        samplingInfo.put("ratio", properties.getSampling().getRatio());
-        samplingInfo.put("routeRatios", properties.getSampling().getRouteRatios());
         samplingInfo.put("liveRatio", jmxClient.getCurrentRatio().orElse(null));
-        samplingInfo.put("samplerEnabled", jmxClient.isSamplerEnabled().orElse(null));
         samplingInfo.put("liveSamplerEnabled", jmxClient.isSamplerEnabled().orElse(null));
-        samplingInfo.put("liveDropPaths", jmxClient.getLiveDropPathPrefixes().orElse(null));
-        samplingInfo.put("liveForceRecordHeaderValues", jmxClient.getLiveForceRecordValues().orElse(null));
-        samplingInfo.put("liveRouteRatios", jmxClient.getLiveRouteRatios().orElse(null));
+        samplingInfo.put("routeRatioCount", jmxClient.getLiveRouteRatioCount().orElse(null));
         samplingInfo.put("controlAvailable", jmxClient.isAvailable());
-        // Category B drop-paths / force-record-values are Agent-owned (javaagent.sampling.*);
-        // Spring actuator no longer projects Spring-bound copies.
-
         samplingInfo.put("configVersion", jmxClient.getSamplingConfigVersion().orElse(null));
         samplingInfo.put("configSource", jmxClient.getSamplingConfigLastUpdatedSource().orElse(null));
         samplingInfo.put("invalidConfigCount", jmxClient.getInvalidConfigCount().orElse(null));
-
-        Map<String, Object> decisions = new LinkedHashMap<>(jmxClient.getSamplerDecisionCounts());
-        samplingInfo.put("decisions", decisions);
+        samplingInfo.put("decisions", new LinkedHashMap<>(jmxClient.getSamplerDecisionCounts()));
         info.put("sampling", samplingInfo);
 
         info.put("export", jmxClient.getExportMetrics()
                 .orElseGet(() -> Map.of("status", "not_ready")));
-        info.put("response", Map.of(
-                "exposeRequestIdHeader", properties.getResponse().isExposeRequestIdHeader(),
-                "headerName", properties.getResponse().getHeaderName()
+        info.put("requestIdHeader", Map.of(
+                "enabled", properties.getRequestIdHeader().isEnabled(),
+                "name", properties.getRequestIdHeader().getName()
         ));
 
         Map<String, Object> scrubbingInfo = new LinkedHashMap<>();
@@ -152,14 +143,11 @@ public class TracingActuatorEndpoint {
         scrubbingInfo.put("configSource", jmxClient.getScrubbingConfigLastUpdatedSource().orElse(null));
         Map<String, Long> scrubbingMetrics = jmxClient.getScrubbingMetrics();
         scrubbingInfo.put("liveRuleCount", scrubbingMetrics.isEmpty() ? null : scrubbingMetrics.get("rules.loaded"));
-        scrubbingInfo.put("customRulesSource", "otel-agent-spi");
-        scrubbingInfo.put("customRulesVisible", false);
-        scrubbingInfo.put("note", "SPI-реализации SpanAttributeScrubbingRule грузятся classloader'ом OTel Agent и в actuator не видны");
         info.put("scrubbing", scrubbingInfo);
 
+        // Validation desired Spring mirrors removed; live state is Agent/JMX-owned
+        // (Category A: platform.tracing.policy.validation.*).
         Map<String, Object> validationInfo = new LinkedHashMap<>();
-        validationInfo.put("enabled", properties.getValidation().isEnabled());
-        validationInfo.put("strict", properties.getValidation().isStrict());
         validationInfo.put("liveEnabled", jmxClient.isValidationEnabled().orElse(null));
         validationInfo.put("liveStrict", jmxClient.isValidationStrict().orElse(null));
         validationInfo.put("liveStrictRuntimeAllowed", jmxClient.isValidationStrictRuntimeAllowed().orElse(null));

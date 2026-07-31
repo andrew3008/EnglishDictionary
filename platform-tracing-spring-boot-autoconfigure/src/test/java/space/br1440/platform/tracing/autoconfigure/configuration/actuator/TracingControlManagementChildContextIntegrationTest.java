@@ -42,7 +42,7 @@ class TracingControlManagementChildContextIntegrationTest {
             "space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingObservationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.TracingActuatorAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingDiagnosticsActuatorAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.RequestContextSupplierAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration",
@@ -72,12 +72,12 @@ class TracingControlManagementChildContextIntegrationTest {
                         .isTrue();
 
                 // ActuatorAgentReadinessProbe and SpringActuatorTracingPolicyAdapter are registered
-                // in the root context (TracingActuatorAutoConfiguration.ActuatorAdapterConfiguration
+                // in the root context (TracingPolicyControlAutoConfiguration.ActuatorAdapterConfiguration
                 // is a plain nested @Configuration, not @ManagementContextConfiguration); the
                 // management child context's TracingControlMvcController resolves
                 // SpringActuatorTracingPolicyAdapter from the shared parent context.
-                TracingActuatorAutoConfiguration.ActuatorAgentReadinessProbe probe =
-                        context.getBean(TracingActuatorAutoConfiguration.ActuatorAgentReadinessProbe.class);
+                TracingPolicyControlAutoConfiguration.ActuatorAgentReadinessProbe probe =
+                        context.getBean(TracingPolicyControlAutoConfiguration.ActuatorAgentReadinessProbe.class);
                 assertThat(probe.isRunning())
                         .as("readiness probe must reach RUNNING after a successful readAcceptedComplete")
                         .isTrue();

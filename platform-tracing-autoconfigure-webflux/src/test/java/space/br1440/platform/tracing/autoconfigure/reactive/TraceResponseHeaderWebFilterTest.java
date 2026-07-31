@@ -52,7 +52,7 @@ class TraceResponseHeaderWebFilterTest {
         when(traceOperations.traceContext()).thenReturn(traceContext);
         when(traceContext.traceId()).thenReturn(Optional.of(TRACE_ID));
         var properties = new TracingProperties();
-        properties.getResponse().setExposeRequestIdHeader(false);
+        properties.getRequestIdHeader().setEnabled(false);
         var filter = new TraceResponseHeaderWebFilter(traceOperations, properties);
         var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/no-request-id")
                 .header("X-Request-Id", "req-hidden")
@@ -64,7 +64,7 @@ class TraceResponseHeaderWebFilterTest {
         exchange.getResponse().setComplete().block();
 
         // then
-        assertThat(exchange.getResponse().getHeaders().getFirst(properties.getResponse().getHeaderName())).isNull();
+        assertThat(exchange.getResponse().getHeaders().getFirst(properties.getRequestIdHeader().getName())).isNull();
         assertThat(exchange.getResponse().getHeaders().getFirst("X-Trace-Id")).isEqualTo(TRACE_ID);
     }
 

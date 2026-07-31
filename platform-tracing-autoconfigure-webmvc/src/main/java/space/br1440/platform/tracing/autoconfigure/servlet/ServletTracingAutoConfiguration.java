@@ -52,7 +52,7 @@ public class ServletTracingAutoConfiguration {
      * <p>
      * Фильтр регистрируется всегда (при активной авто-конфигурации). Запись
      * {@code X-Request-Id} в ответ гейтится runtime-флагом
-     * {@code platform.tracing.response.expose-request-id-header}; {@code X-Trace-Id},
+     * {@code platform.tracing.request-id-header.enabled}; {@code X-Trace-Id},
      * identity scope и boundary cleanup не зависят от этого флага.
      */
     @Bean

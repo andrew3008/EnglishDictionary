@@ -13,7 +13,6 @@ import javax.management.MBeanServer;
 import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,27 +53,6 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void getMBeansStatus_все_false_если_ни_один_не_зарегистрирован() {
-        Map<TracingControlDomain, Boolean> status = client.getMBeansStatus();
-
-        assertThat(status).containsKeys(
-                TracingControlDomain.SAMPLING, TracingControlDomain.SCRUBBING,
-                TracingControlDomain.VALIDATION, TracingControlDomain.EXPORT,
-                TracingControlDomain.PROCESSOR_METRICS, TracingControlDomain.DIAGNOSTICS);
-        assertThat(status.values()).allMatch(v -> !v);
-    }
-
-    @Test
-    void getMBeansStatus_sampling_true_после_регистрации_только_sampling() throws Exception {
-        registerSamplingMBean();
-
-        Map<TracingControlDomain, Boolean> status = client.getMBeansStatus();
-
-        assertThat(status.get(TracingControlDomain.SAMPLING)).isTrue();
-        assertThat(status.get(TracingControlDomain.SCRUBBING)).isFalse();
-    }
-
-    @Test
     void getCurrentRatio_возвращает_empty_если_sampling_недоступен() {
         assertThat(client.getCurrentRatio()).isEmpty();
     }
@@ -85,13 +63,14 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void getLiveDropPathPrefixes_возвращает_empty_если_недоступен() {
-        assertThat(client.getLiveDropPathPrefixes()).isEmpty();
+    void getLiveRouteRatioCount_возвращает_empty_если_недоступен() {
+        assertThat(client.getLiveRouteRatioCount()).isEmpty();
     }
 
     @Test
-    void getLiveRouteRatios_возвращает_empty_если_недоступен() {
-        assertThat(client.getLiveRouteRatios()).isEmpty();
+    void getLiveRouteRatioCount_возвращает_ноль_для_пустой_карты() throws Exception {
+        registerSamplingMBean();
+        assertThat(client.getLiveRouteRatioCount()).contains(0);
     }
 
     @Test
@@ -138,10 +117,10 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void allMBeansAvailable_true_после_регистрации_sampling() throws Exception {
+    void allMBeansAvailable_false_после_регистрации_только_sampling() throws Exception {
         registerSamplingMBean();
         assertThat(client.allMBeansAvailable()).isFalse();
-        assertThat(client.getMBeansStatus().get(TracingControlDomain.SAMPLING)).isTrue();
+        assertThat(client.isSamplerEnabled()).isPresent();
     }
 
     @Test

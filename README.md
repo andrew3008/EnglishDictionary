@@ -44,7 +44,7 @@ Tracing-стартер **не** пишет `traceId`/`spanId`/`traceFlags` в SL
 - [ADR-mdc-via-otel-agent-logback.md](docs/decisions/ADR-mdc-via-otel-agent-logback.md)
 - [runbook/mdc-logging-production.md](docs/runbook/mdc-logging-production.md) — SRE rollout
 - [runbook/actuator-tracing-diagnostics.md](docs/runbook/actuator-tracing-diagnostics.md) — `otelEffective` / `otelEnvHints`
-- [MIGRATION.md](docs/MIGRATION.md) — bridge-otel opt-in (dev/staging)
+- [SUPPORTED.md](docs/SUPPORTED.md) — supported contracts and authority
 
 ## Сборка
 

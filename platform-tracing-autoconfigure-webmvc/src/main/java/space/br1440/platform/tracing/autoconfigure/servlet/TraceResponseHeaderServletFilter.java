@@ -24,7 +24,7 @@ import space.br1440.platform.tracing.autoconfigure.support.RequestIdBoundarySupp
 /**
  * Сервлет-фильтр, добавляющий request/trace заголовки в HTTP-ответ.
  * <p>
- * {@code X-Request-Id} (имя — {@code platform.tracing.response.header-name}) — это
+ * {@code X-Request-Id} (имя — {@code platform.tracing.request-id-header.name}) — это
  * <b>edge-stable requestId</b> (НЕ traceId и НЕ business correlationId): входящий
  * валидируется и переиспользуется, при отсутствии генерируется UUIDv4. Авторитетный trace-id
  * возвращается отдельно в {@link PlatformHeaders#X_TRACE_ID} (только для валидного span context).
@@ -95,9 +95,9 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
 
                 if (!response.isCommitted()) {
                     try {
-                        // X-Request-Id: opt-out через platform.tracing.response.expose-request-id-header.
-                        if (properties.getResponse().isExposeRequestIdHeader()) {
-                            response.setHeader(properties.getResponse().getHeaderName(), requestId);
+                        // X-Request-Id: opt-out через platform.tracing.request-id-header.enabled.
+                        if (properties.getRequestIdHeader().isEnabled()) {
+                            response.setHeader(properties.getRequestIdHeader().getName(), requestId);
                         }
                         capturedTraceId.ifPresent(traceId ->
                                 response.setHeader(PlatformHeaders.X_TRACE_ID, traceId));

@@ -36,7 +36,7 @@ public class PlatformOutboundPropagationAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public PlatformOutboundPropagation platformOutboundPropagation(TracingProperties properties) {
-        TracingProperties.Propagation.PlatformHeadersConfig headers =
+        TracingProperties.Propagation.PlatformHeaderNames headers =
                 properties.getPropagation().getPlatformHeaders();
         return new DefaultTraceControlHeaderInjector(
                 headers.getForceTraceHeader(),

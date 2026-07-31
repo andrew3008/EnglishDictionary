@@ -38,7 +38,7 @@ Spring Framework [#30632](https://github.com/spring-projects/spring-framework/is
 | Работа с OTel Java Agent | **Да** (capture-before-chain) | N/A |
 | Тайминг записи | Capture до chain, write в `finally` | N/A |
 | WebFlux parity | `TraceResponseHeaderWebFilter` (`beforeCommit`) | N/A |
-| Конфигурация | `platform.tracing.response.*` | — |
+| Конфигурация | `platform.tracing.request-id-header.*` | — |
 
 ### Capture-before-chain (критично для Agent)
 
@@ -59,8 +59,8 @@ OTel Java Agent закрывает SERVER span при выходе из servlet 
 **KEEP custom filters (вариант HYBRID на перспективу).**
 
 - v1.0: сохраняем `TraceResponseHeaderServletFilter` и `TraceResponseHeaderWebFilter`.
-- Заголовки по умолчанию: `X-Request-Id` (primary, `platform.tracing.response.header-name`) + всегда `X-Trace-Id`.
-- `expose-request-id-header=false` отключает только запись `X-Request-Id`; фильтр (identity boundary + `X-Trace-Id`) остаётся.
+- Заголовки по умолчанию: `X-Request-Id` (primary, `platform.tracing.request-id-header.name`) + всегда `X-Trace-Id`.
+- `request-id-header.enabled=false` отключает только запись `X-Request-Id`; фильтр (identity boundary + `X-Trace-Id`) остаётся.
 - Источник trace context: `TraceOperations.currentTraceId()` — абстракция над Micrometer Tracer / OTel bridge, **не** прямой доступ к Agent API.
 
 > **Обновлено (Фаза 12, [ADR-request-id-correlation-id.md](./ADR-request-id-correlation-id.md)).** Семантика `X-Request-Id` изменена:
@@ -81,9 +81,9 @@ OTel Java Agent закрывает SERVER span при выходе из servlet 
 ```yaml
 platform:
   tracing:
-    response:
-      expose-request-id-header: true   # default: true
-      header-name: X-Request-Id      # default
+    request-id-header:
+      enabled: true         # default: true; opt-out записи X-Request-Id
+      name: X-Request-Id    # default
 ```
 
 ## Связанные артефакты

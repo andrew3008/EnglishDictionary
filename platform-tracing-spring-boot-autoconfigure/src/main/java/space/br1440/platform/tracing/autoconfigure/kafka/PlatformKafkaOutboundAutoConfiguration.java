@@ -18,11 +18,11 @@ import space.br1440.platform.tracing.otel.propagation.control.DefaultOutboundPro
 import space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers;
 
 /**
- * Авто-конфигурация исходящей инжекции платформенных заголовков в Kafka producer (agent-compatible).
+ * Авто-конфигурация исходящей инжекции платформенных заголовков в Kafka producer.
  * <p>
- * Активна при {@code platform.tracing.kafka.propagate-platform-headers=true}. Режим
- * {@code platform.tracing.kafka.mode=disabled} приводит к {@code DENY_ALL} (интерсептор остаётся,
- * но ничего не инжектит). Span'ы Kafka создаёт OTel Java Agent — платформа их не дублирует.
+ * Активна при {@code platform.tracing.kafka.propagate-platform-headers=true}. При активации
+ * policy enabled (как HTTP {@code propagation.outbound.enabled}); фактический inject режется
+ * {@code trusted-topic-patterns}. Span'ы Kafka создаёт OTel Java Agent — платформа их не дублирует.
  */
 @AutoConfiguration
 @AutoConfigureAfter(PlatformOutboundPropagationAutoConfiguration.class)
@@ -43,11 +43,10 @@ public class PlatformKafkaOutboundAutoConfiguration {
         TracingProperties.Kafka kafka = properties.getKafka();
         TracingProperties.Propagation.Outbound outbound = properties.getPropagation().getOutbound();
 
-        // enabled для Kafka = режим agent-compatible (disabled -> DENY_ALL).
-        boolean enabled = "agent-compatible".equalsIgnoreCase(kafka.getMode());
-        TrustedDestinationMatcher topicMatcher = TrustedDestinationMatchers.forKafkaTopics(kafka.getTrustedTopicPatterns());
+        TrustedDestinationMatcher topicMatcher =
+                TrustedDestinationMatchers.forKafkaTopics(kafka.getTrustedTopicPatterns());
         OutboundPropagationPolicy policy = new DefaultOutboundPropagationPolicy(
-                enabled,
+                true,
                 topicMatcher,
                 outbound.isPropagateForceTrace(),
                 outbound.isPropagateQaTrace(),

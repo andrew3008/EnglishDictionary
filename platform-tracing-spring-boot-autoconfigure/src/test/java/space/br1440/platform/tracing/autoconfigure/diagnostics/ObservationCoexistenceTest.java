@@ -110,7 +110,7 @@ class ObservationCoexistenceTest {
                     InMemorySpanExporter exporter = context.getBean(InMemorySpanExporter.class);
 
                     assertThat(tracing).isInstanceOf(NoopTraceOperations.class);
-                    assertThat(context.getBean(SpanFactoryDiagnostics.class).view().mode())
+                    assertThat(context.getBean(SpanFactoryDiagnostics.class).toActuatorMap().get("mode"))
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
 
                     Observation observation = Observation.createNotStarted("observation-only", observationRegistry)

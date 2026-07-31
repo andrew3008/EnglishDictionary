@@ -182,7 +182,8 @@ Tracing-стартер **не** пишет `traceId`/`spanId`/`traceFlags` в MD
 
 Подробный runbook: [runbook/mdc-logging-production.md](./runbook/mdc-logging-production.md).
 
-**Не** ожидайте транзитивного `micrometer-tracing-bridge-otel` из tracing-стартера (Wave 2c) — см. [MIGRATION.md](./MIGRATION.md).
+**Не** ожидайте транзитивного `micrometer-tracing-bridge-otel` из tracing-стартера (Wave 2c) —
+см. [ADR-mdc-via-otel-agent-logback.md](./decisions/ADR-mdc-via-otel-agent-logback.md).
 
 ---
 

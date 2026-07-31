@@ -6,9 +6,7 @@ import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedPolicyL
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedPolicyProjection;
 import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.configuration.AgentReadinessView;
-import space.br1440.platform.tracing.autoconfigure.configuration.TracingApplyDiagnostics;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -19,21 +17,14 @@ import java.util.Map;
  * surface must be restricted to HTTP.
  * <p>
  * Depends only on {@link AcceptedTracingPolicyReader}. No write capability.
- * Assembles response from three separate truth-category projections.
- * <p>
- * Apply diagnostics rendering:
- * <ul>
- *   <li>{@link TracingApplyDiagnostics#isAbsent()} → {@code {"available": false}}
- *       — diagnostics are not exposed by the PROPOSED_PRIV_R07 complete-read path.</li>
- *   <li>Otherwise → {@code {"available": true, "policyDigest": ..., "latestApplyOutcome": ...}}</li>
- * </ul>
+ * Assembles response from separate truth-category projections.
  */
 @Endpoint(id = "tracingPolicy")
-public final class TracingActuatorEndpoint {
+public final class AcceptedPolicyActuatorEndpoint {
 
     private final AcceptedTracingPolicyReader reader;
 
-    public TracingActuatorEndpoint(AcceptedTracingPolicyReader reader) {
+    public AcceptedPolicyActuatorEndpoint(AcceptedTracingPolicyReader reader) {
         this.reader = reader;
     }
 
@@ -47,7 +38,6 @@ public final class TracingActuatorEndpoint {
     private Map<String, Object> toResponse(AcceptedPolicyProjection p) {
         AgentReadinessView readiness = p.agentReadiness();
         AcceptedPolicyLeaves leaves   = p.policy();
-        TracingApplyDiagnostics diag  = p.diagnostics();
         return Map.of(
                 "agent", Map.of(
                         "runtimeInstanceId", readiness.runtimeInstanceId(),
@@ -63,19 +53,7 @@ public final class TracingActuatorEndpoint {
                         "exporter.enabled",                          leaves.exporterEnabled(),
                         "propagation.trace-control-headers.enabled", leaves.traceControlHeadersEnabled(),
                         "diagnostics.log-level",                     leaves.diagnosticsLogLevel()
-                ),
-                "applyDiagnostics", renderDiagnostics(diag)
+                )
         );
-    }
-
-    private static Map<String, Object> renderDiagnostics(TracingApplyDiagnostics diag) {
-        if (diag.isAbsent()) {
-            return Map.of("available", false);
-        }
-        Map<String, Object> result = new HashMap<>();
-        result.put("available", true);
-        diag.policyDigest().ifPresent(v -> result.put("policyDigest", v));
-        diag.latestApplyOutcome().ifPresent(v -> result.put("latestApplyOutcome", v));
-        return result;
     }
 }

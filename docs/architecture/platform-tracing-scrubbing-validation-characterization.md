@@ -247,7 +247,7 @@ New tests: `ValidationPolicyRuntimeUpdateJmxTest`.
 |-----------|------|
 | `ValidationRuntimeConfig` | View: `enabled`, `strict`; source `spring-runtime-config` |
 | `RuntimeConfigApplier.applyValidation` | → `SamplingControlClient.updateValidationPolicy(ValidationRuntimeConfig)` → one JMX call |
-| `TracingProperties.Validation` | Runtime-mutable schema v1: `platform.tracing.validation.enabled`, `platform.tracing.validation.strict` |
+| `TracingProperties.MandatorySpanAttributes` | Runtime-mutable schema v1: `platform.tracing.validation.enabled`, `platform.tracing.validation.strict` |
 
 - Refresh: `RefreshScopeRefreshedEvent` listener unchanged; `RuntimeConfigApplier` not `@RefreshScope`.
 - Spring is input/reconciliation layer only; agent `ValidationPolicyHolder` remains source of truth.
@@ -260,7 +260,7 @@ New tests: `ValidationRuntimeConfigTest`, extended `RuntimeConfigApplierTest`, `
 
 | Domain | Configured (Spring) | Live (agent via JMX) | Diagnostics |
 |--------|---------------------|----------------------|-------------|
-| Sampling | `enabled`, `ratio`, `dropPaths`, `routeRatios`, … | `liveRatio`, `liveSamplerEnabled`, `liveDropPaths`, `liveRouteRatios`, … | `configVersion`, `configSource` |
+| Sampling | *(Spring desired mirrors removed; Category A via `platform.tracing.policy.*`)* | `liveRatio`, `liveSamplerEnabled`, `routeRatioCount`, … | `configVersion`, `configSource` |
 | Scrubbing | `enabled`, `builtInRules` | `liveEnabled`, `liveRuleCount` | `configVersion`, `configSource` |
 | Validation | `enabled`, **`strict`**, **`strictRuntimeAllowed`** | `liveEnabled`, **`liveStrict`**, **`liveStrictRuntimeAllowed`** | `configVersion`, `configSource` |
 
@@ -285,7 +285,7 @@ New tests: extended `TracingActuatorEndpointTest`.
 | `platform.tracing.validation.strict-runtime-allowed` | Startup-only agent flag (default `false`); when `false`, runtime updates with `strict=true` are rejected |
 | `ValidationPolicyHolder.tryApplyPolicyUpdate` | Rejects `strict=true` before CAS when guard disabled; LKG retained |
 | `PlatformTracingControl.updateValidationPolicy` | `InvalidConfigCount++` on rejection; version/source unchanged |
-| `TracingProperties.Validation.strictRuntimeAllowed` | Spring binding for startup/agent config parity (not runtime-mutable via reconciler) |
+| `TracingProperties.MandatorySpanAttributes` (historical note: `strictRuntimeAllowed`) | Was Spring binding for startup/agent config parity; removed from Spring — agent-only via `platform.tracing.validation.strict-runtime-allowed` |
 
 - **Production recommendation:** `validation.strict=false`, `validation.strict-runtime-allowed=false`.
 - **CI/test/pre-prod:** set `strict-runtime-allowed=true` only when runtime strict toggling is explicitly intended.
@@ -307,7 +307,7 @@ New tests: `ValidationStrictRuntimeGuardTest`; updated `ValidationPolicyRuntimeU
 
 - **Production recommendation:** `validation.strict=false`, `validation.strict-runtime-allowed=false`, `actuator.mutation-enabled=false`.
 - **Startup strict:** `validation.strict=true` remains valid for CI/test/pre-prod diagnostics; emits startup WARN; can throw from `Span.end()` on business thread — separate from PR-9F runtime guard.
-- **`strictRuntimeAllowed` drift:** Spring `TracingProperties.Validation.strictRuntimeAllowed` is configured view; `liveStrictRuntimeAllowed` on read model is agent enforcement. Agent reads startup config from `ExtensionConfig` / `ConfigProperties` (`ExtensionPropertyNames` keys); values can differ if Spring is not agent startup source.
+- **`strictRuntimeAllowed` drift:** Spring no longer binds `strictRuntimeAllowed` (agent-only). `liveStrictRuntimeAllowed` on read model is agent enforcement. Agent reads startup config from `ExtensionConfig` / `ConfigProperties` (`ExtensionPropertyNames` keys); values can differ if Spring is not agent startup source.
 - Actuator mutation guard does **not** protect direct JMX.
 
 New tests: `ValidationStartupStrictPolicyTest`; extended `TracingActuatorEndpointTest`, `TracingPropertiesBindingTest`.

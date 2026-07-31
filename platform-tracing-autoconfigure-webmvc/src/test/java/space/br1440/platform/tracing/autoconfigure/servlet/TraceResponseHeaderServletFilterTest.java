@@ -91,7 +91,7 @@ class TraceResponseHeaderServletFilterTest {
 
         InOrder order = inOrder(chain, response);
         order.verify(chain).doFilter(request, response);
-        order.verify(response).setHeader(eq(properties.getResponse().getHeaderName()), eq("req-incoming-1"));
+        order.verify(response).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-incoming-1"));
         order.verify(response).setHeader(eq(PlatformHeaders.X_TRACE_ID), eq("trace-abc-123"));
         assertThat(seenInsideChain.get()).isEmpty();
     }
@@ -105,13 +105,13 @@ class TraceResponseHeaderServletFilterTest {
         filter.doFilter(request, response, chain);
 
         verify(response, never()).setHeader(eq(PlatformHeaders.X_TRACE_ID), anyString());
-        verify(response, times(1)).setHeader(eq(properties.getResponse().getHeaderName()), eq("req-2"));
+        verify(response, times(1)).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-2"));
     }
 
     @Test
     void skipsRequestIdHeaderWhenExposeDisabled_butStillWritesTraceId() throws ServletException, java.io.IOException {
         // given
-        properties.getResponse().setExposeRequestIdHeader(false);
+        properties.getRequestIdHeader().setEnabled(false);
         when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-hidden");
         when(traceContextView.traceId()).thenReturn(Optional.of("trace-keep"));
         when(response.isCommitted()).thenReturn(false);
@@ -120,7 +120,7 @@ class TraceResponseHeaderServletFilterTest {
         filter.doFilter(request, response, chain);
 
         // then
-        verify(response, never()).setHeader(eq(properties.getResponse().getHeaderName()), anyString());
+        verify(response, never()).setHeader(eq(properties.getRequestIdHeader().getName()), anyString());
         verify(response).setHeader(PlatformHeaders.X_TRACE_ID, "trace-keep");
     }
 

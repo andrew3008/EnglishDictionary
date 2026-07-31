@@ -8,7 +8,6 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
@@ -42,7 +41,6 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
         prefix = TracingProperties.PREFIX + ".thread-pool-task-executor",
         name = "enabled",
         havingValue = "true")
-@EnableConfigurationProperties(TracingProperties.class)
 public class TracingAsyncContextAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(TracingAsyncContextAutoConfiguration.class);

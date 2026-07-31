@@ -37,7 +37,8 @@ dependencies {
 
 Версии OTel — из `platform-tracing-bom` / [SUPPORTED.md](../SUPPORTED.md).
 
-Dev/staging без Agent: явный opt-in bridge — [MIGRATION.md](../MIGRATION.md).
+Dev/staging без Agent: явный opt-in bridge —
+см. [ADR-mdc-via-otel-agent-logback.md](../decisions/ADR-mdc-via-otel-agent-logback.md).
 
 ---
 
@@ -138,5 +139,5 @@ $env:DOCKER_HOST = "tcp://<docker-host>:2375"
 ## Связанные документы
 
 - [SUPPORTED.md](../SUPPORTED.md) — compatibility matrix
-- [MIGRATION.md](../MIGRATION.md) — bridge-otel opt-in (dev only)
+- [ADR-mdc-via-otel-agent-logback.md](../decisions/ADR-mdc-via-otel-agent-logback.md) — bridge-otel opt-in (dev only)
 - [traceability.md](../tracing/traceability.md) — G2-MDC-e2e, G2-05-e2e

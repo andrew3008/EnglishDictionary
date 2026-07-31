@@ -30,7 +30,6 @@ WebMvc/WebFlux **не добавляют** своих `@ConfigurationProperties`
 - [SUPPORTED.md](../SUPPORTED.md)
 - [runbook/actuator-tracing-diagnostics.md](../runbook/actuator-tracing-diagnostics.md)
 - [ADR-spring-owns-only-what-spring-applies.md](../decisions/ADR-spring-owns-only-what-spring-applies.md)
-- [MIGRATION.md](../MIGRATION.md)
 
 ---
 
@@ -181,14 +180,14 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `scrubbing.built-in-rules` | `PLATFORM_TRACING_SCRUBBING_BUILT_IN_RULES` | 12 rules | Нет | Spring → Agent JMX | Список правил |
 | `scrubbing.rules-config` | `PLATFORM_TRACING_SCRUBBING_RULES_CONFIG` | — | Нет | Agent | Путь к `.properties` |
 | **exporter** | | | | | |
-| `exporter.enabled` | `PLATFORM_TRACING_EXPORTER_ENABLED` | `true` | Нет | Spring (runtime) | Export kill-switch |
+| `policy.exporter.enabled` | `PLATFORM_TRACING_POLICY_EXPORTER_ENABLED` | `true` | Да (Category A) | Agent / Config Server | Export kill-switch |
 | `exporter.otlp.endpoint` | `PLATFORM_TRACING_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4317` | Нет | Spring hint → `OTEL_*` | OTLP endpoint |
 | `exporter.otlp.retry.enabled` | `PLATFORM_TRACING_EXPORTER_OTLP_RETRY_ENABLED` | `true` | Нет | Spring hint | Retry toggle |
 | `exporter.otlp.retry.initial-backoff` | `PLATFORM_TRACING_EXPORTER_OTLP_RETRY_INITIAL_BACKOFF` | `1s` | Нет | Spring | Initial backoff |
 | `exporter.otlp.retry.max-backoff` | `PLATFORM_TRACING_EXPORTER_OTLP_RETRY_MAX_BACKOFF` | `30s` | Нет | Spring | Max backoff |
-| **response** (WebMvc + WebFlux) | | | | | |
-| `response.expose-request-id-header` | `PLATFORM_TRACING_RESPONSE_EXPOSE_REQUEST_ID_HEADER` | `true` | Нет | Spring | runtime opt-out только для `X-Request-Id` в ответе (фильтр всегда активен) |
-| `response.header-name` | `PLATFORM_TRACING_RESPONSE_HEADER_NAME` | `X-Request-Id` | Нет | Spring | Имя заголовка ответа |
+| **request-id-header** (WebMvc + WebFlux) | | | | | |
+| `request-id-header.enabled` | `PLATFORM_TRACING_REQUEST_ID_HEADER_ENABLED` | `true` | Нет | Spring | runtime opt-out только для `X-Request-Id` в ответе (фильтр всегда активен) |
+| `request-id-header.name` | `PLATFORM_TRACING_REQUEST_ID_HEADER_NAME` | `X-Request-Id` | Нет | Spring | Имя заголовка ответа |
 | **service-names** | | | | | |
 | `service-names.record-remote-on-client-error` | `PLATFORM_TRACING_SERVICE_NAMES_RECORD_REMOTE_ON_CLIENT_ERROR` | `true` | Нет | Spring | `platform.remote.service` на ERROR |
 | `service-names.remote-attribute-priority` | `PLATFORM_TRACING_SERVICE_NAMES_REMOTE_ATTRIBUTE_PRIORITY` | peer/rpc/server | Нет | Spring | Приоритет атрибутов |
@@ -212,7 +211,6 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `watchdog.enabled` | `PLATFORM_TRACING_WATCHDOG_ENABLED` | `true` | Нет | Agent | SpanWatchdogProcessor |
 | `watchdog.scan-interval` | `PLATFORM_TRACING_WATCHDOG_SCAN_INTERVAL` | `5s` | Нет | Agent | Интервал сканирования |
 | **propagation** | | | | | |
-| `propagation.enabled` | `PLATFORM_TRACING_PROPAGATION_ENABLED` | `true` | Нет | Spring (runtime) | Платформенные заголовки |
 | `propagation.platform-headers.force-trace-header` | `PLATFORM_TRACING_PROPAGATION_PLATFORM_HEADERS_FORCE_TRACE_HEADER` | `X-Trace-On` | Нет | Spring | Force trace header |
 | `propagation.platform-headers.qa-trace-header` | `PLATFORM_TRACING_PROPAGATION_PLATFORM_HEADERS_QA_TRACE_HEADER` | `X-QA-Trace` | Нет | Spring | QA header |
 | `propagation.platform-headers.request-id-header` | `PLATFORM_TRACING_PROPAGATION_PLATFORM_HEADERS_REQUEST_ID_HEADER` | `X-Request-Id` | Нет | Spring | Request ID header |
@@ -228,12 +226,11 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `propagation.baggage.allowed-keys` | `PLATFORM_TRACING_PROPAGATION_BAGGAGE_ALLOWED_KEYS` | 3 keys | Нет | Agent (mirror) | Allowlist |
 | `propagation.baggage.deny-patterns` | `PLATFORM_TRACING_PROPAGATION_BAGGAGE_DENY_PATTERNS` | password/secret/token | Нет | Agent (mirror) | Deny patterns |
 | **kafka** | | | | | |
-| `kafka.batch-links-enabled` | `PLATFORM_TRACING_KAFKA_BATCH_LINKS_ENABLED` | `false` | Нет | Spring | Batch @KafkaListener links |
-| `kafka.mode` | `PLATFORM_TRACING_KAFKA_MODE` | `agent-compatible` | Нет | Spring | `agent-compatible\|disabled` |
-| `kafka.propagate-platform-headers` | `PLATFORM_TRACING_KAFKA_PROPAGATE_PLATFORM_HEADERS` | `false` | Cond. | Spring | Producer header inject |
+| `kafka.batch-links-enabled` | `PLATFORM_TRACING_KAFKA_BATCH_LINKS_ENABLED` | `false` | Нет | Spring (`@ConditionalOnProperty`) | Batch @KafkaListener links; нет листа в `TracingProperties` |
+| `kafka.propagate-platform-headers` | `PLATFORM_TRACING_KAFKA_PROPAGATE_PLATFORM_HEADERS` | `false` | Cond. | Spring (`@ConditionalOnProperty`) | Producer header inject; нет листа в `TracingProperties` |
 | `kafka.trusted-topic-patterns` | `PLATFORM_TRACING_KAFKA_TRUSTED_TOPIC_PATTERNS` | `[]` | **Cond.** | Spring | Glob доверенных топиков |
 | **thread-pool-task-executor** | | | | | |
-| `thread-pool-task-executor.enabled` | `PLATFORM_TRACING_THREAD_POOL_TASK_EXECUTOR_ENABLED` | `false` | Нет | Spring (bootstrap) | Перенос текущего OTel Context/MDC в задачи `ThreadPoolTaskExecutor`; span не создаёт |
+| `thread-pool-task-executor.enabled` | `PLATFORM_TRACING_THREAD_POOL_TASK_EXECUTOR_ENABLED` | `false` | Нет | Spring (bootstrap, `@ConditionalOnProperty`) | Перенос текущего OTel Context/MDC в задачи `ThreadPoolTaskExecutor`; span не создаёт; нет листа в `TracingProperties` |
 | **diagnostics** | | | | | |
 | `diagnostics.dual-channel-warn` | `PLATFORM_TRACING_DIAGNOSTICS_DUAL_CHANNEL_WARN` | `true` | Нет | Spring | WARN при drift Spring↔Agent |
 | `diagnostics.drop-oldest-aspiration-warn` | `PLATFORM_TRACING_DIAGNOSTICS_DROP_OLDEST_ASPIRATION_WARN` | `true` | Нет | Spring | WARN DROP_OLDEST mismatch |

@@ -30,7 +30,7 @@ class TracingControlWebFluxManagementChildContextIntegrationTest {
             "space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingAopAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingObservationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.TracingActuatorAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingDiagnosticsActuatorAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.RequestContextSupplierAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration",
@@ -69,8 +69,8 @@ class TracingControlWebFluxManagementChildContextIntegrationTest {
                 // pr0StarterDependencySmoke); physical Servlet absence on pure reactive classpaths is
                 // covered by TracingControlManagementContextAbsenceTest.actuatorLocalWithoutWebMvc.
 
-                TracingActuatorAutoConfiguration.ActuatorAgentReadinessProbe probe =
-                        context.getBean(TracingActuatorAutoConfiguration.ActuatorAgentReadinessProbe.class);
+                TracingPolicyControlAutoConfiguration.ActuatorAgentReadinessProbe probe =
+                        context.getBean(TracingPolicyControlAutoConfiguration.ActuatorAgentReadinessProbe.class);
                 assertThat(probe.isRunning()).isTrue();
 
                 int managementPort = managementPort(context);
