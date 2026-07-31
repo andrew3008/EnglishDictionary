@@ -2,15 +2,18 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-07-31 |
-| Baseline HEAD | `bdf0b6170e3125a86b6d105296e25ac02ec519ed` (`P6 Part_4`) |
-| Branch | `master` |
-| Working tree | Dirty — A0–A6, Wave2, and this remediation uncommitted |
+| Report date | 2026-07-31 |
+| Audit baseline HEAD | `bdf0b6170e3125a86b6d105296e25ac02ec519ed` (`P6 Part_4`) |
+| Closure SHA | `f572df6ba33e531537f22f1a5b34a189725de436` (`Refactoring`) |
+| Branch | `master` → `english-dict/master` (in sync) |
+| Working tree at rewrite | Clean at `f572df6` (this report rewrite may dirty it again) |
 | Prior audit | [`consolidated-post-implementation-audit.md`](./consolidated-post-implementation-audit.md) (verdict `FAIL`) |
 | Key census | [`legacy-key-ownership-census.md`](./legacy-key-ownership-census.md) |
 | New production classes | **0** |
 | Java / Gradle | 21.0.6 / 8.14 |
 | Docker | `DOCKER_HOST=tcp://192.168.100.70:2375` (Gentoo Engine 28.0.4) |
+
+Verification for WP1–WP3 and Docker E2E was executed on the dirty working tree that became commit `f572df6`. Gates below refer to that tree; the commit message is `Refactoring`.
 
 ---
 
@@ -18,7 +21,7 @@
 
 **`PASS`**
 
-The consolidated audit’s three remediation packages are closed on the current working tree:
+Post-P6 autoconfigure cleanup (A0–A6), Wave2 disclosure hardening, and the three audit remediation packages are landed on `master` at `f572df6` and pushed to `english-dict/master`.
 
 | Package | Outcome |
 |---------|---------|
@@ -26,9 +29,7 @@ The consolidated audit’s three remediation packages are closed on the current 
 | WP2 — always-null Category B count surfaces | Removed; `routeRatioCount` retained |
 | WP3 — silent obsolete Spring Category A mirrors | Exact-key census + deterministic Spring startup behavior |
 
-Mandatory local gates and Docker E2E on the post-remediation tree are green. First-run failures (inventory drift; Docker daemon down) are retained below and do not overturn the later successful runs.
-
-Commit and push were not performed.
+Mandatory local gates and Docker E2E on the post-remediation tree were green before push. First-run failures (inventory drift; Docker daemon down) remain recorded and do not overturn later successful runs.
 
 ---
 
@@ -36,8 +37,8 @@ Commit and push were not performed.
 
 | Item | Value |
 |------|-------|
-| HEAD | `bdf0b61` — last committed work is P6 cutover |
-| A0–A6 / Wave2 | Present only in the dirty working tree |
+| HEAD | `bdf0b61` — last committed work was P6 cutover |
+| Working tree | Dirty — A0–A6 + Wave2 uncommitted |
 | Audit baseline drift | None — remediation started from the audited tree |
 | Pre-production policy | Breaking cleanup allowed; no compatibility aliases reintroduced |
 
@@ -45,7 +46,7 @@ Commit and push were not performed.
 
 ## 3. Existing changes preserved
 
-Left intact (not rolled back):
+Left intact through remediation and included in `f572df6`:
 
 - Waves A0–A6 (dead SAFE_DELETE, Actuator rename, Category A Spring mirror removal, shared `PrivateJmxControlAutoConfiguration`, `getMBeansStatus` / `TracingControlDomain` deletion, `SpanFactoryDiagnostics.toActuatorMap()`)
 - Wave2 disclosure hardening (raw HTTP route/drop/force values removed; scrubbing hardcoded strings removed)
@@ -65,7 +66,7 @@ Not restored: `RuntimeConfigApplier`, Spring bind-only Category A mirrors, raw H
 | Change | Access-site `class` values and related narratives → `LegacyTracingDiagnosticsEndpoint` |
 | Acceptance | Old class name absent from active access sites; new `tracing()` site exactly once; unrelated entries stable |
 
-**Proof:** `:platform-tracing-bench:test --tests "*S01OwnerInventoryEvidenceTest*"` PASS; included in green aggregate `test`.
+**Proof:** `:platform-tracing-bench:test --tests "*S01OwnerInventoryEvidenceTest*"` PASS; included in green aggregate `test` before push. Present in `f572df6`.
 
 ---
 
@@ -83,13 +84,13 @@ Post-P6.6 platform SAMPLING MBean no longer exposes `DropPathPrefixes` / `ForceR
 
 `routeRatioCount` semantics unchanged: empty map → `0`; unavailable/malformed → key present with `null` (never coerced to `0`).
 
-Docs updated: runbook, Wave2 census, ADR-spring-owns-only-what-spring-applies, overengineering audit residual notes.
+Docs updated in the same commit: runbook, Wave2 census, ADR-spring-owns-only-what-spring-applies, overengineering audit residual notes.
 
 ---
 
 ## 6. Exact legacy-key classification
 
-Full census: [`legacy-key-ownership-census.md`](./legacy-key-ownership-census.md).
+Full census: [`legacy-key-ownership-census.md`](./legacy-key-ownership-census.md) (in `f572df6`).
 
 | Exact keys | Classification |
 |------------|----------------|
@@ -124,7 +125,7 @@ Executable coverage:
 
 ## 8. Useful-functionality preservation
 
-Verified via focused control-plane tests (P55 / P56 / P64, Servlet & WebFlux management child contexts), Map contract tests, and the green module suite:
+Verified via focused control-plane tests (P55 / P56 / P64, Servlet & WebFlux management child contexts), Map contract tests, and the green module suite before push:
 
 | Capability | Status |
 |------------|--------|
@@ -142,16 +143,16 @@ Verified via focused control-plane tests (P55 / P56 / P64, Servlet & WebFlux man
 
 ## 9. Files changed
 
-Remediation delta on top of preserved A0–A6 / Wave2:
+Landed in `f572df6` (`Refactoring`). Remediation-relevant production/test/evidence surfaces:
 
 | Area | Paths |
 |------|-------|
-| Production | `TracingConfigurationAuthorityGuard.java`; `PlatformTracingJmxClient.java`; `LegacyTracingDiagnosticsEndpoint.java` |
-| Tests | `TracingPropertiesBindingTest`; `LegacyTracingDiagnosticsEndpoint*`; `PlatformTracingJmxClientTest` |
+| Production | `TracingConfigurationAuthorityGuard.java`; `PlatformTracingJmxClient.java`; `LegacyTracingDiagnosticsEndpoint.java`; A0–A6 / Wave2 autoconfigure delta |
+| Tests | `TracingPropertiesBindingTest`; `LegacyTracingDiagnosticsEndpoint*`; `PlatformTracingJmxClientTest`; S-01 bench assertion |
 | S-01 evidence | `docs/research/evidence/accepted-state-primitive/repository-symbol-inventory.json` |
-| Config inventory | `docs/research/evidence/tracing-configuration-inventory/*` (regenerated) |
-| Docs | runbook, Wave2 census, ADR, overengineering audit |
-| Package evidence | `legacy-key-ownership-census.md`, this report |
+| Config inventory | `docs/research/evidence/tracing-configuration-inventory/*` |
+| Package evidence | `committee-packet.md`, consolidated audit, `legacy-key-ownership-census.md`, this report |
+| Docs | runbook, Wave2 census, ADR, dead-class / overengineering audits |
 
 ---
 
@@ -161,13 +162,15 @@ Remediation delta on top of preserved A0–A6 / Wave2:
 |----------|--------|
 | Binding tests | Obsolete key fail-fast; Agent KEEP WARN capture |
 | Endpoint Map contract / endpoint / JMX client tests | Drop/force counts removed; `routeRatioCount` scenarios kept |
-| S-01 evidence JSON | Rename alignment only |
+| S-01 evidence JSON | Rename alignment |
 | Configuration inventory | Regenerated after AuthorityGuard / fixture references |
-| Key census | New structured evidence under this package |
+| Key census + committee / audit packets | Under `docs/research/evidence/autoconfigure-post-p6-simplify/` |
 
 ---
 
 ## 11. Commands executed
+
+Executed against the dirty tree that became `f572df6` (not re-run after push unless noted).
 
 | Command | First result | Notes |
 |---------|--------------|-------|
@@ -188,7 +191,7 @@ Remediation delta on top of preserved A0–A6 / Wave2:
 
 These remain on record; later green runs do not erase them.
 
-1. **Configuration inventory drift** — `TracingConfigurationInventoryGeneratorTest.generatedInventoryMatchesCommittedEvidence` failed after AuthorityGuard / fixture references touched `platform.tracing.log-level`. Resolved by regenerating committed inventory via the supported `-PupdateTracingConfigurationInventory` workflow.
+1. **Configuration inventory drift** — `TracingConfigurationInventoryGeneratorTest.generatedInventoryMatchesCommittedEvidence` failed after AuthorityGuard / fixture references touched `platform.tracing.log-level`. Resolved by regenerating committed inventory via `-PupdateTracingConfigurationInventory`.
 
 2. **Docker E2E (first remediation attempt)** — 18 Testcontainers initialization errors: `Previous attempts to find a Docker environment failed` while `DOCKER_HOST=tcp://192.168.100.70:2375` was unreachable. Environmental; not a product assertion failure under a healthy daemon.
 
@@ -211,14 +214,13 @@ These remain on record; later green runs do not erase them.
 |------|--------|
 | e2e under plain aggregate `test` | SKIPPED by design (requires `-PrunE2e`) |
 | `c3PublishedMetadataConsumerVerify` / `c6PublishedReactiveConsumerVerify` | NOT_RUN — outside mandatory remediation closure set |
+| Post-push re-execution of full gate matrix | NOT_RUN — evidence is from the pre-push verified tree that became `f572df6` |
 
 ---
 
 ## 15. Remaining blockers
 
 None for the audited remediation scope.
-
-Process note only: working tree remains dirty and uncommitted.
 
 ---
 
@@ -234,16 +236,18 @@ PASS
 
 | Action | Status |
 |--------|--------|
-| Commit | NOT PERFORMED |
-| Push | NOT PERFORMED |
+| Commit | **PERFORMED** — `f572df6` (`Refactoring`), 2026-07-31 09:32:09 +0300 |
+| Push | **PERFORMED** — `master` in sync with `english-dict/master` at `f572df6` |
 
 ---
 
 ## Final summary
 
 ```text
-HEAD before: bdf0b6170e3125a86b6d105296e25ac02ec519ed
-Working tree before: DIRTY (A0–A6 + Wave2)
+Audit baseline HEAD: bdf0b6170e3125a86b6d105296e25ac02ec519ed
+Closure SHA: f572df6ba33e531537f22f1a5b34a189725de436 (Refactoring)
+Branch: master == english-dict/master
+Working tree at rewrite: clean at f572df6 (report edit may dirty again)
 S-01 inventory: FIXED (LegacyTracingDiagnosticsEndpoint.tracing() ×1; old class absent)
 routeRatioCount: KEPT
 dropPathCount: REMOVED
@@ -259,9 +263,9 @@ Private MBean verifier: PASS
 Servlet/WebFlux parity: PASS (focused)
 Docker E2E: PASS on rerun (55/0/0/0, ~9m11s); first attempt FAIL (daemon down, retained)
 First-run failures: inventory drift; Docker daemon
-Skipped gates: e2e in plain test; c3/c6 NOT_RUN
+Skipped gates: e2e in plain test; c3/c6 NOT_RUN; post-push full re-run NOT_RUN
 Blockers: none
 Verdict: PASS
-Commit: NOT PERFORMED
-Push: NOT PERFORMED
+Commit: PERFORMED (f572df6)
+Push: PERFORMED (english-dict/master)
 ```
