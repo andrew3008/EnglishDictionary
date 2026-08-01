@@ -731,7 +731,7 @@ def jmxObjectNameConsistencyTest = tasks.register('jmxObjectNameConsistencyTest'
             'reports/tests/jmxObjectNameConsistencyTest')
     useJUnitPlatform()
     filter {
-        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.jmx.ObjectNameConstantsConsistencyTest'
+        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ObjectNameConstantsConsistencyTest'
     }
 }
 

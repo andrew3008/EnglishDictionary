@@ -21,6 +21,5 @@ public final class ArchitectureFitnessArchRules {
             .and().resideOutsideOfPackage("..test..")
             .and().resideOutsideOfPackage("..tests..")
             .should().dependOnClassesThat().haveSimpleName("TracingControlProtocolValidator")
-            .allowEmptyShould(true)
             .because("Actuator production path must not use Map wire validator yet");
 }

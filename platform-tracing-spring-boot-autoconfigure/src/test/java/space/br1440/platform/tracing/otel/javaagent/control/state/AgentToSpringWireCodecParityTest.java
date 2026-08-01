@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.control.state;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.configuration.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
@@ -50,8 +50,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AgentToSpringWireCodecParityTest {
 
     private static final PrivateControlOpenTypeCodec AGENT_CODEC = new PrivateControlOpenTypeCodec();
-    private static final space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec
-            SPRING_CODEC = new space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec();
+    private static final space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec
+            SPRING_CODEC = new space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec();
 
     // ── positive scenarios ──────────────────────────────────────────────────────
 

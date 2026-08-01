@@ -104,11 +104,6 @@
   "id" : "CONFIG_PROPERTY-019",
   "kind" : "CONFIG_PROPERTY"
 }, {
-  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#TracingProperties.mode:space.br1440.platform.tracing.autoconfigure.support.SdkMode",
-  "exactName" : "platform.tracing.mode",
-  "id" : "CONFIG_PROPERTY-019",
-  "kind" : "CONFIG_PROPERTY"
-}, {
   "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/configuration/configserver/ConfigServerPolicyManifestBuilder.java#ConfigServerPolicyManifestBuilder.REQUIRED_KEYS:boolean",
   "exactName" : "platform.tracing.policy.exporter.enabled",
   "id" : "CONFIG_PROPERTY-020",

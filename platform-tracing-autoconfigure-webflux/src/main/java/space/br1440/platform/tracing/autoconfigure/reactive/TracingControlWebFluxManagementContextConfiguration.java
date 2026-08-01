@@ -14,16 +14,16 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.ReplaceSamplingRouteRatiosRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SetDiagnosticsLogLevelRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SetExporterEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SetSamplingEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SetSamplingRatioRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SetTraceControlHeadersEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SetValidationEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SetValidationStrictRequest;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter;
+import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.management.ReplaceSamplingRouteRatiosRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.SetDiagnosticsLogLevelRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.SetExporterEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.SetSamplingEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.SetSamplingRatioRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.SetTraceControlHeadersEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.SetValidationEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.SetValidationStrictRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyMutationService;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -34,7 +34,7 @@ import java.util.function.Function;
  * {@code META-INF/spring/…ManagementContextConfiguration.imports}.
  * <p>
  * Transport-only: all mutations delegate to
- * {@link SpringActuatorTracingPolicyAdapter}. No second command service, DTO model,
+ * {@link TracingPolicyMutationService}. No second command service, DTO model,
  * readiness probe, or private-JMX client.
  * <p>
  * Stack isolation: lives in {@code platform-tracing-autoconfigure-webflux} so Servlet
@@ -64,7 +64,7 @@ public class TracingControlWebFluxManagementContextConfiguration {
 
     @Bean
     public RouterFunction<ServerResponse> tracingControlWebFluxRoutes(
-            SpringActuatorTracingPolicyAdapter adapter) {
+            TracingPolicyMutationService adapter) {
         String base = normalise(managementBasePath) + "/tracingControl";
         return RouterFunctions.route()
                 .POST(base + "/sampling/enabled",

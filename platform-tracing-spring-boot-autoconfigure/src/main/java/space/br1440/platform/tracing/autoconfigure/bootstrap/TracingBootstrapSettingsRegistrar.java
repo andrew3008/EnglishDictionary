@@ -1,0 +1,20 @@
+package space.br1440.platform.tracing.autoconfigure.bootstrap;
+
+import java.util.Objects;
+
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+
+/** Регистрирует единственный immutable bootstrap-снимок в BeanFactory. */
+public final class TracingBootstrapSettingsRegistrar {
+
+    public void register(
+            ConfigurableListableBeanFactory beanFactory,
+            TracingBootstrapSettings settings) {
+        Objects.requireNonNull(beanFactory, "beanFactory");
+        Objects.requireNonNull(settings, "settings");
+        if (beanFactory.containsSingleton(TracingBootstrapPropertyNames.SETTINGS_BEAN_NAME)) {
+            throw new IllegalStateException("TracingBootstrapSettings singleton is already registered");
+        }
+        beanFactory.registerSingleton(TracingBootstrapPropertyNames.SETTINGS_BEAN_NAME, settings);
+    }
+}

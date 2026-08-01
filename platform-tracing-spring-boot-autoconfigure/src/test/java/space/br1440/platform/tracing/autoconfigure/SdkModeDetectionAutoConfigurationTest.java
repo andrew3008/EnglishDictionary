@@ -11,15 +11,21 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
-import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
-class SdkModeDetectionAutoConfigurationTest {
+class TracingModeDetectionAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(TracingCoreAutoConfiguration.class));
+            .withConfiguration(AutoConfigurations.of(
+                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingRuntimeAutoConfiguration.class))
+            .withPropertyValues(
+                    "platform.tracing.configuration.authority=HELM",
+                    "platform.environment=LOCAL");
 
     @Test
     void defaultAgentModeWithoutControlledAgentFailsStartup() {
@@ -40,8 +46,8 @@ class SdkModeDetectionAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
-                    SdkModeDiagnostics diagnostics = context.getBean(SdkModeDiagnostics.class);
-                    assertThat(diagnostics.mode()).isEqualTo(SdkMode.DISABLED);
+                    TracingModeDiagnostics diagnostics = context.getBean(TracingModeDiagnostics.class);
+                    assertThat(diagnostics.mode()).isEqualTo(TracingMode.DISABLED);
                     assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
                     assertThat(context).doesNotHaveBean(OpenTelemetry.class);
                 });
@@ -70,9 +76,7 @@ class SdkModeDetectionAutoConfigurationTest {
                     .run(context -> {
                         assertThat(context).hasFailed();
                         assertThat(context.getStartupFailure())
-                                .hasRootCauseMessage(
-                                        "No enum constant space.br1440.platform.tracing.autoconfigure.support.SdkMode."
-                                                + removed);
+                                .hasMessageContaining("Invalid property 'platform.tracing.mode'='" + removed + "'");
                     });
         }
     }

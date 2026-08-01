@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "platform.tracing.configuration.authority=HELM",
                 "platform.environment=LOCAL",
                 "spring.autoconfigure.exclude="
-                        + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+                        + "TracingRuntimeAutoConfiguration",
                 "spring.main.web-application-type=reactive"
         })
 class MdcPropagationWebFluxIntegrationTest {

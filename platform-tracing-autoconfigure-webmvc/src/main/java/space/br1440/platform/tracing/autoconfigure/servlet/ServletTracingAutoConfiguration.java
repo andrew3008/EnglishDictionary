@@ -17,9 +17,10 @@ import org.springframework.web.client.RestClient;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
-import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
 /**
  * Авто-конфигурация Servlet-уровня платформенного модуля трассировки.
@@ -40,10 +41,10 @@ import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBounda
  * Servlet-фильтр для MDC не требуется и не регистрируется.
  */
 @AutoConfiguration
-@AutoConfigureAfter(TracingCoreAutoConfiguration.class)
+@AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 @ConditionalOnClass({Servlet.class, FilterRegistrationBean.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.MODE, havingValue = "AGENT", matchIfMissing = true)
 public class ServletTracingAutoConfiguration {
 
     /**

@@ -100,7 +100,6 @@ public final class OtelDirectIntegrationRules {
     public static final ArchRule NO_RAW_RECORD_EXCEPTION_OUTSIDE_RECORDER = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing..")
             .should().callMethodWhere(isOtelSpanRecordException())
-            .allowEmptyShould(true)
             .because("raw Span.recordException(t) пишет НЕскрабленный exception-event "
                     + "(exception.message/stacktrace мимо ScrubbingSpanProcessor); используйте "
                     + "ExceptionRecorder — см. ADR-collector-boundary и план Wave A");

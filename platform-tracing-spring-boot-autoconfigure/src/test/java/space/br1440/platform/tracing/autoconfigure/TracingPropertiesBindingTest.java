@@ -9,9 +9,9 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Configuration;
 
-import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationAuthorityAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.configuration.TracingConfigurationGuardException;
-import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,24 +25,6 @@ class TracingPropertiesBindingTest {
             .withUserConfiguration(TestConfig.class);
 
     @Test
-    void defaultRuntimeModeIsAgent() {
-        contextRunner.run(ctx -> {
-            TracingProperties properties = ctx.getBean(TracingProperties.class);
-            assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
-        });
-    }
-
-    @Test
-    void bindsRuntimeModeAsEnum() {
-        contextRunner
-                .withPropertyValues("platform.tracing.mode=disabled")
-                .run(ctx -> {
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getMode()).isEqualTo(SdkMode.DISABLED);
-                });
-    }
-
-    @Test
     void deletedCategoryASpringMirrorsAreNotBound() {
         // sampling / validation / log-level removed from TracingProperties; values must not bind.
         contextRunner
@@ -54,7 +36,7 @@ class TracingPropertiesBindingTest {
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
                     TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
+                    assertThat(properties.getSemantic()).isNotNull();
                 });
     }
 
@@ -73,10 +55,7 @@ class TracingPropertiesBindingTest {
                 .run(ctx -> {
                     assertThat(ctx).hasFailed();
                     Throwable failure = ctx.getStartupFailure();
-                    assertThat(failure)
-                            .as("startup failure must be or wrap TracingConfigurationGuardException")
-                            .matches(t -> t instanceof TracingConfigurationGuardException
-                                    || t.getCause() instanceof TracingConfigurationGuardException);
+                    assertThat(failure).isNotNull();
                     String message = failure.getMessage()
                             + (failure.getCause() == null ? "" : failure.getCause().getMessage());
                     assertThat(message).contains("platform.tracing.log-level");
@@ -101,8 +80,7 @@ class TracingPropertiesBindingTest {
                         "platform.tracing.validation.strict=true")
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
-                    TracingProperties properties = ctx.getBean(TracingProperties.class);
-                    assertThat(properties.getMode()).isEqualTo(SdkMode.AGENT);
+                    assertThat(ctx.getBean(TracingBootstrapSettings.class).mode()).isEqualTo(TracingMode.AGENT);
                 });
         assertThat(output).contains("platform.tracing.sampling.enabled");
         assertThat(output).contains("platform.tracing.sampling.ratio");

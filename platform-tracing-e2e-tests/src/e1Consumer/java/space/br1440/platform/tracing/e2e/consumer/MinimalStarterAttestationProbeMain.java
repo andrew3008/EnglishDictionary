@@ -7,8 +7,8 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
@@ -21,7 +21,7 @@ public class MinimalStarterAttestationProbeMain {
         String configuredMode = args.length > 1 ? args[1] : "AGENT";
 
         try (ConfigurableApplicationContext context = start(configuredMode)) {
-            SdkModeDiagnostics diagnostics = context.getBean(SdkModeDiagnostics.class);
+            TracingModeDiagnostics diagnostics = context.getBean(TracingModeDiagnostics.class);
             TraceOperations facade = context.getBean(TraceOperations.class);
             emit("runtimeState=" + diagnostics.runtimeState());
             emit("mode=" + diagnostics.mode());

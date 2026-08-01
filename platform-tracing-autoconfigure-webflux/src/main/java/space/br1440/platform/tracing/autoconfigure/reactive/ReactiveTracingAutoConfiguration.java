@@ -21,9 +21,10 @@ import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
-import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.webflux.ReactiveCorrelationOperations;
 
 import java.util.Optional;
@@ -54,10 +55,10 @@ import java.util.Optional;
  */
 @Slf4j
 @AutoConfiguration
-@AutoConfigureAfter(TracingCoreAutoConfiguration.class)
+@AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 @ConditionalOnClass({WebFluxConfigurer.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.MODE, havingValue = "AGENT", matchIfMissing = true)
 public class ReactiveTracingAutoConfiguration {
 
     @Bean

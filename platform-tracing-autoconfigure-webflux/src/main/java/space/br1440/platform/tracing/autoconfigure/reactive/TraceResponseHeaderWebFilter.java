@@ -15,8 +15,8 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.support.RemoteServiceMdcBoundarySupport;
-import space.br1440.platform.tracing.autoconfigure.support.RequestIdBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.identity.RemoteServiceMdcBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 
 /**
  * Реактивный фильтр, добавляющий request/trace заголовки в HTTP-ответ.

@@ -5,7 +5,8 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
-import space.br1440.platform.tracing.autoconfigure.errorhandling.RequestTraceContextSnapshotSupplier;
+import space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestTraceContextSnapshotSupplier;
 
 import java.util.function.Supplier;
 

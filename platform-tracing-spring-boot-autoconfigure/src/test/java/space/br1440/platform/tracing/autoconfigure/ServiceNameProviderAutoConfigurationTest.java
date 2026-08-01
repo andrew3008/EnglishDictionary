@@ -3,8 +3,9 @@ package space.br1440.platform.tracing.autoconfigure;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import space.br1440.platform.tracing.autoconfigure.servicename.PlatformLocalServiceNameProvider;
-import space.br1440.platform.tracing.autoconfigure.servicename.PlatformRemoteServiceNameProvider;
+import space.br1440.platform.tracing.autoconfigure.identity.PlatformLocalServiceNameProvider;
+import space.br1440.platform.tracing.autoconfigure.identity.PlatformRemoteServiceNameProvider;
+import space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

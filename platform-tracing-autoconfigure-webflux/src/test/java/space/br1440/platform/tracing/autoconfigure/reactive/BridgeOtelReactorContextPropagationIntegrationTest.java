@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "platform.tracing.configuration.authority=HELM",
                 "platform.environment=LOCAL",
                 "spring.autoconfigure.exclude="
-                        + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+                        + "TracingRuntimeAutoConfiguration",
                 "platform.tracing.suppression.suppress-micrometer-tracing=false",
                 "spring.reactor.context-propagation=AUTO"
         })

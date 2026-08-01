@@ -4,7 +4,7 @@ import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
@@ -13,7 +13,7 @@ import java.util.function.ToDoubleFunction;
  * Интеграция диагностики safe-обёрток (Фаза 11) в Micrometer/Prometheus по polling-модели.
  * Читает атрибут {@code SafeWrapperMetrics} с MBean домена {@code DiagnosticsControl}.
  */
-public class PlatformTracingSafeWrapperMetricsBinder implements MeterBinder {
+final class PlatformTracingSafeWrapperMetricsBinder implements MeterBinder {
 
     private static final String PREFIX = "platform.tracing.safe_wrapper.";
 

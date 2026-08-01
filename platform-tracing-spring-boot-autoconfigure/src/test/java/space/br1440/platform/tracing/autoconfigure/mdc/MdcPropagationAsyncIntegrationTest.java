@@ -17,7 +17,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 "spring.application.name=mdc-async-propagation-test",
                 "spring.autoconfigure.exclude="
-                        + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+                        + "TracingRuntimeAutoConfiguration",
                 "platform.tracing.mode=DISABLED",
                 "platform.tracing.configuration.authority=HELM",
                 "platform.environment=LOCAL"

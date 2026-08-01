@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
-import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -27,12 +26,6 @@ import lombok.experimental.Accessors;
 public class TracingProperties {
 
     public static final String PREFIX = "platform.tracing";
-
-    /**
-     * Режим работы платформенной трассировки. {@link SdkMode#AGENT} требует готовый
-     * Controlled Platform Agent, {@link SdkMode#DISABLED} включает намеренный NoOp-режим.
-     */
-    private SdkMode mode = SdkMode.AGENT;
 
     private final RequestIdResponseHeader requestIdHeader = new RequestIdResponseHeader();
     private final Semantic semantic = new Semantic();

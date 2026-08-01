@@ -1,0 +1,49 @@
+{
+  "properties": [
+    {
+      "name": "platform.tracing.mode",
+      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode",
+      "description": "Режим владения трассировкой: Controlled Platform Agent или намеренно отключенный facade.",
+      "defaultValue": "AGENT"
+    },
+    {
+      "name": "platform.tracing.configuration.authority",
+      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority",
+      "description": "Единственный разрешенный источник изменения runtime-политики трассировки."
+    },
+    {
+      "name": "platform.tracing.configuration.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Разрешает доставку runtime-политики через выбранный источник конфигурации.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.environment",
+      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture",
+      "description": "Операционный профиль окружения, ограничивающий доступные поверхности управления."
+    },
+    {
+      "name": "platform.tracing.thread-pool-task-executor.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Включает перенос OTel Context и MDC через управляемые Spring ThreadPoolTaskExecutor.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.tracing.kafka.batch-links-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Включает создание links для пакетной обработки Kafka-сообщений.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.tracing.kafka.propagate-platform-headers",
+      "type": "java.lang.Boolean",
+      "description": "Разрешает исходящую передачу платформенных управляющих заголовков для доверенных Kafka topics.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.tracing.suppression.suppress-micrometer-tracing",
+      "type": "java.lang.Boolean",
+      "description": "Явно управляет подавлением Micrometer Tracing; при отсутствии значения решение выводится из присутствия Java Agent."
+    }
+  ]
+}

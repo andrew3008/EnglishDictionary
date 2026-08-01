@@ -14,8 +14,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.http.client.observation.ClientRequestObservationContext;
 import org.springframework.http.server.observation.ServerRequestObservationContext;
-import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
-import space.br1440.platform.tracing.autoconfigure.support.SuppressMicrometerTracingCondition;
+import space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector;
+import space.br1440.platform.tracing.autoconfigure.integrations.observation.SuppressMicrometerTracingCondition;
 
 /**
  * Подавление дублирующих HTTP-обсерваций {@code Micrometer} для Servlet-стека (Spring MVC).

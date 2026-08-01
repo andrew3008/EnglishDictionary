@@ -6,8 +6,8 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.status.TracingStatusEndpoint;
 import space.br1440.platform.tracing.test.arch.ArchitectureFitnessArchRules;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -77,9 +77,9 @@ class ProductionControlPlaneNotMigratedArchTest {
     }
 
     @Test
-    @DisplayName("LegacyTracingDiagnosticsEndpoint remains a production entry point")
+    @DisplayName("TracingStatusEndpoint is the production read entry point")
     void productionEntryPointsExist() {
-        assertThat(LegacyTracingDiagnosticsEndpoint.class).isNotNull();
+        assertThat(TracingStatusEndpoint.class).isNotNull();
     }
 
     @Test

@@ -19,7 +19,7 @@ import com.tngtech.archunit.lang.ArchRule;
 class KafkaOutboundNoSpanArchTest {
 
     private static final JavaClasses OUTBOUND_CLASSES = new ClassFileImporter()
-            .importPackages("space.br1440.platform.tracing.autoconfigure.kafka");
+            .importPackages("space.br1440.platform.tracing.autoconfigure.integrations.kafka");
 
     @Test
     @DisplayName("PlatformKafka* outbound-классы не зависят от OpenTelemetry")

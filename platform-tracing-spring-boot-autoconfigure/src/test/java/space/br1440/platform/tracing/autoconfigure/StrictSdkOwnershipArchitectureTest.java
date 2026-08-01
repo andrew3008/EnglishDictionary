@@ -2,8 +2,11 @@ package space.br1440.platform.tracing.autoconfigure;
 
 import io.opentelemetry.api.OpenTelemetry;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.support.AgentExtensionDescriptor;
-import space.br1440.platform.tracing.autoconfigure.support.SdkMode;
+import org.springframework.mock.env.MockEnvironment;
+
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -17,14 +20,16 @@ class StrictSdkOwnershipArchitectureTest {
 
     @Test
     void productionModeSurfaceContainsOnlyAgentAndDisabled() {
-        assertThat(Arrays.stream(SdkMode.values()).map(Enum::name))
+        assertThat(Arrays.stream(TracingMode.values()).map(Enum::name))
                 .containsExactly("AGENT", "DISABLED");
-        assertThat(new TracingProperties().getMode()).isEqualTo(SdkMode.AGENT);
+        assertThat(new TracingBootstrapSettingsResolver().resolve(new MockEnvironment()
+                .withProperty("platform.tracing.configuration.authority", "HELM")
+                .withProperty("platform.environment", "LOCAL")).mode()).isEqualTo(TracingMode.AGENT);
     }
 
     @Test
     void compositionRootDoesNotAcceptApplicationOpenTelemetry() {
-        assertThat(Arrays.stream(TracingCoreAutoConfiguration.class.getDeclaredMethods())
+        assertThat(Arrays.stream(TracingRuntimeAutoConfiguration.class.getDeclaredMethods())
                 .filter(method -> !method.isSynthetic())
                 .flatMap(method -> Arrays.stream(method.getParameterTypes()))
                 .filter(OpenTelemetry.class::equals))

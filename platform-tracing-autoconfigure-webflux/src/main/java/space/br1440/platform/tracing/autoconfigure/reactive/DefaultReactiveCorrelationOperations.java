@@ -5,7 +5,7 @@ import java.util.Objects;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.webflux.ReactiveCorrelationOperations;
 
 final class DefaultReactiveCorrelationOperations implements ReactiveCorrelationOperations {

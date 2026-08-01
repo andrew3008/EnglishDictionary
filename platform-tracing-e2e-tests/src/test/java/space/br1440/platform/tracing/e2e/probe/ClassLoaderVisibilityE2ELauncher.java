@@ -4,7 +4,7 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector;
+import space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector;
 
 /**
  * Минимальный child-JVM entrypoint для E2E-теста {@code ClassLoaderVisibilityE2ETest}.

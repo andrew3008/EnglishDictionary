@@ -33,16 +33,6 @@ dependencies {
     compileOnly 'org.springframework:spring-aop'
     compileOnly 'org.aspectj:aspectjweaver'
 
-    // Servlet- и WebFlux-специфичные классы в общем случае вынесены в отдельные модули
-    // (platform-tracing-autoconfigure-webmvc, -webflux). P4 POST-MERGE AUDIT DEFECT:
-    // TracingControlManagementContextConfiguration (DEV_ACTUATOR write surface) использует
-    // Servlet-only WebMvcConfigurer напрямую в monolith, что нарушало это правило и не
-    // компилировалось (compileJava failure, confirmed defect). compileOnly добавлена как
-    // минимальное исправление; класс ограничен ManagementContextType.SERVLET +
-    // @ConditionalOnClass ниже. Миграция в platform-tracing-autoconfigure-webmvc остаётся
-    // committee decision, не выполняется в рамках этого аудита (не P5/P6 redesign).
-    compileOnly 'org.springframework:spring-webmvc'
-
     // Spring Boot Actuator: health indicator и /actuator/tracing endpoint.
     compileOnly 'org.springframework.boot:spring-boot-starter-actuator'
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
@@ -53,9 +43,6 @@ dependencies {
     // Spring Cloud Context: опциональная интеграция с @RefreshScope для динамической перенастройки
     // TracingProperties без перезапуска JVM. Версия управляется Spring Cloud BOM на стороне сервиса.
     compileOnly 'org.springframework.cloud:spring-cloud-context'
-
-    // Нужен в runtime для ResponseStatusException из write-операций actuator-эндпоинта трассировки.
-    implementation 'org.springframework:spring-web'
 
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
@@ -68,6 +55,7 @@ dependencies {
     // P4-WF: WebFlux management-control child-context integration test needs the webflux
     // module's ManagementContextConfiguration.imports on the test classpath.
     testImplementation project(':platform-tracing-autoconfigure-webflux')
+    testImplementation project(':platform-tracing-autoconfigure-webmvc')
     testImplementation 'org.springframework.boot:spring-boot-starter-aop'
     testImplementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator'

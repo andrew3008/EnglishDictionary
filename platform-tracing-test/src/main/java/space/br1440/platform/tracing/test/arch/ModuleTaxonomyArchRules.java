@@ -110,7 +110,6 @@ public final class ModuleTaxonomyArchRules {
             .and().resideOutsideOfPackage("..test..")
             .and().resideOutsideOfPackage("..tests..")
             .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel.javaagent..")
-            .allowEmptyShould(true)
             .because("platform-tracing-spring-boot-autoconfigure (App CL) не должен зависеть от "
                     + "platform-tracing-otel-javaagent-extension (Agent CL) implementation-классов");
 
@@ -122,7 +121,6 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.autoconfigure.servlet..",
                     "space.br1440.platform.tracing.autoconfigure.reactive..")
             .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.tracing.otel..")
-            .allowEmptyShould(true)
             .because("web autoconfigure не должен раскрывать platform-tracing-otel на compile classpath потребителя");
 
     /**
@@ -165,7 +163,6 @@ public final class ModuleTaxonomyArchRules {
                     "org.springframework.web.reactive..",
                     "org.springframework.http.server.reactive..",
                     "reactor.core..")
-            .allowEmptyShould(true)
             .because("platform-tracing-autoconfigure-webmvc не должен зависеть от типов WebFlux/Reactor");
 
     /**
@@ -176,7 +173,6 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage(
                     "jakarta.servlet..",
                     "org.springframework.web.servlet..")
-            .allowEmptyShould(true)
             .because("platform-tracing-autoconfigure-webflux не должен зависеть от типов Servlet/MVC");
 
     /**
@@ -191,7 +187,6 @@ public final class ModuleTaxonomyArchRules {
                     "io.opentelemetry..",
                     "org.springframework..",
                     "javax.management..")
-            .allowEmptyShould(true)
             .because("pure policy-пакеты otel.{sampling,scrubbing,validation,enrichment} "
                     + "не должны зависеть от OTel, Spring или JMX (граница PR-9B)");
 
@@ -255,7 +250,6 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.starter..")
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat().resideInAnyPackage("..otel.runtime.versioned..")
-            .allowEmptyShould(true)
             .because("otel.runtime.versioned — agent/runtime инфраструктура, а не SDK для autoconfigure");
 
     /** Regression guard: пакет {@code api.config} удалён; запрет любых зависимостей (cherry-pick / copy-paste). */
@@ -342,7 +336,6 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage(
                     "..otel.span.legacy..",
                     "..otel.span.builder..")
-            .allowEmptyShould(true)
             .because("otel.span.enrich — agent-first обогащение; не зависит от span.builder transport");
 
     /** {@code otel.span.spec} — чистое именование span'ов: только OTel common, без trace/context. */
@@ -352,7 +345,6 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage(
                     "io.opentelemetry.api.trace..",
                     "io.opentelemetry.context..")
-            .allowEmptyShould(true)
             .because("PlatformSpanNameBuilder не импортирует OTel trace/context API");
 
     /** {@code otel.semconv.policy} — политика атрибутов: только OTel common, без trace/context/sdk. */
@@ -362,7 +354,6 @@ public final class ModuleTaxonomyArchRules {
                     "io.opentelemetry.api.trace..",
                     "io.opentelemetry.context..",
                     "io.opentelemetry.sdk..")
-            .allowEmptyShould(true)
             .because("otel.semconv.policy допускает только io.opentelemetry.api.common");
 
     // -- Граница публичного span API ---------------------------------------------------------------
@@ -560,7 +551,6 @@ public final class ModuleTaxonomyArchRules {
             .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat(apiMdcExceptAllowed())
-            .allowEmptyShould(true)
             .because("otel-extension использует MDC только через otel.mdc.remote.RemoteServiceMdc; "
                     + "из api.mdc разрешены только TracingMdcKeys и RemoteServiceNameSource");
 

@@ -8,11 +8,9 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
@@ -20,8 +18,6 @@ import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
-
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,8 +28,13 @@ class SpringBootContextMatrixTest {
 
     private final ApplicationContextRunner baseRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingCoreAutoConfiguration.class,
-                    TracingMetricsAutoConfiguration.class));
+                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingRuntimeAutoConfiguration.class,
+                    TracingRuntimeDiagnosticsAutoConfiguration.class,
+                    TracingMetricsAutoConfiguration.class))
+            .withPropertyValues(
+                    "platform.tracing.configuration.authority=HELM",
+                    "platform.environment=LOCAL");
 
     private final ApplicationContextRunner controlledAgentRunner = baseRunner
             .withInitializer(ControlledAgentTestRuntime::initialize);
@@ -50,7 +51,7 @@ class SpringBootContextMatrixTest {
     }
 
     @Test
-    void disabledSdkMode_exposesDisabledDiagnosticsAndNoOpFacade() {
+    void disabledTracingMode_exposesDisabledDiagnosticsAndNoOpFacade() {
         baseRunner
                 .withPropertyValues(
                         "platform.tracing.mode=DISABLED")
@@ -90,23 +91,6 @@ class SpringBootContextMatrixTest {
                     assertThat(context.getBean(TracingRuntime.class))
                             .isInstanceOf(OtelTracingRuntime.class);
                     assertThat(context.getBean(SpanFactoryDiagnostics.class).toActuatorMap().get("mode")).isEqualTo("ENABLED");
-                });
-    }
-
-    @Test
-    void actuatorEndpoint_includesspanFactorySectionInAllMatrixPaths() {
-        controlledAgentRunner
-                .run(context -> {
-                    LegacyTracingDiagnosticsEndpoint endpoint = new LegacyTracingDiagnosticsEndpoint(
-                            context.getBean(TraceOperations.class),
-                            context.getBean(TracingProperties.class),
-                            context.getBean(PlatformTracingJmxClient.class),
-                            context.getBean(SpanFactoryDiagnostics.class),
-                            context.getEnvironment());
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> spanFactory = (Map<String, Object>) endpoint.tracing()
-                            .get("spanFactory");
-                    assertThat(spanFactory).containsKeys("mode", "details");
                 });
     }
 

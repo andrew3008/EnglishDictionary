@@ -19,16 +19,6 @@
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String", "PropagationDefaults:String" ]
 }, {
-  "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SDK_MODE:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#TracingProperties.mode:space.br1440.platform.tracing.autoconfigure.support.SdkMode" ],
-  "defaultDrift" : true,
-  "defaults" : [ "Agent:null", "Spring:AGENT" ],
-  "duplicateGroup" : "duplicate:platform.tracing.mode",
-  "exactName" : "platform.tracing.mode",
-  "id" : "CONFIG_PROPERTY-019",
-  "targetOwner" : "Spring",
-  "typeDrift" : true,
-  "types" : [ "ExtensionPropertyNames:String" ]
-}, {
   "declarations" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_HEADER_FORCE_TRACE:String", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#PlatformHeaderNames.forceTraceHeader:String" ],
   "defaultDrift" : false,
   "defaults" : [ "Agent:X-Trace-On", "Spring:X-Trace-On" ],

@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.support;
 
-import space.br1440.platform.tracing.autoconfigure.configuration.PrivateJmxTracingPolicySnapshotClient;
-import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator;
-import space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicySnapshotClient;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;

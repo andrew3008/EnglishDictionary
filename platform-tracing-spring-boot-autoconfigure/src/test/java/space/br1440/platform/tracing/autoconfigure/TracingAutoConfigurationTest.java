@@ -10,9 +10,14 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect;
-import space.br1440.platform.tracing.autoconfigure.health.TracingHealthIndicator;
+import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect;
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingDiagnosticsActuatorAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
+import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
@@ -28,12 +33,16 @@ class TracingAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingCoreAutoConfiguration.class,
+                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingRuntimeAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class,
                     TracingAopAutoConfiguration.class,
                     TracingObservationAutoConfiguration.class,
                     TracingDiagnosticsActuatorAutoConfiguration.class
-            ));
+            ))
+            .withPropertyValues(
+                    "platform.tracing.configuration.authority=HELM",
+                    "platform.environment=LOCAL");
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner
             .withInitializer(ControlledAgentTestRuntime::initialize);

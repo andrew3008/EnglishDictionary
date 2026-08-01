@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.reactive.PlatformReactiveServerRequestObservationConvention;
 import space.br1440.platform.tracing.autoconfigure.reactive.ReactiveTracingAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.reactive.TraceResponseHeaderWebFilter;
-import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;

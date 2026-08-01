@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.configuration.configserver.ConfigServerTracingPolicyAdapter;
+import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingPolicyAdapter;
 
 /**
  * P6.3 proof ({@code p6-delete-refreshscope-mutation}): RefreshScope reconcile path deleted;

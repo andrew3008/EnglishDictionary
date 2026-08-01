@@ -11,8 +11,8 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
 @SpringBootConfiguration
@@ -34,7 +34,7 @@ public class AgentExtensionAttestationProbeMain {
         boolean dualRuntime = args.length > 2 && Boolean.parseBoolean(args[2]);
 
         try (ConfigurableApplicationContext context = start(configuredMode, dualRuntime)) {
-            SdkModeDiagnostics diagnostics = context.getBean(SdkModeDiagnostics.class);
+            TracingModeDiagnostics diagnostics = context.getBean(TracingModeDiagnostics.class);
             TraceOperations facade = context.getBean(TraceOperations.class);
             emit("runtimeState=" + diagnostics.runtimeState());
             emit("mode=" + diagnostics.mode());

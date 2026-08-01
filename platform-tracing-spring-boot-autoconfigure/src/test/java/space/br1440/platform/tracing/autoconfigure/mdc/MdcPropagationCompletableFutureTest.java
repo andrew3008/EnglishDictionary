@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 "spring.application.name=mdc-cf-propagation-test",
                 "spring.autoconfigure.exclude="
-                        + "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+                        + "TracingRuntimeAutoConfiguration",
                 "platform.tracing.mode=DISABLED",
                 "platform.tracing.configuration.authority=HELM",
                 "platform.environment=LOCAL"

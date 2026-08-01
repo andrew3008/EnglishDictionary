@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
  * Все теги low-cardinality (без значений атрибутов). Счётчики кэшируются самим
  * {@link MeterRegistry} по идентификатору метрики.
  */
-public final class MicrometerSemconvMetrics implements SemconvMetrics {
+final class MicrometerSemconvMetrics implements SemconvMetrics {
 
     private static final String VIOLATIONS = "platform.tracing.semconv.violations";
     private static final String UNSAFE = "platform.tracing.unsafe_attributes";

@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.control.state;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.configuration.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -76,7 +76,7 @@ class CandidateDigestAgentParityTest {
      */
     private static String invokeSpringCandidateDigest(CompleteTracingPolicySnapshot policy) throws Exception {
         Class<?> clazz = Class.forName(
-                "space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.CandidateDigest");
+                "space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.CandidateDigest");
         Method method = clazz.getDeclaredMethod("sha256", CompleteTracingPolicySnapshot.class);
         method.setAccessible(true);
         return (String) method.invoke(null, policy);

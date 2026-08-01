@@ -1,12 +1,9 @@
 package space.br1440.platform.tracing.e2e.smoke;
 
 import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import org.junit.jupiter.api.AfterEach;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +16,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -85,30 +81,30 @@ class MicrometerStatusMappingE2ETest {
         await().untilAsserted(() -> {
             List<SpanData> spans = exporter.getFinishedSpanItems();
             assertThat(spans).isNotEmpty();
-            
+
             SpanData serverSpan = spans.stream()
                     .filter(s -> s.getKind().name().equals("SERVER"))
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("SERVER span not found"));
-                    
+
             assertThat(serverSpan.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         });
     }
 
     @SpringBootConfiguration
     @EnableAutoConfiguration(excludeName = {
-            "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.SemanticLayerAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.TracingAopAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.TracingObservationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.TracingDiagnosticsActuatorAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.RequestContextSupplierAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration",
+            "TracingRuntimeAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.diagnostics.TracingDiagnosticsActuatorAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.integrations.async.TracingAsyncContextAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.kafka.PlatformKafkaAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.kafka.PlatformKafkaOutboundAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaOutboundAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.servlet.ServletTracingAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.servlet.WebMvcSuppressMicrometerTracingAutoConfiguration"
     })

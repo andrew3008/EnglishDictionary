@@ -6,13 +6,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.configuration.AcceptedTracingPolicySnapshotReader;
-import space.br1440.platform.tracing.autoconfigure.configuration.CompleteTracingPolicySnapshot;
-import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicyDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySnapshotClient;
-import space.br1440.platform.tracing.autoconfigure.configuration.TracingPolicySource;
-import space.br1440.platform.tracing.autoconfigure.configuration.actuator.SpringActuatorTracingPolicyAdapter;
+import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySnapshotApplier;
+import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyMutationService;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -46,12 +46,12 @@ class TracingControlWebFluxRouterHttpTest {
                 .diagnosticsLogLevel("INFO")
                 .build();
 
-        AcceptedTracingPolicySnapshotReader stubReader = () ->
+        CompleteTracingPolicyReader stubReader = () ->
                 Optional.of(new AcceptedSnapshotWithSequence(10L, "test-runtime-instance", initial));
 
         capturedClient = new CapturingSnapshotClient();
-        SpringActuatorTracingPolicyAdapter adapter =
-                new SpringActuatorTracingPolicyAdapter(stubReader, capturedClient);
+        TracingPolicyMutationService adapter =
+                new TracingPolicyMutationService(stubReader, capturedClient);
 
         TracingControlWebFluxManagementContextConfiguration configuration =
                 new TracingControlWebFluxManagementContextConfiguration();
@@ -109,7 +109,7 @@ class TracingControlWebFluxRouterHttpTest {
         TracingControlWebFluxManagementContextConfiguration configuration =
                 new TracingControlWebFluxManagementContextConfiguration();
         setManagementBasePath(configuration, "/management");
-        SpringActuatorTracingPolicyAdapter adapter = new SpringActuatorTracingPolicyAdapter(
+        TracingPolicyMutationService adapter = new TracingPolicyMutationService(
                 () -> Optional.of(new AcceptedSnapshotWithSequence(
                         1L, "rt", CompleteTracingPolicySnapshot.builder()
                         .samplingEnabled(true)
@@ -138,7 +138,7 @@ class TracingControlWebFluxRouterHttpTest {
     @Test
     void outcome_mapping_matches_servlet_contract() {
         AtomicReference<TracingPolicyDeliveryResult> next = new AtomicReference<>();
-        SpringActuatorTracingPolicyAdapter adapter = new SpringActuatorTracingPolicyAdapter(
+        TracingPolicyMutationService adapter = new TracingPolicyMutationService(
                 () -> Optional.of(new AcceptedSnapshotWithSequence(
                         1L, "rt", CompleteTracingPolicySnapshot.builder()
                         .samplingEnabled(true)
@@ -213,7 +213,7 @@ class TracingControlWebFluxRouterHttpTest {
         }
     }
 
-    static final class CapturingSnapshotClient implements TracingPolicySnapshotClient {
+    static final class CapturingSnapshotClient implements TracingPolicySnapshotApplier {
         volatile CompleteTracingPolicySnapshot lastSnapshot;
 
         @Override

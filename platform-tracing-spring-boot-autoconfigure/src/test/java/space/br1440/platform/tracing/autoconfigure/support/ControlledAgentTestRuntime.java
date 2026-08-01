@@ -5,7 +5,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxObjectNames;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
 
 import javax.management.MBeanServer;
 import javax.management.StandardMBean;

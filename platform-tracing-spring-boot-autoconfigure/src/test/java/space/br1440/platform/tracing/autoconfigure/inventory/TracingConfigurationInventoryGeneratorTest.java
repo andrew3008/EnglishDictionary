@@ -506,7 +506,7 @@ class TracingConfigurationInventoryGeneratorTest {
             Map<String, Entry> entries,
             SourceIndex source) throws Exception {
         Class<?> snapshot = Class.forName(
-                "space.br1440.platform.tracing.autoconfigure.actuator."
+                "space.br1440.platform.tracing.autoconfigure.diagnostics.jmx."
                         + "OtelEffectiveConfigSnapshot");
         Field exposed = snapshot.getDeclaredField("EXPOSED_PROPERTIES");
         exposed.setAccessible(true);
@@ -544,7 +544,7 @@ class TracingConfigurationInventoryGeneratorTest {
         entry.declarations.add("OpenTelemetry autoconfigure external contract");
         entry.readers.add(link(
                 "platform-tracing-spring-boot-autoconfigure/src/main/java/"
-                        + "space/br1440/platform/tracing/autoconfigure/actuator/"
+                        + "space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/"
                         + "OtelEffectiveConfigSnapshot.java",
                 "EXPOSED_PROPERTIES", "DIRECT_CALL"));
         entry.consumers.add("OpenTelemetry SDK/Java Agent autoconfigure");

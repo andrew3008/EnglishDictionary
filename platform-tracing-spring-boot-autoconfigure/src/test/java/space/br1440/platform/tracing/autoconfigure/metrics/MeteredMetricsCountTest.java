@@ -11,8 +11,8 @@ import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
-import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.TracingMetricsAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,8 +24,12 @@ class MeteredMetricsCountTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
-                    TracingCoreAutoConfiguration.class,
+                    TracingConfigurationAuthorityAutoConfiguration.class,
+                    TracingRuntimeAutoConfiguration.class,
                     TracingMetricsAutoConfiguration.class))
+            .withPropertyValues(
+                    "platform.tracing.configuration.authority=HELM",
+                    "platform.environment=LOCAL")
             .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
             .withUserConfiguration(MeterRegistryConfiguration.class);
 

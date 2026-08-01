@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
-import space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.e2e.consumer.MinimalStarterAttestationProbeMain;
 
 @DisabledIfSystemProperty(named = "skipE2e", matches = "true")

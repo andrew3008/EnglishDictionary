@@ -4,14 +4,14 @@ import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 
 /**
  * Интеграция операционной статистики сэмплера (CompositeSampler) в Micrometer.
  * Счётчики хранятся в OTel Java Agent extension и считываются через JMX (SamplingControl MBean)
  * при скрейпинге.
  */
-public class PlatformTracingSamplerMetricsBinder implements MeterBinder {
+final class PlatformTracingSamplerMetricsBinder implements MeterBinder {
 
     private static final String METRIC_NAME = "platform.tracing.sampler.decisions";
 

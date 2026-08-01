@@ -11,7 +11,7 @@ import io.micrometer.context.ContextRegistry;
 import io.micrometer.context.ThreadLocalAccessor;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
-import space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
 /** Связывает immutable identity из Reactor Context с внутренним execution-store. */
 final class ReactiveIdentityContextPropagation implements SmartInitializingSingleton, DisposableBean {

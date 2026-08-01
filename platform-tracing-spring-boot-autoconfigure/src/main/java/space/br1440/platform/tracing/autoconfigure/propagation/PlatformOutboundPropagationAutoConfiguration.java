@@ -8,8 +8,9 @@ import org.springframework.context.annotation.Bean;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
-import space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
 import space.br1440.platform.tracing.otel.propagation.control.DefaultOutboundPropagationPolicy;
 import space.br1440.platform.tracing.otel.propagation.control.DefaultTraceControlHeaderInjector;
 import space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers;
@@ -26,8 +27,8 @@ import space.br1440.platform.tracing.otel.propagation.control.TrustedDestination
  * или destination недоверенный) и на уровне регистрации интерсепторов в web-модулях.
  */
 @AutoConfiguration
-@AutoConfigureAfter(TracingCoreAutoConfiguration.class)
-@ConditionalOnProperty(prefix = TracingProperties.PREFIX, name = "mode", havingValue = "AGENT", matchIfMissing = true)
+@AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.MODE, havingValue = "AGENT", matchIfMissing = true)
 public class PlatformOutboundPropagationAutoConfiguration {
 
     /**
