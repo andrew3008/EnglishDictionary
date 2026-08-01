@@ -141,7 +141,7 @@ class CorrelationScopeContractTest {
 
     @Test
     void disabledFacadeKeepsIdentityFunctionalWithoutBaggageEmission() {
-        TraceOperations disabled = NoopTraceOperations.backedBy(
+        TraceOperations disabled = NoopTraceOperations.forDisabledRuntime(
                 NoOpTracingRuntime.disabledByConfiguration("test"));
 
         disabled.withCorrelationId("DISABLED", () -> {

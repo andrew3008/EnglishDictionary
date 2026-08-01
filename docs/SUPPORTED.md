@@ -27,7 +27,8 @@ Java 21
 ```
 
 SDK-only / без Controlled Agent Distribution не является поддерживаемым runtime. Для локальной
-работы используется `DISABLED`; test-only SDK допустим только в непубликуемых fixtures/source sets.
+работы задайте `platform.tracing.enabled=false`; test-only SDK допустим только в непубликуемых
+fixtures/source sets.
 
 `RG-CONTROLLED-AGENT OPEN`; `RG-IDENTITY-TRUST OPEN`; `PRODUCTION ROLLOUT FORBIDDEN`. Поставка в pilot/production разрешается
 только после независимого закрытия [Controlled Agent gate](./architecture/rg-controlled-agent-release-gate.md) и [identity trust gate](./architecture/rg-identity-trust-release-gate.md).
@@ -136,7 +137,7 @@ Additional `OTEL_*` / `platform.tracing.*` — see [runbook/mdc-logging-producti
 
 ---
 
-## Agent mode: named SPI и mode (Фаза 15)
+## Agent runtime: named SPI и `platform.tracing.enabled`
 
 В agent/autoconfigure-режиме платформенные sampler и propagator доступны через стандартные OTel-ключи
 (`ConfigurableSamplerProvider`/`ConfigurablePropagatorProvider`), помимо inline-customizer'ов:
@@ -156,10 +157,14 @@ Additional `OTEL_*` / `platform.tracing.*` — see [runbook/mdc-logging-producti
 | `otel.traces.sampler` | не задан → compose-over-existing | `platform` — явный opt-in; рантайм существующих деплоев не меняется |
 | `otel.propagators` | `tracecontext,baggage` → дописывается `platform-trace-control` | `none` → платформенный не добавляется; дубль не создаётся |
 
-`platform.tracing.mode` (`AGENT|DISABLED`, default `AGENT`) задаёт strict ownership.
-`AGENT` требует READY Controlled Platform Agent; application SDK запрещён. `NoopTraceOperations` допустим
-только при `mode=DISABLED` и отсутствии Agent/runtime. `AUTO`, `STARTER`, `EXTERNAL`
-удалены без aliases. Состояние видно в `/actuator/tracing` → секция `sdk`.
+`platform.tracing.enabled` (default `true`) задаёт strict ownership. При `enabled=true` требуется
+READY Controlled Platform Agent; application SDK запрещён. При `enabled=false` Agent должен
+отсутствовать в startup validation window; публикуется NoOp facade с причиной
+`platform.tracing.enabled=false`. Dynamic Agent attach после Spring startup не поддерживается.
+Состояние видно в `/actuator/tracingStatus`.
+
+`platform.tracing.mode` и `platform.tracing.configuration.enabled` удалены и fail-fast; aliases
+не поддерживаются.
 [ADR-named-spi-sampler-propagator.md](./decisions/ADR-named-spi-sampler-propagator.md),
 [ADR-sdk-mode-detection.md](./decisions/ADR-sdk-mode-detection.md),
 [ADR-config-precedence.md](./decisions/ADR-config-precedence.md),
@@ -193,6 +198,8 @@ Tracing-стартер **не** пишет `traceId`/`spanId`/`traceFlags` в MD
 platform:
   tracing:
     enabled: true
+    configuration:
+      authority: HELM
     suppression:
       suppress-micrometer-tracing: true   # required with Java Agent
 ```
@@ -210,7 +217,8 @@ Agent-side enum uses `DEV_ACTUATOR` for the Spring `ACTUATOR` authority.
 | **HELM** | Production / shared startup-only | **None** (no Spring writer beans) | Agent bootstrap parser builds initial Category A policy from env/system properties; no Spring runtime write; no Actuator write surface |
 | **CONFIG_SERVER** | Complete eight-leaf manifest delivery | Locator / codec / snapshot client / coalescer | Complete manifest → private `applySnapshot` only |
 | **ACTUATOR** (+ `platform.environment=LOCAL`) | Local/dev typed leaves only | Actuator management controller + private snapshot client | Eight typed Category A leaves → private `applySnapshot` (Agent authority label `DEV_ACTUATOR`) |
-| **DISABLED** | `platform.tracing.mode=DISABLED` or `platform.tracing.configuration.enabled=false` | **No** Config Server / Actuator private-control discovery | Incompatible with `CONFIG_SERVER` / `ACTUATOR` (fail-fast); with `HELM` → no writer, no Actuator write surface |
+| **TRACING ENABLED** | `platform.tracing.enabled=true` | Selected authority discovery | READY Controlled Agent required; functional facade |
+| **TRACING DISABLED** | `platform.tracing.enabled=false` | **No** Config Server / Actuator private-control discovery | Agent absent during startup validation window; NoOp facade (`platform.tracing.enabled=false`); incompatible with `CONFIG_SERVER` / `ACTUATOR` |
 
 **Category A** live policy is owned by Agent `AcceptedPolicyAccess`. The sole mutation operation is
 private `applySnapshot` (plus `readAcceptedComplete`) on the private control plane.
@@ -315,8 +323,8 @@ A: Not in v0.1.0 matrix. Request via separate epic if business requires.
 A: Untested. Production target is 3.5.x aligned with platform BOM.
 
 **Q: Can we run without Java Agent?**  
-A: В production и при `mode=AGENT` — нет: требуется READY Controlled Agent Distribution.
-Для local/dev без Agent используйте `platform.tracing.mode=DISABLED`; application SDK не
+A: При `platform.tracing.enabled=true` — нет: требуется READY Controlled Agent Distribution.
+Для local/dev без Agent используйте `platform.tracing.enabled=false`; application SDK не
 является поддерживаемым fallback.
 
 **Q: Кто пишет traceId в MDC?**  

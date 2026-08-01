@@ -41,14 +41,17 @@ The complete module table and dependency rules are in [module taxonomy](./platfo
 
 Application and Agent classes may have different class identities. Their supported bridges are OTel current context and versioned JMX wire data composed of Open Types/primitives. Shared mutable statics, application DTO transfer and implementation-object injection across classloaders are prohibited.
 
-## Runtime modes
+## Runtime activation
 
-| Mode | Required state | Result |
+| `platform.tracing.enabled` | Required state | Result |
 |---|---|---|
-| `AGENT` | `platform.tracing.mode=AGENT` and compatible full-profile Agent state `AGENT_READY` | functional facade and Agent-owned tracing |
-| `DISABLED` | `platform.tracing.mode=DISABLED`, no Agent and no application SDK | intentional NoOp facade |
+| `true` | compatible full-profile Agent state `AGENT_READY` | functional facade and Agent-owned tracing |
+| `false` | no Agent during startup validation window and no application SDK | intentional NoOp facade; reason `platform.tracing.enabled=false` |
 
-There is no production `AUTO`, `STARTER` or `EXTERNAL` mode. Enabled tracing without compatible READY Controlled Agent fails startup. See [runtime ADR](../decisions/ADR-sdk-mode-detection.md) and [Controlled Agent gate](./rg-controlled-agent-release-gate.md).
+Enabled tracing without compatible READY Controlled Agent fails startup. Dynamic Agent attach after
+Spring startup is unsupported. Obsolete `platform.tracing.mode` and
+`platform.tracing.configuration.enabled` fail fast. See [runtime ADR](../decisions/ADR-sdk-mode-detection.md)
+and [Controlled Agent gate](./rg-controlled-agent-release-gate.md).
 
 ## Onboarding
 
@@ -92,7 +95,7 @@ See [public API governance](../decisions/ADR-public-api-allowlist.md) and [OTel-
 
 ## Diagnostics and logs
 
-`GET /actuator/tracing` reports configured mode, Agent readiness and effective OTel settings. It is diagnostic and cannot prove pre-JVM supply-chain enforcement.
+`GET /actuator/tracing` reports `tracingEnabled`, Agent readiness and effective OTel settings. It is diagnostic and cannot prove pre-JVM supply-chain enforcement.
 
 Example structured log fields:
 

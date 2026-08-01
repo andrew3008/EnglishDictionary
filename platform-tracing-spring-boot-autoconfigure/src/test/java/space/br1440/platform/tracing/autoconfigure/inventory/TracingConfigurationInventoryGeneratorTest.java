@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PropagationDefaults;
 import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceProvider;
@@ -117,6 +118,7 @@ class TracingConfigurationInventoryGeneratorTest {
 
         addConditionalFixture(entries, source);
         addConditionalOnPropertyGates(entries, source);
+        addBootstrapEnabledProperty(entries, source);
         addCategoryATraceControlHeadersEnabled(entries, source);
         addCategoryAExporterEnabled(entries, source);
         addFixtureAndDocumentedNames(entries, source);
@@ -275,15 +277,15 @@ class TracingConfigurationInventoryGeneratorTest {
                 source,
                 "platform.tracing.thread-pool-task-executor.enabled",
                 "platform-tracing-spring-boot-autoconfigure/src/main/java/"
-                        + "space/br1440/platform/tracing/autoconfigure/async/"
+                        + "space/br1440/platform/tracing/autoconfigure/integrations/async/"
                         + "TracingAsyncContextAutoConfiguration.java",
-                "ThreadPoolTaskExecutorContextPropagationBeanPostProcessor");
+                "ThreadPoolTaskExecutorDecoratorBeanPostProcessor");
         addConditionalOnPropertyGate(
                 entries,
                 source,
                 "platform.tracing.kafka.batch-links-enabled",
                 "platform-tracing-spring-boot-autoconfigure/src/main/java/"
-                        + "space/br1440/platform/tracing/autoconfigure/kafka/"
+                        + "space/br1440/platform/tracing/autoconfigure/integrations/kafka/"
                         + "PlatformKafkaAutoConfiguration.java",
                 "KafkaBatchLinksAspect");
         addConditionalOnPropertyGate(
@@ -291,7 +293,7 @@ class TracingConfigurationInventoryGeneratorTest {
                 source,
                 "platform.tracing.kafka.propagate-platform-headers",
                 "platform-tracing-spring-boot-autoconfigure/src/main/java/"
-                        + "space/br1440/platform/tracing/autoconfigure/kafka/"
+                        + "space/br1440/platform/tracing/autoconfigure/integrations/kafka/"
                         + "PlatformKafkaOutboundAutoConfiguration.java",
                 "PlatformKafkaProducerFactoryCustomizer");
         addSuppressMicrometerTracingGate(entries, source);
@@ -308,7 +310,8 @@ class TracingConfigurationInventoryGeneratorTest {
             SourceIndex source) {
         String name = "platform.tracing.suppression.suppress-micrometer-tracing";
         String declarationPath = "platform-tracing-spring-boot-autoconfigure/src/main/java/"
-                + "space/br1440/platform/tracing/autoconfigure/support/MicrometerTracingSuppressionResolver.java";
+                + "space/br1440/platform/tracing/autoconfigure/integrations/observation/"
+                + "MicrometerTracingSuppressionResolver.java";
         Entry entry = entries.computeIfAbsent(name, Entry::new);
         entry.kind = "CONFIG_PROPERTY";
         entry.prefixFamily = family(name);
@@ -420,10 +423,45 @@ class TracingConfigurationInventoryGeneratorTest {
         entry.fixtures.addAll(source.references(name, SourceIndex::isFixture));
     }
 
+    /**
+     * Bootstrap ownership switch read from {@link org.springframework.core.env.Environment}
+     * by {@code TracingBootstrapSettingsResolver} — not a {@code TracingProperties} POJO leaf.
+     */
+    private static void addBootstrapEnabledProperty(
+            Map<String, Entry> entries,
+            SourceIndex source) {
+        String name = TracingBootstrapPropertyNames.ENABLED;
+        String declarationPath = "platform-tracing-spring-boot-autoconfigure/src/main/java/"
+                + "space/br1440/platform/tracing/autoconfigure/bootstrap/"
+                + "TracingBootstrapPropertyNames.java";
+        String resolverPath = "platform-tracing-spring-boot-autoconfigure/src/main/java/"
+                + "space/br1440/platform/tracing/autoconfigure/bootstrap/"
+                + "TracingBootstrapSettingsResolver.java";
+        Entry entry = entries.computeIfAbsent(name, Entry::new);
+        entry.kind = "CONFIG_PROPERTY";
+        entry.prefixFamily = family(name);
+        entry.declarations.add(location(
+                declarationPath, "TracingBootstrapPropertyNames.ENABLED", "boolean"));
+        entry.readers.add(link(
+                resolverPath,
+                "TracingBootstrapSettingsResolver.parseBoolean(ENABLED, true)",
+                "ENVIRONMENT_READ"));
+        entry.consumers.add("TracingBootstrapSettingsResolver / AgentRuntimeContractValidator");
+        entry.valueType = "boolean";
+        entry.defaultValue = "true";
+        entry.defaultDefinitions.add("Environment:absent -> true");
+        entry.defaultOwner = "Spring startup";
+        entry.lifecycleOwner = "Spring application context";
+        entry.readerStatus = "ACTIVE_READER";
+        entry.consumerStatus = "ACTIVE";
+        entry.currentStatus = "ACTIVE";
+        entry.documents.addAll(source.references(name, SourceIndex::isDocumentation));
+        entry.fixtures.addAll(source.references(name, SourceIndex::isFixture));
+    }
+
     private static void addFixtureAndDocumentedNames(
             Map<String, Entry> entries,
             SourceIndex source) {
-        fixture(entries, source, "platform.tracing.enabled");
         fixture(entries, source, "platform.tracing.sdk.mode");
         fixture(entries, source, "platform.tracing.policy.sampling.ratio");
         fixture(entries, source, "platform.tracing.policy.sampling.route-ratio");
@@ -801,7 +839,8 @@ class TracingConfigurationInventoryGeneratorTest {
                         + "merge to platform.tracing.javaagent.sampling.force-record-values "
                         + "(Category B startup-only; Decision 14)."));
         values.add(resolution("N4", "PASS",
-                "mode and route-ratios type drift confirmed and represented without String flattening."));
+                "route-ratios type drift confirmed and represented without String flattening; "
+                        + "obsolete platform.tracing.mode removed from inventory."));
         values.add(resolution("N5", "PASS",
                 "P6.1/P6.7 resolved: scrubbing built-in-rules/enabled owned solely by "
                         + "platform.tracing.javaagent.scrubbing.* (Category B; Decision 14); "
@@ -814,10 +853,13 @@ class TracingConfigurationInventoryGeneratorTest {
                 "P6.1 applied: published contract corrected to "
                         + "platform.tracing.semantic.validation-mode; stale semconv name is DELETE."));
         values.add(resolution("N9", "PASS",
-                "enabled, sdk.mode, three removed async aliases and service.k8s-pod-uid "
-                        + "are fixture-only with no production reader."));
+                "platform.tracing.enabled is ACTIVE Spring bootstrap (TracingBootstrapPropertyNames); "
+                        + "sdk.mode, three removed async aliases and service.k8s-pod-uid remain "
+                        + "fixture-only / DELETE with no production reader."));
         values.add(resolution("N10", "PASS",
-                "Stale sdk.mode documents are listed; SDK_MODE constant resolves to platform.tracing.mode."));
+                "Stale sdk.mode documents are listed; ExtensionPropertyNames.SDK_MODE and "
+                        + "SdkExtensionConfig were removed; bootstrap ownership is "
+                        + "platform.tracing.enabled."));
         values.add(resolution("N11", "PASS",
                 "Actuator environment spelling is a relaxed-binding alias, not another property."));
         String perfFinding = source.references(
@@ -1074,9 +1116,10 @@ class TracingConfigurationInventoryGeneratorTest {
 
                 ## 9. Type/default drift
 
-                Confirmed type drift: `platform.tracing.mode` and
-                `platform.tracing.sampling.route-ratios`. Scrubbing built-in-rules/enabled are
-                Agent Category B only after P6.7 (no Spring default owner).
+                Confirmed type drift: `platform.tracing.sampling.route-ratios`.
+                Scrubbing built-in-rules/enabled are Agent Category B only after P6.7
+                (no Spring default owner). Obsolete `platform.tracing.mode` is fail-fast
+                and not inventoried as an active key.
 
                 ## 10. Dead and fixture-only names
 
@@ -1087,7 +1130,8 @@ class TracingConfigurationInventoryGeneratorTest {
                 P6.1 corrected the published contract to the active
                 `platform.tracing.semantic.validation-mode`; the stale
                 `platform.tracing.semconv.validation.mode` name is DELETE-only in historical docs.
-                Stale `sdk.mode` references remain.
+                Stale `sdk.mode` references remain in historical docs; production ownership is
+                `platform.tracing.enabled`.
 
                 ## 12. N1-N12 resolution
 
@@ -1295,7 +1339,7 @@ class TracingConfigurationInventoryGeneratorTest {
                  "platform.tracing.propagation.baggage.enabled",
                  "platform.tracing.resource.normalize-environment" -> "true";
             case "platform.tracing.sampling.ratio" -> "0.1";
-            case "platform.tracing.mode" -> "null";
+            case "platform.tracing.enabled" -> "true";
             case "platform.tracing.sampling.route-ratios" -> "{}";
             case "platform.tracing.validation.strict",
                  "platform.tracing.validation.strict-runtime-allowed",
@@ -1389,8 +1433,8 @@ class TracingConfigurationInventoryGeneratorTest {
         if (name.contains(".propagation.")) {
             return "Platform propagation extension";
         }
-        if (name.equals("platform.tracing.mode")) {
-            return "Spring/Agent ownership resolver";
+        if (name.equals("platform.tracing.enabled")) {
+            return "TracingBootstrapSettingsResolver / AgentRuntimeContractValidator";
         }
         if (name.equals("platform.environment")) {
             return "ValidationEnvironmentGuard";
@@ -1443,7 +1487,9 @@ class TracingConfigurationInventoryGeneratorTest {
             return "Agent runtime policy owner";
         }
         if ("CONFIG_PROPERTY".equals(entry.kind)) {
-            return entry.declarations.stream().anyMatch(value -> value.contains("TracingProperties"))
+            return entry.declarations.stream().anyMatch(value ->
+                            value.contains("TracingProperties")
+                                    || value.contains("TracingBootstrapPropertyNames"))
                     ? "Spring" : "Agent";
         }
         return "External";
@@ -1455,13 +1501,11 @@ class TracingConfigurationInventoryGeneratorTest {
     }
 
     private static boolean knownTypeDrift(String name) {
-        return Set.of(
-                "platform.tracing.mode",
-                "platform.tracing.sampling.route-ratios").contains(name);
+        return "platform.tracing.sampling.route-ratios".equals(name);
     }
 
     private static boolean knownDefaultDrift(String name) {
-        return "platform.tracing.mode".equals(name);
+        return false;
     }
 
     private static List<String> currentNames(Map<String, Entry> entries, String current) {

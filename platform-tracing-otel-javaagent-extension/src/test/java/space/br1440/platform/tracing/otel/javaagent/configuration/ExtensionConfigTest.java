@@ -89,12 +89,6 @@ class ExtensionConfigTest {
         }
 
         @Test
-        void sdk_returns_same_instance() {
-            ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
-            assertThat(cfg.sdk()).isSameAs(cfg.sdk());
-        }
-
-        @Test
         void control_returns_same_instance() {
             ExtensionConfig cfg = new ExtensionConfig(emptyConfig());
             assertThat(cfg.control()).isSameAs(cfg.control());
@@ -220,13 +214,6 @@ class ExtensionConfigTest {
     }
 
     @Test
-    void sdk_mode_is_null_when_config_is_empty() {
-        ExtensionConfig config = new ExtensionConfig(emptyConfig());
-
-        assertThat(config.sdk().mode()).isNull();
-    }
-
-    @Test
     void runtimeControlMutationIsDisabledByDefault() {
         assertThat(new ExtensionConfig(emptyConfig()).control().runtimeMutationEnabled()).isFalse();
     }
@@ -285,14 +272,6 @@ class ExtensionConfigTest {
                 stringConfig(ExtensionPropertyNames.SCRUBBING_HMAC_KEY, "secret-key-value"));
 
         assertThat(config.scrubbing().hmacKey()).isEqualTo("secret-key-value");
-    }
-
-    @Test
-    void sdk_reads_explicit_mode() {
-        ExtensionConfig config = new ExtensionConfig(
-                stringConfig(ExtensionPropertyNames.SDK_MODE, "agent"));
-
-        assertThat(config.sdk().mode()).isEqualTo("agent");
     }
 
     // -- Collection immutability -----------------------------------------------------------------
@@ -358,10 +337,6 @@ class ExtensionConfigTest {
             assertThat(new ExtensionConfig(emptyConfig()).scrubbing().rulesExtensions()).isNull();
         }
 
-        @Test
-        void sdk_mode_null_when_absent() {
-            assertThat(new ExtensionConfig(emptyConfig()).sdk().mode()).isNull();
-        }
     }
 
     // -- Stub helpers ----------------------------------------------------------------------------

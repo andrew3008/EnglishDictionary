@@ -10,7 +10,6 @@ import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfigurati
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
-/** Регистрирует read-only application diagnostics без зависимости от Actuator. */
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 public class TracingRuntimeDiagnosticsAutoConfiguration {

@@ -1,20 +1,11 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
 
-/**
- * Micrometer-реализация {@link SemconvMetrics} (модуль core от Micrometer не зависит — реализация
- * живёт здесь).
- * <ul>
- *   <li>{@code platform.tracing.semconv.violations{rule, builder}} — нарушения контракта;</li>
- *   <li>{@code platform.tracing.unsafe_attributes{key_class}} — использование escape-hatch.</li>
- * </ul>
- * Все теги low-cardinality (без значений атрибутов). Счётчики кэшируются самим
- * {@link MeterRegistry} по идентификатору метрики.
- */
+import io.micrometer.core.instrument.MeterRegistry;
+
 final class MicrometerSemconvMetrics implements SemconvMetrics {
 
     private static final String VIOLATIONS = "platform.tracing.semconv.violations";

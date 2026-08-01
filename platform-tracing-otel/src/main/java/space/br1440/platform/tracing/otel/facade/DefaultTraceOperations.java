@@ -12,7 +12,7 @@ import space.br1440.platform.tracing.api.util.ThrowingSupplier;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 
 public class DefaultTraceOperations implements TraceOperations {
 
@@ -72,7 +72,7 @@ public class DefaultTraceOperations implements TraceOperations {
     }
 
     public boolean isFacadeEnabled() {
-        return (active.runtime().state().mode() == TracingMode.ENABLED);
+        return (active.runtime().state().mode() == TracingRuntimeMode.ENABLED);
     }
 
     public void setFacadeEnabled(boolean enabled) {

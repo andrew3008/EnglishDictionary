@@ -1,21 +1,15 @@
 {
   "properties": [
     {
-      "name": "platform.tracing.mode",
-      "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode",
-      "description": "Режим владения трассировкой: Controlled Platform Agent или намеренно отключенный facade.",
-      "defaultValue": "AGENT"
+      "name": "platform.tracing.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Включает платформенную трассировку. true (default) требует READY Controlled Platform Agent. false публикует NoOp facade и требует отсутствия Agent в течение startup validation window; dynamic attach после старта не поддерживается. Не отключает уже прикреплённый Java Agent.",
+      "defaultValue": true
     },
     {
       "name": "platform.tracing.configuration.authority",
       "type": "space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority",
       "description": "Единственный разрешенный источник изменения runtime-политики трассировки."
-    },
-    {
-      "name": "platform.tracing.configuration.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Разрешает доставку runtime-политики через выбранный источник конфигурации.",
-      "defaultValue": true
     },
     {
       "name": "platform.environment",

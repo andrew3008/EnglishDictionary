@@ -759,7 +759,7 @@ Preservation risk: CRITICAL
 | `platform.tracing.validation.*` | `TracingProperties.MandatorySpanAttributes` | autoconfigure | enabled, strict | partial | policy | CONFIG_SERVER_RUNTIME_POLICY | strictRuntimeAllowed removed (agent-only) |
 | `platform.tracing.policy.exporter.enabled` | AcceptedPolicy / `SafeSpanExporter` | agent + config-server | enabled kill-switch | JMX | policy | CONFIG_SERVER_RUNTIME_POLICY | Spring `TracingProperties.Exporter` mirror removed |
 | OTel agent env | `ExtensionPropertyNames` / `PlatformTracingDefaultsProvider` | otel-extension | limits, queue, resource, enriching, watchdog, baggage, exporter endpoint | via agent ConfigProperties | policy (applied) | HELM_ENV / OTEL_* | Sole source for removed Spring mirrors |
-| `platform.tracing.mode` | `TracingProperties.mode` | autoconfigure | AGENT/DISABLED | no | topology/diagnostic | HELM_ENV_BOOTSTRAP_DEFAULT | Single ownership source shared with agent diagnostics |
+| `platform.tracing.enabled` | `TracingProperties.enabled` | autoconfigure | `true`/`false` | no | topology/diagnostic | HELM_ENV_BOOTSTRAP_DEFAULT | `true` requires READY Agent; `false` requires Agent absence during startup validation |
 | OTel agent env | `ExtensionPropertyNames` / `PlatformTracingDefaultsProvider` | otel-extension | mirrors sampling/scrubbing/validation/etc. | via JMX reload | policy (applied) | INTERNAL_DERIVED | Agent applied state, not source of truth |
 | `management.endpoints.web.exposure` | (Spring) | consumer app | actuator exposure | yes | topology | HELM_ENV_STARTUP_TOPOLOGY | Mutation exposure risk |
 | Starter metadata | `META-INF/spring/*` | autoconfigure/web* | AutoConfiguration.imports | no | topology | INTERNAL_DERIVED | |

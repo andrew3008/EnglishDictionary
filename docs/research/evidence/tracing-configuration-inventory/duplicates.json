@@ -4,7 +4,7 @@
   "defaults" : [ "Agent:[password,secret,token]" ],
   "duplicateGroup" : "duplicate:platform.tracing.javaagent.propagation.baggage.deny-patterns",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.deny-patterns",
-  "id" : "CONFIG_PROPERTY-009",
+  "id" : "CONFIG_PROPERTY-010",
   "targetOwner" : "Agent",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String", "PropagationDefaults:String" ]
@@ -14,7 +14,7 @@
   "defaults" : [ "Agent:NONE" ],
   "duplicateGroup" : "duplicate:platform.tracing.javaagent.propagation.baggage.enabled",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.enabled",
-  "id" : "CONFIG_PROPERTY-010",
+  "id" : "CONFIG_PROPERTY-011",
   "targetOwner" : "Agent",
   "typeDrift" : true,
   "types" : [ "ExtensionPropertyNames:String", "PropagationDefaults:String" ]

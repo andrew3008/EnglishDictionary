@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -80,7 +79,7 @@ class TracingPropertiesBindingTest {
                         "platform.tracing.validation.strict=true")
                 .run(ctx -> {
                     assertThat(ctx).hasNotFailed();
-                    assertThat(ctx.getBean(TracingBootstrapSettings.class).mode()).isEqualTo(TracingMode.AGENT);
+                    assertThat(ctx.getBean(TracingBootstrapSettings.class).tracingEnabled()).isTrue();
                 });
         assertThat(output).contains("platform.tracing.sampling.enabled");
         assertThat(output).contains("platform.tracing.sampling.ratio");

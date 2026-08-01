@@ -10,14 +10,14 @@ import java.util.Optional;
 public final class ImmutableTracingState implements TracingState {
 
     private static final TracingState ENABLED = new ImmutableTracingState(
-            TracingMode.ENABLED, null, Map.of()
+            TracingRuntimeMode.ENABLED, null, Map.of()
     );
 
-    private final TracingMode mode;
+    private final TracingRuntimeMode mode;
     private final String reason;
     private final Map<String, String> details;
 
-    private ImmutableTracingState(@Nonnull TracingMode mode,
+    private ImmutableTracingState(@Nonnull TracingRuntimeMode mode,
                                   @Nullable String reason,
                                   @Nonnull Map<String, String> details) {
         this.mode = Objects.requireNonNull(mode, "mode");
@@ -29,7 +29,7 @@ public final class ImmutableTracingState implements TracingState {
         return ENABLED;
     }
 
-    public static TracingState of(@Nonnull TracingMode mode,
+    public static TracingState of(@Nonnull TracingRuntimeMode mode,
                                   @Nullable String reason,
                                   @Nonnull Map<String, String> details) {
         return new ImmutableTracingState(mode, reason, details);
@@ -37,7 +37,7 @@ public final class ImmutableTracingState implements TracingState {
 
     @Override
     @Nonnull
-    public TracingMode mode() {
+    public TracingRuntimeMode mode() {
         return mode;
     }
 

@@ -13,7 +13,6 @@ import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
-/** Привязывает технический requestId к execution одиночного Kafka listener. */
 @Aspect
 public final class KafkaRequestIdentityAspect {
 
@@ -27,7 +26,6 @@ public final class KafkaRequestIdentityAspect {
     public Object bindRequestIdentity(ProceedingJoinPoint joinPoint) throws Throwable {
         ConsumerRecord<?, ?> record = singleRecord(joinPoint.getArgs());
         if (record == null) {
-            // Batch execution не получает ложный общий requestId: identity остаётся per-record.
             return joinPoint.proceed();
         }
 
@@ -44,23 +42,27 @@ public final class KafkaRequestIdentityAspect {
                 if (found != null) {
                     return null;
                 }
+
                 found = record;
             }
         }
+
         return found;
     }
 
     private static String resolveAndAttach(ConsumerRecord<?, ?> record) {
         Header header = record.headers().lastHeader(PlatformHeaders.X_REQUEST_ID);
-        String incoming = header == null || header.value() == null
+        String incoming = (header == null || header.value() == null)
                 ? null
                 : new String(header.value(), StandardCharsets.UTF_8);
+
         String requestId = RequestIdBoundarySupport.resolve(incoming);
-        if (incoming == null || !requestId.equals(incoming)) {
+        if (!requestId.equals(incoming)) {
             record.headers()
                     .remove(PlatformHeaders.X_REQUEST_ID)
                     .add(PlatformHeaders.X_REQUEST_ID, requestId.getBytes(StandardCharsets.UTF_8));
         }
+
         return requestId;
     }
 }

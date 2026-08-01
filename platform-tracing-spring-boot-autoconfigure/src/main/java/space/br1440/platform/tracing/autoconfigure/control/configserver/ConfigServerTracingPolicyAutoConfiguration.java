@@ -33,10 +33,6 @@ import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyS
 @AutoConfigureAfter(PrivateJmxControlAutoConfiguration.class)
 @ConditionalOnClass(EnvironmentChangeEvent.class)
 @ConditionalOnProperty(
-        name = "platform.tracing.configuration.enabled",
-        havingValue = "true",
-        matchIfMissing = true)
-@ConditionalOnProperty(
         name = "platform.tracing.configuration.authority",
         havingValue = "CONFIG_SERVER",
         matchIfMissing = false)

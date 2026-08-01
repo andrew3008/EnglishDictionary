@@ -13,16 +13,16 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusEndpoint;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 /**
  * Доказывает отсутствие mutation-capability у единого status endpoint.
@@ -31,16 +31,15 @@ class P64ActuatorZeroWriteProofTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(TracingStatusAutoConfiguration.class)
-            .withBean(TraceOperations.class, () -> NoopTraceOperations.backedBy(
-                    NoOpTracingRuntime.disabledByConfiguration("test")))
+            .withBean(TraceOperations.class, () -> NoopTraceOperations.INSTANCE)
+            .withBean(TracingRuntime.class, () -> NoOpTracingRuntime.disabledByConfiguration("test"))
             .withBean(TracingBootstrapSettings.class, () -> new TracingBootstrapSettings(
-                    TracingMode.DISABLED,
+                    false,
                     TracingConfigurationAuthority.HELM,
-                    PlatformEnvironmentPosture.LOCAL,
-                    true))
+                    PlatformEnvironmentPosture.LOCAL))
             .withBean(PlatformTracingJmxClient.class, PlatformTracingJmxClient::new)
-            .withBean(TracingModeDiagnostics.class, () -> new TracingModeDiagnostics(
-                    TracingMode.DISABLED,
+            .withBean(TracingDeploymentDiagnostics.class, () -> new TracingDeploymentDiagnostics(
+                    false,
                     false,
                     AgentRuntimeState.DISABLED,
                     new AgentExtensionDescriptor(
@@ -65,12 +64,12 @@ class P64ActuatorZeroWriteProofTest {
     }
 
     @Test
-    void disabledModeStillRegistersReadOnlyStatusEndpoint() {
+    void disabledTracingStillRegistersReadOnlyStatusEndpoint() {
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(TracingStatusEndpoint.class);
-            assertThat(context.getBean(TracingStatusEndpoint.class).tracingStatus().mode())
-                    .isEqualTo("DISABLED");
+            assertThat(context.getBean(TracingStatusEndpoint.class).tracingStatus().tracingEnabled())
+                    .isFalse();
         });
     }
 }

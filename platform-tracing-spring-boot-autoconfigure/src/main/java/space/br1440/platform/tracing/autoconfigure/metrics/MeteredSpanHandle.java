@@ -1,10 +1,10 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
+import java.util.Objects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 
-import java.util.Objects;
+import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 
 final class MeteredSpanHandle implements SpanHandle {
 
@@ -16,15 +16,12 @@ final class MeteredSpanHandle implements SpanHandle {
         this.metrics = Objects.requireNonNull(metrics, "metrics");
     }
 
-    /**
-     * Single source of truth for {@code exceptionsRecorded} metric increment.
-     * Do not duplicate this increment in {@link MeteredTracingRuntime#recordException}.
-     */
     @Override
     public void recordException(@Nullable Throwable throwable) {
         if (throwable != null) {
             metrics.incrementExceptionsRecorded();
         }
+
         delegate.recordException(throwable);
     }
 

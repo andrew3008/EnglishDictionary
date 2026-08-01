@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.RequiredArgsConstructor;
+
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -14,27 +16,12 @@ import space.br1440.platform.tracing.api.propagation.control.OutboundPropagation
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
-/**
- * Регистрирует {@link PlatformKafkaProducerInterceptor} во всех {@link DefaultKafkaProducerFactory}
- * (non-destructive) и прокидывает зависимости (policy/injector) через producer-config map.
- * <p>
- * Платформенный интерсептор добавляется <b>последним</b> в {@code interceptor.classes}, чтобы
- * инжектировать платформенные заголовки после бизнес-трансформаций пользовательских интерсепторов,
- * но до фактической отправки. Существующие интерсепторы сохраняются.
- */
+@RequiredArgsConstructor
 public final class PlatformKafkaProducerFactoryCustomizer implements DefaultKafkaProducerFactoryCustomizer {
 
     private final OutboundPropagationPolicy policy;
     private final PlatformOutboundPropagation propagation;
     private final RequestIdentityBoundarySupport identityBoundary;
-
-    public PlatformKafkaProducerFactoryCustomizer(OutboundPropagationPolicy policy,
-                                                   PlatformOutboundPropagation propagation,
-                                                   RequestIdentityBoundarySupport identityBoundary) {
-        this.policy = policy;
-        this.propagation = propagation;
-        this.identityBoundary = identityBoundary;
-    }
 
     @Override
     public void customize(DefaultKafkaProducerFactory<?, ?> producerFactory) {
@@ -54,23 +41,34 @@ public final class PlatformKafkaProducerFactoryCustomizer implements DefaultKafk
         producerFactory.updateConfigs(updates);
     }
 
-    @SuppressWarnings("unchecked")
     private static List<String> existingInterceptors(Map<String, Object> config) {
         Object value = config.get(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG);
-        if (value == null) {
-            return List.of();
-        }
-        if (value instanceof List) {
-            // Может быть List<String> либо List<Class<?>> — нормализуем к именам классов.
-            List<String> result = new ArrayList<>();
-            for (Object item : (List<Object>) value) {
-                result.add(item instanceof Class ? ((Class<?>) item).getName() : String.valueOf(item));
+        switch (value) {
+            case null -> {
+                return List.of();
             }
-            return result;
+
+            case List<?> list -> {
+                List<String> result = new ArrayList<>();
+                for (Object item : list) {
+                    String itemName = (item instanceof Class<?> cls) ? cls.getName() : String.valueOf(item);
+                    result.add(itemName);
+                }
+
+                return result;
+            }
+
+            case String s when !s.isBlank() -> {
+                return Arrays.stream(s.split(","))
+                        .map(String::trim)
+                        .filter(p -> !p.isEmpty())
+                        .toList();
+            }
+
+            default -> {
+            }
         }
-        if (value instanceof String s && !s.isBlank()) {
-            return Arrays.stream(s.split(",")).map(String::trim).filter(p -> !p.isEmpty()).toList();
-        }
+
         return List.of();
     }
 }

@@ -37,7 +37,9 @@ WebMvc/WebFlux **не добавляют** своих `@ConfigurationProperties`
 
 ### «Обязательные для старта» vs «обязательные для production»
 
-Properties имеют defaults, но runtime ownership проверяется fail-fast: default `mode=AGENT` требуют compatible `READY` Controlled Agent. Без него Spring startup отклоняется.
+Properties имеют defaults, но runtime ownership проверяется fail-fast: default
+`platform.tracing.enabled=true` требует compatible `READY` Controlled Agent. Без него Spring
+startup отклоняется.
 
 Для **production** (по `docs/SUPPORTED.md`) обязательны:
 
@@ -125,8 +127,6 @@ platform:
 platform:
   tracing:
     enabled: false
-    sdk:
-      mode: DISABLED
 ```
 
 Application SDK и `micrometer-tracing-bridge-otel` не являются fallback production runtime.
@@ -142,7 +142,7 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | YAML (`platform.tracing.*`) | Переменная окружения | Default | Обяз. | Канал | Описание |
 |----------------------------|----------------------|---------|-------|-------|----------|
 | — | `SPRING_APPLICATION_NAME` | — | **Prod: да** | Spring | Fallback для `service.name` |
-| `mode` | `PLATFORM_TRACING_MODE` | `AGENT` | Нет | Spring (ownership) | `AGENT\|DISABLED`; единственный startup-переключатель |
+| `enabled` | `PLATFORM_TRACING_ENABLED` | `true` | Нет | Spring (ownership) | `true` требует READY Controlled Agent; `false` требует его отсутствия в startup validation window |
 | **service** | | | | | |
 | `service.name` | `PLATFORM_TRACING_SERVICE_NAME` | — | **Prod: да*** | Spring + Agent bridge | Логическое имя сервиса |
 | `service.version` | `PLATFORM_TRACING_SERVICE_VERSION` | — | Рек. | Spring + Agent bridge | `service.version` в resource |
@@ -316,7 +316,7 @@ args:
 
 ## Практические выводы
 
-1. **Strictly required при default `mode=AGENT`** — compatible READY Controlled Agent Distribution; иначе startup failure.
+1. **Strictly required при default `platform.tracing.enabled=true`** — compatible READY Controlled Agent Distribution; иначе startup failure.
 2. **Strictly required для рабочего production tracing** — verified atomic distribution, `suppress-micrometer-tracing=true`, имя сервиса, реальный `OTEL_EXPORTER_OTLP_ENDPOINT`.
 3. **WebMvc vs WebFlux** — различаются только starter-модулем; свойства одинаковые, outbound inject включается одним флагом `propagation.outbound.enabled`.
 4. **Dual-channel** — меняя только `application.yml`, вы не меняете BSP/limits/exporter в Agent; выравнивайте через `OTEL_*` или смотрите `GET /actuator/tracing` → `otelEnvHints` / `otelEffective`.
@@ -333,7 +333,7 @@ GET /actuator/tracing
 
 | Секция | Назначение |
 |--------|------------|
-| `sdk` | Режим (`AGENT` / `DISABLED`), Controlled Agent readiness и безопасная причина startup failure |
+| `sdk` | `tracingEnabled`, Controlled Agent readiness и безопасная причина startup failure |
 | `otelEffective` | Фактически применённые OTel-значения (Agent classloader) |
 | `otelEnvHints` | Рекомендуемые `OTEL_*` / `PLATFORM_TRACING_*` из текущего Spring-конфига |
 | `resourceEffective` | Drift resource-идентичности между каналами |

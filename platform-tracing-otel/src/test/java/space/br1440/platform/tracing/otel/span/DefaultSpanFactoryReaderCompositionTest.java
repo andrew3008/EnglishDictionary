@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.otel.runtime.RecordingTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
-import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.span.DefaultSpanFactory;
 
 import java.util.Map;
@@ -38,7 +38,7 @@ class DefaultSpanFactoryReaderCompositionTest {
     void disabledRuntimeDoesNotParseTransportInput() {
         RecordingTracingRuntime runtime = new RecordingTracingRuntime();
         runtime.setState(ImmutableTracingState.of(
-                TracingMode.DISABLED_BY_CONFIGURATION, "test", Map.of()));
+                TracingRuntimeMode.DISABLED_BY_CONFIGURATION, "test", Map.of()));
         DefaultSpanFactory factory = new DefaultSpanFactory(runtime, runtime.attributePolicy());
 
         assertThatThrownBy(() -> factory.operation("test.operation")

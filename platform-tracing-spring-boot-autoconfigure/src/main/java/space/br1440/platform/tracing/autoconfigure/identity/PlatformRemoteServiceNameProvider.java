@@ -1,14 +1,16 @@
 package space.br1440.platform.tracing.autoconfigure.identity;
 
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import lombok.RequiredArgsConstructor;
+
 import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
 
 import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * Поставщик логического имени upstream-сервиса, вызов которого завершился ошибкой
- * в рамках текущего запроса.
+ * Поставщик логического имени upstream-сервиса, вызов которого завершился ошибкой в рамках текущего запроса.
  * <p>
  * Назначение: внешний errorhandling-стартер потребителя инжектирует
  * {@code Supplier<Optional<String>> platformRemoteServiceNameProvider} и использует его
@@ -25,23 +27,20 @@ import java.util.function.Supplier;
  * <b>Контракт §37 (non-blocking):</b> метод {@link #get()} никогда не выбрасывает исключений
  * и не выполняет блокирующих операций.
  */
+@RequiredArgsConstructor
 public final class PlatformRemoteServiceNameProvider implements Supplier<Optional<String>> {
 
     private final RemoteServiceNameResolver resolver;
 
-    public PlatformRemoteServiceNameProvider(RemoteServiceNameResolver resolver) {
-        this.resolver = resolver;
-    }
-
     @Override
     public Optional<String> get() {
         String traceId = safeCurrentTraceId();
-        return traceId != null ? resolver.resolve(traceId) : resolver.resolve();
+        return (traceId == null) ? resolver.resolve() : resolver.resolve(traceId);
     }
 
     private static String safeCurrentTraceId() {
         try {
-            var spanContext = Span.current().getSpanContext();
+            SpanContext spanContext = Span.current().getSpanContext();
             return spanContext.isValid() ? spanContext.getTraceId() : null;
         } catch (RuntimeException ignored) {
             return null;

@@ -5,23 +5,14 @@ import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.otel.propagation.RequestIdSupport;
 
+import lombok.experimental.UtilityClass;
+
 /**
- * Implementation bridge для обработки request-id на границе web-модулей.
- *
- * <p>Публичная сигнатура остаётся framework-free; канонические правила валидации и генерации
- * принадлежат implementation-модулю.</p>
+ * Bridge для обработки request-id на границе web-модулей.
  */
+@UtilityClass
 public final class RequestIdBoundarySupport {
 
-    private RequestIdBoundarySupport() {
-    }
-
-    /**
-     * Возвращает проверенный входящий request-id либо новый UUID.
-     *
-     * @param incoming сырое значение transport header
-     * @return непустой нормализованный request-id
-     */
     @Nonnull
     public static String resolve(@Nullable String incoming) {
         return RequestIdSupport.resolve(incoming);

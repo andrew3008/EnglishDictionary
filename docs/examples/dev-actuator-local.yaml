@@ -5,9 +5,8 @@
 platform:
   environment: LOCAL
   tracing:
-    mode: AGENT
+    enabled: true
     configuration:
-      enabled: true
       authority: ACTUATOR
 
 management:

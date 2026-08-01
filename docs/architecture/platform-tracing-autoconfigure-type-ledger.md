@@ -9,7 +9,7 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `space.br1440.platform.tracing.autoconfigure.actuator.ResourceEffectiveSnapshot` | MOVE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ResourceEffectiveSnapshot` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.async.PlatformContextTaskDecorator` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.PlatformContextTaskDecorator` | S6b | DONE |
-| `space.br1440.platform.tracing.autoconfigure.async.ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` | S6b | DONE |
+| `space.br1440.platform.tracing.autoconfigure.async.ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.ThreadPoolTaskExecutorDecoratorBeanPostProcessor` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.TracingAsyncContextAutoConfiguration` | S6b | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames` | S5 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings` | S5 | DONE |
@@ -82,7 +82,7 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `space.br1440.platform.tracing.autoconfigure.servicename.PlatformLocalServiceNameProvider` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.PlatformLocalServiceNameProvider` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.servicename.PlatformRemoteServiceNameProvider` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.PlatformRemoteServiceNameProvider` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.ServiceNameProviderAutoConfiguration` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration` | S6b | DONE |
-| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.PolicyAvailabilityReason` | S3 | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.PolicyAbsenceReason` | S3 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.TracingStatusAssembler` | S3 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration` | S3 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.TracingStatusEndpoint` | S3 | DONE |
@@ -96,8 +96,12 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `space.br1440.platform.tracing.autoconfigure.support.RequestIdBoundarySupport` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.SdkMode` | RENAME | `space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode` | S5 | DONE |
+| `space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode` | DELETE | replaced by `platform.tracing.enabled` boolean on `TracingBootstrapSettings` | boolean-enabled | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics` | S5 | DONE |
+| `space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics` | boolean-enabled | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.SdkModeResolver` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.TracingRuntimeStateResolver` | S6a | DONE |
+| `space.br1440.platform.tracing.autoconfigure.agent.TracingRuntimeStateResolver` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeContractValidator` | boolean-enabled | DONE |
+| — | ADD | `space.br1440.platform.tracing.autoconfigure.agent.AgentDeploymentExpectation` (internal cross-package; not application API/SPI; consumers: TracingRuntimeAutoConfiguration, AgentExtensionObserver, owning-module tests) | boolean-enabled | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.SuppressMicrometerTracingCondition` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.observation.SuppressMicrometerTracingCondition` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.TracingAopAutoConfiguration` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration` | KEEP | `space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration` | UNCHANGED | DONE |

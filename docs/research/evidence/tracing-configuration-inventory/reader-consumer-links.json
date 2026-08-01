@@ -25,112 +25,112 @@
   "exactName" : "platform.tracing.control.runtime-mutation.enabled",
   "id" : "CONFIG_PROPERTY-004",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/RuntimeControlExtensionConfig.java:18[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/RuntimeControlExtensionConfig.java:6[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:237[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/RuntimeControlExtensionConfig.java:18[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/RuntimeControlExtensionConfig.java:6[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:224[DIRECT_CALL]" ]
+}, {
+  "consumerStatus" : "ACTIVE",
+  "consumers" : [ "TracingBootstrapSettingsResolver / AgentRuntimeContractValidator" ],
+  "exactName" : "platform.tracing.enabled",
+  "id" : "CONFIG_PROPERTY-005",
+  "readerStatus" : "ACTIVE_READER",
+  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/bootstrap/TracingBootstrapSettingsResolver.java#TracingBootstrapSettingsResolver.parseBoolean(ENABLED, true)[ENVIRONMENT_READ]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "EnrichingSpanProcessor" ],
   "exactName" : "platform.tracing.enriching.enabled",
-  "id" : "CONFIG_PROPERTY-005",
+  "id" : "CONFIG_PROPERTY-006",
   "readerStatus" : "ACTIVE_READER",
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/EnrichingExtensionConfig.java:19[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "EnrichingSpanProcessor" ],
   "exactName" : "platform.tracing.enriching.remote-service-priority",
-  "id" : "CONFIG_PROPERTY-006",
+  "id" : "CONFIG_PROPERTY-007",
   "readerStatus" : "ACTIVE_READER",
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/EnrichingExtensionConfig.java:20[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "BaggagePropagationCustomizer" ],
   "exactName" : "platform.tracing.javaagent.propagation.baggage.allowed-keys",
-  "id" : "CONFIG_PROPERTY-007",
+  "id" : "CONFIG_PROPERTY-008",
   "readerStatus" : "ACTIVE_READER",
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:48[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "BaggagePropagationCustomizer" ],
   "exactName" : "platform.tracing.javaagent.propagation.baggage.allowlist-keys",
-  "id" : "CONFIG_PROPERTY-008",
+  "id" : "CONFIG_PROPERTY-009",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:21[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:277[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:327[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:21[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:264[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:306[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "BaggagePropagationCustomizer" ],
   "exactName" : "platform.tracing.javaagent.propagation.baggage.deny-patterns",
-  "id" : "CONFIG_PROPERTY-009",
+  "id" : "CONFIG_PROPERTY-010",
   "readerStatus" : "ACTIVE_READER",
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:22[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:54[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:13[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:22[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:52[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:276[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "BaggagePropagationCustomizer" ],
   "exactName" : "platform.tracing.javaagent.propagation.baggage.enabled",
-  "id" : "CONFIG_PROPERTY-010",
+  "id" : "CONFIG_PROPERTY-011",
   "readerStatus" : "ACTIVE_READER",
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/BaggageExtensionConfig.java:20[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:51[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:11[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java:44[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:257[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:261[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/propagation/BaggagePropagationCustomizerTest.java:88[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "SamplingExtensionConfig -> CompositeSampler" ],
   "exactName" : "platform.tracing.javaagent.sampling.drop-paths",
-  "id" : "CONFIG_PROPERTY-011",
+  "id" : "CONFIG_PROPERTY-012",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:30[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:317[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:30[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:296[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "SamplingExtensionConfig -> CompositeSampler" ],
   "exactName" : "platform.tracing.javaagent.sampling.force-record-values",
-  "id" : "CONFIG_PROPERTY-012",
+  "id" : "CONFIG_PROPERTY-013",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:29[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:307[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:29[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:286[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "ScrubbingExtensionConfig -> ScrubbingSpanProcessor" ],
   "exactName" : "platform.tracing.javaagent.scrubbing.built-in-rules",
-  "id" : "CONFIG_PROPERTY-013",
+  "id" : "CONFIG_PROPERTY-014",
   "readerStatus" : "ACTIVE_READER",
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:26[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "ScrubbingExtensionConfig -> ScrubbingSpanProcessor" ],
   "exactName" : "platform.tracing.javaagent.scrubbing.enabled",
-  "id" : "CONFIG_PROPERTY-014",
+  "id" : "CONFIG_PROPERTY-015",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/PlatformAutoConfigurationCustomizer.java:95[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:25[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/PlatformAutoConfigurationCustomizer.java:92[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:25[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "KafkaBatchLinksAspect" ],
   "exactName" : "platform.tracing.kafka.batch-links-enabled",
-  "id" : "CONFIG_PROPERTY-015",
+  "id" : "CONFIG_PROPERTY-016",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/kafka/PlatformKafkaAutoConfiguration.java#@ConditionalOnProperty[SPRING_BINDING]" ]
+  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/kafka/PlatformKafkaAutoConfiguration.java#@ConditionalOnProperty[SPRING_BINDING]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "PlatformKafkaProducerFactoryCustomizer" ],
   "exactName" : "platform.tracing.kafka.propagate-platform-headers",
-  "id" : "CONFIG_PROPERTY-016",
+  "id" : "CONFIG_PROPERTY-017",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/kafka/PlatformKafkaOutboundAutoConfiguration.java#@ConditionalOnProperty[SPRING_BINDING]" ]
+  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/kafka/PlatformKafkaOutboundAutoConfiguration.java#@ConditionalOnProperty[SPRING_BINDING]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "Kafka tracing adapters" ],
   "exactName" : "platform.tracing.kafka.trusted-topic-patterns",
-  "id" : "CONFIG_PROPERTY-017",
+  "id" : "CONFIG_PROPERTY-018",
   "readerStatus" : "REFLECTION_OR_BINDING_READER",
   "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Spring @ConfigurationProperties binding[SPRING_BINDING]" ]
 }, {
   "consumerStatus" : "NONE",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
   "exactName" : "platform.tracing.metrics.enabled",
-  "id" : "CONFIG_PROPERTY-018",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/MetricsExtensionConfig.java:16[DIRECT_CALL]" ]
-}, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "Spring/Agent ownership resolver" ],
-  "exactName" : "platform.tracing.mode",
   "id" : "CONFIG_PROPERTY-019",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SdkExtensionConfig.java:15[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SdkExtensionConfig.java:3[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:293[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/MetricsExtensionConfig.java:16[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "SafeSpanExporter / PlatformExportControl" ],
@@ -214,7 +214,7 @@
   "exactName" : "platform.tracing.queue.overflow-policy",
   "id" : "CONFIG_PROPERTY-031",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:48[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/QueueExtensionConfig.java:16[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:14[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:42[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:44[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:46[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:121[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:125[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:134[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:269[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/enums/QueueOverflowPolicyTest.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderTest.java:68[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderTest.java:77[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderTest.java:82[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java:410[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java:475[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java:54[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:48[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/QueueExtensionConfig.java:16[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:14[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:42[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:44[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:46[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:121[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:125[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:134[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:256[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/enums/QueueOverflowPolicyTest.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderTest.java:68[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderTest.java:77[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderTest.java:82[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java:410[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java:475[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/spike/BspReplacementSpikeTest.java:54[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "HTTP response tracing filters" ],
@@ -263,7 +263,7 @@
   "exactName" : "platform.tracing.sampling.enabled",
   "id" : "CONFIG_PROPERTY-038",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:25[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:37[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:253[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:34[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:52[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:25[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:37[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:240[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:34[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:52[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "SamplingExtensionConfig -> CompositeSampler" ],
@@ -284,7 +284,7 @@
   "exactName" : "platform.tracing.sampling.ratio",
   "id" : "CONFIG_PROPERTY-041",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-e2e-tests/src/test/java/space/br1440/platform/tracing/e2e/smoke/AgentSpringForceSamplingSmokeMain.java:110[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:13[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:26[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:20[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:38[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/sampler/PlatformSamplerBuilder.java:44[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/PlatformAutoConfigurationCustomizerProcessorsTest.java:191[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:22[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:46[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:51[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:62[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:63[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:67[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:79[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:82[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:89[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:91[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:246[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:35[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:53[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-e2e-tests/src/test/java/space/br1440/platform/tracing/e2e/smoke/AgentSpringForceSamplingSmokeMain.java:110[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:13[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/SamplingExtensionConfig.java:26[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:20[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/control/state/EffectiveTracingPolicyDigest.java:38[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/sampler/PlatformSamplerBuilder.java:44[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/PlatformAutoConfigurationCustomizerProcessorsTest.java:191[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:22[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:46[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:51[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:62[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:63[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:67[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:79[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:82[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:89[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:91[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:233[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:35[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/control/jmx/protocol/CandidateDigest.java:53[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "SamplingExtensionConfig -> CompositeSampler" ],
@@ -305,7 +305,7 @@
   "exactName" : "platform.tracing.scrubbing.hmac-key",
   "id" : "CONFIG_PROPERTY-044",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:27[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:285[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformSpanProcessorFactoryScrubbingAdoptionTest.java:208[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ScrubbingExtensionConfig.java:27[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:272[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/factory/PlatformSpanProcessorFactoryScrubbingAdoptionTest.java:208[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "ScrubbingExtensionConfig -> ScrubbingSpanProcessor" ],
@@ -424,7 +424,7 @@
   "exactName" : "platform.tracing.suppression.suppress-micrometer-tracing",
   "id" : "CONFIG_PROPERTY-061",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/support/MicrometerTracingSuppressionResolver.java#Environment.getProperty(PROPERTY_NAME, Boolean.class)[ENVIRONMENT_READ]" ]
+  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/observation/MicrometerTracingSuppressionResolver.java#Environment.getProperty(PROPERTY_NAME, Boolean.class)[ENVIRONMENT_READ]" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "SemconvStrictTestAutoConfiguration" ],
@@ -434,11 +434,11 @@
   "readers" : [ "platform-tracing-test/src/main/java/space/br1440/platform/tracing/test/semconv/SemconvStrictTestAutoConfiguration.java#@ConditionalOnProperty[SPRING_BINDING]" ]
 }, {
   "consumerStatus" : "ACTIVE",
-  "consumers" : [ "ThreadPoolTaskExecutorContextPropagationBeanPostProcessor" ],
+  "consumers" : [ "ThreadPoolTaskExecutorDecoratorBeanPostProcessor" ],
   "exactName" : "platform.tracing.thread-pool-task-executor.enabled",
   "id" : "CONFIG_PROPERTY-063",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/async/TracingAsyncContextAutoConfiguration.java#@ConditionalOnProperty[SPRING_BINDING]" ]
+  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/async/TracingAsyncContextAutoConfiguration.java#@ConditionalOnProperty[SPRING_BINDING]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "ValidationExtensionConfig -> ValidatingSpanProcessor" ],
@@ -473,7 +473,7 @@
   "exactName" : "platform.tracing.watchdog.enabled",
   "id" : "CONFIG_PROPERTY-068",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:43[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/WatchdogExtensionConfig.java:21[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:327[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:331[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:193[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:201[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:43[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/WatchdogExtensionConfig.java:21[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:327[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:331[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:187[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:195[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "SpanWatchdogProcessor" ],
@@ -487,7 +487,7 @@
   "exactName" : "platform.tracing.watchdog.span-timeout",
   "id" : "CONFIG_PROPERTY-070",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:44[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/WatchdogExtensionConfig.java:22[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:338[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:261[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:44[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/WatchdogExtensionConfig.java:22[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:338[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigTest.java:248[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "SpanWatchdogProcessor" ],
@@ -599,7 +599,7 @@
   "exactName" : "OTEL_JAVAAGENT_EXTENSIONS",
   "id" : "ENV_VARIABLE-014",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:72#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:72#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:70#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:70#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "OpenTelemetry autoconfigure" ],
@@ -729,85 +729,78 @@
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.enabled",
+  "exactName" : "platform.tracing.exporter.enabled",
   "id" : "FIXTURE_ONLY_KEY-004",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.exporter.enabled",
+  "exactName" : "platform.tracing.kafka.mode",
   "id" : "FIXTURE_ONLY_KEY-005",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.kafka.mode",
+  "exactName" : "platform.tracing.log-level",
   "id" : "FIXTURE_ONLY_KEY-006",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.log-level",
+  "exactName" : "platform.tracing.policy.sampling.ratio",
   "id" : "FIXTURE_ONLY_KEY-007",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.policy.sampling.ratio",
+  "exactName" : "platform.tracing.policy.sampling.route-ratio",
   "id" : "FIXTURE_ONLY_KEY-008",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.policy.sampling.route-ratio",
+  "exactName" : "platform.tracing.propagation.enabled",
   "id" : "FIXTURE_ONLY_KEY-009",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.propagation.enabled",
+  "exactName" : "platform.tracing.response.enabled",
   "id" : "FIXTURE_ONLY_KEY-010",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.response.enabled",
+  "exactName" : "platform.tracing.response.expose-request-id-header",
   "id" : "FIXTURE_ONLY_KEY-011",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.response.expose-request-id-header",
+  "exactName" : "platform.tracing.response.header-name",
   "id" : "FIXTURE_ONLY_KEY-012",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.response.header-name",
+  "exactName" : "platform.tracing.sdk.mode",
   "id" : "FIXTURE_ONLY_KEY-013",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {
   "consumerStatus" : "FIXTURE_ONLY",
   "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
-  "exactName" : "platform.tracing.sdk.mode",
-  "id" : "FIXTURE_ONLY_KEY-014",
-  "readerStatus" : "FIXTURE_ONLY_READER",
-  "readers" : [ "NO_PRODUCTION_READER" ]
-}, {
-  "consumerStatus" : "FIXTURE_ONLY",
-  "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND" ],
   "exactName" : "platform.tracing.service.k8s-pod-uid",
-  "id" : "FIXTURE_ONLY_KEY-015",
+  "id" : "FIXTURE_ONLY_KEY-014",
   "readerStatus" : "FIXTURE_ONLY_READER",
   "readers" : [ "NO_PRODUCTION_READER" ]
 }, {

@@ -89,7 +89,7 @@ class SpanHandleLifecycleVerificationTest {
 
     @Test
     void noOpHandle_preservesCloseAndExceptionSafety() {
-        var noop = NoopTraceOperations.backedBy(
+        var noop = NoopTraceOperations.forDisabledRuntime(
                 NoOpTracingRuntime.disabledByConfiguration("slice-f-verification"));
         SpanHandle handle = noop.spans().operation("noop").start();
 

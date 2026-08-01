@@ -4,9 +4,8 @@
 
 platform:
   tracing:
-    mode: AGENT
+    enabled: true
     configuration:
-      enabled: true
       authority: CONFIG_SERVER
     # Required Category A leaves (seven scalars + optional route-ratios map)
     policy:

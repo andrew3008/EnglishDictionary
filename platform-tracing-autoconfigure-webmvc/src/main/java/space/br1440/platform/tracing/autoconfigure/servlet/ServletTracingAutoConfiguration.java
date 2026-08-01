@@ -44,7 +44,7 @@ import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBound
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 @ConditionalOnClass({Servlet.class, FilterRegistrationBean.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(name = TracingBootstrapPropertyNames.MODE, havingValue = "AGENT", matchIfMissing = true)
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.ENABLED, havingValue = "true", matchIfMissing = true)
 public class ServletTracingAutoConfiguration {
 
     /**

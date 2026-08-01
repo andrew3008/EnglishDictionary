@@ -14,7 +14,9 @@ public final class TracingBootstrapSettingsResolver {
     private static final Logger log = LoggerFactory.getLogger(TracingBootstrapSettingsResolver.class);
 
     private static final List<String> OBSOLETE_SPRING_ONLY_KEYS = List.of(
-            "platform.tracing.log-level");
+            "platform.tracing.log-level",
+            "platform.tracing.mode",
+            "platform.tracing.configuration.enabled");
 
     private static final List<String> AGENT_BOOTSTRAP_KEEP_KEYS = List.of(
             "platform.tracing.sampling.enabled",
@@ -33,7 +35,7 @@ public final class TracingBootstrapSettingsResolver {
         failFastOnObsoleteSpringOnlyKeys(environment);
         warnOnAgentBootstrapKeys(environment);
         return new TracingBootstrapSettings(
-                parseMode(environment),
+                parseBoolean(environment, TracingBootstrapPropertyNames.ENABLED, true),
                 parseRequiredEnum(
                         environment,
                         TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY,
@@ -41,16 +43,7 @@ public final class TracingBootstrapSettingsResolver {
                 parseRequiredEnum(
                         environment,
                         TracingBootstrapPropertyNames.ENVIRONMENT_POSTURE,
-                        PlatformEnvironmentPosture.class),
-                parseBoolean(environment, TracingBootstrapPropertyNames.CONFIGURATION_ENABLED, true));
-    }
-
-    private static TracingMode parseMode(Environment environment) {
-        String raw = environment.getProperty(TracingBootstrapPropertyNames.MODE);
-        if (raw == null) {
-            return TracingMode.AGENT;
-        }
-        return parseEnumValue(TracingBootstrapPropertyNames.MODE, raw, TracingMode.class);
+                        PlatformEnvironmentPosture.class));
     }
 
     private static <E extends Enum<E>> E parseRequiredEnum(

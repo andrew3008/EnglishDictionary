@@ -443,7 +443,7 @@ TYPE public final class space.br1440.platform.tracing.otel.facade.NoopTraceOpera
   METHOD public space.br1440.platform.tracing.api.context.ActiveTraceContextView traceContext()
   METHOD public space.br1440.platform.tracing.api.context.CorrelationScope openCorrelationScope(java.lang.String)
   METHOD public space.br1440.platform.tracing.api.span.SpanFactory spans()
-  METHOD public static space.br1440.platform.tracing.otel.facade.NoopTraceOperations backedBy(space.br1440.platform.tracing.otel.runtime.TracingRuntime)
+  METHOD public static space.br1440.platform.tracing.otel.facade.NoopTraceOperations forDisabledRuntime(space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime)
   METHOD public void withCorrelationId(java.lang.String,java.lang.Runnable)
 TYPE public final class space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc
   METHOD public static void clear()
@@ -570,21 +570,21 @@ TYPE public final class space.br1440.platform.tracing.otel.runtime.otel.scope.Ow
 TYPE public final class space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState implements space.br1440.platform.tracing.otel.runtime.state.TracingState
   METHOD public java.util.Map<java.lang.String,java.lang.String> details()
   METHOD public java.util.Optional<java.lang.String> reason()
-  METHOD public space.br1440.platform.tracing.otel.runtime.state.TracingMode mode()
+  METHOD public space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode mode()
   METHOD public static space.br1440.platform.tracing.otel.runtime.state.TracingState enabled()
-  METHOD public static space.br1440.platform.tracing.otel.runtime.state.TracingState of(space.br1440.platform.tracing.otel.runtime.state.TracingMode,java.lang.String,java.util.Map<java.lang.String,java.lang.String>)
-TYPE public final enum space.br1440.platform.tracing.otel.runtime.state.TracingMode
-  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingMode DISABLED_BY_CONFIGURATION
-  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingMode ENABLED
-  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingMode NOOP
-  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingMode TEST
-  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingMode UNAVAILABLE
-  METHOD public static space.br1440.platform.tracing.otel.runtime.state.TracingMode valueOf(java.lang.String)
-  METHOD public static space.br1440.platform.tracing.otel.runtime.state.TracingMode[] values()
+  METHOD public static space.br1440.platform.tracing.otel.runtime.state.TracingState of(space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode,java.lang.String,java.util.Map<java.lang.String,java.lang.String>)
+TYPE public final enum space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode
+  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode DISABLED_BY_CONFIGURATION
+  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode ENABLED
+  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode NOOP
+  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode TEST
+  FIELD public static final space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode UNAVAILABLE
+  METHOD public static space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode valueOf(java.lang.String)
+  METHOD public static space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode[] values()
 TYPE public abstract interface space.br1440.platform.tracing.otel.runtime.state.TracingState
   METHOD public abstract java.util.Map<java.lang.String,java.lang.String> details()
   METHOD public abstract java.util.Optional<java.lang.String> reason()
-  METHOD public abstract space.br1440.platform.tracing.otel.runtime.state.TracingMode mode()
+  METHOD public abstract space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode mode()
 TYPE public abstract interface space.br1440.platform.tracing.otel.runtime.versioned.VersionedState
   METHOD public abstract long version()
 TYPE public final class space.br1440.platform.tracing.otel.runtime.versioned.VersionedStateHolder

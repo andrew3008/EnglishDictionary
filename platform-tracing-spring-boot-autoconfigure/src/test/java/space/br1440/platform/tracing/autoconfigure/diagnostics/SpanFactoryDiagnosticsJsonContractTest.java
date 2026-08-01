@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +36,7 @@ class SpanFactoryDiagnosticsJsonContractTest {
     @Test
     void actuatorMap_includesReasonWhenPresent() throws Exception {
         SpanFactoryDiagnostics diagnostics = new SpanFactoryDiagnostics(
-                NoOpTracingRuntime.disabledByConfiguration("platform.tracing.mode=DISABLED"));
+                NoOpTracingRuntime.disabledByConfiguration("platform.tracing.enabled=false"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> json = OBJECT_MAPPER.readValue(
@@ -45,7 +45,7 @@ class SpanFactoryDiagnosticsJsonContractTest {
 
         assertThat(json.keySet()).containsExactlyInAnyOrder("mode", "reason", "details");
         assertThat(json.get("mode")).isEqualTo("DISABLED_BY_CONFIGURATION");
-        assertThat(json.get("reason")).isEqualTo("platform.tracing.mode=DISABLED");
+        assertThat(json.get("reason")).isEqualTo("platform.tracing.enabled=false");
         assertThat(json.get("details")).isEqualTo(Map.of());
     }
 
@@ -67,7 +67,7 @@ class SpanFactoryDiagnosticsJsonContractTest {
                 "NOOP",
                 "UNKNOWN");
 
-        for (TracingMode internal : TracingMode.values()) {
+        for (TracingRuntimeMode internal : TracingRuntimeMode.values()) {
             String mapped = modeFrom(new TestModeTracingRuntimeWithMode(internal));
             assertThat(approved).contains(mapped);
         }
@@ -127,8 +127,8 @@ class SpanFactoryDiagnosticsJsonContractTest {
         public space.br1440.platform.tracing.otel.runtime.state.TracingState state() {
             return new space.br1440.platform.tracing.otel.runtime.state.TracingState() {
                 @Override
-                public TracingMode mode() {
-                    return TracingMode.TEST;
+                public TracingRuntimeMode mode() {
+                    return TracingRuntimeMode.TEST;
                 }
 
                 @Override
@@ -151,11 +151,11 @@ class SpanFactoryDiagnosticsJsonContractTest {
 
     private static final class TestModeTracingRuntimeWithMode implements space.br1440.platform.tracing.otel.runtime.TracingRuntime {
 
-        private final TracingMode mode;
+        private final TracingRuntimeMode mode;
         private final space.br1440.platform.tracing.otel.runtime.TracingRuntime identityDelegate =
                 NoOpTracingRuntime.noop();
 
-        private TestModeTracingRuntimeWithMode(TracingMode mode) {
+        private TestModeTracingRuntimeWithMode(TracingRuntimeMode mode) {
             this.mode = mode;
         }
 
@@ -204,7 +204,7 @@ class SpanFactoryDiagnosticsJsonContractTest {
         public space.br1440.platform.tracing.otel.runtime.state.TracingState state() {
             return new space.br1440.platform.tracing.otel.runtime.state.TracingState() {
                 @Override
-                public TracingMode mode() {
+                public TracingRuntimeMode mode() {
                     return mode;
                 }
 

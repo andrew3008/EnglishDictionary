@@ -45,10 +45,12 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
     }
 
     public static ControlledAgentTestRuntime start() {
-        return start(null);
+        return start(null, new ReadyExtension());
     }
 
-    private static ControlledAgentTestRuntime start(InMemorySpanExporter spanExporter) {
+    private static ControlledAgentTestRuntime start(
+            InMemorySpanExporter spanExporter,
+            ReadyExtensionMBean extension) {
         GLOBAL_RUNTIME_LOCK.lock();
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         var tracerProviderBuilder = SdkTracerProvider.builder();
@@ -63,7 +65,7 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
             GlobalOpenTelemetry.resetForTest();
             GlobalOpenTelemetry.set(OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build());
             server.registerMBean(
-                    new StandardMBean(new ReadyExtension(), ReadyExtensionMBean.class),
+                    new StandardMBean(extension, ReadyExtensionMBean.class),
                     PlatformTracingJmxObjectNames.EXTENSION_READINESS);
             return new ControlledAgentTestRuntime(server, tracerProvider, spanExporter);
         } catch (Exception failure) {
@@ -81,9 +83,13 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
 
     public static void initializeWithExporter(ConfigurableApplicationContext context) {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        ControlledAgentTestRuntime runtime = start(exporter);
+        ControlledAgentTestRuntime runtime = start(exporter, new ReadyExtension());
         context.getBeanFactory().registerSingleton("controlledAgentSpanExporter", exporter);
         closeWithContext(context, runtime);
+    }
+
+    public static ControlledAgentTestRuntime startIncompatible() {
+        return start(null, new IncompatibleExtension());
     }
 
     private static void closeWithContext(
@@ -140,7 +146,7 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         boolean isExportPathProtected();
     }
 
-    public static final class ReadyExtension implements ReadyExtensionMBean {
+    public static class ReadyExtension implements ReadyExtensionMBean {
 
         @Override
         public String getExtensionVersion() {
@@ -200,6 +206,14 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         @Override
         public boolean isExportPathProtected() {
             return true;
+        }
+    }
+
+    private static final class IncompatibleExtension extends ReadyExtension {
+
+        @Override
+        public int getProtocolVersion() {
+            return Integer.MAX_VALUE;
         }
     }
 }

@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
-import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
@@ -36,21 +36,21 @@ public final class NoOpTracingRuntime implements TracingRuntime {
 
     public static NoOpTracingRuntime disabledByConfiguration(@Nonnull String reason) {
         return new NoOpTracingRuntime(ImmutableTracingState.of(
-                TracingMode.DISABLED_BY_CONFIGURATION,
+                TracingRuntimeMode.DISABLED_BY_CONFIGURATION,
                 reason,
                 Map.of()));
     }
 
     public static NoOpTracingRuntime unavailable(@Nonnull String reason) {
         return new NoOpTracingRuntime(ImmutableTracingState.of(
-                TracingMode.UNAVAILABLE,
+                TracingRuntimeMode.UNAVAILABLE,
                 reason,
                 Map.of()));
     }
 
     public static NoOpTracingRuntime noop() {
         return new NoOpTracingRuntime(ImmutableTracingState.of(
-                TracingMode.NOOP,
+                TracingRuntimeMode.NOOP,
                 null,
                 Map.of()));
     }

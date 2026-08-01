@@ -60,7 +60,7 @@ class TracingControlWebFluxManagementContextAbsenceTest {
     @Test
     void disabledAuthority_physicallyAbsent() {
         reactiveRunner.withPropertyValues(
-                        "platform.tracing.mode=DISABLED",
+                        "platform.tracing.enabled=false",
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=LOCAL")
                 .run(this::assertAbsent);

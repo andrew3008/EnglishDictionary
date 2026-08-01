@@ -8,42 +8,35 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
-
-class TracingRuntimeStateResolverTest {
+class AgentRuntimeContractValidatorTest {
 
     @Test
-    void productionSurfaceContainsOnlyAgentAndDisabled() {
-        assertThat(TracingMode.values()).containsExactly(TracingMode.AGENT, TracingMode.DISABLED);
-    }
-
-    @Test
-    void agentRequiresReadyControlledExtension() {
-        assertThat(TracingRuntimeStateResolver.resolve(TracingMode.AGENT, descriptor(AgentRuntimeState.AGENT_READY)))
-                .isEqualTo(TracingMode.AGENT);
+    void enabledTracingRequiresReadyControlledExtension() {
+        assertThat(AgentRuntimeContractValidator.validate(true, descriptor(AgentRuntimeState.AGENT_READY)))
+                .isEqualTo(AgentRuntimeState.AGENT_READY);
 
         assertThatIllegalStateException()
-                .isThrownBy(() -> TracingRuntimeStateResolver.resolve(
-                        TracingMode.AGENT, descriptor(AgentRuntimeState.EXTENSION_MISSING)))
+                .isThrownBy(() -> AgentRuntimeContractValidator.validate(
+                        true, descriptor(AgentRuntimeState.EXTENSION_MISSING)))
                 .withMessageContaining("state=EXTENSION_MISSING");
     }
 
     @Test
-    void disabledRequiresCompleteRuntimeAbsence() {
-        assertThat(TracingRuntimeStateResolver.resolve(TracingMode.DISABLED, descriptor(AgentRuntimeState.DISABLED)))
-                .isEqualTo(TracingMode.DISABLED);
+    void disabledTracingRequiresCompleteRuntimeAbsence() {
+        assertThat(AgentRuntimeContractValidator.validate(false, descriptor(AgentRuntimeState.DISABLED)))
+                .isEqualTo(AgentRuntimeState.DISABLED);
 
         assertThatIllegalStateException()
-                .isThrownBy(() -> TracingRuntimeStateResolver.resolve(
-                        TracingMode.DISABLED, descriptor(AgentRuntimeState.AGENT_READY)))
-                .withMessageContaining("mode=DISABLED rejected observed runtime state=AGENT_READY");
+                .isThrownBy(() -> AgentRuntimeContractValidator.validate(
+                        false, descriptor(AgentRuntimeState.AGENT_READY)))
+                .withMessageContaining("platform.tracing.enabled=false rejected observed runtime state=AGENT_READY");
     }
 
     @Test
-    void configuredModeIsRequired() {
+    void descriptorIsRequired() {
         assertThatNullPointerException()
-                .isThrownBy(() -> TracingRuntimeStateResolver.resolve(null, descriptor(AgentRuntimeState.DISABLED)))
-                .withMessage("platform.tracing.mode must be configured");
+                .isThrownBy(() -> AgentRuntimeContractValidator.validate(true, null))
+                .withMessage("extension");
     }
 
     private static AgentExtensionDescriptor descriptor(AgentRuntimeState state) {

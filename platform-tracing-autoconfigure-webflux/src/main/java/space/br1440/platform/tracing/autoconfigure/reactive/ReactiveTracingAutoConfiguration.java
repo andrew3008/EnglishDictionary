@@ -58,7 +58,7 @@ import java.util.Optional;
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 @ConditionalOnClass({WebFluxConfigurer.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-@ConditionalOnProperty(name = TracingBootstrapPropertyNames.MODE, havingValue = "AGENT", matchIfMissing = true)
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.ENABLED, havingValue = "true", matchIfMissing = true)
 public class ReactiveTracingAutoConfiguration {
 
     @Bean

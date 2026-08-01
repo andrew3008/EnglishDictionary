@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TracingControlManagementChildContextIntegrationTest {
 
     private static final String[] EXCLUDED_UNRELATED_AUTOCONFIGURATIONS = {
-            "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",

@@ -19,88 +19,88 @@
   "id" : "CONFIG_PROPERTY-004",
   "kind" : "CONFIG_PROPERTY"
 }, {
+  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/bootstrap/TracingBootstrapPropertyNames.java#TracingBootstrapPropertyNames.ENABLED:boolean",
+  "exactName" : "platform.tracing.enabled",
+  "id" : "CONFIG_PROPERTY-005",
+  "kind" : "CONFIG_PROPERTY"
+}, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.ENRICHING_ENABLED:String",
   "exactName" : "platform.tracing.enriching.enabled",
-  "id" : "CONFIG_PROPERTY-005",
+  "id" : "CONFIG_PROPERTY-006",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.ENRICHING_REMOTE_SERVICE_PRIORITY:String",
   "exactName" : "platform.tracing.enriching.remote-service-priority",
-  "id" : "CONFIG_PROPERTY-006",
+  "id" : "CONFIG_PROPERTY-007",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_ALLOWED_KEYS:String",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.allowed-keys",
-  "id" : "CONFIG_PROPERTY-007",
+  "id" : "CONFIG_PROPERTY-008",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_ALLOWLIST_KEYS:String",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.allowlist-keys",
-  "id" : "CONFIG_PROPERTY-008",
+  "id" : "CONFIG_PROPERTY-009",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_DENY_PATTERNS:String",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.deny-patterns",
-  "id" : "CONFIG_PROPERTY-009",
+  "id" : "CONFIG_PROPERTY-010",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_DENY_PATTERNS:String",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.deny-patterns",
-  "id" : "CONFIG_PROPERTY-009",
+  "id" : "CONFIG_PROPERTY-010",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.BAGGAGE_ENABLED:String",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.enabled",
-  "id" : "CONFIG_PROPERTY-010",
+  "id" : "CONFIG_PROPERTY-011",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/propagation/PropagationDefaults.java#PropagationDefaults.PROP_BAGGAGE_ENABLED:String",
   "exactName" : "platform.tracing.javaagent.propagation.baggage.enabled",
-  "id" : "CONFIG_PROPERTY-010",
+  "id" : "CONFIG_PROPERTY-011",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_DROP_PATHS:String",
   "exactName" : "platform.tracing.javaagent.sampling.drop-paths",
-  "id" : "CONFIG_PROPERTY-011",
+  "id" : "CONFIG_PROPERTY-012",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SAMPLING_FORCE_RECORD_VALUES:String",
   "exactName" : "platform.tracing.javaagent.sampling.force-record-values",
-  "id" : "CONFIG_PROPERTY-012",
+  "id" : "CONFIG_PROPERTY-013",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_BUILT_IN_RULES:String",
   "exactName" : "platform.tracing.javaagent.scrubbing.built-in-rules",
-  "id" : "CONFIG_PROPERTY-013",
+  "id" : "CONFIG_PROPERTY-014",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SCRUBBING_ENABLED:String",
   "exactName" : "platform.tracing.javaagent.scrubbing.enabled",
-  "id" : "CONFIG_PROPERTY-014",
-  "kind" : "CONFIG_PROPERTY"
-}, {
-  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/kafka/PlatformKafkaAutoConfiguration.java#@ConditionalOnProperty:boolean",
-  "exactName" : "platform.tracing.kafka.batch-links-enabled",
   "id" : "CONFIG_PROPERTY-015",
   "kind" : "CONFIG_PROPERTY"
 }, {
-  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/kafka/PlatformKafkaOutboundAutoConfiguration.java#@ConditionalOnProperty:boolean",
-  "exactName" : "platform.tracing.kafka.propagate-platform-headers",
+  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/kafka/PlatformKafkaAutoConfiguration.java#@ConditionalOnProperty:boolean",
+  "exactName" : "platform.tracing.kafka.batch-links-enabled",
   "id" : "CONFIG_PROPERTY-016",
+  "kind" : "CONFIG_PROPERTY"
+}, {
+  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/kafka/PlatformKafkaOutboundAutoConfiguration.java#@ConditionalOnProperty:boolean",
+  "exactName" : "platform.tracing.kafka.propagate-platform-headers",
+  "id" : "CONFIG_PROPERTY-017",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/TracingProperties.java#Kafka.trustedTopicPatterns:List<String>",
   "exactName" : "platform.tracing.kafka.trusted-topic-patterns",
-  "id" : "CONFIG_PROPERTY-017",
+  "id" : "CONFIG_PROPERTY-018",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.METRICS_ENABLED:String",
   "exactName" : "platform.tracing.metrics.enabled",
-  "id" : "CONFIG_PROPERTY-018",
-  "kind" : "CONFIG_PROPERTY"
-}, {
-  "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.SDK_MODE:String",
-  "exactName" : "platform.tracing.mode",
   "id" : "CONFIG_PROPERTY-019",
   "kind" : "CONFIG_PROPERTY"
 }, {
@@ -324,7 +324,7 @@
   "id" : "CONFIG_PROPERTY-060",
   "kind" : "CONFIG_PROPERTY"
 }, {
-  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/support/MicrometerTracingSuppressionResolver.java#MicrometerTracingSuppressionResolver.PROPERTY_NAME:Boolean",
+  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/observation/MicrometerTracingSuppressionResolver.java#MicrometerTracingSuppressionResolver.PROPERTY_NAME:Boolean",
   "exactName" : "platform.tracing.suppression.suppress-micrometer-tracing",
   "id" : "CONFIG_PROPERTY-061",
   "kind" : "CONFIG_PROPERTY"
@@ -334,7 +334,7 @@
   "id" : "CONFIG_PROPERTY-062",
   "kind" : "CONFIG_PROPERTY"
 }, {
-  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/async/TracingAsyncContextAutoConfiguration.java#@ConditionalOnProperty:boolean",
+  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/async/TracingAsyncContextAutoConfiguration.java#@ConditionalOnProperty:boolean",
   "exactName" : "platform.tracing.thread-pool-task-executor.enabled",
   "id" : "CONFIG_PROPERTY-063",
   "kind" : "CONFIG_PROPERTY"
@@ -550,63 +550,58 @@
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.enabled",
+  "exactName" : "platform.tracing.exporter.enabled",
   "id" : "FIXTURE_ONLY_KEY-004",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.exporter.enabled",
+  "exactName" : "platform.tracing.kafka.mode",
   "id" : "FIXTURE_ONLY_KEY-005",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.kafka.mode",
+  "exactName" : "platform.tracing.log-level",
   "id" : "FIXTURE_ONLY_KEY-006",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.log-level",
+  "exactName" : "platform.tracing.policy.sampling.ratio",
   "id" : "FIXTURE_ONLY_KEY-007",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.policy.sampling.ratio",
+  "exactName" : "platform.tracing.policy.sampling.route-ratio",
   "id" : "FIXTURE_ONLY_KEY-008",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.policy.sampling.route-ratio",
+  "exactName" : "platform.tracing.propagation.enabled",
   "id" : "FIXTURE_ONLY_KEY-009",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.propagation.enabled",
+  "exactName" : "platform.tracing.response.enabled",
   "id" : "FIXTURE_ONLY_KEY-010",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.response.enabled",
+  "exactName" : "platform.tracing.response.expose-request-id-header",
   "id" : "FIXTURE_ONLY_KEY-011",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.response.expose-request-id-header",
+  "exactName" : "platform.tracing.response.header-name",
   "id" : "FIXTURE_ONLY_KEY-012",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.response.header-name",
+  "exactName" : "platform.tracing.sdk.mode",
   "id" : "FIXTURE_ONLY_KEY-013",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.sdk.mode",
-  "id" : "FIXTURE_ONLY_KEY-014",
-  "kind" : "FIXTURE_ONLY_KEY"
-}, {
-  "declaration" : "NO_PRODUCTION_DECLARATION",
   "exactName" : "platform.tracing.service.k8s-pod-uid",
-  "id" : "FIXTURE_ONLY_KEY-015",
+  "id" : "FIXTURE_ONLY_KEY-014",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.PLATFORM_ENVIRONMENT:String",

@@ -299,7 +299,7 @@ public final class PrivateMBeanServerProbeMain {
     }
 
     private static void disabledScenario() {
-        System.setProperty("platform.tracing.mode", "DISABLED");
+        System.setProperty("platform.tracing.enabled", "false");
         try (GenericApplicationContext context = new GenericApplicationContext()) {
             context.refresh();
             check(!context.containsBean("privateMBeanServerLocator"),

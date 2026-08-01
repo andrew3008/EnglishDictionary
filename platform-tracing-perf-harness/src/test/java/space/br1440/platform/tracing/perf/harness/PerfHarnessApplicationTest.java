@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
-        "platform.tracing.mode=DISABLED",
+        "platform.tracing.enabled=false",
         "platform.tracing.configuration.authority=HELM",
         "platform.environment=LOCAL"
 })

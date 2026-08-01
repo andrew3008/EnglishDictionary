@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface TracingState {
 
     @Nonnull
-    TracingMode mode();
+    TracingRuntimeMode mode();
 
     @Nonnull
     Optional<String> reason();

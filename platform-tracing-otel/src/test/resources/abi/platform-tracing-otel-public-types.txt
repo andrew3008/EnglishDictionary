@@ -27,7 +27,7 @@ space.br1440.platform.tracing.otel.runtime.otel.SpanKinds
 space.br1440.platform.tracing.otel.runtime.otel.SpanSpecAttributeValueConverter
 space.br1440.platform.tracing.otel.runtime.otel.scope.OwningSpanScope
 space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState
-space.br1440.platform.tracing.otel.runtime.state.TracingMode
+space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode
 space.br1440.platform.tracing.otel.runtime.state.TracingState
 space.br1440.platform.tracing.otel.runtime.versioned.VersionedState
 space.br1440.platform.tracing.otel.runtime.versioned.VersionedStateHolder

@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,11 +54,11 @@ class SpringBootContextMatrixTest {
     void disabledTracingMode_exposesDisabledDiagnosticsAndNoOpFacade() {
         baseRunner
                 .withPropertyValues(
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                     assertThat(context.getBean(TracingRuntime.class).state().mode())
-                            .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
+                            .isEqualTo(TracingRuntimeMode.DISABLED_BY_CONFIGURATION);
                     assertThat(context.getBean(SpanFactoryDiagnostics.class).toActuatorMap().get("mode"))
                             .isEqualTo("DISABLED_BY_CONFIGURATION");
                 });

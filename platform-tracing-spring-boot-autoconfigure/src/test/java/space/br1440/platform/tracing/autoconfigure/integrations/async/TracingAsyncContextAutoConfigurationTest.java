@@ -19,7 +19,7 @@ class TracingAsyncContextAutoConfigurationTest {
     @Test
     void по_умолчанию_бины_не_регистрируются() {
         runner.run(context -> {
-            assertThat(context).doesNotHaveBean(ThreadPoolTaskExecutorContextPropagationBeanPostProcessor.class);
+            assertThat(context).doesNotHaveBean(ThreadPoolTaskExecutorDecoratorBeanPostProcessor.class);
         });
     }
 
@@ -28,7 +28,7 @@ class TracingAsyncContextAutoConfigurationTest {
         runner.withPropertyValues(
                         "platform.tracing.thread-pool-task-executor.enabled=true")
                 .run(context -> {
-                    assertThat(context).hasSingleBean(ThreadPoolTaskExecutorContextPropagationBeanPostProcessor.class);
+                    assertThat(context).hasSingleBean(ThreadPoolTaskExecutorDecoratorBeanPostProcessor.class);
                     assertThat(context).hasSingleBean(ContextSnapshotFactory.class);
                 });
     }
@@ -52,7 +52,7 @@ class TracingAsyncContextAutoConfigurationTest {
                         "platform.tracing.context-propagation.thread-pool-task-executor.enabled=true")
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(
-                            ThreadPoolTaskExecutorContextPropagationBeanPostProcessor.class);
+                            ThreadPoolTaskExecutorDecoratorBeanPostProcessor.class);
                     assertThat(context).doesNotHaveBean(ContextSnapshotFactory.class);
                 });
     }

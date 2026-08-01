@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.async;
 
 import io.micrometer.context.ContextSnapshotFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -14,36 +16,30 @@ import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfigurati
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
 /**
- * Авто-конфигурация переноса OTel Context / MDC между потоками {@code @Async} /
- * {@code ThreadPoolTaskExecutor}.
+ * Авто-конфигурация переноса OTel Context / MDC между потоками {@code @Async} / {@code ThreadPoolTaskExecutor}.
  * <p>
  * Активируется ТОЛЬКО при явном включении
  * {@code platform.tracing.thread-pool-task-executor.enabled=true}.
- * По умолчанию выключена,
- * чтобы не вмешиваться в работу прикладных executors и не конфликтовать с Spring Boot 3.5
- * {@code ContextPropagatingTaskDecorator}, кастомными {@code TaskDecorator}, security/tenant
- * propagation, OpenTelemetry Java Agent executor instrumentation.
+ * По умолчанию выключена, чтобы не вмешиваться в работу прикладных executors и не конфликтовать с Spring Boot 3.5
+ * {@code ContextPropagatingTaskDecorator}, кастомными {@code TaskDecorator}, security/tenant propagation,
+ * OpenTelemetry Java Agent executor instrumentation.
  * <p>
  * При активации:
  * <ol>
  *   <li>Регистрируется {@link ContextSnapshotFactory} (если ещё не в контексте) — единый
  *       источник снимков контекста на базе Micrometer Context Propagation;</li>
- *   <li>Регистрируется {@link ThreadPoolTaskExecutorContextPropagationBeanPostProcessor} —
+ *   <li>Регистрируется {@link ThreadPoolTaskExecutorDecoratorBeanPostProcessor} —
  *       композирует существующие {@code TaskDecorator}'ы с
  *       {@link PlatformContextTaskDecorator}, оставляя платформенный самым внешним слоем
  *       (см. {@link PlatformContextTaskDecorator} Javadoc).</li>
  * </ol>
  */
+@Slf4j
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 @ConditionalOnClass({ThreadPoolTaskExecutor.class, ContextSnapshotFactory.class})
-@ConditionalOnProperty(
-        prefix = TracingProperties.PREFIX + ".thread-pool-task-executor",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".thread-pool-task-executor", name = "enabled", havingValue = "true")
 public class TracingAsyncContextAutoConfiguration {
-
-    private static final Logger log = LoggerFactory.getLogger(TracingAsyncContextAutoConfiguration.class);
 
     /**
      * Глобальный {@link ContextSnapshotFactory}. {@link ConditionalOnMissingBean} позволяет
@@ -58,13 +54,7 @@ public class TracingAsyncContextAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
-            platformThreadPoolTaskExecutorContextPropagationBeanPostProcessor(
-                    ContextSnapshotFactory contextSnapshotFactory) {
-
-        log.info("Platform TaskDecorator activated: composition with existing "
-                + "ThreadPoolTaskExecutor TaskDecorators");
-
-        return new ThreadPoolTaskExecutorContextPropagationBeanPostProcessor(contextSnapshotFactory);
+    public ThreadPoolTaskExecutorDecoratorBeanPostProcessor platformThreadPoolTaskExecutorDecorator(ContextSnapshotFactory factory) {
+        return new ThreadPoolTaskExecutorDecoratorBeanPostProcessor(factory);
     }
 }

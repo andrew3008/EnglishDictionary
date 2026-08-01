@@ -230,7 +230,7 @@ class P56AuthorityPostureMatrixTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=" + authority,
                         "platform.environment=LOCAL",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     String msg = context.getStartupFailure().getMessage()
@@ -241,8 +241,7 @@ class P56AuthorityPostureMatrixTest {
     }
 
     /**
-     * {@code platform.tracing.configuration.enabled=false} is equivalent to DISABLED mode and must
-     * also be rejected for write authorities.
+     * Выключенный platform facade несовместим с активным Spring writer authority.
      */
     @ParameterizedTest(name = "configuration.enabled=false incompatible: authority={0}")
     @ValueSource(strings = {"CONFIG_SERVER", "ACTUATOR"})
@@ -251,7 +250,7 @@ class P56AuthorityPostureMatrixTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=" + authority,
                         "platform.environment=LOCAL",
-                        "platform.tracing.configuration.enabled=false")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     String msg = context.getStartupFailure().getMessage()
@@ -270,7 +269,7 @@ class P56AuthorityPostureMatrixTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=LOCAL",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     TracingConfigurationAuthorityGuard guard =
@@ -314,7 +313,7 @@ class P56AuthorityPostureMatrixTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=PRODUCTION",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean(TracingPolicyMutationService.class);

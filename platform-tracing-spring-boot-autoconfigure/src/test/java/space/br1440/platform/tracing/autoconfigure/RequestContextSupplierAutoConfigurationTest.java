@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * Главная цель — закрепить инвариант: bean {@code platformRequestTraceContextSnapshotSupplier}
  * регистрируется <b>всегда</b> при наличии модуля на classpath, в т.ч. при выключенной трассировке
- * ({@code platform.tracing.mode=DISABLED}). Без этого инварианта downstream-слой (error-handling)
+ * ({@code platform.tracing.enabled=false}). Без этого инварианта downstream-слой (error-handling)
  * не получит снимок контекста для маппинга в {@code RequestContext}.
  */
 class RequestContextSupplierAutoConfigurationTest {
@@ -36,8 +36,8 @@ class RequestContextSupplierAutoConfigurationTest {
 
     @Test
     void supplier_регистрируется_при_отключённой_трассировке() {
-        // Главный регресс-тест: при platform.tracing.mode=DISABLED bean всё равно есть.
-        runner.withPropertyValues("platform.tracing.mode=DISABLED")
+        // Главный регресс-тест: при platform.tracing.enabled=false bean всё равно есть.
+        runner.withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasBean("platformRequestTraceContextSnapshotSupplier");
 

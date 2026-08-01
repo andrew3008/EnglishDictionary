@@ -6,7 +6,7 @@
 | Дата | 2026-06-09 |
 | Источники | `Фаза 15.md` (теория), `Traces Requests.txt` (требования §3/§4), `E:\Platform_Traces_Examples\src` (opentelemetry-java / opentelemetry-java-instrumentation), `docs/decisions/*` (ADR) |
 | Стек | OTel SDK BOM 1.62.0, OTel instrumentation/agent 2.28.1, Spring Boot 3.5.5, Java 21 |
-| Статус | **Реализовано** (2026-06-09) |
+| Статус | **Historical plan** (2026-06-09). Ownership contract superseded by `platform.tracing.enabled` — see [ADR-sdk-mode-detection](../decisions/ADR-sdk-mode-detection.md). Mentions of `platform.tracing.sdk.mode` / `SDK_MODE` are not current. |
 
 ---
 

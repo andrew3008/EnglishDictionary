@@ -8,18 +8,24 @@ import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.LongSupplier;
 
 /**
  * Валидирует versioned readiness descriptor, опубликованный extension classloader'ом через JMX.
+ *
+ * <p>При {@link AgentDeploymentExpectation#FORBIDDEN} отсутствие Agent доказывается в течение
+ * полного startup poll window ({@link #STARTUP_READINESS_TIMEOUT}). Это startup invariant:
+ * dynamic attach после завершения Spring startup не поддерживается и не мониторится.</p>
  */
 public final class AgentExtensionObserver {
 
     static final int SUPPORTED_PROTOCOL_VERSION = 1;
     static final String SUPPORTED_PROFILE = "platform-agent-secure-v1";
 
-    private static final Duration STARTUP_READINESS_TIMEOUT = Duration.ofSeconds(2);
+    static final Duration STARTUP_READINESS_TIMEOUT = Duration.ofSeconds(2);
     private static final Duration READINESS_POLL_INTERVAL = Duration.ofMillis(25);
 
     private static final Set<String> REQUIRED_CAPABILITIES = Set.of(
@@ -31,21 +37,69 @@ public final class AgentExtensionObserver {
             "SAFE_EXPORTER_INSTALLED",
             "EXPORT_PATH_PROTECTED");
 
+    @FunctionalInterface
+    interface Sleeper {
+        void sleep(long nanos);
+    }
+
     private final MBeanServer server;
+    private final Duration startupReadinessTimeout;
+    private final LongSupplier nanoTime;
+    private final Sleeper sleeper;
 
     public AgentExtensionObserver() {
         this(ManagementFactory.getPlatformMBeanServer());
     }
 
     AgentExtensionObserver(MBeanServer server) {
-        this.server = server;
+        this(server, resolveStartupTimeout(), System::nanoTime, LockSupport::parkNanos);
     }
 
+    /**
+     * Production timeout is {@link #STARTUP_READINESS_TIMEOUT}. Tests may shorten via
+     * {@code -Dplatform.tracing.test.startup-readiness-timeout-ms=} without changing
+     * the production constant.
+     */
+    static Duration resolveStartupTimeout() {
+        String override = System.getProperty("platform.tracing.test.startup-readiness-timeout-ms");
+        if (override == null || override.isBlank()) {
+            return STARTUP_READINESS_TIMEOUT;
+        }
+        long millis = Long.parseLong(override.trim());
+        if (millis <= 0L) {
+            throw new IllegalStateException(
+                    "platform.tracing.test.startup-readiness-timeout-ms must be positive");
+        }
+        return Duration.ofMillis(millis);
+    }
+
+    AgentExtensionObserver(
+            MBeanServer server,
+            Duration startupReadinessTimeout,
+            LongSupplier nanoTime,
+            Sleeper sleeper) {
+        this.server = Objects.requireNonNull(server, "server");
+        this.startupReadinessTimeout = Objects.requireNonNull(startupReadinessTimeout, "startupReadinessTimeout");
+        this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
+        this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
+        if (startupReadinessTimeout.isNegative() || startupReadinessTimeout.isZero()) {
+            throw new IllegalArgumentException("startupReadinessTimeout must be positive");
+        }
+    }
+
+    /**
+     * Однократное наблюдение текущего состояния без ожидания.
+     *
+     * <p>Для {@link AgentDeploymentExpectation#FORBIDDEN} не возвращает {@link AgentRuntimeState#DISABLED}
+     * на первом пустом poll: вызывающий код обязан использовать
+     * {@link #awaitStartupDecision(AgentDeploymentExpectation, boolean, boolean, boolean)}.</p>
+     */
     public AgentExtensionDescriptor observe(
-            boolean configuredDisabled,
+            AgentDeploymentExpectation expectation,
             boolean agentMarkerVisible,
             boolean userOpenTelemetryBeanPresent,
             boolean globalOpenTelemetrySet) {
+        Objects.requireNonNull(expectation, "expectation");
         ObjectName readinessName = PlatformTracingJmxObjectNames.EXTENSION_READINESS;
         boolean endpointPresent = server.isRegistered(readinessName);
 
@@ -56,9 +110,6 @@ public final class AgentExtensionObserver {
                     agentMarkerVisible,
                     endpointPresent,
                     "APPLICATION_RUNTIME_DETECTED");
-        }
-        if (configuredDisabled && !agentMarkerVisible && !endpointPresent && !globalOpenTelemetrySet) {
-            return empty(AgentRuntimeState.DISABLED, false, false, "");
         }
         if (!endpointPresent) {
             return empty(
@@ -104,31 +155,62 @@ public final class AgentExtensionObserver {
     }
 
     /**
-     * Ожидает только переход из INITIALIZING и принимает решение по монотонному deadline.
-     * Для всех остальных состояний возвращается немедленно.
+     * Ожидает решение в течение startup poll window.
+     *
+     * <ul>
+     *   <li>{@link AgentDeploymentExpectation#REQUIRED} — ждёт выхода из {@code INITIALIZING},
+     *       затем возвращает классифицированное состояние;</li>
+     *   <li>{@link AgentDeploymentExpectation#FORBIDDEN} — ждёт полный timeout при нулевых
+     *       presence-сигналах и только после deadline возвращает {@code DISABLED};
+     *       любой presence-сигнал классифицируется как non-{@code DISABLED}.</li>
+     * </ul>
      */
     public AgentExtensionDescriptor awaitStartupDecision(
-            boolean configuredDisabled,
+            AgentDeploymentExpectation expectation,
             boolean agentMarkerVisible,
             boolean userOpenTelemetryBeanPresent,
             boolean globalOpenTelemetrySet) {
-        long deadline = System.nanoTime() + STARTUP_READINESS_TIMEOUT.toNanos();
+        Objects.requireNonNull(expectation, "expectation");
+        long deadline = nanoTime.getAsLong() + startupReadinessTimeout.toNanos();
         AgentExtensionDescriptor descriptor;
         do {
             descriptor = observe(
-                    configuredDisabled,
+                    expectation,
                     agentMarkerVisible,
                     userOpenTelemetryBeanPresent,
                     globalOpenTelemetrySet);
+
+            if (expectation == AgentDeploymentExpectation.FORBIDDEN
+                    && isAbsentSignals(descriptor, globalOpenTelemetrySet, userOpenTelemetryBeanPresent)) {
+                long remaining = deadline - nanoTime.getAsLong();
+                if (remaining <= 0) {
+                    return empty(AgentRuntimeState.DISABLED, false, false, "");
+                }
+                sleeper.sleep(Math.min(remaining, READINESS_POLL_INTERVAL.toNanos()));
+                continue;
+            }
+
             if (descriptor.state() != AgentRuntimeState.EXTENSION_INITIALIZING) {
                 return descriptor;
             }
-            long remaining = deadline - System.nanoTime();
+            long remaining = deadline - nanoTime.getAsLong();
             if (remaining <= 0) {
                 return withFailureCode(descriptor, "EXTENSION_READINESS_TIMEOUT");
             }
-            LockSupport.parkNanos(Math.min(remaining, READINESS_POLL_INTERVAL.toNanos()));
+            sleeper.sleep(Math.min(remaining, READINESS_POLL_INTERVAL.toNanos()));
         } while (true);
+    }
+
+    private static boolean isAbsentSignals(
+            AgentExtensionDescriptor descriptor,
+            boolean globalOpenTelemetrySet,
+            boolean userOpenTelemetryBeanPresent) {
+        return !userOpenTelemetryBeanPresent
+                && !globalOpenTelemetrySet
+                && !descriptor.agentMarkerVisible()
+                && !descriptor.readinessEndpointPresent()
+                && (descriptor.state() == AgentRuntimeState.AGENT_MISSING
+                        || descriptor.state() == AgentRuntimeState.DISABLED);
     }
 
     private AgentRuntimeState classify(

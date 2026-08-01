@@ -74,7 +74,7 @@ class AutoconfigurePackageArchitectureTest {
         }
 
         assertThat(rootTypes)
-                .containsExactly("TracingCoreAutoConfiguration.java", "TracingProperties.java");
+                .containsExactly("TracingProperties.java", "TracingRuntimeAutoConfiguration.java");
         assertThat(violations).as("Package-boundary violations").isEmpty();
 
         String build = Files.readString(root.resolve(AUTOCONFIGURE_MODULE + "/build.gradle"));

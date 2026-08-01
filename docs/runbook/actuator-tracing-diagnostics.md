@@ -22,7 +22,7 @@ GET /actuator/tracingPolicy
 
 | Секция | Назначение |
 |--------|------------|
-| `mode` / `sdk` / `spanFactory` | Режим starter и готовность Controlled Agent |
+| `mode` / `sdk` / `spanFactory` | Состояние starter и готовность Controlled Agent |
 | `otelEffective` / `resourceEffective` | Фактические JVM/env значения OTel SDK (секреты маскируются как `***`) |
 | `sampling` | Live Agent/JMX: `liveRatio`, `liveSamplerEnabled`, **count** override (`routeRatioCount`), `configVersion`, `configSource` |
 | `validation` / `scrubbing` | Live Agent/JMX состояние (без Spring desired mirrors) |
@@ -36,8 +36,7 @@ GET /actuator/tracingPolicy
 
 ```json
 "sdk": {
-  "mode": "AGENT",
-  "configuredMode": "AGENT",
+  "tracingEnabled": true,
   "agentDetected": true,
   "runtimeState": "AGENT_READY",
   "extensionFailureCode": ""
@@ -46,8 +45,7 @@ GET /actuator/tracingPolicy
 
 | Поле | Значение |
 |------|----------|
-| `mode` | production mode: `AGENT` или `DISABLED` |
-| `configuredMode` | значение `platform.tracing.mode` |
+| `tracingEnabled` | значение `platform.tracing.enabled` |
 | `agentDetected` | обнаружен ли OTel Java Agent |
 | `runtimeState` | startup-состояние Controlled Agent |
 | `extensionFailureCode` | безопасный машинный код |

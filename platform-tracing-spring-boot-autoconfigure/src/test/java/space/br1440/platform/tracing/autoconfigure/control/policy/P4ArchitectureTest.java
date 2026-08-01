@@ -76,16 +76,16 @@ class P4ArchitectureTest {
     }
 
     @Test
-    void guardRejectsDisabledModeWithConfigServer() {
+    void guardRejectsDisabledTracingWithConfigServer() {
         try {
             new TracingConfigurationAuthorityGuard(
                     new TracingBootstrapSettingsResolver().resolve(
                             new org.springframework.mock.env.MockEnvironment()
                             .withProperty("platform.tracing.configuration.authority", "CONFIG_SERVER")
                             .withProperty("platform.environment", "LOCAL")
-                            .withProperty("platform.tracing.mode", "DISABLED")))
+                            .withProperty("platform.tracing.enabled", "false")))
                     .validate();
-            throw new AssertionError("Expected fail-fast on DISABLED + CONFIG_SERVER");
+            throw new AssertionError("Expected fail-fast on disabled tracing + CONFIG_SERVER");
         } catch (TracingConfigurationGuardException e) { /* expected */ }
     }
 

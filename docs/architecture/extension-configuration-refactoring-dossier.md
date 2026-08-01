@@ -1,10 +1,15 @@
 # Extension Configuration Refactoring Dossier
 
-> **Статус:** Information gathering only — без рефакторинга, без изменений Java-кода  
-> **Дата:** 2026-06-16  
+> **Статус:** Historical freeze (2026-06-16) — information gathering only; not current operator contract
+> **Дата:** 2026-06-16
 > **Пакет:** `space.br1440.platform.tracing.otel.javaagent.configuration`
-> **Фокус:** `ExtensionConfig` и смежные agent-side configuration types  
+> **Фокус:** `ExtensionConfig` и смежные agent-side configuration types
 > **Цель:** входные данные для Perplexity / Claude Sonnet Deep Research — сравнение 8 архитектурных вариантов со scoring
+>
+> **Superseded facts (boolean-enabled cutover):** `ExtensionPropertyNames.SDK_MODE`,
+> `SdkExtensionConfig`, and `platform.tracing.sdk.mode` were removed. Spring startup ownership is
+> `platform.tracing.enabled` ([ADR-sdk-mode-detection](../decisions/ADR-sdk-mode-detection.md)).
+> Rows below that still list `sdk.mode` describe the frozen 2026-06-16 snapshot only.
 
 ---
 

@@ -12,37 +12,34 @@ class TracingBootstrapSettingsResolverTest {
     private final TracingBootstrapSettingsResolver resolver = new TracingBootstrapSettingsResolver();
 
     @Test
-    void missingModeDefaultsToAgent() {
-        assertThat(resolver.resolve(environment()).mode()).isEqualTo(TracingMode.AGENT);
+    void missingEnabledDefaultsToTrue() {
+        assertThat(resolver.resolve(environment()).tracingEnabled()).isTrue();
     }
 
     @Test
-    void modeIsCaseInsensitive() {
-        assertThat(resolver.resolve(environment().withProperty("platform.tracing.mode", "agent")).mode())
-                .isEqualTo(TracingMode.AGENT);
-        assertThat(resolver.resolve(environment().withProperty("platform.tracing.mode", "dIsAbLeD")).mode())
-                .isEqualTo(TracingMode.DISABLED);
-    }
-
-    @Test
-    void blankAndUnknownModesFailFast() {
-        assertThatIllegalStateException()
-                .isThrownBy(() -> resolver.resolve(environment().withProperty("platform.tracing.mode", " ")))
-                .withMessageContaining("must not be blank");
-        assertThatIllegalStateException()
-                .isThrownBy(() -> resolver.resolve(environment().withProperty("platform.tracing.mode", "UNKNOWN")))
-                .withMessageContaining("Accepted values");
-    }
-
-    @Test
-    void configurationEnabledIsStrictBoolean() {
-        assertThat(resolver.resolve(environment()
-                .withProperty("platform.tracing.configuration.enabled", "false")).configurationEnabled())
+    void enabledIsStrictBoolean() {
+        assertThat(resolver.resolve(environment().withProperty("platform.tracing.enabled", "true")).tracingEnabled())
+                .isTrue();
+        assertThat(resolver.resolve(environment().withProperty("platform.tracing.enabled", "FALSE")).tracingEnabled())
                 .isFalse();
         assertThatIllegalStateException()
-                .isThrownBy(() -> resolver.resolve(environment()
-                        .withProperty("platform.tracing.configuration.enabled", "yes")))
+                .isThrownBy(() -> resolver.resolve(environment().withProperty("platform.tracing.enabled", "yes")))
                 .withMessageContaining("Accepted values: true, false");
+    }
+
+    @Test
+    void obsoleteModeFailsFast() {
+        assertThatIllegalStateException()
+                .isThrownBy(() -> resolver.resolve(environment().withProperty("platform.tracing.mode", " ")))
+                .withMessageContaining("Obsolete Spring-only property 'platform.tracing.mode'");
+    }
+
+    @Test
+    void obsoleteConfigurationEnabledFailsFast() {
+        assertThatIllegalStateException()
+                .isThrownBy(() -> resolver.resolve(environment()
+                        .withProperty("platform.tracing.configuration.enabled", "false")))
+                .withMessageContaining("Obsolete Spring-only property 'platform.tracing.configuration.enabled'");
     }
 
     @Test

@@ -2,7 +2,9 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -27,9 +29,9 @@ class AgentExtensionObserverTest {
     void absenceDistinguishesNoAgentFromAgentWithoutExtension() {
         AgentExtensionObserver observer = new AgentExtensionObserver(MBeanServerFactory.createMBeanServer());
 
-        assertThat(observer.observe(false, false, false, false).state())
+        assertThat(observer.observe(AgentDeploymentExpectation.REQUIRED, false, false, false).state())
                 .isEqualTo(AgentRuntimeState.AGENT_MISSING);
-        assertThat(observer.observe(false, true, false, true).state())
+        assertThat(observer.observe(AgentDeploymentExpectation.REQUIRED, true, false, true).state())
                 .isEqualTo(AgentRuntimeState.EXTENSION_MISSING);
     }
 
@@ -38,7 +40,7 @@ class AgentExtensionObserverTest {
         MBeanServer server = serverWith(new ReadinessView("READY", 1, COMPLETE_CAPABILITIES, "", true));
         AgentExtensionObserver observer = new AgentExtensionObserver(server);
 
-        assertThat(observer.observe(true, true, true, true).state())
+        assertThat(observer.observe(AgentDeploymentExpectation.FORBIDDEN, true, true, true).state())
                 .isEqualTo(AgentRuntimeState.DUAL_SDK_DETECTED);
     }
 
@@ -49,11 +51,11 @@ class AgentExtensionObserverTest {
         AgentExtensionObserver readyEndpoint = new AgentExtensionObserver(
                 serverWith(new ReadinessView("READY", 1, COMPLETE_CAPABILITIES, "", true)));
 
-        assertThat(withoutEndpoint.observe(true, false, false, false).state())
-                .isEqualTo(AgentRuntimeState.DISABLED);
-        assertThat(withoutEndpoint.observe(true, true, false, true).state())
+        assertThat(withoutEndpoint.observe(AgentDeploymentExpectation.FORBIDDEN, false, false, false).state())
+                .isEqualTo(AgentRuntimeState.AGENT_MISSING);
+        assertThat(withoutEndpoint.observe(AgentDeploymentExpectation.FORBIDDEN, true, false, true).state())
                 .isEqualTo(AgentRuntimeState.EXTENSION_MISSING);
-        assertThat(readyEndpoint.observe(true, true, false, true).state())
+        assertThat(readyEndpoint.observe(AgentDeploymentExpectation.FORBIDDEN, true, false, true).state())
                 .isEqualTo(AgentRuntimeState.AGENT_READY);
     }
 
@@ -83,8 +85,25 @@ class AgentExtensionObserverTest {
         assertThat(descriptor.capabilities()).containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
     }
 
+    @Test
+    void forbiddenWaitsFullConfiguredWindowBeforeReturningDisabled() {
+        AtomicLong clock = new AtomicLong();
+        AgentExtensionObserver observer = new AgentExtensionObserver(
+                MBeanServerFactory.createMBeanServer(),
+                Duration.ofNanos(100),
+                clock::get,
+                nanos -> clock.addAndGet(nanos));
+
+        AgentExtensionDescriptor result = observer.awaitStartupDecision(
+                AgentDeploymentExpectation.FORBIDDEN, false, false, false);
+
+        assertThat(result.state()).isEqualTo(AgentRuntimeState.DISABLED);
+        assertThat(clock.get()).isEqualTo(100);
+    }
+
     private static AgentExtensionDescriptor observe(ReadinessView view) throws Exception {
-        return new AgentExtensionObserver(serverWith(view)).observe(false, true, false, true);
+        return new AgentExtensionObserver(serverWith(view))
+                .observe(AgentDeploymentExpectation.REQUIRED, true, false, true);
     }
 
     private static MBeanServer serverWith(ReadinessView view) throws Exception {

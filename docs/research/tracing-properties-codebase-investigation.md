@@ -698,7 +698,7 @@ platform.tracing.sampling.ratio
 ```text
   → ThreadPoolTaskExecutorPropagation.enabled [TracingProperties.java:220]
   → @ConditionalOnProperty prefix ...thread-pool-task-executor [TracingAsyncContextAutoConfiguration.java:41-44]
-  → ContextSnapshotFactory + ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
+  → ContextSnapshotFactory + ThreadPoolTaskExecutorDecoratorBeanPostProcessor
   → PlatformContextTaskDecorator on ThreadPoolTaskExecutor beans
   → OTel Context + MDC capture/restore on @Async worker threads (no span creation)
 ```

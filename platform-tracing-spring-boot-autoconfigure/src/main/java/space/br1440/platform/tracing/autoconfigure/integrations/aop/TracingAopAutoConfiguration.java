@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.aop;
 
+import org.springframework.beans.factory.ObjectProvider;
+
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 
@@ -19,15 +21,11 @@ import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 
 /**
  * Авто-конфигурация AOP-обработки аннотации {@code @Traced}.
- * <p>
- * Активна только при наличии Spring AOP в classpath и положительном значении свойства
- * {@code platform.tracing.mode=AGENT}. Использует {@link EnableAspectJAutoProxy} с {@code proxyTargetClass=true}
- * для поддержки proxy-перехвата как для интерфейсов, так и для классов.
  */
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 @ConditionalOnClass({Aspect.class})
-@ConditionalOnProperty(name = TracingBootstrapPropertyNames.MODE, havingValue = "AGENT", matchIfMissing = true)
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.ENABLED, havingValue = "true", matchIfMissing = true)
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 @EnableConfigurationProperties(TracingProperties.class)
 public class TracingAopAutoConfiguration {
@@ -35,7 +33,7 @@ public class TracingAopAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public TracedAspect platformTracedAspect(TraceOperations traceOperations,
-                                               org.springframework.beans.factory.ObjectProvider<ExceptionRecorder> exceptionRecorderProvider) {
+                                             ObjectProvider<ExceptionRecorder> exceptionRecorderProvider) {
         ExceptionRecorder recorder = exceptionRecorderProvider.getIfAvailable(ExceptionRecorder::secureDefault);
         return new TracedAspect(traceOperations, recorder);
     }

@@ -49,8 +49,6 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
     private final AtomicReference<AcceptedPolicyAccess> acceptedPolicy = new AtomicReference<>();
     private final AtomicReference<AutoCloseable> privateControlPlane = new AtomicReference<>();
 
-    // Одноразовый guard для диагностической лог-строки platform.tracing.mode.
-    private final AtomicBoolean sdkModeLogged = new AtomicBoolean();
     private final AtomicBoolean privateControlShutdownHookInstalled = new AtomicBoolean();
 
     @Override
@@ -69,7 +67,6 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
 
         // Bootstrap: создаём ExtensionConfig ровно один раз из финального merged ConfigProperties.
         // Все последующие factory callbacks видят уже готовый extensionConfig.get().
-        // Диагностика sdk.mode совмещена сюда, чтобы не делать отдельный проход.
         customizer.addPropertiesCustomizer(config -> {
             try {
                 ExtensionConfig initialized = new ExtensionConfig(config);
@@ -99,12 +96,6 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
             } catch (RuntimeException | Error failure) {
                 readiness.fail("CONFIGURATION_INITIALIZATION_FAILED", failure);
                 throw failure;
-            }
-            if (sdkModeLogged.compareAndSet(false, true)) {
-                String mode = extensionConfig.get().sdk().mode();
-                if (Strings.isNotBlank(mode)) {
-                    log.info("Platform tracing extension: platform.tracing.mode={} (agent-канал, диагностика)", mode);
-                }
             }
             return Map.of();
         });

@@ -12,12 +12,11 @@ import org.springframework.context.annotation.Configuration;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
-class TracingModeDetectionAutoConfigurationTest {
+class TracingEnabledAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
@@ -28,12 +27,12 @@ class TracingModeDetectionAutoConfigurationTest {
                     "platform.environment=LOCAL");
 
     @Test
-    void defaultAgentModeWithoutControlledAgentFailsStartup() {
+    void enabledByDefaultWithoutControlledAgentFailsStartup() {
         contextRunner.run(context -> {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure())
                     .hasRootCauseMessage(
-                            "platform.tracing.mode=AGENT rejected observed runtime state=AGENT_MISSING, "
+                            "platform.tracing.enabled=true rejected observed runtime state=AGENT_MISSING, "
                                     + "failureCode=CONTROLLED_AGENT_MISSING");
         });
     }
@@ -42,12 +41,12 @@ class TracingModeDetectionAutoConfigurationTest {
     void disabledWithoutAnyRuntimeCreatesTheOnlySuccessfulNoopFacade() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
-                    TracingModeDiagnostics diagnostics = context.getBean(TracingModeDiagnostics.class);
-                    assertThat(diagnostics.mode()).isEqualTo(TracingMode.DISABLED);
+                    TracingDeploymentDiagnostics diagnostics = context.getBean(TracingDeploymentDiagnostics.class);
+                    assertThat(diagnostics.tracingEnabled()).isFalse();
                     assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
                     assertThat(context).doesNotHaveBean(OpenTelemetry.class);
                 });
@@ -58,7 +57,7 @@ class TracingModeDetectionAutoConfigurationTest {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
                 .withPropertyValues(
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
@@ -69,14 +68,14 @@ class TracingModeDetectionAutoConfigurationTest {
     }
 
     @Test
-    void removedPropertyValuesFailBinding() {
-        for (String removed : new String[] {"AUTO", "STARTER", "EXTERNAL"}) {
+    void obsoleteModePropertyFailsFast() {
+        for (String removed : new String[] {"AGENT", "DISABLED"}) {
             contextRunner
                     .withPropertyValues("platform.tracing.mode=" + removed)
                     .run(context -> {
                         assertThat(context).hasFailed();
                         assertThat(context.getStartupFailure())
-                                .hasMessageContaining("Invalid property 'platform.tracing.mode'='" + removed + "'");
+                                .hasMessageContaining("Obsolete Spring-only property 'platform.tracing.mode'");
                     });
         }
     }

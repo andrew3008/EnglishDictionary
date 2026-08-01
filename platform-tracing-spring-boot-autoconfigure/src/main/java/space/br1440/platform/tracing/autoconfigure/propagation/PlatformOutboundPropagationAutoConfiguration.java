@@ -5,60 +5,48 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
-import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
 import space.br1440.platform.tracing.otel.propagation.control.DefaultOutboundPropagationPolicy;
 import space.br1440.platform.tracing.otel.propagation.control.DefaultTraceControlHeaderInjector;
 import space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers;
 
-/**
- * Общие (framework-agnostic) бины outbound-пропагации платформенных заголовков.
- * <p>
- * Эти бины используются client-интерсепторами Servlet ({@code platform-tracing-autoconfigure-webmvc}),
- * WebFlux ({@code platform-tracing-autoconfigure-webflux}) и Kafka-производителем. Сами типы живут в
- * {@code platform-tracing-api} (видны и app-, и agent-classloader — см. ADR-outbound-propagation).
- *
- * <p>Бины создаются всегда (с {@code @ConditionalOnMissingBean}); фактическая инжекция гейтится на уровне
- * политики ({@link OutboundPropagationPolicy#decide(String)} -> {@code DENY_ALL}, если outbound выключен
- * или destination недоверенный) и на уровне регистрации интерсепторов в web-модулях.
- */
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
-@ConditionalOnProperty(name = TracingBootstrapPropertyNames.MODE, havingValue = "AGENT", matchIfMissing = true)
+@ConditionalOnProperty(name = TracingBootstrapPropertyNames.ENABLED, havingValue = "true", matchIfMissing = true)
 public class PlatformOutboundPropagationAutoConfiguration {
 
-    /**
-     * Единый инжектор платформенных заголовков (имена берутся из {@code platform.tracing.propagation.platform-headers}).
-     */
     @Bean
     @ConditionalOnMissingBean
     public PlatformOutboundPropagation platformOutboundPropagation(TracingProperties properties) {
-        TracingProperties.Propagation.PlatformHeaderNames headers =
-                properties.getPropagation().getPlatformHeaders();
+        TracingProperties.Propagation.PlatformHeaderNames headers = properties.getPropagation().getPlatformHeaders();
         return new DefaultTraceControlHeaderInjector(
                 headers.getForceTraceHeader(),
                 headers.getQaTraceHeader(),
-                headers.getRequestIdHeader());
+                headers.getRequestIdHeader()
+        );
     }
 
-    /**
-     * Политика исходящей передачи на HTTP-хосты (trusted-host gating + per-header флаги).
-     */
     @Bean(name = "platformHttpOutboundPolicy")
     @ConditionalOnMissingBean(name = "platformHttpOutboundPolicy")
     public OutboundPropagationPolicy platformHttpOutboundPolicy(TracingProperties properties) {
         TracingProperties.Propagation.Outbound outbound = properties.getPropagation().getOutbound();
         TrustedDestinationMatcher matcher = TrustedDestinationMatchers.forHttpHosts(
-                outbound.getTrustedHostPatterns(), outbound.isAllowIpLiterals());
+                outbound.getTrustedHostPatterns(),
+                outbound.isAllowIpLiterals()
+        );
+
         return new DefaultOutboundPropagationPolicy(
                 outbound.isEnabled(),
                 matcher,
                 outbound.isPropagateForceTrace(),
                 outbound.isPropagateQaTrace(),
-                outbound.isPropagateRequestId());
+                outbound.isPropagateRequestId()
+        );
     }
 }

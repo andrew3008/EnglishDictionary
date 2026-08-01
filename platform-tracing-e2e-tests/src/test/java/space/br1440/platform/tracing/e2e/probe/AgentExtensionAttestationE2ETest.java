@@ -25,14 +25,14 @@ class AgentExtensionAttestationE2ETest {
 
     @Test
     void noAgentIsDistinguishedFromMissingExtension() throws Exception {
-        String output = run(false, null, AgentRuntimeState.AGENT_MISSING, "AGENT", false, List.of());
+        String output = run(false, null, AgentRuntimeState.AGENT_MISSING, true, false, List.of());
         assertCompleted(output, AgentRuntimeState.AGENT_MISSING)
                 .contains(PREFIX + "startupFailure=");
     }
 
     @Test
     void stockAgentWithoutPlatformExtensionIsNotReady() throws Exception {
-        String output = run(true, null, AgentRuntimeState.EXTENSION_MISSING, "AGENT", false, List.of());
+        String output = run(true, null, AgentRuntimeState.EXTENSION_MISSING, true, false, List.of());
         assertCompleted(output, AgentRuntimeState.EXTENSION_MISSING)
                 .contains(PREFIX + "startupFailure=");
     }
@@ -47,7 +47,7 @@ class AgentExtensionAttestationE2ETest {
     void failedSanitizerInitializationIsNotReady() throws Exception {
         String output = runWithFixture(
                 AgentRuntimeState.EXTENSION_FAILED,
-                "AGENT",
+                true,
                 false,
                 List.of(
                         "-De1.fixture.lifecycle=FAILED",
@@ -62,7 +62,7 @@ class AgentExtensionAttestationE2ETest {
     void incompatibleProtocolIsRejected() throws Exception {
         String output = runWithFixture(
                 AgentRuntimeState.EXTENSION_INCOMPATIBLE,
-                "AGENT",
+                true,
                 false,
                 List.of(
                         "-De1.fixture.lifecycle=READY",
@@ -76,7 +76,7 @@ class AgentExtensionAttestationE2ETest {
     void managementEndpointWithoutRequiredProcessorIsRejected() throws Exception {
         String output = runWithFixture(
                 AgentRuntimeState.CAPABILITY_MISSING,
-                "AGENT",
+                true,
                 false,
                 List.of("-De1.fixture.lifecycle=READY"));
         assertCompleted(output, AgentRuntimeState.CAPABILITY_MISSING)
@@ -85,37 +85,37 @@ class AgentExtensionAttestationE2ETest {
 
     @Test
     void explicitAgentWithoutCompatibleExtensionFailsClearly() throws Exception {
-        String output = run(true, null, AgentRuntimeState.EXTENSION_MISSING, "AGENT", false, List.of());
+        String output = run(true, null, AgentRuntimeState.EXTENSION_MISSING, true, false, List.of());
         assertCompleted(output, AgentRuntimeState.EXTENSION_MISSING)
                 .contains("EXTENSION_MISSING");
     }
 
     @Test
     void agentAndApplicationSdkAreRejectedEvenWhenFacadeIsDisabled() throws Exception {
-        String output = run(true, null, AgentRuntimeState.DUAL_SDK_DETECTED, "DISABLED", true, List.of());
+        String output = run(true, null, AgentRuntimeState.DUAL_SDK_DETECTED, false, true, List.of());
         assertCompleted(output, AgentRuntimeState.DUAL_SDK_DETECTED)
                 .contains("Application-owned OpenTelemetry bean is not supported");
     }
 
     private static void assertFixtureState(AgentRuntimeState state, String property) throws Exception {
-        String output = runWithFixture(state, "AGENT", false, List.of(property));
+        String output = runWithFixture(state, true, false, List.of(property));
         assertCompleted(output, state).contains(PREFIX + "startupFailure=");
     }
 
     private static String runWithFixture(
             AgentRuntimeState expected,
-            String mode,
+            boolean tracingEnabled,
             boolean dual,
             List<String> properties) throws Exception {
         String fixture = requiredProperty("smoke.readiness.fixture.extension.jar");
-        return run(true, fixture, expected, mode, dual, properties);
+        return run(true, fixture, expected, tracingEnabled, dual, properties);
     }
 
     private static String run(
             boolean withAgent,
             String extension,
             AgentRuntimeState expected,
-            String mode,
+            boolean tracingEnabled,
             boolean dual,
             List<String> properties) throws Exception {
         List<String> command = new ArrayList<>();
@@ -141,7 +141,7 @@ class AgentExtensionAttestationE2ETest {
                 ? AgentExtensionAttestationProbeMain.class.getName()
                 : MinimalStarterAttestationProbeMain.class.getName());
         command.add(expected.name());
-        command.add(mode);
+        command.add(Boolean.toString(tracingEnabled));
         command.add(Boolean.toString(dual));
 
         Process process = new ProcessBuilder(command).redirectErrorStream(true).start();

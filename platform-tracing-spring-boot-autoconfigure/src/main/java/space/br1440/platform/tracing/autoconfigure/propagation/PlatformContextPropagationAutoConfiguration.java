@@ -13,7 +13,6 @@ import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.propagation.NoOpPlatformContextPropagation;
 import space.br1440.platform.tracing.otel.propagation.OtelPlatformContextPropagation;
 
-/** Владелец application-side реализации распространения OTel Context. */
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 public class PlatformContextPropagationAutoConfiguration {
@@ -25,6 +24,7 @@ public class PlatformContextPropagationAutoConfiguration {
         if (traceOperations instanceof NoopTraceOperations) {
             return NoOpPlatformContextPropagation.INSTANCE;
         }
+
         return new OtelPlatformContextPropagation();
     }
 }

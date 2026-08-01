@@ -110,7 +110,7 @@ class TracingConfigurationAuthorityGuardContextTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=LOCAL",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     TracingConfigurationAuthorityGuard guard = context.getBean(
@@ -127,7 +127,7 @@ class TracingConfigurationAuthorityGuardContextTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=" + authority,
                         "platform.environment=LOCAL",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> assertGuardFailure(context, "Tracing disabled is incompatible"));
     }
 
@@ -138,7 +138,7 @@ class TracingConfigurationAuthorityGuardContextTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=" + authority,
                         "platform.environment=LOCAL",
-                        "platform.tracing.configuration.enabled=false")
+                        "platform.tracing.enabled=false")
                 .run(context -> assertGuardFailure(context, "Tracing disabled is incompatible"));
     }
 

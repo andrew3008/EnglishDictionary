@@ -7,11 +7,8 @@ import java.util.Map;
 import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyLeaves;
 import space.br1440.platform.tracing.autoconfigure.control.policy.AgentReadinessView;
 
-/**
- * Версионированный secret-safe снимок состояния платформенной трассировки.
- */
 public record TracingStatusSnapshot(int schemaVersion,
-                                    String mode,
+                                    boolean tracingEnabled,
                                     String authority,
                                     Map<String, Object> agent,
                                     Map<String, Object> runtime,
@@ -28,22 +25,17 @@ public record TracingStatusSnapshot(int schemaVersion,
         return Collections.unmodifiableMap(new LinkedHashMap<>(source));
     }
 
-    /**
-     * Accepted policy не содержит route-ratio values или иных закрытых данных.
-     */
-    public record PolicyStatus(
-            boolean available,
-            PolicyAvailabilityReason reason,
-            AgentReadinessView readiness,
-            AcceptedPolicyLeaves accepted) {
+    public record PolicyStatus(boolean available,
+                               PolicyAbsenceReason reason,
+                               AgentReadinessView readiness,
+                               AcceptedPolicyLeaves accepted) {
 
-        public static PolicyStatus available(
-                AgentReadinessView readiness,
-                AcceptedPolicyLeaves accepted) {
+        public static PolicyStatus available(AgentReadinessView readiness,
+                                             AcceptedPolicyLeaves accepted) {
             return new PolicyStatus(true, null, readiness, accepted);
         }
 
-        public static PolicyStatus absent(PolicyAvailabilityReason reason) {
+        public static PolicyStatus absent(PolicyAbsenceReason reason) {
             return new PolicyStatus(false, reason, null, null);
         }
     }

@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.kafka;
 
+import lombok.RequiredArgsConstructor;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -27,13 +29,9 @@ import java.util.regex.Pattern;
  * {@link ConsumerRecord} и добавляет их как links к новому платформенному span'у.
  * <p>
  * Он <b>не мутирует</b> созданный агентом CONSUMER span, так как это хрупко.
- * <p>
- * <b>Destination resolution:</b> если все записи батча относятся к одному topic — destination
- * равен этому topic. Для multi-topic batch destination = {@code @KafkaListener.id()} при
- * непустом id, иначе имя advised-метода. Первый topic батча никогда не используется как
- * destination при нескольких distinct topics.
  */
 @Aspect
+@RequiredArgsConstructor
 public class KafkaBatchLinksAspect {
 
     private static final Pattern TRACE_ID = Pattern.compile("[0-9a-f]{32}");
@@ -42,12 +40,9 @@ public class KafkaBatchLinksAspect {
 
     private final TraceOperations traceOperations;
 
-    public KafkaBatchLinksAspect(TraceOperations traceOperations) {
-        this.traceOperations = traceOperations;
-    }
-
     @Around("@annotation(kafkaListener) && args(records,..)")
-    public Object linkBatchRecords(ProceedingJoinPoint pjp, KafkaListener kafkaListener,
+    public Object linkBatchRecords(ProceedingJoinPoint pjp,
+                                   KafkaListener kafkaListener,
                                    List<ConsumerRecord<?, ?>> records) throws Throwable {
         if (!"true".equalsIgnoreCase(kafkaListener.batch()) && !isBatchInferred(records)) {
             return pjp.proceed();
@@ -66,7 +61,6 @@ public class KafkaBatchLinksAspect {
         }
 
         String destination = resolveDestination(records, kafkaListener, pjp);
-
         KafkaBatchSpanBuilder builder = traceOperations.spans()
                 .transport()
                 .kafka()
@@ -94,12 +88,15 @@ public class KafkaBatchLinksAspect {
         for (ConsumerRecord<?, ?> record : records) {
             topics.add(record.topic());
         }
+
         if (topics.size() == 1) {
             return topics.iterator().next();
         }
-        if (kafkaListener.id() != null && !kafkaListener.id().isBlank()) {
+
+        if (!kafkaListener.id().isBlank()) {
             return kafkaListener.id();
         }
+
         return pjp.getSignature().getName();
     }
 
@@ -108,6 +105,7 @@ public class KafkaBatchLinksAspect {
         if (traceparent == null) {
             return null;
         }
+
         String normalized = traceparent.toLowerCase(java.util.Locale.ROOT);
         String[] parts = normalized.split("-", -1);
         if (parts.length != 4
@@ -119,6 +117,7 @@ public class KafkaBatchLinksAspect {
                 || isAllZero(parts[2])) {
             return null;
         }
+
         return new RemoteSpanLink(parts[1], parts[2], (byte) Integer.parseInt(parts[3], 16),
                 header(record, "tracestate"));
     }
@@ -132,11 +131,11 @@ public class KafkaBatchLinksAspect {
         if (header == null || header.value() == null) {
             return null;
         }
+
         return new String(header.value(), StandardCharsets.UTF_8);
     }
 
     private boolean isBatchInferred(List<ConsumerRecord<?, ?>> records) {
         return records != null;
     }
-
 }

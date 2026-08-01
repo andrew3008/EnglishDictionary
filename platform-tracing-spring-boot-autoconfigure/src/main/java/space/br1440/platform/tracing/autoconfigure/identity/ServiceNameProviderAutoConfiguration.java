@@ -10,6 +10,8 @@ import space.br1440.platform.tracing.autoconfigure.identity.PlatformLocalService
 import space.br1440.platform.tracing.autoconfigure.identity.PlatformRemoteServiceNameProvider;
 import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
 
+import java.util.List;
+
 /**
  * Авто-конфигурация платформенных провайдеров имени сервиса для интеграции с внешним
  * errorhandling-стартером ({@code web-error-model} + {@code @ControllerAdvice}).
@@ -18,9 +20,9 @@ import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
  * без {@code @ConditionalOnProperty}, без {@code @ConditionalOnBean}. Это сделано осознанно —
  * по тому же контракту, что и {@code RequestContextSupplierAutoConfiguration}: внешний
  * errorhandling-стартер потребителя должен получать корректные значения независимо от
- * режима {@code platform.tracing.mode}.
+ * режима {@code platform.tracing.enabled}.
  * <p>
- * Поведение при {@code platform.tracing.mode=DISABLED}:
+ * Поведение при {@code platform.tracing.enabled=false}:
  * <ul>
  *   <li>{@link PlatformLocalServiceNameProvider} продолжает работать корректно: возвращает
  *       {@code spring.application.name} → {@link PlatformLocalServiceNameProvider#UNKNOWN_SERVICE}.
@@ -29,14 +31,13 @@ import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
  *       при отключённом tracing'е CLIENT-span'ы не создаются и атрибут upstream-сервиса
  *       не выставляется — это и есть ожидаемое поведение.</li>
  * </ul>
- *
- * <h2>Внимание разработчику</h2>
- * <p><b>Намеренно не имеет зависимостей от tracing-core бинов:</b> атрибут
+ * <p>
+ * <b>Намеренно не имеет зависимостей от tracing-core бинов:</b> атрибут
  * {@code after = TracingCoreAutoConfiguration.class} не указан осознанно. Оба провайдера
  * читают данные из {@link Environment} и/или {@link io.opentelemetry.api.trace.Span#current()} +
  * MDC, а не из {@link space.br1440.platform.tracing.api.TraceOperations}. <b>Не добавлять</b>
  * {@code after}/{@code before} «по аналогии с соседними классами»: это сделает регистрацию
- * провайдеров зависимой от {@code platform.tracing.mode} и сломает контракт «errorhandling
+ * провайдеров зависимой от {@code platform.tracing.enabled} и сломает контракт «errorhandling
  * всегда получает корректные имена сервисов, даже при выключенном tracing».
  */
 @AutoConfiguration
@@ -48,28 +49,11 @@ public class ServiceNameProviderAutoConfiguration {
         return new PlatformLocalServiceNameProvider(environment);
     }
 
-    /**
-     * Регистрирует {@link PlatformRemoteServiceNameProvider} с полностью составленным
-     * {@link RemoteServiceNameResolver}.
-     * <p>
-     * Contributors ({@link RemoteServiceNameSource} beans) собираются через
-     * {@link ObjectProvider} — лениво и без обязательного наличия: если ни одного бина
-     * {@code RemoteServiceNameSource} в контексте нет, resolver работает с пустым списком
-     * (MDC + mirror-fallback достаточны для типичного сценария).
-     * <p>
-     * Потребители платформы могут расширить цепочку, зарегистрировав бин
-     * {@code RemoteServiceNameSource} — он будет подхвачен автоматически.
-     * <p>
-     * <b>Ограничение:</b> список contributors фиксируется при старте контекста
-     * ({@code contributors.orderedStream().toList()}); runtime-расширение через
-     * {@code @RefreshScope} или динамическую регистрацию бинов не поддерживается.
-     */
     @Bean
     @ConditionalOnMissingBean(PlatformRemoteServiceNameProvider.class)
-    public PlatformRemoteServiceNameProvider platformRemoteServiceNameProvider(
-            ObjectProvider<RemoteServiceNameSource> contributors) {
-        RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(
-                contributors.orderedStream().toList());
+    public PlatformRemoteServiceNameProvider platformRemoteServiceNameProvider(ObjectProvider<RemoteServiceNameSource> contributors) {
+        List<RemoteServiceNameSource> sources = contributors.orderedStream().toList();
+        RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(sources);
         return new PlatformRemoteServiceNameProvider(resolver);
     }
 }

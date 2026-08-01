@@ -8,7 +8,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
@@ -18,13 +18,13 @@ public class MinimalStarterAttestationProbeMain {
 
     public static void main(String[] args) {
         AgentRuntimeState expectedState = AgentRuntimeState.valueOf(args[0]);
-        String configuredMode = args.length > 1 ? args[1] : "AGENT";
+        boolean tracingEnabled = args.length <= 1 || Boolean.parseBoolean(args[1]);
 
-        try (ConfigurableApplicationContext context = start(configuredMode)) {
-            TracingModeDiagnostics diagnostics = context.getBean(TracingModeDiagnostics.class);
+        try (ConfigurableApplicationContext context = start(tracingEnabled)) {
+            TracingDeploymentDiagnostics diagnostics = context.getBean(TracingDeploymentDiagnostics.class);
             TraceOperations facade = context.getBean(TraceOperations.class);
             emit("runtimeState=" + diagnostics.runtimeState());
-            emit("mode=" + diagnostics.mode());
+            emit("tracingEnabled=" + diagnostics.tracingEnabled());
             emit("facadeNoop=" + facade.getClass().getSimpleName().contains("Noop"));
             emit("endpointPresent=" + diagnostics.extensionDescriptor().readinessEndpointPresent());
             emit("lifecycle=" + diagnostics.extensionDescriptor().lifecycle());
@@ -44,14 +44,14 @@ public class MinimalStarterAttestationProbeMain {
         }
     }
 
-    private static ConfigurableApplicationContext start(String mode) {
+    private static ConfigurableApplicationContext start(boolean tracingEnabled) {
         SpringApplication application = new SpringApplication(MinimalStarterAttestationProbeMain.class);
         application.setWebApplicationType(WebApplicationType.NONE);
         application.setRegisterShutdownHook(false);
         return application.run(
                 "--spring.main.banner-mode=off",
                 "--logging.level.root=ERROR",
-                "--platform.tracing.mode=" + mode);
+                "--platform.tracing.enabled=" + tracingEnabled);
     }
 
     private static String rootMessage(Throwable failure) {

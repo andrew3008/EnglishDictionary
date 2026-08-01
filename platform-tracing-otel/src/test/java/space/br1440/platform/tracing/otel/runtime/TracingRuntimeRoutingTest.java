@@ -17,8 +17,7 @@ import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntimeFactory;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
-import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
-import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 
 import java.util.List;
@@ -117,15 +116,12 @@ class TracingRuntimeRoutingTest {
     }
 
     @Test
-    void noOpFacade_routesThroughBoundary() {
-        RecordingTracingRuntime recordingImpl = new RecordingTracingRuntime();
-        recordingImpl.setState(ImmutableTracingState.of(
-                TracingMode.NOOP, null, java.util.Map.of()));
-        NoopTraceOperations noop = NoopTraceOperations.backedBy(recordingImpl);
+    void noOpFacade_keepsManualOperationsNonRecording() {
+        NoopTraceOperations noop = NoopTraceOperations.forDisabledRuntime(
+                NoOpTracingRuntime.disabledByConfiguration("test-disabled"));
         noop.spans().operation("noop-op").run(() -> {
         });
-        assertThat(recordingImpl.receivedSpecs()).hasSize(1);
-        assertThat(recordingImpl.receivedSpecs().getFirst().name()).isEqualTo("noop-op");
+        assertThat(noop.traceContext().traceId()).isEmpty();
     }
 
     @Test
@@ -139,7 +135,7 @@ class TracingRuntimeRoutingTest {
         realTracing.spans().operation("disabled").start().close();
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
         assertThat(realTracing.tracingRuntime().state().mode())
-                .isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
+                .isEqualTo(TracingRuntimeMode.DISABLED_BY_CONFIGURATION);
     }
 
     private void assertSingleSpecNamed(String name, SpanRelationship relationship) {

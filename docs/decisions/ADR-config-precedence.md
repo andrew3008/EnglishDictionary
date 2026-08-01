@@ -14,7 +14,7 @@
 env / sysprop; Spring `Environment`; Helm/`application.yml`; build-info; runtime JMX) и читается **двумя
 каналами** ([ADR-dual-channel-properties-v0.1](ADR-dual-channel-properties-v0.1.md)): Spring-starter и
 agent-extension. Фаза 15 добавляет named SPI (`platform` sampler, `platform-trace-control` propagator) и
-mode-detection, поэтому precedence нужно свести в **один контракт**, чтобы исключить расхождения между
+startup activation, поэтому precedence нужно свести в **один контракт**, чтобы исключить расхождения между
 режимами и подсистемами.
 
 Документ не вводит нового поведения — он формализует и объединяет уже принятые правила.
@@ -58,15 +58,16 @@ Runtime-канал **перекрывает** startup для тех же клю�
 `addPropertiesCustomizer` (а не `addPropertiesSupplier`) выбран сознательно: supplier имеет низший приоритет
 и игнорируется при ENV-вводе ([ADR-named-spi-sampler-propagator](ADR-named-spi-sampler-propagator.md) §дефолты).
 
-### 4. SDK mode (`platform.tracing.mode`)
+### 4. Tracing activation (`platform.tracing.enabled`)
 
 | Приоритет | Источник | Поведение |
 |---|---|---|
-| 1 | `AGENT` (default) | Требует compatible READY Controlled Agent и полный capability profile |
-| 2 | `DISABLED` | Разрешён только при отсутствии Agent/global/application SDK; intentional NoOp |
+| 1 | `true` (default) | Требует compatible READY Controlled Agent и полный capability profile |
+| 2 | `false` | Требует отсутствия Agent/global/application SDK в startup validation window; intentional NoOp |
 
-Удалённые `AUTO|STARTER|EXTERNAL` завершают startup ошибкой. Свойство не
-создаёт SDK; application runtime не участвует в precedence
+Dynamic Agent attach после Spring startup не поддерживается. Удалённые
+`platform.tracing.mode` и `platform.tracing.configuration.enabled` fail-fast. Свойство не создаёт
+SDK; application runtime не участвует в precedence
 ([ADR-sdk-mode-detection](ADR-sdk-mode-detection.md)).
 
 ### 5. Dual-channel (Spring vs Agent)

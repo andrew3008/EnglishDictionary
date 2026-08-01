@@ -64,8 +64,6 @@ public final class ExtensionPropertyNames {
     public static final String BAGGAGE_ALLOWLIST_KEYS = "platform.tracing.javaagent.propagation.baggage.allowlist-keys";
     public static final String BAGGAGE_DENY_PATTERNS = "platform.tracing.javaagent.propagation.baggage.deny-patterns";
 
-    public static final String SDK_MODE = "platform.tracing.mode";
-
     public static final String CONTROL_RUNTIME_MUTATION_ENABLED =
             "platform.tracing.control.runtime-mutation.enabled";
 

@@ -6,8 +6,6 @@ import org.springframework.mock.env.MockEnvironment;
 
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
-
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
@@ -19,12 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StrictSdkOwnershipArchitectureTest {
 
     @Test
-    void productionModeSurfaceContainsOnlyAgentAndDisabled() {
-        assertThat(Arrays.stream(TracingMode.values()).map(Enum::name))
-                .containsExactly("AGENT", "DISABLED");
+    void bootstrapSettingsDefaultToEnabledTracing() {
         assertThat(new TracingBootstrapSettingsResolver().resolve(new MockEnvironment()
                 .withProperty("platform.tracing.configuration.authority", "HELM")
-                .withProperty("platform.environment", "LOCAL")).mode()).isEqualTo(TracingMode.AGENT);
+                .withProperty("platform.environment", "LOCAL")).tracingEnabled()).isTrue();
     }
 
     @Test

@@ -1,4 +1,4 @@
-# ADR: Controlled Agent-first SDK ownership и fail-closed mode resolution
+# ADR: Controlled Agent-first SDK ownership и fail-closed activation
 
 | Поле | Значение |
 |------|----------|
@@ -21,16 +21,17 @@ auto-instrumentation, sampler, обязательными processors, sanitizer,
 lifecycle. Spring starter владеет application facade, web/Kafka adapters, binding и наблюдением
 readiness; starter не создаёт и не принимает application `OpenTelemetry` SDK.
 
-Поддерживаются ровно два значения `platform.tracing.mode`:
+Startup activation задаётся `platform.tracing.enabled`:
 
-| Режим | Контракт |
+| Значение | Контракт |
 |---|---|
-| `AGENT` | Значение по умолчанию. Startup успешен только при совместимом readiness protocol, `READY` и полном mandatory capability profile |
-| `DISABLED` | Успешный intentional NoOp только при отсутствии Agent, extension, global и application runtime |
+| `true` | Значение по умолчанию. Startup успешен только при совместимом readiness protocol, `READY` и полном mandatory capability profile |
+| `false` | Успешный intentional NoOp только при отсутствии Agent, extension, global и application runtime в startup validation window |
 
-`AUTO`, `STARTER`, `EXTERNAL` удалены без compatibility aliases. Их передача является ошибкой
-property binding. `platform.tracing.mode` является единственным источником истины для startup ownership:
-отдельный глобальный `platform.tracing.enabled` удалён, поэтому противоречивую пару параметров задать нельзя.
+`platform.tracing.mode` и `platform.tracing.configuration.enabled` удалены без compatibility
+aliases и завершают startup ошибкой. `platform.tracing.enabled` является единственным источником
+истины для startup ownership; противоречивую пару параметров задать нельзя. Dynamic Agent
+attach после завершения Spring startup не поддерживается и starter'ом не мониторится.
 
 ## Readiness и collision semantics
 
@@ -44,7 +45,7 @@ property binding. `platform.tracing.mode` является единственн�
 - После `READY` facade использует agent-owned `GlobalOpenTelemetry`; fallback на произвольный
   functional global отсутствует.
 
-Application diagnostics публикует configured mode, observed state и безопасный failure code.
+Application diagnostics публикует `tracingEnabled`, observed state и безопасный failure code.
 Полный Agent failure message через application boundary не передаётся. Health читает startup
 snapshot и не вызывает `GlobalOpenTelemetry.get()` повторно.
 
@@ -66,7 +67,8 @@ pre-JVM security boundary и не способен предотвратить р
 
 ## Последствия
 
-- `DISABLED` является единственным успешным NoOp.
+- `platform.tracing.enabled=false` является единственным успешным NoOp и требует отсутствия Agent
+  в startup validation window.
 - Недоступный Collector после валидного `READY` pipeline считается observable runtime degradation,
   а не причиной создавать второй SDK или останавливать приложение.
 - Local/unit tests используют SDK только в структурно изолированных test fixtures/source sets.

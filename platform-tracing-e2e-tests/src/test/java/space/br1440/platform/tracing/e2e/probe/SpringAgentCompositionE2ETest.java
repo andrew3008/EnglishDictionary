@@ -21,7 +21,7 @@ class SpringAgentCompositionE2ETest {
     private static final String PREFIX = "SPRING_AGENT_COMPOSITION:";
 
     @Test
-    void springFacadeUsesControlledAgentAndDisabledRejectsLiveAgent() throws Exception {
+    void springFacadeUsesControlledAgentAndDisabledTracingRejectsLiveAgent() throws Exception {
         String otelAgentJar = System.getProperty("smoke.controlled.agent.jar");
         String testRuntimeClasspath = System.getProperty("smoke.test.runtime.classpath");
 
@@ -31,12 +31,12 @@ class SpringAgentCompositionE2ETest {
         String output = runProbe(otelAgentJar, testRuntimeClasspath);
 
         assertThat(output)
-                .contains(PREFIX + "agent.mode=AGENT")
+                .contains(PREFIX + "agent.tracingEnabled=true")
                 .contains(PREFIX + "agent.agentDetected=true")
                 .contains(PREFIX + "agent.facadeNoop=false")
                 .contains(PREFIX + "agent.openTelemetryBeans=0")
                 .contains(PREFIX + "agent.currentContextVisible=true")
-                .contains(PREFIX + "disabled.liveAgentRejected=true")
+                .contains(PREFIX + "disabledTracing.liveAgentRejected=true")
                 .contains(PREFIX + "COMPLETE");
     }
 

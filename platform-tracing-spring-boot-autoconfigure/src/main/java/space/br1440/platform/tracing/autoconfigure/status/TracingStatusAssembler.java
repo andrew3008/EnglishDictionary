@@ -5,58 +5,57 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import io.opentelemetry.api.GlobalOpenTelemetry;
-
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
+import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyProjection;
 import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedTracingPolicyReader;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionObserver;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 /**
- * Собирает status read-model из независимых источников истины без write-capability.
+ * Собирает read-model {@code tracingStatus} из startup diagnostics и текущих JMX/runtime сигналов.
+ *
+ * <p>Не выполняет повторный startup poll: agent-секция берётся из уже зафиксированного
+ * {@link TracingDeploymentDiagnostics#extensionDescriptor()}.</p>
  */
 public final class TracingStatusAssembler {
 
     private final TraceOperations traceOperations;
+    private final TracingRuntime tracingRuntime;
     private final TracingBootstrapSettings bootstrapSettings;
     private final PlatformTracingJmxClient jmxClient;
     private final AcceptedTracingPolicyReader acceptedPolicyReader;
-    private final TracingModeDiagnostics startupDiagnostics;
+    private final TracingDeploymentDiagnostics startupDiagnostics;
     private final Supplier<AgentExtensionDescriptor> agentDescriptorSupplier;
 
-    public TracingStatusAssembler(
-            TraceOperations traceOperations,
-            TracingBootstrapSettings bootstrapSettings,
-            PlatformTracingJmxClient jmxClient,
-            AcceptedTracingPolicyReader acceptedPolicyReader,
-            TracingModeDiagnostics startupDiagnostics) {
-        this(
-                traceOperations,
+    public TracingStatusAssembler(TraceOperations traceOperations,
+                                  TracingRuntime tracingRuntime,
+                                  TracingBootstrapSettings bootstrapSettings,
+                                  PlatformTracingJmxClient jmxClient,
+                                  AcceptedTracingPolicyReader acceptedPolicyReader,
+                                  TracingDeploymentDiagnostics startupDiagnostics) {
+        this(traceOperations,
+                tracingRuntime,
                 bootstrapSettings,
                 jmxClient,
                 acceptedPolicyReader,
                 startupDiagnostics,
-                () -> new AgentExtensionObserver().observe(
-                        !bootstrapSettings.tracingEnabled(),
-                        startupDiagnostics.agentDetected(),
-                        false,
-                        GlobalOpenTelemetry.isSet()));
+                startupDiagnostics::extensionDescriptor);
     }
 
-    TracingStatusAssembler(
-            TraceOperations traceOperations,
-            TracingBootstrapSettings bootstrapSettings,
-            PlatformTracingJmxClient jmxClient,
-            AcceptedTracingPolicyReader acceptedPolicyReader,
-            TracingModeDiagnostics startupDiagnostics,
-            Supplier<AgentExtensionDescriptor> agentDescriptorSupplier) {
+    TracingStatusAssembler(TraceOperations traceOperations,
+                           TracingRuntime tracingRuntime,
+                           TracingBootstrapSettings bootstrapSettings,
+                           PlatformTracingJmxClient jmxClient,
+                           AcceptedTracingPolicyReader acceptedPolicyReader,
+                           TracingDeploymentDiagnostics startupDiagnostics,
+                           Supplier<AgentExtensionDescriptor> agentDescriptorSupplier) {
         this.traceOperations = traceOperations;
+        this.tracingRuntime = tracingRuntime;
         this.bootstrapSettings = bootstrapSettings;
         this.jmxClient = jmxClient;
         this.acceptedPolicyReader = acceptedPolicyReader;
@@ -68,11 +67,12 @@ public final class TracingStatusAssembler {
         AgentExtensionDescriptor descriptor = agentDescriptorSupplier.get();
         return new TracingStatusSnapshot(
                 TracingStatusSnapshot.CURRENT_SCHEMA_VERSION,
-                startupDiagnostics.mode().name(),
+                bootstrapSettings.tracingEnabled(),
                 bootstrapSettings.authority().name(),
                 agentSection(descriptor),
                 runtimeSection(),
-                policyStatus(descriptor));
+                policyStatus(descriptor)
+        );
     }
 
     private Map<String, Object> agentSection(AgentExtensionDescriptor descriptor) {
@@ -91,6 +91,8 @@ public final class TracingStatusAssembler {
     private Map<String, Object> runtimeSection() {
         Map<String, Object> runtime = new LinkedHashMap<>();
         runtime.put("implementation", traceOperations.getClass().getName());
+        runtime.put("mode", tracingRuntime.state().mode().name());
+        runtime.put("reason", tracingRuntime.state().reason().orElse(null));
         runtime.put("currentTraceId", traceOperations.traceContext().traceId().orElse(null));
         runtime.put("currentSpanId", traceOperations.traceContext().spanId().orElse(null));
         runtime.put("domainMBeansAvailable", jmxClient.allMBeansAvailable());
@@ -137,31 +139,32 @@ public final class TracingStatusAssembler {
     }
 
     private TracingStatusSnapshot.PolicyStatus policyStatus(AgentExtensionDescriptor descriptor) {
-        PolicyAvailabilityReason absentReason = absentPolicyReason(descriptor.state());
+        PolicyAbsenceReason absentReason = absentPolicyReason(descriptor.state());
         if (absentReason != null) {
             return TracingStatusSnapshot.PolicyStatus.absent(absentReason);
         }
 
-        Optional<AcceptedPolicyProjection> projection = acceptedPolicyReader == null
+        Optional<AcceptedPolicyProjection> projection = (acceptedPolicyReader == null)
                 ? Optional.empty()
                 : acceptedPolicyReader.currentProjection();
         return projection
-                .map(value -> TracingStatusSnapshot.PolicyStatus.available(
-                        value.agentReadiness(), value.policy()))
-                .orElseGet(() -> TracingStatusSnapshot.PolicyStatus.absent(
-                        PolicyAvailabilityReason.POLICY_NOT_ACCEPTED));
+                .map(value -> TracingStatusSnapshot.PolicyStatus.available(value.agentReadiness(), value.policy()))
+                .orElseGet(() -> TracingStatusSnapshot.PolicyStatus.absent(PolicyAbsenceReason.POLICY_NOT_ACCEPTED));
     }
 
-    private PolicyAvailabilityReason absentPolicyReason(AgentRuntimeState runtimeState) {
+    private PolicyAbsenceReason absentPolicyReason(AgentRuntimeState runtimeState) {
         if (!bootstrapSettings.tracingEnabled()) {
-            return PolicyAvailabilityReason.TRACING_DISABLED;
+            return PolicyAbsenceReason.TRACING_DISABLED;
         }
+
         if (bootstrapSettings.authority() == TracingConfigurationAuthority.HELM) {
-            return PolicyAvailabilityReason.AUTHORITY_HAS_NO_ACCEPTED_POLICY;
+            return PolicyAbsenceReason.AUTHORITY_HAS_NO_ACCEPTED_POLICY;
         }
+
         if (runtimeState != AgentRuntimeState.AGENT_READY) {
-            return PolicyAvailabilityReason.AGENT_UNAVAILABLE;
+            return PolicyAbsenceReason.AGENT_UNAVAILABLE;
         }
+
         return null;
     }
 }

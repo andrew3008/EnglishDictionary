@@ -1,19 +1,19 @@
 # Exact public type allowlist for platform-tracing-spring-boot-autoconfigure.
 # Changes require architecture review. Internal cross-module contracts are not application SPI.
 
+space.br1440.platform.tracing.autoconfigure.agent.AgentDeploymentExpectation
 space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor
 space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionObserver
+space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeContractValidator
 space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState
 space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector
-space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics
-space.br1440.platform.tracing.autoconfigure.agent.TracingRuntimeStateResolver
+space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics
 space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture
 space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames
 space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings
 space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsRegistrar
 space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver
 space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority
-space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode
 space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityGuard
 space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException
@@ -63,7 +63,7 @@ space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConf
 space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect
 space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.async.PlatformContextTaskDecorator
-space.br1440.platform.tracing.autoconfigure.integrations.async.ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
+space.br1440.platform.tracing.autoconfigure.integrations.async.ThreadPoolTaskExecutorDecoratorBeanPostProcessor
 space.br1440.platform.tracing.autoconfigure.integrations.async.TracingAsyncContextAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestTraceContextSnapshotSupplier
@@ -82,7 +82,7 @@ space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfigurat
 space.br1440.platform.tracing.autoconfigure.propagation.PlatformContextPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration
-space.br1440.platform.tracing.autoconfigure.status.PolicyAvailabilityReason
+space.br1440.platform.tracing.autoconfigure.status.PolicyAbsenceReason
 space.br1440.platform.tracing.autoconfigure.status.TracingStatusAssembler
 space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.status.TracingStatusEndpoint

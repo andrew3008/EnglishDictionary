@@ -1,6 +1,6 @@
 PR-0 starter dependency smoke — PASSED
-Date: Fri Jul 31 21:58:23 MSK 2026
-Git: b4e4f5f
+Date: Sat Aug 01 16:47:48 MSK 2026
+Git: f93f4fb
 
 Expectations verified:
 - platform-tracing-spring-boot-starter-servlet → autoconfigure + webmvc (not webflux, not otel-extension)

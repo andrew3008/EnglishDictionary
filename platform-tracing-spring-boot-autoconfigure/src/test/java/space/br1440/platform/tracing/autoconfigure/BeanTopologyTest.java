@@ -24,7 +24,7 @@ import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
-import space.br1440.platform.tracing.otel.runtime.state.TracingMode;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
 import space.br1440.platform.tracing.otel.runtime.NoOpSpanHandle;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
@@ -90,10 +90,10 @@ class BeanTopologyTest {
     void disabledTracingMode_exposesNonEnabledTracingState() {
         contextRunner
                 .withPropertyValues(
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     TracingRuntime impl = context.getBean(TracingRuntime.class);
-                    assertThat(impl.state().mode()).isEqualTo(TracingMode.DISABLED_BY_CONFIGURATION);
+                    assertThat(impl.state().mode()).isEqualTo(TracingRuntimeMode.DISABLED_BY_CONFIGURATION);
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
                 });
     }
@@ -135,8 +135,8 @@ class BeanTopologyTest {
 
         private static final TracingState STATE = new TracingState() {
             @Override
-            public TracingMode mode() {
-                return TracingMode.TEST;
+            public TracingRuntimeMode mode() {
+                return TracingRuntimeMode.TEST;
             }
 
             @Override

@@ -16,21 +16,22 @@ import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentDeploymentExpectation;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionObserver;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeContractValidator;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingRuntimeStateResolver;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
 @Slf4j
@@ -38,6 +39,8 @@ import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 @ConditionalOnClass(OpenTelemetry.class)
 @EnableConfigurationProperties(TracingProperties.class)
 public class TracingRuntimeAutoConfiguration {
+
+    private static final String DISABLED_REASON = "platform.tracing.enabled=false";
 
     @Bean
     public static BeanFactoryPostProcessor rejectCompetingTracingRuntimeBeans() {
@@ -63,20 +66,20 @@ public class TracingRuntimeAutoConfiguration {
     }
 
     @Bean
-    public TracingModeDiagnostics platformTracingModeDiagnostics(ConfigurableListableBeanFactory beanFactory,
-                                                                 TracingBootstrapSettings bootstrapSettings) {
+    public TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(
+            ConfigurableListableBeanFactory beanFactory,
+            TracingBootstrapSettings bootstrapSettings) {
         boolean agentPresent = OtelAgentDetector.isAgentPresent();
         boolean userBeanPresent = beanFactory.getBeanNamesForType(OpenTelemetry.class, false, false).length > 0;
         boolean globalOpenTelemetrySet = GlobalOpenTelemetry.isSet();
-        boolean configuredDisabled = bootstrapSettings.mode() == TracingMode.DISABLED;
+        AgentDeploymentExpectation expectation = bootstrapSettings.tracingEnabled()
+                ? AgentDeploymentExpectation.REQUIRED
+                : AgentDeploymentExpectation.FORBIDDEN;
 
         AgentExtensionDescriptor extension = new AgentExtensionObserver().awaitStartupDecision(
-                configuredDisabled, agentPresent, userBeanPresent, globalOpenTelemetrySet
-        );
+                expectation, agentPresent, userBeanPresent, globalOpenTelemetrySet);
 
-        TracingMode resolved = TracingRuntimeStateResolver.resolve(
-                bootstrapSettings.mode(),
-                extension);
+        AgentRuntimeContractValidator.validate(bootstrapSettings.tracingEnabled(), extension);
 
         if (extension.state() != AgentRuntimeState.AGENT_READY
                 && extension.state() != AgentRuntimeState.DISABLED) {
@@ -84,8 +87,8 @@ public class TracingRuntimeAutoConfiguration {
                     extension.state(), extension.failureCode());
         }
 
-        return new TracingModeDiagnostics(
-                resolved,
+        return new TracingDeploymentDiagnostics(
+                bootstrapSettings.tracingEnabled(),
                 agentPresent,
                 extension.state(),
                 extension);
@@ -95,12 +98,15 @@ public class TracingRuntimeAutoConfiguration {
     public TracingRuntime tracingImplementation(ObjectProvider<AttributePolicy> policyProvider,
                                                 ObjectProvider<ExceptionRecorder> exceptionRecorderProvider,
                                                 ObjectProvider<PlatformTracingMetrics> metricsProvider,
-                                                TracingModeDiagnostics sdkModeDiagnostics) {
-        TracingRuntime base = resolveTracingRuntime(policyProvider, exceptionRecorderProvider, sdkModeDiagnostics);
+                                                TracingBootstrapSettings bootstrapSettings,
+                                                TracingDeploymentDiagnostics deploymentDiagnostics) {
+        TracingRuntime base = resolveTracingRuntime(
+                policyProvider,
+                exceptionRecorderProvider,
+                bootstrapSettings,
+                deploymentDiagnostics);
         PlatformTracingMetrics metrics = metricsProvider.getIfAvailable();
-        if (metrics != null
-                && base.state().mode()
-                == space.br1440.platform.tracing.otel.runtime.state.TracingMode.ENABLED) {
+        if ((metrics != null) && (base.state().mode() == TracingRuntimeMode.ENABLED)) {
             return new MeteredTracingRuntime(base, metrics);
         }
 
@@ -109,17 +115,21 @@ public class TracingRuntimeAutoConfiguration {
 
     private TracingRuntime resolveTracingRuntime(ObjectProvider<AttributePolicy> policyProvider,
                                                  ObjectProvider<ExceptionRecorder> exceptionRecorderProvider,
-                                                 TracingModeDiagnostics sdkModeDiagnostics) {
-        if (sdkModeDiagnostics.mode() == TracingMode.DISABLED) {
-            return NoOpTracingRuntime.disabledByConfiguration("platform.tracing.mode=DISABLED");
+                                                 TracingBootstrapSettings bootstrapSettings,
+                                                 TracingDeploymentDiagnostics deploymentDiagnostics) {
+        if (!bootstrapSettings.tracingEnabled()) {
+            return NoOpTracingRuntime.disabledByConfiguration(DISABLED_REASON);
         }
 
-        if (sdkModeDiagnostics.runtimeState() != AgentRuntimeState.AGENT_READY) {
-            throw new IllegalStateException("AGENT mode cannot start without READY Controlled Platform Agent: " + sdkModeDiagnostics.runtimeState());
+        if (deploymentDiagnostics.runtimeState() != AgentRuntimeState.AGENT_READY) {
+            throw new IllegalStateException(
+                    "platform.tracing.enabled=true cannot start without READY Controlled Platform Agent: "
+                            + deploymentDiagnostics.runtimeState());
         }
 
         if (!GlobalOpenTelemetry.isSet()) {
-            throw new IllegalStateException("Controlled Platform Agent reported READY but GlobalOpenTelemetry is not registered");
+            throw new IllegalStateException(
+                    "Controlled Platform Agent reported READY but GlobalOpenTelemetry is not registered");
         }
 
         AttributePolicy policy = policyProvider.getIfAvailable(AttributePolicy::new);
@@ -128,17 +138,16 @@ public class TracingRuntimeAutoConfiguration {
     }
 
     @Bean
-    public TraceOperations traceOperations(TracingRuntime tracingImplementation) {
-        space.br1440.platform.tracing.otel.runtime.state.TracingMode mode =
-                tracingImplementation.state().mode();
-        if (mode == space.br1440.platform.tracing.otel.runtime.state.TracingMode.DISABLED_BY_CONFIGURATION) {
-            return NoopTraceOperations.forDisabledRuntime((NoOpTracingRuntime)tracingImplementation);
+    public TraceOperations traceOperations(TracingRuntime tracingRuntime) {
+        TracingRuntimeMode mode = tracingRuntime.state().mode();
+        if (mode == TracingRuntimeMode.DISABLED_BY_CONFIGURATION) {
+            return NoopTraceOperations.forDisabledRuntime((NoOpTracingRuntime) tracingRuntime);
         }
 
-        if (mode != space.br1440.platform.tracing.otel.runtime.state.TracingMode.ENABLED) {
+        if (mode != TracingRuntimeMode.ENABLED) {
             throw new IllegalStateException("Unexpected tracing runtime state after strict resolution: " + mode);
         }
 
-        return new DefaultTraceOperations(tracingImplementation);
+        return new DefaultTraceOperations(tracingRuntime);
     }
 }

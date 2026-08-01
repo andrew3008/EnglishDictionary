@@ -1,5 +1,11 @@
 # Extension Configuration Package Inventory
 
+> **Historical freeze.** Rows that mention `SdkExtensionConfig` / `SDK_MODE` /
+> `platform.tracing.sdk.mode` describe a pre-cutover snapshot. Those types and the property were
+> removed; current Spring bootstrap ownership is `platform.tracing.enabled`
+> ([ADR-sdk-mode-detection](../decisions/ADR-sdk-mode-detection.md),
+> [type ledger](./platform-tracing-autoconfigure-type-ledger.md)).
+
 ## 1. Executive Summary
 
 В пакете `space.br1440.platform.tracing.otel.javaagent.configuration` обнаружено **22 production Java-класса** в **одном плоском (flat) пакете** без подпакетов.

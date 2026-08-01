@@ -20,9 +20,15 @@ Deleted (do not call): `RuntimeConfigApplier`, Actuator `@WriteOperation` on `/a
 | **HELM** | None | Agent bootstrap only (env/`-D`); restart to change |
 | **CONFIG_SERVER** | Locator / codec / snapshot client / coalescer | Complete Category A manifest → private `applySnapshot` |
 | **ACTUATOR** + `platform.environment=LOCAL` | Typed management controller | Eight typed leaves → private `applySnapshot` (Agent source `DEV_ACTUATOR`) |
-| **DISABLED** (`mode=DISABLED` or `configuration.enabled=false`) | No private-control discovery | Incompatible with `CONFIG_SERVER` / `ACTUATOR` (fail-fast) |
+| **TRACING ENABLED** (`platform.tracing.enabled=true`) | Selected authority discovery | READY Controlled Agent required; functional facade |
+| **TRACING DISABLED** (`platform.tracing.enabled=false`) | No private-control discovery | Agent absent during startup validation window; NoOp facade with reason `platform.tracing.enabled=false`; incompatible with `CONFIG_SERVER` / `ACTUATOR` |
 
 Exactly one authority at startup. Fallback and dual writers are forbidden.
+
+`platform.tracing.enabled` — immutable startup switch. При `true` требуется READY Controlled Agent;
+при `false` Agent должен отсутствовать в startup validation window. Dynamic Agent attach после
+Spring startup не поддерживается. `platform.tracing.mode` и
+`platform.tracing.configuration.enabled` удалены и fail-fast.
 
 ---
 
@@ -132,13 +138,19 @@ Example: [examples/dev-actuator-local.yaml](../examples/dev-actuator-local.yaml)
 |---------|--------------|--------|
 | Startup fail: missing / invalid `platform.tracing.configuration.authority` | Authority required; no fallback | Set exactly one of `HELM`, `CONFIG_SERVER`, `ACTUATOR` |
 | Startup fail: ACTUATOR + SHARED/PRODUCTION | Posture gate | Use HELM or CONFIG_SERVER in shared/prod; LOCAL only for ACTUATOR |
-| Startup fail: disabled + CONFIG_SERVER/ACTUATOR | Mode/enabled matrix | Use HELM for disabled tracing, or re-enable tracing |
+| Startup fail: disabled + CONFIG_SERVER/ACTUATOR | `enabled=false` authority matrix | Use HELM for disabled tracing, or re-enable tracing |
 | `[P6 CONFIG_SERVER readiness] private writer unreachable` / empty `readAcceptedComplete` | Agent private control plane not ready / version mismatch | Confirm Controlled Agent + extension; align app/agent versions; check private MBeanServer attach |
 | `[P4 readiness probe]` ACTUATOR empty accepted policy | Same private-plane readiness | Same as above |
 | Initial CONFIG_SERVER deliver: missing required leaf | Incomplete manifest | Add all required `platform.tracing.policy.*` scalar keys (complete eight-leaf Category A) |
 | Local override rejected for policy key | Key from command-line / local file | Deliver leaf from Config Server source only |
 
 Liveness must not depend on collector reachability. Tracing-configuration readiness is separate from business liveness.
+
+`TracingHealthIndicator` возвращает `OUT_OF_SERVICE`, когда platform facade намеренно выключен,
+и публикует точную причину вместе с фактическим `agentState`. Репозиторий не включает contributor
+`tracing` в `management.endpoint.health.group.readiness` или `liveness` по умолчанию. Если сервис
+добавил его в такую группу самостоятельно, `platform.tracing.enabled=false` намеренно повлияет на probe;
+это решение должно быть явно согласовано владельцем сервиса.
 
 ---
 

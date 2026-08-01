@@ -13,19 +13,19 @@ import java.lang.reflect.Field;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit-тесты {@link ThreadPoolTaskExecutorContextPropagationBeanPostProcessor}: проверка
+ * Unit-тесты {@link ThreadPoolTaskExecutorDecoratorBeanPostProcessor}: проверка
  * установки декоратора, корректной композиции с существующим {@link TaskDecorator},
  * защиты от двойной обёртки и значения {@link Ordered#getOrder()}.
  */
 class ThreadPoolTaskExecutorBppTest {
 
     private ContextSnapshotFactory snapshotFactory;
-    private ThreadPoolTaskExecutorContextPropagationBeanPostProcessor bpp;
+    private ThreadPoolTaskExecutorDecoratorBeanPostProcessor bpp;
 
     @BeforeEach
     void setUp() {
         snapshotFactory = ContextSnapshotFactory.builder().build();
-        bpp = new ThreadPoolTaskExecutorContextPropagationBeanPostProcessor(snapshotFactory);
+        bpp = new ThreadPoolTaskExecutorDecoratorBeanPostProcessor(snapshotFactory);
     }
 
     @Test

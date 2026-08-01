@@ -18,9 +18,10 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfiguratio
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 class TracingStatusAssemblerTest {
 
@@ -38,9 +39,9 @@ class TracingStatusAssemblerTest {
                 Optional.empty());
 
         assertThat(disabled.assemble().policy().reason())
-                .isEqualTo(PolicyAvailabilityReason.TRACING_DISABLED);
+                .isEqualTo(PolicyAbsenceReason.TRACING_DISABLED);
         assertThat(helm.assemble().policy().reason())
-                .isEqualTo(PolicyAvailabilityReason.AUTHORITY_HAS_NO_ACCEPTED_POLICY);
+                .isEqualTo(PolicyAbsenceReason.AUTHORITY_HAS_NO_ACCEPTED_POLICY);
     }
 
     @Test
@@ -57,9 +58,9 @@ class TracingStatusAssemblerTest {
                 Optional.empty());
 
         assertThat(unavailable.assemble().policy().reason())
-                .isEqualTo(PolicyAvailabilityReason.AGENT_UNAVAILABLE);
+                .isEqualTo(PolicyAbsenceReason.AGENT_UNAVAILABLE);
         assertThat(notAccepted.assemble().policy().reason())
-                .isEqualTo(PolicyAvailabilityReason.POLICY_NOT_ACCEPTED);
+                .isEqualTo(PolicyAbsenceReason.POLICY_NOT_ACCEPTED);
     }
 
     @Test
@@ -82,7 +83,7 @@ class TracingStatusAssemblerTest {
         state.set(descriptor(AgentRuntimeState.AGENT_MISSING));
         TracingStatusSnapshot degraded = assembler.assemble();
         assertThat(degraded.policy().available()).isFalse();
-        assertThat(degraded.policy().reason()).isEqualTo(PolicyAvailabilityReason.AGENT_UNAVAILABLE);
+        assertThat(degraded.policy().reason()).isEqualTo(PolicyAbsenceReason.AGENT_UNAVAILABLE);
     }
 
     private static TracingStatusAssembler assembler(
@@ -99,18 +100,20 @@ class TracingStatusAssemblerTest {
             AtomicReference<AgentExtensionDescriptor> descriptor,
             Optional<AcceptedPolicyProjection> projection) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
-                enabled ? TracingMode.AGENT : TracingMode.DISABLED,
-                authority,
-                PlatformEnvironmentPosture.LOCAL,
-                enabled);
-        TracingMode mode = enabled ? TracingMode.AGENT : TracingMode.DISABLED;
-        TracingModeDiagnostics diagnostics = new TracingModeDiagnostics(
-                mode,
                 enabled,
+                authority,
+                PlatformEnvironmentPosture.LOCAL);
+        TracingDeploymentDiagnostics diagnostics = new TracingDeploymentDiagnostics(
+                enabled,
+                descriptor.get().agentMarkerVisible(),
                 descriptor.get().state(),
                 descriptor.get());
+        TracingRuntime runtime = enabled
+                ? NoOpTracingRuntime.noop()
+                : NoOpTracingRuntime.disabledByConfiguration("test-disabled");
         return new TracingStatusAssembler(
                 NoopTraceOperations.INSTANCE,
+                runtime,
                 settings,
                 mock(PlatformTracingJmxClient.class),
                 () -> projection,

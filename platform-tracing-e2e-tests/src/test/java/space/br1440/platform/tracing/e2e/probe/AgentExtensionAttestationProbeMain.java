@@ -12,7 +12,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 
 @SpringBootConfiguration
@@ -30,14 +30,14 @@ public class AgentExtensionAttestationProbeMain {
 
     public static void main(String[] args) {
         AgentRuntimeState expectedState = AgentRuntimeState.valueOf(args[0]);
-        String configuredMode = args.length > 1 ? args[1] : "AGENT";
+        boolean tracingEnabled = args.length <= 1 || Boolean.parseBoolean(args[1]);
         boolean dualRuntime = args.length > 2 && Boolean.parseBoolean(args[2]);
 
-        try (ConfigurableApplicationContext context = start(configuredMode, dualRuntime)) {
-            TracingModeDiagnostics diagnostics = context.getBean(TracingModeDiagnostics.class);
+        try (ConfigurableApplicationContext context = start(tracingEnabled, dualRuntime)) {
+            TracingDeploymentDiagnostics diagnostics = context.getBean(TracingDeploymentDiagnostics.class);
             TraceOperations facade = context.getBean(TraceOperations.class);
             emit("runtimeState=" + diagnostics.runtimeState());
-            emit("mode=" + diagnostics.mode());
+            emit("tracingEnabled=" + diagnostics.tracingEnabled());
             emit("facadeNoop=" + (facade instanceof NoopTraceOperations));
             emit("endpointPresent=" + diagnostics.extensionDescriptor().readinessEndpointPresent());
             emit("lifecycle=" + diagnostics.extensionDescriptor().lifecycle());
@@ -63,7 +63,7 @@ public class AgentExtensionAttestationProbeMain {
         }
     }
 
-    private static ConfigurableApplicationContext start(String mode, boolean dualRuntime) {
+    private static ConfigurableApplicationContext start(boolean tracingEnabled, boolean dualRuntime) {
         SpringApplication application = new SpringApplication(AgentExtensionAttestationProbeMain.class);
         application.setWebApplicationType(WebApplicationType.NONE);
         application.setRegisterShutdownHook(false);
@@ -77,7 +77,7 @@ public class AgentExtensionAttestationProbeMain {
                 "--spring.main.banner-mode=off",
                 "--spring.autoconfigure.exclude=" + BOOT_OTEL_SDK_AUTO_CONFIGURATIONS,
                 "--logging.level.root=ERROR",
-                "--platform.tracing.mode=" + mode);
+                "--platform.tracing.enabled=" + tracingEnabled);
     }
 
     private static AgentRuntimeState findRuntimeState(Throwable failure) {

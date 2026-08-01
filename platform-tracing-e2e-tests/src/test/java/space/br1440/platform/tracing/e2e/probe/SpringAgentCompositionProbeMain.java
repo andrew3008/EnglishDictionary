@@ -12,9 +12,10 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
 
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingMode;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
+import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
@@ -30,14 +31,14 @@ public class SpringAgentCompositionProbeMain {
             "org.springframework.boot.actuate.autoconfigure.tracing.otlp.OtlpTracingAutoConfiguration");
 
     public static void main(String[] args) {
-        verifyAgentOwnedMode();
-        verifyDisabledModeRejectsLiveAgent();
+        verifyEnabledTracingUsesAgent();
+        verifyDisabledTracingRejectsLiveAgent();
         emit("COMPLETE");
     }
 
-    private static void verifyAgentOwnedMode() {
-        try (ConfigurableApplicationContext context = startContext(TracingMode.AGENT)) {
-            TracingModeDiagnostics diagnostics = context.getBean(TracingModeDiagnostics.class);
+    private static void verifyEnabledTracingUsesAgent() {
+        try (ConfigurableApplicationContext context = startContext(true)) {
+            TracingDeploymentDiagnostics diagnostics = context.getBean(TracingDeploymentDiagnostics.class);
             TraceOperations traceOperations = context.getBean(TraceOperations.class);
 
             emit("agent.runtimeState=" + diagnostics.runtimeState());
@@ -46,7 +47,7 @@ public class SpringAgentCompositionProbeMain {
                 emit("agent.extensionCapabilities=" + diagnostics.extensionDescriptor().capabilities());
             }
 
-            require(diagnostics.mode() == TracingMode.AGENT, "AGENT должен сохраняться");
+            require(diagnostics.tracingEnabled(), "tracing должен быть включён");
             require(diagnostics.agentDetected(), "agent marker должен быть обнаружен");
             require(!(traceOperations instanceof NoopTraceOperations), "AGENT facade не должен быть no-op");
             require(context.getBeansOfType(OpenTelemetry.class).isEmpty(),
@@ -65,25 +66,25 @@ public class SpringAgentCompositionProbeMain {
                 span.end();
             }
 
-            emit("agent.mode=" + diagnostics.mode());
+            emit("agent.tracingEnabled=" + diagnostics.tracingEnabled());
             emit("agent.agentDetected=" + diagnostics.agentDetected());
             emit("agent.facadeNoop=false");
             emit("agent.openTelemetryBeans=0");
         }
     }
 
-    private static void verifyDisabledModeRejectsLiveAgent() {
-        try (ConfigurableApplicationContext ignored = startContext(TracingMode.DISABLED)) {
-            throw new IllegalStateException("DISABLED не должен запускаться с живым Agent");
+    private static void verifyDisabledTracingRejectsLiveAgent() {
+        try (ConfigurableApplicationContext ignored = startContext(false)) {
+            throw new IllegalStateException("enabled=false не должен запускаться с живым Agent");
         } catch (RuntimeException expected) {
             String message = rootMessage(expected);
             require(message.contains("AGENT_READY"),
-                    "DISABLED должен явно отклонить живой Controlled Agent: " + message);
-            emit("disabled.liveAgentRejected=true");
+                    "enabled=false должен явно отклонить живой Controlled Agent: " + message);
+            emit("disabledTracing.liveAgentRejected=true");
         }
     }
 
-    private static ConfigurableApplicationContext startContext(TracingMode mode) {
+    private static ConfigurableApplicationContext startContext(boolean tracingEnabled) {
         SpringApplication application = new SpringApplication(SpringAgentCompositionProbeMain.class);
         application.setWebApplicationType(WebApplicationType.NONE);
         application.setRegisterShutdownHook(false);
@@ -92,7 +93,7 @@ public class SpringAgentCompositionProbeMain {
                 // Общий E2E classpath содержит SDK для других тестов; production starter его не публикует.
                 "--spring.autoconfigure.exclude=" + BOOT_OTEL_SDK_AUTO_CONFIGURATIONS,
                 "--logging.level.root=WARN",
-                "--platform.tracing.mode=" + mode.name());
+                "--platform.tracing.enabled=" + tracingEnabled);
     }
 
     private static String rootMessage(Throwable failure) {

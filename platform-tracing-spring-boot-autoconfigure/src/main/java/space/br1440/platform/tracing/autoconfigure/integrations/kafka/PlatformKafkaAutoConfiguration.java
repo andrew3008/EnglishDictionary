@@ -18,15 +18,13 @@ import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBound
 public class PlatformKafkaAutoConfiguration {
 
     @Bean
-    @ConditionalOnProperty(
-            prefix = "platform.tracing.kafka", name = "batch-links-enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "platform.tracing.kafka", name = "batch-links-enabled", havingValue = "true")
     public KafkaBatchLinksAspect kafkaBatchLinksAspect(TraceOperations traceOperations) {
         return new KafkaBatchLinksAspect(traceOperations);
     }
 
     @Bean
-    public KafkaRequestIdentityAspect kafkaRequestIdentityAspect(
-            RequestIdentityBoundarySupport identityBoundary) {
+    public KafkaRequestIdentityAspect kafkaRequestIdentityAspect(RequestIdentityBoundarySupport identityBoundary) {
         return new KafkaRequestIdentityAspect(identityBoundary);
     }
 }

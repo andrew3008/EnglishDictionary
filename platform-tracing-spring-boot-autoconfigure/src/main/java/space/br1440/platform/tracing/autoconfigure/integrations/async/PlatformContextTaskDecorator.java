@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.autoconfigure.integrations.async;
 
 import io.micrometer.context.ContextSnapshot;
 import io.micrometer.context.ContextSnapshotFactory;
+
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.springframework.core.task.TaskDecorator;
 
@@ -20,10 +22,6 @@ import org.springframework.core.task.TaskDecorator;
  * восстановление OTel / MDC происходит <em>до</em> выполнения логики existing decorator
  * (security / tenant / transaction-aware wrappers). Это критично для существующих decorator'ов,
  * которые сами читают OTel/MDC при decorate.
- * <p>
- * <b>Mode.</b> На v0.1.0 поддерживается единственный режим {@code propagate-current-context}:
- * span автоматически не создаётся, переносится только контекст. Создание span'а — задача
- * прикладного кода через {@code @Traced} / {@code TraceOperations.inSpan}.
  *
  * @see io.micrometer.context.ContextSnapshotFactory
  */
@@ -34,41 +32,24 @@ public class PlatformContextTaskDecorator implements TaskDecorator {
     @Nullable
     private final TaskDecorator delegate;
 
-    /**
-     * Создаёт декоратор без существующего delegate. Используется, когда executor не имеет
-     * предустановленного {@code TaskDecorator}.
-     */
     public PlatformContextTaskDecorator(ContextSnapshotFactory snapshotFactory) {
         this(snapshotFactory, null);
     }
 
-    /**
-     * Создаёт декоратор поверх существующего {@link TaskDecorator}. Платформенный декоратор
-     * остаётся самым внешним слоем: capture контекста выполняется в caller-thread до
-     * delegate.decorate(...), а restore в worker-thread выполняется до запуска уже
-     * декорированной задачи.
-     */
     public PlatformContextTaskDecorator(ContextSnapshotFactory snapshotFactory,
                                         @Nullable TaskDecorator delegate) {
         this.snapshotFactory = snapshotFactory;
         this.delegate = delegate;
     }
 
+    @Nonnull
     @Override
-    public Runnable decorate(Runnable runnable) {
-        // Сначала прогоняем задачу через existing decorator, чтобы получить уже security/MDC/tenant-aware
-        // Runnable. Затем оборачиваем результат платформенным contextSnapshot.wrap, который снимает
-        // OTel/MDC снапшот в caller-thread (decorate вызывается caller'ом при submit) и восстанавливает
-        // его в worker-thread до выполнения decorated-Runnable.
-        Runnable decorated = delegate != null ? delegate.decorate(runnable) : runnable;
+    public Runnable decorate(@Nonnull Runnable runnable) {
+        Runnable decorated = (delegate != null) ? delegate.decorate(runnable) : runnable;
         ContextSnapshot snapshot = snapshotFactory.captureAll();
         return snapshot.wrap(decorated);
     }
 
-    /**
-     * Возвращает delegate, обёрнутый этим декоратором. {@code null}, если decorator работает
-     * без существующего delegate. Метод полезен для тестов и диагностики.
-     */
     @Nullable
     public TaskDecorator getDelegate() {
         return delegate;

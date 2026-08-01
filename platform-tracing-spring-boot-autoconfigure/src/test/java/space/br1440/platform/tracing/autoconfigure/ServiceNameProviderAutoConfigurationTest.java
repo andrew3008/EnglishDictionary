@@ -24,7 +24,7 @@ class ServiceNameProviderAutoConfigurationTest {
 
     @Test
     void провайдеры_поднимаются_даже_при_tracing_enabled_false() {
-        runner.withPropertyValues("platform.tracing.mode=DISABLED").run(context -> {
+        runner.withPropertyValues("platform.tracing.enabled=false").run(context -> {
             assertThat(context).hasSingleBean(PlatformLocalServiceNameProvider.class);
             assertThat(context).hasSingleBean(PlatformRemoteServiceNameProvider.class);
         });

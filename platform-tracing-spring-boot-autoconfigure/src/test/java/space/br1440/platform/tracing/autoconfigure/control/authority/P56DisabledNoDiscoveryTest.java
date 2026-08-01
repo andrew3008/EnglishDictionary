@@ -17,16 +17,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * P5 §20 P5.6 — DISABLED no-discovery contract.
  *
- * <p>Proves that when tracing is disabled (via {@code platform.tracing.mode=DISABLED} or
- * {@code platform.tracing.configuration.enabled=false}), no JMX discovery, private-control
- * infrastructure or Actuator write surface is activated — regardless of authority or posture.
+ * <p>Доказывает, что при выключенном platform facade не активируются JMX discovery,
+ * private-control infrastructure и Actuator write surface независимо от authority и posture.
  *
  * <p>Covers:
  * <ul>
  *   <li>§1  DISABLED + HELM (all postures) — starts cleanly, no discovery beans</li>
  *   <li>§2  DISABLED + write authorities — fail-closed before any discovery attempt</li>
  *   <li>§3  Guard flags are false when disabled</li>
- *   <li>§4  configuration.enabled=false equivalent — same contracts as DISABLED mode</li>
+ *   <li>§4  configuration.enabled=false — отдельный no-discovery контракт platform facade</li>
  * </ul>
  */
 class P56DisabledNoDiscoveryTest {
@@ -53,7 +52,7 @@ class P56DisabledNoDiscoveryTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=" + posture,
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     // No JMX private-control infrastructure may be instantiated
@@ -79,7 +78,7 @@ class P56DisabledNoDiscoveryTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=" + authority,
                         "platform.environment=LOCAL",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> assertGuardFailure(context, "Tracing disabled is incompatible"));
     }
 
@@ -91,7 +90,7 @@ class P56DisabledNoDiscoveryTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=LOCAL",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     TracingConfigurationAuthorityGuard guard =
@@ -107,7 +106,7 @@ class P56DisabledNoDiscoveryTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=SHARED",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     TracingConfigurationAuthorityGuard guard =
@@ -123,7 +122,7 @@ class P56DisabledNoDiscoveryTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=PRODUCTION",
-                        "platform.tracing.mode=DISABLED")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     TracingConfigurationAuthorityGuard guard =
@@ -133,11 +132,11 @@ class P56DisabledNoDiscoveryTest {
                 });
     }
 
-    // ── §4 configuration.enabled=false — same contracts ──────────────────────
+    // ── §4 configuration.enabled=false — no-discovery контракт facade ────────
 
     /**
-     * {@code platform.tracing.configuration.enabled=false} is the property-based equivalent
-     * of DISABLED mode and must enforce the same no-discovery contract.
+     * {@code platform.tracing.enabled=false} отключает Spring-side control plane,
+     * но не отменяет отдельную Agent readiness проверку runtime composition.
      */
     @ParameterizedTest(name = "configuration.enabled=false HELM no-discovery: posture={0}")
     @ValueSource(strings = {"LOCAL", "SHARED", "PRODUCTION"})
@@ -146,7 +145,7 @@ class P56DisabledNoDiscoveryTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=HELM",
                         "platform.environment=" + posture,
-                        "platform.tracing.configuration.enabled=false")
+                        "platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean(PrivateControlLocator.class);
@@ -162,7 +161,7 @@ class P56DisabledNoDiscoveryTest {
                 .withPropertyValues(
                         "platform.tracing.configuration.authority=" + authority,
                         "platform.environment=LOCAL",
-                        "platform.tracing.configuration.enabled=false")
+                        "platform.tracing.enabled=false")
                 .run(context -> assertGuardFailure(context, "Tracing disabled is incompatible"));
     }
 

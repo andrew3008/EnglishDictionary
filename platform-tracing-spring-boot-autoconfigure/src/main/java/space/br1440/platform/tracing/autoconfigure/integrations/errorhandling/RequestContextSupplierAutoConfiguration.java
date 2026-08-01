@@ -10,32 +10,18 @@ import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
-import space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestTraceContextSnapshotSupplier;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 /**
  * Авто-конфигурация поставщика {@link RequestTraceContextSnapshot} для платформенного error-handling.
  * <p>
- * Регистрирует bean {@code Supplier<RequestTraceContextSnapshot>} с именем
- * {@code platformRequestTraceContextSnapshotSupplier} <b>всегда</b> при наличии модуля на classpath:
- * без property-gating, без {@code @ConditionalOnBean}, без {@code @ConditionalOnClass} на tracing-otel.
- * Это сделано осознанно, чтобы модуль трассировки не тянул {@code web-error-model}, а ошибка по-прежнему
- * обогащалась корреляцией при {@code platform.tracing.mode=DISABLED}.
- * <p>
- * Маппинг в {@code space.br1440.platform.errorhandling.model.RequestContext} выполняется
- * отдельной авто-конфигурацией {@code error-handling-core} (см. документацию к модулю).
- * <p>
- * При {@code platform.tracing.mode=DISABLED} bean {@link RequestTraceContextSnapshotSupplier} продолжает
- * работать и возвращает пустой снимок, не создавая частичный tracing facade.
- *
- * <h2>Внимание разработчику</h2>
- * <p><b>Намеренно не имеет зависимостей от tracing-core бинов:</b>
+ * <b>Намеренно не имеет зависимостей от tracing-core бинов:</b>
  * атрибут {@code after = TracingCoreAutoConfiguration.class} не указан осознанно —
  * {@link RequestTraceContextSnapshotSupplier} получает optional public facade через provider. <b>Не добавлять</b>
  * {@code after}/{@code before} «по аналогии с соседними классами»: это сделает регистрацию
- * supplier''а зависимой от {@code platform.tracing.mode} и сломает контракт «errorhandling
- * всегда получает снимок контекста, даже при выключенном tracing».
+ * supplier''а зависимой от {@code platform.tracing.enabled}
+ * и сломает контракт «errorhandling всегда получает снимок контекста, даже при выключенном tracing».
  */
 @AutoConfiguration
 public class RequestContextSupplierAutoConfiguration {
@@ -49,8 +35,7 @@ public class RequestContextSupplierAutoConfiguration {
 
     @Bean(name = "platformRequestTraceContextSnapshotSupplier")
     @ConditionalOnMissingBean(name = "platformRequestTraceContextSnapshotSupplier")
-    public Supplier<RequestTraceContextSnapshot> platformRequestTraceContextSnapshotSupplier(
-            ObjectProvider<TraceOperations> traceOperationsProvider) {
+    public Supplier<RequestTraceContextSnapshot> platformRequestTraceContextSnapshotSupplier(ObjectProvider<TraceOperations> traceOperationsProvider) {
         return new RequestTraceContextSnapshotSupplier(traceOperationsProvider::getIfAvailable);
     }
 }

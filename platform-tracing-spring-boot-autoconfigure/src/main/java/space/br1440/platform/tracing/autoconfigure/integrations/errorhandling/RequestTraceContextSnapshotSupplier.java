@@ -3,22 +3,14 @@ package space.br1440.platform.tracing.autoconfigure.integrations.errorhandling;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
+import space.br1440.platform.tracing.api.context.RequestTraceContextSnapshot;
 
-/**
- * Поставщик снимка request/trace-контекста для платформенного error-handling.
- *
- * <p>Identity читается из того же read-only view, что и прикладной facade. MDC не является
- * источником данных. При полностью выключенной трассировке возвращается пустой снимок.
- */
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public final class RequestTraceContextSnapshotSupplier implements Supplier<RequestTraceContextSnapshot> {
-
-    private static final Logger log = LoggerFactory.getLogger(RequestTraceContextSnapshotSupplier.class);
 
     private final Supplier<TraceOperations> traceOperationsSupplier;
 
@@ -33,6 +25,7 @@ public final class RequestTraceContextSnapshotSupplier implements Supplier<Reque
             if (traceOperations == null) {
                 return emptySnapshot();
             }
+
             ActiveTraceContextView context = traceOperations.traceContext();
             return new RequestTraceContextSnapshot(
                     context.requestId().orElse(null),

@@ -1,7 +1,13 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.async;
 
 import io.micrometer.context.ContextSnapshotFactory;
+
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -17,18 +23,6 @@ import java.lang.reflect.Field;
  * {@link BeanPostProcessor}, устанавливающий платформенный {@link PlatformContextTaskDecorator}
  * на все {@link ThreadPoolTaskExecutor}-бины контекста.
  * <p>
- * <b>Composition, не replacement.</b> Если у executor'а уже установлен {@code TaskDecorator}
- * (через Spring Boot 3.5 {@code ContextPropagatingTaskDecorator}, Spring Security, кастомный
- * {@code @Configuration} приложения, иной {@code BeanPostProcessor}), он сохраняется как
- * delegate, а платформенный декоратор оборачивает его снаружи.
- * <p>
- * <b>{@link Ordered#LOWEST_PRECEDENCE}.</b> BPP выполняется последним среди всех
- * BeanPostProcessor'ов executor-беанов, что гарантирует: на момент его работы существующий
- * {@code TaskDecorator} уже финализирован (Security/Micrometer/SB3.5 модифицировали executor).
- * Это критично для корректной композиции — иначе позже зарегистрированный BPP мог бы
- * перетереть платформенную обёртку, и OTel Context потерял бы caller-snapshot до выполнения
- * delegated logic.
- * <p>
  * <b>Activation guard.</b> Регистрация BPP управляется property
  * {@code platform.tracing.thread-pool-task-executor.enabled=true} на уровне
  * {@code TracingAsyncContextAutoConfiguration}. Сам BPP не делает условную проверку — это
@@ -36,11 +30,9 @@ import java.lang.reflect.Field;
  *
  * @see PlatformContextTaskDecorator
  */
-public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
-        implements BeanPostProcessor, Ordered {
-
-    private static final Logger log = LoggerFactory.getLogger(
-            ThreadPoolTaskExecutorContextPropagationBeanPostProcessor.class);
+@Slf4j
+@RequiredArgsConstructor
+public class ThreadPoolTaskExecutorDecoratorBeanPostProcessor implements BeanPostProcessor, Ordered {
 
     /**
      * Имя приватного поля {@code taskDecorator} в {@link ThreadPoolTaskExecutor} (стабильно
@@ -52,20 +44,13 @@ public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
 
     private final ContextSnapshotFactory snapshotFactory;
 
-    public ThreadPoolTaskExecutorContextPropagationBeanPostProcessor(ContextSnapshotFactory snapshotFactory) {
-        this.snapshotFactory = snapshotFactory;
-    }
-
     @Override
-    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+    public Object postProcessBeforeInitialization(@Nonnull Object bean, @Nonnull String beanName) throws BeansException {
         if (!(bean instanceof ThreadPoolTaskExecutor executor)) {
             return bean;
         }
 
         TaskDecorator existing = readExistingTaskDecorator(executor);
-
-        // Защита от двойной обёртки при повторной инициализации (например, refresh контекста):
-        // если на executor уже установлен платформенный декоратор, оставляем bean без изменений.
         if (existing instanceof PlatformContextTaskDecorator) {
             log.debug("ThreadPoolTaskExecutor '{}' already has PlatformContextTaskDecorator — skipping", beanName);
             return bean;
@@ -87,9 +72,6 @@ public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
     /**
      * Читает существующий {@link TaskDecorator} через reflection. Spring не предоставляет
      * публичного getter'а — это вынужденная мера для реализации composition без replacement.
-     * <p>
-     * При любой ошибке reflection возвращается {@code null} и логируется warning: композиция
-     * деградирует до replacement-варианта, но не блокирует инициализацию контекста.
      */
     @Nullable
     private TaskDecorator readExistingTaskDecorator(ThreadPoolTaskExecutor executor) {
@@ -104,7 +86,7 @@ public class ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
         try {
             ReflectionUtils.makeAccessible(field);
             Object value = field.get(executor);
-            return value instanceof TaskDecorator td ? td : null;
+            return (value instanceof TaskDecorator td) ? td : null;
         } catch (IllegalAccessException | RuntimeException e) {
             log.warn("Failed to read existing TaskDecorator via reflection: {}; "
                     + "composition degrades to installing the platform decorator without a delegate", e.getMessage());
