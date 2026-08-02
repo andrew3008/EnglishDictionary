@@ -1,10 +1,11 @@
 # Runbook: диагностика производительности трассировки (Фаза 17, PR-5)
 
 > Формат — decision tree: каждый узел = наблюдаемый симптом → проверка (метрика/JMX) →
-> следующий шаг или вердикт. JMX-атрибуты — `PlatformTracingControlMBean`
-> (`space.br1440.platform.tracing:type=Control,name=PlatformTracingControl`);
+> следующий шаг или вердикт. JMX-атрибуты читаются из шести read-only domain MBean
+> (`space.br1440.platform.tracing:type={Sampling|Scrubbing|Validation|Export|Metrics|Diagnostics},name=Platform*Control`;
+> монолитный `type=Control,name=PlatformTracingControl` не регистрируется);
 > в Prometheus те же значения доступны через polling-MeterBinder Spring-стартера
-> (см. [actuator-tracing-diagnostics.md](actuator-tracing-diagnostics.md)).
+> (см. [tracing-status-diagnostics.md](tracing-status-diagnostics.md)).
 > Таксономия потерь — [dropped-span-reasons.md](../tracing/dropped-span-reasons.md).
 
 ## Дерево 1. «CPU сервиса вырос после включения трассировки»

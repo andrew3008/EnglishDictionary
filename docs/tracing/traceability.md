@@ -66,8 +66,8 @@
 
 | # | Требование | Статус | Реализация |
 |---|---|---|---|
-| 4 | Гибкие настройки через конфиг (без правок кода) | OK | `TracingProperties` (`platform.tracing.*`); extension SPI `addPropertiesSupplier` — платформенные дефолты BSP/limits; `GET /actuator/tracing`: `otelEffective` (факт) + `otelEnvHints` (маппинг Spring→`OTEL_*` через `DurationToMillis`) |
-| 4 | Dynamic reconfig sampling-ratio на лету | OK | `TracingActuatorEndpoint.updateTracing("samplingRatio", ...)` → JMX `MutableRatioSampler` |
+| 4 | Гибкие настройки через конфиг (без правок кода) | OK | `TracingProperties` (`platform.tracing.*`); extension SPI `addPropertiesSupplier` — платформенные дефолты BSP/limits; `GET /actuator/tracingStatus` — live agent/runtime read-model (generic Spring↔Agent config diagnostics удалена, [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)) |
+| 4 | Dynamic reconfig sampling-ratio на лету | OK | leaf `platform.tracing.policy.sampling.ratio` через выбранный authority → private `applySnapshot` → accepted-state агента; platform JMX и HTTP write-adapter удалены ([`P64ActuatorWriteAbsenceTest`](../../platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/arch/P64ActuatorWriteAbsenceTest.java)) |
 
 ## §5–§7 (управление сэмплированием, требования из «Параметров для управления»)
 
@@ -77,7 +77,7 @@
 | Errors **всегда** сэмплируются | предпочтительно на Collector'е | OK (Collector) | `tail_sampling.policies.errors-always-sample: status_code=ERROR` в `otel-collector-gateway-tail-sampling.yaml` |
 | Header X-Trace-On для force-sampling | 100% при наличии | OK | `CompositeSampler.forceHeader = X-Trace-On` → `platform.sampling.reason=force_header`; политика `forced-traces` (`[force_header, qa_trace]`, P0-фикс Фазы 16) + contract-тест |
 | QA-ручка возвращает Request ID | заголовок `X-QA-Trace` | OK | `CompositeSampler.qaHeader = X-QA-Trace`; `TracingProperties.RequestIdResponseHeader.name = X-Request-Id`; политика `qa-trace` в Collector |
-| Динамическое управление ratio | через JMX/Actuator | OK | `MutableRatioSampler` + `TracingActuatorEndpoint` (write-операция) |
+| Динамическое управление ratio | через JMX/Actuator | OK | leaf `sampling.ratio` через выбранный authority (CONFIG_SERVER манифест или DEV_ACTUATOR `/tracingControl/sampling/ratio`) → private `applySnapshot`; platform domain MBean и `tracingStatus` — read-only ([runbook](../runbook/runtime-policy-control.md)) |
 
 ---
 
@@ -157,10 +157,10 @@ ADR'ы Фазы 2:
 |---|---|---|---|
 | BSP/limits дефолты для OTel agent | **PR-1.A** | OK | `PlatformTracingDefaultsProvider.supply()` → `PlatformAutoConfigurationCustomizer` (`addPropertiesSupplier`); тесты `PlatformTracingDefaultsProviderTest`, `PlatformAutoConfigurationCustomizerTest` |
 | Helper `Duration` → integer-ms (OTel SPEC) | **PR-1.B** | OK | `DurationToMillis` + `OtelEnvHintsBuilder` (actuator); тесты `DurationToMillisTest`, `OtelEnvHintsBuilderTest` |
-| Эффективный OTel-конфиг в `/actuator/tracing` | **PR-1.C** | OK | секция `otelEffective` (`OtelEffectiveConfigSnapshot`); контракт `OtelEffectiveConfigSnapshotDefaultsContractTest` |
+| Эффективный OTel-конфиг в `/actuator/tracing` | **PR-1.C** | **REMOVED** | секция `otelEffective` и класс `OtelEffectiveConfigSnapshot` удалены без восстановления; см. [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md) |
 | E2E SDK → Collector → Jaeger | **PR-3** | OK | `TracingE2ETest` + agent smokes (13/13, `-PrunE2e`) |
 
-**R1 dual-channel (Wave R1+, закрыто):** `platform.tracing.queue.export-timeout` выровнен на 5000ms (= agent BSP export timeout default via `PlatformTracingDefaultsProvider` / `OtelSdkDefaults`). Targeted alignment-test (`SharedDefaultsAlignmentTest`) + diagnostic WARN (`DualChannelDriftDiagnostics`, whitelist + 3 условия) + ADR ([ADR-dual-channel-properties-v0.1.md](../decisions/ADR-dual-channel-properties-v0.1.md)) + runbook. Full bridge Spring → `-Dotel.*` явно отвергнут (см. ADR, рассмотренный вариант C). См. [ADR-dual-channel-properties-v0.1.md](../decisions/ADR-dual-channel-properties-v0.1.md).
+**R1 dual-channel (Wave R1+, историческая запись; capability впоследствии удалена):** `platform.tracing.queue.export-timeout` выровнен на 5000ms (= agent BSP export timeout default via `PlatformTracingDefaultsProvider` / `OtelSdkDefaults`) — alignment сохраняется. Diagnostic WARN (`DualChannelDriftDiagnostics`) и generic diagnostics (`otelEffective`/`resourceEffective`/`otelEnvHints`) удалены без восстановления — см. [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md), которое supersedes [ADR-dual-channel-properties-v0.1.md](../decisions/ADR-dual-channel-properties-v0.1.md).
 
 **BSP overflow policy (Wave R1+, finding):** probe-тест на SDK 1.62.0 показал фактическую политику **drop-new** (не drop-oldest). Требование смягчено до `bounded-queue-with-drop` для v0.1.0; custom processor для гарантированного `DROP_OLDEST` — backlog v1.x. Probe — `BatchSpanProcessorOverflowPolicyProbeTest`, finding — [ADR-bsp-overflow-policy-finding.md](../decisions/ADR-bsp-overflow-policy-finding.md). Эксплуатационная безопасность валидируется e2e: `BspOverflowSafetyAgentSmokeTest`.
 
@@ -195,7 +195,7 @@ ADR'ы Фазы 13:
 | P15-02 named propagator SPI `platform-trace-control` | §3 (передача контекста) | OK | `propagation/InboundTraceControlPropagatorProvider` (`ConfigurablePropagatorProvider`) + `META-INF/services/...ConfigurablePropagatorProvider`; `InboundTraceControlPropagatorBuilder`; тест `InboundTraceControlPropagatorProviderTest` |
 | P15-03 ENV-aware дефолт `otel.propagators` | §4 | OK | `propagation/PlatformPropagatorsDefaultsCustomizer` через `addPropertiesCustomizer` (не supplier); always-append удалён из `PlatformPropagatorFactory`; тест `PlatformPropagatorsDefaultsCustomizerTest` |
 | P15-04 idempotency-guard sampler (no double-compose) | §3/§4 | OK | маркер `sampler/PlatformManagedSampler` (`SafeSampler`/`CompositeSampler`) + `PlatformManagedSamplers.findComposite/isPlatformManaged`; `PlatformSamplerFactory` переиспользует composite для JMX |
-| P15-05 SDK mode detection + double-SDK guard | §4 (диагностика) | OK | `autoconfigure/support/SdkMode`/`SdkModeResolver`/`SdkModeDiagnostics`; `TracingCoreAutoConfiguration` (лог + facade-vs-NoOp); секция `sdk` в `/actuator/tracing`; тесты `SdkModeResolverTest`, `SdkModeDetectionAutoConfigurationTest` |
+| P15-05 SDK mode detection + double-SDK guard | §4 (диагностика) | OK | `autoconfigure/support/SdkMode`/`SdkModeResolver`/`SdkModeDiagnostics`; `TracingCoreAutoConfiguration` (лог + facade-vs-NoOp); секции `tracingEnabled` / `agent` / `runtime.mode` в `/actuator/tracingStatus`; тесты `SdkModeResolverTest`, `SdkModeDetectionAutoConfigurationTest` |
 | P15-06 «extension без Spring» инвариант | архитектурный | OK | ArchUnit `ExtensionNoSpringDependencyArchTest` |
 | P15-07 упаковка/видимость 4 SPI в agent jar | §4 | OK | Gradle `verifyExtensionSpiRegistration`; e2e (gated) `PlatformSpiAgentSmokeTest` |
 | P15-08 precedence-контракт + compatibility matrix | §1/§4 | OK | [ADR-config-precedence.md](../decisions/ADR-config-precedence.md); раздел «Extension SPI» в [otel-compatibility-matrix.md](./otel-compatibility-matrix.md); инвариант `ResourceMergeIntegrationTest.otel_service_name_побеждает_platform` |

@@ -2,11 +2,13 @@
 
 | Поле | Значение |
 |------|----------|
-| Статус | **Принято** |
+| Статус | **Superseded** — см. [ADR-remove-dual-channel-diagnostics.md](./ADR-remove-dual-channel-diagnostics.md) (2026-08-02) |
 | Дата | 2026-05-25 |
 | Контекст | Wave R1+; backlog item «R1 dual-channel» из `SUPPORTED.md`; pre-production v0.1.0 |
 | Стек | Spring Boot 3.5.5, OTel Java Agent 2.27.x, OTel SDK 1.61.0 |
-| Related | [ADR-otel-direct-integration.md](./ADR-otel-direct-integration.md), [SUPPORTED.md](../SUPPORTED.md), [runbook/actuator-tracing-diagnostics.md](../runbook/actuator-tracing-diagnostics.md) |
+| Related | [ADR-otel-direct-integration.md](./ADR-otel-direct-integration.md), [SUPPORTED.md](../SUPPORTED.md), [runbook/tracing-status-diagnostics.md](../runbook/tracing-status-diagnostics.md) |
+
+> **Superseded.** Generic dual-channel diagnostics (`DualChannelDriftDiagnostics`, `otelEnvHints`, `otelEffective`/`resourceEffective` на `/actuator/tracing`) удалена без восстановления. См. [ADR-remove-dual-channel-diagnostics.md](./ADR-remove-dual-channel-diagnostics.md) для действующего решения и критериев пересмотра. Текст ниже сохранён как исторический decision record и не отражает текущее состояние кода.
 
 ## Контекст
 

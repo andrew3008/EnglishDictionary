@@ -107,14 +107,14 @@ Sibling-модули (`autoconfigure-webmvc`, `autoconfigure-webflux`, starters)
 
 ## NEEDS_HUMAN (не удалять без решения)
 
-### 9. Dual Actuator endpoints
+### 9. Dual Actuator endpoints (historical; **DELETED**)
 
 | Endpoint | Класс | Роль |
 |----------|-------|------|
 | `/actuator/tracing` | `...actuator.TracingActuatorEndpoint` | Legacy diagnostics (Spring desired + public JMX live reads) |
 | `/actuator/tracingPolicy` | `...configuration.actuator.TracingActuatorEndpoint` | Secret-safe accepted-policy projection |
 
-Оба зарегистрированы в `AutoConfiguration.imports`. P64 tests требуют сохранить GET `/actuator/tracing`. Disposition: **KEEP**, пока продукт не решит свернуть diagnostics в `tracingPolicy`.
+Продукт свернул diagnostics в единый read-only read-model `tracingStatus`. Оба legacy endpoint'а физически удалены (`P64ActuatorWriteAbsenceTest.legacyReadEndpointsAreRemoved`); `OtelEffectiveConfigSnapshot`/`ResourceEffectiveSnapshot` (единственные потребители `/actuator/tracing` §8 выше) удалены без восстановления — см. [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md). Disposition: **DELETED**.
 
 ### 10. Dual reader interfaces
 
@@ -131,8 +131,7 @@ Sibling-модули (`autoconfigure-webmvc`, `autoconfigure-webflux`, starters)
 
 | Тип | Evidence |
 |-----|----------|
-| `PlatformTracingJmxClient`, `PlatformTracingJmxObjectNames`, `TracingControlDomain` | `TracingCoreAutoConfiguration`; legacy actuator + metrics |
-| `OtelEffectiveConfigSnapshot`, `ResourceEffectiveSnapshot` | Legacy `TracingActuatorEndpoint` |
+| `PlatformTracingJmxClient`, `PlatformTracingJmxObjectNames`, `TracingControlDomain` | `TracingCoreAutoConfiguration`; `tracingStatus` read-model + metrics |
 | `SpanFactoryDiagnostics`, `TracingDiagnosticsMapper`, `TracingDiagnosticsView` | Actuator map |
 | `SdkModeDiagnostics`, `AgentExtensionObserver`, `AgentExtensionDescriptor` | Startup path |
 | `configuration.*` control plane (adapters, coalescer, private JMX, MVC, DTOs) | ACTUATOR + CONFIG_SERVER; webflux management router |

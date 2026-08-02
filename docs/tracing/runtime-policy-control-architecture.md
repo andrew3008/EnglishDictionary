@@ -15,12 +15,32 @@ Normative ADRs and runbooks:
 - [platform-tracing-sampling-characterization.md](../architecture/platform-tracing-sampling-characterization.md)
 - [platform-tracing-scrubbing-validation-characterization.md](../architecture/platform-tracing-scrubbing-validation-characterization.md)
 
-> **Cutover note:** Sections below may still describe pre-P6 holders, Actuator `@WriteOperation`, or domain JMX mutators. Those writers are deleted. Use the canonical runbook for operations.
+> **Cutover note (updated 2026-08-02).** Разделы ниже описывают PR-9A+ архитектуру и сохранены как
+> исторический architecture record. Перечисленное больше не существует в коде и не должно
+> использоваться операторами:
+>
+> - Spring-writer `RuntimeConfigApplier` (+ `ConfigApplyResult`, `TracingControlDomain`, `*RuntimeConfig` views);
+> - agent-side holders `SamplerStateHolder` / `ScrubbingPolicyHolder` / `ValidationPolicyHolder` и `DomainConfigHolder`;
+> - мутаторы шести domain MBean (post-P6.6 они **read-only**) и мутирующие методы `PlatformTracingJmxClient`;
+> - Actuator `@WriteOperation` `POST /actuator/tracing/{property}/{value}` и флаг `platform.tracing.actuator.mutation-enabled`;
+> - legacy read-endpoint `GET /actuator/tracing` (актуальный read-model — `GET /actuator/tracingStatus`).
+>
+> Действующая мутация — только private control plane `applySnapshot` через выбранный authority
+> (HELM / CONFIG_SERVER / DEV_ACTUATOR typed leaves). Единственный accepted-state owner на стороне
+> агента — `AcceptedPolicyStateStore` (доступ через `AcceptedPolicyAccess`).
+>
+> Нормативные источники текущего состояния: [../runbook/runtime-policy-control.md](../runbook/runtime-policy-control.md)
+> (операции), [../SUPPORTED.md](../SUPPORTED.md) (поддерживаемая поверхность),
+> [../runbook/tracing-status-diagnostics.md](../runbook/tracing-status-diagnostics.md) (диагностика).
 
 ## Three policy domains
 
-| Domain | Agent holder | Processor / sampler consumer | Spring schema v1 view |
-|--------|--------------|------------------------------|------------------------|
+Колонки «Agent holder» и «Spring schema v1 view» — историческая PR-9A модель: per-domain holders и
+`*RuntimeConfig` удалены, их заменил единственный accepted-state owner агента. Колонка потребителей
+актуальна.
+
+| Domain | Agent holder (удалён) | Processor / sampler consumer | Spring schema v1 view (удалён) |
+|--------|-----------------------|------------------------------|--------------------------------|
 | Sampling | `SamplerStateHolder` | `CompositeSampler` → `SamplingPolicyEngine` | `SamplingRuntimeConfig` |
 | Scrubbing | `ScrubbingPolicyHolder` | `ScrubbingSpanProcessor` | `ScrubbingRuntimeConfig` |
 | Validation | `ValidationPolicyHolder` | `ValidatingSpanProcessor` | `ValidationRuntimeConfig` |
@@ -29,15 +49,17 @@ Validation degradation (annotate / warn / exception) is **not** dropped-span los
 
 **PR-9F strict-mode guard:** Runtime updates that set `strict=true` are **rejected by default** unless startup flag `platform.tracing.validation.strict-runtime-allowed=true` (agent-side). Rejected update keeps LKG; version/source unchanged; `InvalidConfigCount` increments. Strict mode remains a CI/test/pre-prod diagnostic — not a safe default production runtime policy while it can throw from `Span.end()`.
 
-**PR-9J access hardening (W-007 / W-013):**
+**PR-9J access hardening (W-007 / W-013) — historical:**
 
-| Surface | Guard | Notes |
-|---------|-------|-------|
-| **Actuator write** (`POST /actuator/tracing/{property}/{value}`) | `platform.tracing.actuator.mutation-enabled=false` (default) | When disabled, write returns HTTP 403; no JMX call; read (`GET /actuator/tracing`) unchanged |
-| **Direct JMX** (six domain MBeans) | **Deployment / JVM / platform security** | Not protected by Actuator flag; Spring `RuntimeConfigApplier` also uses JMX |
-| **Startup strict** (`platform.tracing.validation.strict=true`) | Ops policy + one-time startup WARN | Separate from PR-9F runtime guard; can still throw from `Span.end()` at startup strict |
+| Surface | Guard | Status |
+|---------|-------|--------|
+| **Actuator write** (`POST /actuator/tracing/{property}/{value}`) | `platform.tracing.actuator.mutation-enabled=false` (default) | **Deleted.** Endpoint и флаг удалены (`P64ActuatorWriteAbsenceTest`); write-канал — private `applySnapshot` |
+| **Direct JMX** (six domain MBeans) | **Deployment / JVM / platform security** | Мутаторов нет: MBean read-only post-P6.6; защита JVM/сети по-прежнему обязательна |
+| **Startup strict** (`platform.tracing.validation.strict=true`) | Ops policy + one-time startup WARN | Актуально; can still throw from `Span.end()` at startup strict |
 
-Production recommendation: leave `platform.tracing.actuator.mutation-enabled=false`; restrict JMX via JVM `-Dcom.sun.management.jmxremote.*`, firewall, management port policy, and container RBAC.
+Production recommendation (актуальная): ограничивать JMX через JVM `-Dcom.sun.management.jmxremote.*`,
+firewall, management port policy и container RBAC; `ACTUATOR` authority допускается только при
+`platform.environment=LOCAL` (иначе fail-fast).
 
 ## Six-domain JMX control plane
 
@@ -92,13 +114,28 @@ PlatformTracingJmxRegistrar.tryRegisterMBeans()
 | Method | Semantics |
 |--------|-----------|
 | `allMBeansAvailable()` | `true` only when all six ObjectNames are registered |
-| `getMBeansStatus()` | `Map<TracingControlDomain, Boolean>` — compile-time-safe domain keys |
-| Mutations (`setRatio`, `updateSamplingPolicy`, …) | **Fail-closed:** throw `PlatformTracingJmxOperationException` if domain MBean absent |
 | Read-only (`getCurrentRatio`, metrics, …) | **Graceful degradation:** `Optional.empty()` / empty collections; no throw |
 
-`TracingControlDomain` enum (autoconfigure only): `SAMPLING`, `SCRUBBING`, `VALIDATION`, `EXPORT`, `PROCESSOR_METRICS`, `DIAGNOSTICS`.
+Post-P6.6 клиент **целиком read-only**: мутирующие методы (`setRatio`, `updateSamplingPolicy`, …),
+`getMBeansStatus()` и enum `TracingControlDomain` удалены вместе с `RuntimeConfigApplier`. Клиент
+используется только как источник live-значений для read-model `tracingStatus` и метрик.
 
-## Write path (one domain = one JMX call)
+## Write path (PR-9A: one domain = one JMX call) — **DELETED**
+
+Описанный ниже путь удалён целиком (`RuntimeConfigApplier`, per-domain JMX мутаторы, holders).
+Действующий write path: выбранный authority → полный Category A snapshot → private
+`applySnapshot` → единственный accepted-state owner агента (`AcceptedPolicyStateStore`).
+
+| Authority | Spring writer | Канал |
+|-----------|---------------|-------|
+| `HELM` | нет | Agent bootstrap (env / `-D`), рестарт для изменения |
+| `CONFIG_SERVER` | locator / codec / snapshot client / `TracingPolicyRefreshCoalescer` | полный восьмилистовой Category A манифест → private `applySnapshot` |
+| `ACTUATOR` + `platform.environment=LOCAL` | `TracingControlMvcController` / WebFlux router → `TracingPolicyMutationService` | восемь типизированных leaf-команд `/tracingControl/...` → private `applySnapshot` (agent source `DEV_ACTUATOR`) |
+
+Операционные детали, outcomes (`APPLIED` / `UNCHANGED` / `STALE` / `REJECTED` / `FAILED`), LKG и
+bounded retry — в [../runbook/runtime-policy-control.md](../runbook/runtime-policy-control.md).
+
+Исторический PR-9A путь:
 
 ```text
 TracingProperties (Spring Environment)
@@ -121,7 +158,9 @@ Blank/null `source` normalizes to `"JMX"` on the agent.
 
 **Refresh:** `RefreshScopeRefreshedEvent` → `RuntimeConfigApplier` (not `@RefreshScope`) reads fresh `TracingProperties` proxy — no stale-read on refresh.
 
-### RuntimeConfigApplier reliability (Spring-side diagnostics)
+### RuntimeConfigApplier reliability (Spring-side diagnostics) — **DELETED**
+
+Метрика `platform.tracing.config.apply.result` и счётчики ниже больше не публикуются.
 
 | Outcome | Log | Counters / state |
 |---------|-----|------------------|
@@ -137,47 +176,62 @@ Micrometer: `platform.tracing.config.apply.result{domain,result}` per domain cal
 
 ## Read path (Actuator + JMX)
 
-`GET /actuator/tracing` exposes per domain:
+Единственный актуальный read-model — **`GET /actuator/tracingStatus`** (`TracingStatusEndpoint` /
+`TracingStatusAssembler`), read-only. Legacy `GET /actuator/tracing` удалён вместе со своим
+Spring-desired слоем и dual-channel секциями (`otelEffective`, `resourceEffective`, `otelEnvHints`):
+см. [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md).
 
-| Layer | Meaning |
-|-------|---------|
-| **Configured** | `TracingProperties` — Spring input / reconciliation layer |
-| **Live** | Agent MBean via `PlatformTracingJmxClient` — active runtime state |
-| **Diagnostics** | `configVersion`, `configSource` per domain |
+| Секция | Содержание |
+|--------|------------|
+| `agent` | readiness Controlled Agent: `state`, `markerVisible`, `readinessEndpointPresent`, `protocolVersion`, `lifecycle`, `failureCode`, `capabilities` |
+| `runtime` | live JMX через `PlatformTracingJmxClient`: `sampling`, `validation`, `scrubbing`, `export`, `processorErrors*`, `configurationReload`, плюс `mode` / `implementation` / `domainMBeansAvailable` |
+| `policy` | `AcceptedPolicyProjection` либо явная `PolicyAbsenceReason` |
 
-Authoritative runtime diagnostics: **`sampling.configSource`**, **`scrubbing.configSource`**, **`validation.configSource`** (and matching `configVersion`).
+Per-domain `configVersion` / `configSource` (`runtime.sampling`, `runtime.validation`,
+`runtime.scrubbing`) остаются авторитетной runtime-диагностикой и читаются **live** из domain MBean —
+без Spring-desired зеркала. Legacy top-level `config.lastUpdatedSource` удалён вместе со старым
+endpoint'ом.
 
-Legacy caveat: top-level `config.lastUpdatedSource` reflects **sampling only** (pre–PR-8D). Prefer per-domain `configSource` fields.
+Структура ответа и операторские сценарии: [../runbook/tracing-status-diagnostics.md](../runbook/tracing-status-diagnostics.md).
 
-**Actuator mutation guard (PR-9J):** `GET /actuator/tracing` is always available when the endpoint is exposed. `POST /actuator/tracing/{property}/{value}` requires `platform.tracing.actuator.mutation-enabled=true` (default `false`). Read model includes `actuator.mutationEnabled`.
+**Agent-vs-Spring drift (validation):** агент читает `strictRuntimeAllowed` из своей startup-конфигурации
+(`ExtensionConfig` / `ConfigProperties`, ключи `ExtensionPropertyNames`), которая может не совпадать со
+Spring-биндингом. В `runtime.validation` публикуется значение, прочитанное из MBean агента
+(`PlatformTracingJmxClient#isValidationStrictRuntimeAllowed`) — именно оно отражает фактический
+enforcement.
 
-**Agent-vs-Spring drift (validation):** `validation.strictRuntimeAllowed` in the read model is the Spring configured view. `liveStrictRuntimeAllowed` is the agent startup enforcement flag read from the MBean. The agent reads `strictRuntimeAllowed` from agent startup configuration (`ExtensionConfig` / `ConfigProperties`, `ExtensionPropertyNames` keys); Spring binding may differ if Spring config is not the agent startup source. Operators should rely on **`liveStrictRuntimeAllowed`** for actual agent enforcement.
+## JMX access model (post-P6.6)
 
-## JMX access model (PR-9J+)
+Шесть domain MBean в classloader'е расширения OTel Java Agent — **read-only проекции**: операций
+мутации у них нет. Мутация идёт исключительно через private control plane (`PrivateControlWriter`
+в приватном `MBeanServer`, `PrivateControlMBeanServerOwner`), доступный только выбранному Spring
+authority-писателю.
 
-Six domain MBeans are **direct runtime control surfaces** in the OTel Java Agent extension classloader.
-They can mutate sampling, scrubbing, validation, export, and diagnostics policies via JMX regardless
-of Actuator mutation settings.
+| Caller | Доступ к platform domain MBean | Доступ к private `applySnapshot` |
+|--------|-------------------------------|----------------------------------|
+| Operator (jconsole, jmxterm) | чтение | не предназначен для ручного вызова |
+| Spring authority writer (CONFIG_SERVER coalescer / DEV_ACTUATOR typed leaves) | чтение (диагностика, метрики) | да — единственный write-канал |
 
-| Caller | Typical source tag | Protected by Actuator guard? |
-|--------|-------------------|------------------------------|
-| Operator (jconsole, jmxterm) | `JMX` | **No** |
-| Spring `RuntimeConfigApplier` | `spring-runtime-config` | **No** (intentional — reconciliation path) |
-| Actuator HTTP write | via `PlatformTracingJmxClient` → JMX | **Yes** — blocked when `mutation-enabled=false` |
-
-Production JMX access must be restricted by JVM JMX configuration, firewall, restricted management port, and platform security controls outside this codebase. No blanket agent-side JMX mutation disable was added — it would break Spring reconciliation without a trusted-caller model.
+Production JMX access must be restricted by JVM JMX configuration, firewall, restricted management
+port, and platform security controls outside this codebase. Ранее существовавшая проблема
+«JMX-мутации в обход Actuator-флага» снята структурно: мутаторов в platform MBean больше нет.
 
 ## Module boundaries
 
 | Module | Responsibility | Must not |
 |--------|----------------|----------|
 | `platform-tracing-otel` | Pure Java domain/policy logic (sampling engine, scrubbing merge, enrichers, …) | Spring, JMX, OTel agent runtime |
-| `platform-tracing-otel-javaagent-extension` | OTel adapters: samplers, span processors, six domain MBeans, `PlatformTracingJmxRegistrar`, agent-side holders/snapshots | Spring imports on hot path |
-| `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, `RuntimeConfigApplier`, `*RuntimeConfig` views, `PlatformTracingJmxClient`, Actuator, refresh listener | Second authoritative runtime snapshot |
+| `platform-tracing-otel-javaagent-extension` | OTel adapters: samplers, span processors, six read-only domain MBeans, `PlatformTracingJmxRegistrar`, accepted-state owner (`AcceptedPolicyStateStore` / `AcceptedPolicyAccess`), private control plane | Spring imports on hot path |
+| `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, authority-писатели (Config Server adapter, typed management controller), read-only `PlatformTracingJmxClient`, `tracingStatus` read-model | Second authoritative runtime snapshot |
 
-Shared primitive: `DomainConfigHolder` in `platform-tracing-api` (CAS + LKG, visible to both classloaders).
+Accepted-state owner ровно один и живёт на стороне агента. Общий `DomainConfigHolder` в
+`platform-tracing-api` удалён вместе с per-domain holders.
 
-## Consistency checklist (PR-6D–8C)
+## Consistency checklist (PR-6D–8C) — historical
+
+Таблица описывает удалённые per-domain JMX-мутаторы и Spring-реконсиляторы. Действующие гарантии
+(LKG, монотонная версия, `InvalidConfigCount`, outcomes) обеспечивает private `applySnapshot`
+поверх единственного accepted-state owner.
 
 | Concern | Sampling | Scrubbing | Validation |
 |---------|----------|-----------|------------|
@@ -190,20 +244,26 @@ Shared primitive: `DomainConfigHolder` in `platform-tracing-api` (CAS + LKG, vis
 
 ## Startup-only vs runtime-mutable
 
-Runtime-mutable (schema v1, one JMX call each):
+Runtime-mutable — восемь Category A leaf'ов, применяемых **одним полным snapshot'ом** через private
+`applySnapshot` (не по одному JMX-вызову на домен):
 
-- **Sampling:** `enabled`, `ratio`, `dropPaths`, `forceRecordHeaderValues`, `routeRatios`
-- **Scrubbing:** `enabled`, `builtInRules`
+- **Sampling:** `enabled`, `ratio`, `route-ratios`
 - **Validation:** `enabled`, `strict`
-- **Export:** `enabled` (via export domain MBean)
-- **Diagnostics:** `propagationEnabled`, `platformLogLevel`
+- **Exporter:** `enabled`
+- **Propagation:** `trace-control-headers.enabled`
+- **Diagnostics:** `log-level`
 
-Startup-only examples: sampling header **names**, SPI scrubbing rules, semantic `ValidationMode`, export endpoint topology.
+Полные имена ключей и правила доставки — §2 канонического
+[runbook](../runbook/runtime-policy-control.md).
+
+Startup-only (Category B / topology, требуют рестарта): sampling `drop-paths` и header **names**,
+scrubbing rules (`platform.tracing.javaagent.scrubbing.*`), baggage-настройки, semantic
+`ValidationMode`, export endpoint topology.
 
 ## Known follow-ups
 
 1. **Scrubbing live rule names** — MBean exposes `liveRuleCount` only; name-level read getter optional future work.
-2. **`config.lastUpdatedSource`** — legacy sampling-only; per-domain `configSource` preferred.
+2. **`config.lastUpdatedSource`** — закрыт удалением legacy endpoint'а; в `tracingStatus` доступен только per-domain `configSource`.
 3. **Route ratio longest-prefix-wins** — **PR-9G complete** (deterministic compile-time sort in `SamplingPolicySnapshot.normalizeRouteRatios`; see [platform-tracing-sampling-characterization.md](../architecture/platform-tracing-sampling-characterization.md)).
 4. **Enrichment runtime config** — not part of PR-6/7/8; separate future PR.
 5. **Implementation layering** - sampling engine remains in `platform-tracing-otel` under historical `core.sampling`; validation uses `core.validation`; Agent-specific scrubbing remains in `platform-tracing-otel-javaagent-extension`. No future module extraction is implied.
@@ -216,8 +276,8 @@ Historical inventory: [platform-tracing-core-extraction-readiness.md](../archite
 - **In core today:** `core.sampling.*`, `core.validation.*` (pure Java, no OTel/Spring/JMX).
 - **PR-9C completed (validation):** `ValidationSnapshot`, `ValidationPolicyUpdate` → `core.validation`.
 - **PR-9D completed (scrubbing prep):** `ScrubbingRuleResolution` isolates pure rule-name validate/select; `ScrubbingSnapshot` / `RuleExecutionWrapper` stay agent-side.
-- **Stay agent-side:** holders, OTel processors/samplers, six domain MBeans, compiled scrubbing snapshots.
-- **Stay Spring-side:** `*RuntimeConfig`, `RuntimeConfigApplier`, `PlatformTracingJmxClient`.
+- **Stay agent-side:** accepted-state owner, OTel processors/samplers, six read-only domain MBeans, compiled scrubbing snapshots (per-domain holders удалены).
+- **Stay Spring-side:** authority-писатели и read-only `PlatformTracingJmxClient` (`*RuntimeConfig` / `RuntimeConfigApplier` удалены).
 
 ## Related architecture docs
 

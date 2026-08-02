@@ -2,10 +2,10 @@
 
 | Поле | Значение |
 |------|----------|
-| Статус | **Принято** |
+| Статус | **Принято**; раздел «Actuator read-model» amended — см. [ADR-remove-dual-channel-diagnostics.md](./ADR-remove-dual-channel-diagnostics.md) (2026-08-02) |
 | Дата | 2026-07-23 |
 | Контекст | Purge overhead `TracingProperties`; pre-production |
-| Related | [ADR-dual-channel-properties-v0.1.md](./ADR-dual-channel-properties-v0.1.md) |
+| Related | [ADR-dual-channel-properties-v0.1.md](./ADR-dual-channel-properties-v0.1.md), [ADR-remove-dual-channel-diagnostics.md](./ADR-remove-dual-channel-diagnostics.md) |
 
 ## Контекст
 

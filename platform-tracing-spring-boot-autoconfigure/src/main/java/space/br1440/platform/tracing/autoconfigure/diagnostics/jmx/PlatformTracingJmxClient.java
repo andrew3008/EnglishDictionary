@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,17 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Spring-side JMX-клиент шести доменных MBean платформенной плоскости управления трассировкой.
- * <p>
- * Заменяет {@code SamplingControlClient} (удалён). Знает ObjectName всех шести доменов;
- * выполняет только читающие вызовы и деградирует грациозно
- * (возвращает {@link Optional#empty()} / пустые коллекции / сентинели), если MBean домена
- * недоступен.
- */
+@Slf4j
 public class PlatformTracingJmxClient {
-
-    private static final Logger log = LoggerFactory.getLogger(PlatformTracingJmxClient.class);
 
     private final MBeanServer server;
 

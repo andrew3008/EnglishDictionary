@@ -5,7 +5,7 @@
 | **Модули** | `platform-tracing-spring-boot-autoconfigure`, `platform-tracing-autoconfigure-webmvc`, `platform-tracing-autoconfigure-webflux` |
 | **Версия анализа** | v0.1.0 / v3 (agent-first) |
 | **Дата** | 2026-07-12 |
-| **Источник** | `TracingProperties`, `OtelEnvHintsBuilder`, `OtelEffectiveConfigSnapshot`, `ResourceEffectiveSnapshot`, `docs/SUPPORTED.md` |
+| **Источник** | `TracingProperties`, `TracingStatusAssembler`, `docs/SUPPORTED.md` |
 
 ---
 
@@ -28,7 +28,7 @@ WebMvc/WebFlux **не добавляют** своих `@ConfigurationProperties`
 Связанные документы:
 
 - [SUPPORTED.md](../SUPPORTED.md)
-- [runbook/actuator-tracing-diagnostics.md](../runbook/actuator-tracing-diagnostics.md)
+- [runbook/tracing-status-diagnostics.md](../runbook/tracing-status-diagnostics.md)
 - [ADR-spring-owns-only-what-spring-applies.md](../decisions/ADR-spring-owns-only-what-spring-applies.md)
 
 ---
@@ -231,13 +231,9 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `kafka.trusted-topic-patterns` | `PLATFORM_TRACING_KAFKA_TRUSTED_TOPIC_PATTERNS` | `[]` | **Cond.** | Spring | Glob доверенных топиков |
 | **thread-pool-task-executor** | | | | | |
 | `thread-pool-task-executor.enabled` | `PLATFORM_TRACING_THREAD_POOL_TASK_EXECUTOR_ENABLED` | `false` | Нет | Spring (bootstrap, `@ConditionalOnProperty`) | Перенос текущего OTel Context/MDC в задачи `ThreadPoolTaskExecutor`; span не создаёт; нет листа в `TracingProperties` |
-| **diagnostics** | | | | | |
-| `diagnostics.dual-channel-warn` | `PLATFORM_TRACING_DIAGNOSTICS_DUAL_CHANNEL_WARN` | `true` | Нет | Spring | WARN при drift Spring↔Agent |
-| `diagnostics.drop-oldest-aspiration-warn` | `PLATFORM_TRACING_DIAGNOSTICS_DROP_OLDEST_ASPIRATION_WARN` | `true` | Нет | Spring | WARN DROP_OLDEST mismatch |
-| `diagnostics.drop-oldest-aspiration-info` | `PLATFORM_TRACING_DIAGNOSTICS_DROP_OLDEST_ASPIRATION_INFO` | `true` | Нет | Spring | INFO DROP_OLDEST status |
 | `log-level` | `PLATFORM_TRACING_LOG_LEVEL` | `INFO` | Нет | Spring → Agent JMX | Уровень логирования платформенного расширения: `OFF`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
-| **actuator** | | | | | |
-| `actuator.mutation-enabled` | `PLATFORM_TRACING_ACTUATOR_MUTATION_ENABLED` | `false` | Нет | Spring | POST `/actuator/tracing/*` |
+
+**Удалено:** `diagnostics.dual-channel-warn` / `diagnostics.drop-oldest-aspiration-warn` / `diagnostics.drop-oldest-aspiration-info` и `actuator.mutation-enabled` — dual-channel diagnostics и Actuator write-surface удалены без восстановления (см. [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md), `P64ActuatorWriteAbsenceTest`). Runtime policy mutation — только через JMX/Config Server, не через HTTP POST.
 
 \* Если не задано — используйте `SPRING_APPLICATION_NAME`; иначе в backend будет `unknown_service`.
 
@@ -245,7 +241,7 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 
 ### B. OpenTelemetry Agent (`OTEL_*`) — production-critical
 
-Эти переменные читает **Agent**, не Spring. Для синхронизации с YAML смотрите секцию `otelEnvHints` в `GET /actuator/tracing`.
+Эти переменные читает **Agent**, не Spring. Spring `application.yml` в них не пробрасывается автоматически (Agent конфигурируется до старта Spring `ApplicationContext`); Spring→Agent hint bridge (`otelEnvHints`) удалён без восстановления, см. [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md).
 
 | Переменная | YAML-аналог (hint) | Default (platform) | Обяз. | Описание |
 |------------|-------------------|-------------------|-------|----------|
@@ -319,23 +315,16 @@ args:
 1. **Strictly required при default `platform.tracing.enabled=true`** — compatible READY Controlled Agent Distribution; иначе startup failure.
 2. **Strictly required для рабочего production tracing** — verified atomic distribution, `suppress-micrometer-tracing=true`, имя сервиса, реальный `OTEL_EXPORTER_OTLP_ENDPOINT`.
 3. **WebMvc vs WebFlux** — различаются только starter-модулем; свойства одинаковые, outbound inject включается одним флагом `propagation.outbound.enabled`.
-4. **Dual-channel** — меняя только `application.yml`, вы не меняете BSP/limits/exporter в Agent; выравнивайте через `OTEL_*` или смотрите `GET /actuator/tracing` → `otelEnvHints` / `otelEffective`.
+4. **Dual-channel diagnostics удалена** — меняя только `application.yml`, вы не меняете BSP/limits/exporter в Agent; выравнивайте через `OTEL_*` в Helm/Deployment. Generic сравнение Spring vs Agent конфигурации (`otelEffective`/`otelEnvHints`/`resourceEffective`) не публикуется ([ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)).
 
 ---
 
 ## Диагностика после деплоя
 
 ```http
-GET /actuator/tracing
+GET /actuator/tracingStatus
 ```
 
-Ключевые секции:
+Ключевые секции: `agent` (readiness Controlled Agent, safe failure code), `runtime.sampling`/`runtime.validation`/`runtime.scrubbing`/`runtime.export` (live JMX domain MBean), `policy` (accepted Category A policy).
 
-| Секция | Назначение |
-|--------|------------|
-| `sdk` | `tracingEnabled`, Controlled Agent readiness и безопасная причина startup failure |
-| `otelEffective` | Фактически применённые OTel-значения (Agent classloader) |
-| `otelEnvHints` | Рекомендуемые `OTEL_*` / `PLATFORM_TRACING_*` из текущего Spring-конфига |
-| `resourceEffective` | Drift resource-идентичности между каналами |
-
-Подробнее: [runbook/actuator-tracing-diagnostics.md](../runbook/actuator-tracing-diagnostics.md).
+Подробнее: [runbook/tracing-status-diagnostics.md](../runbook/tracing-status-diagnostics.md).

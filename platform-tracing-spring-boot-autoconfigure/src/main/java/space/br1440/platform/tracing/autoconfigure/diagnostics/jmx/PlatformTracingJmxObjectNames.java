@@ -3,27 +3,23 @@ package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import lombok.experimental.UtilityClass;
+
 /**
  * Дублирует канонические строки ObjectName из {@code PlatformTracingObjectNames} модуля
  * {@code platform-tracing-otel-javaagent-extension}. Модули работают в разных classloader'ах —
  * дублирование намеренно; их совпадение гарантируется тестом {@code ObjectNameConsistencyTest}.
  */
+@UtilityClass
 public final class PlatformTracingJmxObjectNames {
 
-    public static final String SAMPLING_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl";
-    public static final String SCRUBBING_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=Scrubbing,name=PlatformScrubbingControl";
-    public static final String VALIDATION_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=Validation,name=PlatformValidationControl";
-    public static final String EXPORT_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=Export,name=PlatformExportControl";
-    public static final String PROCESSOR_METRICS_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=Metrics,name=PlatformProcessorMetricsControl";
-    public static final String DIAGNOSTICS_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=Diagnostics,name=PlatformDiagnosticsControl";
-    public static final String EXTENSION_READINESS_OBJECT_NAME_STR =
-            "space.br1440.platform.tracing:type=Readiness,name=PlatformExtension";
+    public static final String SAMPLING_OBJECT_NAME_STR = "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl";
+    public static final String SCRUBBING_OBJECT_NAME_STR = "space.br1440.platform.tracing:type=Scrubbing,name=PlatformScrubbingControl";
+    public static final String VALIDATION_OBJECT_NAME_STR = "space.br1440.platform.tracing:type=Validation,name=PlatformValidationControl";
+    public static final String EXPORT_OBJECT_NAME_STR = "space.br1440.platform.tracing:type=Export,name=PlatformExportControl";
+    public static final String PROCESSOR_METRICS_OBJECT_NAME_STR = "space.br1440.platform.tracing:type=Metrics,name=PlatformProcessorMetricsControl";
+    public static final String DIAGNOSTICS_OBJECT_NAME_STR = "space.br1440.platform.tracing:type=Diagnostics,name=PlatformDiagnosticsControl";
+    public static final String EXTENSION_READINESS_OBJECT_NAME_STR = "space.br1440.platform.tracing:type=Readiness,name=PlatformExtension";
 
     public static final ObjectName SAMPLING;
     public static final ObjectName SCRUBBING;
@@ -45,8 +41,5 @@ public final class PlatformTracingJmxObjectNames {
         } catch (MalformedObjectNameException e) {
             throw new ExceptionInInitializerError(e);
         }
-    }
-
-    private PlatformTracingJmxObjectNames() {
     }
 }

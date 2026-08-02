@@ -27,7 +27,6 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDia
 import space.br1440.platform.tracing.autoconfigure.diagnostics.health.TracingHealthIndicator;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
-import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
@@ -111,7 +110,43 @@ class ConfigurationEnabledRuntimeContractTest {
     }
 
     @Test
-    void healthReasonForRuntimeFailureIsNotReportedAsIntentionalDisable() {
+    void healthIsUpWhenAgentIsReadyAndRuntimeEnabled() {
+        observableRuntimeRunner
+                .withInitializer(ControlledAgentTestRuntime::initializeWithExporter)
+                .withPropertyValues("platform.tracing.enabled=true")
+                .run(context -> {
+                    Health health = context.getBean(TracingHealthIndicator.class).health();
+
+                    assertThat(health.getStatus()).isEqualTo(Status.UP);
+                    assertThat(health.getDetails())
+                            .containsEntry("reasonCode", "OPERATIONAL")
+                            .containsEntry("tracingEnabled", true)
+                            .containsEntry("platformRuntimeMode", TracingRuntimeMode.ENABLED.name())
+                            .containsEntry("agentState", AgentRuntimeState.AGENT_READY.name())
+                            .doesNotContainKey("failureCode");
+                });
+    }
+
+    @Test
+    void intentionallyDisabledTracingDoesNotDegradeHealth() {
+        observableRuntimeRunner
+                .withPropertyValues("platform.tracing.enabled=false")
+                .run(context -> {
+                    Health health = context.getBean(TracingHealthIndicator.class).health();
+
+                    assertThat(health.getStatus()).isEqualTo(Status.UP);
+                    assertThat(health.getDetails())
+                            .containsEntry("reasonCode", "CONFIGURED_DISABLED")
+                            .containsEntry("tracingEnabled", false)
+                            .containsEntry(
+                                    "platformRuntimeMode",
+                                    TracingRuntimeMode.DISABLED_BY_CONFIGURATION.name())
+                            .containsEntry("agentState", AgentRuntimeState.DISABLED.name());
+                });
+    }
+
+    @Test
+    void healthIsDownWhenStartupContractInvariantIsViolated() {
         NoOpTracingRuntime runtime = NoOpTracingRuntime.unavailable("test-agent-runtime-failure");
         AgentExtensionDescriptor descriptor = new AgentExtensionDescriptor(
                 AgentRuntimeState.EXTENSION_FAILED,
@@ -129,15 +164,14 @@ class ConfigurationEnabledRuntimeContractTest {
                 descriptor.state(),
                 descriptor);
 
-        Health health = new TracingHealthIndicator(
-                NoopTraceOperations.INSTANCE,
-                runtime,
-                diagnostics).health();
+        Health health = new TracingHealthIndicator(runtime, diagnostics).health();
 
-        assertThat(health.getStatus()).isEqualTo(Status.OUT_OF_SERVICE);
+        assertThat(health.getStatus()).isEqualTo(Status.DOWN);
         assertThat(health.getDetails())
-                .containsEntry("reason", "test-agent-runtime-failure")
-                .containsEntry("agentState", AgentRuntimeState.EXTENSION_FAILED.name());
+                .containsEntry("reasonCode", "STARTUP_CONTRACT_VIOLATED")
+                .containsEntry("agentState", AgentRuntimeState.EXTENSION_FAILED.name())
+                .containsEntry("failureCode", "TEST_AGENT_FAILURE");
+        assertThat(health.getDetails().values()).doesNotContain("test-agent-runtime-failure");
     }
 
     private static void assertManualTracingOperational(

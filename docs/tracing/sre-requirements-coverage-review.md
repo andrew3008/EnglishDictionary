@@ -81,7 +81,7 @@
 
 | Требование | Статус | Реализация |
 |------------|--------|------------|
-| §4 Гибкие настройки без правок кода | OK | `TracingProperties` (`platform.tracing.*`) + extension SPI дефолты; `GET /actuator/tracing` показывает факт (`otelEffective`) и маппинг Spring→`OTEL_*` |
+| §4 Гибкие настройки без правок кода | OK | `TracingProperties` (`platform.tracing.*`) + extension SPI дефолты; `GET /actuator/tracingStatus` показывает live agent/runtime read-model (generic Spring↔Agent config diagnostics удалена, [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)) |
 | §4 Динамическое переключение режимов «на лету» | OK | runtime policy через JMX/actuator (§7); topology (endpoint/limits) — startup-only ([ADR-runtime-config-policy-vs-topology.md](../decisions/ADR-runtime-config-policy-vs-topology.md)) |
 | % сэмплирования трейса (head) | OK | `CompositeSampler` + `SamplerStateHolder` (default ratio 0.1) |
 | Errors **всегда** сэмплируются | OK (Collector) | `tail_sampling.errors-always-sample` (status_code=ERROR) — **по явному пожеланию заказчика на Collector'е** |
@@ -141,14 +141,17 @@
 
 Полный runbook: [../runbook/runtime-policy-control.md](../runbook/runtime-policy-control.md) (canonical; [runtime-sampling-control.md](runtime-sampling-control.md) is a supersession pointer). Нормативные решения: [ADR-runtime-sampling-policy.md](../decisions/ADR-runtime-sampling-policy.md).
 
-Два транспорта управления политикой **без рестарта** приложения:
+Изменение политики **без рестарта** идёт через выбранный configuration authority; ровно один writer на процесс:
 
-| Транспорт | Когда | Точка входа |
+| Authority | Когда | Точка входа |
 |-----------|-------|-------------|
-| JMX (канонический) | доступ к JVM | MBean `space.br1440.platform.tracing:type=Control,name=PlatformTracingControl` |
-| Actuator (HTTP-зеркало) | k8s без JMX | `POST /actuator/tracing/{property}/{value}` |
+| `CONFIG_SERVER` | prod / shared, runtime-доставка Category A | полный восьмилистовой манифест `platform.tracing.policy.*` из Config Server → private `applySnapshot` |
+| `ACTUATOR` + `platform.environment=LOCAL` | local / dev | типизированные leaf-команды `/tracingControl/...` → private `applySnapshot` |
+| `HELM` | prod со startup-only политикой | Agent bootstrap (env / `-D`); изменение — только рестартом pod |
 
-Типовые операции SRE: `setSamplingRatio`, `setRouteRatios`, kill-switch `setSamplerEnabled false`, export-gate `setExportEnabled false`, drop-paths. Гарантии: атомарная публикация снимка (CAS), last-known-good при невалидном апдейте, версионирование + audit trail (`getConfigAuditTrail`). Перф-инвариант reload под нагрузкой — сценарии M10/M10c/M10d.
+**Удалено:** HTTP-зеркало `POST /actuator/tracing/{property}/{value}` — Actuator write-surface удалён без восстановления ([`P64ActuatorWriteAbsenceTest`](../../platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/arch/P64ActuatorWriteAbsenceTest.java)); `GET /actuator/tracingStatus` — read-only. Platform domain MBean (включая Control-проекцию) — **read-only** post-P6.6, JMX-сеттеров политики нет: старый монолитный `type=Control,name=PlatformTracingControl` не регистрируется.
+
+Типовые операции SRE — leaf'ы Category A: `sampling.ratio`, `sampling.route-ratios`, kill-switch `sampling.enabled=false`, export-gate `exporter.enabled=false`, `validation.enabled`/`strict`, `diagnostics.log-level`. Гарантии: атомарная публикация полного снимка, last-known-good при `REJECTED`/`FAILED`, монотонная accepted-версия + audit trail (`getConfigAuditTrail`, чтение). Перф-инвариант reload под нагрузкой — сценарии M10/M10c/M10d.
 
 **Что НЕ меняется в runtime** (startup-only topology): OTLP endpoint, processor chain, span limits, BSP queue size — смена через rolling update / Collector reload ([ADR-runtime-config-policy-vs-topology.md](../decisions/ADR-runtime-config-policy-vs-topology.md)).
 

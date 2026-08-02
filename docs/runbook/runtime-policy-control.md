@@ -51,7 +51,7 @@ Spring startup не поддерживается. `platform.tracing.mode` и
 **Verify:**
 
 - App starts without Config Server / Actuator private-control readiness probes.
-- `GET /actuator/tracing` (if exposed) is diagnostics only.
+- `GET /actuator/tracingStatus` (if exposed) is diagnostics only.
 - Platform Control projection is read-only (`StructuralDrift` / `RestartRequired` attributes exist; see §7).
 
 ---
@@ -146,11 +146,21 @@ Example: [examples/dev-actuator-local.yaml](../examples/dev-actuator-local.yaml)
 
 Liveness must not depend on collector reachability. Tracing-configuration readiness is separate from business liveness.
 
-`TracingHealthIndicator` возвращает `OUT_OF_SERVICE`, когда platform facade намеренно выключен,
-и публикует точную причину вместе с фактическим `agentState`. Репозиторий не включает contributor
-`tracing` в `management.endpoint.health.group.readiness` или `liveness` по умолчанию. Если сервис
-добавил его в такую группу самостоятельно, `platform.tracing.enabled=false` намеренно повлияет на probe;
-это решение должно быть явно согласовано владельцем сервиса.
+`TracingHealthIndicator` возвращает `UP` и в рабочем режиме (`reasonCode=OPERATIONAL`), и при
+намеренно выключенном tracing (`reasonCode=CONFIGURED_DISABLED`): отключение телеметрии не
+деградирует бизнес-функцию сервиса и не должно понижать агрегированный `/actuator/health`.
+Статус `DOWN` (`reasonCode=STARTUP_CONTRACT_VIOLATED`) возможен только при нарушении стартового
+инварианта «enabled ↔ AGENT_READY» и в штатной работе не воспроизводится, поскольку такие
+комбинации не дают контексту подняться.
+
+Детали bounded: `tracingEnabled`, `platformRuntimeMode`, `agentState`, `reasonCode` и `failureCode`
+(последний — только когда непустой). Свободный текст причины и имя класса реализации в health не
+публикуются; детальная диагностика — в `tracingStatus`.
+
+Репозиторий не включает contributor `tracing` в `management.endpoint.health.group.readiness` или
+`liveness`. Деградация телеметрии не является основанием ни для рестарта пода, ни для снятия
+трафика; добавление contributor в liveness-группу создаёт риск каскадных перезапусков и должно быть
+явно согласовано владельцем сервиса.
 
 ---
 
@@ -228,8 +238,11 @@ Config Server / Helm manifests + operator docs). See plan §25.
 
 | Surface | Role |
 |---------|------|
-| `GET /actuator/tracing` | Diagnostics / desired vs effective hints — **not** a writer |
+| `GET /actuator/tracingStatus` | Diagnostics read-model (agent readiness, runtime state, live sampling/validation/scrubbing/export, accepted policy) — **not** a writer; see [tracing-status-diagnostics.md](tracing-status-diagnostics.md) |
 | Platform domain MBeans + Control projection | Read-only post-P6.6 |
 | Private control plane | `applySnapshot` + `readAcceptedComplete` only (not for dashboards) |
+
+The legacy `/actuator/tracing` read endpoint and its `otelEffective` / `resourceEffective` /
+`otelEnvHints` sections are deleted ([ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)).
 
 Banned legacy config names: `docs/research/evidence/p6-cutover/legacy-names-v1.json`.

@@ -5,8 +5,8 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | Original FQCN | Disposition | Final target | Slice | Status |
 |---|---|---|---|---|
 | `space.br1440.platform.tracing.autoconfigure.actuator.LegacyTracingDiagnosticsEndpoint` | DELETE | `-` | S3 | DONE |
-| `space.br1440.platform.tracing.autoconfigure.actuator.OtelEffectiveConfigSnapshot` | MOVE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.OtelEffectiveConfigSnapshot` | S6b | DONE |
-| `space.br1440.platform.tracing.autoconfigure.actuator.ResourceEffectiveSnapshot` | MOVE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ResourceEffectiveSnapshot` | S6b | DONE |
+| `space.br1440.platform.tracing.autoconfigure.actuator.OtelEffectiveConfigSnapshot` | DELETE | `-` | S6b→post-P6 | DONE (moved to `diagnostics.jmx` at S6b, deleted post-P6 per [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)) |
+| `space.br1440.platform.tracing.autoconfigure.actuator.ResourceEffectiveSnapshot` | DELETE | `-` | S6b→post-P6 | DONE (moved to `diagnostics.jmx` at S6b, deleted post-P6 per [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)) |
 | `space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.async.PlatformContextTaskDecorator` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.PlatformContextTaskDecorator` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.async.ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.ThreadPoolTaskExecutorDecoratorBeanPostProcessor` | S6b | DONE |

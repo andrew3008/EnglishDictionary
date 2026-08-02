@@ -95,7 +95,7 @@ See [public API governance](../decisions/ADR-public-api-allowlist.md) and [OTel-
 
 ## Diagnostics and logs
 
-`GET /actuator/tracing` reports `tracingEnabled`, Agent readiness and effective OTel settings. It is diagnostic and cannot prove pre-JVM supply-chain enforcement.
+`GET /actuator/tracingStatus` reports `tracingEnabled`, Agent readiness, live runtime state (sampling, validation, scrubbing, export) and the accepted policy projection. It is read-only, does not publish a generic dump of effective OTel settings ([ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)), and cannot prove pre-JVM supply-chain enforcement.
 
 Example structured log fields:
 
@@ -130,5 +130,5 @@ Architecture implementation completion does not close release gates. Pilot and p
 - [ADR catalog](../decisions/README.md)
 - [module taxonomy](./platform-tracing-module-taxonomy.md)
 - [identity ADR](../decisions/ADR-identity-model-trace-request-correlation.md)
-- [operational diagnostics](../runbook/actuator-tracing-diagnostics.md)
+- [operational diagnostics](../runbook/tracing-status-diagnostics.md)
 - [production readiness](../tracing/platform-tracing-v3-production-readiness.md)

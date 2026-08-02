@@ -2,7 +2,10 @@ package space.br1440.platform.tracing.autoconfigure.inventory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
@@ -539,19 +542,70 @@ class TracingConfigurationInventoryGeneratorTest {
         entry.currentStatus = "DELETED";
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Нормализованные upstream-компоненты OpenTelemetry, применяющие каждый внешний
+     * {@code STANDARD_OTEL_KEY}. Источник атрибуции — официальная документация OTel SDK
+     * autoconfigure и Java agent (см. provenance-шапку
+     * {@code tracing-inventory/standard-otel-configuration-keys.txt}), а не предположение по
+     * имени свойства. {@code otel.javaagent.extensions} сюда не входит — эта запись сохраняет
+     * реальные in-repo readers (см. {@link #addEnvironmentAndOtelNames}).
+     */
+    private static final Map<String, List<String>> STANDARD_OTEL_KEY_EXTERNAL_ARTIFACTS = Map.ofEntries(
+            Map.entry("otel.attribute.count.limit",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.bsp.export.timeout",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.bsp.max.export.batch.size",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.bsp.max.queue.size",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.bsp.schedule.delay",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.exporter.otlp.endpoint",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_EXPORTER_OTLP")),
+            Map.entry("otel.exporter.otlp.headers",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_EXPORTER_OTLP")),
+            Map.entry("otel.exporter.otlp.protocol",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_EXPORTER_OTLP")),
+            Map.entry("otel.exporter.otlp.timeout",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_EXPORTER_OTLP")),
+            Map.entry("otel.java.exporter.otlp.retry.disabled",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_EXPORTER_OTLP")),
+            Map.entry("otel.javaagent.enabled", List.of("OPENTELEMETRY_JAVAAGENT")),
+            Map.entry("otel.resource.attributes", List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE")),
+            Map.entry("otel.service.name", List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE")),
+            Map.entry("otel.span.attribute.count.limit",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.span.attribute.value.length.limit",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.span.event.count.limit",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.span.link.count.limit",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.traces.sampler",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")),
+            Map.entry("otel.traces.sampler.arg",
+                    List.of("OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE")));
+
     private static void addEnvironmentAndOtelNames(
             Map<String, Entry> entries,
             SourceIndex source) throws Exception {
-        Class<?> snapshot = Class.forName(
-                "space.br1440.platform.tracing.autoconfigure.diagnostics.jmx."
-                        + "OtelEffectiveConfigSnapshot");
-        Field exposed = snapshot.getDeclaredField("EXPOSED_PROPERTIES");
-        exposed.setAccessible(true);
-        List<String> otelProperties = (List<String>) exposed.get(null);
-        for (String property : otelProperties) {
-            standardOtel(entries, source, property);
-            environment(entries, source, toEnv(property), "OtelEffectiveConfigSnapshot");
+        for (String property : loadStandardOtelConfigurationKeys()) {
+            if ("otel.javaagent.extensions".equals(property)) {
+                // Слитая запись: ExtensionPropertyNames/ExtensionEnvironmentVariables/
+                // JavaAgentExtensionPaths/PlatformAgentDistributionVerifier уже наполнили эту
+                // запись реальными in-repo readers через collectStringConstants(). Модель
+                // EXTERNAL_CONTRACT сюда не применяется — только дополняем upstream-артефакт.
+                entries.computeIfAbsent(property, Entry::new).consumers.add("OPENTELEMETRY_JAVAAGENT");
+                continue;
+            }
+            List<String> externalArtifacts = STANDARD_OTEL_KEY_EXTERNAL_ARTIFACTS.get(property);
+            if (externalArtifacts == null) {
+                throw new IllegalStateException(
+                        "No externalArtifacts attribution for standard OTel key: " + property);
+            }
+            standardOtel(entries, source, property, externalArtifacts);
+            externalOtelEnvironment(entries, source, toEnv(property), externalArtifacts);
         }
 
         Class<?> envNames = Class.forName(
@@ -572,28 +626,71 @@ class TracingConfigurationInventoryGeneratorTest {
         environment(entries, source, "COMPUTERNAME", "HostNameResolver");
     }
 
+    /**
+     * Регистрирует внешний OTel-ключ без in-repo reader'а. {@code readerStatus=EXTERNAL_CONTRACT}
+     * явно отличается от {@code ACTIVE_READER}/{@code DECLARED_NO_READER}: ни один из них не
+     * подошёл бы — ключ не «объявлен, но не прочитан» (его здесь вообще не объявляют), а прочитан
+     * внешним upstream-компонентом OpenTelemetry, перечисленным в {@code consumers}.
+     */
     private static void standardOtel(
             Map<String, Entry> entries,
             SourceIndex source,
-            String property) {
+            String property,
+            List<String> externalArtifacts) {
         Entry entry = entries.computeIfAbsent(property, Entry::new);
         entry.kind = "STANDARD_OTEL_KEY";
         entry.prefixFamily = family(property);
-        entry.declarations.add("OpenTelemetry autoconfigure external contract");
-        entry.readers.add(link(
-                "platform-tracing-spring-boot-autoconfigure/src/main/java/"
-                        + "space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/"
-                        + "OtelEffectiveConfigSnapshot.java",
-                "EXPOSED_PROPERTIES", "DIRECT_CALL"));
-        entry.consumers.add("OpenTelemetry SDK/Java Agent autoconfigure");
+        entry.declarations.add("OpenTelemetry SDK configuration contract (external, no in-repo declaration)");
+        entry.consumers.addAll(externalArtifacts);
         entry.environmentVariables.add(toEnv(property));
         entry.documents.addAll(source.references(property, SourceIndex::isDocumentation));
         entry.valueType = "String";
         entry.defaultOwner = "OpenTelemetry";
         entry.lifecycleOwner = "OpenTelemetry bootstrap";
-        entry.readerStatus = "ACTIVE_READER";
+        entry.readerStatus = "EXTERNAL_CONTRACT";
         entry.consumerStatus = "EXTERNAL";
         entry.currentStatus = "EXTERNAL";
+    }
+
+    /** {@code ENV_VARIABLE}-двойник {@link #standardOtel}: то же readerStatus/consumers-правило. */
+    private static void externalOtelEnvironment(
+            Map<String, Entry> entries,
+            SourceIndex source,
+            String name,
+            List<String> externalArtifacts) {
+        Entry entry = entries.computeIfAbsent(name, Entry::new);
+        entry.kind = "ENV_VARIABLE";
+        entry.prefixFamily = "OTEL";
+        entry.declarations.add("OpenTelemetry SDK environment variable contract (external, no in-repo declaration)");
+        entry.consumers.addAll(externalArtifacts);
+        entry.environmentVariables.add(name);
+        entry.documents.addAll(source.references(name, SourceIndex::isDocumentation));
+        entry.valueType = "String";
+        entry.defaultOwner = "Orchestration/environment";
+        entry.lifecycleOwner = "Process bootstrap";
+        entry.readerStatus = "EXTERNAL_CONTRACT";
+        entry.consumerStatus = "EXTERNAL";
+        entry.currentStatus = "EXTERNAL";
+    }
+
+    /**
+     * Читает test-owned манифест {@code tracing-inventory/standard-otel-configuration-keys.txt}
+     * с classpath вместо рефлексии к production-классу, ранее удалённому по
+     * {@code ADR-remove-dual-channel-diagnostics.md}.
+     */
+    private static List<String> loadStandardOtelConfigurationKeys() throws IOException {
+        String resourcePath = "tracing-inventory/standard-otel-configuration-keys.txt";
+        ClassLoader loader = TracingConfigurationInventoryGeneratorTest.class.getClassLoader();
+        try (InputStream stream = loader.getResourceAsStream(resourcePath)) {
+            if (stream == null) {
+                throw new IllegalStateException("Missing classpath resource: " + resourcePath);
+            }
+            return new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+                    .lines()
+                    .map(String::strip)
+                    .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                    .toList();
+        }
     }
 
     private static void environment(

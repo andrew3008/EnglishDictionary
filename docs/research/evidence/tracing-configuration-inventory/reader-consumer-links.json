@@ -249,7 +249,7 @@
   "exactName" : "platform.tracing.resource.policy-version",
   "id" : "CONFIG_PROPERTY-036",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:34[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:47[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ResourceExtensionConfig.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:12[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:53[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:106[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:172[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:173[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:45[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceStartupDiagnostics.java:27[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:227[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:230[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:34[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:42[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:69[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:70[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolverTest.java:81[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolverTest.java:82[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/ResourceEffectiveSnapshot.java:40[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionDefaults.java:34[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:47[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ResourceExtensionConfig.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:12[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProvider.java:53[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:106[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:172[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:173[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:45[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceStartupDiagnostics.java:27[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:227[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionConfigFacadeVsFactoryParityCharacterizationTest.java:230[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:34[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/PlatformTracingDefaultsProviderResourceEnvTest.java:42[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:69[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:70[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolverTest.java:81[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolverTest.java:82[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "PlatformResourceProvider" ],
@@ -524,145 +524,145 @@
   "readerStatus" : "ACTIVE_READER",
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/HostNameResolver.java:20#HostNameResolver[DIRECT_CALL]" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_ATTRIBUTE_COUNT_LIMIT",
   "id" : "ENV_VARIABLE-004",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_BSP_EXPORT_TIMEOUT",
   "id" : "ENV_VARIABLE-005",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_BSP_MAX_EXPORT_BATCH_SIZE",
   "id" : "ENV_VARIABLE-006",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_BSP_MAX_QUEUE_SIZE",
   "id" : "ENV_VARIABLE-007",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java:187#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_BSP_SCHEDULE_DELAY",
   "id" : "ENV_VARIABLE-008",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "OTEL_EXPORTER_OTLP_ENDPOINT",
   "id" : "ENV_VARIABLE-009",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-collector-config/src/main/resources/platform-tracing/collector/otel-collector-gateway-tail-sampling.yaml:167#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "OTEL_EXPORTER_OTLP_HEADERS",
   "id" : "ENV_VARIABLE-010",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java:33#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "OTEL_EXPORTER_OTLP_PROTOCOL",
   "id" : "ENV_VARIABLE-011",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "OTEL_EXPORTER_OTLP_TIMEOUT",
   "id" : "ENV_VARIABLE-012",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_JAVAAGENT" ],
   "exactName" : "OTEL_JAVAAGENT_ENABLED",
   "id" : "ENV_VARIABLE-013",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "OpenTelemetry autoconfigure" ],
   "exactName" : "OTEL_JAVAAGENT_EXTENSIONS",
   "id" : "ENV_VARIABLE-014",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:70#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:70#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java:70#ExtensionEnvironmentVariables.OTEL_JAVAAGENT_EXTENSIONS[DIRECT_CALL]" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED",
   "id" : "ENV_VARIABLE-015",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "OTEL_RESOURCE_ATTRIBUTES",
   "id" : "ENV_VARIABLE-016",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:22#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "OTEL_SERVICE_NAME",
   "id" : "ENV_VARIABLE-017",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:22#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT",
   "id" : "ENV_VARIABLE-018",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT",
   "id" : "ENV_VARIABLE-019",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_SPAN_EVENT_COUNT_LIMIT",
   "id" : "ENV_VARIABLE-020",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_SPAN_LINK_COUNT_LIMIT",
   "id" : "ENV_VARIABLE-021",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_TRACES_SAMPLER",
   "id" : "ENV_VARIABLE-022",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "ACTIVE",
-  "consumers" : [ "OpenTelemetry autoconfigure" ],
+  "consumerStatus" : "EXTERNAL",
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "OTEL_TRACES_SAMPLER_ARG",
   "id" : "ENV_VARIABLE-023",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "READER_DERIVED_FROM_RUNTIME_CONVERSION#OtelEffectiveConfigSnapshot[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "ACTIVE",
   "consumers" : [ "Platform tracing bootstrap/resource diagnostics" ],
@@ -826,142 +826,142 @@
   "readers" : [ "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolver.java:45[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceStartupDiagnostics.java:27[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/PlatformResourceProviderTest.java:69[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/resource/ResourceAttributeResolverTest.java:81[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.attribute.count.limit",
   "id" : "STANDARD_OTEL_KEY-001",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.bsp.export.timeout",
   "id" : "STANDARD_OTEL_KEY-002",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.bsp.max.export.batch.size",
   "id" : "STANDARD_OTEL_KEY-003",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.bsp.max.queue.size",
   "id" : "STANDARD_OTEL_KEY-004",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.bsp.schedule.delay",
   "id" : "STANDARD_OTEL_KEY-005",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "otel.exporter.otlp.endpoint",
   "id" : "STANDARD_OTEL_KEY-006",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "otel.exporter.otlp.headers",
   "id" : "STANDARD_OTEL_KEY-007",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "otel.exporter.otlp.protocol",
   "id" : "STANDARD_OTEL_KEY-008",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "otel.exporter.otlp.timeout",
   "id" : "STANDARD_OTEL_KEY-009",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_EXPORTER_OTLP", "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "otel.java.exporter.otlp.retry.disabled",
   "id" : "STANDARD_OTEL_KEY-010",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_JAVAAGENT" ],
   "exactName" : "otel.javaagent.enabled",
   "id" : "STANDARD_OTEL_KEY-011",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
-  "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND", "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumerStatus" : "NONE",
+  "consumers" : [ "NO_RUNTIME_CONSUMER_FOUND", "OPENTELEMETRY_JAVAAGENT" ],
   "exactName" : "otel.javaagent.extensions",
   "id" : "STANDARD_OTEL_KEY-012",
   "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-otel-javaagent-extension/src/distributionVerifier/java/space/br1440/platform/tracing/distribution/PlatformAgentDistributionVerifier.java:156[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/distributionVerifier/java/space/br1440/platform/tracing/distribution/PlatformAgentDistributionVerifier.java:42[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:16[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPaths.java:12[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPaths.java:14[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPaths.java:18[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/distribution/PlatformAgentDistributionVerifierTest.java:78[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPathsTest.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPathsTest.java:21[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPathsTest.java:63[DIRECT_CALL]", "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readers" : [ "platform-tracing-otel-javaagent-extension/src/distributionVerifier/java/space/br1440/platform/tracing/distribution/PlatformAgentDistributionVerifier.java:156[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/distributionVerifier/java/space/br1440/platform/tracing/distribution/PlatformAgentDistributionVerifier.java:42[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/ExtensionEnvironmentVariables.java:16[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPaths.java:12[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPaths.java:14[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPaths.java:18[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/distribution/PlatformAgentDistributionVerifierTest.java:78[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPathsTest.java:19[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPathsTest.java:21[DIRECT_CALL]", "platform-tracing-otel-javaagent-extension/src/test/java/space/br1440/platform/tracing/otel/javaagent/configuration/spi/JavaAgentExtensionPathsTest.java:63[DIRECT_CALL]" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "otel.resource.attributes",
   "id" : "STANDARD_OTEL_KEY-013",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE" ],
   "exactName" : "otel.service.name",
   "id" : "STANDARD_OTEL_KEY-014",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.span.attribute.count.limit",
   "id" : "STANDARD_OTEL_KEY-015",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.span.attribute.value.length.limit",
   "id" : "STANDARD_OTEL_KEY-016",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.span.event.count.limit",
   "id" : "STANDARD_OTEL_KEY-017",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.span.link.count.limit",
   "id" : "STANDARD_OTEL_KEY-018",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.traces.sampler",
   "id" : "STANDARD_OTEL_KEY-019",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 }, {
   "consumerStatus" : "EXTERNAL",
-  "consumers" : [ "OpenTelemetry SDK/Java Agent autoconfigure" ],
+  "consumers" : [ "OPENTELEMETRY_SDK_AUTOCONFIGURE", "OPENTELEMETRY_SDK_TRACE" ],
   "exactName" : "otel.traces.sampler.arg",
   "id" : "STANDARD_OTEL_KEY-020",
-  "readerStatus" : "ACTIVE_READER",
-  "readers" : [ "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/diagnostics/jmx/OtelEffectiveConfigSnapshot.java#EXPOSED_PROPERTIES[DIRECT_CALL]" ]
+  "readerStatus" : "DECLARED_NO_READER",
+  "readers" : [ "NO_READER" ]
 } ]

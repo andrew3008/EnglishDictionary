@@ -245,8 +245,11 @@ Actuator `@WriteOperation` on `/actuator/tracing`, public `api.control.protocol`
 `otel.control.protocol`, `ScrubbingPolicyHolder`, Spring Category B scrubbing/sampling bindings.
 Evidence: `docs/research/evidence/p6-cutover/`.
 
-`GET /actuator/tracing` remains a read diagnostics surface. Topology vs policy semantics for
-startup-only Agent keys are unchanged in spirit; see
+`GET /actuator/tracingStatus` is the read diagnostics surface (the legacy `/actuator/tracing` read
+endpoint was removed together with its dual-channel sections; see
+[ADR-remove-dual-channel-diagnostics.md](./decisions/ADR-remove-dual-channel-diagnostics.md) and
+[runbook/tracing-status-diagnostics.md](./runbook/tracing-status-diagnostics.md)). Topology vs policy
+semantics for startup-only Agent keys are unchanged in spirit; see
 [ADR-runtime-config-policy-vs-topology.md](./decisions/ADR-runtime-config-policy-vs-topology.md)
 for historical rationale (implementation details in that ADR may predate the private-writer cutover).
 

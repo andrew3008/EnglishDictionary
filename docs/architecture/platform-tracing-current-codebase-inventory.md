@@ -1,6 +1,6 @@
 # Platform Tracing: Current Codebase Inventory
 
-> **HISTORICAL SNAPSHOT.** Current architecture and module names are documented in [final active architecture](./platform-tracing-final-architecture.md). Facts below are retained at their original snapshot date.
+> **HISTORICAL SNAPSHOT.** Current architecture and module names are documented in [final active architecture](./platform-tracing-final-architecture.md). Facts below are retained at their original snapshot date. `OtelEffectiveConfigSnapshot`/`ResourceEffectiveSnapshot` and the legacy `/actuator/tracing` dual-channel diagnostics described below are removed without restoration — see [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md) (2026-08-02).
 
 > **Snapshot date:** 2026-06-11
 > **Repository:** `spring-boot-platform-tracing` (`e:\Platform_Traces`)

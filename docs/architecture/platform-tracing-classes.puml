@@ -1,5 +1,10 @@
 @startuml platform-tracing-classes-00-overview
 ' =============================================================================
+' HISTORICAL SNAPSHOT. Superseded by ADR-remove-dual-channel-diagnostics.md
+' on 2026-08-02: OtelEffectiveConfigSnapshot / ResourceEffectiveSnapshot and the
+' legacy /actuator/tracing dual-channel diagnostics shown below are removed
+' without restoration. Current architecture: platform-tracing-final-architecture.md.
+' =============================================================================
 ' platform-tracing — UML Class Diagram (классы и связи)
 ' Модули: api | core | otel-extension | spring-boot-autoconfigure | starter-servlet
 ' =============================================================================
@@ -832,7 +837,8 @@ package "actuator" {
     +tracingActuatorEndpoint(...): TracingActuatorEndpoint
   }
   class TracingHealthIndicator {
-    -traceOperations: TraceOperations
+    -tracingRuntime: TracingRuntime
+    -diagnostics: TracingDeploymentDiagnostics
     +doHealthCheck(builder): void
   }
   class TracingActuatorEndpoint {
@@ -887,7 +893,8 @@ TracingActuatorEndpoint o-- TraceOperations
 TracingActuatorEndpoint o-- TracingProperties
 TracingActuatorEndpoint o-- PlatformTracingJmxClient
 TracingActuatorEndpoint o-- OtelEffectiveConfigSnapshot
-TracingHealthIndicator o-- TraceOperations
+TracingHealthIndicator o-- TracingRuntime
+TracingHealthIndicator o-- TracingDeploymentDiagnostics
 
 ServletTracingAutoConfiguration ..> TraceResponseHeaderServletFilter : @Bean
 ReactiveTracingAutoConfiguration ..> TraceResponseHeaderWebFilter : @Bean
