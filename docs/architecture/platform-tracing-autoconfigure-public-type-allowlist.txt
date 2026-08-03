@@ -48,11 +48,10 @@ space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDelivery
 space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException
 space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySnapshotApplier
 space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySource
-space.br1440.platform.tracing.autoconfigure.diagnostics.health.TracingHealthIndicator
+space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient
 space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames
 space.br1440.platform.tracing.autoconfigure.diagnostics.SpanFactoryDiagnostics
-space.br1440.platform.tracing.autoconfigure.diagnostics.TracingDiagnosticsActuatorAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.identity.PlatformLocalServiceNameProvider
 space.br1440.platform.tracing.autoconfigure.identity.PlatformRemoteServiceNameProvider

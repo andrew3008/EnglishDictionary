@@ -831,28 +831,25 @@ package "aspect" {
   }
 }
 
-package "actuator" {
-  class TracingActuatorAutoConfiguration {
-    +tracingHealthIndicator(...): TracingHealthIndicator
-    +tracingActuatorEndpoint(...): TracingActuatorEndpoint
+package "diagnostics.health.startup" {
+  class TracingStartupContractHealthAutoConfiguration {
+    +tracingStartupContractHealthIndicator(...): HealthIndicator
   }
-  class TracingHealthIndicator {
-    -tracingRuntime: TracingRuntime
-    -diagnostics: TracingDeploymentDiagnostics
+  class TracingStartupContractSnapshot «record» {
+    -tracingEnabled: boolean
+    -runtimeMode: String
+    -agentState: String
+    -failureCode: String
+    -outcome: TracingStartupContractOutcome
+  }
+  enum TracingStartupContractOutcome {
+    ENABLED_CONTRACT_SATISFIED
+    DISABLED_CONTRACT_SATISFIED
+    STARTUP_CONTRACT_VIOLATED
+  }
+  class TracingStartupContractIndicator {
+    -snapshot: TracingStartupContractSnapshot
     +doHealthCheck(builder): void
-  }
-  class TracingActuatorEndpoint {
-    -traceOperations: TraceOperations
-    -properties: TracingProperties
-    -jmxClient: PlatformTracingJmxClient
-    -otelEffectiveSnapshot: OtelEffectiveConfigSnapshot
-    +tracing(): Map «@ReadOperation»
-    +updateTracing(prop, val): Map «@WriteOperation»
-  }
-  class OtelEffectiveConfigSnapshot {
-    -systemPropertyLookup: Function
-    -envLookup: Function
-    +build(): Map
   }
 }
 
@@ -878,7 +875,7 @@ WebFilter <|.. TraceResponseHeaderWebFilter
 DefaultServerRequestObservationConvention <|-- PlatformServerRequestObservationConvention
 DefaultServerRequestObservationConvention <|-- PlatformReactiveServerRequestObservationConvention
 DefaultClientRequestObservationConvention <|-- PlatformClientRequestObservationConvention
-AbstractHealthIndicator <|-- TracingHealthIndicator
+AbstractHealthIndicator <|-- TracingStartupContractIndicator
 
 TraceResponseHeaderServletFilter o-- TraceOperations
 TraceResponseHeaderServletFilter o-- TracingProperties
@@ -893,8 +890,10 @@ TracingActuatorEndpoint o-- TraceOperations
 TracingActuatorEndpoint o-- TracingProperties
 TracingActuatorEndpoint o-- PlatformTracingJmxClient
 TracingActuatorEndpoint o-- OtelEffectiveConfigSnapshot
-TracingHealthIndicator o-- TracingRuntime
-TracingHealthIndicator o-- TracingDeploymentDiagnostics
+TracingStartupContractHealthAutoConfiguration ..> TracingStartupContractSnapshot : builds
+TracingStartupContractHealthAutoConfiguration ..> TracingStartupContractIndicator : @Bean
+TracingStartupContractIndicator o-- TracingStartupContractSnapshot
+TracingStartupContractSnapshot *-- TracingStartupContractOutcome
 
 ServletTracingAutoConfiguration ..> TraceResponseHeaderServletFilter : @Bean
 ReactiveTracingAutoConfiguration ..> TraceResponseHeaderWebFilter : @Bean

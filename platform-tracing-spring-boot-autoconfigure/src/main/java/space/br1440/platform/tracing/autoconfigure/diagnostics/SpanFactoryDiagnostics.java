@@ -11,15 +11,15 @@ import space.br1440.platform.tracing.otel.runtime.state.TracingState;
 
 public final class SpanFactoryDiagnostics {
 
-    private final TracingRuntime tracingImplementation;
+    private final TracingRuntime tracingRuntime;
 
-    public SpanFactoryDiagnostics(@Nonnull TracingRuntime tracingImplementation) {
-        this.tracingImplementation = Objects.requireNonNull(tracingImplementation, "tracingImplementation");
+    public SpanFactoryDiagnostics(@Nonnull TracingRuntime tracingRuntime) {
+        this.tracingRuntime = Objects.requireNonNull(tracingRuntime, "tracingRuntime");
     }
 
     @Nonnull
     public Map<String, Object> toActuatorMap() {
-        TracingState state = tracingImplementation.state();
+        TracingState state = tracingRuntime.state();
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("mode", toPublicMode(state.mode()));

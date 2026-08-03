@@ -506,8 +506,10 @@ package "Developer experience" as dx_pkg #C5CAE9 {
     +TracedAspect
   }
   class TracingActuatorAutoConfiguration {
-    +TracingHealthIndicator
     +TracingActuatorEndpoint (/actuator/tracing)
+  }
+  class TracingStartupContractHealthAutoConfiguration {
+    +tracingStartupContractHealthIndicator (/actuator/health: components.tracingStartupContract)
   }
   class TracingMetricsAutoConfiguration {
     @Primary MeteredPlatformTracing

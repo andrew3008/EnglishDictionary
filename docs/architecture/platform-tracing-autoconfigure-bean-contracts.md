@@ -9,7 +9,7 @@
 | `platformWebFluxHttpObservationSuppressor` | Пользовательский back-off по имени | webflux |
 | `platformHttpOutboundPolicy` | Общий HTTP outbound policy для обоих web-стеков | propagation |
 | `platformRequestTraceContextSnapshotSupplier` | Интеграция error-handling использует именованный supplier | integrations.errorhandling |
-| `tracingHealthIndicator` | Стандартное имя Spring Boot health contributor | diagnostics.health |
+| `tracingStartupContractHealthIndicator` | Имя bean определяет `management.health.tracing-startup-contract.enabled` (kebab-case, `@ConditionalOnEnabledHealthIndicator` резолвит property буквальным сравнением строк) и JSON-ключ `components.tracingStartupContract` в `/actuator/health` | diagnostics.health.startup |
 | `configServerPolicyRefreshExecutor` | Отдельный lifecycle и `shutdown` | control.configserver |
 | `TracingRuntime`, `TraceOperations` | Публичные capability-контракты, а не имена методов | root composition |
 | `AcceptedTracingPolicyReader`, `CompleteTracingPolicyReader`, `TracingPolicySnapshotApplier` | Разделённые read/apply capabilities | control.policy |

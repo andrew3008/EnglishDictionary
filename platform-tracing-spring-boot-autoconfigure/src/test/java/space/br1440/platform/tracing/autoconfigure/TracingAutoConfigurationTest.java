@@ -13,8 +13,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingDiagnosticsActuatorAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.diagnostics.health.TracingHealthIndicator;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
 import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration;
@@ -38,7 +37,7 @@ class TracingAutoConfigurationTest {
                     TracingMetricsAutoConfiguration.class,
                     TracingAopAutoConfiguration.class,
                     TracingObservationAutoConfiguration.class,
-                    TracingDiagnosticsActuatorAutoConfiguration.class
+                    TracingStartupContractHealthAutoConfiguration.class
             ))
             .withPropertyValues(
                     "platform.tracing.configuration.authority=HELM",
@@ -105,11 +104,11 @@ class TracingAutoConfigurationTest {
                 ))
                 .withPropertyValues(
                         "management.endpoint.health.enabled=true",
-                        "management.health.tracing.enabled=true",
+                        "management.health.tracing-startup-contract.enabled=true",
                         "management.endpoints.web.exposure.include=*"
                 )
                 .run(context -> {
-                    assertThat(context).hasSingleBean(TracingHealthIndicator.class);
+                    assertThat(context).hasBean("tracingStartupContractHealthIndicator");
                 });
     }
 

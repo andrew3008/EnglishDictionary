@@ -41,8 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "spring.application.name=mdc-cf-propagation-test",
                 "spring.autoconfigure.exclude="
                         + "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration,"
-                        + "space.br1440.platform.tracing.autoconfigure.diagnostics."
-                        + "TracingDiagnosticsActuatorAutoConfiguration,"
+                        + "space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup."
+                        + "TracingStartupContractHealthAutoConfiguration,"
                         + "space.br1440.platform.tracing.autoconfigure.metrics."
                         + "TracingMetricsAutoConfiguration",
                 "platform.tracing.enabled=false",

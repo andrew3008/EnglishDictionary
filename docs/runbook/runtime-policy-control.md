@@ -146,21 +146,27 @@ Example: [examples/dev-actuator-local.yaml](../examples/dev-actuator-local.yaml)
 
 Liveness must not depend on collector reachability. Tracing-configuration readiness is separate from business liveness.
 
-`TracingHealthIndicator` возвращает `UP` и в рабочем режиме (`reasonCode=OPERATIONAL`), и при
-намеренно выключенном tracing (`reasonCode=CONFIGURED_DISABLED`): отключение телеметрии не
-деградирует бизнес-функцию сервиса и не должно понижать агрегированный `/actuator/health`.
+Bean `tracingStartupContractHealthIndicator` (contributor `tracingStartupContract` в
+`/actuator/health`) возвращает `UP` и в рабочем режиме (`reasonCode=ENABLED_CONTRACT_SATISFIED`), и
+при намеренно выключенном tracing (`reasonCode=DISABLED_CONTRACT_SATISFIED`): отключение телеметрии
+не деградирует бизнес-функцию сервиса и не должно понижать агрегированный `/actuator/health`.
 Статус `DOWN` (`reasonCode=STARTUP_CONTRACT_VIOLATED`) возможен только при нарушении стартового
-инварианта «enabled ↔ AGENT_READY» и в штатной работе не воспроизводится, поскольку такие
-комбинации не дают контексту подняться.
+инварианта «enabled ↔ AGENT_READY» / «disabled ↔ DISABLED» и в штатной работе не воспроизводится,
+поскольку такие комбинации не дают контексту подняться.
 
 Детали bounded: `tracingEnabled`, `platformRuntimeMode`, `agentState`, `reasonCode` и `failureCode`
-(последний — только когда непустой). Свободный текст причины и имя класса реализации в health не
-публикуются; детальная диагностика — в `tracingStatus`.
+(последний — только когда непустой, при `STARTUP_CONTRACT_VIOLATED` fallback-значение
+`STARTUP_CONTRACT_VIOLATION_UNSPECIFIED`). Свободный текст причины и имя класса реализации в health
+не публикуются; детальная диагностика — в `tracingStatus`.
 
-Репозиторий не включает contributor `tracing` в `management.endpoint.health.group.readiness` или
-`liveness`. Деградация телеметрии не является основанием ни для рестарта пода, ни для снятия
-трафика; добавление contributor в liveness-группу создаёт риск каскадных перезапусков и должно быть
-явно согласовано владельцем сервиса.
+Отключить contributor: `management.health.tracing-startup-contract.enabled=false` (kebab-case;
+`@ConditionalOnEnabledHealthIndicator` резолвит property буквальным сравнением строк, а не через
+relaxed `Binder`). Legacy-имя `management.health.tracing.enabled` не управляет этим contributor'ом.
+
+Репозиторий не включает contributor `tracingStartupContract` в
+`management.endpoint.health.group.readiness` или `liveness`. Деградация телеметрии не является
+основанием ни для рестарта пода, ни для снятия трафика; добавление contributor в liveness-группу
+создаёт риск каскадных перезапусков и должно быть явно согласовано владельцем сервиса.
 
 ---
 
