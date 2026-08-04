@@ -31,7 +31,7 @@ class AutoconfigurePackageArchitectureTest {
             + ".control.policy.AcceptedSnapshotWithSequence";
     private static final Pattern PACKAGE = Pattern.compile("(?m)^package\\s+([^;]+);");
     private static final Pattern PUBLIC_TYPE = Pattern.compile(
-            "(?m)^public\\s+(?:final\\s+|abstract\\s+)?(?:class|record|interface|enum)\\s+([A-Za-z0-9_]+)");
+            "(?m)^public\\s+(?:(?:sealed|non-sealed|final|abstract)\\s+)*(?:class|record|interface|enum)\\s+([A-Za-z0-9_]+)");
 
     @Test
     void targetPackageTreeAndDependencyDirectionsAreEnforced() throws Exception {

@@ -9,46 +9,50 @@ import jakarta.annotation.Nonnull;
 
 import lombok.RequiredArgsConstructor;
 
-import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 final class PlatformTracingConfigMetricsBinder implements MeterBinder {
 
     private static final String PREFIX = "platform.tracing.config.";
 
-    private final PlatformTracingJmxClient client;
+    private final CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource;
 
     @Override
     public void bindTo(@Nonnull MeterRegistry registry) {
-        FunctionCounter.builder(PREFIX + "updates", client, c -> readMetric(c, "updates.applied"))
+        FunctionCounter.builder(PREFIX + "updates", diagnosticsSource, source -> readMetric(source, "updates.applied"))
                 .tags("result", "applied")
                 .description("Applied runtime tracing configuration updates")
                 .register(registry);
 
-        FunctionCounter.builder(PREFIX + "updates", client, c -> readMetric(c, "updates.rejected"))
+        FunctionCounter.builder(PREFIX + "updates", diagnosticsSource, source -> readMetric(source, "updates.rejected"))
                 .tags("result", "rejected")
                 .description("Rejected runtime configuration updates (last-known-good retained)")
                 .register(registry);
 
-        Gauge.builder(PREFIX + "last_update_epoch_ms", client, c -> readMetric(c, "last_update.epoch_ms"))
+        Gauge.builder(PREFIX + "last_update_epoch_ms", diagnosticsSource,
+                        source -> readTimestampMetric(source, "last_update.epoch_ms"))
                 .description("Timestamp of the last dynamic configuration change, epoch millis")
-                .register(registry);
-
-        Gauge.builder(PREFIX + "sampling_version", client,
-                        c -> c.getSamplingConfigVersion().map(Long::doubleValue).orElse(0.0))
-                .description("Version of the active sampler configuration snapshot")
                 .register(registry);
     }
 
-    private static double readMetric(PlatformTracingJmxClient client, String key) {
-        try {
-            Map<String, Long> snapshot = client.getConfigReloadMetrics();
-            Long value = snapshot.get(key);
-            return (value != null) ? value.doubleValue() : 0.0;
-        } catch (Exception e) {
-            return 0.0;
+    private static double readMetric(CoalescingJmxObservationSource<DiagnosticsObservation> source, String key) {
+        Optional<DiagnosticsObservation> observation = source.get();
+        Map<String, Long> snapshot = observation.map(DiagnosticsObservation::configReloadMetrics).orElseGet(Map::of);
+        Long value = snapshot.get(key);
+        return (value != null) ? value.doubleValue() : 0.0;
+    }
+
+    private static double readTimestampMetric(CoalescingJmxObservationSource<DiagnosticsObservation> source, String key) {
+        Optional<DiagnosticsObservation> observation = source.get();
+        if (observation.isEmpty()) {
+            return Double.NaN;
         }
+
+        Long value = observation.get().configReloadMetrics().get(key);
+        return (value != null) ? value.doubleValue() : 0.0;
     }
 }

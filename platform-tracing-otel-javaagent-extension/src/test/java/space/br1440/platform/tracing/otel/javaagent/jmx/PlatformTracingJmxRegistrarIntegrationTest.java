@@ -5,12 +5,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
+import javax.management.openmbean.CompositeData;
 import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.List;
@@ -90,8 +92,9 @@ class PlatformTracingJmxRegistrarIntegrationTest {
     void samplingMBeanReflectsAcceptedPolicy() throws Exception {
         wireMinimal();
 
-        double ratio = (double) server.getAttribute(
-                PlatformTracingObjectNames.SAMPLING, "SamplingRatio");
+        CompositeData observation = (CompositeData) server.getAttribute(
+                PlatformTracingObjectNames.SAMPLING, "SamplingObservation");
+        double ratio = (double) observation.get(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO);
         assertThat(ratio).isEqualTo(0.2d);
     }
 

@@ -5,13 +5,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.lang.ArchRule;
 
-/**
- * Positive/negative dependency boundaries вокруг {@code diagnostics.health.startup}: чистое startup-ядро
- * (snapshot/outcome/indicator) изолировано от Spring wiring и OTel SDK, а единственная adapter-точка
- * ({@code TracingStartupContractHealthAutoConfiguration}) сама ограничена узким allowlist'ом platform
- * runtime-типов. {@code autoconfigFqcn} параметризован, чтобы Rule B и Rule D можно было доказательно
- * проверить на invalid-фикстурах без коллизии FQCN с production-классом на test classpath.
- */
 final class TracingStartupContractHealthDependencyRules {
 
     static final String STARTUP_PACKAGE = "..autoconfigure.diagnostics.health.startup..";
@@ -23,13 +16,13 @@ final class TracingStartupContractHealthDependencyRules {
     private TracingStartupContractHealthDependencyRules() {
     }
 
-    /** Rule A: startup-ядро (всё, кроме AutoConfiguration) зависит только от java.*, Actuator health и себя. */
     static ArchRule coreDependencyBoundary(String autoconfigFqcn) {
         return classes()
                 .that().resideInAPackage(STARTUP_PACKAGE)
                 .and().doNotHaveFullyQualifiedName(autoconfigFqcn)
                 .should().onlyDependOnClassesThat().resideInAnyPackage(
                         "java..",
+                        "lombok..",
                         "org.springframework.boot.actuate.health..",
                         STARTUP_PACKAGE);
     }

@@ -68,6 +68,13 @@ sourceSets {
             srcDir 'src/privateMBeanServerApp/resources'
         }
     }
+    domainObservationE2e {
+        java {
+            srcDir 'src/domainObservationE2e/java'
+        }
+        compileClasspath += sourceSets.test.compileClasspath
+        runtimeClasspath += sourceSets.test.runtimeClasspath
+    }
 }
 
 configurations {
@@ -94,6 +101,16 @@ dependencies {
     testImplementation project(':platform-tracing-otel')
     testImplementation project(':platform-tracing-otel-javaagent-extension')
     testImplementation project(':platform-tracing-collector-config')
+
+    // Autoconfigure только для domain-observation cross-CL E2E: общий test classpath
+    // не должен тянуть TracingRuntimeAutoConfiguration (ломает agent smoke Spring contexts).
+    domainObservationE2eImplementation platform(project(':platform-tracing-bom'))
+    domainObservationE2eImplementation project(':platform-tracing-spring-boot-autoconfigure')
+    domainObservationE2eImplementation project(':platform-tracing-otel-javaagent-extension')
+    domainObservationE2eImplementation project(':platform-tracing-otel')
+    domainObservationE2eImplementation project(':platform-tracing-api')
+    domainObservationE2eImplementation 'org.junit.jupiter:junit-jupiter'
+    domainObservationE2eImplementation 'org.assertj:assertj-core'
 
     // OpenTelemetry SDK + OTLP exporter.
     testImplementation 'io.opentelemetry:opentelemetry-sdk'
@@ -291,6 +308,7 @@ test {
     // fixture JARs owned by privateMBeanServerTest / privateMBeanServerVerify.
     filter {
         excludeTestsMatching 'space.br1440.platform.tracing.e2e.jmx.PrivateMBeanServerIsolationE2ETest'
+        excludeTestsMatching 'space.br1440.platform.tracing.e2e.jmx.DomainObservationCrossClassLoaderE2ETest'
     }
     doFirst {
         systemProperty 'otel.javaagent.jar', configurations.otelJavaAgent.singleFile.absolutePath
@@ -332,6 +350,31 @@ tasks.register('testPrivateMBeanServerExtensionJar', Jar) {
 
 tasks.named('processPrivateMBeanServerExtensionResources') {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.register('domainObservationE2eTest', Test) {
+    group = 'verification'
+    description = 'Cross-classloader round-trip for six domain JMX observations (agent CL encode → app CL decode).'
+    dependsOn domainObservationE2eClasses,
+            ':platform-tracing-otel-javaagent-extension:agentExtensionJar',
+            ':platform-tracing-otel:jar',
+            ':platform-tracing-api:jar'
+    testClassesDirs = sourceSets.domainObservationE2e.output.classesDirs
+    classpath = sourceSets.domainObservationE2e.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.e2e.jmx.DomainObservationCrossClassLoaderE2ETest'
+    }
+    doFirst {
+        systemProperty 'smoke.otel.extension.jar',
+                project(':platform-tracing-otel-javaagent-extension').tasks.named('agentExtensionJar')
+                        .get().archiveFile.get().asFile.absolutePath
+        systemProperty 'smoke.platform.otel.jar',
+                project(':platform-tracing-otel').tasks.named('jar').get().archiveFile.get().asFile.absolutePath
+        systemProperty 'smoke.platform.api.jar',
+                project(':platform-tracing-api').tasks.named('jar').get().archiveFile.get().asFile.absolutePath
+    }
 }
 
 tasks.register('privateMBeanServerTest', Test) {

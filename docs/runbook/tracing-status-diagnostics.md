@@ -73,15 +73,23 @@ Secret-safe accepted Category A policy проецируется прямо в с
 | `implementation` | FQCN реализации `TraceOperations` (facade vs NoOp) |
 | `mode` / `reason` | режим `TracingRuntime` и причина (если применимо) |
 | `currentTraceId` / `currentSpanId` | текущий контекст трассировки (если есть активный span) |
-| `domainMBeansAvailable` | доступны ли все domain MBean через `PlatformTracingJmxClient` |
-| `sampling` | live JMX: `enabled`, `ratio`, `routeRatioCount`, `configVersion`, `configSource`, `invalidConfigCount`, `decisions` |
-| `validation` | live JMX: `enabled`, `strict`, `strictRuntimeAllowed`, `configVersion`, `configSource` |
-| `scrubbing` | live JMX: `enabled`, `configVersion`, `configSource`, `ruleCount` |
-| `export` | export-метрики агента (`PlatformTracingJmxClient#getExportMetrics`) |
-| `processorErrorsTotal` / `processorErrorsByName` | счётчики ошибок процессоров |
-| `configurationReload` | метрики reload конфигурации |
+| `domainMBeansAvailable` | доступны ли все domain MBean (tri-state registration snapshot → агрегат) |
+| `sampling` / `validation` / `scrubbing` / `export` / `processorMetrics` | live decode шести domain observation через grouped accessors `PlatformTracingJmxClient#sampling()`…; при absent owner поля владельца — `null`/не экспортируются, а не sentinel |
+| `configurationReload` | метрики reload конфигурации из Diagnostics observation |
+| `jmxContractDiagnostics` | lifetime/unrecovered снимки contract violation и execution failure по `JmxContractPoint` |
 
-Все значения `sampling`/`validation`/`scrubbing`/`export`/`processorErrors*`/`configurationReload` читаются **live** через `PlatformTracingJmxClient` из реальных domain MBean агента — без Spring desired mirrors и без generic dump эффективной SDK/agent конфигурации.
+Все значения читаются **live** через композиционный фасад `PlatformTracingJmxClient` → `*JmxView` → `JmxReadExecutor` из реальных domain MBean агента — без Spring desired mirrors и без generic dump эффективной SDK/agent конфигурации.
+
+### Семантика Micrometer / presence (см. ADR)
+
+- Point-in-time gauges: значение при успехе, `NaN` при недоступном чтении (`Absent` / `ContractViolation` / `ExecutionFailure`).
+- `platform.tracing.jmx.domain.registered{domain}` — tri-state `1` / `0` / `NaN`.
+- `platform.tracing.jmx.domain.readable{domain}` — успех decode **целого** domain observation.
+- `platform.tracing.jmx.owner.present{domain,owner}` — `1` / `0` / `NaN` (NaN когда сам домен нечитаем).
+- `platform.tracing.jmx.domain.last_success_age_seconds{domain}` — `NaN` до первого успеха.
+- Различение причин отказа — в `jmxContractDiagnostics` и registration/readable, не в значении основной gauge-серии.
+
+См. [ADR-jmx-observation-wire-contract](../decisions/ADR-jmx-observation-wire-contract.md), [ADR-jmx-source-identity-model](../decisions/ADR-jmx-source-identity-model.md), [ADR-jmx-absent-owner-encoding](../decisions/ADR-jmx-absent-owner-encoding.md).
 
 ## Секция `policy`
 

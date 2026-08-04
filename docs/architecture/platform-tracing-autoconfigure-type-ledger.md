@@ -61,6 +61,21 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractSnapshot` | startup-contract | DONE (package-private valid-by-construction record; single source of truth consumed by both indicator and future diagnostics projections) |
 | `space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxClient` | MOVE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.jmx.PlatformTracingJmxObjectNames` | MOVE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames` | S6b | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.JmxOwnerState` | jmx-domain-split | DONE (sealed Present/Absent; absence discriminator decode) |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.JmxMBeanRegistrationSnapshot` | jmx-domain-split | DONE (tri-state registration of six domains) |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.SamplingJmxView` | jmx-domain-split | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ScrubbingJmxView` | jmx-domain-split | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ValidationJmxView` | jmx-domain-split | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ExportJmxView` | jmx-domain-split | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ProcessorMetricsJmxView` | jmx-domain-split | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsJmxView` | jmx-domain-split | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.*Observation` / `*Values` | jmx-domain-split | DONE (domain decode DTOs) |
+| `…diagnostics.jmx.*Observation` / `*Values` (кроме DiagnosticsObservation) | MOVE | `…diagnostics.jmx.{sampling,scrubbing,validation,export,processor}.*` | jmx-package-split | DONE (read-model DTO only; views stay in root) |
+| `…diagnostics.jmx.JmxOwnerState` | MOVE | `…diagnostics.jmx.wire.JmxOwnerState` | jmx-package-split | DONE (breaks root↔transport package cycle) |
+| `…diagnostics.jmx.observation.JmxObservationWireContract` | MOVE | `…diagnostics.jmx.wire.JmxObservationWireContract` | jmx-package-split | DONE (app-CL mirror; see ADR-jmx-observation-wire-contract) |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxObservationCodec` | jmx-domain-split | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.*` | jmx-domain-split | DONE (`JmxReadExecutor`, descriptors, diagnostics registry) |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingJmxDomainHealthMetricsBinder` | jmx-domain-split | DONE (package-private binder; registered/readable/owner.present/freshness) |
 | `space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.CandidateDigest` | MOVE | `space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.CandidateDigest` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator` | MOVE | `space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec` | MOVE | `space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec` | S6b | DONE |

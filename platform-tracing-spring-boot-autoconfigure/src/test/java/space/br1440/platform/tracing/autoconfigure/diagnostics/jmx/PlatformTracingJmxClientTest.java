@@ -4,8 +4,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.SamplingObservation;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxDiagnosticSnapshot;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport.JmxMBeanRegistrationState;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
@@ -14,13 +19,10 @@ import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Contract tests for {@link PlatformTracingJmxClient}: availability detection
- * and graceful read degradation when domain MBeans are absent.
- */
 class PlatformTracingJmxClientTest {
 
     private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
@@ -48,91 +50,75 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void allMBeansAvailable_false_если_ни_один_не_зарегистрирован() {
-        assertThat(client.allMBeansAvailable()).isFalse();
+    void registrationSnapshot_все_NOT_REGISTERED_если_ни_один_MBean_не_зарегистрирован() {
+        JmxMBeanRegistrationSnapshot snapshot = client.registrationSnapshot();
+        assertThat(snapshot.allRegistered()).isFalse();
+        assertThat(snapshot.sampling()).isEqualTo(JmxMBeanRegistrationState.NOT_REGISTERED);
+        assertThat(snapshot.diagnostics()).isEqualTo(JmxMBeanRegistrationState.NOT_REGISTERED);
     }
 
     @Test
-    void getCurrentRatio_возвращает_empty_если_sampling_недоступен() {
-        assertThat(client.getCurrentRatio()).isEmpty();
+    void sampling_observation_пусто_если_MBean_недоступен() {
+        assertThat(client.sampling().observation()).isEmpty();
     }
 
     @Test
-    void isSamplerEnabled_возвращает_empty_если_недоступен() {
-        assertThat(client.isSamplerEnabled()).isEmpty();
+    void scrubbing_observation_пусто_если_MBean_недоступен() {
+        assertThat(client.scrubbing().observation()).isEmpty();
     }
 
     @Test
-    void getLiveRouteRatioCount_возвращает_empty_если_недоступен() {
-        assertThat(client.getLiveRouteRatioCount()).isEmpty();
+    void diagnostics_observation_пусто_если_MBean_недоступен() {
+        assertThat(client.diagnostics().observation()).isEmpty();
     }
 
     @Test
-    void getLiveRouteRatioCount_возвращает_ноль_для_пустой_карты() throws Exception {
-        registerSamplingMBean();
-        assertThat(client.getLiveRouteRatioCount()).contains(0);
+    void export_observation_пусто_если_MBean_недоступен() {
+        assertThat(client.export().observation()).isEmpty();
     }
 
     @Test
-    void getSamplerDecisionCounts_возвращает_пустую_карту_если_недоступен() {
-        assertThat(client.getSamplerDecisionCounts()).isEmpty();
+    void jmxContractDiagnostics_пуст_до_первого_нарушения_контракта() {
+        List<JmxDiagnosticSnapshot> diagnostics = client.jmxContractDiagnostics();
+        assertThat(diagnostics).isEmpty();
     }
 
     @Test
-    void getInvalidConfigCount_возвращает_empty_если_diagnostics_недоступен() {
-        assertThat(client.getInvalidConfigCount()).isEmpty();
-    }
-
-    @Test
-    void getScrubbingMetrics_возвращает_пустую_карту_если_недоступен() {
-        assertThat(client.getScrubbingMetrics()).isEmpty();
-    }
-
-    @Test
-    void getProcessorErrorsByName_возвращает_пустую_карту_если_недоступен() {
-        assertThat(client.getProcessorErrorsByName()).isEmpty();
-    }
-
-    @Test
-    void getConfigAuditTrail_возвращает_пустой_список_если_недоступен() {
-        assertThat(client.getConfigAuditTrail()).isEmpty();
-    }
-
-    @Test
-    void isSamplerEnabled_возвращает_присутствующее_значение_после_регистрации() throws Exception {
+    void sampling_observation_возвращает_значение_после_регистрации() throws Exception {
         registerSamplingMBean();
 
-        Optional<Boolean> enabled = client.isSamplerEnabled();
-        assertThat(enabled).isPresent();
-        assertThat(enabled.get()).isTrue();
+        Optional<SamplingObservation> observation = client.sampling().observation();
+        assertThat(observation).isPresent();
+        assertThat(observation.get().samplerEnabled()).isTrue();
+        assertThat(observation.get().samplingRatio()).isEqualTo(0.42d);
+        assertThat(observation.get().liveRouteRatioCount()).isZero();
     }
 
     @Test
-    void getCurrentRatio_возвращает_значение_если_sampling_зарегистрирован() throws Exception {
+    void registrationSnapshot_REGISTERED_только_для_sampling_после_его_регистрации() throws Exception {
         registerSamplingMBean();
 
-        Optional<Double> ratio = client.getCurrentRatio();
-        assertThat(ratio).isPresent();
-        assertThat(ratio.get()).isEqualTo(0.42d);
+        JmxMBeanRegistrationSnapshot snapshot = client.registrationSnapshot();
+        assertThat(snapshot.sampling()).isEqualTo(JmxMBeanRegistrationState.REGISTERED);
+        assertThat(snapshot.allRegistered()).isFalse();
     }
 
     @Test
-    void allMBeansAvailable_false_после_регистрации_только_sampling() throws Exception {
+    void decisionCounts_owner_absent_если_composite_sampler_не_подключён() throws Exception {
         registerSamplingMBean();
-        assertThat(client.allMBeansAvailable()).isFalse();
-        assertThat(client.isSamplerEnabled()).isPresent();
-    }
 
-    @Test
-    void isAvailable_является_алиасом_allMBeansAvailable() {
-        assertThat(client.isAvailable()).isEqualTo(client.allMBeansAvailable());
+        Optional<SamplingObservation> observation = client.sampling().observation();
+        assertThat(observation).isPresent();
+        assertThat(observation.get().decisionCounts()).isInstanceOf(JmxOwnerState.Absent.class);
     }
 
     private void registerSamplingMBean() throws Exception {
         AcceptedPolicyAccess acceptedPolicy = AcceptedPolicyAccess.isolatedSampling(
-                true, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), 0.42d);
-        CompositeSampler sampler = new CompositeSampler(acceptedPolicy);
-        PlatformSamplingControl impl = new PlatformSamplingControl(acceptedPolicy, sampler);
+                true, Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), 0.42d
+        );
+
+        OwnerRegistrationSlot<CompositeSampler> slot = new OwnerRegistrationSlot<>();
+        PlatformSamplingControl impl = new PlatformSamplingControl(acceptedPolicy, slot, UUID.randomUUID());
         server.registerMBean(impl, PlatformTracingObjectNames.SAMPLING);
     }
 }

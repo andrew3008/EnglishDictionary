@@ -9,11 +9,13 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
+import javax.management.openmbean.CompositeData;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -21,10 +23,6 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Verifies that {@link PlatformSpanProcessorFactory#registerSpanProcessors}
- * registers read-only domain MBeans and does not register legacy control protocol.
- */
 class PlatformSpanProcessorFactoryWiringTest {
 
     private MBeanServer privateMBeanServer;
@@ -106,8 +104,9 @@ class PlatformSpanProcessorFactoryWiringTest {
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(), minimalExtensionConfig(), minimalConfig());
 
-        double ratio = (double) privateMBeanServer.getAttribute(
-                PlatformTracingObjectNames.SAMPLING, "SamplingRatio");
+        CompositeData observation = (CompositeData) privateMBeanServer.getAttribute(
+                PlatformTracingObjectNames.SAMPLING, "SamplingObservation");
+        double ratio = (double) observation.get(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO);
         assertThat(ratio).isEqualTo(0.1d);
     }
 

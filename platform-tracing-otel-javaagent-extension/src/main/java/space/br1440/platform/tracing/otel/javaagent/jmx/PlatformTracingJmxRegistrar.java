@@ -1,11 +1,14 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx;
 
 import lombok.extern.slf4j.Slf4j;
+
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.PlatformDiagnosticsControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.export.PlatformExportControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.metrics.PlatformProcessorMetricsControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessMBean;
 import space.br1440.platform.tracing.otel.javaagent.jmx.sampling.PlatformSamplingControl;
@@ -27,49 +30,31 @@ import javax.management.StandardMBean;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
-/**
- * Atomic batch JMX registrar for all platform-tracing MBeans.
- *
- * <p>Registration is deferred until the accepted policy and sampler phase are available.
- * The batch is all-or-nothing:
- * if any single registration fails the already-registered MBeans are
- * rolled back automatically.
- *
- * <h2>MBeans registered (in order)</h2>
- * <ol>
- *   <li>PlatformSamplingControl (read-only)</li>
- *   <li>PlatformScrubbingControl (read-only after P6.6; Category B mutation removed P6.7)</li>
- *   <li>PlatformValidationControl (read-only)</li>
- *   <li>PlatformExportControl (read-only)</li>
- *   <li>PlatformProcessorMetricsControl</li>
- *   <li>PlatformDiagnosticsControl (read-only)</li>
- * </ol>
- *
- * <p>P6.5/P6.6: legacy platform {@code PlatformControlProtocolMBean.applyPolicy} is not
- * registered here. E7 read-only Control projection is owned by
- * {@code PrivateControlMBeanServerOwner} on the platform MBeanServer.
- */
 @Slf4j
 public final class PlatformTracingJmxRegistrar {
 
     private final MBeanServer mbeanServer;
     private final PlatformExtensionReadiness extensionReadiness;
     private final AtomicBoolean shutdownHookInstalled = new AtomicBoolean();
-    final         LongAdder   sharedInvalidConfigCounter = new LongAdder();
+    final LongAdder sharedInvalidConfigCounter = new LongAdder();
 
-    private final AtomicReference<AcceptedPolicyAccess>                  registeredAcceptedPolicy  = new AtomicReference<>();
-    private final AtomicReference<CompositeSampler>                      registeredCompositeSampler = new AtomicReference<>();
-    private final AtomicReference<SpanWatchdogProcessor>                 registeredWatchdog        = new AtomicReference<>();
-    private final AtomicReference<PlatformCompositeSpanProcessor>        registeredComposite       = new AtomicReference<>();
-    private final AtomicReference<MetricsSpanProcessor>                  registeredMetrics         = new AtomicReference<>();
-    private final AtomicReference<ScrubbingSpanProcessor>                registeredScrubbing       = new AtomicReference<>();
-    private final AtomicReference<ValidatingSpanProcessor>               registeredValidating      = new AtomicReference<>();
-    private final AtomicReference<PlatformDropOldestExportSpanProcessor> registeredExportProcessor = new AtomicReference<>();
-    private final AtomicReference<SafeSpanExporter>                      registeredSafeExporter    = new AtomicReference<>();
+    private final UUID agentInstanceId = UUID.randomUUID();
+
+    private final AtomicReference<AcceptedPolicyAccess> registeredAcceptedPolicy = new AtomicReference<>();
+
+    private final OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<MetricsSpanProcessor> metricsSlot = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<ScrubbingSpanProcessor> scrubbingSlot = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<ValidatingSpanProcessor> validatingSlot = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> exportProcessorSlot = new OwnerRegistrationSlot<>();
+    private final OwnerRegistrationSlot<SafeSpanExporter> safeExporterSlot = new OwnerRegistrationSlot<>();
 
     private volatile boolean mbeansRegistered;
 
@@ -93,48 +78,48 @@ public final class PlatformTracingJmxRegistrar {
 
     public void setAcceptedPolicy(AcceptedPolicyAccess acceptedPolicy) {
         registeredAcceptedPolicy.set(acceptedPolicy);
-        if (registeredCompositeSampler.get() != null) {
+        if (compositeSamplerSlot.capture() instanceof OwnerRegistrationState.Present<CompositeSampler>) {
             tryRegisterMBeans();
         }
     }
 
     public void setCompositeSampler(CompositeSampler compositeSampler) {
-        registeredCompositeSampler.set(compositeSampler);
+        compositeSamplerSlot.replace(compositeSampler);
         tryRegisterMBeans();
     }
 
     public void setWatchdog(SpanWatchdogProcessor watchdog) {
-        registeredWatchdog.set(watchdog);
+        watchdogSlot.replace(watchdog);
         tryRegisterMBeans();
     }
 
     public void setComposite(PlatformCompositeSpanProcessor composite) {
-        registeredComposite.set(composite);
+        compositeSlot.replace(composite);
         tryRegisterMBeans();
     }
 
     public void setMetrics(MetricsSpanProcessor metrics) {
-        registeredMetrics.set(metrics);
+        metricsSlot.replace(metrics);
         tryRegisterMBeans();
     }
 
     public void setScrubbing(ScrubbingSpanProcessor scrubbing) {
-        registeredScrubbing.set(scrubbing);
+        scrubbingSlot.replace(scrubbing);
         tryRegisterMBeans();
     }
 
     public void setValidating(ValidatingSpanProcessor validating) {
-        registeredValidating.set(validating);
+        validatingSlot.replace(validating);
         tryRegisterMBeans();
     }
 
     public void setExportProcessor(PlatformDropOldestExportSpanProcessor exportProcessor) {
-        registeredExportProcessor.set(exportProcessor);
+        exportProcessorSlot.replace(exportProcessor);
         tryRegisterMBeans();
     }
 
     public void setSafeExporter(SafeSpanExporter safeExporter) {
-        registeredSafeExporter.set(safeExporter);
+        safeExporterSlot.replace(safeExporter);
         tryRegisterMBeans();
     }
 
@@ -142,19 +127,14 @@ public final class PlatformTracingJmxRegistrar {
     // Accessors
     // =========================================================================
 
-    public PlatformDropOldestExportSpanProcessor getExportProcessor() {
-        return registeredExportProcessor.get();
+    public OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> exportProcessorSlot() {
+        return exportProcessorSlot;
     }
 
-    public SafeSpanExporter getSafeExporter() {
-        return registeredSafeExporter.get();
+    public OwnerRegistrationSlot<SafeSpanExporter> safeExporterSlot() {
+        return safeExporterSlot;
     }
 
-    /**
-     * Exposes the shared invalid-config counter so
-     * {@link space.br1440.platform.tracing.otel.javaagent.factory.PlatformSpanProcessorFactory}
-     * can pass it to the control-protocol applier without duplicating state.
-     */
     public LongAdder sharedInvalidConfigCounter() {
         return sharedInvalidConfigCounter;
     }
@@ -174,16 +154,11 @@ public final class PlatformTracingJmxRegistrar {
         Runtime.getRuntime().addShutdownHook(cleanup);
     }
 
-    /**
-     * Builds a fresh {@link PlatformSamplingControl} backed by the
-     * current accepted policy and shared counter.
-     *
-     * <p>Used by the factory and integration tests.
-     */
     public PlatformSamplingControl buildSamplingControl() {
         return new PlatformSamplingControl(
                 registeredAcceptedPolicy.get(),
-                registeredCompositeSampler.get());
+                compositeSamplerSlot,
+                agentInstanceId);
     }
 
     // =========================================================================
@@ -223,14 +198,11 @@ public final class PlatformTracingJmxRegistrar {
 
         Object[] mbeans = {
                 buildSamplingControl(),
-                new PlatformScrubbingControl(registeredScrubbing.get()),
-                new PlatformValidationControl(registeredValidating.get()),
-                new PlatformExportControl(this::getExportProcessor, this::getSafeExporter),
-                new PlatformProcessorMetricsControl(
-                        registeredWatchdog.get(),
-                        registeredComposite.get(),
-                        registeredMetrics.get()),
-                new PlatformDiagnosticsControl(sharedInvalidConfigCounter)
+                new PlatformScrubbingControl(scrubbingSlot, agentInstanceId),
+                new PlatformValidationControl(validatingSlot, agentInstanceId),
+                new PlatformExportControl(exportProcessorSlot, safeExporterSlot, agentInstanceId),
+                new PlatformProcessorMetricsControl(watchdogSlot, compositeSlot, metricsSlot, agentInstanceId),
+                new PlatformDiagnosticsControl(sharedInvalidConfigCounter, agentInstanceId)
         };
         ObjectName[] names = {
                 PlatformTracingObjectNames.SAMPLING,
@@ -256,12 +228,12 @@ public final class PlatformTracingJmxRegistrar {
 
         if (primaryFailure != null) {
             log.error("Domain MBean batch registration did not complete "
-                    + "— rolling back {} MBean(s): {}",
+                            + "— rolling back {} MBean(s): {}",
                     registered.size(), primaryFailure.getMessage());
             rollback(server, registered, primaryFailure);
         } else {
             log.info("Domain MBeans registered (read-only): sampling={}, scrubbing={}, validation={}, "
-                    + "export={}, processorMetrics={}, diagnostics={}",
+                            + "export={}, processorMetrics={}, diagnostics={}",
                     PlatformTracingObjectNames.SAMPLING_OBJECT_NAME_STR,
                     PlatformTracingObjectNames.SCRUBBING_OBJECT_NAME_STR,
                     PlatformTracingObjectNames.VALIDATION_OBJECT_NAME_STR,
@@ -294,16 +266,20 @@ public final class PlatformTracingJmxRegistrar {
     }
 
     private static void rollback(MBeanServer server,
-                                  List<ObjectName> toRollback,
-                                  Throwable cause) {
+                                 List<ObjectName> toRollback,
+                                 Throwable cause) {
         PlatformTracingJmxRegistrationException ex =
                 new PlatformTracingJmxRegistrationException(
                         "Domain MBean batch JMX registration failed: " + cause.getMessage(),
                         cause);
         for (int i = toRollback.size() - 1; i >= 0; i--) {
-            try { server.unregisterMBean(toRollback.get(i)); }
-            catch (Exception re) { ex.addSuppressed(re); }
+            try {
+                server.unregisterMBean(toRollback.get(i));
+            } catch (Exception re) {
+                ex.addSuppressed(re);
+            }
         }
+
         throw ex;
     }
 
@@ -315,5 +291,4 @@ public final class PlatformTracingJmxRegistrar {
             log.debug("Failed to unregister MBean {}: {}", name, e.getMessage());
         }
     }
-
 }

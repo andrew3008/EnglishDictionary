@@ -1,60 +1,102 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Optional;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.sampling.SamplingObservation;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
 
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
-import lombok.RequiredArgsConstructor;
 
-@RequiredArgsConstructor
 final class PlatformTracingSamplerMetricsBinder implements MeterBinder {
 
     private static final String METRIC_NAME = "platform.tracing.sampler.decisions";
+    private static final String DOMAIN = "sampling";
+    private static final String OWNER = "sampler";
 
     private final PlatformTracingJmxClient client;
+    private final CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource;
+    private final MonotonicJmxCounterGroupBridge<SamplerDecisionKey> decisionBridge;
+
+    PlatformTracingSamplerMetricsBinder(PlatformTracingJmxClient client,
+                                        CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource) {
+        this(client, diagnosticsSource, System::nanoTime);
+    }
+
+    PlatformTracingSamplerMetricsBinder(PlatformTracingJmxClient client,
+                                        CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource,
+                                        MonotonicJmxCounterGroupBridge.Ticker ticker) {
+        this.client = client;
+        this.diagnosticsSource = diagnosticsSource;
+        this.decisionBridge = new MonotonicJmxCounterGroupBridge<>(
+                SamplerDecisionKey.class, this::decisionCounts, this::samplingAgentInstanceId, ticker,
+                MonotonicJmxCounterGroupBridge.DEFAULT_COALESCING_WINDOW_NANOS
+        );
+    }
 
     @Override
     public void bindTo(@Nonnull MeterRegistry registry) {
-        String[] sampledReasons = {
-                PlatformSamplingReasons.FORCE_HEADER,
-                PlatformSamplingReasons.QA_TRACE,
-                PlatformSamplingReasons.PARENT_SAMPLED,
-                PlatformSamplingReasons.ROUTE_RATIO,
-                PlatformSamplingReasons.GLOBAL_RATIO
-        };
-
-        String[] droppedReasons = {
-                PlatformSamplingReasons.KILL_SWITCH,
-                PlatformSamplingReasons.DROP_PATH,
-                PlatformSamplingReasons.PARENT_DROP,
-                PlatformSamplingReasons.ROUTE_RATIO_DROP,
-                PlatformSamplingReasons.GLOBAL_RATIO_DROP,
-                PlatformSamplingReasons.FALLBACK_DROP
-        };
-
-        for (String reason : sampledReasons) {
-            FunctionCounter.builder(METRIC_NAME, client,
-                            c -> c.getSamplerDecisionCount("RECORD_AND_SAMPLE", reason).orElse(0L).doubleValue())
-                    .tags("decision", "sampled", "reason", reason)
+        for (SamplerDecisionKey key : SamplerDecisionKey.values()) {
+            FunctionCounter.builder(METRIC_NAME, decisionBridge, bridge -> bridge.count(key))
+                    .tags("decision", key.decision().equals("RECORD_AND_SAMPLE") ? "sampled" : "dropped",
+                            "reason", key.reason())
                     .description("Number of sampling decisions")
+                    .register(registry);
+
+            FunctionCounter.builder(MonotonicJmxCounterGroupBridge.ANOMALY_METRIC_NAME, decisionBridge, bridge -> bridge.anomalyCount(key))
+                    .tags("domain", DOMAIN, "owner", OWNER, "metric", key.wireKey())
+                    .description("Backward-moving cumulative JMX values observed for a single owner generation")
                     .register(registry);
         }
 
-        for (String reason : droppedReasons) {
-            FunctionCounter.builder(METRIC_NAME, client,
-                            c -> c.getSamplerDecisionCount("DROP", reason).orElse(0L).doubleValue())
-                    .tags("decision", "dropped", "reason", reason)
-                    .description("Number of sampling decisions")
+        for (MonotonicJmxCounterGroupBridge.ResetCause cause : MonotonicJmxCounterGroupBridge.ResetCause.values()) {
+            FunctionCounter.builder(MonotonicJmxCounterGroupBridge.RESET_METRIC_NAME, decisionBridge, bridge -> bridge.resetCount(cause))
+                    .tags("domain", DOMAIN, "owner", OWNER, "cause", cause.tag())
+                    .description("Source identity resets observed for a cumulative JMX counter group")
                     .register(registry);
         }
 
-        FunctionCounter.builder("platform.tracing.sampling.invalid_config", client,
-                        c -> c.getInvalidConfigCount().orElse(0L).doubleValue())
+        FunctionCounter.builder("platform.tracing.sampling.invalid_config", diagnosticsSource,
+                        PlatformTracingSamplerMetricsBinder::invalidConfigCount)
                 .description("Number of failed configuration update attempts (e.g. invalid ratio)")
                 .register(registry);
+    }
+
+    private Optional<JmxOwnerState<Map<SamplerDecisionKey, Long>>> decisionCounts() {
+        return client.sampling().observation()
+                .map(SamplingObservation::decisionCounts)
+                .map(PlatformTracingSamplerMetricsBinder::toEnumKeyedState);
+    }
+
+    private String samplingAgentInstanceId() {
+        return client.sampling().observation()
+                .map(SamplingObservation::agentInstanceId)
+                .orElseGet(MonotonicJmxCounterGroupBridge.LOCAL_PROCESS_IDENTITY);
+    }
+
+    private static JmxOwnerState<Map<SamplerDecisionKey, Long>> toEnumKeyedState(JmxOwnerState<Map<String, Long>> state) {
+        if (!(state instanceof JmxOwnerState.Present<Map<String, Long>>(Map<String, Long> values, long generation))) {
+            return new JmxOwnerState.Absent<>(state.generation());
+        }
+
+        Map<SamplerDecisionKey, Long> keyed = new EnumMap<>(SamplerDecisionKey.class);
+        for (SamplerDecisionKey key : SamplerDecisionKey.values()) {
+            keyed.put(key, values.getOrDefault(key.wireKey(), 0L));
+        }
+
+        return new JmxOwnerState.Present<>(keyed, generation);
+    }
+
+    private static double invalidConfigCount(CoalescingJmxObservationSource<DiagnosticsObservation> diagnosticsSource) {
+        return diagnosticsSource.get()
+                .map(DiagnosticsObservation::invalidConfigCount)
+                .orElse(0L)
+                .doubleValue();
     }
 }

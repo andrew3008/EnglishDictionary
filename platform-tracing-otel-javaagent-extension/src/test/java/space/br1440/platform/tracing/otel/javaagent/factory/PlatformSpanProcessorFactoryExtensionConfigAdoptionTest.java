@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.MetricsSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
@@ -16,23 +18,13 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Verifies that {@link PlatformSpanProcessorFactory} reads migrated domains from
- * {@link ExtensionConfig} rather than directly from {@link ConfigProperties}.
- * <p>
- * Testing strategy: pass an ExtensionConfig with known values, then verify
- * the JMX registrar captures the expected processors via reflection on
- * {@link PlatformTracingJmxRegistrar}'s AtomicReference fields.
- */
 class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
     // ---------- helpers ----------
 
-    /** An empty ConfigProperties stub — scrubbing.enabled will be false via ExtensionConfig stub. */
     private static ConfigProperties scrubbingDisabledConfig() {
         return new ConfigProperties() {
             @Override public String getString(String name) { return null; }
@@ -111,26 +103,28 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     // ---- reflection helpers to inspect JMX registrar internal state ----
 
     @SuppressWarnings("unchecked")
-    private static <T> T registrarField(PlatformTracingJmxRegistrar reg, String fieldName) throws Exception {
+    private static <T> T registrarSlotOwner(PlatformTracingJmxRegistrar reg, String fieldName) throws Exception {
         Field f = PlatformTracingJmxRegistrar.class.getDeclaredField(fieldName);
         f.setAccessible(true);
-        return ((AtomicReference<T>) f.get(reg)).get();
+        OwnerRegistrationSlot<T> slot = (OwnerRegistrationSlot<T>) f.get(reg);
+        OwnerRegistrationState<T> state = slot.capture();
+        return state instanceof OwnerRegistrationState.Present<T> present ? present.owner() : null;
     }
 
     private static MetricsSpanProcessor getMetrics(PlatformTracingJmxRegistrar r) throws Exception {
-        return registrarField(r, "registeredMetrics");
+        return registrarSlotOwner(r, "metricsSlot");
     }
 
     private static SpanWatchdogProcessor getWatchdog(PlatformTracingJmxRegistrar r) throws Exception {
-        return registrarField(r, "registeredWatchdog");
+        return registrarSlotOwner(r, "watchdogSlot");
     }
 
     private static ValidatingSpanProcessor getValidating(PlatformTracingJmxRegistrar r) throws Exception {
-        return registrarField(r, "registeredValidating");
+        return registrarSlotOwner(r, "validatingSlot");
     }
 
     private static PlatformCompositeSpanProcessor getComposite(PlatformTracingJmxRegistrar r) throws Exception {
-        return registrarField(r, "registeredComposite");
+        return registrarSlotOwner(r, "compositeSlot");
     }
 
     // ---------- tests ----------

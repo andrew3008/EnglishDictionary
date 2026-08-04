@@ -1,26 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.metrics;
 
-import java.util.Map;
+import javax.management.openmbean.CompositeData;
 
-@SuppressWarnings("unused")
 public interface PlatformProcessorMetricsControlMBean {
 
-    long getForcedSpanCloses();
-
-    long getForcedTraceCloses();
-
-    int getActiveSpanCount();
-
-    int getActiveTraceCount();
-
-    long getProcessorErrorsTotal();
-
-    Map<String, Long> getProcessorErrorsByName();
-
-    long getDroppedAttributesTotal();
-
-    long getDroppedEventsTotal();
-
-    long getDroppedLinksTotal();
+    CompositeData getProcessorMetricsObservation();
 
 }

@@ -16,6 +16,9 @@
 | Public API governance | [ADR-public-api-allowlist](./ADR-public-api-allowlist.md) | Accepted |
 | OTel ↔ API package alignment | [ADR-otel-api-package-alignment](./ADR-otel-api-package-alignment.md) | Accepted (PA-0) |
 | Control protocol | [ADR-control-protocol-version-model](./ADR-control-protocol-version-model.md) | Accepted |
+| JMX observation wire-контракт | [ADR-jmx-observation-wire-contract](./ADR-jmx-observation-wire-contract.md) | Принято |
+| JMX source identity (agentInstanceId, generation) | [ADR-jmx-source-identity-model](./ADR-jmx-source-identity-model.md) | Принято |
+| JMX absent-owner encoding | [ADR-jmx-absent-owner-encoding](./ADR-jmx-absent-owner-encoding.md) | Принято |
 
 Остальные Accepted ADR уточняют отдельные контракты, включая lifecycle, propagation, semconv, exporter и Micrometer boundaries. При противоречии со старым target-architecture документом применяется [финальная архитектура](./ADR-platform-tracing-final-architecture.md).
 

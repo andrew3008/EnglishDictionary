@@ -1,8 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.binder.MeterBinder;
-
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -12,11 +9,14 @@ import org.springframework.context.annotation.Bean;
 
 import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration;
 import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
 
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.binder.MeterBinder;
 
 @AutoConfiguration
 @AutoConfigureBefore(value = TracingAopAutoConfiguration.class,
@@ -57,22 +57,59 @@ public class TracingMetricsAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(PlatformTracingJmxClient.class)
+    @ConditionalOnMissingBean
+    CoalescingJmxObservationSource<DiagnosticsObservation> platformTracingDiagnosticsCaptureSource(PlatformTracingJmxClient platformTracingJmxClient) {
+        return new CoalescingJmxObservationSource<>(
+                () -> platformTracingJmxClient.diagnostics().observation(), System::nanoTime);
+    }
+
+    @Bean
+    @ConditionalOnBean(PlatformTracingJmxClient.class)
     @ConditionalOnMissingBean(PlatformTracingSamplerMetricsBinder.class)
-    public MeterBinder platformTracingSamplerMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient) {
-        return new PlatformTracingSamplerMetricsBinder(platformTracingJmxClient);
+    MeterBinder platformTracingSamplerMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient,
+                                                    CoalescingJmxObservationSource<DiagnosticsObservation> platformTracingDiagnosticsCaptureSource) {
+        return new PlatformTracingSamplerMetricsBinder(platformTracingJmxClient, platformTracingDiagnosticsCaptureSource);
     }
 
     @Bean
     @ConditionalOnBean(PlatformTracingJmxClient.class)
     @ConditionalOnMissingBean(PlatformTracingSafeWrapperMetricsBinder.class)
-    public MeterBinder platformTracingSafeWrapperMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient) {
-        return new PlatformTracingSafeWrapperMetricsBinder(platformTracingJmxClient);
+    MeterBinder platformTracingSafeWrapperMetricsBinder(CoalescingJmxObservationSource<DiagnosticsObservation> platformTracingDiagnosticsCaptureSource) {
+        return new PlatformTracingSafeWrapperMetricsBinder(platformTracingDiagnosticsCaptureSource);
     }
 
     @Bean
     @ConditionalOnBean(PlatformTracingJmxClient.class)
     @ConditionalOnMissingBean(PlatformTracingConfigMetricsBinder.class)
-    public MeterBinder platformTracingConfigMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient) {
-        return new PlatformTracingConfigMetricsBinder(platformTracingJmxClient);
+    MeterBinder platformTracingConfigMetricsBinder(CoalescingJmxObservationSource<DiagnosticsObservation> platformTracingDiagnosticsCaptureSource) {
+        return new PlatformTracingConfigMetricsBinder(platformTracingDiagnosticsCaptureSource);
+    }
+
+    @Bean
+    @ConditionalOnBean(PlatformTracingJmxClient.class)
+    @ConditionalOnMissingBean(PlatformTracingJmxDomainHealthMetricsBinder.class)
+    public MeterBinder platformTracingJmxDomainHealthMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient) {
+        return new PlatformTracingJmxDomainHealthMetricsBinder(platformTracingJmxClient);
+    }
+
+    @Bean
+    @ConditionalOnBean(PlatformTracingJmxClient.class)
+    @ConditionalOnMissingBean(PlatformTracingExportMetricsBinder.class)
+    public MeterBinder platformTracingExportMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient) {
+        return new PlatformTracingExportMetricsBinder(platformTracingJmxClient);
+    }
+
+    @Bean
+    @ConditionalOnBean(PlatformTracingJmxClient.class)
+    @ConditionalOnMissingBean(PlatformTracingScrubbingMetricsBinder.class)
+    public MeterBinder platformTracingScrubbingMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient) {
+        return new PlatformTracingScrubbingMetricsBinder(platformTracingJmxClient);
+    }
+
+    @Bean
+    @ConditionalOnBean(PlatformTracingJmxClient.class)
+    @ConditionalOnMissingBean(PlatformTracingProcessorMetricsBinder.class)
+    public MeterBinder platformTracingProcessorMetricsBinder(PlatformTracingJmxClient platformTracingJmxClient) {
+        return new PlatformTracingProcessorMetricsBinder(platformTracingJmxClient);
     }
 }

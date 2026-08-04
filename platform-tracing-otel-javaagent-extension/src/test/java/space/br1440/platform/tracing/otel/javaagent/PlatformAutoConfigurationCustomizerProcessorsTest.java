@@ -1,19 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent;
 
-import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
-import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
-import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
-import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -25,9 +14,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.sampler.SafeSampler;
+
+import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
+import io.opentelemetry.sdk.trace.samplers.Sampler;
 
 /**
  * Расширенные интеграционные тесты {@link PlatformAutoConfigurationCustomizer}:
@@ -163,19 +165,21 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         Recorder recorder = new Recorder();
         new PlatformAutoConfigurationCustomizer().customize(recorder.proxy());
 
-        // PR-5: ratio поступает из addPropertiesCustomizer (extensionConfig).
         recorder.primeWithConfig(new MapConfigProperties(Map.of("platform.tracing.sampling.ratio", "0.42")));
         recorder.samplerCustomizer.apply(Sampler.alwaysOn(), new MapConfigProperties(Map.of()));
 
         ObjectName objectName = PlatformTracingObjectNames.SAMPLING;
-        Object ratio = server.getAttribute(objectName, "SamplingRatio");
-        assertThat(ratio).isEqualTo(0.42d);
+        assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.42d);
 
-        // P6.6/P6.8: platform SamplingRatio is read-only; setAttribute must fail.
         org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
                 () -> server.setAttribute(objectName,
-                        new javax.management.Attribute("SamplingRatio", 0.9d)));
-        assertThat(server.getAttribute(objectName, "SamplingRatio")).isEqualTo(0.42d);
+                        new javax.management.Attribute("SamplingObservation", null)));
+        assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.42d);
+    }
+
+    private double samplingRatioFromObservation(ObjectName objectName) throws Exception {
+        CompositeData observation = (CompositeData) server.getAttribute(objectName, "SamplingObservation");
+        return (double) observation.get(JmxObservationWireContract.SAMPLING_ITEM_SAMPLING_RATIO);
     }
 
     @Test
@@ -274,23 +278,26 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
             return (AutoConfigurationCustomizer) Proxy.newProxyInstance(
                     AutoConfigurationCustomizer.class.getClassLoader(),
                     new Class<?>[]{AutoConfigurationCustomizer.class},
-                    (Object proxyObj, Method method, Object[] args) -> {
-                        switch (method.getName()) {
-                            case "addSamplerCustomizer":
-                                this.samplerCustomizer =
-                                        (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
-                                return proxyObj;
-                            case "addTracerProviderCustomizer":
-                                this.tracerProviderCustomizer =
-                                        (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>) args[0];
-                                return proxyObj;
-                            case "addPropertiesCustomizer":
-                                propertiesCustomizers.add(
-                                        (Function<ConfigProperties, Map<String, String>>) args[0]);
-                                return proxyObj;
-                            default:
-                                return proxyObj;
+                    (Object proxyObj, Method method, Object[] args) -> switch (method.getName()) {
+                        case "addSamplerCustomizer" -> {
+                            this.samplerCustomizer =
+                                    (BiFunction<Sampler, ConfigProperties, Sampler>) args[0];
+                            yield proxyObj;
                         }
+
+                        case "addTracerProviderCustomizer" -> {
+                            this.tracerProviderCustomizer =
+                                    (BiFunction<SdkTracerProviderBuilder, ConfigProperties, SdkTracerProviderBuilder>) args[0];
+                            yield proxyObj;
+                        }
+
+                        case "addPropertiesCustomizer" -> {
+                            propertiesCustomizers.add(
+                                    (Function<ConfigProperties, Map<String, String>>) args[0]);
+                            yield proxyObj;
+                        }
+
+                        default -> proxyObj;
                     });
         }
     }
@@ -359,7 +366,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
                 .isEqualTo("space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
     }
 
-    /** Platform SamplingRatio attribute is not writable after P6.6/P6.8 cutover. */
+    /** Единственный атрибут sampling-домена ({@code SamplingObservation}) не writable после перехода на CompositeData. */
     @Test
     void setSamplingRatio_через_platform_JMX_отвергается() throws Exception {
         Recorder recorder = new Recorder();
@@ -371,9 +378,9 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         ObjectName objectName = PlatformTracingObjectNames.SAMPLING;
 
         org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
-                () -> server.setAttribute(objectName, new javax.management.Attribute("SamplingRatio", 2.0d)));
+                () -> server.setAttribute(objectName, new javax.management.Attribute("SamplingObservation", null)));
 
         // Состояние MBean не изменилось (0.1 задано при создании).
-        assertThat(server.getAttribute(objectName, "SamplingRatio")).isEqualTo(0.1d);
+        assertThat(samplingRatioFromObservation(objectName)).isEqualTo(0.1d);
     }
 }

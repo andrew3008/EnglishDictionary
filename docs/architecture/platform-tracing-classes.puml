@@ -654,34 +654,100 @@ package "metrics" {
 
 package "jmx" {
   class PlatformTracingJmxClient {
-    -server: MBeanServer
-    +allMBeansAvailable(): boolean
-    +getMBeansStatus(): Map<TracingControlDomain, Boolean>
-    +setRatio(ratio): void
-    +updateSamplingPolicy(config): void
-    +updateScrubbingPolicy(config): void
-    +updateValidationPolicy(config): void
-    +getCurrentRatio(): Optional<Double>
+    -executor: JmxReadExecutor
+    -sampling: SamplingJmxView
+    -scrubbing: ScrubbingJmxView
+    -validation: ValidationJmxView
+    -export: ExportJmxView
+    -processorMetrics: ProcessorMetricsJmxView
+    -diagnostics: DiagnosticsJmxView
+    +sampling(): SamplingJmxView
+    +scrubbing(): ScrubbingJmxView
+    +validation(): ValidationJmxView
+    +export(): ExportJmxView
+    +processorMetrics(): ProcessorMetricsJmxView
+    +diagnostics(): DiagnosticsJmxView
+    +registrationSnapshot(): JmxMBeanRegistrationSnapshot
+    +jmxContractDiagnostics(): List
   }
-  enum TracingControlDomain {
-    SAMPLING
-    SCRUBBING
-    VALIDATION
-    EXPORT
-    PROCESSOR_METRICS
-    DIAGNOSTICS
+  class SamplingJmxView {
+    +registration(): JmxMBeanRegistrationState
+    +observation(): Optional
+    +lastSuccessAge(): Optional
   }
+  class ScrubbingJmxView
+  class ValidationJmxView
+  class ExportJmxView
+  class ProcessorMetricsJmxView
+  class DiagnosticsJmxView
+  class DiagnosticsObservation
+  class JmxMBeanRegistrationSnapshot
   class PlatformTracingJmxObjectNames <<utility>> {
     {static} +SAMPLING : ObjectName
     {static} +SCRUBBING : ObjectName
     ...
   }
-  class PlatformTracingJmxOperationException
-  record ConfigApplyResult {
-    +applied: Set<TracingControlDomain>
-    +failed: Set<TracingControlDomain>
-    +timestamp: Instant
+  package "jmx.wire" {
+    class JmxObservationWireContract <<utility>>
+    class JmxOwnerState <<sealed>>
   }
+  package "jmx.transport" {
+    class JmxReadExecutor {
+      +read(objectName, attribute): Optional
+      +registration(objectName, point): JmxMBeanRegistrationState
+      +diagnosticSnapshot(): List
+      +lastSuccessAge(point): Optional
+    }
+    class JmxObservationCodec <<utility>>
+  }
+  package "jmx.sampling" {
+    class SamplingObservation
+  }
+  package "jmx.scrubbing" {
+    class ScrubbingObservation
+    class ScrubbingValues
+  }
+  package "jmx.validation" {
+    class ValidationObservation
+    class ValidationValues
+  }
+  package "jmx.export" {
+    class ExportObservation
+    class ExportProcessorValues
+    class SafeExporterValues
+  }
+  package "jmx.processor" {
+    class ProcessorMetricsObservation
+    class ProcessorWatchdogValues
+    class ProcessorCompositeValues
+    class ProcessorMetricsValues
+  }
+  PlatformTracingJmxClient *-- SamplingJmxView
+  PlatformTracingJmxClient *-- ScrubbingJmxView
+  PlatformTracingJmxClient *-- ValidationJmxView
+  PlatformTracingJmxClient *-- ExportJmxView
+  PlatformTracingJmxClient *-- ProcessorMetricsJmxView
+  PlatformTracingJmxClient *-- DiagnosticsJmxView
+  PlatformTracingJmxClient *-- JmxReadExecutor
+  SamplingJmxView --> JmxReadExecutor
+  ScrubbingJmxView --> JmxReadExecutor
+  ValidationJmxView --> JmxReadExecutor
+  ExportJmxView --> JmxReadExecutor
+  ProcessorMetricsJmxView --> JmxReadExecutor
+  DiagnosticsJmxView --> JmxReadExecutor
+  SamplingJmxView --> SamplingObservation
+  ScrubbingJmxView --> ScrubbingObservation
+  ValidationJmxView --> ValidationObservation
+  ExportJmxView --> ExportObservation
+  ProcessorMetricsJmxView --> ProcessorMetricsObservation
+  DiagnosticsJmxView --> DiagnosticsObservation
+  SamplingObservation --> JmxOwnerState
+  ScrubbingObservation --> JmxOwnerState
+  ValidationObservation --> JmxOwnerState
+  ExportObservation --> JmxOwnerState
+  ProcessorMetricsObservation --> JmxOwnerState
+  JmxObservationCodec --> JmxOwnerState
+  JmxObservationCodec --> JmxObservationWireContract
 }
 
 package "sampling" {
@@ -747,10 +813,7 @@ TracingCoreAutoConfiguration ..> DefaultTraceOperations : @Bean
 TracingCoreAutoConfiguration ..> NoopTraceOperations : @Bean fallback
 TracingCoreAutoConfiguration ..> PlatformTracingJmxClient : @Bean
 TracingCoreAutoConfiguration ..> RuntimeConfigApplier : @Bean
-RuntimeConfigApplier o-- PlatformTracingJmxClient
-RuntimeConfigApplier ..> ConfigApplyResult : last result
 PlatformTracingJmxClient ..> PlatformTracingJmxObjectNames : ObjectName constants
-PlatformTracingJmxClient ..> TracingControlDomain : getMBeansStatus()
 TracingMdcContextAutoConfiguration ..> TracingMdcContextWrapper : ContextStorage.addWrapper
 TracingMetricsAutoConfiguration ..> MeteredPlatformTracing : @Primary @Bean
 TracingMetricsAutoConfiguration ..> PlatformTracingMetrics : @Bean

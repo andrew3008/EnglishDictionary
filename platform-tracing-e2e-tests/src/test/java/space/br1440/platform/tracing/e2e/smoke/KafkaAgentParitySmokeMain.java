@@ -103,10 +103,11 @@ public class KafkaAgentParitySmokeMain {
             System.out.println("KAFKA_E2:batchCurrentIdentityEmpty=" + batchCurrentIdentityEmpty);
             System.out.println("KAFKA_E2:openTelemetryBeans=" + context.getBeansOfType(OpenTelemetry.class).size());
             MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-            ObjectName sampling = new ObjectName(
-                    "space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
+            ObjectName sampling = new ObjectName("space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
+
+            javax.management.openmbean.CompositeData observation = (javax.management.openmbean.CompositeData) server.getAttribute(sampling, "SamplingObservation");
             System.out.println("KAFKA_E2:samplerDecisions="
-                    + server.getAttribute(sampling, "SamplerDecisionCounts"));
+                    + observation.get("samplerDecisionCounts"));
             System.out.println("KAFKA_E2:COMPLETE");
             Thread.sleep(Duration.ofSeconds(3).toMillis());
         }

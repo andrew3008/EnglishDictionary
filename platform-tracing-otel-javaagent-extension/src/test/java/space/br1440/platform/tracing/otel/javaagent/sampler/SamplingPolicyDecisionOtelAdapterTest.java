@@ -1,27 +1,25 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
-
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
-import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
-import io.opentelemetry.sdk.trace.samplers.SamplingResult;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecisionType;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
-import space.br1440.platform.tracing.test.harness.SamplingContextFactory;
-import space.br1440.platform.tracing.test.harness.SamplingDecisionCase;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
+import space.br1440.platform.tracing.test.harness.SamplingDecisionCase;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 
 class SamplingPolicyDecisionOtelAdapterTest {
 
@@ -67,8 +65,59 @@ class SamplingPolicyDecisionOtelAdapterTest {
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(SamplingPolicyDecision.abstain());
 
         assertThat(result.getDecision()).isEqualTo(SamplingDecision.DROP);
-        assertThat(SamplingPolicyOtelAdapter.metricRuleName(SamplingPolicyDecision.abstain()))
+        assertThat(SamplingPolicyOtelAdapter.metricReasonCode(SamplingPolicyDecision.abstain()))
                 .isEqualTo(PlatformSamplingReasons.FALLBACK_DROP);
+    }
+
+    /**
+     * Полный список 11 wire-ключей {@code decision:reasonCode}, включая синтетический
+     * {@code ABSTAIN → fallback_drop}, который недостижим через production-цепочку правил
+     * ({@link space.br1440.platform.tracing.otel.sampling.policy.ProductionSamplingPolicyChain#production()}
+     * всегда завершается {@code DefaultRatioPolicyRule}, возвращающим только {@code SAMPLE}/
+     * {@code DROP}) — поэтому проверяется здесь изолированно от {@link CompositeSampler},
+     * а не через реальный прогон движка (см. интеграционный тест на 10 достижимых веток).
+     */
+    @ParameterizedTest(name = "{0} -> {1}")
+    @MethodSource("allReasonCodeMappings")
+    void metricReasonCode_coversAllElevenWireKeys(SamplingPolicyDecision decision, String expectedReasonCode) {
+        assertThat(SamplingPolicyOtelAdapter.metricReasonCode(decision)).isEqualTo(expectedReasonCode);
+    }
+
+    private static Stream<Arguments> allReasonCodeMappings() {
+        return Stream.of(
+                Arguments.of(
+                        SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.FORCE_HEADER, "force_header_rule"),
+                        PlatformSamplingReasons.FORCE_HEADER),
+                Arguments.of(
+                        SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.QA_TRACE, "qa_trace_rule"),
+                        PlatformSamplingReasons.QA_TRACE),
+                Arguments.of(
+                        SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.PARENT_DECISION, "parent_decision"),
+                        PlatformSamplingReasons.PARENT_SAMPLED),
+                Arguments.of(
+                        SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.ROUTE_RATIO, "route_ratio"),
+                        PlatformSamplingReasons.ROUTE_RATIO),
+                Arguments.of(
+                        SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.DEFAULT_RATIO, "default_ratio"),
+                        PlatformSamplingReasons.GLOBAL_RATIO),
+                Arguments.of(
+                        SamplingPolicyDecision.drop(SamplingPolicyReason.KILL_SWITCH, "kill_switch"),
+                        PlatformSamplingReasons.KILL_SWITCH),
+                Arguments.of(
+                        SamplingPolicyDecision.drop(SamplingPolicyReason.HARD_DROP, "hard_drop"),
+                        PlatformSamplingReasons.DROP_PATH),
+                Arguments.of(
+                        SamplingPolicyDecision.drop(SamplingPolicyReason.PARENT_DROP, "parent_decision"),
+                        PlatformSamplingReasons.PARENT_DROP),
+                Arguments.of(
+                        SamplingPolicyDecision.drop(SamplingPolicyReason.ROUTE_RATIO_DROP, "route_ratio"),
+                        PlatformSamplingReasons.ROUTE_RATIO_DROP),
+                Arguments.of(
+                        SamplingPolicyDecision.drop(SamplingPolicyReason.DEFAULT_RATIO_DROP, "default_ratio"),
+                        PlatformSamplingReasons.GLOBAL_RATIO_DROP),
+                Arguments.of(
+                        SamplingPolicyDecision.abstain(),
+                        PlatformSamplingReasons.FALLBACK_DROP));
     }
 
     @ParameterizedTest(name = "{0}")

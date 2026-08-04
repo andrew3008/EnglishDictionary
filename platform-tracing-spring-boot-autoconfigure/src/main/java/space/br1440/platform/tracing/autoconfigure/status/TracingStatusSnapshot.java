@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.status;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyLeaves;
@@ -12,13 +13,15 @@ public record TracingStatusSnapshot(int schemaVersion,
                                     String authority,
                                     Map<String, Object> agent,
                                     Map<String, Object> runtime,
-                                    PolicyStatus policy) {
+                                    PolicyStatus policy,
+                                    List<Map<String, Object>> jmxContractDiagnostics) {
 
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+    public static final int CURRENT_SCHEMA_VERSION = 2;
 
     public TracingStatusSnapshot {
         agent = immutableCopy(agent);
         runtime = immutableCopy(runtime);
+        jmxContractDiagnostics = List.copyOf(jmxContractDiagnostics);
     }
 
     private static Map<String, Object> immutableCopy(Map<String, Object> source) {

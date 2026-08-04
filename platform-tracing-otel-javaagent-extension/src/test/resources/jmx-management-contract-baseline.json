@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "f8adbf7eada67a8d1cac0e1108e8bdc3caa21c05",
+  "generatedFromCommit": "ceec63fb4f1633753b996261463ef898ecdb074f",
   "javaVersion": "21.0.6",
   "objectNameCount": 7,
-  "memberCount": 52,
-  "readOnlyMemberCount": 52,
+  "memberCount": 19,
+  "readOnlyMemberCount": 19,
   "mutatingMemberCount": 0,
   "objectNames": [
     {
@@ -27,59 +27,9 @@
       ],
       "attributes": [
         {
-          "name": "ConfigAuditTrail",
+          "name": "DiagnosticsObservation",
           "description": "Attribute exposed for management",
-          "javaType": "[Ljava.lang.String;",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ConfigReloadMetrics",
-          "description": "Attribute exposed for management",
-          "javaType": "java.util.Map",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "InvalidConfigCount",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "PlatformLogLevel",
-          "description": "Attribute exposed for management",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "PropagationEnabled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "SafeWrapperMetrics",
-          "description": "Attribute exposed for management",
-          "javaType": "java.util.Map",
+          "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
           ],
           "readable": true,
@@ -112,79 +62,9 @@
       ],
       "attributes": [
         {
-          "name": "ExportDroppedAfterShutdownTotal",
+          "name": "ExportObservation",
           "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ExportDroppedOverflowTotal",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ExportEnabled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "ExportFailuresTotal",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ExportQueueCapacity",
-          "description": "Attribute exposed for management",
-          "javaType": "int",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ExportQueueSize",
-          "description": "Attribute exposed for management",
-          "javaType": "int",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ExportTimeoutsTotal",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "SafeExporterMetrics",
-          "description": "Attribute exposed for management",
-          "javaType": "java.util.Map",
+          "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
           ],
           "readable": true,
@@ -372,89 +252,9 @@
       ],
       "attributes": [
         {
-          "name": "ActiveSpanCount",
+          "name": "ProcessorMetricsObservation",
           "description": "Attribute exposed for management",
-          "javaType": "int",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ActiveTraceCount",
-          "description": "Attribute exposed for management",
-          "javaType": "int",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "DroppedAttributesTotal",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "DroppedEventsTotal",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "DroppedLinksTotal",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ForcedSpanCloses",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ForcedTraceCloses",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ProcessorErrorsByName",
-          "description": "Attribute exposed for management",
-          "javaType": "java.util.Map",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ProcessorErrorsTotal",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
+          "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
           ],
           "readable": true,
@@ -487,59 +287,9 @@
       ],
       "attributes": [
         {
-          "name": "RouteRatios",
+          "name": "SamplingObservation",
           "description": "Attribute exposed for management",
-          "javaType": "java.util.Map",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "SamplerDecisionCounts",
-          "description": "Attribute exposed for management",
-          "javaType": "java.util.Map",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "SamplerEnabled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "SamplingConfigLastUpdatedSource",
-          "description": "Attribute exposed for management",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "SamplingConfigVersion",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "SamplingRatio",
-          "description": "Attribute exposed for management",
-          "javaType": "double",
+          "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
           ],
           "readable": true,
@@ -548,31 +298,6 @@
         }
       ],
       "operations": [
-        {
-          "name": "getSamplerDecisionCount",
-          "description": "Operation exposed for management",
-          "arguments": [
-            {
-              "name": "p1",
-              "description": "",
-              "javaType": "java.lang.String",
-              "descriptor": [
-              ]
-            },
-            {
-              "name": "p2",
-              "description": "",
-              "javaType": "java.lang.String",
-              "descriptor": [
-              ]
-            }
-          ],
-          "returnJavaType": "long",
-          "descriptor": [
-          ],
-          "impact": 3,
-          "mutating": false
-        }
       ],
       "notifications": [
       ]
@@ -597,39 +322,9 @@
       ],
       "attributes": [
         {
-          "name": "ScrubbingConfigLastUpdatedSource",
+          "name": "ScrubbingObservation",
           "description": "Attribute exposed for management",
-          "javaType": "java.lang.String",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ScrubbingConfigVersion",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ScrubbingEnabled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "ScrubbingMetrics",
-          "description": "Attribute exposed for management",
-          "javaType": "java.util.Map",
+          "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
           ],
           "readable": true,
@@ -662,54 +357,14 @@
       ],
       "attributes": [
         {
-          "name": "ValidationConfigLastUpdatedSource",
+          "name": "ValidationObservation",
           "description": "Attribute exposed for management",
-          "javaType": "java.lang.String",
+          "javaType": "javax.management.openmbean.CompositeData",
           "descriptor": [
           ],
           "readable": true,
           "writable": false,
           "isIs": false
-        },
-        {
-          "name": "ValidationConfigVersion",
-          "description": "Attribute exposed for management",
-          "javaType": "long",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "ValidationEnabled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "ValidationStrict",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "ValidationStrictRuntimeAllowed",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
         }
       ],
       "operations": [

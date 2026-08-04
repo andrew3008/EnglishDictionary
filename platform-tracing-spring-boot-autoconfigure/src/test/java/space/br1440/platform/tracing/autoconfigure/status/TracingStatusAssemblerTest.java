@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.status;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 
 import java.util.Optional;
@@ -86,28 +87,28 @@ class TracingStatusAssemblerTest {
         assertThat(degraded.policy().reason()).isEqualTo(PolicyAbsenceReason.AGENT_UNAVAILABLE);
     }
 
-    private static TracingStatusAssembler assembler(
-            boolean enabled,
-            TracingConfigurationAuthority authority,
-            AgentExtensionDescriptor descriptor,
-            Optional<AcceptedPolicyProjection> projection) {
+    private static TracingStatusAssembler assembler(boolean enabled,
+                                                    TracingConfigurationAuthority authority,
+                                                    AgentExtensionDescriptor descriptor,
+                                                    Optional<AcceptedPolicyProjection> projection) {
         return assembler(enabled, authority, new AtomicReference<>(descriptor), projection);
     }
 
-    private static TracingStatusAssembler assembler(
-            boolean enabled,
-            TracingConfigurationAuthority authority,
-            AtomicReference<AgentExtensionDescriptor> descriptor,
-            Optional<AcceptedPolicyProjection> projection) {
+    private static TracingStatusAssembler assembler(boolean enabled,
+                                                    TracingConfigurationAuthority authority,
+                                                    AtomicReference<AgentExtensionDescriptor> descriptor,
+                                                    Optional<AcceptedPolicyProjection> projection) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 enabled,
                 authority,
                 PlatformEnvironmentPosture.LOCAL);
+
         TracingDeploymentDiagnostics diagnostics = new TracingDeploymentDiagnostics(
                 enabled,
                 descriptor.get().agentMarkerVisible(),
                 descriptor.get().state(),
                 descriptor.get());
+
         TracingRuntime runtime = enabled
                 ? NoOpTracingRuntime.noop()
                 : NoOpTracingRuntime.disabledByConfiguration("test-disabled");
@@ -115,7 +116,7 @@ class TracingStatusAssemblerTest {
                 NoopTraceOperations.INSTANCE,
                 runtime,
                 settings,
-                mock(PlatformTracingJmxClient.class),
+                mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS),
                 () -> projection,
                 diagnostics,
                 descriptor::get);

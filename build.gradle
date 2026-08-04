@@ -741,6 +741,69 @@ tasks.register('jmxManagementContractVerify') {
     dependsOn jmxManagementContractBaselineTest, jmxObjectNameConsistencyTest
 }
 
+def jmxWireGoldenAutoconfigureTest = tasks.register('jmxWireGoldenAutoconfigureTest', Test) {
+    group = 'verification'
+    description = 'Verifies JmxObservationWireContract (autoconfigure) against the committed golden resource.'
+    dependsOn jmxSpringProject.tasks.named('testClasses')
+    testClassesDirs = jmxSpringProject.sourceSets.test.output.classesDirs
+    classpath = jmxSpringProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/jmxWireGoldenAutoconfigureTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/jmxWireGoldenAutoconfigureTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/jmxWireGoldenAutoconfigureTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContractIndependentVerifyTest'
+    }
+}
+
+def jmxWireGoldenAgentTest = tasks.register('jmxWireGoldenAgentTest', Test) {
+    group = 'verification'
+    description = 'Verifies JmxObservationWireContract (agent) against the committed golden resource.'
+    dependsOn jmxExtensionProject.tasks.named('testClasses')
+    testClassesDirs = jmxExtensionProject.sourceSets.test.output.classesDirs
+    classpath = jmxExtensionProject.sourceSets.test.runtimeClasspath
+    binaryResultsDirectory = layout.buildDirectory.dir(
+            'test-results/jmxWireGoldenAgentTest/binary')
+    reports.junitXml.outputLocation = layout.buildDirectory.dir(
+            'test-results/jmxWireGoldenAgentTest')
+    reports.html.outputLocation = layout.buildDirectory.dir(
+            'reports/tests/jmxWireGoldenAgentTest')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContractIndependentVerifyTest'
+    }
+}
+
+def jmxWireGoldenFilesIdenticalCheck = tasks.register('jmxWireGoldenFilesIdenticalCheck') {
+    group = 'verification'
+    description = 'Fails if the two committed golden-resource copies diverge byte-for-byte (see file header commitment).'
+    def autoconfigureGolden = layout.projectDirectory.file(
+            'platform-tracing-spring-boot-autoconfigure/src/test/resources/jmx-observation-wire-contract-golden.properties')
+    def agentGolden = layout.projectDirectory.file(
+            'platform-tracing-otel-javaagent-extension/src/test/resources/jmx-observation-wire-contract-golden.properties')
+    inputs.file(autoconfigureGolden)
+    inputs.file(agentGolden)
+    doLast {
+        byte[] autoconfigureBytes = autoconfigureGolden.asFile.bytes
+        byte[] agentBytes = agentGolden.asFile.bytes
+        if (!Arrays.equals(autoconfigureBytes, agentBytes)) {
+            throw new GradleException(
+                    'jmx-observation-wire-contract-golden.properties diverged between ' +
+                            'platform-tracing-spring-boot-autoconfigure and platform-tracing-otel-javaagent-extension; ' +
+                            'both copies must stay byte-for-byte identical.')
+        }
+    }
+}
+
+tasks.register('jmxWireGoldenParityVerify') {
+    group = 'verification'
+    description = 'Verifies the JmxObservationWireContract golden resource: file identity across modules plus both independent-verification tests.'
+    dependsOn jmxWireGoldenFilesIdenticalCheck, jmxWireGoldenAutoconfigureTest, jmxWireGoldenAgentTest
+}
+
 tasks.register('privateMBeanServerVerify') {
     group = 'verification'
     description = 'Runs the S-03 private process-local MBeanServer evidence spike.'

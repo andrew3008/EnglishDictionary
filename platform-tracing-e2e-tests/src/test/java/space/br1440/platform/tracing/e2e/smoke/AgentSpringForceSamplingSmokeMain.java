@@ -17,12 +17,6 @@ import java.lang.management.ManagementFactory;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Дочерний main для e2e smoke force-sampling: Spring Boot + embedded Tomcat + Agent spring-webmvc.
- * <p>
- * HTTP-запрос с {@code X-Trace-On} приходит из JUnit (OkHttp). После обработки — flush BSP и shutdown.
- * Контракт READY/args см. {@link AgentHttpSpringSmokeProcessRunner}.
- */
 @SpringBootConfiguration
 @EnableAutoConfiguration(excludeName = {
         "space.br1440.platform.logging.configuration.LoggingAutoConfiguration",
@@ -38,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 public class AgentSpringForceSamplingSmokeMain {
 
     private static final String PLATFORM_AUTO_CONFIGURATIONS = String.join(",",
+            "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.TracingCoreAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
@@ -75,22 +71,20 @@ public class AgentSpringForceSamplingSmokeMain {
             // Контрольная ветка доказывает поведение stock Agent без platform starter composition.
             applicationArguments.add("--spring.autoconfigure.exclude=" + PLATFORM_AUTO_CONFIGURATIONS);
         }
+
         ConfigurableApplicationContext context = application.run(applicationArguments.toArray(String[]::new));
+        try (context) {
+            CountDownLatch served = context.getBean(CountDownLatch.class);
+            System.out.println("WEBMVC_E2:openTelemetryBeans=" + context.getBeansOfType(OpenTelemetry.class).size());
+            System.out.println(AgentHttpSpringSmokeProcessRunner.READY_MARKER);
+            System.out.flush();
 
-        CountDownLatch served = context.getBean(CountDownLatch.class);
-
-        System.out.println("WEBMVC_E2:openTelemetryBeans=" + context.getBeansOfType(OpenTelemetry.class).size());
-        System.out.println(AgentHttpSpringSmokeProcessRunner.READY_MARKER);
-        System.out.flush();
-
-        try {
             if (!served.await(60, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("Внешний HTTP-запрос к /probe не получен за 60 с");
             }
+
             Thread.sleep(flushDelayMs);
             printSamplerDiagnostics();
-        } finally {
-            context.close();
         }
     }
 
@@ -111,8 +105,10 @@ public class AgentSpringForceSamplingSmokeMain {
             System.out.println("SMOKE_SAMPLING_RATIO=" + System.getProperty("platform.tracing.sampling.ratio"));
             System.out.println("SMOKE_SAMPLING_MBEAN_REGISTERED=" + server.isRegistered(name));
             if (server.isRegistered(name)) {
+                javax.management.openmbean.CompositeData observation =
+                        (javax.management.openmbean.CompositeData) server.getAttribute(name, "SamplingObservation");
                 System.out.println("SMOKE_SAMPLER_DECISIONS="
-                        + server.getAttribute(name, "SamplerDecisionCounts"));
+                        + observation.get("samplerDecisionCounts"));
             }
         } catch (Exception e) {
             System.out.println("SMOKE_SAMPLER_DIAGNOSTICS_FAILED=" + e);

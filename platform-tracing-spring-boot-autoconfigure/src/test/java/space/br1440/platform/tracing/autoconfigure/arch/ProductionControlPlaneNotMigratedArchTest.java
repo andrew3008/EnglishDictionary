@@ -35,12 +35,20 @@ class ProductionControlPlaneNotMigratedArchTest {
                     .because("SamplingControlClient удалён; Spring-side JMX-клиент — PlatformTracingJmxClient");
 
     @Test
-    @DisplayName("PlatformTracingJmxClient exposes read-only domain awareness methods")
+    @DisplayName("PlatformTracingJmxClient exposes read-only domain awareness via grouped *JmxView accessors")
     void jmxClientReadOnlyMethodsPresent() {
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "allMBeansAvailable")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "registrationSnapshot")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "jmxContractDiagnostics")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "sampling")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "scrubbing")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "validation")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "export")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "processorMetrics")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "diagnostics")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "allMBeansAvailable")).isFalse();
         assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getMBeansStatus")).isFalse();
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getCurrentRatio")).isTrue();
-        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "isSamplerEnabled")).isTrue();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "getCurrentRatio")).isFalse();
+        assertThat(hasPublicMethod(PlatformTracingJmxClient.class, "isSamplerEnabled")).isFalse();
     }
 
     @Test

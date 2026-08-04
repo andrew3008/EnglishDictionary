@@ -1,20 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.sdk.trace.data.LinkData;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
-import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
-import io.opentelemetry.sdk.trace.samplers.SamplingResult;
-import lombok.NonNull;
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.otel.sampling.engine.SamplingPolicyEngine;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
-import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
-import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyView;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +8,21 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
+
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyView;
+import space.br1440.platform.tracing.otel.sampling.engine.SamplingPolicyEngine;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
+
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.sdk.trace.data.LinkData;
+import io.opentelemetry.sdk.trace.samplers.Sampler;
+import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
+import io.opentelemetry.sdk.trace.samplers.SamplingResult;
+import lombok.NonNull;
 
 public final class CompositeSampler implements Sampler, PlatformManagedSampler {
 
@@ -53,7 +53,7 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
                 policy.samplingRatio(),
                 access.currentLegacySamplingRules());
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
-        recordDecision(result.getDecision(), SamplingPolicyOtelAdapter.metricRuleName(decision));
+        recordDecision(result.getDecision(), SamplingPolicyOtelAdapter.metricReasonCode(decision));
         return result;
     }
 

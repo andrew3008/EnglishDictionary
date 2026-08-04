@@ -24,10 +24,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-/**
- * Интеграционный тест верификации Status Mapping для Micrometer Bridge.
- * Доказывает, что Micrometer Observation корректно маппит 5xx в StatusCode.ERROR.
- */
 @SpringBootTest(
         classes = MicrometerStatusMappingE2ETest.App.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -93,7 +89,7 @@ class MicrometerStatusMappingE2ETest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration(excludeName = {
-            "TracingRuntimeAutoConfiguration",
+            "space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration",

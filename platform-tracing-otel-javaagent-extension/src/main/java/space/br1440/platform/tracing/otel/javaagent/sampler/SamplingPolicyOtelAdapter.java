@@ -1,25 +1,25 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
+import java.util.List;
+
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.otel.sampling.model.ParentContextState;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecisionType;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.otel.sampling.model.ParentContextState;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecisionType;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
-
-import java.util.List;
 
 final class SamplingPolicyOtelAdapter {
 
@@ -60,13 +60,12 @@ final class SamplingPolicyOtelAdapter {
     private SamplingPolicyOtelAdapter() {
     }
 
-    static SamplingPolicyRequest toRequest(
-            Context parentContext,
-            String traceId,
-            String name,
-            SpanKind spanKind,
-            io.opentelemetry.api.common.Attributes attributes,
-            List<LinkData> parentLinks) {
+    static SamplingPolicyRequest toRequest(Context parentContext,
+                                           String traceId,
+                                           String name,
+                                           SpanKind spanKind,
+                                           io.opentelemetry.api.common.Attributes attributes,
+                                           List<LinkData> parentLinks) {
         String urlPath = attributes.get(URL_PATH_KEY);
         InboundTraceControl control = parentContext.get(PlatformTraceContextKeys.TRACE_CONTROL);
         String forceValue = control == null ? null : control.rawForceTraceValue();
@@ -79,11 +78,13 @@ final class SamplingPolicyOtelAdapter {
         if (decision.decisionType() == SamplingPolicyDecisionType.ABSTAIN) {
             return FALLBACK_DROP;
         }
+
         if (decision.decisionType() == SamplingPolicyDecisionType.RECORD_ONLY) {
             return SamplingResult.create(
                     SamplingDecision.RECORD_ONLY,
                     Attributes.of(SAMPLING_REASON_KEY, decision.reason().reasonCode()));
         }
+
         return switch (decision.reason()) {
             case KILL_SWITCH -> KILL_SWITCH_DROP;
             case HARD_DROP -> DROP_HARD;
@@ -99,11 +100,12 @@ final class SamplingPolicyOtelAdapter {
         };
     }
 
-    static String metricRuleName(SamplingPolicyDecision decision) {
+    static String metricReasonCode(SamplingPolicyDecision decision) {
         if (decision.decisionType() == SamplingPolicyDecisionType.ABSTAIN) {
             return PlatformSamplingReasons.FALLBACK_DROP;
         }
-        return decision.winningRule();
+
+        return decision.reason().reasonCode();
     }
 
     private static ParentContextState resolveParentState(Context parentContext) {
@@ -111,6 +113,7 @@ final class SamplingPolicyOtelAdapter {
         if (!parent.isValid()) {
             return ParentContextState.ABSENT;
         }
+
         return parent.isSampled() ? ParentContextState.SAMPLED : ParentContextState.NOT_SAMPLED;
     }
 }

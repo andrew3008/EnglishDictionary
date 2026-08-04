@@ -8,47 +8,23 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingJmxRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Verifies that {@link PlatformSpanProcessorFactory} reads scrubbing startup configuration from
- * {@code ScrubbingExtensionConfig} (via {@link ExtensionConfig}) rather than directly from
- * {@link ConfigProperties} (PR-4 migration).
- *
- * <p>Testing strategy:
- * <ul>
- *   <li>Factory-level tests: pass an {@code ExtensionConfig} with known scrubbing settings,
- *       verify {@code PlatformTracingJmxRegistrar} captures the expected processors.</li>
- *   <li>Domain config parity tests: directly verify that {@code ScrubbingExtensionConfig}
- *       surfaces the correct default and override values for every scrubbing property.</li>
- * </ul>
- *
- * <p>The {@code ConfigProperties} stub passed to {@code registerSpanProcessors} is minimal —
- * it returns {@code null} for all keys. This covers the two remaining OTel SPI paths that still
- * use {@code ConfigProperties}: {@code ScrubbingRulesLoader.load(config)} (reads
- * {@code platform.tracing.scrubbing.rules-config}) and
- * {@code JavaAgentExtensionPaths.resolveRawValue(config)} (reads {@code otel.javaagent.extensions}).
- * Both return empty/null for this stub, which is correct for unit tests.
- */
 class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
     // -------------------------------------------------------------------------
     // Stubs
     // -------------------------------------------------------------------------
 
-    /**
-     * Minimal OTel-only ConfigProperties stub — returns null for everything.
-     * After PR-4 migration, scrubbing startup values no longer come from here;
-     * this stub only satisfies the two remaining SPI paths inside collectScrubbingRules.
-     */
     private static ConfigProperties otelOnlyConfig() {
         return new ConfigProperties() {
             @Override public String getString(String name) { return null; }
@@ -76,10 +52,6 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         });
     }
 
-    /**
-     * ExtensionConfig with scrubbing.enabled = true and null for all list/string properties
-     * → default built-in rules are used (non-empty).
-     */
     private static ExtensionConfig scrubbingEnabledDefaultsExtConfig() {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
@@ -100,14 +72,16 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
     // -------------------------------------------------------------------------
 
     @SuppressWarnings("unchecked")
-    private static <T> T registrarField(PlatformTracingJmxRegistrar reg, String fieldName) throws Exception {
+    private static <T> T registrarSlotOwner(PlatformTracingJmxRegistrar reg, String fieldName) throws Exception {
         Field f = PlatformTracingJmxRegistrar.class.getDeclaredField(fieldName);
         f.setAccessible(true);
-        return ((AtomicReference<T>) f.get(reg)).get();
+        OwnerRegistrationSlot<T> slot = (OwnerRegistrationSlot<T>) f.get(reg);
+        OwnerRegistrationState<T> state = slot.capture();
+        return state instanceof OwnerRegistrationState.Present<T> present ? present.owner() : null;
     }
 
     private static ScrubbingSpanProcessor getScrubbing(PlatformTracingJmxRegistrar r) throws Exception {
-        return registrarField(r, "registeredScrubbing");
+        return registrarSlotOwner(r, "scrubbingSlot");
     }
 
     // -------------------------------------------------------------------------
@@ -159,10 +133,6 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
     // Domain config parity tests — ScrubbingExtensionConfig via ExtensionConfig
     // -------------------------------------------------------------------------
 
-    /**
-     * Builds an ExtensionConfig from a ConfigProperties that overrides only the
-     * given string property; all others return null.
-     */
     private static ExtensionConfig configWithStringProperty(String propertyKey, String value) {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) {
@@ -178,10 +148,6 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         });
     }
 
-    /**
-     * Builds an ExtensionConfig from a ConfigProperties that overrides only the
-     * given list property; all others return null.
-     */
     private static ExtensionConfig configWithListProperty(String propertyKey, List<String> value) {
         return new ExtensionConfig(new ConfigProperties() {
             @Override public String getString(String name) { return null; }
@@ -314,8 +280,7 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void builtInRules_override_preserved() {
-            ExtensionConfig cfg = configWithListProperty(
-                    "platform.tracing.javaagent.scrubbing.built-in-rules", List.of("password", "jwt"));
+            ExtensionConfig cfg = configWithListProperty("platform.tracing.javaagent.scrubbing.built-in-rules", List.of("password", "jwt"));
             assertThat(cfg.scrubbing().builtInRules())
                     .as("builtInRules override preserved")
                     .containsExactly("password", "jwt");
