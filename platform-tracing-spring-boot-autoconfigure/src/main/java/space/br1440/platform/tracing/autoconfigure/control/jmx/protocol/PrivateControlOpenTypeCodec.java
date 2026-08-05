@@ -23,21 +23,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
-/**
- * Independent Spring-side codec for the approved wire contract v1.
- * <p>
- * E7/P0 operations covered:
- * <ul>
- *   <li>PRIV-W01 — {@code applySnapshot}: {@link #encodeRequest(PrivateControlSnapshot)},
- *       {@link #decodeResponse(CompositeData)}</li>
- *   <li>PRIV-R07 — {@code readAcceptedComplete}: {@link #decodeCompleteWithSequence(Object)}
- *       (APPROVED by Architecture Committee 2026-07-29; explicit 32768-byte logical
- *       payload bound per {@code payloadBoundDecision=REQUIRE_EXPLICIT_BOUND})</li>
- * </ul>
- * <p>
- * Wire schema authority: {@code PrivateControlWireTypes.ACCEPTED_COMPLETE} (Agent module).
- * Any schema change MUST update both sides atomically.
- */
 public final class PrivateControlOpenTypeCodec {
 
     // ── route-ratio subtypes (shared across request, response, and PRIV-R07) ─────
@@ -431,12 +416,23 @@ public final class PrivateControlOpenTypeCodec {
             CompositeData row = (CompositeData) value;
             String prefix = requireField(row, "routePrefix", String.class);
             Double ratio  = requireField(row, "ratio", Double.class);
-            if (prefix.isEmpty() || prefix.length() > MAX_ROUTE_PREFIX_LENGTH) {
+            // Паритет с Agent EffectiveTracingPolicyValidator: blank и ISO-control
+            // отклоняются на trust boundary до materialization snapshot. Сообщения без
+            // echo prefix (P5.5 disclosure). Decode-исключение на read-пути даёт
+            // Optional.empty() в currentComplete() — accepted state отсутствует.
+            if (prefix.isBlank()) {
+                throw new IllegalArgumentException(
+                        "readAcceptedComplete: route prefix must not be blank");
+            }
+            if (prefix.length() > MAX_ROUTE_PREFIX_LENGTH) {
                 throw new IllegalArgumentException(
                         "readAcceptedComplete: route prefix length " + prefix.length()
                         + " is invalid (must be 1.." + MAX_ROUTE_PREFIX_LENGTH + " UTF-16 code units)");
             }
-            // Do not echo route prefixes in exception text (P5.5 disclosure canary).
+            if (prefix.chars().anyMatch(Character::isISOControl)) {
+                throw new IllegalArgumentException(
+                        "readAcceptedComplete: route prefix must not contain ISO control characters");
+            }
             requireValidRatio(ratio, "samplingRouteRatios.entry");
             if (result.put(prefix, ratio) != null) {
                 throw new IllegalArgumentException(

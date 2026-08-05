@@ -50,6 +50,15 @@ class CandidateDigestAgentParityTest {
         }
     }
 
+    @Test
+    void matchesAgentDigestWhenNegativeZeroIsCanonicalized() throws Exception {
+        // Agent normalizeRatio и Spring CompleteTracingPolicySnapshot канонизируют -0.0 → +0.0
+        // до digest; паритет обязан сохраняться.
+        assertParity(EffectiveTracingPolicy.of(
+                true, -0.0d, Map.of("/z", -0.0d),
+                true, false, true, true, PolicyLogLevel.INFO));
+    }
+
     private static void assertParity(EffectiveTracingPolicy agentPolicy) throws Exception {
         String agentDigest = EffectiveTracingPolicyDigest.sha256(agentPolicy);
 

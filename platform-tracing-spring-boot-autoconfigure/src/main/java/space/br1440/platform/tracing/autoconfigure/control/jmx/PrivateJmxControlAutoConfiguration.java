@@ -46,15 +46,17 @@ public class PrivateJmxControlAutoConfiguration {
 
         @ConditionalOnProperty(
                 name = "platform.tracing.configuration.authority",
-                havingValue = "ACTUATOR",
-                matchIfMissing = false)
+                havingValue = "ACTUATOR"
+        )
+        @SuppressWarnings("unused")
         static class OnActuator {
         }
 
         @ConditionalOnProperty(
                 name = "platform.tracing.configuration.authority",
-                havingValue = "CONFIG_SERVER",
-                matchIfMissing = false)
+                havingValue = "CONFIG_SERVER"
+        )
+        @SuppressWarnings("unused")
         static class OnConfigServer {
         }
     }

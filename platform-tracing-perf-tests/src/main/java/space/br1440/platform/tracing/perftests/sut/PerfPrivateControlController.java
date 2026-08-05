@@ -131,7 +131,7 @@ public final class PerfPrivateControlController {
                     before.acceptedSequence(),
                     candidate);
             TracingPolicyDeliveryResult outcome = snapshotClient.applySnapshot(
-                    before.acceptedSequence(),
+                    before.expectedBase(),
                     candidate,
                     TracingPolicySource.ACTUATOR);
             if (outcome == TracingPolicyDeliveryResult.REJECTED) {

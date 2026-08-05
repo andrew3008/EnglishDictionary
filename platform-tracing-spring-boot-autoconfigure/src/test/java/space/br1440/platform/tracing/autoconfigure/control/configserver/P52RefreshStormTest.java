@@ -103,7 +103,7 @@ class P52RefreshStormTest {
 
         AtomicInteger applyCycles = new AtomicInteger(0);
 
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             int cycle = applyCycles.incrementAndGet();
             if (cycle == 1) {
                 workerStarted.countDown();      // signal: first apply started
@@ -172,7 +172,7 @@ class P52RefreshStormTest {
         AtomicInteger concurrentPeak  = new AtomicInteger(0);
         AtomicInteger active           = new AtomicInteger(0);
 
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             int current = active.incrementAndGet();
             concurrentPeak.updateAndGet(v -> Math.max(v, current));
             anyApplyStarted.countDown();
@@ -225,7 +225,7 @@ class P52RefreshStormTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -271,7 +271,7 @@ class P52RefreshStormTest {
 
         AtomicInteger applyCycles = new AtomicInteger(0);
 
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             int cycle = applyCycles.incrementAndGet();
             if (cycle == 1) {
                 firstApplyStarted.countDown();
@@ -327,11 +327,11 @@ class P52RefreshStormTest {
         List<Long> observedSequences = new ArrayList<>();
 
         // Warm → STALE → bounded retry APPLIED.
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            observedSequences.add(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            observedSequences.add(expectedBase.acceptedSequence());
             int n = applyCount.incrementAndGet();
             if (n == 1) {
-                // Warm lastKnownSequence from Agent reader (coalescer starts at -1).
+                // Warm lastKnownBase from Agent reader (coalescer starts with no cached base).
                 return TracingPolicyDeliveryResult.APPLIED;
             }
             if (n == 2) {
@@ -372,7 +372,7 @@ class P52RefreshStormTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier alwaysStale = (seq, s, source) -> {
+        TracingPolicySnapshotApplier alwaysStale = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.STALE;
         };
@@ -404,8 +404,8 @@ class P52RefreshStormTest {
         AtomicInteger callCount = new AtomicInteger(0);
 
         // Warm APPLIED → REJECTED → next APPLIED (sequence must stay at Agent value 3).
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            observedSequences.add(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            observedSequences.add(expectedBase.acceptedSequence());
             int n = callCount.incrementAndGet();
             if (n == 1) {
                 return TracingPolicyDeliveryResult.APPLIED;
@@ -440,8 +440,8 @@ class P52RefreshStormTest {
         List<Long> observedSequences = new ArrayList<>();
         AtomicInteger callCount = new AtomicInteger(0);
 
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            observedSequences.add(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            observedSequences.add(expectedBase.acceptedSequence());
             int n = callCount.incrementAndGet();
             if (n == 1) {
                 return TracingPolicyDeliveryResult.APPLIED;
@@ -474,7 +474,7 @@ class P52RefreshStormTest {
         when(builder.build()).thenThrow(new TracingPolicyManifestException("leaf missing"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -543,18 +543,18 @@ class P52RefreshStormTest {
             when(builder.build()).thenReturn(sampleSnapshot());
 
             // Use the real client as both snapshotClient AND snapshotReader so that
-            // the currentComplete() call fails (malformed), which means the guard inside
-            // PrivateJmxTracingPolicySnapshotClient must refuse to send expectedSequence=-1.
+            // the currentComplete() call fails (malformed), which means the coalescer
+            // itself must refuse to send an unwarmed expected base.
             TracingPolicyRefreshCoalescer coalescer =
                     new TracingPolicyRefreshCoalescer(builder, client, client, Runnable::run);
 
-            // We expect the coalescer to propagate the client-level guard exception
-            // (TracingConfigurationGuardException), because the real client refuses to
-            // applySnapshot before any successful currentComplete() read.
+            // We expect the coalescer to fail closed with an IllegalStateException,
+            // because ExpectedTracingPolicyBase has no valid "unknown" sentinel and the
+            // authoritative read from the Agent never succeeded.
             org.junit.jupiter.api.Assertions.assertThrows(
                     RuntimeException.class,
                     coalescer::deliverInitial,
-                    "real client must refuse to send expectedSequence=-1 to Agent"
+                    "real client must refuse to send an unwarmed expected base to Agent"
             );
         }
     }
@@ -579,7 +579,7 @@ class P52RefreshStormTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };

@@ -8,9 +8,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Builds a complete eight-leaf Category A manifest from the Spring Environment.
- * Fail-closed: missing leaf, local override, unknown provenance, or route-ratio parse error
- * all throw {@link TracingPolicyManifestException}.
+ * Собирает полный восьмилистный Category A manifest из Spring Environment.
+ * <p>
+ * Taxonomy ошибок:
+ * <ul>
+ *   <li>{@link TracingPolicyManifestException} — missing leaf, local override, unknown
+ *       provenance, {@code null} значение route-ratio и синтаксический parse failure
+ *       (нечисловое значение, duplicate key);</li>
+ *   <li>{@link IllegalArgumentException} — value-invariants snapshot (диапазон ratio,
+ *       blank/ISO-control/length route prefix, log-level allowlist и т.п.), возникающие
+ *       при {@link CompleteTracingPolicySnapshot.Builder#build()}.</li>
+ * </ul>
  */
 public final class ConfigServerPolicyManifestBuilder {
 
@@ -56,7 +64,7 @@ public final class ConfigServerPolicyManifestBuilder {
                 "platform.tracing.policy.sampling.enabled", Boolean.class);
         double samplingRatio = environment.getRequiredProperty(
                 "platform.tracing.policy.sampling.ratio", Double.class);
-        Map<String, Double> routeRatios = parseRouteRatios(); // throws TracingPolicyManifestException on any error
+        Map<String, Double> routeRatios = parseRouteRatios();
         boolean validationEnabled = environment.getRequiredProperty(
                 "platform.tracing.policy.validation.enabled", Boolean.class);
         boolean validationStrict = environment.getRequiredProperty(
@@ -107,10 +115,7 @@ public final class ConfigServerPolicyManifestBuilder {
                         throw new TracingPolicyManifestException(
                                 "Invalid double value for a sampling.route-ratios entry");
                     }
-                    if (ratio < 0.0 || ratio > 1.0) {
-                        throw new TracingPolicyManifestException(
-                                "Route ratio out of range [0,1] for a sampling.route-ratios entry");
-                    }
+                    // Диапазон/finite/blank/ISO — зона CompleteTracingPolicySnapshot (IllegalArgumentException).
                     if (result.containsKey(route)) {
                         throw new TracingPolicyManifestException(
                                 "Duplicate route-ratio key in Config Server manifest");

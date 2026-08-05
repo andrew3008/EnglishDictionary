@@ -120,7 +120,7 @@ public class RuntimeSamplingControlSmokeMain {
                 CompleteTracingPolicySnapshot candidate =
                         before.snapshot().withSamplingRatio(value);
                 TracingPolicyDeliveryResult outcome = snapshotClient.applySnapshot(
-                        before.acceptedSequence(),
+                        before.expectedBase(),
                         candidate,
                         TracingPolicySource.ACTUATOR);
                 if (outcome != TracingPolicyDeliveryResult.APPLIED

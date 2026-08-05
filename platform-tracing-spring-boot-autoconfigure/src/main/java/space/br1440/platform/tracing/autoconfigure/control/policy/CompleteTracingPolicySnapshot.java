@@ -4,10 +4,28 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
+/**
+ * Полный восьмилистный Category A snapshot политики трассировки.
+ * <p>
+ * Владелец собственных value-invariants: любой публично получаемый экземпляр уже
+ * провалидирован и канонизирован. Нарушение выражается стандартным
+ * {@link IllegalArgumentException}; сообщения не содержат route prefix и сырых
+ * строковых значений свойств (P5.5 disclosure).
+ * <p>
+ * Completeness (отсутствие обязательного листа) остаётся зоной
+ * {@link TracingPolicyManifestException} на стороне {@link Builder#build()}.
+ */
 public final class CompleteTracingPolicySnapshot {
+
+    private static final int MAX_ROUTE_RATIOS = 100;
+    private static final int MAX_ROUTE_KEY_LENGTH = 255;
+    private static final Set<String> VALID_LOG_LEVELS =
+            Set.of("OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
 
     private final boolean samplingEnabled;
     private final double samplingRatio;
@@ -26,14 +44,18 @@ public final class CompleteTracingPolicySnapshot {
                                           boolean exporterEnabled,
                                           boolean traceControlHeadersEnabled,
                                           String diagnosticsLogLevel) {
+        // Сначала defensive copy, затем валидация/канонизация копии — исходная map
+        // вызывающего не должна ни влиять на результат, ни утекать в published state.
+        Map<String, Double> copiedRoutes = copyRoutes(samplingRouteRatios);
+
         this.samplingEnabled = samplingEnabled;
-        this.samplingRatio = samplingRatio;
-        this.samplingRouteRatios = Collections.unmodifiableMap(new LinkedHashMap<>(samplingRouteRatios));
+        this.samplingRatio = canonicalizeRatio(samplingRatio);
+        this.samplingRouteRatios = Collections.unmodifiableMap(canonicalizeRoutes(copiedRoutes));
         this.validationEnabled = validationEnabled;
         this.validationStrict = validationStrict;
         this.exporterEnabled = exporterEnabled;
         this.traceControlHeadersEnabled = traceControlHeadersEnabled;
-        this.diagnosticsLogLevel = Objects.requireNonNull(diagnosticsLogLevel, "diagnosticsLogLevel");
+        this.diagnosticsLogLevel = canonicalizeLogLevel(diagnosticsLogLevel);
     }
 
     public static CompleteTracingPolicySnapshot helmBootstrapDefaults() {
@@ -134,6 +156,74 @@ public final class CompleteTracingPolicySnapshot {
         return new Builder();
     }
 
+    private static Map<String, Double> copyRoutes(Map<String, Double> samplingRouteRatios) {
+        if (samplingRouteRatios == null) {
+            throw new IllegalArgumentException("samplingRouteRatios must not be null");
+        }
+        return new LinkedHashMap<>(samplingRouteRatios);
+    }
+
+    /**
+     * Канонизация ratio: finite и в {@code [0.0, 1.0]}; {@code -0.0} → {@code +0.0}
+     * до публикации и до расчёта digest (паритет с Agent {@code normalizeRatio}).
+     */
+    private static double canonicalizeRatio(double ratio) {
+        if (!Double.isFinite(ratio) || ratio < 0.0d || ratio > 1.0d) {
+            throw new IllegalArgumentException("ratio must be finite and within [0.0, 1.0]");
+        }
+        return ratio == 0.0d ? 0.0d : ratio;
+    }
+
+    private static Map<String, Double> canonicalizeRoutes(Map<String, Double> routes) {
+        if (routes.size() > MAX_ROUTE_RATIOS) {
+            throw new IllegalArgumentException(
+                    "samplingRouteRatios must contain at most " + MAX_ROUTE_RATIOS + " entries");
+        }
+        Map<String, Double> canonical = new LinkedHashMap<>(routes.size());
+        for (Map.Entry<String, Double> entry : routes.entrySet()) {
+            String prefix = requireRoutePrefix(entry.getKey());
+            Double ratio = entry.getValue();
+            if (ratio == null) {
+                throw new IllegalArgumentException("route ratio must not be null");
+            }
+            // Сообщение без echo prefix — P5.5 disclosure.
+            canonical.put(prefix, canonicalizeRatio(ratio.doubleValue()));
+        }
+        return canonical;
+    }
+
+    private static String requireRoutePrefix(String routePrefix) {
+        if (routePrefix == null) {
+            throw new IllegalArgumentException("route prefix must not be null");
+        }
+        if (routePrefix.isBlank()) {
+            throw new IllegalArgumentException("route prefix must not be blank");
+        }
+        if (routePrefix.length() > MAX_ROUTE_KEY_LENGTH) {
+            throw new IllegalArgumentException(
+                    "route prefix must contain at most " + MAX_ROUTE_KEY_LENGTH + " UTF-16 code units");
+        }
+        if (routePrefix.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("route prefix must not contain ISO control characters");
+        }
+        return routePrefix;
+    }
+
+    /**
+     * Case-insensitive вход канонизируется через {@link Locale#ROOT}; whitespace не trim'ится
+     * и поэтому отклоняется (например {@code " INFO "} не входит в allowlist после upper-case).
+     */
+    private static String canonicalizeLogLevel(String diagnosticsLogLevel) {
+        if (diagnosticsLogLevel == null) {
+            throw new IllegalArgumentException("diagnosticsLogLevel must not be null");
+        }
+        String canonical = diagnosticsLogLevel.toUpperCase(Locale.ROOT);
+        if (!VALID_LOG_LEVELS.contains(canonical)) {
+            throw new IllegalArgumentException("diagnosticsLogLevel is not a recognized level");
+        }
+        return canonical;
+    }
+
     public static final class Builder {
 
         private Boolean samplingEnabled;
@@ -185,22 +275,18 @@ public final class CompleteTracingPolicySnapshot {
             return this;
         }
 
+        /**
+         * Completeness-проверка: отсутствие обязательного листа →
+         * {@link TracingPolicyManifestException}. Value-invariants делегируются конструктору
+         * snapshot и выражаются как {@link IllegalArgumentException}.
+         */
         public CompleteTracingPolicySnapshot build() {
             List<String> missing = getMissingProperties();
 
             if (!missing.isEmpty()) {
-                throw new TracingPolicyManifestException("Incomplete tracing policy manifest, missing required fields: " + missing);
+                throw new TracingPolicyManifestException(
+                        "Incomplete tracing policy manifest, missing required fields: " + missing);
             }
-
-            if (samplingRatio < 0.0 || samplingRatio > 1.0) {
-                throw new TracingPolicyManifestException("samplingRatio must be within [0.0, 1.0], got: " + samplingRatio);
-            }
-
-            samplingRouteRatios.forEach((route, ratio) -> {
-                if (ratio == null || ratio < 0.0 || ratio > 1.0) {
-                    throw new TracingPolicyManifestException("samplingRouteRatios[" + route + "] must be within [0.0, 1.0], got: " + ratio);
-                }
-            });
 
             return new CompleteTracingPolicySnapshot(
                     samplingEnabled, samplingRatio, samplingRouteRatios,

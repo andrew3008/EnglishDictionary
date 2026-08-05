@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
@@ -17,7 +18,6 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -475,7 +475,7 @@ class P58M10ProductionFlowTest {
     static final class RecordingSnapshotClient implements TracingPolicySnapshotApplier {
 
         private final AtomicInteger totalCalls = new AtomicInteger(0);
-        private final AtomicLong lastExpectedSeq = new AtomicLong(-1L);
+        private final AtomicReference<ExpectedTracingPolicyBase> lastExpectedBase = new AtomicReference<>();
         private final Queue<TracingPolicySource> appliedSources = new ConcurrentLinkedQueue<>();
         private volatile CompleteTracingPolicySnapshot lastSnapshot;
         private volatile TracingPolicySource lastSource;
@@ -494,11 +494,11 @@ class P58M10ProductionFlowTest {
 
         @Override
         public TracingPolicyDeliveryResult applySnapshot(
-                long expectedSequence,
+                ExpectedTracingPolicyBase expectedBase,
                 CompleteTracingPolicySnapshot snapshot,
                 TracingPolicySource source) {
             totalCalls.incrementAndGet();
-            lastExpectedSeq.set(expectedSequence);
+            lastExpectedBase.set(expectedBase);
             this.lastSnapshot = snapshot;
             this.lastSource = source;
             appliedSources.add(source);
@@ -511,7 +511,7 @@ class P58M10ProductionFlowTest {
         }
 
         long lastAppliedExpectedSequence() {
-            return lastExpectedSeq.get();
+            return lastExpectedBase.get().acceptedSequence();
         }
 
         CompleteTracingPolicySnapshot lastAppliedSnapshot() {

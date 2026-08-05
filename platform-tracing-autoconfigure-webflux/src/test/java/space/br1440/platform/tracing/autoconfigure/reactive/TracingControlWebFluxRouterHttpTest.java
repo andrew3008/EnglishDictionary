@@ -9,6 +9,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
@@ -150,7 +151,7 @@ class TracingControlWebFluxRouterHttpTest {
                         .traceControlHeadersEnabled(true)
                         .diagnosticsLogLevel("INFO")
                         .build())),
-                (seq, snapshot, source) -> next.get());
+                (expectedBase, snapshot, source) -> next.get());
 
         TracingControlWebFluxManagementContextConfiguration configuration =
                 new TracingControlWebFluxManagementContextConfiguration();
@@ -218,7 +219,8 @@ class TracingControlWebFluxRouterHttpTest {
 
         @Override
         public TracingPolicyDeliveryResult applySnapshot(
-                long seq, CompleteTracingPolicySnapshot snapshot, TracingPolicySource source) {
+                ExpectedTracingPolicyBase expectedBase, CompleteTracingPolicySnapshot snapshot,
+                TracingPolicySource source) {
             this.lastSnapshot = snapshot;
             return TracingPolicyDeliveryResult.APPLIED;
         }

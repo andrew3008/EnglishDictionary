@@ -17,7 +17,13 @@ import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigSe
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane;
 
 import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
+import javax.management.openmbean.TabularType;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -115,10 +121,11 @@ class P55SecretCanaryTest {
         try (FakeAgentPrivateControlPlane agent =
                      FakeAgentPrivateControlPlane.compliant("agent-" + UUID.randomUUID(), 0L)) {
             PrivateJmxTracingPolicySnapshotClient client = agent.client();
-            client.currentComplete(); // warm runtimeInstanceId
+            AcceptedSnapshotWithSequence warm = client.currentComplete()
+                    .orElseThrow(() -> new IllegalStateException("fake Agent must warm currentComplete()"));
 
             TracingPolicyDeliveryResult outcome = client.applySnapshot(
-                    0L, snapshotWithRouteCanary(), TracingPolicySource.CONFIG_SERVER);
+                    warm.expectedBase(), snapshotWithRouteCanary(), TracingPolicySource.CONFIG_SERVER);
             assertThat(outcome).isEqualTo(TracingPolicyDeliveryResult.APPLIED);
 
             // Fake agent response is metadata-only; scan encoded response shape via codec helpers
@@ -178,6 +185,21 @@ class P55SecretCanaryTest {
                 .satisfies(ex -> assertAbsent(ex.getMessage(), ALL_CANARIES));
     }
 
+    @Test
+    void manifestBuilder_valueInvariantExceptionDoesNotEchoRouteCanary() {
+        MockEnvironment env = authoritativeEnv();
+        env.setProperty(
+                "platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE,
+                "1.5");
+
+        ConfigServerPolicyManifestBuilder builder = new ConfigServerPolicyManifestBuilder(
+                env, new ConfigServerPolicyProvenanceClassifier(env));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .satisfies(ex -> assertAbsent(ex.getMessage(), ALL_CANARIES));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private static CompleteTracingPolicySnapshot snapshotWithRouteCanary() {
@@ -230,54 +252,47 @@ class P55SecretCanaryTest {
 
     private static CompositeData buildAcceptedCompleteWithRoute(String route, double ratio)
             throws Exception {
-        // Encode a throwaway apply request and lift its route table into an AcceptedComplete
-        // CompositeData via FakeAgent-compatible type names (same as codec COMPLETE_RESPONSE).
-        PrivateControlOpenTypeCodec local = new PrivateControlOpenTypeCodec();
-        CompositeData request = local.encodeApplyRequest(
-                "rid", 1L, UUID.randomUUID().toString(),
-                "CONFIG_SERVER", "REFRESH", "rev",
-                CompleteTracingPolicySnapshot.builder()
-                        .samplingEnabled(true)
-                        .samplingRatio(1.0d)
-                        .samplingRouteRatios(Map.of(route, ratio))
-                        .validationEnabled(true)
-                        .validationStrict(false)
-                        .exporterEnabled(true)
-                        .traceControlHeadersEnabled(true)
-                        .diagnosticsLogLevel("INFO")
-                        .build());
-        CompositeData policy = (CompositeData) request.get("runtimePolicy");
-        TabularData routes = (TabularData) policy.get("samplingRouteRatios");
+        // Собираем wire CompositeData напрямую: ratio может быть намеренно невалидным (NaN),
+        // поэтому путь не должен проходить через CompleteTracingPolicySnapshot (value invariants).
+        CompositeType routeRow = new CompositeType(
+                "space.br1440.platform.tracing.control.RouteRatio.v1",
+                "space.br1440.platform.tracing.control.RouteRatio.v1",
+                new String[]{"ratio", "routePrefix"},
+                new String[]{"ratio", "routePrefix"},
+                new OpenType<?>[]{SimpleType.DOUBLE, SimpleType.STRING});
+        TabularType routesType = new TabularType(
+                "space.br1440.platform.tracing.control.RouteRatios.v1",
+                "space.br1440.platform.tracing.control.RouteRatios.v1",
+                routeRow,
+                new String[]{"routePrefix"});
+        TabularDataSupport routes = new TabularDataSupport(routesType);
+        routes.put(new CompositeDataSupport(
+                routeRow,
+                new String[]{"ratio", "routePrefix"},
+                new Object[]{ratio, route}));
 
-        javax.management.openmbean.CompositeType completeType =
-                new javax.management.openmbean.CompositeType(
-                        "AcceptedCompleteSnapshot/v1",
-                        "AcceptedCompleteSnapshot/v1",
-                        new String[]{
-                                "acceptedSequence", "runtimeInstanceId",
-                                "samplingEnabled", "samplingRatio", "samplingRouteRatios",
-                                "validationEnabled", "validationStrict", "exporterEnabled",
-                                "traceControlHeadersEnabled", "diagnosticsLogLevel"
-                        },
-                        new String[]{
-                                "acceptedSequence", "runtimeInstanceId",
-                                "samplingEnabled", "samplingRatio", "samplingRouteRatios",
-                                "validationEnabled", "validationStrict", "exporterEnabled",
-                                "traceControlHeadersEnabled", "diagnosticsLogLevel"
-                        },
-                        new javax.management.openmbean.OpenType<?>[]{
-                                javax.management.openmbean.SimpleType.LONG,
-                                javax.management.openmbean.SimpleType.STRING,
-                                javax.management.openmbean.SimpleType.BOOLEAN,
-                                javax.management.openmbean.SimpleType.DOUBLE,
-                                routes.getTabularType(),
-                                javax.management.openmbean.SimpleType.BOOLEAN,
-                                javax.management.openmbean.SimpleType.BOOLEAN,
-                                javax.management.openmbean.SimpleType.BOOLEAN,
-                                javax.management.openmbean.SimpleType.BOOLEAN,
-                                javax.management.openmbean.SimpleType.STRING
-                        });
-        return new javax.management.openmbean.CompositeDataSupport(
+        CompositeType completeType = new CompositeType(
+                "AcceptedCompleteSnapshot/v1",
+                "AcceptedCompleteSnapshot/v1",
+                new String[]{
+                        "acceptedSequence", "runtimeInstanceId",
+                        "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                        "validationEnabled", "validationStrict", "exporterEnabled",
+                        "traceControlHeadersEnabled", "diagnosticsLogLevel"
+                },
+                new String[]{
+                        "acceptedSequence", "runtimeInstanceId",
+                        "samplingEnabled", "samplingRatio", "samplingRouteRatios",
+                        "validationEnabled", "validationStrict", "exporterEnabled",
+                        "traceControlHeadersEnabled", "diagnosticsLogLevel"
+                },
+                new OpenType<?>[]{
+                        SimpleType.LONG, SimpleType.STRING,
+                        SimpleType.BOOLEAN, SimpleType.DOUBLE, routesType,
+                        SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.BOOLEAN,
+                        SimpleType.BOOLEAN, SimpleType.STRING
+                });
+        return new CompositeDataSupport(
                 completeType,
                 new String[]{
                         "acceptedSequence", "runtimeInstanceId",

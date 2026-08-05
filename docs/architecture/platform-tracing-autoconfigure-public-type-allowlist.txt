@@ -37,6 +37,7 @@ space.br1440.platform.tracing.autoconfigure.control.management.SetValidationStri
 space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyControlAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyMutationService
 space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot
+space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase
 space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyContractViolationException
 space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException
 space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult

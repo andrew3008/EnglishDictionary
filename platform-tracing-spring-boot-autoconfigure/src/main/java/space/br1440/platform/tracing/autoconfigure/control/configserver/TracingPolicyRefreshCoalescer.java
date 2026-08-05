@@ -11,8 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
@@ -25,12 +27,14 @@ import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.Traci
  * reschedules only if generation advanced during apply (new events arrived).
  * <p>
  * Sequence contract:
- * All authoritative sequence values come from Agent via readAcceptedComplete.
- * Application never computes or increments sequence unilaterally.
- * lastKnownSequence is refreshed from Agent on APPLIED, UNCHANGED, STALE.
- * There is no "unconditional apply" sentinel: the Agent (AcceptedPolicyCoordinator.staleCode)
- * always compares the supplied expectedSequence/runtimeInstanceId against its own witnessed
- * state, so an unwarmed sequence is simply treated as STALE (or worse — see deliverInitial).
+ * All authoritative (runtimeInstanceId, acceptedSequence) pairs come from Agent via
+ * readAcceptedComplete, and are always passed together as one {@link ExpectedTracingPolicyBase} —
+ * never as a bare sequence with an identity taken from elsewhere. Application never computes
+ * or increments the sequence unilaterally.
+ * lastKnownBase is refreshed from Agent on APPLIED, UNCHANGED, STALE. If no base has been
+ * observed yet (first refresh before {@link #deliverInitial()} ever warmed it), the worker
+ * performs one authoritative read before applying; if that read also fails, the refresh is
+ * abandoned and LKG is retained — there is no unconditional/unwarmed apply.
  */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
@@ -43,7 +47,7 @@ public final class TracingPolicyRefreshCoalescer {
 
     private final AtomicLong generation = new AtomicLong(0);
     private final AtomicBoolean workerScheduled = new AtomicBoolean(false);
-    private volatile long lastKnownSequence = -1L;
+    private volatile ExpectedTracingPolicyBase lastKnownBase;
 
     public void onRefreshEvent() {
         generation.incrementAndGet();
@@ -72,28 +76,38 @@ public final class TracingPolicyRefreshCoalescer {
     private void doApply(boolean isStaleRetry) {
         CompleteTracingPolicySnapshot snapshot;
         try {
+            // Ловим строго вокруг единственного build(): completeness/parse → ManifestException,
+            // value-invariants → IllegalArgumentException. Не расширяем до RuntimeException,
+            // чтобы programming defects не маскировались как invalid refresh.
             snapshot = manifestBuilder.build();
         } catch (TracingPolicyManifestException e) {
             String s = isStaleRetry ? " (STALE retry)" : "";
             log.error("Config Server manifest build failed{}; LKG retained: {}", s, e.getMessage());
             return;
+        } catch (IllegalArgumentException e) {
+            String s = isStaleRetry ? " (STALE retry)" : "";
+            log.error("Config Server policy value invalid{}; LKG retained: {}", s, e.getMessage());
+            return;
         }
 
-        long seq = lastKnownSequence;
-        TracingPolicyDeliveryResult result = snapshotClient.applySnapshot(seq, snapshot, TracingPolicySource.CONFIG_SERVER);
-        log.info("Config Server policy refresh: outcome={}, seq={}, staleRetry={}", result, seq, isStaleRetry);
+        ExpectedTracingPolicyBase base = currentOrWarmedBase();
+        if (base == null) {
+            log.error("Config Server refresh: no authoritative expected base available from Agent; LKG retained.");
+            return;
+        }
+
+        TracingPolicyDeliveryResult result = snapshotClient.applySnapshot(base, snapshot, TracingPolicySource.CONFIG_SERVER);
+        log.info("Config Server policy refresh: outcome={}, base={}, staleRetry={}", result, base, isStaleRetry);
 
         switch (result) {
-            case APPLIED -> snapshotReader.currentComplete()
-                            .ifPresent(c -> lastKnownSequence = c.acceptedSequence());
+            case APPLIED -> refreshLastKnownBase();
 
             case UNCHANGED -> {}
 
             case STALE -> {
                 if (!isStaleRetry) {
-                    snapshotReader.currentComplete()
-                            .ifPresent(c -> lastKnownSequence = c.acceptedSequence());
-                    log.info("STALE; refreshed sequence from Agent; one bounded retry.");
+                    refreshLastKnownBase();
+                    log.info("STALE; refreshed expected base from Agent; one bounded retry.");
                     doApply(true);
                 } else {
                     log.warn("STALE on bounded retry; LKG retained.");
@@ -109,19 +123,44 @@ public final class TracingPolicyRefreshCoalescer {
     public TracingPolicyDeliveryResult deliverInitial() {
         try {
             CompleteTracingPolicySnapshot snapshot = manifestBuilder.build();
-            snapshotReader.currentComplete()
-                    .ifPresent(c -> lastKnownSequence = c.acceptedSequence());
+            refreshLastKnownBase();
 
-            long seq = lastKnownSequence;
-            TracingPolicyDeliveryResult result = snapshotClient.applySnapshot(seq, snapshot, TracingPolicySource.CONFIG_SERVER);
+            ExpectedTracingPolicyBase base = lastKnownBase;
+            if (base == null) {
+                throw new IllegalStateException(
+                        "Initial Config Server delivery: no authoritative expected base "
+                                + "available from Agent (readAcceptedComplete returned empty)");
+            }
+
+            TracingPolicyDeliveryResult result = snapshotClient.applySnapshot(base, snapshot, TracingPolicySource.CONFIG_SERVER);
             if (result == TracingPolicyDeliveryResult.APPLIED || result == TracingPolicyDeliveryResult.UNCHANGED) {
-                snapshotReader.currentComplete()
-                        .ifPresent(c -> lastKnownSequence = c.acceptedSequence());
+                refreshLastKnownBase();
             }
             return result;
         } catch (TracingPolicyManifestException e) {
             log.error("Initial Config Server manifest missing required leaf: {}", e.getMessage());
             throw e;
+        } catch (IllegalArgumentException e) {
+            // Startup fail-fast: невалидное value не маскируем — блокируем старт.
+            log.error("Initial Config Server policy value invalid: {}", e.getMessage());
+            throw e;
         }
+    }
+
+    /** Читает актуальную (runtimeInstanceId, acceptedSequence) пару у Agent и кеширует её. */
+    private void refreshLastKnownBase() {
+        snapshotReader.currentComplete()
+                .map(AcceptedSnapshotWithSequence::expectedBase)
+                .ifPresent(base -> lastKnownBase = base);
+    }
+
+    /** Возвращает кешированную base, либо выполняет один authoritative read, если её ещё нет. */
+    private ExpectedTracingPolicyBase currentOrWarmedBase() {
+        ExpectedTracingPolicyBase base = lastKnownBase;
+        if (base != null) {
+            return base;
+        }
+        refreshLastKnownBase();
+        return lastKnownBase;
     }
 }

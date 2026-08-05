@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
@@ -209,7 +210,8 @@ class TracingControlMvcControllerHttpTest {
         volatile CompleteTracingPolicySnapshot lastSnapshot;
         @Override
         public TracingPolicyDeliveryResult applySnapshot(
-                long seq, CompleteTracingPolicySnapshot snapshot, TracingPolicySource source) {
+                ExpectedTracingPolicyBase expectedBase, CompleteTracingPolicySnapshot snapshot,
+                TracingPolicySource source) {
             this.lastSnapshot = snapshot;
             return TracingPolicyDeliveryResult.APPLIED;
         }

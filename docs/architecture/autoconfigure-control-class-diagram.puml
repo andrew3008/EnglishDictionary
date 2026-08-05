@@ -64,6 +64,11 @@ package "control.policy" <<policy>> as P_ROOT {
     + build() : CompleteTracingPolicySnapshot
   }
 
+  class ExpectedTracingPolicyBase <<record>> {
+    + String runtimeInstanceId
+    + long acceptedSequence
+  }
+
   class TracingPolicyManifestException <<exception>> {
     + TracingPolicyManifestException(String)
   }
@@ -76,7 +81,7 @@ package "control.policy" <<policy>> as P_ROOT {
 
 package "control.policy.delivery" <<delivery>> as P_DELIVERY {
   interface TracingPolicySnapshotApplier {
-    + applySnapshot(long expectedSequence,\n                 CompleteTracingPolicySnapshot snapshot,\n                 TracingPolicySource source)\n                 : TracingPolicyDeliveryResult
+    + applySnapshot(ExpectedTracingPolicyBase expectedBase,\n                 CompleteTracingPolicySnapshot snapshot,\n                 TracingPolicySource source)\n                 : TracingPolicyDeliveryResult
   }
 
   enum TracingPolicySource {
@@ -106,6 +111,7 @@ package "control.policy.read" <<read>> as P_READ {
     + long acceptedSequence
     + String runtimeInstanceId
     + CompleteTracingPolicySnapshot snapshot
+    + expectedBase() : ExpectedTracingPolicyBase
   }
 
   class AcceptedPolicyProjection <<record>> {
@@ -179,10 +185,9 @@ package "control.jmx" <<jmx>> as P_JMX {
     - PrivateControlOpenTypeCodec codec
     - volatile MBeanServer privateServer
     - volatile ObjectName controlObjectName
-    - volatile String lastKnownRuntimeInstanceId
     --
     + initialize()
-    + applySnapshot(long, CompleteTracingPolicySnapshot, TracingPolicySource)\n                 : TracingPolicyDeliveryResult
+    + applySnapshot(ExpectedTracingPolicyBase, CompleteTracingPolicySnapshot, TracingPolicySource)\n                 : TracingPolicyDeliveryResult
     + currentComplete() : Optional~AcceptedSnapshotWithSequence~
     + currentProjection() : Optional~AcceptedPolicyProjection~
   }
@@ -289,7 +294,7 @@ package "control.configserver" <<configserver>> as P_CS {
     - CompleteTracingPolicyReader snapshotReader
     - Executor worker
     - AtomicLong generation
-    - volatile long lastKnownSequence
+    - volatile ExpectedTracingPolicyBase lastKnownBase
     --
     + onRefreshEvent()
     + deliverInitial() : TracingPolicyDeliveryResult
@@ -333,11 +338,13 @@ package "external consumers (outside control)" <<external>> as P_EXT {
 
 SnapshotBuilder --> CompleteTracingPolicySnapshot : build()
 SnapshotBuilder ..> TracingPolicyManifestException : throws
+TracingPolicySnapshotApplier ..> ExpectedTracingPolicyBase : uses
 TracingPolicySnapshotApplier ..> CompleteTracingPolicySnapshot : uses
 TracingPolicySnapshotApplier ..> TracingPolicySource : uses
 TracingPolicySnapshotApplier ..> TracingPolicyDeliveryResult : returns
 
 AcceptedSnapshotWithSequence *--> CompleteTracingPolicySnapshot : snapshot
+AcceptedSnapshotWithSequence ..> ExpectedTracingPolicyBase : expectedBase()
 AcceptedPolicyProjection *--> AgentReadinessView
 AcceptedPolicyProjection *--> AcceptedPolicyLeaves
 CompleteTracingPolicyReader ..> AcceptedSnapshotWithSequence : returns
@@ -379,7 +386,7 @@ TracingPolicyMutationService --> CompleteTracingPolicyReader : currentComplete()
 TracingPolicyMutationService --> TracingPolicySnapshotApplier : applySnapshot(..., ACTUATOR)
 TracingPolicyMutationService --> CompleteTracingPolicySnapshot : with* candidate
 TracingPolicyMutationService ..> TracingPolicyDeliveryResult : returns
-TracingPolicyMutationService ..> AcceptedSnapshotWithSequence : reads sequence
+TracingPolicyMutationService ..> AcceptedSnapshotWithSequence : expectedBase()
 
 TracingPolicyControlAutoConfiguration ..> TracingPolicyMutationService : @Bean (ACTUATOR)
 
@@ -403,7 +410,8 @@ ConfigServerPolicyProvenanceClassifier --> ProvenanceClass
 
 TracingPolicyRefreshCoalescer --> ConfigServerPolicyManifestBuilder : build()
 TracingPolicyRefreshCoalescer --> TracingPolicySnapshotApplier : applySnapshot(..., CONFIG_SERVER)
-TracingPolicyRefreshCoalescer --> CompleteTracingPolicyReader : refresh lastKnownSequence
+TracingPolicyRefreshCoalescer --> CompleteTracingPolicyReader : refresh lastKnownBase
+TracingPolicyRefreshCoalescer ..> ExpectedTracingPolicyBase : caches
 TracingPolicyRefreshCoalescer ..> TracingPolicyDeliveryResult : returns / logs
 
 ConfigServerTracingPolicyAdapter --> TracingPolicyRefreshCoalescer : onRefreshEvent()
@@ -443,19 +451,22 @@ note bottom of PrivateJmxTracingPolicySnapshotClient
   TracingPolicySnapshotApplier +
   CompleteTracingPolicyReader +
   AcceptedTracingPolicyReader.
-  lastKnownRuntimeInstanceId is the
-  mutable side channel (Slice A target).
+  Encodes ExpectedTracingPolicyBase only
+  from the caller's observed pair; no
+  mutable identity side channel.
+  STALE returned as-is (no client retry).
 end note
 
 note bottom of TracingPolicyMutationService
   Read → mutate with* → apply.
-  Passes only acceptedSequence today;
-  runtimeInstanceId filled by client
-  side channel (P1 atomic-base gap).
+  Passes accepted.expectedBase() atomically.
+  IllegalArgumentException on candidate → REJECTED.
+  No Actuator retry/rebase.
 end note
 
 note bottom of TracingPolicyRefreshCoalescer
   Coalesced EnvironmentChangeEvent.
+  Caches ExpectedTracingPolicyBase.
   One bounded STALE retry after
   authoritative currentComplete() reread.
   Source = CONFIG_SERVER.

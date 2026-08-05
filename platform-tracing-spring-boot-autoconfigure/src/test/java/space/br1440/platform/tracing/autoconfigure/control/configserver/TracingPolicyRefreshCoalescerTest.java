@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
-import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
@@ -51,7 +50,7 @@ class TracingPolicyRefreshCoalescerTest {
 
         CountDownLatch latch = new CountDownLatch(1);
         AtomicInteger applyCount = new AtomicInteger();
-        TracingPolicySnapshotApplier countingClient = (seq, s, source) -> {
+        TracingPolicySnapshotApplier countingClient = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             latch.countDown();
             return TracingPolicyDeliveryResult.APPLIED;
@@ -71,7 +70,7 @@ class TracingPolicyRefreshCoalescerTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger();
-        TracingPolicySnapshotApplier rejectingClient = (seq, s, source) -> {
+        TracingPolicySnapshotApplier rejectingClient = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.REJECTED;
         };
@@ -89,7 +88,7 @@ class TracingPolicyRefreshCoalescerTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger();
-        TracingPolicySnapshotApplier staleClient = (seq, s, source) -> {
+        TracingPolicySnapshotApplier staleClient = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.STALE;
         };
@@ -116,6 +115,45 @@ class TracingPolicyRefreshCoalescerTest {
     }
 
     @Test
+    void initialDeliveryThrowsOnInvalidValue() {
+        ConfigServerPolicyManifestBuilder builder = mock(ConfigServerPolicyManifestBuilder.class);
+        TracingPolicySnapshotApplier client = mock(TracingPolicySnapshotApplier.class);
+        when(builder.build()).thenThrow(new IllegalArgumentException("ratio must be finite and within [0.0, 1.0]"));
+
+        TracingPolicyRefreshCoalescer coalescer = new TracingPolicyRefreshCoalescer(
+                builder, client, readerReturning(1L), Runnable::run);
+
+        assertThatThrownBy(coalescer::deliverInitial)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ratio must be finite");
+    }
+
+    @Test
+    void runtimeInvalidValueRetainsLkgWithoutApply() {
+        ConfigServerPolicyManifestBuilder builder = mock(ConfigServerPolicyManifestBuilder.class);
+        when(builder.build())
+                .thenReturn(sampleSnapshot())
+                .thenThrow(new IllegalArgumentException("route prefix must not be blank"));
+
+        AtomicInteger applyCount = new AtomicInteger();
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            applyCount.incrementAndGet();
+            return TracingPolicyDeliveryResult.APPLIED;
+        };
+
+        TracingPolicyRefreshCoalescer coalescer = new TracingPolicyRefreshCoalescer(
+                builder, client, readerReturning(1L), Runnable::run);
+        assertThat(coalescer.deliverInitial()).isEqualTo(TracingPolicyDeliveryResult.APPLIED);
+        assertThat(applyCount.get()).isEqualTo(1);
+
+        coalescer.onRefreshEvent();
+
+        assertThat(applyCount.get())
+                .as("invalid value refresh must not call applySnapshot; LKG retained")
+                .isEqualTo(1);
+    }
+
+    @Test
     void initialDeliveryWarmsSequenceFromAgentBeforeApplying() {
         // Proves the fix for the confirmed P4 defect: deliverInitial() must read the
         // Agent-authoritative sequence via currentComplete() before calling applySnapshot,
@@ -125,8 +163,8 @@ class TracingPolicyRefreshCoalescerTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger observedSeq = new AtomicInteger(Integer.MIN_VALUE);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            observedSeq.set((int) seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            observedSeq.set((int) expectedBase.acceptedSequence());
             return TracingPolicyDeliveryResult.APPLIED;
         };
 
@@ -209,11 +247,11 @@ class TracingPolicyRefreshCoalescerTest {
     void initialDeliveryWithRealClient_malformedResponse_neverSendsUnwarmedSequence() throws Exception {
         // Agent responds to readAcceptedComplete with a structurally malformed CompositeData.
         // PrivateJmxTracingPolicySnapshotClient.currentComplete() swallows this into
-        // Optional.empty() (cross-classloader transport-style failure), so lastKnownSequence
-        // is never warmed from -1L. The forbidden outcome would be silently sending
-        // expectedSequence=-1 to the Agent; instead the REAL client's own guard
-        // (no successful currentComplete() read yet -> lastKnownRuntimeInstanceId == null)
-        // must reject the apply attempt before anything reaches the wire.
+        // Optional.empty() (cross-classloader transport-style failure), so the coalescer never
+        // obtains an ExpectedTracingPolicyBase to warm from. The forbidden outcome would be
+        // silently sending an unwarmed/sentinel base to the Agent; instead the coalescer itself
+        // must fail closed before anything reaches the wire, because ExpectedTracingPolicyBase
+        // has no valid "unknown" representation to fall back on.
         try (FakeAgentPrivateControlPlane agent =
                      FakeAgentPrivateControlPlane.malformedReadAcceptedComplete("instance-real-4")) {
             var client = agent.client();
@@ -224,10 +262,10 @@ class TracingPolicyRefreshCoalescerTest {
                     new TracingPolicyRefreshCoalescer(builder, client, client, Runnable::run);
 
             assertThatThrownBy(coalescer::deliverInitial)
-                    .as("expectedSequence=-1 must never reach applySnapshot; the real client "
+                    .as("an unwarmed expected base must never reach applySnapshot; the coalescer "
                             + "must fail closed instead")
-                    .isInstanceOf(TracingConfigurationGuardException.class)
-                    .hasMessageContaining("before any successful currentComplete()");
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("no authoritative expected base");
         }
     }
 

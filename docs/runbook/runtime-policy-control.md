@@ -78,6 +78,19 @@ platform.tracing.policy.diagnostics.log-level
 
 3. Keys must come from recognised Config Server property sources (local overrides rejected).
 4. Spring builds the complete snapshot and calls private `applySnapshot` only (coalesced refresh worker).
+5. Write-path передаёт в Agent атомарную пару `(runtimeInstanceId, acceptedSequence)` —
+   ту, что была прочитана вместе со снапшотом (`ExpectedTracingPolicyBase`). Sequence Spring
+   не вычисляет и не инкрементирует.
+
+**Value vs completeness:**
+
+| Failure class | Exception / outcome | Startup (`deliverInitial`) | Runtime refresh |
+|---|---|---|---|
+| Missing leaf / local override / unknown provenance / non-numeric route-ratio | `TracingPolicyManifestException` | Fail-fast (blocks readiness) | Log error, **no apply**, LKG retained |
+| Invalid value (ratio out of range / non-finite, blank/ISO-control/oversized route prefix, unknown log-level) | `IllegalArgumentException` from snapshot invariants | Fail-fast | Log error, **no apply**, LKG retained |
+
+`diagnostics.log-level`: case-insensitive input канонизируется через `Locale.ROOT`
+(`info` → `INFO`); whitespace не trim'ится и отклоняется. Route prefixes регистрозависимы.
 
 **Do not:**
 
@@ -88,6 +101,7 @@ platform.tracing.policy.diagnostics.log-level
 **Verify:**
 
 - Startup readiness: private writer discoverable and `readAcceptedComplete` non-empty, then initial deliver.
+- Если authoritative base недоступна (пустой `readAcceptedComplete`) — initial deliver fail-closed; runtime refresh без прогретой базы **не** вызывает apply и сохраняет LKG.
 - Refresh logs: `outcome=APPLIED|UNCHANGED|STALE|REJECTED|FAILED`.
 
 Example: [examples/config-server-category-a.yaml](../examples/config-server-category-a.yaml).
@@ -142,7 +156,9 @@ Example: [examples/dev-actuator-local.yaml](../examples/dev-actuator-local.yaml)
 | `[P6 CONFIG_SERVER readiness] private writer unreachable` / empty `readAcceptedComplete` | Agent private control plane not ready / version mismatch | Confirm Controlled Agent + extension; align app/agent versions; check private MBeanServer attach |
 | `[P4 readiness probe]` ACTUATOR empty accepted policy | Same private-plane readiness | Same as above |
 | Initial CONFIG_SERVER deliver: missing required leaf | Incomplete manifest | Add all required `platform.tracing.policy.*` scalar keys (complete eight-leaf Category A) |
+| Initial CONFIG_SERVER deliver: invalid value (`IllegalArgumentException`) | Ratio/log-level/route invariant | Fix value; do not expect runtime LKG to absorb a bad initial manifest |
 | Local override rejected for policy key | Key from command-line / local file | Deliver leaf from Config Server source only |
+| Readiness blocked / empty accepted projection after Agent response with blank or ISO-control route prefix | Spring decode trust boundary rejects payload; `currentComplete()` → empty | Fix Agent-accepted policy; until then fail-closed (no partial accepted state) |
 
 Liveness must not depend on collector reachability. Tracing-configuration readiness is separate from business liveness.
 
@@ -191,14 +207,16 @@ CONFIG_SERVER logs explicitly: `REJECTED` / `FAILED` → `LKG retained`.
 
 ## 6. STALE apply response + bounded retry
 
-**Meaning:** Caller’s `expectedSequence` / runtime instance did not match Agent witnessed state (concurrent apply or Agent restart between read and apply).
+**Meaning:** Caller-supplied atomic expected base `(runtimeInstanceId, acceptedSequence)` did not
+match Agent witnessed state (concurrent apply or Agent restart between read and apply).
+Spring JMX client returns `STALE` as-is; it does not retry.
 
 | Path | Retry behavior |
 |------|----------------|
-| **CONFIG_SERVER** coalescer | On first `STALE`: refresh sequence from `readAcceptedComplete`, **one** bounded retry. Second `STALE` → warn, **LKG retained**. |
+| **CONFIG_SERVER** coalescer | On first `STALE`: refresh **full** expected base from `readAcceptedComplete`, **one** bounded retry. Second `STALE` → warn, **LKG retained**. |
 | **ACTUATOR** typed leaves | **No** automatic retry. HTTP `409` + `"outcome":"STALE"`. Caller may re-read and retry once if appropriate. |
 
-**Do not** invent unbounded retry loops. After bounded failure, inspect sequence / instance id and re-issue a complete apply.
+**Do not** invent unbounded retry loops. After bounded failure, inspect sequence / instance id and re-issue a complete apply with a freshly observed base.
 
 ---
 
@@ -252,3 +270,11 @@ The legacy `/actuator/tracing` read endpoint and its `otelEffective` / `resource
 `otelEnvHints` sections are deleted ([ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)).
 
 Banned legacy config names: `docs/research/evidence/p6-cutover/legacy-names-v1.json`.
+
+---
+
+## Follow-ups (non-blocking)
+
+| ID | Topic | Notes |
+|----|-------|-------|
+| `FU-PT-UUID-FIDELITY-01` | Canonical UUID validation on Spring-side + fixture migration | Не блокирует atomic-base / value-invariant / wire-boundary программу; отдельный follow-up. |

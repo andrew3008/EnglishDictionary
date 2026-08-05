@@ -98,7 +98,7 @@ class P53ConfigServerOutageTest {
                         + "'platform.tracing.policy.sampling.enabled'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -129,7 +129,7 @@ class P53ConfigServerOutageTest {
                                 + "'platform.tracing.policy.sampling.ratio'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -157,7 +157,7 @@ class P53ConfigServerOutageTest {
                                 + "'platform.tracing.policy.exporter.enabled'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -187,7 +187,7 @@ class P53ConfigServerOutageTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier rejectingClient = (seq, s, source) -> {
+        TracingPolicySnapshotApplier rejectingClient = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.REJECTED;
         };
@@ -215,7 +215,7 @@ class P53ConfigServerOutageTest {
         ConfigServerPolicyManifestBuilder builder = mock(ConfigServerPolicyManifestBuilder.class);
         when(builder.build()).thenReturn(sampleSnapshot());
 
-        TracingPolicySnapshotApplier failingClient = (seq, s, source) ->
+        TracingPolicySnapshotApplier failingClient = (expectedBase, s, source) ->
                 TracingPolicyDeliveryResult.FAILED;
 
         TracingPolicyRefreshCoalescer coalescer = new TracingPolicyRefreshCoalescer(
@@ -240,7 +240,7 @@ class P53ConfigServerOutageTest {
         ConfigServerPolicyManifestBuilder builder = mock(ConfigServerPolicyManifestBuilder.class);
         when(builder.build()).thenReturn(sampleSnapshot());
 
-        TracingPolicySnapshotApplier throwingClient = (seq, s, source) -> {
+        TracingPolicySnapshotApplier throwingClient = (expectedBase, s, source) -> {
             throw new RuntimeException("JMX transport unavailable");
         };
 
@@ -282,8 +282,8 @@ class P53ConfigServerOutageTest {
 
         AtomicLong capturedSeq = new AtomicLong(-99L);
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            capturedSeq.set(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            capturedSeq.set(expectedBase.acceptedSequence());
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -320,7 +320,7 @@ class P53ConfigServerOutageTest {
                                 + "'platform.tracing.policy.validation.strict'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -352,7 +352,7 @@ class P53ConfigServerOutageTest {
                                 + "'platform.tracing.policy.diagnostics.log-level'"));
 
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -384,8 +384,8 @@ class P53ConfigServerOutageTest {
         List<Long>   seenSeqs  = new ArrayList<>();
 
         // Call 1 (initial): APPLIED at seq=5. Call 2+: REJECTED.
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            seenSeqs.add(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            seenSeqs.add(expectedBase.acceptedSequence());
             if (callN.incrementAndGet() == 1) return TracingPolicyDeliveryResult.APPLIED;
             return TracingPolicyDeliveryResult.REJECTED;
         };
@@ -427,8 +427,8 @@ class P53ConfigServerOutageTest {
         AtomicInteger callN    = new AtomicInteger(0);
         List<Long>   seenSeqs = new ArrayList<>();
 
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            seenSeqs.add(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            seenSeqs.add(expectedBase.acceptedSequence());
             if (callN.incrementAndGet() == 1) return TracingPolicyDeliveryResult.APPLIED;
             return TracingPolicyDeliveryResult.FAILED;
         };
@@ -469,8 +469,8 @@ class P53ConfigServerOutageTest {
 
         AtomicInteger applyCount = new AtomicInteger(0);
         List<Long>    seenSeqs   = new ArrayList<>();
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            seenSeqs.add(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            seenSeqs.add(expectedBase.acceptedSequence());
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -506,8 +506,8 @@ class P53ConfigServerOutageTest {
 
         List<Long>   seenSeqs  = new ArrayList<>();
         AtomicInteger applyCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier client = (seq, s, source) -> {
-            seenSeqs.add(seq);
+        TracingPolicySnapshotApplier client = (expectedBase, s, source) -> {
+            seenSeqs.add(expectedBase.acceptedSequence());
             applyCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -692,7 +692,7 @@ class P53ConfigServerOutageTest {
         when(builder.build()).thenReturn(sampleSnapshot());
 
         AtomicInteger refreshCount = new AtomicInteger(0);
-        TracingPolicySnapshotApplier countingClient = (seq, s, source) -> {
+        TracingPolicySnapshotApplier countingClient = (expectedBase, s, source) -> {
             refreshCount.incrementAndGet();
             return TracingPolicyDeliveryResult.APPLIED;
         };
@@ -732,7 +732,7 @@ class P53ConfigServerOutageTest {
         AtomicInteger onRefreshCalls = new AtomicInteger(0);
         TracingPolicyRefreshCoalescer coalescer = new TracingPolicyRefreshCoalescer(
                 builder,
-                (seq, s, source) -> TracingPolicyDeliveryResult.APPLIED,
+                (expectedBase, s, source) -> TracingPolicyDeliveryResult.APPLIED,
                 readerWith(1L),
                 task -> {
                     onRefreshCalls.incrementAndGet();
@@ -779,7 +779,7 @@ class P53ConfigServerOutageTest {
         AtomicInteger onRefreshCalls = new AtomicInteger(0);
         TracingPolicyRefreshCoalescer coalescer = new TracingPolicyRefreshCoalescer(
                 builder,
-                (seq, s, source) -> TracingPolicyDeliveryResult.APPLIED,
+                (expectedBase, s, source) -> TracingPolicyDeliveryResult.APPLIED,
                 readerWith(1L),
                 task -> {
                     onRefreshCalls.incrementAndGet();

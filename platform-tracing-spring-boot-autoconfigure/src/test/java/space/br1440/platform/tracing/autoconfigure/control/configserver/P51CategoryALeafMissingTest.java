@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
@@ -14,13 +15,11 @@ import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.Traci
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -118,7 +117,7 @@ class P51CategoryALeafMissingTest {
                 coalescer.deliverInitial();
             } catch (TracingPolicyManifestException ignored) { /* expected */ }
 
-            verify(client, never()).applySnapshot(anyLong(), any(), any());
+            verify(client, never()).applySnapshot(any(), any(), any());
         }
 
         @Test
@@ -156,7 +155,7 @@ class P51CategoryALeafMissingTest {
                         .isInstanceOf(TracingPolicyManifestException.class)
                         .hasMessageContaining(leaf);
 
-                verify(client, never()).applySnapshot(anyLong(), any(), any());
+                verify(client, never()).applySnapshot(any(), any(), any());
             }
         }
     }
@@ -435,7 +434,7 @@ class P51CategoryALeafMissingTest {
 
         private final TracingPolicyDeliveryResult outcome;
         private final AtomicInteger applyCount = new AtomicInteger(0);
-        private final AtomicLong lastSequence = new AtomicLong(-1L);
+        private final AtomicReference<ExpectedTracingPolicyBase> lastExpectedBase = new AtomicReference<>();
         private volatile CompleteTracingPolicySnapshot lastSnapshot;
         private volatile TracingPolicySource lastSource;
 
@@ -445,18 +444,18 @@ class P51CategoryALeafMissingTest {
 
         @Override
         public TracingPolicyDeliveryResult applySnapshot(
-                long expectedSequence,
+                ExpectedTracingPolicyBase expectedBase,
                 CompleteTracingPolicySnapshot snapshot,
                 TracingPolicySource source) {
             applyCount.incrementAndGet();
-            lastSequence.set(expectedSequence);
+            lastExpectedBase.set(expectedBase);
             this.lastSnapshot = snapshot;
             this.lastSource = source;
             return outcome;
         }
 
         int applyCallCount() { return applyCount.get(); }
-        long lastAppliedSequence() { return lastSequence.get(); }
+        long lastAppliedSequence() { return lastExpectedBase.get().acceptedSequence(); }
         CompleteTracingPolicySnapshot lastAppliedSnapshot() { return lastSnapshot; }
         TracingPolicySource lastAppliedSource() { return lastSource; }
     }

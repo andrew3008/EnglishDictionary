@@ -9,11 +9,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyMutationService;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane;
 
 class TracingPolicyMutationServiceTest {
 
@@ -42,6 +44,10 @@ class TracingPolicyMutationServiceTest {
     void setSamplingRatioRejectsOutOfRange() {
         assertThat(adapter.setSamplingRatio(1.1)).isEqualTo(TracingPolicyDeliveryResult.REJECTED);
         assertThat(adapter.setSamplingRatio(-0.1)).isEqualTo(TracingPolicyDeliveryResult.REJECTED);
+        assertThat(adapter.setSamplingRatio(Double.NaN)).isEqualTo(TracingPolicyDeliveryResult.REJECTED);
+        assertThat(client.applyCallCount())
+                .as("invalid candidate must never reach applier")
+                .isEqualTo(0);
     }
 
     @Test
@@ -142,6 +148,55 @@ class TracingPolicyMutationServiceTest {
         assertThat(writeMethodCount).isEqualTo(8);
     }
 
+    // ── regression: read/write interleaving против реального JMX-клиента и fake Agent ────
+    //
+    // Выше stub-клиент лишь фиксирует, что MutationService передаёт куда-то ExpectedTracingPolicyBase,
+    // но не может доказать главное свойство P1-фикса: если Agent физически перезапустился МЕЖДУ
+    // currentComplete() и applySnapshot() в рамках одного applyChange(), то запись должна быть
+    // отвергнута как STALE с кодом RUNTIME_INSTANCE_MISMATCH, ни в каком виде не «дописавшись» в
+    // новый инстанс Agent, и без единого повторного вызова applySnapshot внутри самого
+    // MutationService (retry — забота коалесера, а не этого сервиса). Для этого read оборачивается
+    // декоратором, который вызывает настоящий currentComplete() у реального
+    // PrivateJmxTracingPolicySnapshotClient, а затем — уже после того, как base был наблюдён и
+    // зафиксирован в неизменяемом ExpectedTracingPolicyBase, — искусственно воспроизводит рестарт
+    // Agent-процесса, создавая ровно то окно гонки, которое ExpectedTracingPolicyBase обязан
+    // переживать корректно.
+    @Test
+    void agentRestartBetweenReadAndApply_rejectsAsStaleWithoutOverwritingNewInstance() throws Exception {
+        try (FakeAgentPrivateControlPlane agent =
+                     FakeAgentPrivateControlPlane.compliant("instance-before-restart", 5L)) {
+            var realClient = agent.client();
+
+            CompleteTracingPolicyReader interleavingReader = () -> {
+                Optional<AcceptedSnapshotWithSequence> observed = realClient.currentComplete();
+                try {
+                    agent.restartWithNewInstance("instance-after-restart", 0L);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+                return observed;
+            };
+
+            TracingPolicyMutationService realAdapter =
+                    new TracingPolicyMutationService(interleavingReader, realClient);
+
+            TracingPolicyDeliveryResult result = realAdapter.setSamplingEnabled(false);
+
+            assertThat(result)
+                    .as("expected base observed against the pre-restart instance must never be "
+                            + "accepted by the post-restart instance")
+                    .isEqualTo(TracingPolicyDeliveryResult.STALE);
+            assertThat(agent.lastResponseMessageCode()).isEqualTo("RUNTIME_INSTANCE_MISMATCH");
+            assertThat(agent.applyInvocationCount())
+                    .as("MutationService itself must not retry — exactly one applySnapshot call")
+                    .isEqualTo(1);
+            assertThat(agent.lastRequestRuntimeInstanceId()).isEqualTo("instance-before-restart");
+            assertThat(agent.currentAcceptedSequence())
+                    .as("the rejected write must not overwrite the new instance's own sequence baseline")
+                    .isEqualTo(0L);
+        }
+    }
+
     // ---- Stubs ----
 
     static class StubSnapshotReader implements CompleteTracingPolicyReader {
@@ -174,8 +229,8 @@ class TracingPolicyMutationServiceTest {
         public int applyCallCount() { return applyCount; }
 
         @Override
-        public TracingPolicyDeliveryResult applySnapshot(long seq, CompleteTracingPolicySnapshot snapshot,
-                TracingPolicySource source) {
+        public TracingPolicyDeliveryResult applySnapshot(ExpectedTracingPolicyBase expectedBase,
+                CompleteTracingPolicySnapshot snapshot, TracingPolicySource source) {
             this.lastSnapshot = snapshot;
             this.applyCount++;
             return forcedOutcome;

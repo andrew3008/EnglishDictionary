@@ -26,6 +26,7 @@ import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
 import javax.management.openmbean.TabularType;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -99,6 +100,22 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
     /** Consumed once by the next {@code applySnapshot}; then falls back to {@link #nextApplyOutcome}. */
     private final AtomicReference<String> oneShotApplyOutcome = new AtomicReference<>(null);
 
+    // ── test-only request-capture extension (interleaving / atomic-base regression) ────
+    //
+    // Added to prove P1 atomic-expected-base behaviour end-to-end: the fake now decodes the
+    // caller-supplied (runtimeInstanceId, acceptedSequence) pair from the real applySnapshot
+    // wire request instead of ignoring it, and compares the runtimeInstanceId half against its
+    // own current identity. This is the minimal test-only extension called for by the plan —
+    // NOT a full re-implementation of the Agent's AcceptedPolicyCoordinator: sequence-staleness
+    // itself is still fully scripted via {@link #setNextApplyOutcome} / {@link
+    // #setOneShotApplyOutcome}; only the runtime-identity mismatch check is real.
+    private final AtomicInteger applyInvocationCount = new AtomicInteger(0);
+    private final AtomicReference<String> lastRequestRuntimeInstanceId = new AtomicReference<>();
+    private final AtomicReference<Long> lastRequestAcceptedSequence = new AtomicReference<>();
+    private final AtomicReference<String> lastResponseMessageCode = new AtomicReference<>("");
+
+    private static final String RUNTIME_INSTANCE_MISMATCH = "RUNTIME_INSTANCE_MISMATCH";
+
     private FakeAgentPrivateControlPlane(
             MBeanServer server, String runtimeInstanceId, long initialSequence, DynamicMBean writer)
             throws Exception {
@@ -146,7 +163,7 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
                     return holder[0].encodeComplete();
                 }
                 if ("applySnapshot".equals(actionName)) {
-                    return holder[0].encodeApplyOutcome();
+                    return holder[0].encodeApplyOutcome((CompositeData) params[0]);
                 }
                 throw new ReflectionException(new NoSuchMethodException(actionName));
             }
@@ -266,6 +283,26 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
         return acceptedSequence.get();
     }
 
+    /** Сколько раз реально был вызван {@code applySnapshot} (независимо от исхода). */
+    public int applyInvocationCount() {
+        return applyInvocationCount.get();
+    }
+
+    /** {@code expectedRuntimeInstanceId} из последнего полученного запроса applySnapshot. */
+    public String lastRequestRuntimeInstanceId() {
+        return lastRequestRuntimeInstanceId.get();
+    }
+
+    /** {@code expectedAcceptedSequence} из последнего полученного запроса applySnapshot. */
+    public long lastRequestAcceptedSequence() {
+        return lastRequestAcceptedSequence.get();
+    }
+
+    /** {@code messageCode} из последнего отправленного ответа applySnapshot. */
+    public String lastResponseMessageCode() {
+        return lastResponseMessageCode.get();
+    }
+
     /** Configures the outcome the next (and subsequent) {@code applySnapshot} calls report. */
     public void setNextApplyOutcome(String outcome) {
         nextApplyOutcome.set(outcome);
@@ -304,12 +341,35 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
         }
     }
 
-    private CompositeData encodeApplyOutcome() {
+    private CompositeData encodeApplyOutcome(CompositeData request) {
+        applyInvocationCount.incrementAndGet();
+        String requestRuntimeInstanceId = (String) request.get("expectedRuntimeInstanceId");
+        long requestAcceptedSequence = (Long) request.get("expectedAcceptedSequence");
+        lastRequestRuntimeInstanceId.set(requestRuntimeInstanceId);
+        lastRequestAcceptedSequence.set(requestAcceptedSequence);
+
+        // Единственная часть протокола, которую этот fake реально проверяет, а не просто
+        // разыгрывает по сценарию: если runtimeInstanceId в запросе не совпадает с текущим —
+        // это тот самый P1-кейс (Agent перезапустился между read и write), и applySnapshot
+        // обязан отвергнуть попытку как STALE, не трогая принятую политику и sequence.
+        if (!runtimeInstanceId.equals(requestRuntimeInstanceId)) {
+            lastResponseMessageCode.set(RUNTIME_INSTANCE_MISMATCH);
+            try {
+                return new CompositeDataSupport(RESPONSE, RESPONSE_KEYS, new Object[]{
+                        acceptedSequence.get(), "fake-attempt", RUNTIME_INSTANCE_MISMATCH, "STALE", "", 1,
+                        false, new String[0], runtimeInstanceId, new String[0]
+                });
+            } catch (OpenDataException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
         String oneShot = oneShotApplyOutcome.getAndSet(null);
         String outcome = oneShot != null ? oneShot : nextApplyOutcome.get();
         long reportedSequence = "APPLIED".equals(outcome)
                 ? acceptedSequence.incrementAndGet()
                 : acceptedSequence.get();
+        lastResponseMessageCode.set("");
         try {
             return new CompositeDataSupport(RESPONSE, RESPONSE_KEYS, new Object[]{
                     reportedSequence, "fake-attempt", "", outcome, "", 1, false, new String[0],

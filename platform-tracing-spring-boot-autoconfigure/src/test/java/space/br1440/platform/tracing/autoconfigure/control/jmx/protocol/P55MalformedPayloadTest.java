@@ -288,6 +288,29 @@ class P55MalformedPayloadTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    /** Slice C: blank (whitespace-only) prefix — паритет с Agent isBlank(). */
+    @Test
+    void decode_complete_blank_route_prefix_throws() throws OpenDataException {
+        TabularData routes = routesWith("   ", 0.5);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("blank route prefix MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not be blank");
+    }
+
+    /** Slice C: ISO-control в prefix — паритет с Agent isISOControl(). */
+    @Test
+    void decode_complete_iso_control_route_prefix_throws() throws OpenDataException {
+        TabularData routes = routesWith("/api\u0001", 0.5);
+        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+                validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
+                .as("ISO-control route prefix MUST throw")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ISO control")
+                .hasMessageNotContaining("/api");
+    }
+
     /** P5.5-4b: route prefix length > MAX_ROUTE_PREFIX_LENGTH (255 UTF-16 code units). */
     @Test
     void decode_complete_oversized_route_prefix_throws() throws OpenDataException {
@@ -444,7 +467,10 @@ class P55MalformedPayloadTest {
                 .isInstanceOf(TracingPolicyManifestException.class);
     }
 
-    /** P5.5-7b: route-ratio value > 1.0. */
+    /**
+     * P5.5-7b: route-ratio value > 1.0 — value invariant принадлежит snapshot
+     * ({@link IllegalArgumentException}), а не manifest completeness/parse.
+     */
     @Test
     void builder_route_ratio_above_one_throws() {
         MockEnvironment env = fullPolicyEnvironment();
@@ -456,11 +482,15 @@ class P55MalformedPayloadTest {
                 new ConfigServerPolicyManifestBuilder(env, configServerClassifier(env));
 
         assertThatThrownBy(builder::build)
-                .as("route-ratio > 1.0 MUST throw TracingPolicyManifestException")
-                .isInstanceOf(TracingPolicyManifestException.class);
+                .as("route-ratio > 1.0 MUST throw IllegalArgumentException (value invariant)")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("/api");
     }
 
-    /** P5.5-7c: route-ratio value < 0.0. */
+    /**
+     * P5.5-7c: route-ratio value < 0.0 — value invariant принадлежит snapshot
+     * ({@link IllegalArgumentException}), а не manifest completeness/parse.
+     */
     @Test
     void builder_route_ratio_below_zero_throws() {
         MockEnvironment env = fullPolicyEnvironment();
@@ -472,8 +502,9 @@ class P55MalformedPayloadTest {
                 new ConfigServerPolicyManifestBuilder(env, configServerClassifier(env));
 
         assertThatThrownBy(builder::build)
-                .as("route-ratio < 0.0 MUST throw TracingPolicyManifestException")
-                .isInstanceOf(TracingPolicyManifestException.class);
+                .as("route-ratio < 0.0 MUST throw IllegalArgumentException (value invariant)")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("/api");
     }
 
     // =========================================================================
