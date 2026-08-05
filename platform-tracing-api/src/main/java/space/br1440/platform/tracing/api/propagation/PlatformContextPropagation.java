@@ -28,9 +28,8 @@ import java.util.concurrent.ExecutorService;
  *       через bytecode instrumentation, ручная обёртка приведёт к двойному переносу.</li>
  *   <li>Reactor {@code Mono} / {@code Flux} — используется механизм Reactor hooks и
  *       Micrometer Context Propagation.</li>
- *   <li>Spring {@code @Async} с {@code ThreadPoolTaskExecutor} — включите
- *       {@code platform.tracing.thread-pool-task-executor.enabled=true}, после чего
- *       платформенный {@code TaskDecorator} возьмёт пропагацию на себя.</li>
+ *   <li>Spring {@code @Async} под Controlled Platform Agent — Agent переносит OTel Context,
+ *       а starter проецирует платформенную request identity в MDC без изменения executor.</li>
  * </ul>
  * <p>
  * <b>Контракт реализации.</b> Возвращаемые обёртки должны перехватывать текущий контекст в момент

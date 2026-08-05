@@ -602,7 +602,7 @@ Notes: Risk: raw Java DTO crosses App CL / Agent CL boundary — CURRENT design 
 ### 9.7. Spring Boot common autoconfigure
 
 ```text
-Auto-configuration classes: TracingCoreAutoConfiguration, SemanticLayerAutoConfiguration, TracingMetricsAutoConfiguration, TracingAopAutoConfiguration, TracingObservationAutoConfiguration, TracingActuatorAutoConfiguration, RequestContextSupplierAutoConfiguration, ServiceNameProviderAutoConfiguration, TracingRefreshScopeAutoConfiguration, TracingAsyncContextAutoConfiguration, PlatformOutboundPropagationAutoConfiguration, PlatformKafkaAutoConfiguration, PlatformKafkaOutboundAutoConfiguration
+Auto-configuration classes: TracingCoreAutoConfiguration, SemanticLayerAutoConfiguration, TracingMetricsAutoConfiguration, TracingAopAutoConfiguration, TracingObservationAutoConfiguration, TracingActuatorAutoConfiguration, RequestContextSupplierAutoConfiguration, ServiceNameProviderAutoConfiguration, TracingRefreshScopeAutoConfiguration, PlatformOutboundPropagationAutoConfiguration, PlatformKafkaAutoConfiguration, PlatformKafkaOutboundAutoConfiguration
 Properties classes: TracingProperties (prefix platform.tracing)
 Conditional beans: @ConditionalOnClass, @ConditionalOnProperty throughout
 Actuator endpoints: TracingActuatorEndpoint — GET read + POST write (enabled, samplingRatio)
@@ -1300,9 +1300,6 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.actuator / ResourceEffectiveSnapshot
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.actuator / TracingActuatorEndpoint
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.aspect / TracedAspect
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / PlatformContextTaskDecorator
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / ThreadPoolTaskExecutorContextPropagationBeanPostProcessor
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / TracingAsyncContextAutoConfiguration
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.errorhandling / RequestTraceContextSnapshotSupplier
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.health / TracingHealthIndicator
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.kafka / KafkaBatchLinksAspect
@@ -1533,11 +1530,7 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.arch / KafkaOutboundNoSpanArchTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.arch / OtelDirectIntegrationArchTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.aspect / TracedAspectTest
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / PlatformContextTaskDecoratorTest
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / ThreadPoolTaskExecutorBppTest
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.async / TracingAsyncContextAutoConfigurationTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.errorhandling / RequestTraceContextSnapshotSupplierTest
-    platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.mdc / MdcPropagationAsyncIntegrationTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.mdc / MdcPropagationCompletableFutureTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.mdc / MicrometerTracingMdcBridgeSmokeTest
     platform-tracing-spring-boot-autoconfigure / space.br1440.platform.tracing.autoconfigure.metrics / PlatformTracingMetricsTest

@@ -8,9 +8,9 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `space.br1440.platform.tracing.autoconfigure.actuator.OtelEffectiveConfigSnapshot` | DELETE | `-` | S6b→post-P6 | DONE (moved to `diagnostics.jmx` at S6b, deleted post-P6 per [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)) |
 | `space.br1440.platform.tracing.autoconfigure.actuator.ResourceEffectiveSnapshot` | DELETE | `-` | S6b→post-P6 | DONE (moved to `diagnostics.jmx` at S6b, deleted post-P6 per [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md)) |
 | `space.br1440.platform.tracing.autoconfigure.aspect.TracedAspect` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect` | S6b | DONE |
-| `space.br1440.platform.tracing.autoconfigure.async.PlatformContextTaskDecorator` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.PlatformContextTaskDecorator` | S6b | DONE |
-| `space.br1440.platform.tracing.autoconfigure.async.ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.ThreadPoolTaskExecutorDecoratorBeanPostProcessor` | S6b | DONE |
-| `space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.async.TracingAsyncContextAutoConfiguration` | S6b | DONE |
+| `space.br1440.platform.tracing.autoconfigure.async.PlatformContextTaskDecorator` | MOVE→DELETE | `-` | S6b→post-agent-async-E2E | DONE |
+| `space.br1440.platform.tracing.autoconfigure.async.ThreadPoolTaskExecutorContextPropagationBeanPostProcessor` | MOVE→DELETE | `-` | S6b→post-agent-async-E2E | DONE |
+| `space.br1440.platform.tracing.autoconfigure.async.TracingAsyncContextAutoConfiguration` | MOVE→DELETE | `-` | S6b→post-agent-async-E2E | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames` | S5 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings` | S5 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsRegistrar` | S5 | DONE |

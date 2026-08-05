@@ -345,13 +345,14 @@ inventories:
           - "wrap captures current context on caller thread and restores on worker thread"
           - "contextAware(Executor/ExecutorService) applies per-task capture at execute time"
           - "Double-wrap is possible but not idempotent by contract"
-          - "Must not be used for HTTP/Kafka agent paths, Reactor, or @Async with platform TaskDecorator"
+          - "Must not be used for HTTP/Kafka/Reactor or Spring @Async paths already instrumented by Controlled Platform Agent"
         evidence:
           - platform-tracing-api/src/main/java/space/br1440/platform/tracing/api/propagation/PlatformContextPropagation.java
         compatibility: behavior-preserving wrapper semantics
         owner: platform-tracing
         verification:
-          - platform-tracing-spring-boot-autoconfigure/src/test/java/space/br1440/platform/tracing/autoconfigure/mdc/MdcPropagationAsyncIntegrationTest.java
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/OtelPlatformContextPropagationTest.java
+          - platform-tracing-otel/src/test/java/space/br1440/platform/tracing/otel/NoOpPlatformContextPropagationTest.java
         disposition: none
         notes: "Javadoc references OpenTelemetry Context conceptually; public signatures remain OTel-free."
         semanticConceptIds: [context-propagation-wrapper]

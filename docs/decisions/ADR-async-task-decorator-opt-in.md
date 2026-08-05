@@ -2,10 +2,28 @@
 
 | Поле | Значение |
 |------|----------|
-| Статус | **Принято** |
+| Статус | **Заменено** (2026-08-05) |
 | Дата | 2026-05-24 |
 | Контекст | Фаза 2 — Wave 2; `TracingAsyncContextAutoConfiguration`, `ThreadPoolTaskExecutorContextPropagationBeanPostProcessor`, `PlatformContextTaskDecorator` |
 | Стек | Spring Boot 3.x (включая 3.5+), Spring Framework 6.x, Micrometer Context Propagation, OpenTelemetry Java Agent (agent-first) |
+
+## Решение о замене
+
+Legacy opt-in механизм удалён до production rollout. Controlled Platform Agent переносит
+OpenTelemetry Context через Spring `@Async`; приложение и starter не модифицируют
+`ThreadPoolTaskExecutor`. Узкая Spring AOP-интеграция проецирует только платформенные
+`requestId`/`correlationId` из уже восстановленного контекста в MDC и восстанавливает
+предыдущее состояние worker-потока после вызова.
+
+Решение подтверждено packaged-тестом {@code AsyncAgentPropagationControlledAgentE2ETest} для
+Boot auto-configured и application custom executor: trace identity сохраняется, MDC не протекает
+между задачами, custom `TaskDecorator` не устанавливается. Удалены
+`TracingAsyncContextAutoConfiguration`,
+`ThreadPoolTaskExecutorDecoratorBeanPostProcessor`,
+`PlatformContextTaskDecorator` и ключ
+`platform.tracing.thread-pool-task-executor.enabled`.
+
+Ниже сохранено историческое описание заменённого решения.
 
 ## Проблема
 
@@ -19,7 +37,7 @@
 
 Автоматическое включение собственного `TaskDecorator` при наличии `@EnableAsync` создаст двойную пропагацию, перетрёт существующие decorator'ы и сломает race/debug-сценарии.
 
-## Решение
+## Историческое решение
 
 ### Контракт
 

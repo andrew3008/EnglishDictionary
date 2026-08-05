@@ -229,8 +229,6 @@ Application SDK и `micrometer-tracing-bridge-otel` не являются fallba
 | `kafka.batch-links-enabled` | `PLATFORM_TRACING_KAFKA_BATCH_LINKS_ENABLED` | `false` | Нет | Spring (`@ConditionalOnProperty`) | Batch @KafkaListener links; нет листа в `TracingProperties` |
 | `kafka.propagate-platform-headers` | `PLATFORM_TRACING_KAFKA_PROPAGATE_PLATFORM_HEADERS` | `false` | Cond. | Spring (`@ConditionalOnProperty`) | Producer header inject; нет листа в `TracingProperties` |
 | `kafka.trusted-topic-patterns` | `PLATFORM_TRACING_KAFKA_TRUSTED_TOPIC_PATTERNS` | `[]` | **Cond.** | Spring | Glob доверенных топиков |
-| **thread-pool-task-executor** | | | | | |
-| `thread-pool-task-executor.enabled` | `PLATFORM_TRACING_THREAD_POOL_TASK_EXECUTOR_ENABLED` | `false` | Нет | Spring (bootstrap, `@ConditionalOnProperty`) | Перенос текущего OTel Context/MDC в задачи `ThreadPoolTaskExecutor`; span не создаёт; нет листа в `TracingProperties` |
 | `log-level` | `PLATFORM_TRACING_LOG_LEVEL` | `INFO` | Нет | Spring → Agent JMX | Уровень логирования платформенного расширения: `OFF`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
 
 **Удалено:** `diagnostics.dual-channel-warn` / `diagnostics.drop-oldest-aspiration-warn` / `diagnostics.drop-oldest-aspiration-info` и `actuator.mutation-enabled` — dual-channel diagnostics и Actuator write-surface удалены без восстановления (см. [ADR-remove-dual-channel-diagnostics.md](../decisions/ADR-remove-dual-channel-diagnostics.md), `P64ActuatorWriteAbsenceTest`). Runtime policy mutation — только через JMX/Config Server, не через HTTP POST.

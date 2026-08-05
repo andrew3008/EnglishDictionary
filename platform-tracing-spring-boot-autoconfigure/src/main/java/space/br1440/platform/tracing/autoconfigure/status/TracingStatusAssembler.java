@@ -48,7 +48,6 @@ public final class TracingStatusAssembler {
                 bootstrapSettings,
                 jmxClient,
                 acceptedPolicyReader,
-                startupDiagnostics,
                 startupDiagnostics::extensionDescriptor);
     }
 
@@ -57,7 +56,6 @@ public final class TracingStatusAssembler {
                            TracingBootstrapSettings bootstrapSettings,
                            PlatformTracingJmxClient jmxClient,
                            AcceptedTracingPolicyReader acceptedPolicyReader,
-                           TracingDeploymentDiagnostics startupDiagnostics,
                            Supplier<AgentExtensionDescriptor> agentDescriptorSupplier) {
         this.traceOperations = traceOperations;
         this.tracingRuntime = tracingRuntime;
@@ -94,8 +92,6 @@ public final class TracingStatusAssembler {
     }
 
     private Map<String, Object> runtimeSection() {
-        Optional<DiagnosticsObservation> diagnosticsObservation = jmxClient.diagnostics().observation();
-
         Map<String, Object> runtime = new LinkedHashMap<>();
         runtime.put("implementation", traceOperations.getClass().getName());
         runtime.put("mode", tracingRuntime.state().mode().name());
@@ -103,25 +99,30 @@ public final class TracingStatusAssembler {
         runtime.put("currentTraceId", traceOperations.traceContext().traceId().orElse(null));
         runtime.put("currentSpanId", traceOperations.traceContext().spanId().orElse(null));
         runtime.put("domainMBeansAvailable", jmxClient.registrationSnapshot().allRegistered());
-        runtime.put("sampling", samplingSection(diagnosticsObservation));
+        runtime.put("sampling", samplingSection());
         runtime.put("validation", validationSection());
         runtime.put("scrubbing", scrubbingSection());
         runtime.put("export", exportSection());
         runtime.put("processorErrorsTotal", processorErrorsTotal());
         runtime.put("processorErrorsByName", processorErrorsByName());
-        runtime.put("configurationReload", diagnosticsObservation.map(DiagnosticsObservation::configReloadMetrics).orElseGet(Map::of));
+        runtime.put("configurationReload", jmxClient.diagnostics().observation()
+                .map(DiagnosticsObservation::configReloadMetrics)
+                .orElseGet(Map::of));
         return runtime;
     }
 
-    private Map<String, Object> samplingSection(Optional<DiagnosticsObservation> diagnosticsObservation) {
+    private Map<String, Object> samplingSection() {
         Optional<SamplingObservation> observation = jmxClient.sampling().observation();
+
         Map<String, Object> sampling = new LinkedHashMap<>();
         sampling.put("enabled", observation.map(SamplingObservation::samplerEnabled).orElse(null));
         sampling.put("ratio", observation.map(SamplingObservation::samplingRatio).orElse(null));
         sampling.put("routeRatioCount", observation.map(SamplingObservation::liveRouteRatioCount).orElse(null));
         sampling.put("configVersion", null);
         sampling.put("configSource", observation.map(SamplingObservation::configLastUpdatedSource).orElse(null));
-        sampling.put("invalidConfigCount", diagnosticsObservation.map(DiagnosticsObservation::invalidConfigCount).orElse(null));
+        sampling.put("invalidConfigCount", jmxClient.diagnostics().observation()
+                .map(DiagnosticsObservation::invalidConfigCount)
+                .orElse(null));
         sampling.put("decisions", observation.map(o -> ownerValuesOrEmpty(o.decisionCounts())).orElseGet(Map::of));
         return sampling;
     }

@@ -18,22 +18,6 @@ import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPro
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
-/**
- * Kafka {@link ProducerInterceptor}, добавляющий платформенные управляющие заголовки в исходящую запись на доверенные топики.
- * <p>
- * Agent-compatible: НЕ создаёт span'ы и НЕ инжектит W3C (это делает OTel Java Agent) — только
- * платформенные заголовки при положительном trusted-решении (secure-by-default).
- *
- * <h3>Контракт ProducerInterceptor</h3>
- * <ul>
- *   <li>Создаётся Kafka-клиентом по рефлексии (НЕ Spring-бин). Зависимости ({@link OutboundPropagationPolicy},
- *       {@link PlatformOutboundPropagation}) передаются через producer-config map и читаются в
- *       {@link #configure(Map)}. Kafka логирует WARN об «unknown config» для кастомных ключей — это ожидаемо.</li>
- *   <li>{@code onSend()} вызывается на producer-потоке -> inject строго неблокирующий (без I/O).</li>
- *   <li>Исключения {@code onSend()} Kafka перехватывает/логирует и не пробрасывает; дополнительно
- *       оборачиваем изоляцией (defense-in-depth), бизнес-отправка не ломается.</li>
- * </ul>
- */
 public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInterceptor<K, V> {
 
     public static final String CONFIG_POLICY = "platform.tracing.kafka.outbound-policy";

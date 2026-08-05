@@ -278,14 +278,6 @@ class TracingConfigurationInventoryGeneratorTest {
         addConditionalOnPropertyGate(
                 entries,
                 source,
-                "platform.tracing.thread-pool-task-executor.enabled",
-                "platform-tracing-spring-boot-autoconfigure/src/main/java/"
-                        + "space/br1440/platform/tracing/autoconfigure/integrations/async/"
-                        + "TracingAsyncContextAutoConfiguration.java",
-                "ThreadPoolTaskExecutorDecoratorBeanPostProcessor");
-        addConditionalOnPropertyGate(
-                entries,
-                source,
                 "platform.tracing.kafka.batch-links-enabled",
                 "platform-tracing-spring-boot-autoconfigure/src/main/java/"
                         + "space/br1440/platform/tracing/autoconfigure/integrations/kafka/"
@@ -469,9 +461,6 @@ class TracingConfigurationInventoryGeneratorTest {
         fixture(entries, source, "platform.tracing.policy.sampling.ratio");
         fixture(entries, source, "platform.tracing.policy.sampling.route-ratio");
         fixture(entries, source, "platform.tracing.async.enabled");
-        fixture(entries, source, "platform.tracing.context-propagation.async.enabled");
-        fixture(entries, source,
-                "platform.tracing.context-propagation.thread-pool-task-executor.enabled");
         fixture(entries, source, "platform.tracing.kafka.mode");
         fixture(entries, source, "platform.tracing.propagation.enabled");
         fixture(entries, source, "platform.tracing.exporter.enabled");

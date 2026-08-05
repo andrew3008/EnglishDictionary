@@ -96,9 +96,7 @@ space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupp
 space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect
 space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration
-space.br1440.platform.tracing.autoconfigure.integrations.async.PlatformContextTaskDecorator
-space.br1440.platform.tracing.autoconfigure.integrations.async.ThreadPoolTaskExecutorDecoratorBeanPostProcessor
-space.br1440.platform.tracing.autoconfigure.integrations.async.TracingAsyncContextAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.integrations.async.AsyncIdentityMdcAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestTraceContextSnapshotSupplier
 space.br1440.platform.tracing.autoconfigure.integrations.kafka.KafkaBatchLinksAspect

@@ -98,7 +98,6 @@ class MicrometerStatusMappingE2ETest {
                     + "TracingStartupContractHealthAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.integrations.async.TracingAsyncContextAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaOutboundAutoConfiguration",

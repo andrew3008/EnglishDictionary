@@ -22,9 +22,6 @@ import org.springframework.core.env.Environment;
  *       по умолчанию</a> для отсутствующего {@code service.name}.</li>
  * </ol>
  * <p>
- * Agent-канал {@code platform.tracing.service.name} / {@code OTEL_SERVICE_NAME} задаёт OTel Resource
- * identity и <b>не</b> читается этим провайдером (см. {@code ADR-spring-owns-only-what-spring-applies}).
- * <p>
  * Значение разрешается один раз в конструкторе и кэшируется: имя сервиса задаётся
  * на старте JVM и не должно меняться в рантайме.
  */
@@ -37,9 +34,7 @@ public final class PlatformLocalServiceNameProvider implements Supplier<String> 
      * OpenTelemetry Semantic Conventions — Service</a>: SDK MUST использовать
      * {@code unknown_service}, конкатенированный с {@code process.executable.name}
      * (например, {@code unknown_service:java}), либо просто {@code unknown_service},
-     * если имя процесса недоступно. Данная константа воспроизводит только базовое
-     * значение без суффикса процесса, так как {@code PlatformLocalServiceNameProvider}
-     * не имеет доступа к {@code process.executable.name} и не пытается его определять.
+     * если имя процесса недоступно.
      */
     public static final String UNKNOWN_SERVICE = "unknown_service";
 

@@ -17,13 +17,6 @@ import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundP
 import space.br1440.platform.tracing.otel.propagation.control.DefaultOutboundPropagationPolicy;
 import space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers;
 
-/**
- * Авто-конфигурация исходящей инжекции платформенных заголовков в Kafka producer.
- * <p>
- * Активна при {@code platform.tracing.kafka.propagate-platform-headers=true}. При активации
- * policy enabled (как HTTP {@code propagation.outbound.enabled}); фактический inject режется
- * {@code trusted-topic-patterns}. Span'ы Kafka создаёт OTel Java Agent — платформа их не дублирует.
- */
 @AutoConfiguration
 @AutoConfigureAfter(PlatformOutboundPropagationAutoConfiguration.class)
 @ConditionalOnClass(name = {

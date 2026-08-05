@@ -309,14 +309,13 @@ maps:
           - Capture on wrap/execute caller thread
           - Restore on worker; prior worker context restored after task
           - Double-wrap not guaranteed idempotent
-          - Forbidden for agent-instrumented HTTP/Kafka/Reactor/@Async TaskDecorator paths
+          - Forbidden for HTTP/Kafka/Reactor and Spring @Async paths already instrumented by Controlled Platform Agent
         lifecycle: per-task capture/restore; no global state in API type
         javaExpressions:
           - space.br1440.platform.tracing.api.propagation.PlatformContextPropagation
           - PlatformContextPropagation.wrap(Runnable)
           - PlatformContextPropagation.contextAware(Executor)
-        configurationExpressions:
-          - platform.tracing.thread-pool-task-executor.enabled (external module; alternative path)
+        configurationExpressions: []
         springExpressions:
           - PlatformContextPropagation bean when enabled
         operationalExpressions: []
@@ -617,7 +616,3 @@ maps:
         summary: "Rule priority ranges referenced in SPI Javadoc with partial enforcement noted as PR-3 hardening."
         disposition: align
 
-      - conceptId: context-propagation-wrapper
-        surface: configuration
-        summary: "Alternative @Async path uses property platform.tracing.thread-pool-task-executor.enabled outside api module."
-        disposition: document

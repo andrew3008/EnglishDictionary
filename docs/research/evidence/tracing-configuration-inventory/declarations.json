@@ -334,49 +334,44 @@
   "id" : "CONFIG_PROPERTY-062",
   "kind" : "CONFIG_PROPERTY"
 }, {
-  "declaration" : "platform-tracing-spring-boot-autoconfigure/src/main/java/space/br1440/platform/tracing/autoconfigure/integrations/async/TracingAsyncContextAutoConfiguration.java#@ConditionalOnProperty:boolean",
-  "exactName" : "platform.tracing.thread-pool-task-executor.enabled",
-  "id" : "CONFIG_PROPERTY-063",
-  "kind" : "CONFIG_PROPERTY"
-}, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.VALIDATION_ENABLED:String",
   "exactName" : "platform.tracing.validation.enabled",
-  "id" : "CONFIG_PROPERTY-064",
+  "id" : "CONFIG_PROPERTY-063",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.VALIDATION_MODE:String",
   "exactName" : "platform.tracing.validation.mode",
-  "id" : "CONFIG_PROPERTY-065",
+  "id" : "CONFIG_PROPERTY-064",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.VALIDATION_STRICT:String",
   "exactName" : "platform.tracing.validation.strict",
-  "id" : "CONFIG_PROPERTY-066",
+  "id" : "CONFIG_PROPERTY-065",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.VALIDATION_STRICT_RUNTIME_ALLOWED:String",
   "exactName" : "platform.tracing.validation.strict-runtime-allowed",
-  "id" : "CONFIG_PROPERTY-067",
+  "id" : "CONFIG_PROPERTY-066",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.WATCHDOG_ENABLED:String",
   "exactName" : "platform.tracing.watchdog.enabled",
-  "id" : "CONFIG_PROPERTY-068",
+  "id" : "CONFIG_PROPERTY-067",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.WATCHDOG_SCAN_INTERVAL:String",
   "exactName" : "platform.tracing.watchdog.scan-interval",
-  "id" : "CONFIG_PROPERTY-069",
+  "id" : "CONFIG_PROPERTY-068",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT:String",
   "exactName" : "platform.tracing.watchdog.span-timeout",
-  "id" : "CONFIG_PROPERTY-070",
+  "id" : "CONFIG_PROPERTY-069",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT:String",
   "exactName" : "platform.tracing.watchdog.trace-timeout",
-  "id" : "CONFIG_PROPERTY-071",
+  "id" : "CONFIG_PROPERTY-070",
   "kind" : "CONFIG_PROPERTY"
 }, {
   "declaration" : "NO_CODE_DECLARATION",
@@ -535,68 +530,58 @@
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.context-propagation.async.enabled",
+  "exactName" : "platform.tracing.exporter.enabled",
   "id" : "FIXTURE_ONLY_KEY-002",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.context-propagation.thread-pool-task-executor.enabled",
+  "exactName" : "platform.tracing.kafka.mode",
   "id" : "FIXTURE_ONLY_KEY-003",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.exporter.enabled",
+  "exactName" : "platform.tracing.log-level",
   "id" : "FIXTURE_ONLY_KEY-004",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.kafka.mode",
+  "exactName" : "platform.tracing.policy.sampling.ratio",
   "id" : "FIXTURE_ONLY_KEY-005",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.log-level",
+  "exactName" : "platform.tracing.policy.sampling.route-ratio",
   "id" : "FIXTURE_ONLY_KEY-006",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.policy.sampling.ratio",
+  "exactName" : "platform.tracing.propagation.enabled",
   "id" : "FIXTURE_ONLY_KEY-007",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.policy.sampling.route-ratio",
+  "exactName" : "platform.tracing.response.enabled",
   "id" : "FIXTURE_ONLY_KEY-008",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.propagation.enabled",
+  "exactName" : "platform.tracing.response.expose-request-id-header",
   "id" : "FIXTURE_ONLY_KEY-009",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.response.enabled",
+  "exactName" : "platform.tracing.response.header-name",
   "id" : "FIXTURE_ONLY_KEY-010",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.response.expose-request-id-header",
+  "exactName" : "platform.tracing.sdk.mode",
   "id" : "FIXTURE_ONLY_KEY-011",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.response.header-name",
-  "id" : "FIXTURE_ONLY_KEY-012",
-  "kind" : "FIXTURE_ONLY_KEY"
-}, {
-  "declaration" : "NO_PRODUCTION_DECLARATION",
-  "exactName" : "platform.tracing.sdk.mode",
-  "id" : "FIXTURE_ONLY_KEY-013",
-  "kind" : "FIXTURE_ONLY_KEY"
-}, {
-  "declaration" : "NO_PRODUCTION_DECLARATION",
   "exactName" : "platform.tracing.service.k8s-pod-uid",
-  "id" : "FIXTURE_ONLY_KEY-014",
+  "id" : "FIXTURE_ONLY_KEY-012",
   "kind" : "FIXTURE_ONLY_KEY"
 }, {
   "declaration" : "platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/configuration/ExtensionPropertyNames.java#ExtensionPropertyNames.PLATFORM_ENVIRONMENT:String",

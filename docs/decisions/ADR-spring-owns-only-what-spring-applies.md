@@ -15,7 +15,7 @@
 
 Удалить из Spring `TracingProperties` все C/D/E поля. Оставить только:
 
-- **A** — Spring применяет (mode, request-id-header, semantic, propagation outbound/platform-headers, kafka trusted topics, thread-pool-task-executor gate via Environment).
+- **A** — Spring применяет (mode, request-id-header, semantic, propagation outbound/platform-headers, kafka trusted topics).
 - **Category A runtime policy** — не зеркалируется в `TracingProperties`. Живой namespace:
   `platform.tracing.policy.*` (Config Server / ACTUATOR private JMX → Agent accepted state).
   Export kill-switch: `platform.tracing.policy.exporter.enabled`.

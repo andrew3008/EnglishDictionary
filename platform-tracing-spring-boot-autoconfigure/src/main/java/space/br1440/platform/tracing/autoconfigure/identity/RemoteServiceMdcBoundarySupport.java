@@ -6,9 +6,6 @@ import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc;
 
 import lombok.experimental.UtilityClass;
 
-/**
- * Bridge для очистки remote-service MDC и связанного trace mirror на web-boundary.
- */
 @UtilityClass
 public final class RemoteServiceMdcBoundarySupport {
 

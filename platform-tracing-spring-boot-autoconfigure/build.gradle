@@ -22,11 +22,6 @@ dependencies {
     // compileOnly: не транзитивна потребителям; opt-in — docs/MIGRATION.md.
     compileOnly 'io.micrometer:micrometer-tracing-bridge-otel'
 
-    // Micrometer Context Propagation: единый стандартный механизм проброса ThreadLocal/Reactor
-    // контекста в Spring Boot 3 (заменяет ручные обёртки MDC-контекста). Версия управляется
-    // Spring Boot BOM, фиксировать отдельно не требуется.
-    api 'io.micrometer:context-propagation'
-
     implementation 'org.slf4j:slf4j-api'
 
     // AOP: обработка аннотации @Traced. Spring AOP достаточно — без необходимости в загрузочном AspectJ-агенте.
@@ -64,6 +59,7 @@ dependencies {
     testImplementation project(':platform-tracing-test')
     testImplementation project(':platform-tracing-otel-javaagent-extension')
     testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    testImplementation 'io.micrometer:context-propagation'
 
     // Config Server adapter tests (P5.3) construct EnvironmentChangeEvent directly.
     // Production keeps spring-cloud-context as compileOnly; tests need it on the test classpath.

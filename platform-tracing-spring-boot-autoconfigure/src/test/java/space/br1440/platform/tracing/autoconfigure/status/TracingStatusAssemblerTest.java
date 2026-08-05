@@ -19,7 +19,6 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfiguratio
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
@@ -103,12 +102,6 @@ class TracingStatusAssemblerTest {
                 authority,
                 PlatformEnvironmentPosture.LOCAL);
 
-        TracingDeploymentDiagnostics diagnostics = new TracingDeploymentDiagnostics(
-                enabled,
-                descriptor.get().agentMarkerVisible(),
-                descriptor.get().state(),
-                descriptor.get());
-
         TracingRuntime runtime = enabled
                 ? NoOpTracingRuntime.noop()
                 : NoOpTracingRuntime.disabledByConfiguration("test-disabled");
@@ -118,7 +111,6 @@ class TracingStatusAssemblerTest {
                 settings,
                 mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS),
                 () -> projection,
-                diagnostics,
                 descriptor::get);
     }
 

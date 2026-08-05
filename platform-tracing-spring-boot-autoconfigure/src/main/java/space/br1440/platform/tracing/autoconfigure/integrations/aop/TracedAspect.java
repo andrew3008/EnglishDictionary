@@ -1,14 +1,15 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.aop;
 
-import io.opentelemetry.api.trace.Span;
-import lombok.extern.slf4j.Slf4j;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 
@@ -21,11 +22,8 @@ import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.tracing.api.span.spec.SpanHandle;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import io.opentelemetry.api.trace.Span;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * AOP-обработчик аннотации {@link Traced}.
@@ -33,14 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * Создаёт span для каждого вызова метода, помеченного {@code @Traced}, обогащает span атрибутами
  * из параметров, помеченных {@link TracedAttribute}, и автоматически переводит исключения в
  * {@link SpanResult#FAILURE} с записью exception-события.
- * <p>
- * Режим работы — всегда {@code ENRICH_CURRENT}: если есть активный валидный span (например,
- * серверный, созданный OpenTelemetry Java Agent), аспект обогащает его вместо создания дочернего.
- * Это устраняет дублирующие span'ы при совместной работе с Agent.
- * <p>
- * Используется Spring AOP (proxy-based). Прикладные сервисы должны быть Spring-бинами; вызов через
- * прямой ссылку на {@code this} не перехватывается — это ограничение proxy-подхода. Если требуется
- * перехват внутри класса, рекомендуется выделить метод в отдельный бин.
  */
 @Slf4j
 @Aspect
