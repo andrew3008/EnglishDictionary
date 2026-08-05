@@ -1,10 +1,10 @@
-S-06 approved-stack S-02 reproduction — configProvenanceVerify on Boot 3.5.5 + Spring Cloud 2025.0.0
-HEAD: 6909f44a1d9957a488c3e144b6f1e4949752aef5
+S-06 approved-stack S-02 reproduction — configProvenanceVerify on Boot 3.5.16 + Spring Cloud 2025.0.0
+HEAD: ce469ad5fb305d6a1d1c45fdbaef4b5cddcdef7d
 Task: configProvenanceVerify --rerun-tasks
 Result: BUILD SUCCESSFUL
 
 Stack (configProvenance source set):
-  org.springframework.boot:spring-boot-dependencies:3.5.5 (from rootProject.springBootVersion)
+  org.springframework.boot:spring-boot-dependencies:3.5.16 (from rootProject.springBootVersion)
   org.springframework.cloud:spring-cloud-dependencies:2025.0.0
   spring-cloud-context:4.3.0 (resolved)
   spring-cloud-config-client:4.3.0 (resolved)

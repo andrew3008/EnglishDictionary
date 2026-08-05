@@ -18,6 +18,8 @@ import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
 class AsyncRequestIdentityMdcProjectionInterceptorTest {
 
+    private static final String UNRELATED_MDC_KEY = "tenant.id";
+
     @AfterEach
     void clearMdc() {
         MDC.clear();
@@ -29,15 +31,18 @@ class AsyncRequestIdentityMdcProjectionInterceptorTest {
         MethodInvocation invocation = mock(MethodInvocation.class);
         MDC.put(TracingMdcKeys.REQUEST_ID, "previous-request");
         MDC.put(TracingMdcKeys.CORRELATION_ID, "previous-correlation");
+        MDC.put(UNRELATED_MDC_KEY, "tenant-42");
         when(invocation.proceed()).thenAnswer(ignored -> {
             assertThat(MDC.get(TracingMdcKeys.REQUEST_ID)).isEqualTo("request-42");
             assertThat(MDC.get(TracingMdcKeys.CORRELATION_ID)).isEqualTo("correlation-42");
+            assertThat(MDC.get(UNRELATED_MDC_KEY)).isEqualTo("tenant-42");
             return "result";
         });
 
         assertThat(interceptor.invoke(invocation)).isEqualTo("result");
         assertThat(MDC.get(TracingMdcKeys.REQUEST_ID)).isEqualTo("previous-request");
         assertThat(MDC.get(TracingMdcKeys.CORRELATION_ID)).isEqualTo("previous-correlation");
+        assertThat(MDC.get(UNRELATED_MDC_KEY)).isEqualTo("tenant-42");
     }
 
     @Test

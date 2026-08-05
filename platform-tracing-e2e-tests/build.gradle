@@ -197,7 +197,7 @@ dependencies {
 
     testImplementation sourceSets.e1Consumer.output
 
-    // Step 0B / S-06 approved production stack: Boot baseline from gradle.properties (3.5.5)
+    // Step 0B / S-06 approved production stack: Boot baseline from gradle.properties (3.5.16)
     // plus Northfields 2025.0.0 — isolated from production BOM; does not change publication metadata.
     configProvenanceImplementation enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${rootProject.springBootVersion}")
     configProvenanceImplementation enforcedPlatform('org.springframework.cloud:spring-cloud-dependencies:2025.0.0')

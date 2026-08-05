@@ -1,7 +1,7 @@
 @startuml platform-tracing-01-module-dependencies
 ' =============================================================================
 ' spring-boot-platform-tracing — архитектурная документация (PlantUML)
-' Версия артефактов: 0.1.0-SNAPSHOT | Java 21 | Spring Boot 3.5.5 | OTel 1.61.0
+' Версия артефактов: 0.1.0-SNAPSHOT | Java 21 | Spring Boot 3.5.16 | OTel 1.62.0
 ' Модули: api, core, otel-extension, spring-boot-autoconfigure, starter-servlet
 ' Назначение: детальный обзор для архитекторов перед рефакторингом
 ' =============================================================================
@@ -21,7 +21,7 @@ title Модульная карта зависимостей\nspace.br1440.platf
 
 package "Платформа (внешние BOM)" as ext #ECEFF1 {
   component [platform-tracing-bom] as bom <<BOM>>
-  component [Spring Boot 3.5.5] as sb
+  component [Spring Boot 3.5.16] as sb
   component [OpenTelemetry BOM 1.61.0] as otelbom
   component [OTel Instrumentation BOM 2.27.0] as instbom
 }

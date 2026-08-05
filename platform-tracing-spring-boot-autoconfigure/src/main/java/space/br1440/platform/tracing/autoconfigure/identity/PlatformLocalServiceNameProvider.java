@@ -18,8 +18,8 @@ import org.springframework.core.env.Environment;
  *       по умолчанию использует {@code PlatformResourceProvider} как fallback для ресурсного
  *       атрибута {@code service.name}.</li>
  *   <li>Константа {@value #UNKNOWN_SERVICE} — финальный fallback, согласованный с
- *       <a href="https://opentelemetry.io/docs/specs/semconv/resource/#service">OpenTelemetry SDK
- *       по умолчанию</a> для отсутствующего {@code service.name}.</li>
+ *       <a href="https://opentelemetry.io/docs/specs/semconv/resource/#service">OpenTelemetry SDK по умолчанию</a>
+ *       для отсутствующего {@code service.name}.</li>
  * </ol>
  * <p>
  * Значение разрешается один раз в конструкторе и кэшируется: имя сервиса задаётся
@@ -27,15 +27,6 @@ import org.springframework.core.env.Environment;
  */
 public final class PlatformLocalServiceNameProvider implements Supplier<String> {
 
-    /**
-     * Значение по умолчанию, когда имя сервиса не задано.
-     * <p>
-     * Согласовано с <a href="https://opentelemetry.io/docs/specs/semconv/resource/#service">
-     * OpenTelemetry Semantic Conventions — Service</a>: SDK MUST использовать
-     * {@code unknown_service}, конкатенированный с {@code process.executable.name}
-     * (например, {@code unknown_service:java}), либо просто {@code unknown_service},
-     * если имя процесса недоступно.
-     */
     public static final String UNKNOWN_SERVICE = "unknown_service";
 
     private static final String SPRING_APPLICATION_NAME = "spring.application.name";

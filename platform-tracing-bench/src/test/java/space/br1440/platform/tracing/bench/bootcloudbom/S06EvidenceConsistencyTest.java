@@ -51,7 +51,7 @@ class S06EvidenceConsistencyTest {
         JsonNode summary = MAPPER.readTree(new File(EVIDENCE_ROOT, "decision-summary.json"));
         assertThat(summary.path("verdict").asText())
                 .isEqualTo("APPROVE_BOOT_CLOUD_BASELINE_AND_REFRESH_DELIVERY_CONTRACT");
-        assertThat(summary.path("selectedBootVersion").asText()).isEqualTo("3.5.5");
+        assertThat(summary.path("selectedBootVersion").asText()).isEqualTo("3.5.16");
         assertThat(summary.path("selectedSpringCloudTrain").asText()).isEqualTo("2025.0.0");
         assertThat(summary.path("e6Recommendation").asText())
                 .isEqualTo("READY_TO_CLOSE_E6");
@@ -62,7 +62,7 @@ class S06EvidenceConsistencyTest {
     void currentInventoryDocumentsCorrectedBom() throws IOException {
         JsonNode inventory = MAPPER.readTree(new File(EVIDENCE_ROOT, "current-dependency-inventory.json"));
         JsonNode publication = inventory.path("currentPublication");
-        assertThat(publication.path("springBootBaseline").asText()).isEqualTo("3.5.5");
+        assertThat(publication.path("springBootBaseline").asText()).isEqualTo("3.5.16");
         assertThat(publication.path("springCloudTrain").asText()).isEqualTo("2025.0.0");
         assertThat(publication.path("misaligned").asBoolean()).isFalse();
         assertThat(publication.path("legacyContextConstraintPresent").asBoolean()).isFalse();
@@ -119,9 +119,9 @@ class S06EvidenceConsistencyTest {
             assertThat(delivery.path("spring-cloud-stream").asText()).isEqualTo("4.3.0");
             assertThat(delivery.path("spring-cloud-stream-binder-kafka").asText())
                     .isEqualTo("4.3.0");
-            assertThat(delivery.path("spring-kafka").asText()).isEqualTo("3.3.9");
-            assertThat(delivery.path("kafka-clients").asText()).isEqualTo("3.9.1");
-            assertThat(delivery.path("spring-integration-core").asText()).isEqualTo("6.5.1");
+            assertThat(delivery.path("spring-kafka").asText()).isEqualTo("3.3.16");
+            assertThat(delivery.path("kafka-clients").asText()).isEqualTo("3.9.2");
+            assertThat(delivery.path("spring-integration-core").asText()).isEqualTo("6.5.10");
         }
         assertThat(graph.path("ordinaryTracingStartersContainDeliveryGraph").asBoolean()).isFalse();
         assertThat(graph.path("result").asText()).isEqualTo("PASS");

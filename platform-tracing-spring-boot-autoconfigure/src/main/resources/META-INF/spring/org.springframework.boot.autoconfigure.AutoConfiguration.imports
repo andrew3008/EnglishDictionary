@@ -11,7 +11,7 @@ space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingSt
 space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration
-space.br1440.platform.tracing.autoconfigure.integrations.async.AsyncIdentityMdcAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.integrations.async.AsyncRequestIdentityMdcAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.propagation.PlatformContextPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaAutoConfiguration

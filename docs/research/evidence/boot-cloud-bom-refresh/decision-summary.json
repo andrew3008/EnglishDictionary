@@ -8,8 +8,8 @@
   "overallResult": "PASS",
   "productionCodeChanged": false,
   "productionBomChanged": true,
-  "selectedBootVersion": "3.5.5",
-  "selectedSpringFrameworkVersion": "6.2.10",
+  "selectedBootVersion": "3.5.16",
+  "selectedSpringFrameworkVersion": "6.2.19",
   "selectedSpringCloudTrain": "2025.0.0",
   "selectedConfigVersions": {
     "spring-cloud-context": "4.3.0",

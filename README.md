@@ -10,7 +10,7 @@
 
 | Модуль | Назначение |
 |---|---|
-| `platform-tracing-bom` | BOM (Spring Boot 3.5.5, OTel SDK 1.62.0, Instrumentation 2.28.1). |
+| `platform-tracing-bom` | BOM (Spring Boot 3.5.16, OTel SDK 1.62.0, Instrumentation 2.28.1). |
 | `platform-tracing-api` | Публичный API: `TraceOperations`, `@Traced`, SPI, MDC-константы (`TracingMdcKeys`). |
 | `platform-tracing-otel` | `DefaultTraceOperations`, `NoopTraceOperations`. |
 | `platform-tracing-spring-boot-autoconfigure` | `TracingProperties`, авто-конфигурации, фильтры, observation conventions. |
@@ -23,7 +23,7 @@
 
 ## Целевой стек (v0.1.0)
 
-- Java **21**, Spring Boot **3.5.5**
+- Java **21**, Spring Boot **3.5.16**
 - OpenTelemetry Java Agent **2.28.x**, SDK **1.62.0**
 - Production path: Agent + `platform-tracing-otel-javaagent-extension` + `suppress-micrometer-tracing=true`
 

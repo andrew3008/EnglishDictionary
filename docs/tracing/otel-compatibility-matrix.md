@@ -13,7 +13,7 @@
 | `openTelemetryBomVersion` | 1.62.0 | OTel SDK/API BOM |
 | `openTelemetryInstrumentationBomVersion` | 2.28.1 | Instrumentation BOM; **source of truth + expected Java Agent version** |
 | `openTelemetryInstrumentationAlphaVersion` | 2.28.1-alpha | Java Agent extension API |
-| `springBootVersion` | 3.5.5 | Spring Boot BOM |
+| `springBootVersion` | 3.5.16 | Spring Boot BOM |
 
 Gradle task `verifyOtelBomAlignment` проверяет:
 
@@ -36,7 +36,7 @@ Gradle **не** проверяет runtime Agent. Синхронизация —
 | Компонент | Версия | Примечание |
 |-----------|--------|------------|
 | Java | **21** | Toolchain в корневом `build.gradle` |
-| Spring Boot | **3.5.5** | Pin в `gradle.properties`; линия 3.5.x совместима по Spring policy, **platform validated on 3.5.5** |
+| Spring Boot | **3.5.16** | Pin в `gradle.properties`; целевая и проверяемая платформой patch-версия |
 | OTel SDK BOM | **1.62.0** | `openTelemetryBomVersion` |
 | OTel instrumentation BOM | **2.28.1** | `openTelemetryInstrumentationBomVersion` |
 | OTel Java Agent | **2.28.1** | `expectedJavaAgentVersion`; **validated on 2.28.1** |

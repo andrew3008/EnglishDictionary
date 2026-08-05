@@ -988,7 +988,7 @@ tasks.register('s06CandidateBomPublicationVerify') {
 
 tasks.register('s06ApprovedStackResolutionVerify') {
     group = 'verification'
-    description = 'Verifies approved Boot 3.5.5 + Spring Cloud 2025.0.0 resolution (C1).'
+    description = 'Verifies approved Boot 3.5.16 + Spring Cloud 2025.0.0 resolution (C1).'
 
     doLast {
         File fixture = file('gradle/s06-approved-stack-resolution')

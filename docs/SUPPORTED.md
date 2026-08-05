@@ -6,7 +6,7 @@
 |------|----------|
 | **Product** | `spring-boot-platform-tracing` |
 | **Version** | `0.1.0-SNAPSHOT` (Фаза 1) |
-| **Дата** | 2026-07-30 |
+| **Дата** | 2026-08-05 |
 | **Статус** | **Official compatibility envelope** для architecture board и потребителей |
 | **P6/P7 note** | P5.9 PASS; P6.10 zero-legacy PASS; P6.11 coherent PASS (E2E/M10 reused from P5.9). P7 docs/scorecard under `docs/research/evidence/p7-docs/`. **Production rollout FORBIDDEN** until Architecture Committee GO (P7.8). |
 
@@ -18,7 +18,7 @@
 
 ```text
 Java 21
-  + Spring Boot 3.5.x (validated: 3.5.5)
+  + Spring Boot 3.5.x (validated: 3.5.16)
   + Controlled Platform Agent Distribution (pinned Agent 2.28.x + embedded platform extension)
   + platform-tracing-spring-boot-starter-servlet | -reactive
   + spring-boot-starter-platform-logging (MDC reader — recommended co-use)
@@ -41,7 +41,7 @@ fixtures/source sets.
 |-----------|-----------|--------------|-------|
 | **JDK (runtime)** | **21** | 21 | Platform corporate standard |
 | **JDK (compile)** | **21** | 21 | Gradle toolchain enforced |
-| **Spring Boot** | **3.5.x** | **3.5.5** | BOM from `gradle.properties` |
+| **Spring Boot** | **3.5.x** | **3.5.16** | BOM from `gradle.properties` |
 | **Web — Servlet** | Tomcat via `starter-servlet` | Yes | MVC + Agent bytecode |
 | **Web — Reactive** | Netty via `starter-reactive` | Yes | WebFlux + Agent bytecode |
 | **OTel Java Agent** | **2.28.x** | 2.28.1 | Must match extension API version |
@@ -307,7 +307,7 @@ Waiver governance — контракт: запись в `waivers[]` без `expi
 `gradle.properties`:
 
 ```properties
-springBootVersion=3.5.5
+springBootVersion=3.5.16
 openTelemetryBomVersion=1.62.0
 openTelemetryInstrumentationBomVersion=2.28.1
 openTelemetryInstrumentationAlphaVersion=2.28.1-alpha

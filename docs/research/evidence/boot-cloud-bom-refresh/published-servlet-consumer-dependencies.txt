@@ -1,5 +1,4 @@
 compileClasspath
-context-propagation
 jackson-annotations
 jackson-bom
 jackson-core
@@ -49,7 +48,6 @@ tomcat-embed-core
 tomcat-embed-el
 tomcat-embed-websocket
 runtimeClasspath
-context-propagation
 jackson-annotations
 jackson-bom
 jackson-core

@@ -1,13 +1,13 @@
 {
   "spikeId": "S-06",
   "headAtInvestigation": "6909f44a1d9957a488c3e144b6f1e4949752aef5",
-  "investigationDate": "2026-07-27",
-  "corporateBaselineSource": "gradle.properties:springBootVersion=3.5.5; docs/SUPPORTED.md validated 3.5.5",
+  "investigationDate": "2026-08-05",
+  "corporateBaselineSource": "gradle.properties:springBootVersion=3.5.16; docs/SUPPORTED.md validated 3.5.16",
   "dependencies": [
     {
       "component": "Spring Boot",
-      "requestedVersion": "3.5.5",
-      "resolvedVersion": "3.5.5",
+      "requestedVersion": "3.5.16",
+      "resolvedVersion": "3.5.16",
       "declarationLocation": "gradle.properties + platform-tracing-bom/build.gradle api platform spring-boot-dependencies",
       "gradleConfiguration": "api platform import",
       "constraintType": "api platform",
@@ -20,8 +20,8 @@
     {
       "component": "Spring Framework",
       "requestedVersion": "managed by Boot BOM",
-      "resolvedVersion": "6.2.10",
-      "declarationLocation": "transitive from spring-boot-dependencies:3.5.5",
+      "resolvedVersion": "6.2.19",
+      "declarationLocation": "transitive from spring-boot-dependencies:3.5.16",
       "gradleConfiguration": "transitive",
       "constraintType": "BOM-managed",
       "publishedPom": "via spring-boot-dependencies import",
@@ -85,7 +85,7 @@
     }
   ],
   "currentPublication": {
-    "springBootBaseline": "3.5.5",
+    "springBootBaseline": "3.5.16",
     "springCloudTrain": "2025.0.0",
     "springCloudReleaseTrainImported": true,
     "legacyContextConstraintPresent": false,
