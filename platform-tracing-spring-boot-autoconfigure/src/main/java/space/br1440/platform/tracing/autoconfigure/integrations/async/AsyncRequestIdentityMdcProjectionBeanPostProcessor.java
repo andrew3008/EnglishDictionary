@@ -12,7 +12,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 
 final class AsyncRequestIdentityMdcProjectionBeanPostProcessor extends AbstractBeanFactoryAwareAdvisingPostProcessor {
 
-    private static final int ORDER_BEFORE_ASYNC_PROCESSOR = Ordered.LOWEST_PRECEDENCE - 1;
+    private static final int ORDER_BEFORE_ASYNC_PROCESSOR = (Ordered.LOWEST_PRECEDENCE - 1);
 
     AsyncRequestIdentityMdcProjectionBeanPostProcessor(TraceOperations traceOperations) {
         this.advisor = new DefaultPointcutAdvisor(
