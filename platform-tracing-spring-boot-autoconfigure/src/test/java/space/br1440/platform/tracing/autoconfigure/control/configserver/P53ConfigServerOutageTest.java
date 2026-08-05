@@ -2,12 +2,12 @@ package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySnapshotApplier;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
 import space.br1440.platform.tracing.autoconfigure.support.FakeAgentPrivateControlPlane;
 
 import java.util.ArrayList;

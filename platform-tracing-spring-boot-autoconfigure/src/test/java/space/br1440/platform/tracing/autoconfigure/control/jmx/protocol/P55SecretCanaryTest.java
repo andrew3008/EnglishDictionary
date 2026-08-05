@@ -3,14 +3,14 @@ package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.mock.env.MockEnvironment;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyProjection;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedPolicyProjection;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicySnapshotClient;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
 import space.br1440.platform.tracing.autoconfigure.status.TracingStatusSnapshot;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerPolicyManifestBuilder;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerPolicyProvenanceClassifier;
@@ -197,11 +197,11 @@ class P55SecretCanaryTest {
         // Mirror PrivateJmxTracingPolicySnapshotClient.toProjection without needing a live Agent.
         CompleteTracingPolicySnapshot s = accepted.snapshot();
         return new AcceptedPolicyProjection(
-                new space.br1440.platform.tracing.autoconfigure.control.policy.AgentReadinessView(
+                new space.br1440.platform.tracing.autoconfigure.control.policy.read.AgentReadinessView(
                         accepted.runtimeInstanceId(),
                         accepted.acceptedSequence(),
                         true),
-                new space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyLeaves(
+                new space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedPolicyLeaves(
                         s.samplingEnabled(),
                         s.samplingRatio(),
                         s.samplingRouteRatios().size(),

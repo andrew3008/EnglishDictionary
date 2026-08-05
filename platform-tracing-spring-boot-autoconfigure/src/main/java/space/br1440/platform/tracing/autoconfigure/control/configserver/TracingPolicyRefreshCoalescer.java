@@ -11,12 +11,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySnapshotApplier;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
 
 /**
  * Coalescing single-worker for Config Server refresh events.

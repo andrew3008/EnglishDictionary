@@ -5,8 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyLeaves;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AgentReadinessView;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedPolicyLeaves;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AgentReadinessView;
 
 public record TracingStatusSnapshot(int schemaVersion,
                                     boolean tracingEnabled,

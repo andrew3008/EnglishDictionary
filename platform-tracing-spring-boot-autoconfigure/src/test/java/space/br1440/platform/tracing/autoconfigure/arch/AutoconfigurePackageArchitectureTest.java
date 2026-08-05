@@ -28,7 +28,7 @@ class AutoconfigurePackageArchitectureTest {
             + ".control.jmx.protocol.PrivateControlOpenTypeCodec";
     private static final String LOCATOR = BASE_PACKAGE + ".control.jmx.PrivateControlLocator";
     private static final String ACCEPTED = BASE_PACKAGE
-            + ".control.policy.AcceptedSnapshotWithSequence";
+            + ".control.policy.read.AcceptedSnapshotWithSequence";
     private static final Pattern PACKAGE = Pattern.compile("(?m)^package\\s+([^;]+);");
     private static final Pattern PUBLIC_TYPE = Pattern.compile(
             "(?m)^public\\s+(?:(?:sealed|non-sealed|final|abstract)\\s+)*(?:class|record|interface|enum)\\s+([A-Za-z0-9_]+)");

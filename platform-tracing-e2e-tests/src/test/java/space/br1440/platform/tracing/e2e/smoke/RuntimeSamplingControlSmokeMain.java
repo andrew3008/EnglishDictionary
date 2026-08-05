@@ -12,11 +12,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicySnapshotClient;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
 import space.br1440.platform.tracing.e2e.support.AgentHttpSpringSmokeProcessRunner;
 

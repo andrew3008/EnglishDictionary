@@ -14,10 +14,8 @@ public final class PrivateControlLocator {
     static final String PROTOCOL_ID = "platform-tracing-private-control";
     public static final int PROTOCOL_VERSION = 1;
     static final String MARKER_SIGNATURE = "PLATFORM_PRIVATE_CONTROL_V1";
-    static final String MARKER_NAME =
-            "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane";
-    static final String WRITER_NAME =
-            "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control";
+    static final String MARKER_NAME = "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane";
+    static final String WRITER_NAME = "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control";
 
     public LocatedPrivateControl locate() {
         ObjectName marker = objectName(MARKER_NAME);
@@ -27,6 +25,7 @@ public final class PrivateControlLocator {
             if (!server.isRegistered(marker)) {
                 continue;
             }
+
             try {
                 String protocol = (String) server.getAttribute(marker, "ProtocolId");
                 int version = (Integer) server.getAttribute(marker, "ProtocolVersion");
@@ -48,12 +47,14 @@ public final class PrivateControlLocator {
                 // Несовместимый marker не является кандидатом и не ослабляет exactly-one выбор.
             }
         }
+
         if (matches.size() != 1) {
             throw new IllegalStateException(
                     "Expected exactly one compatible private control plane, found "
                             + matches.size());
         }
-        return matches.get(0);
+
+        return matches.getFirst();
     }
 
     private static ObjectName objectName(String value) {

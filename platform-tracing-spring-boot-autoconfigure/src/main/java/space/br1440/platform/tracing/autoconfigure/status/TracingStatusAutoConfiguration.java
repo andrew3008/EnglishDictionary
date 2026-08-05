@@ -15,7 +15,7 @@ import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagno
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyControlAutoConfiguration;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 

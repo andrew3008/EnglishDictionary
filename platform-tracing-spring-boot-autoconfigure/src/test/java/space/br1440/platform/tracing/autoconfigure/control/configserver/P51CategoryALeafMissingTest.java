@@ -4,13 +4,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySnapshotApplier;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;

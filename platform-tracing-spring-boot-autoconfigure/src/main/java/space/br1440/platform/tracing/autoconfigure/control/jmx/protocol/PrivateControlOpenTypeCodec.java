@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
 
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 
 import javax.management.openmbean.ArrayType;

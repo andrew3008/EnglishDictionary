@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.control.state;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 
 import javax.management.openmbean.CompositeData;

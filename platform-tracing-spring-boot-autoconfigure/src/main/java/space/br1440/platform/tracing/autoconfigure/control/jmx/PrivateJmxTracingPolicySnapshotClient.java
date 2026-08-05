@@ -1,19 +1,21 @@
 package space.br1440.platform.tracing.autoconfigure.control.jmx;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyProjection;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyLeaves;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedTracingPolicyReader;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AgentReadinessView;
-import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedPolicyProjection;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedPolicyLeaves;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AgentReadinessView;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyContractViolationException;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySnapshotApplier;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
@@ -27,97 +29,48 @@ import javax.management.openmbean.CompositeData;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Private JMX client implementing three capability interfaces.
- * <p>
- * E7/P0 wire contract:
- * <pre>
- *   6 marker reads:             PRIV-R01..R06 (unchanged)
- *   1 complete-snapshot read:   readAcceptedComplete  (PROPOSED_PRIV_R07, implemented in 00b987a;
- *                                                       status PENDING_COMMITTEE_APPROVAL — see
- *                                                       PrivateControlWriter and
- *                                                       docs/research/evidence/priv-r07-proposal/)
- *   1 mutation:                 applySnapshot         (PRIV-W01, unchanged)
- * </pre>
- * <p>
- * runtimeInstanceId contract:
- *   The runtimeInstanceId used in toProjection() is decoded from the Agent
- *   wire response (AcceptedSnapshotWithSequence.runtimeInstanceId()), NOT
- *   from the locator-cached value. This ensures restart detection is based
- *   on the same instance that owns the accepted snapshot, not the instance
- *   that was current at initialization time.
- * <p>
- * Sequence contract:
- *   APPLIED   → sequence refreshed from Agent via readAcceptedComplete after apply
- *   UNCHANGED → sequence unchanged; no refresh, no arithmetic
- *   STALE     → sequence refreshed then one bounded retry
- *   Application never computes authoritative sequence unilaterally.
- * <p>
- * JMX exception classification:
- *   MBeanException / RuntimeMBeanException with contract cause → fail-fast
- *   ReflectionException (method not found) → fail-fast (version mismatch)
- *   Transport/IO failures → FAILED
- */
+@Slf4j
 public final class PrivateJmxTracingPolicySnapshotClient
-        implements TracingPolicySnapshotApplier,
-                   CompleteTracingPolicyReader,
-                   AcceptedTracingPolicyReader {
-
-    private static final Logger log = LoggerFactory.getLogger(PrivateJmxTracingPolicySnapshotClient.class);
+        implements TracingPolicySnapshotApplier, CompleteTracingPolicyReader, AcceptedTracingPolicyReader {
 
     private static final Object[] NO_ARGS = new Object[0];
-    private static final String[] NO_SIG  = new String[0];
+    private static final String[] NO_SIG = new String[0];
 
     private final PrivateControlLocator locator;
     private final PrivateControlOpenTypeCodec codec;
 
     private volatile MBeanServer privateServer;
-    private volatile ObjectName  controlObjectName;
+    private volatile ObjectName controlObjectName;
 
-    /**
-     * Runtime identity of the Agent instance that produced the most recent
-     * {@code readAcceptedComplete} snapshot. Populated exclusively from the wire response
-     * inside {@link #currentComplete()} — never from locator-cache, never application-generated.
-     * Used as {@code expectedRuntimeInstanceId} on the immediately following
-     * {@link #applySnapshot} call so that an Agent restart between read and apply is detected
-     * by the Agent (RUNTIME_INSTANCE_MISMATCH) instead of relying on sequence collision alone.
-     */
     private volatile String lastKnownRuntimeInstanceId;
 
     public PrivateJmxTracingPolicySnapshotClient(PrivateControlLocator locator) {
         this(locator, new PrivateControlOpenTypeCodec());
     }
 
-    public PrivateJmxTracingPolicySnapshotClient(
-            PrivateControlLocator locator,
-            PrivateControlOpenTypeCodec codec) {
+    public PrivateJmxTracingPolicySnapshotClient(PrivateControlLocator locator,
+                                                 PrivateControlOpenTypeCodec codec) {
         this.locator = locator;
-        this.codec   = codec;
+        this.codec = codec;
     }
 
     public void initialize() {
         try {
             PrivateControlLocator.LocatedPrivateControl located = locator.locate();
-            this.privateServer     = located.server();
+            this.privateServer = located.server();
             this.controlObjectName = located.writerObjectName();
-            log.info("PrivateJmxTracingPolicySnapshotClient initialized: {}",
-                    controlObjectName);
+            log.info("PrivateJmxTracingPolicySnapshotClient initialized: {}", controlObjectName);
         } catch (Exception e) {
-            throw new TracingConfigurationGuardException(
-                    "Cannot initialize snapshot client: private MBeanServer unavailable. " + e.getMessage());
+            throw new TracingConfigurationGuardException("Cannot initialize snapshot client: private MBeanServer unavailable. " + e.getMessage());
         }
     }
 
-    // ── TracingPolicySnapshotApplier ───────────────────────────────────────────
-
     @Override
-    public TracingPolicyDeliveryResult applySnapshot(
-            long expectedSequence,
-            CompleteTracingPolicySnapshot snapshot,
-            TracingPolicySource source) {
-
+    public TracingPolicyDeliveryResult applySnapshot(long expectedSequence,
+                                                     CompleteTracingPolicySnapshot snapshot,
+                                                     TracingPolicySource source) {
         MBeanServer server = this.privateServer;
-        ObjectName  name   = this.controlObjectName;
+        ObjectName name = this.controlObjectName;
         if (server == null || name == null) {
             log.warn("applySnapshot called before initialization; source={}", source);
             return TracingPolicyDeliveryResult.FAILED;
@@ -127,7 +80,8 @@ public final class PrivateJmxTracingPolicySnapshotClient
         if (runtimeInstanceId == null) {
             throw new TracingConfigurationGuardException(
                     "applySnapshot called before any successful currentComplete() read; "
-                    + "expectedRuntimeInstanceId is unknown. source=" + source);
+                            + "expectedRuntimeInstanceId is unknown. source=" + source
+            );
         }
 
         CompositeData encoded;
@@ -141,15 +95,10 @@ public final class PrivateJmxTracingPolicySnapshotClient
                     "",
                     snapshot);
         } catch (Exception e) {
-            throw new TracingPolicyContractViolationException(
-                    "Codec failed to encode snapshot — programming defect. source=" + source, e);
+            throw new TracingPolicyContractViolationException("Codec failed to encode snapshot — programming defect. source=" + source, e);
         }
 
         try {
-            // Exactly one CompositeData argument — matches the Agent applySnapshot
-            // MBeanOperationInfo (single "request" parameter). Do NOT add expectedSequence
-            // or source as separate positional arguments; both are already encoded inside
-            // the request composite.
             Object raw = server.invoke(
                     name, "applySnapshot",
                     new Object[]{encoded},
@@ -172,7 +121,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
         } catch (ReflectionException e) {
             throw new TracingPolicyContractViolationException(
                     "applySnapshot ReflectionException — JMX method not found or signature mismatch. "
-                    + "Check Agent/App version compatibility. source=" + source, e);
+                            + "Check Agent/App version compatibility. source=" + source, e);
         } catch (Exception e) {
             log.error("applySnapshot transport error: source={}", source, e);
             return TracingPolicyDeliveryResult.FAILED;
@@ -184,7 +133,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
     @Override
     public Optional<AcceptedSnapshotWithSequence> currentComplete() {
         MBeanServer server = this.privateServer;
-        ObjectName  name   = this.controlObjectName;
+        ObjectName name = this.controlObjectName;
         if (server == null || name == null) return Optional.empty();
         try {
             Object result = server.invoke(name, "readAcceptedComplete", NO_ARGS, NO_SIG);
@@ -263,7 +212,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
         }
         throw new TracingPolicyContractViolationException(
                 "applySnapshot returned unexpected type: " +
-                (raw == null ? "null" : raw.getClass().getName()));
+                        (raw == null ? "null" : raw.getClass().getName()));
     }
 
     /**
@@ -292,7 +241,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
     private static boolean isContractCause(Throwable t) {
         return t instanceof IllegalArgumentException
-            || t instanceof IllegalStateException
-            || t instanceof TracingPolicyContractViolationException;
+                || t instanceof IllegalStateException
+                || t instanceof TracingPolicyContractViolationException;
     }
 }

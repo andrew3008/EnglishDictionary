@@ -10,9 +10,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyLeaves;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AcceptedPolicyProjection;
-import space.br1440.platform.tracing.autoconfigure.control.policy.AgentReadinessView;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedPolicyLeaves;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedPolicyProjection;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AgentReadinessView;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;

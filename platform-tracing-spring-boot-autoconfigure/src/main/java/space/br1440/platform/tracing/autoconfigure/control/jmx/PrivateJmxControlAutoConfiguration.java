@@ -8,13 +8,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.ConfigurationCondition.ConfigurationPhase;
+
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
 
-/**
- * Shared private JMX control-plane wiring for {@code ACTUATOR} and {@code CONFIG_SERVER}
- * authorities. {@code HELM} and {@code DISABLED} never load this configuration.
- */
 @AutoConfiguration
 @Conditional(PrivateJmxControlAutoConfiguration.PrivateJmxControlAuthorityCondition.class)
 public class PrivateJmxControlAutoConfiguration {
@@ -34,11 +31,9 @@ public class PrivateJmxControlAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(PrivateJmxTracingPolicySnapshotClient.class)
     @ConditionalOnBean({PrivateControlLocator.class, PrivateControlOpenTypeCodec.class})
-    public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(
-            PrivateControlLocator locator,
-            PrivateControlOpenTypeCodec codec) {
-        PrivateJmxTracingPolicySnapshotClient client =
-                new PrivateJmxTracingPolicySnapshotClient(locator, codec);
+    public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(PrivateControlLocator locator,
+                                                                             PrivateControlOpenTypeCodec codec) {
+        PrivateJmxTracingPolicySnapshotClient client = new PrivateJmxTracingPolicySnapshotClient(locator, codec);
         client.initialize();
         return client;
     }

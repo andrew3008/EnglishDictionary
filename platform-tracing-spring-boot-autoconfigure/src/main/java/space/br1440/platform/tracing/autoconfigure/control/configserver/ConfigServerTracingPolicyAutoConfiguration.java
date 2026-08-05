@@ -14,11 +14,11 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.ConfigurableEnvironment;
 
-import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicyReader;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyContractViolationException;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicySnapshotApplier;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
 
 /**
  * P6.2: CONFIG_SERVER authority wiring onto the private complete-snapshot writer.
