@@ -1,0 +1,477 @@
+@startuml autoconfigure-control-class-diagram
+' =============================================================================
+' Spring Boot autoconfigure — control-plane class relationships
+' Package: space.br1440.platform.tracing.autoconfigure.control
+' Module:  platform-tracing-spring-boot-autoconfigure
+' Source of truth: main sources as of diagram authorship (pre Slice A atomic base).
+' Render: PlantUML (local or IDE plugin). Ortho edges; packages = Java packages.
+' =============================================================================
+
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+
+skinparam package {
+  BackgroundColor<<authority>> #FFF3E0
+  BackgroundColor<<jmx>> #E3F2FD
+  BackgroundColor<<protocol>> #BBDEFB
+  BackgroundColor<<policy>> #E8F5E9
+  BackgroundColor<<delivery>> #C8E6C9
+  BackgroundColor<<read>> #DCEDC8
+  BackgroundColor<<management>> #F3E5F5
+  BackgroundColor<<configserver>> #E0F2F1
+  BackgroundColor<<external>> #ECEFF1
+}
+
+title autoconfigure.control — class relationships\n(policy read/delivery, JMX private control, Actuator mutation, Config Server refresh)
+
+left to right direction
+
+' =============================================================================
+' 1. Domain contracts (root policy + read + delivery)
+' =============================================================================
+
+package "control.policy" <<policy>> as P_ROOT {
+  class CompleteTracingPolicySnapshot <<immutable>> {
+    - boolean samplingEnabled
+    - double samplingRatio
+    - Map~String,Double~ samplingRouteRatios
+    - boolean validationEnabled
+    - boolean validationStrict
+    - boolean exporterEnabled
+    - boolean traceControlHeadersEnabled
+    - String diagnosticsLogLevel
+    --
+    + withSamplingEnabled(boolean) : CompleteTracingPolicySnapshot
+    + withSamplingRatio(double) : CompleteTracingPolicySnapshot
+    + withSamplingRouteRatios(Map) : CompleteTracingPolicySnapshot
+    + withValidationEnabled(boolean) : CompleteTracingPolicySnapshot
+    + withValidationStrict(boolean) : CompleteTracingPolicySnapshot
+    + withExporterEnabled(boolean) : CompleteTracingPolicySnapshot
+    + withTraceControlHeadersEnabled(boolean) : CompleteTracingPolicySnapshot
+    + withDiagnosticsLogLevel(String) : CompleteTracingPolicySnapshot
+    + {static} builder() : Builder
+    + {static} helmBootstrapDefaults() : CompleteTracingPolicySnapshot
+  }
+
+  ' Alias required: PlantUML treats "Outer.Inner" as package hierarchy and breaks package P_ROOT
+  class "CompleteTracingPolicySnapshot.Builder" as SnapshotBuilder <<nested>> {
+    + build() : CompleteTracingPolicySnapshot
+  }
+
+  class TracingPolicyManifestException <<exception>> {
+    + TracingPolicyManifestException(String)
+  }
+
+  class TracingPolicyContractViolationException <<exception>> {
+    + TracingPolicyContractViolationException(String)
+    + TracingPolicyContractViolationException(String, Throwable)
+  }
+}
+
+package "control.policy.delivery" <<delivery>> as P_DELIVERY {
+  interface TracingPolicySnapshotApplier {
+    + applySnapshot(long expectedSequence,\n                 CompleteTracingPolicySnapshot snapshot,\n                 TracingPolicySource source)\n                 : TracingPolicyDeliveryResult
+  }
+
+  enum TracingPolicySource {
+    CONFIG_SERVER
+    ACTUATOR
+  }
+
+  enum TracingPolicyDeliveryResult {
+    APPLIED
+    UNCHANGED
+    REJECTED
+    STALE
+    FAILED
+  }
+}
+
+package "control.policy.read" <<read>> as P_READ {
+  interface CompleteTracingPolicyReader {
+    + currentComplete() : Optional~AcceptedSnapshotWithSequence~
+  }
+
+  interface AcceptedTracingPolicyReader {
+    + currentProjection() : Optional~AcceptedPolicyProjection~
+  }
+
+  class AcceptedSnapshotWithSequence <<record>> {
+    + long acceptedSequence
+    + String runtimeInstanceId
+    + CompleteTracingPolicySnapshot snapshot
+  }
+
+  class AcceptedPolicyProjection <<record>> {
+    + AgentReadinessView agentReadiness
+    + AcceptedPolicyLeaves policy
+  }
+
+  class AgentReadinessView <<record>> {
+    + String runtimeInstanceId
+    + long acceptedSequence
+    + boolean agentReady
+  }
+
+  class AcceptedPolicyLeaves <<record>> {
+    + boolean samplingEnabled
+    + double samplingRatio
+    + int samplingRouteRatioCount
+    + boolean validationEnabled
+    + boolean validationStrict
+    + boolean exporterEnabled
+    + boolean traceControlHeadersEnabled
+    + String diagnosticsLogLevel
+  }
+}
+
+' =============================================================================
+' 2. Authority gate (startup fail-fast)
+' =============================================================================
+
+package "control.authority" <<authority>> as P_AUTH {
+  class TracingConfigurationAuthorityAutoConfiguration <<AutoConfiguration>> {
+    + registers BFPP that validates and\n  publishes TracingConfigurationAuthorityGuard
+  }
+
+  class TracingConfigurationAuthorityGuard {
+    - TracingConfigurationAuthority authority
+    - PlatformEnvironmentPosture posture
+    - boolean tracingEnabled
+    --
+    + validate()
+    + isActuatorMutationSurfaceAllowed() : boolean
+  }
+
+  class TracingConfigurationGuardException <<exception>> {
+  }
+}
+
+' =============================================================================
+' 3. JMX private control plane (sole production implementor)
+' =============================================================================
+
+package "control.jmx" <<jmx>> as P_JMX {
+  class PrivateJmxControlAutoConfiguration <<AutoConfiguration>> {
+    + privateControlLocator() : PrivateControlLocator
+    + privateControlOpenTypeCodec() : PrivateControlOpenTypeCodec
+    + tracingPolicySnapshotClient(...) : PrivateJmxTracingPolicySnapshotClient
+  }
+
+  class PrivateControlLocator {
+    + locate() : LocatedPrivateControl
+  }
+
+  class "PrivateControlLocator.LocatedPrivateControl" as LocatedPrivateControl <<record>> {
+    + MBeanServer server
+    + ObjectName controlObjectName
+    + String runtimeInstanceId
+  }
+
+  class PrivateJmxTracingPolicySnapshotClient {
+    - PrivateControlLocator locator
+    - PrivateControlOpenTypeCodec codec
+    - volatile MBeanServer privateServer
+    - volatile ObjectName controlObjectName
+    - volatile String lastKnownRuntimeInstanceId
+    --
+    + initialize()
+    + applySnapshot(long, CompleteTracingPolicySnapshot, TracingPolicySource)\n                 : TracingPolicyDeliveryResult
+    + currentComplete() : Optional~AcceptedSnapshotWithSequence~
+    + currentProjection() : Optional~AcceptedPolicyProjection~
+  }
+}
+
+package "control.jmx.protocol" <<protocol>> as P_PROTO {
+  class PrivateControlOpenTypeCodec {
+    + encodeApplyRequest(PrivateControlSnapshot) : CompositeData
+    + decodeResponse(Object) : PrivateControlResponse
+    + decodeCompleteWithSequence(Object) : AcceptedSnapshotWithSequence
+  }
+
+  class "PrivateControlOpenTypeCodec.PrivateControlSnapshot" as PrivateControlSnapshot <<record>> {
+    + String expectedRuntimeInstanceId
+    + long expectedAcceptedSequence
+    + String attemptId
+    + String source
+    + String reason
+    + CompleteTracingPolicySnapshot policy
+  }
+
+  class "PrivateControlOpenTypeCodec.PrivateControlResponse" as PrivateControlResponse <<record>> {
+    + String outcome
+    + String messageCode
+    + ...
+  }
+
+  class CandidateDigest <<package-private>> {
+    + {static} sha256(CompleteTracingPolicySnapshot) : String
+  }
+}
+
+' =============================================================================
+' 4. Actuator mutation surface
+' =============================================================================
+
+package "control.management" <<management>> as P_MGMT {
+  class TracingPolicyControlAutoConfiguration <<AutoConfiguration>> {
+    note right
+      @AutoConfigureAfter PrivateJmx
+      nested ActuatorAdapterConfiguration
+      when authority=ACTUATOR
+    end note
+  }
+
+  class TracingPolicyMutationService {
+    - CompleteTracingPolicyReader snapshotReader
+    - TracingPolicySnapshotApplier snapshotClient
+    --
+    + setSamplingEnabled(boolean) : TracingPolicyDeliveryResult
+    + setSamplingRatio(double) : TracingPolicyDeliveryResult
+    + replaceSamplingRouteRatios(Map) : TracingPolicyDeliveryResult
+    + setValidationEnabled(boolean) : TracingPolicyDeliveryResult
+    + setValidationStrict(boolean) : TracingPolicyDeliveryResult
+    + setExporterEnabled(boolean) : TracingPolicyDeliveryResult
+    + setTraceControlHeadersEnabled(boolean) : TracingPolicyDeliveryResult
+    + setDiagnosticsLogLevel(String) : TracingPolicyDeliveryResult
+    - applyChange(UnaryOperator) : TracingPolicyDeliveryResult
+  }
+
+  class SetSamplingEnabledRequest <<record>>
+  class SetSamplingRatioRequest <<record>>
+  class ReplaceSamplingRouteRatiosRequest <<record>>
+  class SetValidationEnabledRequest <<record>>
+  class SetValidationStrictRequest <<record>>
+  class SetExporterEnabledRequest <<record>>
+  class SetTraceControlHeadersEnabledRequest <<record>>
+  class SetDiagnosticsLogLevelRequest <<record>>
+}
+
+' =============================================================================
+' 5. Config Server refresh path
+' =============================================================================
+
+package "control.configserver" <<configserver>> as P_CS {
+  class ConfigServerTracingPolicyAutoConfiguration <<AutoConfiguration>> {
+    note right
+      authority=CONFIG_SERVER
+      + EnvironmentChangeEvent on classpath
+      @AutoConfigureAfter PrivateJmx
+    end note
+  }
+
+  class ConfigServerPolicyProvenanceClassifier {
+    + classify(String key) : ProvenanceClass
+  }
+
+  enum "ConfigServerPolicyProvenanceClassifier.ProvenanceClass" as ProvenanceClass {
+    AUTHORITATIVE
+    LOCAL_OVERRIDE
+    UNKNOWN
+  }
+
+  class ConfigServerPolicyManifestBuilder {
+    - Environment environment
+    - ConfigServerPolicyProvenanceClassifier provenance
+    --
+    + build() : CompleteTracingPolicySnapshot
+  }
+
+  class TracingPolicyRefreshCoalescer {
+    - ConfigServerPolicyManifestBuilder manifestBuilder
+    - TracingPolicySnapshotApplier snapshotClient
+    - CompleteTracingPolicyReader snapshotReader
+    - Executor worker
+    - AtomicLong generation
+    - volatile long lastKnownSequence
+    --
+    + onRefreshEvent()
+    + deliverInitial() : TracingPolicyDeliveryResult
+    - doApply(boolean isStaleRetry)
+  }
+
+  class ConfigServerTracingPolicyAdapter {
+    - TracingPolicyRefreshCoalescer coalescer
+    --
+    + onEnvironmentChange(EnvironmentChangeEvent)
+  }
+}
+
+' =============================================================================
+' 6. External consumers (outside control)
+' =============================================================================
+
+package "external consumers (outside control)" <<external>> as P_EXT {
+  class TracingControlMvcController <<webmvc>> {
+    - TracingPolicyMutationService mutationService
+  }
+
+  class TracingControlWebFluxManagementContextConfiguration <<webflux>> {
+    note right
+      RouterFunction → MutationService
+      (no separate controller class)
+    end note
+  }
+
+  class TracingStatusAssembler <<status>> {
+    - AcceptedTracingPolicyReader acceptedPolicyReader
+  }
+
+  class "Agent PrivateControlWriter\n(javaagent-extension)" as AgentWriter <<agent>> {
+  }
+}
+
+' =============================================================================
+' Relationships — domain contracts
+' =============================================================================
+
+SnapshotBuilder --> CompleteTracingPolicySnapshot : build()
+SnapshotBuilder ..> TracingPolicyManifestException : throws
+TracingPolicySnapshotApplier ..> CompleteTracingPolicySnapshot : uses
+TracingPolicySnapshotApplier ..> TracingPolicySource : uses
+TracingPolicySnapshotApplier ..> TracingPolicyDeliveryResult : returns
+
+AcceptedSnapshotWithSequence *--> CompleteTracingPolicySnapshot : snapshot
+AcceptedPolicyProjection *--> AgentReadinessView
+AcceptedPolicyProjection *--> AcceptedPolicyLeaves
+CompleteTracingPolicyReader ..> AcceptedSnapshotWithSequence : returns
+AcceptedTracingPolicyReader ..> AcceptedPolicyProjection : returns
+
+' =============================================================================
+' Relationships — JMX implementor (hub)
+' =============================================================================
+
+PrivateJmxTracingPolicySnapshotClient ..|> TracingPolicySnapshotApplier
+PrivateJmxTracingPolicySnapshotClient ..|> CompleteTracingPolicyReader
+PrivateJmxTracingPolicySnapshotClient ..|> AcceptedTracingPolicyReader
+PrivateJmxTracingPolicySnapshotClient --> PrivateControlLocator : locate()
+PrivateJmxTracingPolicySnapshotClient --> PrivateControlOpenTypeCodec : encode/decode
+PrivateControlLocator --> LocatedPrivateControl : returns
+
+PrivateControlOpenTypeCodec --> CandidateDigest : sha256(policy)
+PrivateControlOpenTypeCodec --> CompleteTracingPolicySnapshot : materialize
+PrivateControlOpenTypeCodec --> AcceptedSnapshotWithSequence : decodeComplete
+PrivateControlOpenTypeCodec --> PrivateControlSnapshot
+PrivateControlOpenTypeCodec --> PrivateControlResponse
+PrivateControlSnapshot *--> CompleteTracingPolicySnapshot : policy
+
+PrivateJmxTracingPolicySnapshotClient ..> TracingPolicyContractViolationException : throws
+PrivateJmxTracingPolicySnapshotClient ..> TracingConfigurationGuardException : throws (uninitialized apply)
+PrivateJmxTracingPolicySnapshotClient ..> AcceptedPolicyProjection : builds
+PrivateJmxTracingPolicySnapshotClient ..> AgentReadinessView
+PrivateJmxTracingPolicySnapshotClient ..> AcceptedPolicyLeaves
+
+PrivateJmxControlAutoConfiguration ..> PrivateControlLocator : @Bean
+PrivateJmxControlAutoConfiguration ..> PrivateControlOpenTypeCodec : @Bean
+PrivateJmxControlAutoConfiguration ..> PrivateJmxTracingPolicySnapshotClient : @Bean initialize()
+
+' =============================================================================
+' Relationships — Actuator path
+' =============================================================================
+
+TracingPolicyMutationService --> CompleteTracingPolicyReader : currentComplete()
+TracingPolicyMutationService --> TracingPolicySnapshotApplier : applySnapshot(..., ACTUATOR)
+TracingPolicyMutationService --> CompleteTracingPolicySnapshot : with* candidate
+TracingPolicyMutationService ..> TracingPolicyDeliveryResult : returns
+TracingPolicyMutationService ..> AcceptedSnapshotWithSequence : reads sequence
+
+TracingPolicyControlAutoConfiguration ..> TracingPolicyMutationService : @Bean (ACTUATOR)
+
+SetSamplingEnabledRequest ..> TracingPolicyMutationService : HTTP DTO → service
+SetSamplingRatioRequest ..> TracingPolicyMutationService
+ReplaceSamplingRouteRatiosRequest ..> TracingPolicyMutationService
+SetValidationEnabledRequest ..> TracingPolicyMutationService
+SetValidationStrictRequest ..> TracingPolicyMutationService
+SetExporterEnabledRequest ..> TracingPolicyMutationService
+SetTraceControlHeadersEnabledRequest ..> TracingPolicyMutationService
+SetDiagnosticsLogLevelRequest ..> TracingPolicyMutationService
+
+' =============================================================================
+' Relationships — Config Server path
+' =============================================================================
+
+ConfigServerPolicyManifestBuilder --> ConfigServerPolicyProvenanceClassifier : classify
+ConfigServerPolicyManifestBuilder --> CompleteTracingPolicySnapshot : build()
+ConfigServerPolicyManifestBuilder ..> TracingPolicyManifestException : throws
+ConfigServerPolicyProvenanceClassifier --> ProvenanceClass
+
+TracingPolicyRefreshCoalescer --> ConfigServerPolicyManifestBuilder : build()
+TracingPolicyRefreshCoalescer --> TracingPolicySnapshotApplier : applySnapshot(..., CONFIG_SERVER)
+TracingPolicyRefreshCoalescer --> CompleteTracingPolicyReader : refresh lastKnownSequence
+TracingPolicyRefreshCoalescer ..> TracingPolicyDeliveryResult : returns / logs
+
+ConfigServerTracingPolicyAdapter --> TracingPolicyRefreshCoalescer : onRefreshEvent()
+ConfigServerTracingPolicyAutoConfiguration ..> ConfigServerPolicyProvenanceClassifier : @Bean
+ConfigServerTracingPolicyAutoConfiguration ..> ConfigServerPolicyManifestBuilder : @Bean
+ConfigServerTracingPolicyAutoConfiguration ..> TracingPolicyRefreshCoalescer : @Bean
+ConfigServerTracingPolicyAutoConfiguration ..> ConfigServerTracingPolicyAdapter : @Bean
+
+' =============================================================================
+' Relationships — authority
+' =============================================================================
+
+TracingConfigurationAuthorityAutoConfiguration ..> TracingConfigurationAuthorityGuard : BFPP registers
+TracingConfigurationAuthorityGuard ..> TracingConfigurationGuardException : throws on validate()
+
+note top of TracingConfigurationAuthorityGuard
+  Startup gate before writers.
+  @AutoConfigureBefore:
+  PrivateJmx, PolicyControl, ConfigServer.
+  Collaborators from bootstrap
+  (outside control package).
+end note
+
+' =============================================================================
+' Relationships — external consumers / Agent
+' =============================================================================
+
+TracingControlMvcController --> TracingPolicyMutationService
+TracingControlWebFluxManagementContextConfiguration --> TracingPolicyMutationService
+TracingStatusAssembler --> AcceptedTracingPolicyReader
+
+PrivateJmxTracingPolicySnapshotClient -[#33691F]-> AgentWriter : JMX invoke\napplySnapshot /\nreadAcceptedComplete
+AgentWriter -[#33691F]-> PrivateJmxTracingPolicySnapshotClient : CompositeData response
+
+note bottom of PrivateJmxTracingPolicySnapshotClient
+  **Sole production implementor** of
+  TracingPolicySnapshotApplier +
+  CompleteTracingPolicyReader +
+  AcceptedTracingPolicyReader.
+  lastKnownRuntimeInstanceId is the
+  mutable side channel (Slice A target).
+end note
+
+note bottom of TracingPolicyMutationService
+  Read → mutate with* → apply.
+  Passes only acceptedSequence today;
+  runtimeInstanceId filled by client
+  side channel (P1 atomic-base gap).
+end note
+
+note bottom of TracingPolicyRefreshCoalescer
+  Coalesced EnvironmentChangeEvent.
+  One bounded STALE retry after
+  authoritative currentComplete() reread.
+  Source = CONFIG_SERVER.
+end note
+
+legend right
+  |= Stereotype |= Meaning |
+  | <<immutable>> | Value object; with* copy |
+  | <<record>> | Java record |
+  | <<exception>> | RuntimeException subtype |
+  | <<AutoConfiguration>> | Spring Boot auto-config |
+  | <<package-private>> | Not public API |
+  | solid --> | field / constructor dependency |
+  | ..|> | implements |
+  | ..> | uses / throws / returns |
+  | *--> | composition (record component) |
+endlegend
+
+@enduml
