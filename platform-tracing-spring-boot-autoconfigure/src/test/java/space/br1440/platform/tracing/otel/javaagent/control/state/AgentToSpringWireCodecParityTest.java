@@ -148,6 +148,48 @@ class AgentToSpringWireCodecParityTest {
                 .isEqualTo(second.snapshot().samplingRouteRatios());
     }
 
+    // ── one-hot boolean coverage through the REAL Agent encoder ───────────────────
+
+    @Test
+    void samplingEnabledOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(true, false, false, false, false);
+    }
+
+    @Test
+    void validationEnabledOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(false, true, false, false, false);
+    }
+
+    @Test
+    void validationStrictOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(false, false, true, false, false);
+    }
+
+    @Test
+    void exporterEnabledOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(false, false, false, true, false);
+    }
+
+    @Test
+    void traceControlHeadersEnabledOneHotRoundTripsThroughRealAgentEncoder() {
+        assertBooleanOneHot(false, false, false, false, true);
+    }
+
+    private static void assertBooleanOneHot(boolean samplingEnabled, boolean validationEnabled,
+            boolean validationStrict, boolean exporterEnabled, boolean traceControlHeadersEnabled) {
+        EffectiveTracingPolicy policy = EffectiveTracingPolicy.of(
+                samplingEnabled, 0.5, Map.of(),
+                validationEnabled, validationStrict, exporterEnabled, traceControlHeadersEnabled,
+                PolicyLogLevel.INFO);
+        CompleteTracingPolicySnapshot snapshot = roundTrip(envelope(1L, uuid(), policy)).snapshot();
+
+        assertThat(snapshot.samplingEnabled()).isEqualTo(samplingEnabled);
+        assertThat(snapshot.validationEnabled()).isEqualTo(validationEnabled);
+        assertThat(snapshot.validationStrict()).isEqualTo(validationStrict);
+        assertThat(snapshot.exporterEnabled()).isEqualTo(exporterEnabled);
+        assertThat(snapshot.traceControlHeadersEnabled()).isEqualTo(traceControlHeadersEnabled);
+    }
+
     // ── negative scenarios: Spring decoder must independently reject malformed wire payloads ──
 
     @Test

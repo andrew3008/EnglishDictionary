@@ -8,7 +8,6 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
 import javax.management.openmbean.TabularType;
 
@@ -18,24 +17,21 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * P5 TEST §20 P5.4 — p5-agent-spring-wire-parity
- *
- * Proves that real Agent-side encoding (JDK CompositeData built via
- * PrivateControlWireTypes-compatible schema in THIS classloader) round-trips
- * through the real Spring decoder (AcceptedCompleteSnapshotDecoder) with semantic
- * equality on:
- *   - acceptedSequence
- *   - runtimeInstanceId
- *   - all 8 policy leaves: samplingEnabled, samplingRatio, samplingRouteRatios,
- *     validationEnabled, validationStrict, exporterEnabled,
- *     traceControlHeadersEnabled, diagnosticsLogLevel
- *
- * Design: Agent and Spring share the same JVM classloader in test scope.
- * CompositeData is built here identically to Agent PrivateControlWireTypes
- * (field order and type names pinned by AcceptedCompleteSnapshotDecoderTest.buildCompleteResponse).
- * Any schema drift causes decode to throw — self-enforcing.
+ * Независимый manually pinned schema fixture (Commit 3, §9.3 из плана {@code wire-field-descriptors}).
+ * <p>
+ * До переименования этот класс назывался {@code P54AgentSpringWireParityTest} и его Javadoc
+ * заявлял проверку «real Agent-side encoding» — фактически неверно: {@code CompositeData} здесь
+ * строится вручную литеральными строками ({@code "acceptedSequence"}, {@code "runtimeInstanceId"}
+ * и т.д.), а не вызовом реального {@code PrivateControlOpenTypeCodec.encodeAcceptedComplete()}.
+ * Настоящий real-encoder-to-real-decoder round trip покрывает
+ * {@link space.br1440.platform.tracing.otel.javaagent.control.state.AgentToSpringWireCodecParityTest}.
+ * <p>
+ * Ценность этого класса — независимость от {@code WireField}: имена полей и структура схемы
+ * зашиты здесь как литералы, а не выведены из production-дескрипторов, поэтому он способен
+ * обнаружить регресс, который случайно совпадающим образом задел бы и производственную схему,
+ * и её единственный источник истины одновременно.
  */
-class P54AgentSpringWireParityTest {
+class AcceptedCompleteManuallyPinnedSchemaFixtureTest {
 
     // ── §1 full round-trip with non-empty route table ─────────────────────────
 
@@ -48,7 +44,7 @@ class P54AgentSpringWireParityTest {
                 "/api/v2", 0.5d,
                 "/health", 0.0d);
 
-        CompositeData wire = buildAgentPayload(seq, rid, true, 0.75d, routes,
+        CompositeData wire = buildPinnedPayload(seq, rid, true, 0.75d, routes,
                 true, true, false, true, "WARN");
 
         var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
@@ -75,7 +71,7 @@ class P54AgentSpringWireParityTest {
     @Test
     void fullRoundTripEmptyRouteTable() throws OpenDataException {
         String rid = "rid-empty-" + UUID.randomUUID();
-        CompositeData wire = buildAgentPayload(0L, rid, false, 0.0d, Map.of(),
+        CompositeData wire = buildPinnedPayload(0L, rid, false, 0.0d, Map.of(),
                 false, false, true, false, "ERROR");
 
         var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
@@ -99,7 +95,7 @@ class P54AgentSpringWireParityTest {
     void sequenceIsPreservedExactly() throws OpenDataException {
         long[] seqs = {0L, 1L, 100L, Long.MAX_VALUE - 1};
         for (long seq : seqs) {
-            CompositeData wire = buildAgentPayload(seq, "rid-seq-" + seq,
+            CompositeData wire = buildPinnedPayload(seq, "rid-seq-" + seq,
                     true, 0.5d, Map.of(),
                     true, false, true, true, "INFO");
             var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
@@ -120,7 +116,7 @@ class P54AgentSpringWireParityTest {
                 "rid-with-dashes-123"
         };
         for (String rid : ids) {
-            CompositeData wire = buildAgentPayload(1L, rid,
+            CompositeData wire = buildPinnedPayload(1L, rid,
                     true, 0.5d, Map.of(),
                     true, false, true, true, "INFO");
             var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
@@ -135,7 +131,7 @@ class P54AgentSpringWireParityTest {
     @Test
     void samplingRatioBoundaryValuesAreValid() throws OpenDataException {
         for (double ratio : new double[]{0.0d, 1.0d}) {
-            CompositeData wire = buildAgentPayload(1L, "rid-boundary",
+            CompositeData wire = buildPinnedPayload(1L, "rid-boundary",
                     true, ratio, Map.of(),
                     true, false, true, true, "INFO");
             var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
@@ -150,7 +146,7 @@ class P54AgentSpringWireParityTest {
     @Test
     void allValidDiagnosticsLogLevelsAccepted() throws OpenDataException {
         for (String level : new String[]{"OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"}) {
-            CompositeData wire = buildAgentPayload(1L, "rid-level-" + level,
+            CompositeData wire = buildPinnedPayload(1L, "rid-level-" + level,
                     true, 0.5d, Map.of(),
                     true, false, true, true, level);
             var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
@@ -165,7 +161,7 @@ class P54AgentSpringWireParityTest {
     @Test
     void routeKeyValueNotTransposed() throws OpenDataException {
         Map<String, Double> routes = Map.of("/distinct-prefix", 0.123d);
-        CompositeData wire = buildAgentPayload(1L, "rid-swap",
+        CompositeData wire = buildPinnedPayload(1L, "rid-swap",
                 true, 0.5d, routes,
                 true, false, true, true, "INFO");
 
@@ -178,7 +174,7 @@ class P54AgentSpringWireParityTest {
                 .doesNotContainKey("0.123");
     }
 
-    // ── §8 all boolean leaves independently verified ──────────────────────────
+    // ── §8 all boolean leaves independently verified (one-hot) ────────────────
 
     @Test
     void booleanLeavesAreIndependent() throws OpenDataException {
@@ -194,7 +190,7 @@ class P54AgentSpringWireParityTest {
         };
 
         for (var c : cases) {
-            CompositeData wire = buildAgentPayload(1L, "rid-bool",
+            CompositeData wire = buildPinnedPayload(1L, "rid-bool",
                     c.sampEn(), 0.5d, Map.of(),
                     c.valEn(), c.valStrict(), c.expEn(), c.tcHeaders(), "INFO");
             var snap = AcceptedCompleteSnapshotDecoder.decode(wire).snapshot();
@@ -210,7 +206,7 @@ class P54AgentSpringWireParityTest {
 
     @Test
     void decodedSchemaFieldCountIsExactlyEight() throws OpenDataException {
-        CompositeData wire = buildAgentPayload(1L, "rid-schema",
+        CompositeData wire = buildPinnedPayload(1L, "rid-schema",
                 true, 0.5d, Map.of(),
                 true, false, true, true, "INFO");
         var snap = AcceptedCompleteSnapshotDecoder.decode(wire).snapshot();
@@ -229,14 +225,15 @@ class P54AgentSpringWireParityTest {
         )).hasSize(8);
     }
 
-    // ── helper: build Agent-canonical CompositeData ───────────────────────────
+    // ── helper: build a manually pinned CompositeData, independent of WireField ──
 
     /**
-     * Constructs CompositeData identical to Agent PrivateControlWireTypes.ACCEPTED_COMPLETE:
-     * type name "AcceptedCompleteSnapshot/v1", field order and sub-types pinned
-     * by AcceptedCompleteSnapshotDecoderTest.buildCompleteResponse contract.
+     * Constructs {@code CompositeData} for {@code "AcceptedCompleteSnapshot/v1"} using literal
+     * field names, not {@code PrivateControlWireTypes.WireField}. This is deliberate: the point
+     * of this fixture is to detect drift even if a future edit changed
+     * {@code WireField} and every place derived from it in lockstep.
      */
-    private static CompositeData buildAgentPayload(
+    private static CompositeData buildPinnedPayload(
             long acceptedSequence,
             String runtimeInstanceId,
             boolean samplingEnabled,

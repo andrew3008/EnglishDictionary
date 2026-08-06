@@ -177,8 +177,20 @@ public final class PrivateJmxTracingPolicySnapshotClient
     }
 
     private TracingPolicyDeliveryResult parseOutcome(Object raw) {
-        if (raw instanceof CompositeData) {
-            PrivateControlResponse response = PrivateControlResponse.decode((CompositeData) raw);
+        if (raw instanceof CompositeData compositeData) {
+            PrivateControlResponse response;
+            try {
+                response = PrivateControlResponse.decode(compositeData);
+            } catch (IllegalArgumentException decodeFailure) {
+                // Decode-level contract violation (wrong CompositeType, missing/null/mistyped
+                // outcome) must not fall through to a generic catch and degrade into a plain
+                // FAILED result — it is exactly as much an Agent/App contract defect as the
+                // MBeanException/RuntimeMBeanException cases handled below.
+                throw new TracingPolicyContractViolationException(
+                        "applySnapshot response failed to decode — Agent/App contract violation",
+                        decodeFailure);
+            }
+
             try {
                 return TracingPolicyDeliveryResult.valueOf(response.outcome());
             } catch (IllegalArgumentException ex) {

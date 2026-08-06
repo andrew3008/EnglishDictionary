@@ -10,25 +10,34 @@ import javax.management.openmbean.TabularData;
 
 import lombok.experimental.UtilityClass;
 
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlWireTypes.WireField;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 
+/**
+ * Декодирует и валидирует wire-ответ Agent {@code readAcceptedComplete} (PRIV-R07).
+ * <p>
+ * Контракт: Agent ОБЯЗАН вернуть {@code CompositeData}, типизированную как
+ * {@value PrivateControlWireTypes#ACCEPTED_COMPLETE_TYPE_NAME}; любой другой тип или
+ * {@code null} — грубое нарушение контракта.
+ * <p>
+ * Это межпроцессная, кросс-classloader граница доверия: Agent обязан присылать значения
+ * только в границах собственного {@code EffectiveTracingPolicyValidator}, но Spring не должен
+ * это предполагать. Каждое поле независимо перепроверяется здесь — wire payload никогда не
+ * считается доверенным только потому, что совпал по типу и "должен" был прийти от Agent.
+ * Негативные сценарии проверяются исключительно через {@link #decode(Object)} — публичного
+ * {@code require*}-SPI намеренно не существует, чтобы не создавать второй вход, способный
+ * провалидировать поле в изоляции от остальных инвариантов записи.
+ * <p>
+ * Все имена полей читаются через {@link WireField#wireName()} — тот же дескриптор, из которого
+ * построена {@link PrivateControlWireTypes#COMPLETE_RESPONSE}; отдельных строковых алиасов имён
+ * полей здесь больше нет. {@code OPERATION} — diagnostic-label самой операции, а не имя поля,
+ * и дескриптором не заменяется.
+ */
 @UtilityClass
 public final class AcceptedCompleteSnapshotDecoder {
 
     private static final String OPERATION = "readAcceptedComplete";
-    private static final String ACCEPTED_SEQUENCE = "acceptedSequence";
-    private static final String RUNTIME_INSTANCE_ID = "runtimeInstanceId";
-    private static final String SAMPLING_ENABLED = "samplingEnabled";
-    private static final String SAMPLING_RATIO = "samplingRatio";
-    private static final String SAMPLING_ROUTE_RATIOS = "samplingRouteRatios";
-    private static final String VALIDATION_ENABLED = "validationEnabled";
-    private static final String VALIDATION_STRICT = "validationStrict";
-    private static final String EXPORTER_ENABLED = "exporterEnabled";
-    private static final String TRACE_CONTROL_HEADERS_ENABLED = "traceControlHeadersEnabled";
-    private static final String DIAGNOSTICS_LOG_LEVEL = "diagnosticsLogLevel";
-    private static final String ROUTE_PREFIX = "routePrefix";
-    private static final String ROUTE_RATIO = "ratio";
 
     private static final int FIXED_LOGICAL_PAYLOAD_BYTES = 64;
     private static final int ROUTE_ENTRY_LOGICAL_OVERHEAD_BYTES = 16;
@@ -69,53 +78,53 @@ public final class AcceptedCompleteSnapshotDecoder {
     }
 
     private static long requireAcceptedSequence(CompositeData response) {
-        long acceptedSequence = requireField(response, ACCEPTED_SEQUENCE, Long.class);
+        long acceptedSequence = requireField(response, WireField.ACCEPTED_SEQUENCE, Long.class);
         if (acceptedSequence < 0L) {
-            throw invalid(ACCEPTED_SEQUENCE + " must be >= 0, got " + acceptedSequence);
+            throw invalid(WireField.ACCEPTED_SEQUENCE.wireName() + " must be >= 0, got " + acceptedSequence);
         }
 
         return acceptedSequence;
     }
 
     private static String requireRuntimeInstanceId(CompositeData response) {
-        String runtimeInstanceId = requireField(response, RUNTIME_INSTANCE_ID, String.class);
+        String runtimeInstanceId = requireField(response, WireField.RUNTIME_INSTANCE_ID, String.class);
         if (runtimeInstanceId.isBlank()) {
-            throw invalid(RUNTIME_INSTANCE_ID + " must not be blank");
+            throw invalid(WireField.RUNTIME_INSTANCE_ID.wireName() + " must not be blank");
         }
 
         return runtimeInstanceId;
     }
 
     private static CompleteTracingPolicySnapshot decodePolicy(CompositeData response) {
-        double samplingRatio = requireRatio(response, SAMPLING_RATIO);
+        double samplingRatio = requireRatio(response, WireField.SAMPLING_RATIO);
         String diagnosticsLogLevel = requireLogLevel(response);
 
-        TabularData routeRatiosRawData = requireField(response, SAMPLING_ROUTE_RATIOS, TabularData.class);
+        TabularData routeRatiosRawData = requireField(response, WireField.SAMPLING_ROUTE_RATIOS, TabularData.class);
         Map<String, Double> routeRatios = decodeRouteRatios(routeRatiosRawData);
 
         return CompleteTracingPolicySnapshot.builder()
-                .samplingEnabled(requireField(response, SAMPLING_ENABLED, Boolean.class))
+                .samplingEnabled(requireField(response, WireField.SAMPLING_ENABLED, Boolean.class))
                 .samplingRatio(samplingRatio)
                 .samplingRouteRatios(routeRatios)
-                .validationEnabled(requireField(response, VALIDATION_ENABLED, Boolean.class))
-                .validationStrict(requireField(response, VALIDATION_STRICT, Boolean.class))
-                .exporterEnabled(requireField(response, EXPORTER_ENABLED, Boolean.class))
-                .traceControlHeadersEnabled(requireField(response, TRACE_CONTROL_HEADERS_ENABLED, Boolean.class))
+                .validationEnabled(requireField(response, WireField.VALIDATION_ENABLED, Boolean.class))
+                .validationStrict(requireField(response, WireField.VALIDATION_STRICT, Boolean.class))
+                .exporterEnabled(requireField(response, WireField.EXPORTER_ENABLED, Boolean.class))
+                .traceControlHeadersEnabled(requireField(response, WireField.TRACE_CONTROL_HEADERS_ENABLED, Boolean.class))
                 .diagnosticsLogLevel(diagnosticsLogLevel)
                 .build();
     }
 
     @SuppressWarnings("SameParameterValue")
-    private static double requireRatio(CompositeData response, String fieldName) {
-        double ratio = requireField(response, fieldName, Double.class);
-        requireValidRatio(ratio, fieldName);
+    private static double requireRatio(CompositeData response, WireField field) {
+        double ratio = requireField(response, field, Double.class);
+        requireValidRatio(ratio, field.wireName());
         return ratio;
     }
 
     private static String requireLogLevel(CompositeData response) {
-        String logLevel = requireField(response, DIAGNOSTICS_LOG_LEVEL, String.class);
+        String logLevel = requireField(response, WireField.DIAGNOSTICS_LOG_LEVEL, String.class);
         if (!PrivateControlWireTypes.VALID_LOG_LEVELS.contains(logLevel)) {
-            throw invalid(DIAGNOSTICS_LOG_LEVEL + " is not a recognized level: " + logLevel);
+            throw invalid(WireField.DIAGNOSTICS_LOG_LEVEL.wireName() + " is not a recognized level: " + logLevel);
         }
 
         return logLevel;
@@ -124,21 +133,21 @@ public final class AcceptedCompleteSnapshotDecoder {
     private static int logicalPayloadSize(CompositeData response) {
         int size = FIXED_LOGICAL_PAYLOAD_BYTES;
 
-        Object runtimeId = response.get(RUNTIME_INSTANCE_ID);
+        Object runtimeId = response.get(WireField.RUNTIME_INSTANCE_ID.wireName());
         if (runtimeId instanceof String text) {
             size += text.getBytes(StandardCharsets.UTF_8).length;
         }
 
-        Object logLevel = response.get(DIAGNOSTICS_LOG_LEVEL);
+        Object logLevel = response.get(WireField.DIAGNOSTICS_LOG_LEVEL.wireName());
         if (logLevel instanceof String text) {
             size += text.getBytes(StandardCharsets.UTF_8).length;
         }
 
-        Object routes = response.get(SAMPLING_ROUTE_RATIOS);
+        Object routes = response.get(WireField.SAMPLING_ROUTE_RATIOS.wireName());
         if (routes instanceof TabularData tabular) {
             for (Object rawRow : tabular.values()) {
                 if (rawRow instanceof CompositeData row) {
-                    Object prefix = row.get(ROUTE_PREFIX);
+                    Object prefix = row.get(WireField.ROUTE_PREFIX.wireName());
                     if (prefix instanceof String text) {
                         size += text.getBytes(StandardCharsets.UTF_8).length + ROUTE_ENTRY_LOGICAL_OVERHEAD_BYTES;
                     }
@@ -149,17 +158,17 @@ public final class AcceptedCompleteSnapshotDecoder {
         return size;
     }
 
-    private static <T> T requireField(CompositeData cd, String key, Class<T> type) {
-        Object value = cd.get(key);
+    private static <T> T requireField(CompositeData cd, WireField field, Class<T> javaType) {
+        Object value = cd.get(field.wireName());
         if (value == null) {
-            throw invalid("field '" + key + "' is null");
+            throw invalid("field '" + field.wireName() + "' is null");
         }
 
-        if (!type.isInstance(value)) {
-            throw invalid("field '" + key + "' has unexpected type " + value.getClass().getName());
+        if (!javaType.isInstance(value)) {
+            throw invalid("field '" + field.wireName() + "' has unexpected type " + value.getClass().getName());
         }
 
-        return type.cast(value);
+        return javaType.cast(value);
     }
 
     private static void requireValidRatio(double ratio, String fieldName) {
@@ -178,7 +187,7 @@ public final class AcceptedCompleteSnapshotDecoder {
         }
 
         if (tabular.size() > PrivateControlWireTypes.MAX_ROUTE_ENTRIES) {
-            throw invalid(SAMPLING_ROUTE_RATIOS + " has " + tabular.size()
+            throw invalid(WireField.SAMPLING_ROUTE_RATIOS.wireName() + " has " + tabular.size()
                     + " entries, exceeding the maximum of " + PrivateControlWireTypes.MAX_ROUTE_ENTRIES);
         }
 
@@ -187,11 +196,11 @@ public final class AcceptedCompleteSnapshotDecoder {
             CompositeData row = requireRouteRow(rawRow);
             String prefix = requireRoutePrefix(row);
 
-            double ratio = requireField(row, ROUTE_RATIO, Double.class);
-            requireValidRatio(ratio, SAMPLING_ROUTE_RATIOS + ".entry");
+            double ratio = requireField(row, WireField.ROUTE_RATIO, Double.class);
+            requireValidRatio(ratio, WireField.SAMPLING_ROUTE_RATIOS.wireName() + ".entry");
 
             if (result.put(prefix, ratio) != null) {
-                throw invalid("duplicate route prefix in " + SAMPLING_ROUTE_RATIOS);
+                throw invalid("duplicate route prefix in " + WireField.SAMPLING_ROUTE_RATIOS.wireName());
             }
         }
 
@@ -204,11 +213,11 @@ public final class AcceptedCompleteSnapshotDecoder {
         }
 
         String type = (rawRow == null) ? "null" : rawRow.getClass().getName();
-        throw invalid(SAMPLING_ROUTE_RATIOS + " row has unexpected type " + type);
+        throw invalid(WireField.SAMPLING_ROUTE_RATIOS.wireName() + " row has unexpected type " + type);
     }
 
     private static String requireRoutePrefix(CompositeData row) {
-        String prefix = requireField(row, ROUTE_PREFIX, String.class);
+        String prefix = requireField(row, WireField.ROUTE_PREFIX, String.class);
         if (prefix.isBlank()) {
             throw invalid("route prefix must not be blank");
         }

@@ -270,6 +270,51 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
         return new FakeAgentPrivateControlPlane(server, runtimeInstanceId, 0, writer);
     }
 
+    /**
+     * An Agent build whose {@code applySnapshot} returns a structurally malformed response
+     * (wrong {@link CompositeType} name) — used to prove the Commit 4 fail-open regression fix
+     * of the plan {@code wire-field-descriptors}: {@code PrivateJmxTracingPolicySnapshotClient}
+     * must classify this as {@code TracingPolicyContractViolationException}, not as a plain
+     * {@code FAILED} delivery result.
+     */
+    public static FakeAgentPrivateControlPlane malformedApplySnapshotResponse(String runtimeInstanceId)
+            throws Exception {
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        CompositeType wrongType = new CompositeType(
+                "totally.wrong.ResponseType.v1", "wrong", new String[]{"x"},
+                new String[]{"x"}, new OpenType<?>[]{SimpleType.STRING});
+        CompositeData malformed = new CompositeDataSupport(wrongType, Map.of("x", "irrelevant"));
+        DynamicMBean writer = new DynamicMBean() {
+            @Override
+            public Object getAttribute(String attribute) { return null; }
+
+            @Override
+            public void setAttribute(Attribute attribute) { }
+
+            @Override
+            public AttributeList getAttributes(String[] attributes) { return new AttributeList(); }
+
+            @Override
+            public AttributeList setAttributes(AttributeList attributes) { return new AttributeList(); }
+
+            @Override
+            public Object invoke(String actionName, Object[] params, String[] signature)
+                    throws ReflectionException {
+                if ("applySnapshot".equals(actionName)) {
+                    return malformed;
+                }
+                throw new ReflectionException(new NoSuchMethodException(actionName));
+            }
+
+            @Override
+            public MBeanInfo getMBeanInfo() {
+                return new MBeanInfo(getClass().getName(), "fake malformed-apply-response agent writer",
+                        new MBeanAttributeInfo[0], null, new MBeanOperationInfo[0], null);
+            }
+        };
+        return new FakeAgentPrivateControlPlane(server, runtimeInstanceId, 0, writer);
+    }
+
     /** Real, initialized Spring-side client bound to this fake Agent's MBeanServer. */
     public PrivateJmxTracingPolicySnapshotClient client() {
         PrivateJmxTracingPolicySnapshotClient client =

@@ -1,16 +1,20 @@
 package space.br1440.platform.tracing.otel.javaagent.control.state;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Objects;
+import java.util.TreeMap;
+
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularDataSupport;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.Objects;
-import java.util.TreeMap;
+
+import space.br1440.platform.tracing.otel.javaagent.control.state.PrivateControlWireTypes.WireField;
 
 /**
  * Строгий Agent-side codec complete Category A snapshot.
@@ -30,21 +34,21 @@ final class PrivateControlOpenTypeCodec {
             throw rejected(PolicyMessageCode.TYPE_MISMATCH, "unexpected request CompositeType");
         }
 
-        int version = value(request, "protocolVersion", Integer.class);
+        int version = value(request, WireField.PROTOCOL_VERSION, Integer.class);
         if (version != PrivateControlObjectNames.PROTOCOL_VERSION) {
             throw rejected(
                     PolicyMessageCode.PROTOCOL_VERSION_MISMATCH,
                     "unsupported protocol version");
         }
 
-        String runtimeId = value(request, "expectedRuntimeInstanceId", String.class);
-        long sequence = value(request, "expectedAcceptedSequence", Long.class);
-        String attemptId = value(request, "attemptId", String.class);
-        String authority = token(request, "sourceAuthority");
-        String trigger = token(request, "applyTrigger");
-        String revision = value(request, "sourceRevision", String.class);
-        String candidateDigest = value(request, "candidateDigest", String.class);
-        CompositeData policyData = value(request, "runtimePolicy", CompositeData.class);
+        String runtimeId = value(request, WireField.EXPECTED_RUNTIME_INSTANCE_ID, String.class);
+        long sequence = value(request, WireField.EXPECTED_ACCEPTED_SEQUENCE, Long.class);
+        String attemptId = value(request, WireField.ATTEMPT_ID, String.class);
+        String authority = token(request, WireField.SOURCE_AUTHORITY);
+        String trigger = token(request, WireField.APPLY_TRIGGER);
+        String revision = value(request, WireField.SOURCE_REVISION, String.class);
+        String candidateDigest = value(request, WireField.CANDIDATE_DIGEST, String.class);
+        CompositeData policyData = value(request, WireField.RUNTIME_POLICY, CompositeData.class);
 
         if (sequence < 0L) {
             throw rejected(PolicyMessageCode.INVALID_VALUE, "expectedAcceptedSequence is negative");
@@ -90,21 +94,20 @@ final class PrivateControlOpenTypeCodec {
             String[] violations = result.messageCode() == PolicyMessageCode.NONE
                     ? new String[0]
                     : new String[]{result.messageCode().name()};
-            return new CompositeDataSupport(
-                    PrivateControlWireTypes.RESPONSE,
-                    PrivateControlWireTypes.RESPONSE_KEYS,
-                    new Object[]{
-                            result.accepted().acceptedSequence(),
-                            attemptId,
-                            result.messageCode().name(),
-                            result.outcome().name(),
-                            result.payloadDigest(),
-                            PrivateControlObjectNames.PROTOCOL_VERSION,
-                            false,
-                            new String[0],
-                            result.accepted().runtimeInstanceId(),
-                            violations
-                    });
+
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put(WireField.ACCEPTED_SEQUENCE.wireName(), result.accepted().acceptedSequence());
+            fields.put(WireField.ATTEMPT_ID.wireName(), attemptId);
+            fields.put(WireField.MESSAGE_CODE.wireName(), result.messageCode().name());
+            fields.put(WireField.OUTCOME.wireName(), result.outcome().name());
+            fields.put(WireField.PAYLOAD_DIGEST.wireName(), result.payloadDigest());
+            fields.put(WireField.PROTOCOL_VERSION.wireName(), PrivateControlObjectNames.PROTOCOL_VERSION);
+            fields.put(WireField.RESTART_REQUIRED.wireName(), false);
+            fields.put(WireField.RESTART_REQUIRED_KEYS.wireName(), new String[0]);
+            fields.put(WireField.RUNTIME_INSTANCE_ID.wireName(), result.accepted().runtimeInstanceId());
+            fields.put(WireField.VIOLATION_CODES.wireName(), violations);
+
+            return new CompositeDataSupport(PrivateControlWireTypes.RESPONSE, fields);
         } catch (OpenDataException exception) {
             throw new IllegalStateException("Cannot encode private control response", exception);
         }
@@ -132,21 +135,20 @@ final class PrivateControlOpenTypeCodec {
         }
         try {
             TabularData routes = encodeRouteRatios(view.samplingRouteRatios());
-            return new CompositeDataSupport(
-                    PrivateControlWireTypes.ACCEPTED_COMPLETE,
-                    PrivateControlWireTypes.ACCEPTED_COMPLETE_KEYS,
-                    new Object[]{
-                            view.acceptedSequence(),            // Long
-                            view.runtimeInstanceId(),           // String
-                            view.samplingEnabled(),             // Boolean
-                            view.samplingRatio(),               // Double
-                            routes,                             // TabularData
-                            view.validationEnabled(),           // Boolean
-                            view.validationStrict(),            // Boolean
-                            view.exporterEnabled(),             // Boolean
-                            view.traceControlHeadersEnabled(),  // Boolean
-                            view.diagnosticsLogLevel()          // String
-                    });
+
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put(WireField.ACCEPTED_SEQUENCE.wireName(), view.acceptedSequence());
+            fields.put(WireField.RUNTIME_INSTANCE_ID.wireName(), view.runtimeInstanceId());
+            fields.put(WireField.SAMPLING_ENABLED.wireName(), view.samplingEnabled());
+            fields.put(WireField.SAMPLING_RATIO.wireName(), view.samplingRatio());
+            fields.put(WireField.SAMPLING_ROUTE_RATIOS.wireName(), routes);
+            fields.put(WireField.VALIDATION_ENABLED.wireName(), view.validationEnabled());
+            fields.put(WireField.VALIDATION_STRICT.wireName(), view.validationStrict());
+            fields.put(WireField.EXPORTER_ENABLED.wireName(), view.exporterEnabled());
+            fields.put(WireField.TRACE_CONTROL_HEADERS_ENABLED.wireName(), view.traceControlHeadersEnabled());
+            fields.put(WireField.DIAGNOSTICS_LOG_LEVEL.wireName(), view.diagnosticsLogLevel());
+
+            return new CompositeDataSupport(PrivateControlWireTypes.ACCEPTED_COMPLETE, fields);
         } catch (OpenDataException exception) {
             throw new IllegalStateException("Cannot encode AcceptedCompleteSnapshot", exception);
         }
@@ -160,16 +162,16 @@ final class PrivateControlOpenTypeCodec {
             throws OpenDataException {
         TabularDataSupport table = new TabularDataSupport(PrivateControlWireTypes.ROUTES);
         for (Map.Entry<String, Double> entry : ratios.entrySet()) {
-            table.put(new CompositeDataSupport(
-                    PrivateControlWireTypes.ROUTE_ROW,
-                    PrivateControlWireTypes.ROUTE_KEYS,
-                    new Object[]{entry.getValue(), entry.getKey()}));
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put(WireField.ROUTE_PREFIX.wireName(), entry.getKey());
+            row.put(WireField.ROUTE_RATIO.wireName(), entry.getValue());
+            table.put(new CompositeDataSupport(PrivateControlWireTypes.ROUTE_ROW, row));
         }
         return table;
     }
 
     private static EffectiveTracingPolicy decodePolicy(CompositeData data) {
-        TabularData routes = value(data, "samplingRouteRatios", TabularData.class);
+        TabularData routes = value(data, WireField.SAMPLING_ROUTE_RATIOS, TabularData.class);
         if (!PrivateControlWireTypes.ROUTES.equals(routes.getTabularType())) {
             throw rejected(PolicyMessageCode.TYPE_MISMATCH, "unexpected route-ratios TabularType");
         }
@@ -179,8 +181,8 @@ final class PrivateControlOpenTypeCodec {
         Map<String, Double> decodedRoutes = new TreeMap<>();
         for (Object rawRow : routes.values()) {
             CompositeData row = (CompositeData) rawRow;
-            String prefix = value(row, "routePrefix", String.class);
-            Double ratio = value(row, "ratio", Double.class);
+            String prefix = value(row, WireField.ROUTE_PREFIX, String.class);
+            Double ratio = value(row, WireField.ROUTE_RATIO, Double.class);
             if (prefix.isEmpty() || prefix.length() > 255 || containsControl(prefix)) {
                 throw rejected(PolicyMessageCode.INVALID_VALUE, "invalid route prefix");
             }
@@ -189,21 +191,21 @@ final class PrivateControlOpenTypeCodec {
             }
         }
         return EffectiveTracingPolicy.of(
-                value(data, "samplingEnabled", Boolean.class),
-                value(data, "samplingRatio", Double.class),
+                value(data, WireField.SAMPLING_ENABLED, Boolean.class),
+                value(data, WireField.SAMPLING_RATIO, Double.class),
                 decodedRoutes,
-                value(data, "validationEnabled", Boolean.class),
-                value(data, "validationStrict", Boolean.class),
-                value(data, "exporterEnabled", Boolean.class),
-                value(data, "traceControlHeadersEnabled", Boolean.class),
-                PolicyLogLevel.valueOf(token(data, "diagnosticsLogLevel")));
+                value(data, WireField.VALIDATION_ENABLED, Boolean.class),
+                value(data, WireField.VALIDATION_STRICT, Boolean.class),
+                value(data, WireField.EXPORTER_ENABLED, Boolean.class),
+                value(data, WireField.TRACE_CONTROL_HEADERS_ENABLED, Boolean.class),
+                PolicyLogLevel.valueOf(token(data, WireField.DIAGNOSTICS_LOG_LEVEL)));
     }
 
     private static int logicalSize(
             CompositeData request,
             EffectiveTracingPolicy policy) {
         int size = 64;
-        for (String key : PrivateControlWireTypes.REQUEST_KEYS) {
+        for (String key : request.getCompositeType().keySet()) {
             Object value = request.get(key);
             if (value instanceof String text) {
                 size += text.getBytes(StandardCharsets.UTF_8).length;
@@ -225,21 +227,21 @@ final class PrivateControlOpenTypeCodec {
         return size;
     }
 
-    private static String token(CompositeData data, String key) {
-        String value = value(data, key, String.class);
+    private static String token(CompositeData data, WireField field) {
+        String value = value(data, field, String.class);
         if (!value.equals(value.trim())) {
-            throw rejected(PolicyMessageCode.INVALID_VALUE, key + " must be trimmed");
+            throw rejected(PolicyMessageCode.INVALID_VALUE, field.wireName() + " must be trimmed");
         }
         return value;
     }
 
-    private static <T> T value(CompositeData data, String key, Class<T> type) {
-        Object value = data.get(key);
+    private static <T> T value(CompositeData data, WireField field, Class<T> type) {
+        Object value = data.get(field.wireName());
         if (value == null) {
-            throw rejected(PolicyMessageCode.MISSING_REQUIRED_FIELD, key + " is required");
+            throw rejected(PolicyMessageCode.MISSING_REQUIRED_FIELD, field.wireName() + " is required");
         }
         if (!type.isInstance(value)) {
-            throw rejected(PolicyMessageCode.TYPE_MISMATCH, key + " has wrong type");
+            throw rejected(PolicyMessageCode.TYPE_MISMATCH, field.wireName() + " has wrong type");
         }
         return type.cast(value);
     }

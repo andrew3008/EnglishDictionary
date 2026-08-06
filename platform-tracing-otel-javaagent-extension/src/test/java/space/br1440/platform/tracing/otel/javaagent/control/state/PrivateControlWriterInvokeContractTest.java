@@ -14,6 +14,7 @@ import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.TabularDataSupport;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -219,32 +220,28 @@ class PrivateControlWriterInvokeContractTest {
         EffectiveTracingPolicy policy = EffectiveTracingPolicy.of(
                 true, 0.5, Map.of(), true, false, true, true, PolicyLogLevel.INFO);
         TabularDataSupport routes = new TabularDataSupport(PrivateControlWireTypes.ROUTES);
-        CompositeData policyData = new CompositeDataSupport(
-                PrivateControlWireTypes.POLICY,
-                PrivateControlWireTypes.POLICY_KEYS,
-                new Object[]{
-                        policy.diagnosticsLogLevel().name(),
-                        policy.exporterEnabled(),
-                        policy.samplingEnabled(),
-                        policy.samplingRatio(),
-                        routes,
-                        policy.traceControlHeadersEnabled(),
-                        policy.validationEnabled(),
-                        policy.validationStrict()
-                });
-        return new CompositeDataSupport(
-                PrivateControlWireTypes.REQUEST,
-                PrivateControlWireTypes.REQUEST_KEYS,
-                new Object[]{
-                        "REFRESH",
-                        UUID.randomUUID().toString(),
-                        EffectiveTracingPolicyDigest.sha256(policy),
-                        0L,
-                        runtimeId,
-                        PrivateControlObjectNames.PROTOCOL_VERSION,
-                        policyData,
-                        "CONFIG_SERVER",
-                        "revision-1"
-                });
+
+        Map<String, Object> policyFields = new LinkedHashMap<>();
+        policyFields.put("diagnosticsLogLevel", policy.diagnosticsLogLevel().name());
+        policyFields.put("exporterEnabled", policy.exporterEnabled());
+        policyFields.put("samplingEnabled", policy.samplingEnabled());
+        policyFields.put("samplingRatio", policy.samplingRatio());
+        policyFields.put("samplingRouteRatios", routes);
+        policyFields.put("traceControlHeadersEnabled", policy.traceControlHeadersEnabled());
+        policyFields.put("validationEnabled", policy.validationEnabled());
+        policyFields.put("validationStrict", policy.validationStrict());
+        CompositeData policyData = new CompositeDataSupport(PrivateControlWireTypes.POLICY, policyFields);
+
+        Map<String, Object> requestFields = new LinkedHashMap<>();
+        requestFields.put("applyTrigger", "REFRESH");
+        requestFields.put("attemptId", UUID.randomUUID().toString());
+        requestFields.put("candidateDigest", EffectiveTracingPolicyDigest.sha256(policy));
+        requestFields.put("expectedAcceptedSequence", 0L);
+        requestFields.put("expectedRuntimeInstanceId", runtimeId);
+        requestFields.put("protocolVersion", PrivateControlObjectNames.PROTOCOL_VERSION);
+        requestFields.put("runtimePolicy", policyData);
+        requestFields.put("sourceAuthority", "CONFIG_SERVER");
+        requestFields.put("sourceRevision", "revision-1");
+        return new CompositeDataSupport(PrivateControlWireTypes.REQUEST, requestFields);
     }
 }

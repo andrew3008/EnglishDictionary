@@ -184,19 +184,21 @@ class PrivateControlReadAcceptedCompleteTest {
         assertThat(cd.get("acceptedSequence")).isEqualTo(0L);
     }
 
-    // ── Codec: exact field order matches ACCEPTED_COMPLETE_KEYS ──────────────
+    // ── Codec: exact field set matches the canonical readAcceptedComplete schema ────
 
     @Test
     void fieldOrder_matchesCanonicalKeyArray() throws Exception {
         // javax.management.openmbean.CompositeType stores its keySet() alphabetically
         // (backed by a TreeMap), regardless of constructor argument order — this is JDK
-        // behavior, not a wire-contract property. Declaration order in
-        // PrivateControlWireTypes.ACCEPTED_COMPLETE_KEYS still governs the paired types array
-        // and is verified structurally by PrivateControlWireTypes.validate(); field lookup on
-        // the wire is always by name (CompositeData.get(name)), never by position.
+        // behavior, not a wire-contract property. Field lookup on the wire is always by
+        // name (CompositeData.get(name)), never by position. Expected names are pinned
+        // here directly (not sourced from PrivateControlWireTypes) so that this test
+        // independently detects an accidental field rename or removal in production.
         CompositeData cd = read(writer(UUID.randomUUID().toString(), 1.0d, Map.of()));
-        assertThat(cd.getCompositeType().keySet().toArray())
-                .containsExactlyInAnyOrder((Object[]) PrivateControlWireTypes.ACCEPTED_COMPLETE_KEYS);
+        assertThat(cd.getCompositeType().keySet()).containsExactlyInAnyOrder(
+                "acceptedSequence", "runtimeInstanceId", "samplingEnabled", "samplingRatio",
+                "samplingRouteRatios", "validationEnabled", "validationStrict", "exporterEnabled",
+                "traceControlHeadersEnabled", "diagnosticsLogLevel");
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

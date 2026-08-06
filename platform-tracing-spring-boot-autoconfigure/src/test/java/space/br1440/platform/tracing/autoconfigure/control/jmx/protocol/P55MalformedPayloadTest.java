@@ -9,6 +9,7 @@ import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyM
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerPolicyManifestBuilder;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerPolicyProvenanceClassifier;
 
+import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
@@ -56,6 +57,14 @@ class P55MalformedPayloadTest {
 
     // A deliberately wrong CompositeType to test schema mismatch
     private static final CompositeType WRONG_TYPE = wrongCompositeType();
+
+    // The canonical applySnapshot response CompositeType
+    private static final String[] RESPONSE_KEYS = {
+            "acceptedSequence", "attemptId", "messageCode", "outcome", "payloadDigest",
+            "protocolVersion", "restartRequired", "restartRequiredKeys", "runtimeInstanceId",
+            "violationCodes"
+    };
+    private static final CompositeType RESPONSE_TYPE = responseType();
 
     // =========================================================================
     // SECTION 1 — null / wrong Java type for raw argument
@@ -425,7 +434,7 @@ class P55MalformedPayloadTest {
         assertThatThrownBy(() -> PrivateControlResponse.decode(null))
                 .as("null response CompositeData MUST throw IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("CompositeType");
+                .hasMessageContaining("CompositeData");
     }
 
     /** P5.5-6b: CompositeData with wrong CompositeType name to PrivateControlResponse.decode. */
@@ -439,6 +448,31 @@ class P55MalformedPayloadTest {
                 .as("wrong CompositeType response MUST throw IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("CompositeType");
+    }
+
+    /**
+     * P5.5-6c: {@code outcome} field is {@code null} (Commit 4 of plan {@code wire-field-descriptors}
+     * — fail-open regression guard). Before this fix, {@code PrivateControlResponse.decode} used an
+     * unchecked {@code (String) response.get("outcome")} cast, so a {@code null} value silently
+     * produced {@code outcome() == null} instead of failing here at the decode boundary.
+     */
+    @Test
+    void decode_response_null_outcome_throws() throws OpenDataException {
+        CompositeData response = buildResponseWith(Map.of(), new String[]{"outcome"});
+        assertThatThrownBy(() -> PrivateControlResponse.decode(response))
+                .as("null outcome field MUST throw IllegalArgumentException")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("outcome");
+    }
+
+    /** P5.5-6d: {@code outcome} field is blank. */
+    @Test
+    void decode_response_blank_outcome_throws() throws OpenDataException {
+        CompositeData response = buildResponseWith(Map.of("outcome", "   "), new String[0]);
+        assertThatThrownBy(() -> PrivateControlResponse.decode(response))
+                .as("blank outcome field MUST throw IllegalArgumentException")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("outcome");
     }
 
     // =========================================================================
@@ -660,6 +694,69 @@ class P55MalformedPayloadTest {
         } catch (OpenDataException e) {
             throw new ExceptionInInitializerError(e);
         }
+    }
+
+    private static CompositeType responseType() {
+        try {
+            String[] keys = RESPONSE_KEYS;
+            return new CompositeType(
+                    "space.br1440.platform.tracing.control.ApplySnapshotResponse.v1",
+                    "space.br1440.platform.tracing.control.ApplySnapshotResponse.v1",
+                    keys, keys,
+                    new OpenType<?>[]{
+                            SimpleType.LONG, SimpleType.STRING, SimpleType.STRING, SimpleType.STRING,
+                            SimpleType.STRING, SimpleType.INTEGER, SimpleType.BOOLEAN, arrayOfStrings(),
+                            SimpleType.STRING, arrayOfStrings()
+                    });
+        } catch (OpenDataException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    private static ArrayType<String> arrayOfStrings() {
+        try {
+            return new ArrayType<>(1, SimpleType.STRING);
+        } catch (OpenDataException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    /**
+     * Builds a {@code CompositeData} typed exactly as
+     * {@code PrivateControlWireTypes.RESPONSE}, defaulting every field to a valid value except
+     * those present in {@code nonNullOverrides} (overridden) or {@code nullFields} (forced
+     * {@code null}).
+     */
+    private static CompositeData buildResponseWith(
+            Map<String, Object> nonNullOverrides,
+            String[] nullFields) throws OpenDataException {
+        java.util.Set<String> nullSet = java.util.Set.of(nullFields);
+        Object[] values = new Object[RESPONSE_KEYS.length];
+        for (int i = 0; i < RESPONSE_KEYS.length; i++) {
+            String key = RESPONSE_KEYS[i];
+            if (nullSet.contains(key)) {
+                values[i] = null;
+            } else {
+                values[i] = nonNullOverrides.getOrDefault(key, defaultForResponseField(key));
+            }
+        }
+        return new CompositeDataSupport(RESPONSE_TYPE, RESPONSE_KEYS, values);
+    }
+
+    private static Object defaultForResponseField(String key) {
+        return switch (key) {
+            case "acceptedSequence" -> 1L;
+            case "attemptId" -> "attempt-1";
+            case "messageCode" -> "NONE";
+            case "outcome" -> "APPLIED";
+            case "payloadDigest" -> "a".repeat(64);
+            case "protocolVersion" -> 1;
+            case "restartRequired" -> false;
+            case "restartRequiredKeys" -> new String[0];
+            case "runtimeInstanceId" -> "runtime-1";
+            case "violationCodes" -> new String[0];
+            default -> throw new IllegalArgumentException("Unknown key: " + key);
+        };
     }
 
     // =========================================================================
