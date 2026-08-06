@@ -26,6 +26,22 @@ class EffectiveTracingPolicyDigestTest {
     }
 
     @Test
+    void matchesGoldenVectorWithEmptyRouteRatios() {
+        EffectiveTracingPolicy policy = EffectiveTracingPolicy.of(
+                true,
+                0.25d,
+                Map.of(),
+                true,
+                false,
+                true,
+                true,
+                PolicyLogLevel.INFO);
+
+        assertThat(EffectiveTracingPolicyDigest.sha256(policy))
+                .isEqualTo("5c7749beaa1333762487aafe8103a92f68c2757186aa944b756025a0696c2993");
+    }
+
+    @Test
     void ignoresInputMapOrderAndNormalizesNegativeZero() {
         Map<String, Double> first = new LinkedHashMap<>();
         first.put("/z", -0.0d);

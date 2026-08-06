@@ -164,6 +164,45 @@ class PrivateControlBoundaryTest {
     }
 
     @Test
+    void rejectsWellFormedCandidateDigestMismatchWithoutChangingAcceptedState() throws Exception {
+        String runtimeId = UUID.randomUUID().toString();
+        AcceptedPolicyStateStore store = store(runtimeId);
+        PrivateControlMBeanServerOwner owner = new PrivateControlMBeanServerOwner(
+                runtimeId,
+                store,
+                new PolicyValidationConstraints(true));
+        MBeanServer server = owner.initialize();
+        try {
+            AcceptedPolicyEnvelope acceptedBefore = store.current();
+            String attemptId = UUID.randomUUID().toString();
+            CompositeData validRequest = request(
+                    runtimeId,
+                    acceptedBefore.acceptedSequence(),
+                    policy(0.25d),
+                    attemptId);
+            String validDigest = (String) validRequest.get("candidateDigest");
+            String mismatchedDigest = (validDigest.charAt(0) == '0' ? "1" : "0")
+                    + validDigest.substring(1);
+
+            CompositeData rejected = invoke(
+                    server,
+                    withCandidateDigest(validRequest, mismatchedDigest));
+
+            assertThat(rejected.getCompositeType()).isEqualTo(PrivateControlWireTypes.RESPONSE);
+            assertThat(rejected.get("outcome")).isEqualTo("REJECTED");
+            assertThat(rejected.get("messageCode")).isEqualTo("INVALID_VALUE");
+            assertThat(rejected.get("attemptId")).isEqualTo(attemptId);
+            assertThat(rejected.get("acceptedSequence")).isEqualTo(acceptedBefore.acceptedSequence());
+            assertThat(rejected.get("payloadDigest"))
+                    .isEqualTo(EffectiveTracingPolicyDigest.sha256(acceptedBefore.policy()));
+            assertThat(store.current()).isSameAs(acceptedBefore);
+            assertThat(store.current().policy()).isEqualTo(acceptedBefore.policy());
+        } finally {
+            owner.close();
+        }
+    }
+
+    @Test
     void readAcceptedComplete_returnsConsistentSnapshot() throws Exception {
         String runtimeId = UUID.randomUUID().toString();
         AcceptedPolicyStateStore store = store(runtimeId);
@@ -268,6 +307,16 @@ class PrivateControlBoundaryTest {
         requestFields.put("sourceAuthority", "CONFIG_SERVER");
         requestFields.put("sourceRevision", "revision-1");
         return new CompositeDataSupport(PrivateControlWireTypes.REQUEST, requestFields);
+    }
+
+    private static CompositeData withCandidateDigest(CompositeData request, String candidateDigest)
+            throws Exception {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        for (String field : request.getCompositeType().keySet()) {
+            fields.put(field, request.get(field));
+        }
+        fields.put("candidateDigest", candidateDigest);
+        return new CompositeDataSupport(request.getCompositeType(), fields);
     }
 
     private static AcceptedPolicyStateStore store(String runtimeId) {

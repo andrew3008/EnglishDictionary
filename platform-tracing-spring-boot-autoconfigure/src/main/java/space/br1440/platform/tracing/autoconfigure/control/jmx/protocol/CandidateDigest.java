@@ -20,6 +20,8 @@ import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracin
 final class CandidateDigest {
 
     private static final byte[] DOMAIN_SEPARATOR = "platform-tracing-policy-v1".getBytes(StandardCharsets.UTF_8);
+
+    private static final int DIGEST_ENCODING_VERSION = 0;
     private static final int SAMPLING_ENABLED_FIELD = 1;
     private static final int SAMPLING_RATIO_FIELD = 2;
     private static final int SAMPLING_ROUTE_RATIOS_FIELD = 3;
@@ -29,12 +31,17 @@ final class CandidateDigest {
     private static final int TRACE_CONTROL_HEADERS_ENABLED_FIELD = 7;
     private static final int DIAGNOSTICS_LOG_LEVEL_FIELD = 8;
 
+    private static final Comparator<EncodedRouteRatio> ROUTE_PREFIX_ORDER =
+            Comparator.comparing(
+                    EncodedRouteRatio::routePrefix, CandidateDigest::compareUnsigned
+            );
+
     static String sha256(CompleteTracingPolicySnapshot policy) {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             try (DataOutputStream output = new DataOutputStream(bytes)) {
                 output.write(DOMAIN_SEPARATOR);
-                output.writeByte(0);
+                output.writeByte(DIGEST_ENCODING_VERSION);
                 writeBoolean(output, SAMPLING_ENABLED_FIELD, policy.samplingEnabled());
                 writeDouble(output, SAMPLING_RATIO_FIELD, policy.samplingRatio());
                 writeRouteRatios(output, SAMPLING_ROUTE_RATIOS_FIELD, policy.samplingRouteRatios());
@@ -71,12 +78,15 @@ final class CandidateDigest {
 
         List<EncodedRouteRatio> entries = new ArrayList<>(routeRatios.size());
         for (Map.Entry<String, Double> entry : routeRatios.entrySet()) {
-            entries.add(new EncodedRouteRatio(
-                    entry.getKey().getBytes(StandardCharsets.UTF_8),
-                    entry.getValue()));
+            entries.add(
+                    new EncodedRouteRatio(
+                            entry.getKey().getBytes(StandardCharsets.UTF_8),
+                            entry.getValue()
+                    )
+            );
         }
 
-        entries.sort(Comparator.comparing(EncodedRouteRatio::routePrefix, CandidateDigest::compareUnsigned));
+        entries.sort(ROUTE_PREFIX_ORDER);
 
         output.writeInt(entries.size());
         for (EncodedRouteRatio entry : entries) {
@@ -112,6 +122,22 @@ final class CandidateDigest {
         return Integer.compare(left.length, right.length);
     }
 
-    private record EncodedRouteRatio(byte[] routePrefix, double ratio) {
+    private static final class EncodedRouteRatio {
+
+        private final byte[] routePrefix;
+        private final double ratio;
+
+        private EncodedRouteRatio(byte[] routePrefix, double ratio) {
+            this.routePrefix = routePrefix;
+            this.ratio = ratio;
+        }
+
+        private byte[] routePrefix() {
+            return routePrefix;
+        }
+
+        private double ratio() {
+            return ratio;
+        }
     }
 }
