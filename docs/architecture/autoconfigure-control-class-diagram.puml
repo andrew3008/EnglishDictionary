@@ -261,14 +261,29 @@ package "control.management" <<management>> as P_MGMT {
     - applyChange(UnaryOperator) : TracingPolicyDeliveryResult
   }
 
-  class SetSamplingEnabledRequest <<record>>
-  class SetSamplingRatioRequest <<record>>
-  class ReplaceSamplingRouteRatiosRequest <<record>>
-  class SetValidationEnabledRequest <<record>>
-  class SetValidationStrictRequest <<record>>
-  class SetExporterEnabledRequest <<record>>
-  class SetTraceControlHeadersEnabledRequest <<record>>
-  class SetDiagnosticsLogLevelRequest <<record>>
+  class TracingPolicyManagementRequests <<holder>> {
+    note right
+      nested record per leaf mutation (Common Closure
+      Principle); no shared fields, no sealed dispatch
+    end note
+  }
+  class SetSamplingEnabledRequest <<nested record>>
+  class SetSamplingRatioRequest <<nested record>>
+  class ReplaceSamplingRouteRatiosRequest <<nested record>>
+  class SetValidationEnabledRequest <<nested record>>
+  class SetValidationStrictRequest <<nested record>>
+  class SetExporterEnabledRequest <<nested record>>
+  class SetTraceControlHeadersEnabledRequest <<nested record>>
+  class SetDiagnosticsLogLevelRequest <<nested record>>
+
+  TracingPolicyManagementRequests +-- SetSamplingEnabledRequest
+  TracingPolicyManagementRequests +-- SetSamplingRatioRequest
+  TracingPolicyManagementRequests +-- ReplaceSamplingRouteRatiosRequest
+  TracingPolicyManagementRequests +-- SetValidationEnabledRequest
+  TracingPolicyManagementRequests +-- SetValidationStrictRequest
+  TracingPolicyManagementRequests +-- SetExporterEnabledRequest
+  TracingPolicyManagementRequests +-- SetTraceControlHeadersEnabledRequest
+  TracingPolicyManagementRequests +-- SetDiagnosticsLogLevelRequest
 }
 
 ' =============================================================================

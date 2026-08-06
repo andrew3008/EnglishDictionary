@@ -28,15 +28,8 @@ space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicyS
 space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.AcceptedCompleteSnapshotDecoder
 space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlRequestEncoder
 space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlResponse
-space.br1440.platform.tracing.autoconfigure.control.management.ReplaceSamplingRouteRatiosRequest
-space.br1440.platform.tracing.autoconfigure.control.management.SetDiagnosticsLogLevelRequest
-space.br1440.platform.tracing.autoconfigure.control.management.SetExporterEnabledRequest
-space.br1440.platform.tracing.autoconfigure.control.management.SetSamplingEnabledRequest
-space.br1440.platform.tracing.autoconfigure.control.management.SetSamplingRatioRequest
-space.br1440.platform.tracing.autoconfigure.control.management.SetTraceControlHeadersEnabledRequest
-space.br1440.platform.tracing.autoconfigure.control.management.SetValidationEnabledRequest
-space.br1440.platform.tracing.autoconfigure.control.management.SetValidationStrictRequest
 space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyControlAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests
 space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyMutationService
 space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot
 space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase

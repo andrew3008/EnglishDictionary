@@ -8,14 +8,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.management.ReplaceSamplingRouteRatiosRequest;
-import space.br1440.platform.tracing.autoconfigure.control.management.SetDiagnosticsLogLevelRequest;
-import space.br1440.platform.tracing.autoconfigure.control.management.SetExporterEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.control.management.SetSamplingEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.control.management.SetSamplingRatioRequest;
-import space.br1440.platform.tracing.autoconfigure.control.management.SetTraceControlHeadersEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.control.management.SetValidationEnabledRequest;
-import space.br1440.platform.tracing.autoconfigure.control.management.SetValidationStrictRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.ReplaceSamplingRouteRatiosRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.SetDiagnosticsLogLevelRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.SetExporterEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.SetSamplingEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.SetSamplingRatioRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.SetTraceControlHeadersEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.SetValidationEnabledRequest;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyManagementRequests.SetValidationStrictRequest;
 import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyMutationService;
 
 import java.util.Map;

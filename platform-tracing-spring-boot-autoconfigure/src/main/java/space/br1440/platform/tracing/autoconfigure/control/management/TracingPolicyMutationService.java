@@ -13,12 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 
-/**
- * Actuator write-path: читает принятый snapshot, строит candidate через {@code with*} и
- * доставляет его в Agent. Value-invariants принадлежат {@link CompleteTracingPolicySnapshot};
- * этот сервис лишь переводит {@link IllegalArgumentException} при создании candidate в
- * {@link TracingPolicyDeliveryResult#REJECTED} и не делает retry/rebase.
- */
 @RequiredArgsConstructor
 public final class TracingPolicyMutationService {
 
@@ -67,8 +61,6 @@ public final class TracingPolicyMutationService {
 
         CompleteTracingPolicySnapshot candidate;
         try {
-            // Ловим только value-invariant сбои при материализации candidate.
-            // Исключения reader/applier сюда не входят и не маскируются.
             candidate = change.apply(accepted.snapshot());
         } catch (IllegalArgumentException rejected) {
             return TracingPolicyDeliveryResult.REJECTED;
