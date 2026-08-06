@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 
+import lombok.experimental.UtilityClass;
+
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -10,34 +12,9 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.TabularType;
 
-/**
- * Единственный владелец wire-схемы приватного JMX control-протокола на Spring/App-стороне.
- * <p>
- * {@link WireField} — единственный владелец пары «wire-имя + Open-Type» для каждого уникального
- * поля протокола; сама схема ({@link #ROUTE_ROW}, {@link #ROUTES}, {@link #POLICY},
- * {@link #REQUEST}, {@link #RESPONSE}, {@link #COMPLETE_RESPONSE}) описывает только membership —
- * какие дескрипторы входят в конкретный {@link CompositeType}. Имена этих шести статических полей
- * — контракт для {@code ObjectNameConstantsConsistencyTest} и {@code PrivateControlWireSchemaGoldenTest},
- * которые сверяют их с Agent-схемой через reflection; менять имена нельзя без синхронной правки
- * обоих тестов.
- * <p>
- * Этот класс НЕ содержит валидацию значений, digest или интерпретацию ответов — вся такая логика
- * принадлежит {@link PrivateControlRequestEncoder} и {@link AcceptedCompleteSnapshotDecoder}.
- */
+@UtilityClass
 final class PrivateControlWireTypes {
 
-    /**
-     * Единственное уникальное wire-поле протокола ровно один раз — имя и Open-Type неразрывны.
-     * <p>
-     * {@code Supplier<OpenType<?>>} используется только там, где тип поля зависит от другого
-     * статического поля этого класса ({@link #ROUTES}, {@link #POLICY}) или от фабричного метода
-     * ({@link #arrayOfStrings()}). Вычисление откладывается до вызова {@link #type()}: на момент
-     * загрузки этого enum (первое обращение — построение {@link #ROUTE_ROW}) статические поля
-     * {@code ROUTES}/{@code POLICY} внешнего класса ещё не инициализированы, поэтому эагерное
-     * вычисление привело бы к {@code null} вместо реального типа. Отложенный supplier читается
-     * только когда соответствующая внешняя схема уже построена (порядок объявления полей класса
-     * гарантирует это), а не мутирует состояние постфактум.
-     */
     enum WireField {
         ROUTE_RATIO("ratio", SimpleType.DOUBLE),
         ROUTE_PREFIX("routePrefix", SimpleType.STRING),
@@ -90,14 +67,14 @@ final class PrivateControlWireTypes {
 
     static final CompositeType ROUTE_ROW = composite(
             "space.br1440.platform.tracing.control.RouteRatio.v1",
-            WireField.ROUTE_RATIO, WireField.ROUTE_PREFIX);
+            WireField.ROUTE_RATIO, WireField.ROUTE_PREFIX
+    );
 
     static final TabularType ROUTES = table(
             "space.br1440.platform.tracing.control.RouteRatios.v1",
             ROUTE_ROW,
-            WireField.ROUTE_PREFIX);
-
-    // ── applySnapshot request ────────────────────────────────────────────────
+            WireField.ROUTE_PREFIX
+    );
 
     static final CompositeType POLICY = composite(
             "space.br1440.platform.tracing.control.RuntimePolicy.v1",
@@ -108,7 +85,8 @@ final class PrivateControlWireTypes {
             WireField.SAMPLING_ROUTE_RATIOS,
             WireField.TRACE_CONTROL_HEADERS_ENABLED,
             WireField.VALIDATION_ENABLED,
-            WireField.VALIDATION_STRICT);
+            WireField.VALIDATION_STRICT
+    );
 
     static final CompositeType REQUEST = composite(
             "space.br1440.platform.tracing.control.ApplySnapshotRequest.v1",
@@ -120,9 +98,8 @@ final class PrivateControlWireTypes {
             WireField.PROTOCOL_VERSION,
             WireField.RUNTIME_POLICY,
             WireField.SOURCE_AUTHORITY,
-            WireField.SOURCE_REVISION);
-
-    // ── applySnapshot response ───────────────────────────────────────────────
+            WireField.SOURCE_REVISION
+    );
 
     static final CompositeType RESPONSE = composite(
             "space.br1440.platform.tracing.control.ApplySnapshotResponse.v1",
@@ -135,9 +112,8 @@ final class PrivateControlWireTypes {
             WireField.RESTART_REQUIRED,
             WireField.RESTART_REQUIRED_KEYS,
             WireField.RUNTIME_INSTANCE_ID,
-            WireField.VIOLATION_CODES);
-
-    // ── readAcceptedComplete response ──────────────────────────────
+            WireField.VIOLATION_CODES
+    );
 
     static final String ACCEPTED_COMPLETE_TYPE_NAME = "AcceptedCompleteSnapshot/v1";
 
@@ -145,7 +121,6 @@ final class PrivateControlWireTypes {
 
     static final int MAX_ROUTE_ENTRIES = 100;
     static final int MAX_ROUTE_PREFIX_LENGTH = 255;
-
     static final int MAX_LOGICAL_ACCEPTED_COMPLETE_BYTES = 32_768;
 
     static final CompositeType COMPLETE_RESPONSE = composite(
@@ -159,10 +134,8 @@ final class PrivateControlWireTypes {
             WireField.VALIDATION_STRICT,
             WireField.EXPORTER_ENABLED,
             WireField.TRACE_CONTROL_HEADERS_ENABLED,
-            WireField.DIAGNOSTICS_LOG_LEVEL);
-
-    private PrivateControlWireTypes() {
-    }
+            WireField.DIAGNOSTICS_LOG_LEVEL
+    );
 
     private static CompositeType composite(String name, WireField... fields) {
         String[] names = new String[fields.length];
@@ -171,6 +144,7 @@ final class PrivateControlWireTypes {
             names[index] = fields[index].wireName();
             types[index] = fields[index].type();
         }
+
         try {
             return new CompositeType(name, name, names, names, types);
         } catch (OpenDataException exception) {
@@ -178,6 +152,7 @@ final class PrivateControlWireTypes {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static TabularType table(String name, CompositeType row, WireField index) {
         try {
             return new TabularType(name, name, row, new String[]{index.wireName()});

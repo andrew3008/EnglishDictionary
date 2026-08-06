@@ -3,31 +3,18 @@ package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
-
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularDataSupport;
-
-import lombok.experimental.UtilityClass;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlWireTypes.WireField;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 
-/**
- * Кодирует единственный wire-аргумент {@code applySnapshot} из прикладных значений, вычисляя
- * {@code candidateDigest} через {@link CandidateDigest} (зеркало Agent-алгоритма, проверяемое
- * кросс-модульным parity-тестом).
- * <p>
- * Все три участка (route row, вложенная {@code runtimePolicy} и корневой {@code request})
- * строятся через {@code CompositeDataSupport(CompositeType, Map)} с явным
- * {@code put(WireField.X.wireName(), value)} — позиционного соответствия
- * {@code itemNames[i] ↔ itemValues[i]} здесь нет, поэтому перепутать два поля одного
- * {@code OpenType} (например, {@code sourceAuthority} и {@code applyTrigger}) невозможно
- * незаметно: строка с чужим полем читается как есть, без скрытого сдвига по индексу.
- */
+import lombok.experimental.UtilityClass;
+
 @UtilityClass
 public final class PrivateControlRequestEncoder {
 

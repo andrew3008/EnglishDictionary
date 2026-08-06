@@ -7,9 +7,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
-import org.springframework.context.annotation.ConfigurationCondition.ConfigurationPhase;
-
-import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
 
 @AutoConfiguration
 @Conditional(PrivateJmxControlAutoConfiguration.PrivateJmxControlAuthorityCondition.class)

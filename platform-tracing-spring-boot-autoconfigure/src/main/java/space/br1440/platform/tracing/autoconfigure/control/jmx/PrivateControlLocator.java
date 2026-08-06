@@ -8,8 +8,9 @@ import javax.management.ObjectName;
 
 public final class PrivateControlLocator {
 
-    static final String PROTOCOL_ID = "platform-tracing-private-control";
     public static final int PROTOCOL_VERSION = 1;
+
+    static final String PROTOCOL_ID = "platform-tracing-private-control";
     static final String MARKER_SIGNATURE = "PLATFORM_PRIVATE_CONTROL_V1";
     static final String MARKER_NAME = "space.br1440.platform.tracing:type=PrivateMarker,name=PlatformPrivateControlPlane";
     static final String WRITER_NAME = "space.br1440.platform.tracing:name=PlatformControlProtocol,type=Control";

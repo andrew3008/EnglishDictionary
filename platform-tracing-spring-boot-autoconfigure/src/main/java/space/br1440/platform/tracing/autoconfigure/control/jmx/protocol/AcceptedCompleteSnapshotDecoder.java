@@ -14,26 +14,6 @@ import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateC
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 
-/**
- * Декодирует и валидирует wire-ответ Agent {@code readAcceptedComplete} (PRIV-R07).
- * <p>
- * Контракт: Agent ОБЯЗАН вернуть {@code CompositeData}, типизированную как
- * {@value PrivateControlWireTypes#ACCEPTED_COMPLETE_TYPE_NAME}; любой другой тип или
- * {@code null} — грубое нарушение контракта.
- * <p>
- * Это межпроцессная, кросс-classloader граница доверия: Agent обязан присылать значения
- * только в границах собственного {@code EffectiveTracingPolicyValidator}, но Spring не должен
- * это предполагать. Каждое поле независимо перепроверяется здесь — wire payload никогда не
- * считается доверенным только потому, что совпал по типу и "должен" был прийти от Agent.
- * Негативные сценарии проверяются исключительно через {@link #decode(Object)} — публичного
- * {@code require*}-SPI намеренно не существует, чтобы не создавать второй вход, способный
- * провалидировать поле в изоляции от остальных инвариантов записи.
- * <p>
- * Все имена полей читаются через {@link WireField#wireName()} — тот же дескриптор, из которого
- * построена {@link PrivateControlWireTypes#COMPLETE_RESPONSE}; отдельных строковых алиасов имён
- * полей здесь больше нет. {@code OPERATION} — diagnostic-label самой операции, а не имя поля,
- * и дескриптором не заменяется.
- */
 @UtilityClass
 public final class AcceptedCompleteSnapshotDecoder {
 
