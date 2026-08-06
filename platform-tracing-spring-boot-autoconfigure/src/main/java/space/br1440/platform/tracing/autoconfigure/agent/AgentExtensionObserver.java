@@ -6,8 +6,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.LockSupport;
@@ -36,7 +34,7 @@ public final class AgentExtensionObserver {
         void sleep(long nanos);
     }
 
-    private final MBeanServer server;
+    private final AgentReadinessProbe probe;
     private final Duration startupReadinessTimeout;
     private final LongSupplier nanoTime;
     private final Sleeper sleeper;
@@ -68,7 +66,7 @@ public final class AgentExtensionObserver {
                            Duration startupReadinessTimeout,
                            LongSupplier nanoTime,
                            Sleeper sleeper) {
-        this.server = Objects.requireNonNull(server, "server");
+        this.probe = new AgentReadinessProbe(Objects.requireNonNull(server, "server"));
         this.startupReadinessTimeout = Objects.requireNonNull(startupReadinessTimeout, "startupReadinessTimeout");
         this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
         this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
@@ -84,7 +82,7 @@ public final class AgentExtensionObserver {
                                             boolean globalOpenTelemetrySet) {
         Objects.requireNonNull(expectation, "expectation");
         ObjectName readinessName = PlatformTracingJmxObjectNames.EXTENSION_READINESS;
-        boolean endpointPresent = server.isRegistered(readinessName);
+        boolean endpointPresent = probe.endpointRegistered(readinessName);
 
         if (userOpenTelemetryBeanPresent
                 || (globalOpenTelemetrySet && !agentMarkerVisible && !endpointPresent)) {
@@ -102,28 +100,8 @@ public final class AgentExtensionObserver {
                     agentMarkerVisible ? "PLATFORM_EXTENSION_MISSING" : "CONTROLLED_AGENT_MISSING");
         }
 
-        try {
-            String version = stringAttribute(readinessName, "ExtensionVersion");
-            int protocol = intAttribute(readinessName, "ProtocolVersion");
-            String profile = stringAttribute(readinessName, "Profile");
-            String lifecycle = stringAttribute(readinessName, "LifecycleState");
-            String failureCode = stringAttribute(readinessName, "FailureCode");
-            stringAttribute(readinessName, "FailureMessage");
-            Set<String> capabilities = stringSetAttribute(readinessName, "Capabilities");
-
-            AgentRuntimeState state = classify(
-                    version, protocol, profile, lifecycle, failureCode, capabilities, readinessName);
-            return new AgentExtensionDescriptor(
-                    state,
-                    agentMarkerVisible,
-                    true,
-                    version,
-                    protocol,
-                    profile,
-                    lifecycle,
-                    failureCode,
-                    capabilities);
-        } catch (Exception malformedDescriptor) {
+        AgentReadinessProbe.ProbeResult result = probe.read(readinessName);
+        if (result instanceof AgentReadinessProbe.ProbeResult.Malformed malformed) {
             return new AgentExtensionDescriptor(
                     AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                     agentMarkerVisible,
@@ -132,9 +110,22 @@ public final class AgentExtensionObserver {
                     -1,
                     "",
                     "",
-                    "MALFORMED_READINESS_DESCRIPTOR",
+                    malformed.reason(),
                     Set.of());
         }
+
+        AgentReadinessSnapshot snapshot = ((AgentReadinessProbe.ProbeResult.Present) result).snapshot();
+        AgentRuntimeState state = classify(snapshot);
+        return new AgentExtensionDescriptor(
+                state,
+                agentMarkerVisible,
+                true,
+                snapshot.extensionVersion(),
+                snapshot.protocolVersion(),
+                snapshot.profile(),
+                snapshot.lifecycle(),
+                snapshot.failureCode(),
+                snapshot.capabilities());
     }
 
     /**
@@ -196,39 +187,32 @@ public final class AgentExtensionObserver {
                 || descriptor.state() == AgentRuntimeState.DISABLED);
     }
 
-    private AgentRuntimeState classify(
-            String extensionVersion,
-            int protocol,
-            String profile,
-            String lifecycle,
-            String failureCode,
-            Set<String> capabilities,
-            ObjectName readinessName) throws Exception {
-        if (protocol != SUPPORTED_PROTOCOL_VERSION
-                || !SUPPORTED_PROFILE.equals(profile)
-                || !versionsCompatible(extensionVersion, applicationVersion())) {
+    private AgentRuntimeState classify(AgentReadinessSnapshot snapshot) {
+        if (snapshot.protocolVersion() != SUPPORTED_PROTOCOL_VERSION
+                || !SUPPORTED_PROFILE.equals(snapshot.profile())
+                || !versionsCompatible(snapshot.extensionVersion(), applicationVersion())) {
             return AgentRuntimeState.EXTENSION_INCOMPATIBLE;
         }
-        if ("FAILED".equals(lifecycle)) {
-            return failureCode.isBlank()
+        if ("FAILED".equals(snapshot.lifecycle())) {
+            return snapshot.failureCode().isBlank()
                     ? AgentRuntimeState.EXTENSION_INCOMPATIBLE
                     : AgentRuntimeState.EXTENSION_FAILED;
         }
-        if ("INITIALIZING".equals(lifecycle)) {
-            return failureCode.isBlank() && !capabilities.containsAll(REQUIRED_CAPABILITIES)
+        if ("INITIALIZING".equals(snapshot.lifecycle())) {
+            return snapshot.failureCode().isBlank() && !snapshot.capabilities().containsAll(REQUIRED_CAPABILITIES)
                     ? AgentRuntimeState.EXTENSION_INITIALIZING
                     : AgentRuntimeState.EXTENSION_INCOMPATIBLE;
         }
-        if (!"READY".equals(lifecycle)
-                || !failureCode.isBlank()) {
+        if (!"READY".equals(snapshot.lifecycle())
+                || !snapshot.failureCode().isBlank()) {
             return AgentRuntimeState.EXTENSION_INCOMPATIBLE;
         }
-        if (!capabilities.containsAll(REQUIRED_CAPABILITIES)
-                || !booleanAttribute(readinessName, "SanitizerInstalled")
-                || !booleanAttribute(readinessName, "SamplerInstalled")
-                || !booleanAttribute(readinessName, "RequiredSpanProcessorsInstalled")
-                || !booleanAttribute(readinessName, "PropagationHooksInstalled")
-                || !booleanAttribute(readinessName, "ExportPathProtected")) {
+        if (!snapshot.capabilities().containsAll(REQUIRED_CAPABILITIES)
+                || !snapshot.sanitizerInstalled()
+                || !snapshot.samplerInstalled()
+                || !snapshot.requiredSpanProcessorsInstalled()
+                || !snapshot.propagationHooksInstalled()
+                || !snapshot.exportPathProtected()) {
             return AgentRuntimeState.CAPABILITY_MISSING;
         }
         return AgentRuntimeState.AGENT_READY;
@@ -256,38 +240,6 @@ public final class AgentExtensionObserver {
                 descriptor.lifecycle(),
                 failureCode,
                 descriptor.capabilities());
-    }
-
-    private String stringAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof String string) {
-            return string;
-        }
-        throw new IllegalStateException(attribute + " must be String");
-    }
-
-    private int intAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof Integer integer) {
-            return integer;
-        }
-        throw new IllegalStateException(attribute + " must be Integer");
-    }
-
-    private boolean booleanAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof Boolean bool) {
-            return bool;
-        }
-        throw new IllegalStateException(attribute + " must be Boolean");
-    }
-
-    private Set<String> stringSetAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof String[] array) {
-            return new LinkedHashSet<>(Arrays.asList(array));
-        }
-        throw new IllegalStateException(attribute + " must be String[]");
     }
 
     private static boolean versionsCompatible(String extensionVersion, String applicationVersion) {
