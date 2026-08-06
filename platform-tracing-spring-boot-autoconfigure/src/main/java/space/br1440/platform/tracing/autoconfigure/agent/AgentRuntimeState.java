@@ -1,8 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
-/**
- * Application-side классификация runtime без доверия к одному classpath marker.
- */
 public enum AgentRuntimeState {
     DISABLED,
     AGENT_READY,

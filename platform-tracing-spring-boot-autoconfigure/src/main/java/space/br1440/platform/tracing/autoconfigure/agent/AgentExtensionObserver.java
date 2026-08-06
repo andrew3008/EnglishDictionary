@@ -13,13 +13,6 @@ import java.util.Set;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.LongSupplier;
 
-/**
- * Валидирует versioned readiness descriptor, опубликованный extension classloader'ом через JMX.
- *
- * <p>При {@link AgentDeploymentExpectation#FORBIDDEN} отсутствие Agent доказывается в течение
- * полного startup poll window ({@link #STARTUP_READINESS_TIMEOUT}). Это startup invariant:
- * dynamic attach после завершения Spring startup не поддерживается и не мониторится.</p>
- */
 public final class AgentExtensionObserver {
 
     static final int SUPPORTED_PROTOCOL_VERSION = 1;
@@ -35,7 +28,8 @@ public final class AgentExtensionObserver {
             "SANITIZER_INSTALLED",
             "PROPAGATION_HOOKS_INSTALLED",
             "SAFE_EXPORTER_INSTALLED",
-            "EXPORT_PATH_PROTECTED");
+            "EXPORT_PATH_PROTECTED"
+    );
 
     @FunctionalInterface
     interface Sleeper {
@@ -55,50 +49,39 @@ public final class AgentExtensionObserver {
         this(server, resolveStartupTimeout(), System::nanoTime, LockSupport::parkNanos);
     }
 
-    /**
-     * Production timeout is {@link #STARTUP_READINESS_TIMEOUT}. Tests may shorten via
-     * {@code -Dplatform.tracing.test.startup-readiness-timeout-ms=} without changing
-     * the production constant.
-     */
     static Duration resolveStartupTimeout() {
         String override = System.getProperty("platform.tracing.test.startup-readiness-timeout-ms");
         if (override == null || override.isBlank()) {
             return STARTUP_READINESS_TIMEOUT;
         }
+
         long millis = Long.parseLong(override.trim());
         if (millis <= 0L) {
             throw new IllegalStateException(
                     "platform.tracing.test.startup-readiness-timeout-ms must be positive");
         }
+
         return Duration.ofMillis(millis);
     }
 
-    AgentExtensionObserver(
-            MBeanServer server,
-            Duration startupReadinessTimeout,
-            LongSupplier nanoTime,
-            Sleeper sleeper) {
+    AgentExtensionObserver(MBeanServer server,
+                           Duration startupReadinessTimeout,
+                           LongSupplier nanoTime,
+                           Sleeper sleeper) {
         this.server = Objects.requireNonNull(server, "server");
         this.startupReadinessTimeout = Objects.requireNonNull(startupReadinessTimeout, "startupReadinessTimeout");
         this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
         this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
+
         if (startupReadinessTimeout.isNegative() || startupReadinessTimeout.isZero()) {
             throw new IllegalArgumentException("startupReadinessTimeout must be positive");
         }
     }
 
-    /**
-     * Однократное наблюдение текущего состояния без ожидания.
-     *
-     * <p>Для {@link AgentDeploymentExpectation#FORBIDDEN} не возвращает {@link AgentRuntimeState#DISABLED}
-     * на первом пустом poll: вызывающий код обязан использовать
-     * {@link #awaitStartupDecision(AgentDeploymentExpectation, boolean, boolean, boolean)}.</p>
-     */
-    public AgentExtensionDescriptor observe(
-            AgentDeploymentExpectation expectation,
-            boolean agentMarkerVisible,
-            boolean userOpenTelemetryBeanPresent,
-            boolean globalOpenTelemetrySet) {
+    public AgentExtensionDescriptor observe(AgentDeploymentExpectation expectation,
+                                            boolean agentMarkerVisible,
+                                            boolean userOpenTelemetryBeanPresent,
+                                            boolean globalOpenTelemetrySet) {
         Objects.requireNonNull(expectation, "expectation");
         ObjectName readinessName = PlatformTracingJmxObjectNames.EXTENSION_READINESS;
         boolean endpointPresent = server.isRegistered(readinessName);
@@ -210,7 +193,7 @@ public final class AgentExtensionObserver {
                 && !descriptor.agentMarkerVisible()
                 && !descriptor.readinessEndpointPresent()
                 && (descriptor.state() == AgentRuntimeState.AGENT_MISSING
-                        || descriptor.state() == AgentRuntimeState.DISABLED);
+                || descriptor.state() == AgentRuntimeState.DISABLED);
     }
 
     private AgentRuntimeState classify(

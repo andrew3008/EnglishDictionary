@@ -1,33 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
+import lombok.experimental.UtilityClass;
+
 import java.util.Objects;
 
-/**
- * Сверяет configured intent ({@code platform.tracing.enabled}) с наблюдаемым
- * {@link AgentRuntimeState}.
- *
- * <p>Проверка выполняется только в startup validation window. Dynamic attach Java Agent
- * после завершения Spring startup не является поддерживаемым сценарием и этим
- * validator не контролируется.</p>
- */
+@UtilityClass
 public final class AgentRuntimeContractValidator {
 
-    private AgentRuntimeContractValidator() {
-        // utility-класс
-    }
-
-    /**
-     * @param tracingEnabled configured intent
-     * @param extension      observed classloader-neutral descriptor
-     * @return observed runtime state after successful validation
-     */
-    public static AgentRuntimeState validate(
-            boolean tracingEnabled,
-            AgentExtensionDescriptor extension) {
+    public static AgentRuntimeState validate(boolean tracingEnabled,
+                                             AgentExtensionDescriptor extension) {
         Objects.requireNonNull(extension, "extension");
         if (tracingEnabled) {
             return requireReady(extension);
         }
+
         return requireAbsent(extension);
     }
 
@@ -35,6 +21,7 @@ public final class AgentRuntimeContractValidator {
         if (extension.state() != AgentRuntimeState.AGENT_READY) {
             throw new IllegalStateException(runtimeFailure(true, extension));
         }
+
         return extension.state();
     }
 
@@ -42,6 +29,7 @@ public final class AgentRuntimeContractValidator {
         if (extension.state() != AgentRuntimeState.DISABLED) {
             throw new IllegalStateException(runtimeFailure(false, extension));
         }
+
         return extension.state();
     }
 

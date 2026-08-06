@@ -41,7 +41,8 @@ public final class PrivateControlLocator {
                         && "WRITER_READY".equals(lifecycle)
                         && MARKER_SIGNATURE.equals(signature)
                         && server.isRegistered(writer)) {
-                    matches.add(new LocatedPrivateControl(server, writer, runtimeId));
+                    LocatedPrivateControl control = new LocatedPrivateControl(server, writer, runtimeId);
+                    matches.add(control);
                 }
             } catch (Exception ignored) {
             }

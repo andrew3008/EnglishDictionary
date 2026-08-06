@@ -4,18 +4,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 
-/**
- * Строго разрешает все настройки ранней bootstrap-фазы одним чтением {@link Environment}.
- * <p>
- * Stateless utility: состояние экземпляра не требуется, поэтому API статический.
- */
+@Slf4j
+@UtilityClass
 public final class TracingBootstrapSettingsResolver {
-
-    private static final Logger log = LoggerFactory.getLogger(TracingBootstrapSettingsResolver.class);
 
     private static final List<String> OBSOLETE_SPRING_ONLY_KEYS = List.of(
             "platform.tracing.log-level",
@@ -35,49 +33,55 @@ public final class TracingBootstrapSettingsResolver {
             "platform.tracing.validation.mode",
             "platform.tracing.validation.strict-runtime-allowed");
 
-    private TracingBootstrapSettingsResolver() {
-    }
-
     public static TracingBootstrapSettings resolve(Environment environment) {
         failFastOnObsoleteSpringOnlyKeys(environment);
         warnOnAgentBootstrapKeys(environment);
         return new TracingBootstrapSettings(
-                parseBoolean(environment, TracingBootstrapPropertyNames.ENABLED, true),
-                parseRequiredEnum(
-                        environment,
+                parseBoolean(environment,
+                        TracingBootstrapPropertyNames.ENABLED,
+                        true
+                ),
+
+                parseRequiredEnum(environment,
                         TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY,
-                        TracingConfigurationAuthority.class),
+                        TracingConfigurationAuthority.class
+                ),
+
                 parseRequiredEnum(
                         environment,
                         TracingBootstrapPropertyNames.ENVIRONMENT_POSTURE,
-                        PlatformEnvironmentPosture.class));
+                        PlatformEnvironmentPosture.class
+                )
+        );
     }
 
-    private static <E extends Enum<E>> E parseRequiredEnum(
-            Environment environment,
-            String propertyName,
-            Class<E> enumType) {
+    private static <E extends Enum<E>> E parseRequiredEnum(Environment environment,
+                                                           String propertyName,
+                                                           Class<E> enumType) {
         String raw = environment.getProperty(propertyName);
         if (raw == null || raw.trim().isEmpty()) {
             if (TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY.equals(propertyName)) {
                 throw new IllegalStateException("Missing platform.tracing.configuration.authority");
             }
+
             if (TracingBootstrapPropertyNames.ENVIRONMENT_POSTURE.equals(propertyName)) {
                 throw new IllegalStateException("Unknown platform.environment value: ''");
             }
+
             throw new IllegalStateException("Missing required property '" + propertyName + "'");
         }
+
         return parseEnumValue(propertyName, raw, enumType);
     }
 
-    private static <E extends Enum<E>> E parseEnumValue(
-            String propertyName,
-            String raw,
-            Class<E> enumType) {
+    private static <E extends Enum<E>> E parseEnumValue(String propertyName,
+                                                        String raw,
+                                                        Class<E> enumType) {
         String normalized = raw.trim().toUpperCase(Locale.ROOT);
         if (normalized.isEmpty()) {
             throw new IllegalStateException("Property '" + propertyName + "' must not be blank");
         }
+
         try {
             return Enum.valueOf(enumType, normalized);
         } catch (IllegalArgumentException exception) {
@@ -87,12 +91,14 @@ public final class TracingBootstrapSettingsResolver {
                                 + "'. Must be one of: HELM, CONFIG_SERVER, ACTUATOR",
                         exception);
             }
+
             if (TracingBootstrapPropertyNames.ENVIRONMENT_POSTURE.equals(propertyName)) {
                 throw new IllegalStateException(
                         "Unknown platform.environment value: '" + raw + "'. Accepted exact values: "
                                 + "LOCAL, SHARED, PRODUCTION",
                         exception);
             }
+
             throw new IllegalStateException(
                     "Invalid property '" + propertyName + "'='" + raw
                             + "'. Accepted values: " + List.of(enumType.getEnumConstants()),
@@ -100,19 +106,19 @@ public final class TracingBootstrapSettingsResolver {
         }
     }
 
-    private static boolean parseBoolean(
-            Environment environment,
-            String propertyName,
-            boolean defaultValue) {
+    @SuppressWarnings("SameParameterValue")
+    private static boolean parseBoolean(Environment environment,
+                                        String propertyName,
+                                        boolean defaultValue) {
         String raw = environment.getProperty(propertyName);
         if (raw == null) {
             return defaultValue;
         }
+
         return switch (raw.trim().toLowerCase(Locale.ROOT)) {
             case "true" -> true;
             case "false" -> false;
-            default -> throw new IllegalStateException(
-                    "Invalid property '" + propertyName + "'='" + raw + "'. Accepted values: true, false");
+            default -> throw new IllegalStateException("Invalid property '" + propertyName + "'='" + raw + "'. Accepted values: true, false");
         };
     }
 
@@ -121,7 +127,8 @@ public final class TracingBootstrapSettingsResolver {
             if (environment.containsProperty(key)) {
                 throw new IllegalStateException(
                         "Obsolete Spring-only property '" + key
-                                + "' is no longer bound or applied. Remove it from configuration.");
+                                + "' is no longer bound or applied. Remove it from configuration."
+                );
             }
         }
     }
@@ -133,9 +140,11 @@ public final class TracingBootstrapSettingsResolver {
                 present.add(key);
             }
         }
+
         if (!present.isEmpty()) {
             log.warn("Spring Environment contains Java-agent bootstrap-only properties {}. "
-                    + "Spring does not bind or apply these properties.", present);
+                    + "Spring does not bind or apply these properties.", present
+            );
         }
     }
 }

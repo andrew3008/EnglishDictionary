@@ -1,19 +1,13 @@
 package space.br1440.platform.tracing.autoconfigure.bootstrap;
 
-/**
- * Имена свойств, определяющих неизменяемые настройки bootstrap-фазы.
- *
- * <p>Тип является внутренним межмодульным контрактом: константа {@link #ENABLED} используется
- * условиями auto-configuration в нейтральном, Servlet- и WebFlux-модулях.</p>
- */
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public final class TracingBootstrapPropertyNames {
 
     public static final String ENABLED = "platform.tracing.enabled";
     public static final String CONFIGURATION_AUTHORITY = "platform.tracing.configuration.authority";
     public static final String ENVIRONMENT_POSTURE = "platform.environment";
-
     public static final String SETTINGS_BEAN_NAME = "tracingBootstrapSettings";
 
-    private TracingBootstrapPropertyNames() {
-    }
 }

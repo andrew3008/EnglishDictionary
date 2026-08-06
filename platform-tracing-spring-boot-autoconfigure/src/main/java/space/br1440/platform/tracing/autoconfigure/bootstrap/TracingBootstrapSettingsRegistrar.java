@@ -4,13 +4,10 @@ import java.util.Objects;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 
-/**
- * Регистрирует единственный immutable bootstrap-снимок в BeanFactory.
- */
-public final class TracingBootstrapSettingsRegistrar {
+import lombok.experimental.UtilityClass;
 
-    private TracingBootstrapSettingsRegistrar() {
-    }
+@UtilityClass
+public final class TracingBootstrapSettingsRegistrar {
 
     public static void register(ConfigurableListableBeanFactory beanFactory,
                                 TracingBootstrapSettings settings) {
