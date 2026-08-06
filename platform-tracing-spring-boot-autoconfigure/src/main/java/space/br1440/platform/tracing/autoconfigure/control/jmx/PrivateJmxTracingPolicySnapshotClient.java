@@ -48,7 +48,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
             this.privateServer = located.server();
             this.controlObjectName = located.writerObjectName();
         } catch (Exception e) {
-            throw new TracingConfigurationGuardException("Cannot initialize snapshot client: private MBeanServer unavailable. " + e.getMessage());
+            throw new TracingConfigurationGuardException("Cannot initialize snapshot client: private MBeanServer unavailable", e);
         }
     }
 

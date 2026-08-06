@@ -16,9 +16,6 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Блокирующие проверки package tree и ограниченных межмодульных контрактов autoconfigure.
- */
 class AutoconfigurePackageArchitectureTest {
 
     private static final String BASE_PACKAGE = "space.br1440.platform.tracing.autoconfigure";
@@ -29,6 +26,8 @@ class AutoconfigurePackageArchitectureTest {
     private static final String ACCEPTED_DECODER = BASE_PACKAGE
             + ".control.jmx.protocol.AcceptedCompleteSnapshotDecoder";
     private static final String LOCATOR = BASE_PACKAGE + ".control.jmx.PrivateControlLocator";
+    private static final Pattern PUBLIC_LOCATE_OR_CARRIER = Pattern.compile(
+            "(?m)^\\s*public\\s+(?:[\\w.<>\\[\\], ]+\\s+)?(?:locate\\s*\\(|record\\s+LocatedPrivateControl\\b)");
     private static final String ACCEPTED = BASE_PACKAGE
             + ".control.policy.read.AcceptedSnapshotWithSequence";
     private static final Pattern PACKAGE = Pattern.compile("(?m)^package\\s+([^;]+);");
@@ -160,6 +159,20 @@ class AutoconfigurePackageArchitectureTest {
 
     private static String normalized(Path path) {
         return path.toString().replace('\\', '/');
+    }
+
+    @Test
+    void privateControlLocatorKeepsLocateAndCarrierPackagePrivate() throws Exception {
+        Path root = repositoryRoot();
+        Path source = root.resolve(SOURCE_ROOT)
+                .resolve(LOCATOR.replace('.', '/') + ".java");
+        String text = Files.readString(source, StandardCharsets.UTF_8);
+
+        assertThat(text).as("public no-arg constructor остаётся internal cross-module contract")
+                .contains("public PrivateControlLocator()");
+        assertThat(PUBLIC_LOCATE_OR_CARRIER.matcher(text).find())
+                .as("locate() и LocatedPrivateControl должны оставаться package-private")
+                .isFalse();
     }
 
     private static Path repositoryRoot() {
