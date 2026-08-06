@@ -1,26 +1,50 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
+import javax.management.ReflectionException;
+import javax.management.RuntimeErrorException;
+import javax.management.RuntimeMBeanException;
 
 /**
  * Package-private JMX transport for the Controlled Platform Agent readiness MBean.
  * <p>
- * Owns attribute names, type conversion, and defensive copying only. Endpoint registration is
- * checked separately via {@link #endpointRegistered(ObjectName)} on every attempt, since presence
- * is re-evaluated on each polling iteration by the caller.
+ * Owns attribute names, batch decoding, and defensive copying only. Protocol, profile, version, and
+ * capability policy stay in the observer/classifier that consumes {@link AgentReadinessSnapshot}.
  * <p>
- * The per-attribute JMX exception matrix (A-19: distinguishing endpoint disappearance,
- * access-denied, and invocation-failure) is introduced in Slice 2, together with the switch to a
- * single batch {@code getAttributes} read. This class already exposes its final sealed-result
- * shape so that Slice 2 only changes the read strategy, not the probe's public surface.
+ * Endpoint registration is checked separately via {@link #endpointRegistered(ObjectName)} on every
+ * polling attempt by the caller; {@link #read(ObjectName)} performs exactly one
+ * {@link MBeanServer#getAttributes(ObjectName, String[])} call per invocation and never falls back
+ * to reading individual attributes one at a time. A single batch call is not atomic with respect to
+ * concurrent writers on the agent side — it only guarantees that this class issues one round trip.
+ * <p>
+ * {@code FailureMessage} is intentionally never requested: it is a recording-only diagnostic proof
+ * channel on the agent side, never consumed by application policy.
  */
 final class AgentReadinessProbe {
+
+    /**
+     * Exactly the 12 attributes the application needs. The physical readiness MBean exposes a
+     * 13th attribute, {@code FailureMessage}, which is never requested here.
+     */
+    static final Set<String> REQUESTED_ATTRIBUTE_NAMES = Set.of(
+            "ExtensionVersion", "ProtocolVersion", "Profile", "LifecycleState", "FailureCode",
+            "Capabilities", "RequiredCapabilities",
+            "SanitizerInstalled", "SamplerInstalled", "RequiredSpanProcessorsInstalled",
+            "PropagationHooksInstalled", "ExportPathProtected");
+
+    private static final String[] REQUESTED_ATTRIBUTES_ARRAY =
+            REQUESTED_ATTRIBUTE_NAMES.toArray(String[]::new);
 
     private final MBeanServer server;
 
@@ -33,78 +57,135 @@ final class AgentReadinessProbe {
     }
 
     ProbeResult read(ObjectName readinessName) {
+        AttributeList attributes;
         try {
-            String extensionVersion = stringAttribute(readinessName, "ExtensionVersion");
-            int protocolVersion = intAttribute(readinessName, "ProtocolVersion");
-            String profile = stringAttribute(readinessName, "Profile");
-            String lifecycle = stringAttribute(readinessName, "LifecycleState");
-            String failureCode = stringAttribute(readinessName, "FailureCode");
-            stringAttribute(readinessName, "FailureMessage");
-            Set<String> capabilities = stringSetAttribute(readinessName, "Capabilities");
-            boolean sanitizerInstalled = booleanAttribute(readinessName, "SanitizerInstalled");
-            boolean samplerInstalled = booleanAttribute(readinessName, "SamplerInstalled");
-            boolean requiredSpanProcessorsInstalled =
-                    booleanAttribute(readinessName, "RequiredSpanProcessorsInstalled");
-            boolean propagationHooksInstalled = booleanAttribute(readinessName, "PropagationHooksInstalled");
-            boolean exportPathProtected = booleanAttribute(readinessName, "ExportPathProtected");
-
-            return new ProbeResult.Present(new AgentReadinessSnapshot(
-                    extensionVersion,
-                    protocolVersion,
-                    profile,
-                    lifecycle,
-                    failureCode,
-                    capabilities,
-                    sanitizerInstalled,
-                    samplerInstalled,
-                    requiredSpanProcessorsInstalled,
-                    propagationHooksInstalled,
-                    exportPathProtected));
-        } catch (Exception malformed) {
-            return new ProbeResult.Malformed("MALFORMED_READINESS_DESCRIPTOR");
+            attributes = server.getAttributes(readinessName, REQUESTED_ATTRIBUTES_ARRAY.clone());
+        } catch (InstanceNotFoundException disappeared) {
+            return new ProbeResult.Rejected(ProbeReason.ENDPOINT_DISAPPEARED);
+        } catch (ReflectionException | RuntimeMBeanException | RuntimeErrorException invocationFailed) {
+            return new ProbeResult.Indeterminate(ProbeReason.INVOCATION_FAILED, invocationFailed);
+        } catch (SecurityException accessDenied) {
+            return new ProbeResult.Indeterminate(ProbeReason.ACCESS_DENIED, accessDenied);
         }
-    }
 
-    private String stringAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof String string) {
-            return string;
+        Map<String, Object> values = new HashMap<>(16);
+        ProbeReason shapeRejection = validateShape(attributes, values);
+        if (shapeRejection != null) {
+            return new ProbeResult.Rejected(shapeRejection);
         }
-        throw new IllegalStateException(attribute + " must be String");
-    }
 
-    private int intAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof Integer integer) {
-            return integer;
-        }
-        throw new IllegalStateException(attribute + " must be Integer");
-    }
-
-    private boolean booleanAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof Boolean bool) {
-            return bool;
-        }
-        throw new IllegalStateException(attribute + " must be Boolean");
-    }
-
-    private Set<String> stringSetAttribute(ObjectName name, String attribute) throws Exception {
-        Object value = server.getAttribute(name, attribute);
-        if (value instanceof String[] array) {
-            return new LinkedHashSet<>(Arrays.asList(array));
-        }
-        throw new IllegalStateException(attribute + " must be String[]");
+        return decode(values);
     }
 
     /**
-     * Sealed transport-level outcome. Mirrors the pattern used by
-     * {@code PrivateControlMarkerInspector.ProbeResult}: {@link Present} carries a fully decoded,
-     * defensively-copied snapshot; {@link Malformed} carries a stable reason string for any read
-     * failure. Slice 2 refines {@link Malformed} into distinct reasons per the A-19 exception
-     * matrix; no caller outside this package observes this type.
+     * JMX permits a batch read to silently return fewer attributes than requested (a partial
+     * {@link AttributeList}) instead of throwing. Any deviation from exactly the requested attribute
+     * names — unexpected name, duplicate name, non-{@link Attribute} element, or a missing expected
+     * name — is an immediate terminal rejection. This method never re-reads a missing attribute
+     * individually.
      */
-    sealed interface ProbeResult permits ProbeResult.Present, ProbeResult.Malformed {
+    private static ProbeReason validateShape(AttributeList attributes, Map<String, Object> values) {
+        if (attributes == null) {
+            return ProbeReason.MALFORMED_DESCRIPTOR;
+        }
+
+        for (Object element : attributes) {
+            if (!(element instanceof Attribute attribute)) {
+                return ProbeReason.MALFORMED_DESCRIPTOR;
+            }
+
+            String name = attribute.getName();
+            if (name == null || !REQUESTED_ATTRIBUTE_NAMES.contains(name) || values.containsKey(name)) {
+                return ProbeReason.MALFORMED_DESCRIPTOR;
+            }
+
+            values.put(name, attribute.getValue());
+        }
+
+        if (values.size() != REQUESTED_ATTRIBUTE_NAMES.size()) {
+            return ProbeReason.INCOMPLETE_DESCRIPTOR;
+        }
+
+        return null;
+    }
+
+    private static ProbeResult decode(Map<String, Object> values) {
+        Object extensionVersion = values.get("ExtensionVersion");
+        Object protocolVersion = values.get("ProtocolVersion");
+        Object profile = values.get("Profile");
+        Object lifecycle = values.get("LifecycleState");
+        Object failureCode = values.get("FailureCode");
+        Object capabilities = values.get("Capabilities");
+        Object requiredCapabilities = values.get("RequiredCapabilities");
+        Object sanitizerInstalled = values.get("SanitizerInstalled");
+        Object samplerInstalled = values.get("SamplerInstalled");
+        Object requiredSpanProcessorsInstalled = values.get("RequiredSpanProcessorsInstalled");
+        Object propagationHooksInstalled = values.get("PropagationHooksInstalled");
+        Object exportPathProtected = values.get("ExportPathProtected");
+
+        boolean typesValid = extensionVersion instanceof String
+                && protocolVersion instanceof Integer
+                && profile instanceof String
+                && lifecycle instanceof String
+                && failureCode instanceof String
+                && capabilities instanceof String[]
+                && requiredCapabilities instanceof String[]
+                && sanitizerInstalled instanceof Boolean
+                && samplerInstalled instanceof Boolean
+                && requiredSpanProcessorsInstalled instanceof Boolean
+                && propagationHooksInstalled instanceof Boolean
+                && exportPathProtected instanceof Boolean;
+
+        if (!typesValid) {
+            return new ProbeResult.Rejected(ProbeReason.MALFORMED_DESCRIPTOR);
+        }
+
+        return new ProbeResult.Present(new AgentReadinessSnapshot(
+                (String) extensionVersion,
+                (Integer) protocolVersion,
+                (String) profile,
+                (String) lifecycle,
+                (String) failureCode,
+                toSet((String[]) capabilities),
+                toSet((String[]) requiredCapabilities),
+                (Boolean) sanitizerInstalled,
+                (Boolean) samplerInstalled,
+                (Boolean) requiredSpanProcessorsInstalled,
+                (Boolean) propagationHooksInstalled,
+                (Boolean) exportPathProtected));
+    }
+
+    private static Set<String> toSet(String[] array) {
+        return new LinkedHashSet<>(Arrays.asList(array));
+    }
+
+    /**
+     * A-19 JMX exception matrix: distinguishes why a batch read failed. Only {@code
+     * ENDPOINT_DISAPPEARED}, {@code ACCESS_DENIED}, and {@code INVOCATION_FAILED} correspond to a
+     * caught JMX exception category; the remaining two are shape-validation failures on an
+     * otherwise successful read.
+     */
+    enum ProbeReason {
+        /** {@link InstanceNotFoundException}: MBean unregistered between presence check and read. */
+        ENDPOINT_DISAPPEARED,
+        /** {@link SecurityException} raised by the MBeanServer or the MBean implementation. */
+        ACCESS_DENIED,
+        /** {@link ReflectionException}, {@link RuntimeMBeanException}, or {@link RuntimeErrorException}. */
+        INVOCATION_FAILED,
+        /** Batch read returned fewer attributes than requested (partial {@link AttributeList}). */
+        INCOMPLETE_DESCRIPTOR,
+        /** Unexpected/duplicate attribute name, non-{@link Attribute} element, or wrong value type. */
+        MALFORMED_DESCRIPTOR
+    }
+
+    /**
+     * Sealed transport-level outcome, mirroring the pattern used by
+     * {@code PrivateControlMarkerInspector.ProbeResult}: {@link Present} carries a fully decoded,
+     * defensively-copied snapshot; {@link Rejected} is a terminal structural rejection with no
+     * further diagnostic value; {@link Indeterminate} is a terminal JMX-exception outcome that
+     * retains its cause for diagnostics. No caller outside this package observes this type.
+     */
+    sealed interface ProbeResult permits ProbeResult.Present, ProbeResult.Rejected, ProbeResult.Indeterminate {
 
         record Present(AgentReadinessSnapshot snapshot) implements ProbeResult {
             public Present {
@@ -112,9 +193,16 @@ final class AgentReadinessProbe {
             }
         }
 
-        record Malformed(String reason) implements ProbeResult {
-            public Malformed {
+        record Rejected(ProbeReason reason) implements ProbeResult {
+            public Rejected {
                 Objects.requireNonNull(reason, "reason");
+            }
+        }
+
+        record Indeterminate(ProbeReason reason, Throwable cause) implements ProbeResult {
+            public Indeterminate {
+                Objects.requireNonNull(reason, "reason");
+                Objects.requireNonNull(cause, "cause");
             }
         }
     }

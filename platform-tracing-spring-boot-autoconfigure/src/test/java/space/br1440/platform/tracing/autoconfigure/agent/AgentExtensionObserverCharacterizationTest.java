@@ -125,13 +125,14 @@ class AgentExtensionObserverCharacterizationTest {
     }
 
     /**
-     * Baseline for the {@code FailureMessage} attribute: today it IS read from JMX on every
-     * successful descriptor path (one extra round trip per {@code observe()} call) but its value is
-     * discarded immediately — {@link AgentExtensionDescriptor} has no field for it. Slice 2 removes
-     * this read entirely (it is a recording-only proof channel, never requested by the application).
+     * Updated by Slice 2 (explicit diff from the Slice 0 baseline): {@code FailureMessage} is now
+     * never requested by the batch probe read — it is a recording-only proof channel on the agent
+     * side, never consumed by application policy. Before Slice 2, this attribute was read (and its
+     * value discarded) on every successful descriptor path; see git history for the removed
+     * baseline assertion.
      */
     @Test
-    void failureMessageAttributeIsReadThenDiscardedToday() throws Exception {
+    void failureMessageAttributeIsNeverRequestedSinceSliceTwo() throws Exception {
         AtomicInteger failureMessageReads = new AtomicInteger();
         MBeanServer server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
@@ -144,7 +145,7 @@ class AgentExtensionObserverCharacterizationTest {
         AgentExtensionDescriptor descriptor = new AgentExtensionObserver(server)
                 .observe(AgentDeploymentExpectation.REQUIRED, true, false, true);
 
-        assertThat(failureMessageReads.get()).isEqualTo(1);
+        assertThat(failureMessageReads.get()).isZero();
         assertThat(descriptor.failureCode()).isEqualTo("SANITIZER_FAILED");
     }
 

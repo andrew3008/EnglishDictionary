@@ -3,15 +3,22 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.management.ManagementFactory;
+import java.util.HashSet;
 import java.util.Set;
 
+import javax.management.MBeanInfo;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
+import javax.management.ObjectName;
 import javax.management.StandardMBean;
 
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessControl;
+import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.PlatformExtensionReadinessMBean;
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
 
 class AgentReadinessProbeTest {
 
@@ -37,13 +44,16 @@ class AgentReadinessProbeTest {
     }
 
     @Test
-    void readDecodesAllAttributesIntoAnImmutableSnapshot() throws Exception {
-        MBeanServer server = registerReadinessView(
-                MBeanServerFactory.createMBeanServer(), "READY", 1, COMPLETE_CAPABILITIES, "", true);
-        AgentReadinessProbe probe = new AgentReadinessProbe(server);
+    void readDecodesAllTwelveAttributesInASingleBatchCallIntoAnImmutableSnapshot() throws Exception {
+        CountingMBeanServer counting = new CountingMBeanServer(
+                registerReadinessView(
+                        MBeanServerFactory.createMBeanServer(), "READY", 1, COMPLETE_CAPABILITIES, "", true));
+        AgentReadinessProbe probe = new AgentReadinessProbe(counting.asProxy());
 
         AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
 
+        assertThat(counting.getAttributeCalls).as("no single-attribute fallback reads").isZero();
+        assertThat(counting.getAttributesCalls).isEqualTo(1);
         assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Present.class);
         AgentReadinessSnapshot snapshot = ((AgentReadinessProbe.ProbeResult.Present) result).snapshot();
         assertThat(snapshot.extensionVersion()).isEqualTo("development");
@@ -52,6 +62,7 @@ class AgentReadinessProbeTest {
         assertThat(snapshot.lifecycle()).isEqualTo("READY");
         assertThat(snapshot.failureCode()).isEmpty();
         assertThat(snapshot.capabilities()).containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
+        assertThat(snapshot.requiredCapabilities()).containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
         assertThat(snapshot.sanitizerInstalled()).isTrue();
         assertThat(snapshot.samplerInstalled()).isTrue();
         assertThat(snapshot.requiredSpanProcessorsInstalled()).isTrue();
@@ -61,10 +72,18 @@ class AgentReadinessProbeTest {
         assertThatThrownBy(() -> snapshot.capabilities().add("INJECTED"))
                 .as("capabilities set returned by the probe must be defensively unmodifiable")
                 .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> snapshot.requiredCapabilities().add("INJECTED"))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
-    void readIsMalformedWhenAttributeIsMissing() throws Exception {
+    void readNeverRequestsFailureMessage() throws Exception {
+        assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).doesNotContain("FailureMessage");
+        assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).hasSize(12);
+    }
+
+    @Test
+    void readIsRejectedAsIncompleteWhenTheBatchReturnsFewerAttributesThanRequested() throws Exception {
         MBeanServer server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new StandardMBean(new PartiallyDeclaredReadinessView(), PartialReadinessViewMBean.class),
@@ -73,13 +92,13 @@ class AgentReadinessProbeTest {
 
         AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
 
-        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Malformed.class);
-        assertThat(((AgentReadinessProbe.ProbeResult.Malformed) result).reason())
-                .isEqualTo("MALFORMED_READINESS_DESCRIPTOR");
+        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Rejected.class);
+        assertThat(((AgentReadinessProbe.ProbeResult.Rejected) result).reason())
+                .isEqualTo(AgentReadinessProbe.ProbeReason.INCOMPLETE_DESCRIPTOR);
     }
 
     @Test
-    void readIsMalformedWhenAttributeHasTheWrongType() throws Exception {
+    void readIsRejectedAsMalformedWhenAnAttributeHasTheWrongType() throws Exception {
         MBeanServer server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new StandardMBean(new WrongTypeReadinessView(), WrongTypeReadinessViewMBean.class),
@@ -88,11 +107,13 @@ class AgentReadinessProbeTest {
 
         AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
 
-        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Malformed.class);
+        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Rejected.class);
+        assertThat(((AgentReadinessProbe.ProbeResult.Rejected) result).reason())
+                .isEqualTo(AgentReadinessProbe.ProbeReason.MALFORMED_DESCRIPTOR);
     }
 
     @Test
-    void readIsMalformedWhenAttributeIsNull() throws Exception {
+    void readIsRejectedAsMalformedWhenAnAttributeIsNull() throws Exception {
         MBeanServer server = MBeanServerFactory.createMBeanServer();
         server.registerMBean(
                 new StandardMBean(new NullExtensionVersionReadinessView(), WrongTypeReadinessViewMBean.class),
@@ -101,7 +122,88 @@ class AgentReadinessProbeTest {
 
         AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
 
-        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Malformed.class);
+        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Rejected.class);
+    }
+
+    @Test
+    void readIsRejectedWhenEndpointDisappearsBetweenIsRegisteredAndTheBatchRead() throws Exception {
+        MBeanServer empty = MBeanServerFactory.createMBeanServer();
+        MBeanServer alwaysRegisteredButAbsent = FakeMBeanServers.alwaysReportRegistered(empty);
+        AgentReadinessProbe probe = new AgentReadinessProbe(alwaysRegisteredButAbsent);
+
+        assertThat(probe.endpointRegistered(PlatformTracingJmxObjectNames.EXTENSION_READINESS)).isTrue();
+        AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+
+        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Rejected.class);
+        assertThat(((AgentReadinessProbe.ProbeResult.Rejected) result).reason())
+                .isEqualTo(AgentReadinessProbe.ProbeReason.ENDPOINT_DISAPPEARED);
+    }
+
+    @Test
+    void readIsIndeterminateOnSecurityExceptionDuringTheBatchRead() throws Exception {
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        SecurityException accessDenied = new SecurityException("classified");
+        MBeanServer denying = FakeMBeanServers.throwingOnGetAttributes(server, accessDenied);
+        AgentReadinessProbe probe = new AgentReadinessProbe(denying);
+
+        AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+
+        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Indeterminate.class);
+        AgentReadinessProbe.ProbeResult.Indeterminate indeterminate =
+                (AgentReadinessProbe.ProbeResult.Indeterminate) result;
+        assertThat(indeterminate.reason()).isEqualTo(AgentReadinessProbe.ProbeReason.ACCESS_DENIED);
+        assertThat(indeterminate.cause()).isSameAs(accessDenied);
+    }
+
+    @Test
+    void readIsIndeterminateOnReflectionExceptionDuringTheBatchRead() throws Exception {
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        javax.management.ReflectionException reflectionFailure =
+                new javax.management.ReflectionException(new NoSuchMethodException("boom"));
+        MBeanServer failing = FakeMBeanServers.throwingOnGetAttributes(server, reflectionFailure);
+        AgentReadinessProbe probe = new AgentReadinessProbe(failing);
+
+        AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+
+        assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Indeterminate.class);
+        assertThat(((AgentReadinessProbe.ProbeResult.Indeterminate) result).reason())
+                .isEqualTo(AgentReadinessProbe.ProbeReason.INVOCATION_FAILED);
+    }
+
+    /**
+     * Set-arithmetic proof (not a hardcoded string) that the physical readiness MBean exposes
+     * exactly 13 attributes, the probe requests exactly 12, and the delta is exactly
+     * {@code FailureMessage} in both directions.
+     */
+    @Test
+    void probeRequestsExactlyTheAgentAttributesMinusFailureMessage() throws Exception {
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        ObjectName temporaryName = new ObjectName("space.br1440.platform.tracing.test:type=ReadinessMBeanInfoProbe");
+        server.registerMBean(
+                new StandardMBean(
+                        new PlatformExtensionReadinessControl(new PlatformExtensionReadiness()),
+                        PlatformExtensionReadinessMBean.class),
+                temporaryName);
+        try {
+            MBeanInfo info = server.getMBeanInfo(temporaryName);
+            Set<String> agentAttributeNames = new HashSet<>();
+            for (var attribute : info.getAttributes()) {
+                agentAttributeNames.add(attribute.getName());
+            }
+
+            assertThat(agentAttributeNames).hasSize(13);
+            assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).hasSize(12);
+
+            Set<String> agentMinusRequested = new HashSet<>(agentAttributeNames);
+            agentMinusRequested.removeAll(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES);
+            assertThat(agentMinusRequested).containsExactly("FailureMessage");
+
+            Set<String> requestedMinusAgent = new HashSet<>(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES);
+            requestedMinusAgent.removeAll(agentAttributeNames);
+            assertThat(requestedMinusAgent).isEmpty();
+        } finally {
+            server.unregisterMBean(temporaryName);
+        }
     }
 
     private static MBeanServer registerReadinessView(
@@ -142,9 +244,9 @@ class AgentReadinessProbeTest {
 
         String getFailureCode();
 
-        String getFailureMessage();
-
         String[] getCapabilities();
+
+        String[] getRequiredCapabilities();
 
         boolean isSanitizerInstalled();
 
@@ -157,7 +259,7 @@ class AgentReadinessProbeTest {
         boolean isExportPathProtected();
     }
 
-    public static final class WrongTypeReadinessView implements WrongTypeReadinessViewMBean {
+    public static class WrongTypeReadinessView implements WrongTypeReadinessViewMBean {
         @Override
         public Object getExtensionVersion() {
             return 42;
@@ -184,12 +286,12 @@ class AgentReadinessProbeTest {
         }
 
         @Override
-        public String getFailureMessage() {
-            return "";
+        public String[] getCapabilities() {
+            return new String[0];
         }
 
         @Override
-        public String[] getCapabilities() {
+        public String[] getRequiredCapabilities() {
             return new String[0];
         }
 
@@ -219,65 +321,10 @@ class AgentReadinessProbeTest {
         }
     }
 
-    public static final class NullExtensionVersionReadinessView implements WrongTypeReadinessViewMBean {
+    public static final class NullExtensionVersionReadinessView extends WrongTypeReadinessView {
         @Override
         public Object getExtensionVersion() {
             return null;
-        }
-
-        @Override
-        public int getProtocolVersion() {
-            return 1;
-        }
-
-        @Override
-        public String getProfile() {
-            return "platform-agent-secure-v1";
-        }
-
-        @Override
-        public String getLifecycleState() {
-            return "READY";
-        }
-
-        @Override
-        public String getFailureCode() {
-            return "";
-        }
-
-        @Override
-        public String getFailureMessage() {
-            return "";
-        }
-
-        @Override
-        public String[] getCapabilities() {
-            return new String[0];
-        }
-
-        @Override
-        public boolean isSanitizerInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isSamplerInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isRequiredSpanProcessorsInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isPropagationHooksInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isExportPathProtected() {
-            return true;
         }
     }
 }

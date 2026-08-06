@@ -101,7 +101,10 @@ public final class AgentExtensionObserver {
         }
 
         AgentReadinessProbe.ProbeResult result = probe.read(readinessName);
-        if (result instanceof AgentReadinessProbe.ProbeResult.Malformed malformed) {
+        if (!(result instanceof AgentReadinessProbe.ProbeResult.Present present)) {
+            // Slice 2 keeps a single collapsed failure code across every transport-level rejection,
+            // matching pre-Slice-2 behavior exactly. Slice 3's classifier maps each
+            // AgentReadinessProbe.ProbeReason to its own AgentRuntimeState failure code.
             return new AgentExtensionDescriptor(
                     AgentRuntimeState.EXTENSION_INCOMPATIBLE,
                     agentMarkerVisible,
@@ -110,11 +113,11 @@ public final class AgentExtensionObserver {
                     -1,
                     "",
                     "",
-                    malformed.reason(),
+                    "MALFORMED_READINESS_DESCRIPTOR",
                     Set.of());
         }
 
-        AgentReadinessSnapshot snapshot = ((AgentReadinessProbe.ProbeResult.Present) result).snapshot();
+        AgentReadinessSnapshot snapshot = present.snapshot();
         AgentRuntimeState state = classify(snapshot);
         return new AgentExtensionDescriptor(
                 state,

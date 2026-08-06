@@ -16,6 +16,8 @@ public interface ReadinessFixtureMBean {
 
     String[] getCapabilities();
 
+    String[] getRequiredCapabilities();
+
     boolean isSanitizerInstalled();
 
     boolean isSamplerInstalled();

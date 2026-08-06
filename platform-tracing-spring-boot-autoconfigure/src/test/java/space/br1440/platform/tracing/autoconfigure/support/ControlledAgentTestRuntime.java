@@ -135,6 +135,8 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
 
         String[] getCapabilities();
 
+        String[] getRequiredCapabilities();
+
         boolean isSanitizerInstalled();
 
         boolean isSamplerInstalled();
@@ -180,6 +182,11 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
 
         @Override
         public String[] getCapabilities() {
+            return COMPLETE_CAPABILITIES.toArray(String[]::new);
+        }
+
+        @Override
+        public String[] getRequiredCapabilities() {
             return COMPLETE_CAPABILITIES.toArray(String[]::new);
         }
 

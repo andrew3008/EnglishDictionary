@@ -54,6 +54,11 @@ final class ReadinessFixture implements ReadinessFixtureMBean {
     }
 
     @Override
+    public String[] getRequiredCapabilities() {
+        return COMPLETE_CAPABILITIES.toArray(String[]::new);
+    }
+
+    @Override
     public boolean isSanitizerInstalled() {
         return complete;
     }
