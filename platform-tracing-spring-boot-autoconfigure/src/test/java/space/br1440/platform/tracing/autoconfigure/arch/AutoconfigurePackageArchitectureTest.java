@@ -24,8 +24,10 @@ class AutoconfigurePackageArchitectureTest {
     private static final String BASE_PACKAGE = "space.br1440.platform.tracing.autoconfigure";
     private static final String AUTOCONFIGURE_MODULE = "platform-tracing-spring-boot-autoconfigure";
     private static final String SOURCE_ROOT = AUTOCONFIGURE_MODULE + "/src/main/java";
-    private static final String CODEC = BASE_PACKAGE
-            + ".control.jmx.protocol.PrivateControlOpenTypeCodec";
+    private static final String REQUEST_ENCODER = BASE_PACKAGE
+            + ".control.jmx.protocol.PrivateControlRequestEncoder";
+    private static final String ACCEPTED_DECODER = BASE_PACKAGE
+            + ".control.jmx.protocol.AcceptedCompleteSnapshotDecoder";
     private static final String LOCATOR = BASE_PACKAGE + ".control.jmx.PrivateControlLocator";
     private static final String ACCEPTED = BASE_PACKAGE
             + ".control.policy.read.AcceptedSnapshotWithSequence";
@@ -125,11 +127,15 @@ class AutoconfigurePackageArchitectureTest {
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot read " + source, exception);
         }
-        if (text.contains(CODEC)
+        if (text.contains(REQUEST_ENCODER)
                 && !relative.startsWith(AUTOCONFIGURE_MODULE + "/")
-                && !relative.startsWith("platform-tracing-bench/")
                 && !relative.startsWith("platform-tracing-perf-tests/")) {
-            violations.add(relative + ": consumer of " + CODEC);
+            violations.add(relative + ": consumer of " + REQUEST_ENCODER);
+        }
+        if (text.contains(ACCEPTED_DECODER)
+                && !relative.startsWith(AUTOCONFIGURE_MODULE + "/")
+                && !relative.startsWith("platform-tracing-bench/")) {
+            violations.add(relative + ": consumer of " + ACCEPTED_DECODER);
         }
         if (text.contains(LOCATOR)
                 && !relative.startsWith(AUTOCONFIGURE_MODULE + "/")

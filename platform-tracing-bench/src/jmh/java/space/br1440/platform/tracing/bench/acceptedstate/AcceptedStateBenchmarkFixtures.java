@@ -5,7 +5,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyView;
 import space.br1440.platform.tracing.otel.javaagent.control.state.PrivateControlOpenTypeCodecAccess;
@@ -54,9 +53,6 @@ public class AcceptedStateBenchmarkFixtures {
     public CompositeData encodedNoRoutes;
     public CompositeData encodedFiveRoutes;
 
-    /** Stateless Spring-side PRIV-R07 codec. */
-    public PrivateControlOpenTypeCodec springCodec;
-
     /** Agent white-box codec bridge; reused across encode benchmark iterations. */
     public PrivateControlOpenTypeCodecAccess agentCodec;
 
@@ -80,8 +76,6 @@ public class AcceptedStateBenchmarkFixtures {
         agentCodec = new PrivateControlOpenTypeCodecAccess();
         encodedNoRoutes = agentCodec.encodeAcceptedComplete(viewNoRoutes);
         encodedFiveRoutes = agentCodec.encodeAcceptedComplete(viewFiveRoutes);
-
-        springCodec = new PrivateControlOpenTypeCodec();
     }
 
     private static Map<String, Double> fiveRouteRatios() {

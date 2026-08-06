@@ -68,7 +68,7 @@ class P4ArchitectureTest {
     @Test
     void guardRejectsMissingAuthority() {
         try {
-            new TracingBootstrapSettingsResolver().resolve(
+            TracingBootstrapSettingsResolver.resolve(
                     new org.springframework.mock.env.MockEnvironment()
                             .withProperty("platform.environment", "LOCAL"));
             throw new AssertionError("Expected fail-fast on missing authority");
@@ -79,7 +79,7 @@ class P4ArchitectureTest {
     void guardRejectsDisabledTracingWithConfigServer() {
         try {
             new TracingConfigurationAuthorityGuard(
-                    new TracingBootstrapSettingsResolver().resolve(
+                    TracingBootstrapSettingsResolver.resolve(
                             new org.springframework.mock.env.MockEnvironment()
                             .withProperty("platform.tracing.configuration.authority", "CONFIG_SERVER")
                             .withProperty("platform.environment", "LOCAL")
@@ -92,7 +92,7 @@ class P4ArchitectureTest {
     @Test
     void guardRejectsUnknownPosture() {
         try {
-            new TracingBootstrapSettingsResolver().resolve(
+            TracingBootstrapSettingsResolver.resolve(
                     new org.springframework.mock.env.MockEnvironment()
                             .withProperty("platform.tracing.configuration.authority", "HELM")
                             .withProperty("platform.environment", "dev"));
@@ -103,7 +103,7 @@ class P4ArchitectureTest {
     @Test
     void guardRejectsTypoPosture() {
         try {
-            new TracingBootstrapSettingsResolver().resolve(
+            TracingBootstrapSettingsResolver.resolve(
                     new org.springframework.mock.env.MockEnvironment()
                             .withProperty("platform.tracing.configuration.authority", "HELM")
                             .withProperty("platform.environment", "LOACL"));

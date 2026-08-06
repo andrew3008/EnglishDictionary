@@ -22,9 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicySnapshotClient;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlRequestEncoder;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
 
@@ -44,7 +45,6 @@ public final class PerfPrivateControlController {
     private static final String DIAGNOSTICS_OBJECT_NAME =
             "space.br1440.platform.tracing:type=DiagnosticsControl,name=PlatformDiagnosticsControl";
 
-    private final PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
     private final AtomicLong rejectedCount = new AtomicLong();
 
     private volatile PrivateJmxTracingPolicySnapshotClient client;
@@ -205,9 +205,8 @@ public final class PerfPrivateControlController {
             String runtimeInstanceId,
             long sequence,
             CompleteTracingPolicySnapshot snapshot) {
-        CompositeData request = codec.encodeApplyRequest(
-                runtimeInstanceId,
-                sequence,
+        CompositeData request = PrivateControlRequestEncoder.encodeApplyRequest(
+                new ExpectedTracingPolicyBase(runtimeInstanceId, sequence),
                 UUID.randomUUID().toString(),
                 "DEV_ACTUATOR",
                 "DEVELOPER_COMMAND",

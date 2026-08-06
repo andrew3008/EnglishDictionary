@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.control.state;
 
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.AcceptedCompleteSnapshotDecoder;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 
@@ -39,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   AcceptedPolicyEnvelope (Agent accepted view)
  *   -&gt; Agent PrivateControlOpenTypeCodec.encodeAcceptedComplete()   [REAL Agent encoder]
  *   -&gt; javax.management.openmbean.CompositeData                    [wire]
- *   -&gt; Spring PrivateControlOpenTypeCodec.decodeCompleteWithSequence() [REAL Spring decoder]
+ *   -&gt; Spring AcceptedCompleteSnapshotDecoder.decode()              [REAL Spring decoder]
  *   -&gt; semantic field-by-field equality
  * </pre>
  * Negative scenarios construct malformed {@code CompositeData} directly (there is no "Agent
@@ -50,8 +51,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AgentToSpringWireCodecParityTest {
 
     private static final PrivateControlOpenTypeCodec AGENT_CODEC = new PrivateControlOpenTypeCodec();
-    private static final space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec
-            SPRING_CODEC = new space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec();
 
     // ── positive scenarios ──────────────────────────────────────────────────────
 
@@ -278,7 +277,7 @@ class AgentToSpringWireCodecParityTest {
     void acceptsRouteKeyAtExactConfiguredLimit() {
         String exact = "a".repeat(255);
         AcceptedSnapshotWithSequence decoded =
-                SPRING_CODEC.decodeCompleteWithSequence(validCompositeDataWith(v -> v[4] = routeTable(Map.of(exact, 0.5))));
+                AcceptedCompleteSnapshotDecoder.decode(validCompositeDataWith(v -> v[4] = routeTable(Map.of(exact, 0.5))));
         assertThat(decoded.snapshot().samplingRouteRatios()).containsEntry(exact, 0.5);
     }
 
@@ -307,7 +306,7 @@ class AgentToSpringWireCodecParityTest {
 
     private static AcceptedSnapshotWithSequence roundTrip(AcceptedPolicyEnvelope envelope) {
         CompositeData wire = AGENT_CODEC.encodeAcceptedComplete(envelope); // REAL Agent encoder
-        return SPRING_CODEC.decodeCompleteWithSequence(wire);             // REAL Spring decoder
+        return AcceptedCompleteSnapshotDecoder.decode(wire);             // REAL Spring decoder
     }
 
     private static AcceptedPolicyEnvelope envelope(long sequence, String runtimeInstanceId, EffectiveTracingPolicy policy) {
@@ -319,7 +318,7 @@ class AgentToSpringWireCodecParityTest {
     }
 
     private static void assertRejected(CompositeData malformed) {
-        assertThatThrownBy(() -> SPRING_CODEC.decodeCompleteWithSequence(malformed))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(malformed))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

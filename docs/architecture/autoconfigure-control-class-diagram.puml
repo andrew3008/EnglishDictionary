@@ -166,7 +166,6 @@ package "control.authority" <<authority>> as P_AUTH {
 package "control.jmx" <<jmx>> as P_JMX {
   class PrivateJmxControlAutoConfiguration <<AutoConfiguration>> {
     + privateControlLocator() : PrivateControlLocator
-    + privateControlOpenTypeCodec() : PrivateControlOpenTypeCodec
     + tracingPolicySnapshotClient(...) : PrivateJmxTracingPolicySnapshotClient
   }
 
@@ -182,7 +181,6 @@ package "control.jmx" <<jmx>> as P_JMX {
 
   class PrivateJmxTracingPolicySnapshotClient {
     - PrivateControlLocator locator
-    - PrivateControlOpenTypeCodec codec
     - volatile MBeanServer privateServer
     - volatile ObjectName controlObjectName
     --
@@ -194,13 +192,16 @@ package "control.jmx" <<jmx>> as P_JMX {
 }
 
 package "control.jmx.protocol" <<protocol>> as P_PROTO {
-  class PrivateControlOpenTypeCodec {
-    + encodeApplyRequest(PrivateControlSnapshot) : CompositeData
-    + decodeResponse(Object) : PrivateControlResponse
-    + decodeCompleteWithSequence(Object) : AcceptedSnapshotWithSequence
+  class PrivateControlRequestEncoder <<static>> {
+    + {static} encodeApplyRequest(ExpectedTracingPolicyBase, ...) : CompositeData
+    ~ {static} encodeRequest(PrivateControlSnapshot) : CompositeData
   }
 
-  class "PrivateControlOpenTypeCodec.PrivateControlSnapshot" as PrivateControlSnapshot <<record>> {
+  class AcceptedCompleteSnapshotDecoder <<static>> {
+    + {static} decode(Object) : AcceptedSnapshotWithSequence
+  }
+
+  class "PrivateControlSnapshot" as PrivateControlSnapshot <<record, package-private>> {
     + String expectedRuntimeInstanceId
     + long expectedAcceptedSequence
     + String attemptId
@@ -209,9 +210,21 @@ package "control.jmx.protocol" <<protocol>> as P_PROTO {
     + CompleteTracingPolicySnapshot policy
   }
 
-  class "PrivateControlOpenTypeCodec.PrivateControlResponse" as PrivateControlResponse <<record>> {
+  class PrivateControlResponse <<record>> {
     + String outcome
-    + String messageCode
+    + {static} decode(CompositeData) : PrivateControlResponse
+    note right
+      Wire has 9 more fields
+      (attemptId, messageCode,
+      violationCodes, ...);
+      only outcome has a consumer.
+    end note
+  }
+
+  class PrivateControlWireTypes <<package-private>> {
+    + {static} CompositeType REQUEST
+    + {static} CompositeType RESPONSE
+    + {static} CompositeType COMPLETE_RESPONSE
     + ...
   }
 
@@ -358,15 +371,19 @@ PrivateJmxTracingPolicySnapshotClient ..|> TracingPolicySnapshotApplier
 PrivateJmxTracingPolicySnapshotClient ..|> CompleteTracingPolicyReader
 PrivateJmxTracingPolicySnapshotClient ..|> AcceptedTracingPolicyReader
 PrivateJmxTracingPolicySnapshotClient --> PrivateControlLocator : locate()
-PrivateJmxTracingPolicySnapshotClient --> PrivateControlOpenTypeCodec : encode/decode
+PrivateJmxTracingPolicySnapshotClient --> PrivateControlRequestEncoder : encodeApplyRequest()
+PrivateJmxTracingPolicySnapshotClient --> AcceptedCompleteSnapshotDecoder : decode()
+PrivateJmxTracingPolicySnapshotClient --> PrivateControlResponse : decode()
 PrivateControlLocator --> LocatedPrivateControl : returns
 
-PrivateControlOpenTypeCodec --> CandidateDigest : sha256(policy)
-PrivateControlOpenTypeCodec --> CompleteTracingPolicySnapshot : materialize
-PrivateControlOpenTypeCodec --> AcceptedSnapshotWithSequence : decodeComplete
-PrivateControlOpenTypeCodec --> PrivateControlSnapshot
-PrivateControlOpenTypeCodec --> PrivateControlResponse
+PrivateControlRequestEncoder --> CandidateDigest : sha256(policy)
+PrivateControlRequestEncoder --> PrivateControlSnapshot : encodeRequest()
+PrivateControlRequestEncoder --> PrivateControlWireTypes : composite types
 PrivateControlSnapshot *--> CompleteTracingPolicySnapshot : policy
+AcceptedCompleteSnapshotDecoder --> CompleteTracingPolicySnapshot : materialize
+AcceptedCompleteSnapshotDecoder --> AcceptedSnapshotWithSequence : decode
+AcceptedCompleteSnapshotDecoder --> PrivateControlWireTypes : composite types
+PrivateControlResponse --> PrivateControlWireTypes : composite types
 
 PrivateJmxTracingPolicySnapshotClient ..> TracingPolicyContractViolationException : throws
 PrivateJmxTracingPolicySnapshotClient ..> TracingConfigurationGuardException : throws (uninitialized apply)
@@ -375,7 +392,6 @@ PrivateJmxTracingPolicySnapshotClient ..> AgentReadinessView
 PrivateJmxTracingPolicySnapshotClient ..> AcceptedPolicyLeaves
 
 PrivateJmxControlAutoConfiguration ..> PrivateControlLocator : @Bean
-PrivateJmxControlAutoConfiguration ..> PrivateControlOpenTypeCodec : @Bean
 PrivateJmxControlAutoConfiguration ..> PrivateJmxTracingPolicySnapshotClient : @Bean initialize()
 
 ' =============================================================================

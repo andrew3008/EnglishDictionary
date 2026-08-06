@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.ConfigurationCondition.ConfigurationPhase;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
 
 @AutoConfiguration
 @Conditional(PrivateJmxControlAutoConfiguration.PrivateJmxControlAuthorityCondition.class)
@@ -23,17 +22,10 @@ public class PrivateJmxControlAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(PrivateControlOpenTypeCodec.class)
-    public PrivateControlOpenTypeCodec privateControlOpenTypeCodec() {
-        return new PrivateControlOpenTypeCodec();
-    }
-
-    @Bean
     @ConditionalOnMissingBean(PrivateJmxTracingPolicySnapshotClient.class)
-    @ConditionalOnBean({PrivateControlLocator.class, PrivateControlOpenTypeCodec.class})
-    public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(PrivateControlLocator locator,
-                                                                             PrivateControlOpenTypeCodec codec) {
-        PrivateJmxTracingPolicySnapshotClient client = new PrivateJmxTracingPolicySnapshotClient(locator, codec);
+    @ConditionalOnBean(PrivateControlLocator.class)
+    public PrivateJmxTracingPolicySnapshotClient tracingPolicySnapshotClient(PrivateControlLocator locator) {
+        PrivateJmxTracingPolicySnapshotClient client = new PrivateJmxTracingPolicySnapshotClient(locator);
         client.initialize();
         return client;
     }

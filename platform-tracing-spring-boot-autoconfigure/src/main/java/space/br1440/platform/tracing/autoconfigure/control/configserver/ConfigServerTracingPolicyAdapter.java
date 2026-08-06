@@ -1,36 +1,54 @@
 package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
 import org.springframework.context.event.EventListener;
 
-/**
- * Config Server authority adapter.
- * <p>
- * Responds to {@link EnvironmentChangeEvent} as a trigger only.
- * Keys from the event are NOT used as patch targets.
- * Delegates full-snapshot rebuild to {@link TracingPolicyRefreshCoalescer}.
- * Does NOT own accepted state.
- * Does NOT register any Actuator mutation surface.
- */
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.util.CollectionUtils;
+
+@Slf4j
 public final class ConfigServerTracingPolicyAdapter {
 
-    private static final Logger log = LoggerFactory.getLogger(ConfigServerTracingPolicyAdapter.class);
+    private static final String POLICY_KEY_PREFIX = "platform.tracing.policy.";
 
     private final TracingPolicyRefreshCoalescer coalescer;
 
     public ConfigServerTracingPolicyAdapter(TracingPolicyRefreshCoalescer coalescer) {
-        this.coalescer = coalescer;
+        this.coalescer = Objects.requireNonNull(coalescer, "coalescer");
     }
 
     @EventListener(EnvironmentChangeEvent.class)
     public void onEnvironmentChange(EnvironmentChangeEvent event) {
-        boolean relevant = event.getKeys().stream()
-                .anyMatch(k -> k.startsWith("platform.tracing.policy."));
-        if (!relevant) return;
-        log.debug("EnvironmentChangeEvent with {} relevant policy keys; triggering coalesced refresh.",
-                event.getKeys().stream().filter(k -> k.startsWith("platform.tracing.policy.")).count());
+        Objects.requireNonNull(event, "event");
+
+        List<String> relevantKeys = relevantPolicyKeys(event.getKeys());
+        if (relevantKeys.isEmpty()) {
+            return;
+        }
+
+        log.debug(
+                "EnvironmentChangeEvent changed {} platform.tracing.policy.* key(s) {}; triggering coalesced refresh",
+                relevantKeys.size(),
+                relevantKeys
+        );
+
         coalescer.onRefreshEvent();
+    }
+
+    private static List<String> relevantPolicyKeys(Set<String> changedKeys) {
+        if (CollectionUtils.isEmpty(changedKeys)) {
+            return List.of();
+        }
+
+        return changedKeys.stream()
+                .filter(Objects::nonNull)
+                .filter(key -> key.startsWith(POLICY_KEY_PREFIX))
+                .sorted()
+                .toList();
     }
 }

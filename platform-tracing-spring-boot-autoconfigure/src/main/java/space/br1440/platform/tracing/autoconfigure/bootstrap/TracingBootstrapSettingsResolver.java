@@ -8,7 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 
-/** Строго разрешает все настройки ранней bootstrap-фазы одним чтением Environment. */
+/**
+ * Строго разрешает все настройки ранней bootstrap-фазы одним чтением {@link Environment}.
+ * <p>
+ * Stateless utility: состояние экземпляра не требуется, поэтому API статический.
+ */
 public final class TracingBootstrapSettingsResolver {
 
     private static final Logger log = LoggerFactory.getLogger(TracingBootstrapSettingsResolver.class);
@@ -31,7 +35,10 @@ public final class TracingBootstrapSettingsResolver {
             "platform.tracing.validation.mode",
             "platform.tracing.validation.strict-runtime-allowed");
 
-    public TracingBootstrapSettings resolve(Environment environment) {
+    private TracingBootstrapSettingsResolver() {
+    }
+
+    public static TracingBootstrapSettings resolve(Environment environment) {
         failFastOnObsoleteSpringOnlyKeys(environment);
         warnOnAgentBootstrapKeys(environment);
         return new TracingBootstrapSettings(

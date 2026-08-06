@@ -2,7 +2,6 @@ package space.br1440.platform.tracing.autoconfigure.support;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -38,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>
  * This is NOT a wire-parity fixture: the {@code readAcceptedComplete} /
  * {@code applySnapshot} {@link CompositeType} shapes here are hand-built to match
- * {@code PrivateControlOpenTypeCodec}'s (Spring-side) private schema constants,
+ * {@code PrivateControlWireTypes}'s (Spring-side) package-private schema constants,
  * because this class plays the role of the external Agent process, which by
  * definition cannot share a production DTO or test bridge with the Spring module.
  * Real cross-module wire parity is proven independently by
@@ -274,7 +273,7 @@ public final class FakeAgentPrivateControlPlane implements AutoCloseable {
     /** Real, initialized Spring-side client bound to this fake Agent's MBeanServer. */
     public PrivateJmxTracingPolicySnapshotClient client() {
         PrivateJmxTracingPolicySnapshotClient client =
-                new PrivateJmxTracingPolicySnapshotClient(new PrivateControlLocator(), new PrivateControlOpenTypeCodec());
+                new PrivateJmxTracingPolicySnapshotClient(new PrivateControlLocator());
         client.initialize();
         return client;
     }

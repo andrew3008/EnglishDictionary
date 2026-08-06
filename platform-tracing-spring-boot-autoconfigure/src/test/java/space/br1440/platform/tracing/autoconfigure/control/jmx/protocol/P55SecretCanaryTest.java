@@ -7,6 +7,7 @@ import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedP
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedTracingPolicyReader;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicySnapshotClient;
 import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
@@ -70,8 +71,6 @@ class P55SecretCanaryTest {
     private static final List<String> CATEGORY_B_CANARIES = List.of(
             CANARY_HMAC, CANARY_HEADER, CANARY_TOKEN, CANARY_PATH);
 
-    private final PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
-
     // ── §1 digest output ─────────────────────────────────────────────────────
 
     @Test
@@ -86,9 +85,8 @@ class P55SecretCanaryTest {
 
     @Test
     void applyRequestEnvelope_containsRouteCanaryOnlyInsideRouteTable() {
-        CompositeData request = codec.encodeApplyRequest(
-                UUID.randomUUID().toString(),
-                1L,
+        CompositeData request = PrivateControlRequestEncoder.encodeApplyRequest(
+                new ExpectedTracingPolicyBase(UUID.randomUUID().toString(), 1L),
                 UUID.randomUUID().toString(),
                 "CONFIG_SERVER",
                 "REFRESH",
@@ -165,7 +163,7 @@ class P55SecretCanaryTest {
     @Test
     void decodeInvalidRouteRatio_exceptionDoesNotEchoRouteCanary() throws Exception {
         CompositeData complete = buildAcceptedCompleteWithRoute(CANARY_ROUTE, Double.NaN);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(complete))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(complete))
                 .isInstanceOf(IllegalArgumentException.class)
                 .satisfies(ex -> assertAbsent(ex.getMessage(), ALL_CANARIES));
     }

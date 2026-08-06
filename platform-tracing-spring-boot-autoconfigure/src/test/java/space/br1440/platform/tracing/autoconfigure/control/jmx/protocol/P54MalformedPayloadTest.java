@@ -18,8 +18,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * P5 TEST §20 P5.4 — p5-malformed-payload-tests
  *
- * Spring-side decoder (PrivateControlOpenTypeCodec.decodeCompleteWithSequence)
- * MUST throw IllegalArgumentException for every malformed, unknown, missing,
+ * Spring-side decoder (AcceptedCompleteSnapshotDecoder.decode) MUST throw
+ * IllegalArgumentException for every malformed, unknown, missing,
  * null, wrong-type, invalid-enum, NaN/Infinite/out-of-range, and oversized
  * Open-Type payload.
  *
@@ -28,27 +28,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class P54MalformedPayloadTest {
 
-    private final PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
-
     // ── §1 null and non-CompositeData inputs ──────────────────────────────────
 
     @Test
     void rejectsNull() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(null))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("expected CompositeData");
     }
 
     @Test
     void rejectsString() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence("not-composite-data"))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode("not-composite-data"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("expected CompositeData");
     }
 
     @Test
     void rejectsInteger() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(42))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(42))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("expected CompositeData");
     }
@@ -64,7 +62,7 @@ class P54MalformedPayloadTest {
         CompositeData cd = new CompositeDataSupport(
                 wrongType, new String[]{"foo"}, new Object[]{"bar"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("AcceptedCompleteSnapshot/v1");
     }
@@ -79,7 +77,7 @@ class P54MalformedPayloadTest {
         CompositeData cd = new CompositeDataSupport(
                 v2, new String[]{"acceptedSequence"}, new Object[]{1L});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("unexpected CompositeType");
     }
@@ -97,7 +95,7 @@ class P54MalformedPayloadTest {
                         SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.STRING},
                 new Object[]{1L, true, 0.5d, emptyRouteTable(), true, false, true, true, "INFO"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -112,7 +110,7 @@ class P54MalformedPayloadTest {
                         SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.STRING},
                 new Object[]{"rid-1", true, 0.5d, emptyRouteTable(), true, false, true, true, "INFO"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -127,7 +125,7 @@ class P54MalformedPayloadTest {
                         SimpleType.BOOLEAN, SimpleType.BOOLEAN, SimpleType.STRING},
                 new Object[]{1L, "rid-1", true, 0.5d, true, false, true, true, "INFO"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -156,7 +154,7 @@ class P54MalformedPayloadTest {
                 true, false, true, true, "INFO"
         });
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -184,7 +182,7 @@ class P54MalformedPayloadTest {
                 true, false, true, true, "INFO"
         });
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -197,7 +195,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -208,7 +206,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, emptyRouteTable(),
                 true, false, true, true, null);
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -222,7 +220,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, emptyRouteTable(),
                 true, false, true, true, "VERBOSE");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("diagnosticsLogLevel");
     }
@@ -234,7 +232,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("runtimeInstanceId");
     }
@@ -246,7 +244,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("runtimeInstanceId");
     }
@@ -258,7 +256,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("acceptedSequence");
     }
@@ -272,7 +270,7 @@ class P54MalformedPayloadTest {
                 true, Double.NaN, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRatio");
     }
@@ -284,7 +282,7 @@ class P54MalformedPayloadTest {
                 true, Double.POSITIVE_INFINITY, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRatio");
     }
@@ -296,7 +294,7 @@ class P54MalformedPayloadTest {
                 true, 1.0001d, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRatio");
     }
@@ -308,7 +306,7 @@ class P54MalformedPayloadTest {
                 true, -0.001d, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRatio");
     }
@@ -321,7 +319,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, badRoutes,
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -334,7 +332,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, badRoutes,
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -352,7 +350,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, buildRouteTable(bigRoutes),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingRouteRatios");
     }
@@ -365,7 +363,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, buildRouteTable(Map.of(longKey, 0.5d)),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -379,7 +377,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, emptyRouteTable(),
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("logical payload exceeds");
     }
@@ -411,7 +409,7 @@ class P54MalformedPayloadTest {
 
         // Strict equals on the canonical CompositeType rejects any schema drift
         // (extra keys change the OpenType identity even when the type name matches).
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("unexpected CompositeType");
     }
@@ -438,7 +436,7 @@ class P54MalformedPayloadTest {
                 true, 0.5d, wrongTable,
                 true, false, true, true, "INFO");
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -11,7 +11,9 @@ import javax.management.RuntimeMBeanException;
 import javax.management.openmbean.CompositeData;
 
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.AcceptedCompleteSnapshotDecoder;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlRequestEncoder;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlResponse;
 import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
 import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
 import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyContractViolationException;
@@ -32,19 +34,12 @@ public final class PrivateJmxTracingPolicySnapshotClient
     private static final String[] NO_SIG = new String[0];
 
     private final PrivateControlLocator locator;
-    private final PrivateControlOpenTypeCodec codec;
 
     private volatile MBeanServer privateServer;
     private volatile ObjectName controlObjectName;
 
     public PrivateJmxTracingPolicySnapshotClient(PrivateControlLocator locator) {
-        this(locator, new PrivateControlOpenTypeCodec());
-    }
-
-    public PrivateJmxTracingPolicySnapshotClient(PrivateControlLocator locator,
-                                                 PrivateControlOpenTypeCodec codec) {
         this.locator = locator;
-        this.codec = codec;
     }
 
     public void initialize() {
@@ -71,9 +66,8 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
         CompositeData encoded;
         try {
-            encoded = codec.encodeApplyRequest(
-                    expectedBase.runtimeInstanceId(),
-                    expectedBase.acceptedSequence(),
+            encoded = PrivateControlRequestEncoder.encodeApplyRequest(
+                    expectedBase,
                     UUID.randomUUID().toString(),
                     sourceAuthorityFor(source),
                     applyTriggerFor(source),
@@ -130,7 +124,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
                 return Optional.empty();
             }
 
-            AcceptedSnapshotWithSequence decoded = codec.decodeCompleteWithSequence(result);
+            AcceptedSnapshotWithSequence decoded = AcceptedCompleteSnapshotDecoder.decode(result);
             return Optional.of(decoded);
         } catch (TracingPolicyContractViolationException e) {
             throw e;
@@ -184,7 +178,7 @@ public final class PrivateJmxTracingPolicySnapshotClient
 
     private TracingPolicyDeliveryResult parseOutcome(Object raw) {
         if (raw instanceof CompositeData) {
-            PrivateControlOpenTypeCodec.PrivateControlResponse response = codec.decodeResponse((CompositeData) raw);
+            PrivateControlResponse response = PrivateControlResponse.decode((CompositeData) raw);
             try {
                 return TracingPolicyDeliveryResult.valueOf(response.outcome());
             } catch (IllegalArgumentException ex) {

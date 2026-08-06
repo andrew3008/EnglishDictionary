@@ -9,35 +9,37 @@ import org.springframework.mock.env.MockEnvironment;
 
 class TracingBootstrapSettingsResolverTest {
 
-    private final TracingBootstrapSettingsResolver resolver = new TracingBootstrapSettingsResolver();
-
     @Test
     void missingEnabledDefaultsToTrue() {
-        assertThat(resolver.resolve(environment()).tracingEnabled()).isTrue();
+        assertThat(TracingBootstrapSettingsResolver.resolve(environment()).tracingEnabled()).isTrue();
     }
 
     @Test
     void enabledIsStrictBoolean() {
-        assertThat(resolver.resolve(environment().withProperty("platform.tracing.enabled", "true")).tracingEnabled())
+        assertThat(TracingBootstrapSettingsResolver.resolve(
+                        environment().withProperty("platform.tracing.enabled", "true")).tracingEnabled())
                 .isTrue();
-        assertThat(resolver.resolve(environment().withProperty("platform.tracing.enabled", "FALSE")).tracingEnabled())
+        assertThat(TracingBootstrapSettingsResolver.resolve(
+                        environment().withProperty("platform.tracing.enabled", "FALSE")).tracingEnabled())
                 .isFalse();
         assertThatIllegalStateException()
-                .isThrownBy(() -> resolver.resolve(environment().withProperty("platform.tracing.enabled", "yes")))
+                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(
+                        environment().withProperty("platform.tracing.enabled", "yes")))
                 .withMessageContaining("Accepted values: true, false");
     }
 
     @Test
     void obsoleteModeFailsFast() {
         assertThatIllegalStateException()
-                .isThrownBy(() -> resolver.resolve(environment().withProperty("platform.tracing.mode", " ")))
+                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(
+                        environment().withProperty("platform.tracing.mode", " ")))
                 .withMessageContaining("Obsolete Spring-only property 'platform.tracing.mode'");
     }
 
     @Test
     void obsoleteConfigurationEnabledFailsFast() {
         assertThatIllegalStateException()
-                .isThrownBy(() -> resolver.resolve(environment()
+                .isThrownBy(() -> TracingBootstrapSettingsResolver.resolve(environment()
                         .withProperty("platform.tracing.configuration.enabled", "false")))
                 .withMessageContaining("Obsolete Spring-only property 'platform.tracing.configuration.enabled'");
     }
@@ -45,15 +47,14 @@ class TracingBootstrapSettingsResolverTest {
     @Test
     void registrarRejectsSecondOwner() {
         DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
-        TracingBootstrapSettings settings = resolver.resolve(environment());
-        TracingBootstrapSettingsRegistrar registrar = new TracingBootstrapSettingsRegistrar();
+        TracingBootstrapSettings settings = TracingBootstrapSettingsResolver.resolve(environment());
 
-        registrar.register(beanFactory, settings);
+        TracingBootstrapSettingsRegistrar.register(beanFactory, settings);
 
         assertThat(beanFactory.getSingleton(TracingBootstrapPropertyNames.SETTINGS_BEAN_NAME))
                 .isSameAs(settings);
         assertThatIllegalStateException()
-                .isThrownBy(() -> registrar.register(beanFactory, settings))
+                .isThrownBy(() -> TracingBootstrapSettingsRegistrar.register(beanFactory, settings))
                 .withMessageContaining("already registered");
     }
 

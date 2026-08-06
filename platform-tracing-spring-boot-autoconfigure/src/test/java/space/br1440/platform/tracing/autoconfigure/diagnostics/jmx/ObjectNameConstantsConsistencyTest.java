@@ -13,7 +13,6 @@ import javax.management.openmbean.OpenType;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
 import space.br1440.platform.tracing.otel.javaagent.jmx.PlatformTracingObjectNames;
 
 /**
@@ -52,18 +51,20 @@ class ObjectNameConstantsConsistencyTest {
     void springOpenTypesExactlyMatchCanonicalAgentSchema() throws Exception {
         Class<?> agentTypes = Class.forName(
                 "space.br1440.platform.tracing.otel.javaagent.control.state.PrivateControlWireTypes");
+        Class<?> springTypes = Class.forName(
+                "space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlWireTypes");
 
-        assertThat(openType(PrivateControlOpenTypeCodec.class, "ROUTE_ROW"))
+        assertThat(openType(springTypes, "ROUTE_ROW"))
                 .isEqualTo(openType(agentTypes, "ROUTE_ROW"));
-        assertThat(openType(PrivateControlOpenTypeCodec.class, "ROUTES"))
+        assertThat(openType(springTypes, "ROUTES"))
                 .isEqualTo(openType(agentTypes, "ROUTES"));
-        assertThat(openType(PrivateControlOpenTypeCodec.class, "POLICY"))
+        assertThat(openType(springTypes, "POLICY"))
                 .isEqualTo(openType(agentTypes, "POLICY"));
-        assertThat(openType(PrivateControlOpenTypeCodec.class, "REQUEST"))
+        assertThat(openType(springTypes, "REQUEST"))
                 .isEqualTo(openType(agentTypes, "REQUEST"));
-        assertThat(openType(PrivateControlOpenTypeCodec.class, "RESPONSE"))
+        assertThat(openType(springTypes, "RESPONSE"))
                 .isEqualTo(openType(agentTypes, "RESPONSE"));
-        assertThat(openType(PrivateControlOpenTypeCodec.class, "COMPLETE_RESPONSE"))
+        assertThat(openType(springTypes, "COMPLETE_RESPONSE"))
                 .isEqualTo(openType(agentTypes, "ACCEPTED_COMPLETE"));
     }
 

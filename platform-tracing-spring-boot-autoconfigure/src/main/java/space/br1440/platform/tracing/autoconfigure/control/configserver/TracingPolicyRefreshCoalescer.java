@@ -4,38 +4,19 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
+import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
+import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
+import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
+import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.policy.read.CompleteTracingPolicyReader;
-import space.br1440.platform.tracing.autoconfigure.control.policy.CompleteTracingPolicySnapshot;
-import space.br1440.platform.tracing.autoconfigure.control.policy.ExpectedTracingPolicyBase;
-import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicyDeliveryResult;
-import space.br1440.platform.tracing.autoconfigure.control.policy.TracingPolicyManifestException;
-import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySnapshotApplier;
-import space.br1440.platform.tracing.autoconfigure.control.policy.delivery.TracingPolicySource;
-
-/**
- * Coalescing single-worker for Config Server refresh events.
- * <p>
- * Generation-based reschedule: worker captures generation at start;
- * reschedules only if generation advanced during apply (new events arrived).
- * <p>
- * Sequence contract:
- * All authoritative (runtimeInstanceId, acceptedSequence) pairs come from Agent via
- * readAcceptedComplete, and are always passed together as one {@link ExpectedTracingPolicyBase} —
- * never as a bare sequence with an identity taken from elsewhere. Application never computes
- * or increments the sequence unilaterally.
- * lastKnownBase is refreshed from Agent on APPLIED, UNCHANGED, STALE. If no base has been
- * observed yet (first refresh before {@link #deliverInitial()} ever warmed it), the worker
- * performs one authoritative read before applying; if that read also fails, the refresh is
- * abandoned and LKG is retained — there is no unconditional/unwarmed apply.
- */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class TracingPolicyRefreshCoalescer {
@@ -76,17 +57,14 @@ public final class TracingPolicyRefreshCoalescer {
     private void doApply(boolean isStaleRetry) {
         CompleteTracingPolicySnapshot snapshot;
         try {
-            // Ловим строго вокруг единственного build(): completeness/parse → ManifestException,
-            // value-invariants → IllegalArgumentException. Не расширяем до RuntimeException,
-            // чтобы programming defects не маскировались как invalid refresh.
             snapshot = manifestBuilder.build();
         } catch (TracingPolicyManifestException e) {
-            String s = isStaleRetry ? " (STALE retry)" : "";
-            log.error("Config Server manifest build failed{}; LKG retained: {}", s, e.getMessage());
+            String state = isStaleRetry ? " (STALE retry)" : "";
+            log.error("Config Server manifest build failed{}; LKG retained: {}", state, e.getMessage());
             return;
         } catch (IllegalArgumentException e) {
-            String s = isStaleRetry ? " (STALE retry)" : "";
-            log.error("Config Server policy value invalid{}; LKG retained: {}", s, e.getMessage());
+            String state = isStaleRetry ? " (STALE retry)" : "";
+            log.error("Config Server policy value invalid{}; LKG retained: {}", state, e.getMessage());
             return;
         }
 
@@ -141,25 +119,23 @@ public final class TracingPolicyRefreshCoalescer {
             log.error("Initial Config Server manifest missing required leaf: {}", e.getMessage());
             throw e;
         } catch (IllegalArgumentException e) {
-            // Startup fail-fast: невалидное value не маскируем — блокируем старт.
             log.error("Initial Config Server policy value invalid: {}", e.getMessage());
             throw e;
         }
     }
 
-    /** Читает актуальную (runtimeInstanceId, acceptedSequence) пару у Agent и кеширует её. */
     private void refreshLastKnownBase() {
         snapshotReader.currentComplete()
                 .map(AcceptedSnapshotWithSequence::expectedBase)
                 .ifPresent(base -> lastKnownBase = base);
     }
 
-    /** Возвращает кешированную base, либо выполняет один authoritative read, если её ещё нет. */
     private ExpectedTracingPolicyBase currentOrWarmedBase() {
         ExpectedTracingPolicyBase base = lastKnownBase;
         if (base != null) {
             return base;
         }
+
         refreshLastKnownBase();
         return lastKnownBase;
     }

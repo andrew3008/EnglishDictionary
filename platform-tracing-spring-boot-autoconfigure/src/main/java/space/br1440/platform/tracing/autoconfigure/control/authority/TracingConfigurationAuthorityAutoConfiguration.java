@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.authority;
 
+import jakarta.annotation.Nonnull;
+
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -13,22 +15,10 @@ import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfigurati
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsRegistrar;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
-import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.configserver.ConfigServerTracingPolicyAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxControlAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.control.management.TracingPolicyControlAutoConfiguration;
 
-/**
- * Early production wiring for {@link TracingConfigurationAuthorityGuard}.
- * <p>
- * Runs as a {@link BeanFactoryPostProcessor} before ordinary tracing beans are
- * instantiated, so illegal authority/posture combinations fail closed before
- * Actuator private-control clients, readiness probes, or delivery adapters can
- * activate inconsistently.
- * <p>
- * Registered first in {@code AutoConfiguration.imports} and ordered before
- * {@link TracingRuntimeAutoConfiguration}, {@link TracingPolicyControlAutoConfiguration}
- * and {@link ConfigServerTracingPolicyAutoConfiguration}.
- */
 @AutoConfiguration
 @AutoConfigureBefore({
         TracingRuntimeAutoConfiguration.class,
@@ -45,28 +35,27 @@ public class TracingConfigurationAuthorityAutoConfiguration {
         return new AuthorityGuardBeanFactoryPostProcessor();
     }
 
-    static final class AuthorityGuardBeanFactoryPostProcessor
-            implements BeanFactoryPostProcessor, EnvironmentAware {
+    static final class AuthorityGuardBeanFactoryPostProcessor implements BeanFactoryPostProcessor, EnvironmentAware {
 
         private Environment environment;
 
         @Override
-        public void setEnvironment(Environment environment) {
+        public void setEnvironment(@Nonnull Environment environment) {
             this.environment = environment;
         }
 
         @Override
-        public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
-                throws BeansException {
+        public void postProcessBeanFactory(@Nonnull ConfigurableListableBeanFactory beanFactory) throws BeansException {
             TracingBootstrapSettings settings;
             try {
-                settings = new TracingBootstrapSettingsResolver().resolve(environment);
+                settings = TracingBootstrapSettingsResolver.resolve(environment);
             } catch (IllegalStateException exception) {
                 throw new TracingConfigurationGuardException(exception.getMessage());
             }
-            new TracingBootstrapSettingsRegistrar().register(beanFactory, settings);
-            TracingConfigurationAuthorityGuard guard =
-                    new TracingConfigurationAuthorityGuard(settings).validate();
+
+            TracingBootstrapSettingsRegistrar.register(beanFactory, settings);
+
+            TracingConfigurationAuthorityGuard guard = new TracingConfigurationAuthorityGuard(settings).validate();
             if (!beanFactory.containsSingleton(GUARD_BEAN_NAME)) {
                 beanFactory.registerSingleton(GUARD_BEAN_NAME, guard);
             }

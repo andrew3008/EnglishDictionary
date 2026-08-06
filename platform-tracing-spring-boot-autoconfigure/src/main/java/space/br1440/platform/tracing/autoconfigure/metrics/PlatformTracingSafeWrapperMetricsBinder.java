@@ -1,10 +1,11 @@
 package space.br1440.platform.tracing.autoconfigure.metrics;
 
 import java.util.Map;
-import java.util.Optional;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.DiagnosticsObservation;
+import space.br1440.platform.tracing.autoconfigure.metrics.utils.CoalescingObservationMetricReader;
 
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
@@ -26,43 +27,53 @@ final class PlatformTracingSafeWrapperMetricsBinder implements MeterBinder {
         registerCounter(registry, "failures", "resource", "resource.failures");
         registerCounter(registry, "failures", "scope", "scope.failures");
 
-        FunctionCounter.builder(PREFIX + "suppressed_errors", diagnosticsSource,
-                        source -> readMetric(source, "safe_wrapper.suppressed_errors"))
+        FunctionCounter.builder(PREFIX + "suppressed_errors", diagnosticsSource, PlatformTracingSafeWrapperMetricsBinder::suppressedErrors)
                 .description("Total number of errors suppressed by tracing safe wrappers")
                 .register(registry);
 
-        Gauge.builder(PREFIX + "degraded_mode", diagnosticsSource, source -> readTriStateMetric(source, "degraded_mode.enabled"))
+        Gauge.builder(PREFIX + "degraded_mode", diagnosticsSource, PlatformTracingSafeWrapperMetricsBinder::degradedMode)
                 .description("Degraded-mode flag for Sampler/Processor layers (1 — enabled, NaN — unknown)")
                 .register(registry);
 
-        Gauge.builder(PREFIX + "last_failure_epoch_ms", diagnosticsSource,
-                        source -> readTriStateMetric(source, "last_failure.epoch_ms"))
+        Gauge.builder(PREFIX + "last_failure_epoch_ms", diagnosticsSource, PlatformTracingSafeWrapperMetricsBinder::lastFailureEpochMs)
                 .description("Timestamp of the last safe-wrapper failure, epoch millis")
                 .register(registry);
     }
 
     @SuppressWarnings("SameParameterValue")
     private void registerCounter(MeterRegistry registry, String suffix, String component, String key) {
-        FunctionCounter.builder(PREFIX + suffix, diagnosticsSource, source -> readMetric(source, key))
+        FunctionCounter.builder(PREFIX + suffix, diagnosticsSource,
+                        source -> CoalescingObservationMetricReader.readMetric(safeWrapperMetrics(source), key))
                 .tags("component", component)
                 .description("Tracing safe-wrapper failures by component type")
                 .register(registry);
     }
 
-    private static double readMetric(CoalescingJmxObservationSource<DiagnosticsObservation> source, String key) {
-        Optional<DiagnosticsObservation> observation = source.get();
-        Map<String, Long> snapshot = observation.map(DiagnosticsObservation::safeWrapperMetrics).orElseGet(Map::of);
-        Long value = snapshot.get(key);
-        return (value != null) ? value.doubleValue() : 0.0;
+    private static double suppressedErrors(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
+        Map<String, Long> metrics = safeWrapperMetrics(source);
+        return CoalescingObservationMetricReader.readMetric(metrics, "safe_wrapper.suppressed_errors");
     }
 
-    private static double readTriStateMetric(CoalescingJmxObservationSource<DiagnosticsObservation> source, String key) {
-        Optional<DiagnosticsObservation> observation = source.get();
-        if (observation.isEmpty()) {
-            return Double.NaN;
-        }
+    private static double degradedMode(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
+        Map<String, Long> metrics = safeWrapperMetricsOrAbsent(source);
+        return CoalescingObservationMetricReader.readTriStateMetric(metrics, "degraded_mode.enabled");
+    }
 
-        Long value = observation.get().safeWrapperMetrics().get(key);
-        return (value != null) ? value.doubleValue() : 0.0;
+    private static double lastFailureEpochMs(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
+        Map<String, Long> metrics = safeWrapperMetricsOrAbsent(source);
+        return CoalescingObservationMetricReader.readTriStateMetric(metrics, "last_failure.epoch_ms");
+    }
+
+    private static Map<String, Long> safeWrapperMetrics(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
+        return source.get()
+                .map(DiagnosticsObservation::safeWrapperMetrics)
+                .orElseGet(Map::of);
+    }
+
+    @Nullable
+    private static Map<String, Long> safeWrapperMetricsOrAbsent(CoalescingJmxObservationSource<DiagnosticsObservation> source) {
+        return source.get()
+                .map(DiagnosticsObservation::safeWrapperMetrics)
+                .orElse(null);
     }
 }

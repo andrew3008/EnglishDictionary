@@ -79,7 +79,8 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingJmxDomainHealthMetricsBinder` | jmx-domain-split | DONE (package-private binder; registered/readable/owner.present/freshness) |
 | `space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.CandidateDigest` | MOVE | `space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.CandidateDigest` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlLocator` | MOVE | `space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator` | S6b | DONE |
-| `space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec` | MOVE | `space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec` | S6b | DONE |
+| `space.br1440.platform.tracing.autoconfigure.jmx.privatecontrol.PrivateControlOpenTypeCodec` | MOVE | `space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec` | S6b | DONE (superseded, see codec-protocol-split) |
+| `space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec` | SPLIT | `PrivateControlWireTypes` (package-private schema) + `PrivateControlRequestEncoder` + `AcceptedCompleteSnapshotDecoder` + `PrivateControlResponse` (record, static `decode`) + `PrivateControlSnapshot` (package-private record) | codec-protocol-split | DONE |
 | `space.br1440.platform.tracing.autoconfigure.kafka.KafkaBatchLinksAspect` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.kafka.KafkaBatchLinksAspect` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.kafka.KafkaRequestIdentityAspect` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.kafka.KafkaRequestIdentityAspect` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.kafka.PlatformKafkaAutoConfiguration` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaAutoConfiguration` | S6b | DONE |
@@ -93,6 +94,7 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics` | KEEP | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics` | UNCHANGED | DONE |
 | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSafeWrapperMetricsBinder` | KEEP | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSafeWrapperMetricsBinder` | UNCHANGED | DONE |
 | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSamplerMetricsBinder` | KEEP | `space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingSamplerMetricsBinder` | UNCHANGED | DONE |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.metrics.utils.CoalescingObservationMetricReader` | metrics-utils | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.propagation.PlatformContextPropagationAutoConfiguration` | S6a | DONE |
 | `space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration` | KEEP | `space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration` | UNCHANGED | DONE |
 | `space.br1440.platform.tracing.autoconfigure.RequestContextSupplierAutoConfiguration` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration` | S6b | DONE |

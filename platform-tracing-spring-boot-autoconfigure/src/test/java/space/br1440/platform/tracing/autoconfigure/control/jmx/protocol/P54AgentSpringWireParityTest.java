@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * Proves that real Agent-side encoding (JDK CompositeData built via
  * PrivateControlWireTypes-compatible schema in THIS classloader) round-trips
- * through the real Spring decoder (PrivateControlOpenTypeCodec) with semantic
+ * through the real Spring decoder (AcceptedCompleteSnapshotDecoder) with semantic
  * equality on:
  *   - acceptedSequence
  *   - runtimeInstanceId
@@ -32,12 +32,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * Design: Agent and Spring share the same JVM classloader in test scope.
  * CompositeData is built here identically to Agent PrivateControlWireTypes
- * (field order and type names pinned by PrivateControlOpenTypeCodecTest.buildCompleteResponse).
- * Any schema drift causes decodeCompleteWithSequence to throw — self-enforcing.
+ * (field order and type names pinned by AcceptedCompleteSnapshotDecoderTest.buildCompleteResponse).
+ * Any schema drift causes decode to throw — self-enforcing.
  */
 class P54AgentSpringWireParityTest {
-
-    private final PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
 
     // ── §1 full round-trip with non-empty route table ─────────────────────────
 
@@ -53,7 +51,7 @@ class P54AgentSpringWireParityTest {
         CompositeData wire = buildAgentPayload(seq, rid, true, 0.75d, routes,
                 true, true, false, true, "WARN");
 
-        var decoded = codec.decodeCompleteWithSequence(wire);
+        var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(seq);
         assertThat(decoded.runtimeInstanceId()).isEqualTo(rid);
@@ -80,7 +78,7 @@ class P54AgentSpringWireParityTest {
         CompositeData wire = buildAgentPayload(0L, rid, false, 0.0d, Map.of(),
                 false, false, true, false, "ERROR");
 
-        var decoded = codec.decodeCompleteWithSequence(wire);
+        var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
 
         assertThat(decoded.acceptedSequence()).isEqualTo(0L);
         assertThat(decoded.runtimeInstanceId()).isEqualTo(rid);
@@ -104,7 +102,7 @@ class P54AgentSpringWireParityTest {
             CompositeData wire = buildAgentPayload(seq, "rid-seq-" + seq,
                     true, 0.5d, Map.of(),
                     true, false, true, true, "INFO");
-            var decoded = codec.decodeCompleteWithSequence(wire);
+            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
             assertThat(decoded.acceptedSequence())
                     .as("sequence %d must be preserved", seq)
                     .isEqualTo(seq);
@@ -125,7 +123,7 @@ class P54AgentSpringWireParityTest {
             CompositeData wire = buildAgentPayload(1L, rid,
                     true, 0.5d, Map.of(),
                     true, false, true, true, "INFO");
-            var decoded = codec.decodeCompleteWithSequence(wire);
+            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
             assertThat(decoded.runtimeInstanceId())
                     .as("runtimeInstanceId must be preserved verbatim for: %s", rid)
                     .isEqualTo(rid);
@@ -140,7 +138,7 @@ class P54AgentSpringWireParityTest {
             CompositeData wire = buildAgentPayload(1L, "rid-boundary",
                     true, ratio, Map.of(),
                     true, false, true, true, "INFO");
-            var decoded = codec.decodeCompleteWithSequence(wire);
+            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
             assertThat(decoded.snapshot().samplingRatio())
                     .as("ratio %s is a valid boundary", ratio)
                     .isEqualTo(ratio);
@@ -155,7 +153,7 @@ class P54AgentSpringWireParityTest {
             CompositeData wire = buildAgentPayload(1L, "rid-level-" + level,
                     true, 0.5d, Map.of(),
                     true, false, true, true, level);
-            var decoded = codec.decodeCompleteWithSequence(wire);
+            var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
             assertThat(decoded.snapshot().diagnosticsLogLevel())
                     .as("log level %s must round-trip", level)
                     .isEqualTo(level);
@@ -171,7 +169,7 @@ class P54AgentSpringWireParityTest {
                 true, 0.5d, routes,
                 true, false, true, true, "INFO");
 
-        var decoded = codec.decodeCompleteWithSequence(wire);
+        var decoded = AcceptedCompleteSnapshotDecoder.decode(wire);
 
         assertThat(decoded.snapshot().samplingRouteRatios())
                 .containsKey("/distinct-prefix")
@@ -199,7 +197,7 @@ class P54AgentSpringWireParityTest {
             CompositeData wire = buildAgentPayload(1L, "rid-bool",
                     c.sampEn(), 0.5d, Map.of(),
                     c.valEn(), c.valStrict(), c.expEn(), c.tcHeaders(), "INFO");
-            var snap = codec.decodeCompleteWithSequence(wire).snapshot();
+            var snap = AcceptedCompleteSnapshotDecoder.decode(wire).snapshot();
             assertThat(snap.samplingEnabled()).isEqualTo(c.sampEn());
             assertThat(snap.validationEnabled()).isEqualTo(c.valEn());
             assertThat(snap.validationStrict()).isEqualTo(c.valStrict());
@@ -215,7 +213,7 @@ class P54AgentSpringWireParityTest {
         CompositeData wire = buildAgentPayload(1L, "rid-schema",
                 true, 0.5d, Map.of(),
                 true, false, true, true, "INFO");
-        var snap = codec.decodeCompleteWithSequence(wire).snapshot();
+        var snap = AcceptedCompleteSnapshotDecoder.decode(wire).snapshot();
 
         // Enumerate all 8 leaves explicitly to guard against new fields
         // being silently added without a contract review.
@@ -236,7 +234,7 @@ class P54AgentSpringWireParityTest {
     /**
      * Constructs CompositeData identical to Agent PrivateControlWireTypes.ACCEPTED_COMPLETE:
      * type name "AcceptedCompleteSnapshot/v1", field order and sub-types pinned
-     * by PrivateControlOpenTypeCodecTest.buildCompleteResponse contract.
+     * by AcceptedCompleteSnapshotDecoderTest.buildCompleteResponse contract.
      */
     private static CompositeData buildAgentPayload(
             long acceptedSequence,

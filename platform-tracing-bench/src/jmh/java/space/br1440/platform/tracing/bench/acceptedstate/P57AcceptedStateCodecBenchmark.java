@@ -11,7 +11,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 import space.br1440.platform.tracing.autoconfigure.control.policy.read.AcceptedSnapshotWithSequence;
-import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec;
+import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.AcceptedCompleteSnapshotDecoder;
 
 import javax.management.openmbean.CompositeData;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +19,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * P5.7 §20 — Agent-side encode and Spring-side decode benchmarks for
  * the {@code readAcceptedComplete} (PRIV-R07) wire operation.
+ * <p>
+ * Этот бенчмарк измеряет исключительно PRIV-R07 accepted-complete decode
+ * ({@link AcceptedCompleteSnapshotDecoder#decode(Object)}), а не весь протокол-кодек:
+ * encode запроса и decode ответа {@code applySnapshot} — независимые hot-path с другим
+ * объёмом данных и другой частотой вызова в runtime и намеренно не смешиваются здесь в
+ * составной сценарий.
  *
  * <h2>Why these numbers matter</h2>
  * <p>{@code encodeAcceptedComplete} and {@code decodeCompleteWithSequence} run on the
@@ -73,24 +79,24 @@ public class P57AcceptedStateCodecBenchmark extends AcceptedStateBenchmarkFixtur
     // ── Spring-side decode ────────────────────────────────────────────────────────
 
     /**
-     * Spring {@link PrivateControlOpenTypeCodec#decodeCompleteWithSequence(Object)},
+     * Spring {@link AcceptedCompleteSnapshotDecoder#decode(Object)},
      * pre-encoded zero-route payload from trial setup.
      * Allocates one {@link AcceptedSnapshotWithSequence} + one empty {@code Map}.
      * Budget: ≤ 20 000 ns/op.
      */
     @Benchmark
     public AcceptedSnapshotWithSequence decodeNoRoutes() {
-        return springCodec.decodeCompleteWithSequence(encodedNoRoutes);
+        return AcceptedCompleteSnapshotDecoder.decode(encodedNoRoutes);
     }
 
     /**
-     * Spring {@link PrivateControlOpenTypeCodec#decodeCompleteWithSequence(Object)},
+     * Spring {@link AcceptedCompleteSnapshotDecoder#decode(Object)},
      * pre-encoded five-route payload from trial setup.
      * Allocates one {@link AcceptedSnapshotWithSequence} + one {@code LinkedHashMap} with five entries.
      * Budget: ≤ 25 000 ns/op.
      */
     @Benchmark
     public AcceptedSnapshotWithSequence decodeFiveRoutes() {
-        return springCodec.decodeCompleteWithSequence(encodedFiveRoutes);
+        return AcceptedCompleteSnapshotDecoder.decode(encodedFiveRoutes);
     }
 }

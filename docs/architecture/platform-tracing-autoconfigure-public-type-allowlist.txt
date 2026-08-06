@@ -25,7 +25,9 @@ space.br1440.platform.tracing.autoconfigure.control.configserver.TracingPolicyRe
 space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateControlLocator
 space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxControlAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingPolicySnapshotClient
-space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlOpenTypeCodec
+space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.AcceptedCompleteSnapshotDecoder
+space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlRequestEncoder
+space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlResponse
 space.br1440.platform.tracing.autoconfigure.control.management.ReplaceSamplingRouteRatiosRequest
 space.br1440.platform.tracing.autoconfigure.control.management.SetDiagnosticsLogLevelRequest
 space.br1440.platform.tracing.autoconfigure.control.management.SetExporterEnabledRequest
@@ -112,6 +114,7 @@ space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObse
 space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime
 space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics
 space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.metrics.utils.CoalescingObservationMetricReader
 space.br1440.platform.tracing.autoconfigure.propagation.PlatformContextPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfiguration

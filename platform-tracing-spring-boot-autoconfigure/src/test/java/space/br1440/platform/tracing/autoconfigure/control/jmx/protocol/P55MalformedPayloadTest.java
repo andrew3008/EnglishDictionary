@@ -32,14 +32,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * null-field / route-bound cases and {@link ConfigServerPolicyManifestBuilder} parse
  * fail-closed coverage.
  *
- * @see PrivateControlOpenTypeCodec
+ * @see AcceptedCompleteSnapshotDecoder
+ * @see PrivateControlResponse
  * @see ConfigServerPolicyManifestBuilder
  * @see P54MalformedPayloadTest
  */
 class P55MalformedPayloadTest {
 
     // -------------------------------------------------------------------------
-    // Shared wire-type constants (mirrors PrivateControlOpenTypeCodec internals)
+    // Shared wire-type constants (mirrors PrivateControlWireTypes internals)
     // -------------------------------------------------------------------------
 
     private static final int MAX_ROUTE_ENTRIES    = 100;
@@ -56,8 +57,6 @@ class P55MalformedPayloadTest {
     // A deliberately wrong CompositeType to test schema mismatch
     private static final CompositeType WRONG_TYPE = wrongCompositeType();
 
-    private final PrivateControlOpenTypeCodec codec = new PrivateControlOpenTypeCodec();
-
     // =========================================================================
     // SECTION 1 — null / wrong Java type for raw argument
     // =========================================================================
@@ -65,7 +64,7 @@ class P55MalformedPayloadTest {
     /** P5.5-1a: null raw object → fail-closed. */
     @Test
     void decode_complete_null_raw_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(null))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(null))
                 .as("null raw MUST throw IllegalArgumentException (fail-closed)")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -73,7 +72,7 @@ class P55MalformedPayloadTest {
     /** P5.5-1b: raw = String → not CompositeData → fail-closed. */
     @Test
     void decode_complete_string_raw_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence("not-composite"))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode("not-composite"))
                 .as("String raw MUST throw IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -81,7 +80,7 @@ class P55MalformedPayloadTest {
     /** P5.5-1c: raw = Integer → not CompositeData → fail-closed. */
     @Test
     void decode_complete_integer_raw_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(42))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(42))
                 .as("Integer raw MUST throw IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -93,7 +92,7 @@ class P55MalformedPayloadTest {
                 WRONG_TYPE,
                 new String[]{"dummy"},
                 new Object[]{"value"});
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(wrong))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(wrong))
                 .as("wrong CompositeType MUST throw IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("unexpected CompositeType");
@@ -119,7 +118,7 @@ class P55MalformedPayloadTest {
                 "diagnosticsLogLevel",        "INFO"
         ), /* nullFields= */ new String[]{"acceptedSequence"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .as("null acceptedSequence field MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("acceptedSequence");
@@ -140,7 +139,7 @@ class P55MalformedPayloadTest {
                 "diagnosticsLogLevel",        "INFO"
         ), /* nullFields= */ new String[]{"runtimeInstanceId"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .as("null runtimeInstanceId field MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("runtimeInstanceId");
@@ -161,7 +160,7 @@ class P55MalformedPayloadTest {
                 "traceControlHeadersEnabled", true
         ), /* nullFields= */ new String[]{"diagnosticsLogLevel"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .as("null diagnosticsLogLevel field MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("diagnosticsLogLevel");
@@ -182,7 +181,7 @@ class P55MalformedPayloadTest {
                 "diagnosticsLogLevel",        "INFO"
         ), /* nullFields= */ new String[]{"samplingEnabled"});
 
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(cd))
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(cd))
                 .as("null samplingEnabled field MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("samplingEnabled");
@@ -195,7 +194,7 @@ class P55MalformedPayloadTest {
     /** P5.5-3a: acceptedSequence < 0. */
     @Test
     void decode_complete_negative_sequence_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(-1L, "inst", 1.0, emptyRoutes(), "INFO")))
                 .as("negative acceptedSequence MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -205,7 +204,7 @@ class P55MalformedPayloadTest {
     /** P5.5-3b: runtimeInstanceId = empty string. */
     @Test
     void decode_complete_blank_runtime_instance_id_empty_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "", 1.0, emptyRoutes(), "INFO")))
                 .as("blank (empty) runtimeInstanceId MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -215,7 +214,7 @@ class P55MalformedPayloadTest {
     /** P5.5-3c: runtimeInstanceId = whitespace-only string. */
     @Test
     void decode_complete_blank_runtime_instance_id_whitespace_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "   ", 1.0, emptyRoutes(), "INFO")))
                 .as("whitespace-only runtimeInstanceId MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -226,7 +225,7 @@ class P55MalformedPayloadTest {
     @ParameterizedTest
     @ValueSource(doubles = {-0.001, 1.001, -1.0, 2.0, -100.0, 100.0})
     void decode_complete_out_of_range_sampling_ratio_throws(double ratio) {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", ratio, emptyRoutes(), "INFO")))
                 .as("out-of-range samplingRatio " + ratio + " MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -236,7 +235,7 @@ class P55MalformedPayloadTest {
     /** P5.5-3f: samplingRatio = NaN. */
     @Test
     void decode_complete_nan_sampling_ratio_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", Double.NaN, emptyRoutes(), "INFO")))
                 .as("NaN samplingRatio MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -246,7 +245,7 @@ class P55MalformedPayloadTest {
     /** P5.5-3g: samplingRatio = +Infinity. */
     @Test
     void decode_complete_infinite_sampling_ratio_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", Double.POSITIVE_INFINITY, emptyRoutes(), "INFO")))
                 .as("+Infinity samplingRatio MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -257,7 +256,7 @@ class P55MalformedPayloadTest {
     @ParameterizedTest
     @ValueSource(strings = {"VERBOSE", "ALL", "FATAL", "FINEST", "verbose", "info", "debug", "1", "null"})
     void decode_complete_unknown_log_level_throws(String level) {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, emptyRoutes(), level)))
                 .as("unknown log level '" + level + "' MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -267,7 +266,7 @@ class P55MalformedPayloadTest {
     /** P5.5-3i: diagnosticsLogLevel = empty string. */
     @Test
     void decode_complete_empty_log_level_throws() {
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, emptyRoutes(), "")))
                 .as("empty diagnosticsLogLevel MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -282,7 +281,7 @@ class P55MalformedPayloadTest {
     @Test
     void decode_complete_empty_route_prefix_throws() throws OpenDataException {
         TabularData routes = routesWith("", 0.5);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("empty route prefix MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
@@ -292,7 +291,7 @@ class P55MalformedPayloadTest {
     @Test
     void decode_complete_blank_route_prefix_throws() throws OpenDataException {
         TabularData routes = routesWith("   ", 0.5);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("blank route prefix MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -303,7 +302,7 @@ class P55MalformedPayloadTest {
     @Test
     void decode_complete_iso_control_route_prefix_throws() throws OpenDataException {
         TabularData routes = routesWith("/api\u0001", 0.5);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("ISO-control route prefix MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -316,7 +315,7 @@ class P55MalformedPayloadTest {
     void decode_complete_oversized_route_prefix_throws() throws OpenDataException {
         String longPrefix = "x".repeat(MAX_ROUTE_PREFIX_LEN + 1);
         TabularData routes = routesWith(longPrefix, 0.5);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("prefix length > 255 MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
@@ -326,7 +325,7 @@ class P55MalformedPayloadTest {
     @Test
     void decode_complete_route_ratio_below_zero_throws() throws OpenDataException {
         TabularData routes = routesWith("/api", -0.1);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("route ratio < 0.0 MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
@@ -336,7 +335,7 @@ class P55MalformedPayloadTest {
     @Test
     void decode_complete_route_ratio_above_one_throws() throws OpenDataException {
         TabularData routes = routesWith("/api", 1.1);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("route ratio > 1.0 MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
@@ -346,7 +345,7 @@ class P55MalformedPayloadTest {
     @Test
     void decode_complete_route_ratio_nan_throws() throws OpenDataException {
         TabularData routes = routesWith("/api", Double.NaN);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("NaN route ratio MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
@@ -362,7 +361,7 @@ class P55MalformedPayloadTest {
                     new String[]{"ratio", "routePrefix"},
                     new Object[]{0.5, "/route" + i}));
         }
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, "inst", 1.0, routes, "INFO")))
                 .as("more than " + MAX_ROUTE_ENTRIES + " route entries MUST throw")
                 .isInstanceOf(IllegalArgumentException.class);
@@ -381,7 +380,7 @@ class P55MalformedPayloadTest {
     @Test
     void decode_complete_oversized_runtime_instance_id_throws() {
         String oversizedId = "x".repeat(MAX_PAYLOAD_BYTES + 1000);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, oversizedId, 1.0, emptyRoutes(), "INFO")))
                 .as("runtimeInstanceId exceeding payload bound MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -409,7 +408,7 @@ class P55MalformedPayloadTest {
         }
         // 100 * (≈205 + 16) ≈ 22_100 + 16_000 id + overhead > 32_768
         String bigId = "r".repeat(16_000);
-        assertThatThrownBy(() -> codec.decodeCompleteWithSequence(
+        assertThatThrownBy(() -> AcceptedCompleteSnapshotDecoder.decode(
                 validCompleteCd(1L, bigId, 1.0, routes, "INFO")))
                 .as("routes + runtimeInstanceId exceeding payload bound MUST throw")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -420,23 +419,23 @@ class P55MalformedPayloadTest {
     // SECTION 6 — decodeResponse — null / wrong CompositeType
     // =========================================================================
 
-    /** P5.5-6a: null CompositeData to decodeResponse. */
+    /** P5.5-6a: null CompositeData to PrivateControlResponse.decode. */
     @Test
     void decode_response_null_throws() {
-        assertThatThrownBy(() -> codec.decodeResponse(null))
+        assertThatThrownBy(() -> PrivateControlResponse.decode(null))
                 .as("null response CompositeData MUST throw IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("CompositeType");
     }
 
-    /** P5.5-6b: CompositeData with wrong CompositeType name to decodeResponse. */
+    /** P5.5-6b: CompositeData with wrong CompositeType name to PrivateControlResponse.decode. */
     @Test
     void decode_response_wrong_type_throws() throws OpenDataException {
         CompositeData wrong = new CompositeDataSupport(
                 WRONG_TYPE,
                 new String[]{"dummy"},
                 new Object[]{"value"});
-        assertThatThrownBy(() -> codec.decodeResponse(wrong))
+        assertThatThrownBy(() -> PrivateControlResponse.decode(wrong))
                 .as("wrong CompositeType response MUST throw IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("CompositeType");
