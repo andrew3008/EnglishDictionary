@@ -27,7 +27,8 @@ class SafeBoundaryArchTest {
     static final ArchRule safe_wrappers_do_not_use_standard_streams =
             noClasses()
                     .that().resideInAnyPackage(
-                            "..safety..",
+                            "..resilience..",
+                            "..diagnostics..",
                             "..sampler..",
                             "..propagation..",
                             "..exporter..",

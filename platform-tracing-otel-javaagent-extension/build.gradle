@@ -21,16 +21,6 @@ configurations {
     }
 }
 
-sourceSets {
-    distributionVerifier {
-        java.srcDir 'src/distributionVerifier/java'
-    }
-    test {
-        compileClasspath += distributionVerifier.output
-        runtimeClasspath += distributionVerifier.output
-    }
-}
-
 dependencies {
     api platform(project(':platform-tracing-bom'))
 
@@ -162,18 +152,6 @@ def platformExtendedAgentJarTask = tasks.register('platformExtendedAgentJar', Ja
     }
 }
 
-def distributionVerifierJarTask = tasks.register('distributionVerifierJar', Jar) {
-    dependsOn distributionVerifierClasses
-    archiveFileName.set('platform-agent-verifier.jar')
-    destinationDirectory.set(layout.buildDirectory.dir('controlled-agent'))
-    preserveFileTimestamps = false
-    reproducibleFileOrder = true
-    from sourceSets.distributionVerifier.output
-    manifest {
-        attributes('Main-Class': 'space.br1440.platform.tracing.distribution.PlatformAgentDistributionVerifier')
-    }
-}
-
 tasks.register('verifyAgentJarContents') {
     dependsOn agentExtensionJar
     doLast {
@@ -247,11 +225,10 @@ def sha256 = { File file ->
 }
 
 tasks.register('preparePlatformAgentDistribution') {
-    dependsOn platformExtendedAgentJar, agentExtensionJar, distributionVerifierJar
+    dependsOn platformExtendedAgentJar, agentExtensionJar
     outputs.dir platformAgentDistributionDir
     inputs.file(platformExtendedAgentJarTask.flatMap { it.archiveFile }).withPropertyName('controlledAgentJar')
     inputs.file(agentExtensionJarTask.flatMap { it.archiveFile }).withPropertyName('extensionJar')
-    inputs.file(distributionVerifierJarTask.flatMap { it.archiveFile }).withPropertyName('verifierJar')
     inputs.files(fileTree('src/main/distribution') {
         include 'platform-agent-launcher.sh', 'platform-agent-launcher.cmd'
     }).withPropertyName('launcherScripts')
@@ -276,7 +253,6 @@ tasks.register('preparePlatformAgentDistribution') {
         }
         def inputFiles = inputs.files.files
         copyArtifact(inputFiles.find { it.name == 'opentelemetry-javaagent.jar' }, 'opentelemetry-javaagent.jar')
-        copyArtifact(inputFiles.find { it.name == 'platform-agent-verifier.jar' }, 'platform-agent-verifier.jar')
         copyArtifact(inputFiles.find {
             it.name.endsWith('-agent.jar') && it.name != 'opentelemetry-javaagent.jar'
         }, controlledExtensionFileName)
@@ -308,7 +284,6 @@ tasks.register('preparePlatformAgentDistribution') {
         manifestFile.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(manifest)) + '\n', 'UTF-8')
 
         def checksumFiles = [agentFile, extensionFile, manifestFile, versionFile,
-                             new File(outputDir, 'platform-agent-verifier.jar'),
                              new File(outputDir, 'platform-agent-launcher.sh'),
                              new File(outputDir, 'platform-agent-launcher.cmd')]
         new File(outputDir, 'checksums.sha256').setText(
@@ -331,21 +306,10 @@ tasks.register('verifyPlatformAgentDistribution') {
     doLast {
         def outputDir = new File(inputs.properties.distributionDirectoryPath.toString())
         ['opentelemetry-javaagent.jar', controlledExtensionFileName,
-         'platform-agent-verifier.jar', 'platform-agent-launcher.sh', 'platform-agent-launcher.cmd',
+         'platform-agent-launcher.sh', 'platform-agent-launcher.cmd',
          'manifest.json', 'checksums.sha256', 'VERSION'].each { name ->
             assert new File(outputDir, name).isFile() : "Missing controlled Agent distribution file: ${name}"
         }
-
-        def javaExecutable = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-        def verifierProcess = new ProcessBuilder(
-                javaExecutable,
-                '-cp', new File(outputDir, 'platform-agent-verifier.jar').absolutePath,
-                'space.br1440.platform.tracing.distribution.PlatformAgentDistributionVerifier',
-                'verify', outputDir.absolutePath)
-                .inheritIO()
-                .start()
-        def verifierExitCode = verifierProcess.waitFor()
-        assert verifierExitCode == 0 : "Controlled Agent verifier exited with ${verifierExitCode}"
 
         def extendedAgent = new java.util.jar.JarFile(new File(outputDir, 'opentelemetry-javaagent.jar'))
         try {

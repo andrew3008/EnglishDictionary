@@ -1,10 +1,12 @@
-package space.br1440.platform.tracing.otel.javaagent.safety;
+package space.br1440.platform.tracing.otel.javaagent.resilience;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.helpers.NOPLogger;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

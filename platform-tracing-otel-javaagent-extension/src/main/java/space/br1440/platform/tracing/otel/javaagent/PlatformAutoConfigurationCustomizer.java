@@ -23,7 +23,7 @@ import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagat
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
-import space.br1440.platform.tracing.otel.javaagent.safety.PlatformLogControl;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSamplers;
 import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
 

@@ -1,6 +1,8 @@
-package space.br1440.platform.tracing.otel.javaagent.safety;
+package space.br1440.platform.tracing.otel.javaagent.resilience;
 
 import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

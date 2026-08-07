@@ -5,9 +5,9 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
-import space.br1440.platform.tracing.otel.javaagent.safety.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.safety.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.control.state.AcceptedPolicyAccess;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;

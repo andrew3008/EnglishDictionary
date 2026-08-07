@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.sampler;
 
-import java.util.List;
-
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
@@ -15,9 +13,7 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
-import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import lombok.experimental.UtilityClass;
@@ -30,38 +26,47 @@ final class SamplingPolicyOtelAdapter {
 
     private static final SamplingResult FALLBACK_DROP = SamplingResult.create(SamplingDecision.DROP);
     private static final SamplingResult KILL_SWITCH_DROP = SamplingResult.create(SamplingDecision.DROP);
+
     private static final SamplingResult DROP_HARD = SamplingResult.create(
             SamplingDecision.DROP,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.DROP_PATH)
     );
+
     private static final SamplingResult DROP_PARENT = SamplingResult.create(
             SamplingDecision.DROP,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.PARENT_DROP)
     );
+
     private static final SamplingResult DROP_ROUTE_RATIO = SamplingResult.create(
             SamplingDecision.DROP,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.ROUTE_RATIO_DROP)
     );
+
     private static final SamplingResult DROP_DEFAULT_RATIO = SamplingResult.create(
             SamplingDecision.DROP,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO_DROP)
     );
+
     private static final SamplingResult SAMPLE_FORCE_HEADER = SamplingResult.create(
             SamplingDecision.RECORD_AND_SAMPLE,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.FORCE_HEADER)
     );
+
     private static final SamplingResult SAMPLE_QA_TRACE = SamplingResult.create(
             SamplingDecision.RECORD_AND_SAMPLE,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.QA_TRACE)
     );
+
     private static final SamplingResult SAMPLE_PARENT = SamplingResult.create(
             SamplingDecision.RECORD_AND_SAMPLE,
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.PARENT_SAMPLED)
     );
+
     private static final SamplingResult ROUTE_RATIO_SAMPLE = new ForwardingSamplingResult(
             SamplingResult.create(SamplingDecision.RECORD_AND_SAMPLE),
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.ROUTE_RATIO)
     );
+
     private static final SamplingResult DEFAULT_RATIO_SAMPLE = new ForwardingSamplingResult(
             SamplingResult.create(SamplingDecision.RECORD_AND_SAMPLE),
             Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO)
@@ -69,10 +74,7 @@ final class SamplingPolicyOtelAdapter {
 
     static SamplingPolicyRequest toRequest(Context parentContext,
                                            String traceId,
-                                           String name,
-                                           SpanKind spanKind,
-                                           io.opentelemetry.api.common.Attributes attributes,
-                                           List<LinkData> parentLinks) {
+                                           Attributes attributes) {
         String urlPath = attributes.get(URL_PATH_KEY);
         InboundTraceControl control = parentContext.get(PlatformTraceContextKeys.TRACE_CONTROL);
         String forceValue = control == null ? null : control.rawForceTraceValue();

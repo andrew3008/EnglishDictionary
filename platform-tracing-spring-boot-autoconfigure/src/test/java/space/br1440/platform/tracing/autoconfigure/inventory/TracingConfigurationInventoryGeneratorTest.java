@@ -582,7 +582,7 @@ class TracingConfigurationInventoryGeneratorTest {
         for (String property : loadStandardOtelConfigurationKeys()) {
             if ("otel.javaagent.extensions".equals(property)) {
                 // Слитая запись: ExtensionPropertyNames/ExtensionEnvironmentVariables/
-                // JavaAgentExtensionPaths/PlatformAgentDistributionVerifier уже наполнили эту
+                // JavaAgentExtensionPaths уже наполнил эту
                 // запись реальными in-repo readers через collectStringConstants(). Модель
                 // EXTERNAL_CONTRACT сюда не применяется — только дополняем upstream-артефакт.
                 entries.computeIfAbsent(property, Entry::new).consumers.add("OPENTELEMETRY_JAVAAGENT");

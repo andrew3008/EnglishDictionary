@@ -3,9 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
-import space.br1440.platform.tracing.otel.javaagent.safety.ConfigReloadDiagnostics;
-import space.br1440.platform.tracing.otel.javaagent.safety.PlatformLogControl;
-import space.br1440.platform.tracing.otel.javaagent.safety.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.ConfigReloadDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
 
 import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeData;
@@ -49,7 +49,10 @@ public final class PlatformDiagnosticsControl implements PlatformDiagnosticsCont
         long invalidConfigCount = invalidConfigCounter.sum();
         var configReloadMetrics = JmxOpenTypeSupport.stringLongMap(
                 CONFIG_RELOAD_METRICS_TYPE, ConfigReloadDiagnostics.shared().snapshot());
-        String[] configAuditTrail = ConfigReloadDiagnostics.shared().auditTrail();
+        // JMX wire остаётся String[]: форматирование AuditEntry откладывается до границы экспорта.
+        String[] configAuditTrail = ConfigReloadDiagnostics.shared().auditTrail().stream()
+                .map(ConfigReloadDiagnostics.AuditEntry::toString)
+                .toArray(String[]::new);
         var safeWrapperMetrics = JmxOpenTypeSupport.stringLongMap(
                 SAFE_WRAPPER_METRICS_TYPE, TracingDiagnostics.shared().snapshot());
         String platformLogLevel = PlatformLogControl.shared().getLevel().name();

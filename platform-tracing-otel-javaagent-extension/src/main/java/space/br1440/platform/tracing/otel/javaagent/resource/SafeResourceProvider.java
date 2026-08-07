@@ -7,8 +7,8 @@ import io.opentelemetry.sdk.resources.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.safety.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.safety.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import java.util.Objects;
 

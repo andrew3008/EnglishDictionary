@@ -5,7 +5,7 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.safety.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
 
 import java.util.Collection;
 import java.util.List;

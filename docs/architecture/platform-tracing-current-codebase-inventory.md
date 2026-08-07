@@ -1202,7 +1202,6 @@ Which module collapses, if any, should be deferred until after first production 
     platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / InboundTraceControlPropagatorBuilder
     platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / InboundTraceControlPropagatorProvider
     platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / PropagationDefaults
-    platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / PropagationPolicy
     platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.propagation / SafeTextMapPropagator
     platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / BuildInfoReader
     platform-tracing-otel-javaagent-extension / space.br1440.platform.tracing.otel.javaagent.resource / ClasspathResourceLoader

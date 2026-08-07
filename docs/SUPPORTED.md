@@ -78,9 +78,11 @@ fixtures/source sets.
   -jar /app/application.jar
 ```
 
-Launcher сначала запускает pre-JVM verifier, затем подключает embedded Agent. Отдельные
-`-javaagent`, `otel.javaagent.extensions` и `OTEL_JAVAAGENT_EXTENSIONS` запрещены: они обходят
-атомарность distribution. Этот deployment path не разрешён для pilot/production до закрытия
+Launcher подключает embedded Agent из distribution. Отдельные `-javaagent`,
+`otel.javaagent.extensions` и `OTEL_JAVAAGENT_EXTENSIONS` запрещены: они обходят атомарность
+distribution. In-repo pre-JVM CLI verifier удалён по решению архитекторов; supply-chain
+enforcement для закрытия `RG-CONTROLLED-AGENT` должен быть внешним (signing / admission /
+immutable registry). Этот deployment path не разрешён для pilot/production до закрытия
 `RG-CONTROLLED-AGENT`.
 
 > **Изменено (Фаза 12 / context-first).** Флаг `-Dotel.instrumentation.http.server.capture-request-headers=X-Trace-On,X-QA-Trace`

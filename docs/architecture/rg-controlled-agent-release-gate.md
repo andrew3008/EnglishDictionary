@@ -23,7 +23,9 @@ Agent удалил значение до export. Поэтому stock Agent ос
 - SBOM;
 - build provenance и attestation;
 - immutable artifact или container registry;
-- mandatory pre-JVM verifier invocation;
+- mandatory pre-start supply-chain enforcement (signing / admission / init-container);
+  in-repo `PlatformAgentDistributionVerifier` CLI удалён как startup overhead — gate
+  закрывается только внешней заменой с тем же эффектом (failure предотвращает app start);
 - Helm или init-container integration;
 - admission policy;
 - rejection произвольного stock Agent;
@@ -51,7 +53,8 @@ Agent удалил значение до export. Поэтому stock Agent ос
 Gate закрывается только исполняемым или операционным evidence, подтверждающим одновременно:
 
 1. каждый production service получает утверждённый Controlled Agent Distribution;
-2. verifier выполняется до application JVM, а его failure предотвращает startup;
+2. supply-chain enforcement выполняется до application JVM (или до допуска pod'а),
+   а его failure предотвращает startup;
 3. stock Agent нельзя подменить через поддерживаемые deployment paths;
 4. external extension override не может обойти embedded extension;
 5. rollout и rollback используют полный distribution как одну атомарную единицу;

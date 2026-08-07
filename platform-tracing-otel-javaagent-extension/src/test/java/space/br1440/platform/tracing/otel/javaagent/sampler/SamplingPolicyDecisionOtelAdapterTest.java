@@ -137,14 +137,11 @@ class SamplingPolicyDecisionOtelAdapterTest {
                         SamplingPolicyOtelAdapter.toRequest(
                                 c.parentContext(),
                                 c.traceId(),
-                                "test-span",
-                                SpanKind.SERVER,
                                 c.urlPath() == null
                                         ? io.opentelemetry.api.common.Attributes.empty()
                                         : io.opentelemetry.api.common.Attributes.builder()
                                                 .put("url.path", c.urlPath())
-                                                .build(),
-                                java.util.List.of()),
+                                                .build()),
                         holder.current().samplingEnabled(),
                         holder.current().samplingRouteRatios(),
                         holder.current().samplingRatio(),

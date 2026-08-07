@@ -1,11 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import lombok.experimental.UtilityClass;
 
 import java.util.List;
 
 import static space.br1440.platform.tracing.otel.javaagent.factory.FactoryUtils.orDefault;
 
+@UtilityClass
 public final class PropagationDefaults {
 
     public static final String PROP_BAGGAGE_ENABLED = "platform.tracing.javaagent.propagation.baggage.enabled";
@@ -17,16 +19,12 @@ public final class PropagationDefaults {
     public static final String PROP_HEADER_REQUEST_ID = "platform.tracing.propagation.platform-headers.request-id-header";
 
     public static final boolean DEFAULT_BAGGAGE_ENABLED = true;
-    public static final List<String> DEFAULT_BAGGAGE_ALLOWED_KEYS =
-            List.of("traffic_source", "tenant_class", "platform.correlation.id");
+    public static final List<String> DEFAULT_BAGGAGE_ALLOWED_KEYS = List.of("traffic_source", "tenant_class", "platform.correlation.id");
     public static final List<String> DEFAULT_BAGGAGE_DENY_PATTERNS = List.of("password", "secret", "token");
 
     public static final String DEFAULT_FORCE_HEADER = "X-Trace-On";
     public static final String DEFAULT_QA_HEADER = "X-QA-Trace";
     public static final String DEFAULT_REQUEST_ID_HEADER = "X-Request-Id";
-
-    private PropagationDefaults() {
-    }
 
     public static String getForceTraceHeader(ConfigProperties config) {
         return orDefault(config.getString(PROP_HEADER_FORCE_TRACE), DEFAULT_FORCE_HEADER);

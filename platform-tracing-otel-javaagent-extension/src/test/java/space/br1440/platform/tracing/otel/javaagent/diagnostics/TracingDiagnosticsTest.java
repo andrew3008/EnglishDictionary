@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.safety;
+package space.br1440.platform.tracing.otel.javaagent.diagnostics;
 
 import org.junit.jupiter.api.Test;
 

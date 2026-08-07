@@ -11,8 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.br1440.platform.tracing.otel.javaagent.exception.TracingValidationException;
-import space.br1440.platform.tracing.otel.javaagent.safety.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.safety.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
+import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import java.util.ArrayList;
 import java.util.Collections;

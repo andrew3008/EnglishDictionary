@@ -43,7 +43,7 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
         AcceptedPolicyAccess access = acceptedPolicy.get();
         AcceptedPolicyView policy = access.current();
         SamplingPolicyRequest request = SamplingPolicyOtelAdapter.toRequest(
-                parentContext, traceId, name, spanKind, attributes, parentLinks
+                parentContext, traceId, attributes
         );
 
         SamplingPolicyDecision decision = policyEngine.evaluate(
@@ -51,7 +51,8 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
                 policy.samplingEnabled(),
                 policy.samplingRouteRatios(),
                 policy.samplingRatio(),
-                access.currentLegacySamplingRules());
+                access.currentLegacySamplingRules()
+        );
         SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
         recordDecision(result.getDecision(), SamplingPolicyOtelAdapter.metricReasonCode(decision));
         return result;
@@ -66,7 +67,8 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
     public String getDescription() {
         return String.format("PlatformRuleBasedSampler{version=%d, defaultRatio=%.2f}",
                 acceptedPolicy.get().current().acceptedSequence(),
-                acceptedPolicy.get().current().samplingRatio());
+                acceptedPolicy.get().current().samplingRatio()
+        );
     }
 
     @Override
@@ -94,17 +96,19 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
     public long getDecisionCount(String decision, String reason) {
         String key = decision + ":" + reason;
         LongAdder adder = decisionCounters.get(key);
-        return adder != null ? adder.sum() : 0L;
+        return (adder != null) ? adder.sum() : 0L;
     }
 
     public Map<String, Long> getDecisionCounts() {
         if (decisionCounters.isEmpty()) {
             return Collections.emptyMap();
         }
+
         Map<String, Long> snapshot = new HashMap<>(decisionCounters.size());
         for (Map.Entry<String, LongAdder> entry : decisionCounters.entrySet()) {
             snapshot.put(entry.getKey(), entry.getValue().sum());
         }
+
         return snapshot;
     }
 

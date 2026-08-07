@@ -60,12 +60,9 @@ final class SamplingCharacterizationSupport {
         SamplingPolicyRequest request = SamplingPolicyOtelAdapter.toRequest(
                 c.parentContext(),
                 c.traceId(),
-                "test-span",
-                SpanKind.SERVER,
                 c.urlPath() == null
                         ? Attributes.empty()
-                        : Attributes.builder().put("url.path", c.urlPath()).build(),
-                List.of());
+                        : Attributes.builder().put("url.path", c.urlPath()).build());
         SamplingPolicyDecision decision = sampler.policyEngine().evaluate(
                 request,
                 sampler.acceptedPolicy().current().samplingEnabled(),

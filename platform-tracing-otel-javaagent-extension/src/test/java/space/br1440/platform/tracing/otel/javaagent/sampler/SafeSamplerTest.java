@@ -8,7 +8,7 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.safety.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
 import space.br1440.platform.tracing.test.harness.SamplerHarness;
 
 import java.util.List;

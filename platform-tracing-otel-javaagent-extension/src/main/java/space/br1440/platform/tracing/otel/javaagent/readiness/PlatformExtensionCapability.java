@@ -1,8 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.readiness;
 
-/**
- * Возможности, подтверждаемые фактическими callback'ами SDK autoconfigure.
- */
 public enum PlatformExtensionCapability {
     CONFIGURATION_LOADED,
     PLATFORM_SAMPLER_INSTALLED,

@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.readiness;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,5 +36,25 @@ class PlatformExtensionReadinessTest {
         assertThat(readiness.failureCode()).isEqualTo("SANITIZER_INIT_FAILED");
         assertThat(readiness.failureMessage()).isEqualTo("IllegalStateException: rule load failed");
         assertThat(readiness.has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
+    }
+
+    @Test
+    void failIsWriteOnceAndPreservesTheOriginalRootCause() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+
+        readiness.fail("FIRST_FAILURE", new IllegalStateException("first cause"));
+        readiness.fail("SECOND_FAILURE", new IllegalArgumentException("second cause"));
+
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(readiness.failureCode()).isEqualTo("FIRST_FAILURE");
+        assertThat(readiness.failureMessage()).isEqualTo("IllegalStateException: first cause");
+    }
+
+    @Test
+    void markInstalledAndHasRejectNullCapability() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+
+        assertThatThrownBy(() -> readiness.markInstalled(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> readiness.has(null)).isInstanceOf(NullPointerException.class);
     }
 }
