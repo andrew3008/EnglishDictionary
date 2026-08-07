@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
@@ -37,7 +38,8 @@ class SpringBootContextMatrixTest {
                     "platform.environment=LOCAL");
 
     private final ApplicationContextRunner controlledAgentRunner = baseRunner
-            .withInitializer(ControlledAgentTestRuntime::initialize);
+            .withInitializer(ControlledAgentTestRuntime::initialize)
+            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier);
 
     @Test
     void enabledWithOpenTelemetry_exposesEnabledSpanFactoryDiagnostics() {

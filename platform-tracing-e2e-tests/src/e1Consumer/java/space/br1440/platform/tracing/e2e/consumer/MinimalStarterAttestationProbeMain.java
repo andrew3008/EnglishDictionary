@@ -26,9 +26,9 @@ public class MinimalStarterAttestationProbeMain {
             emit("runtimeState=" + diagnostics.runtimeState());
             emit("tracingEnabled=" + diagnostics.tracingEnabled());
             emit("facadeNoop=" + facade.getClass().getSimpleName().contains("Noop"));
-            emit("endpointPresent=" + diagnostics.extensionDescriptor().readinessEndpointPresent());
-            emit("lifecycle=" + diagnostics.extensionDescriptor().lifecycle());
-            emit("failureCode=" + diagnostics.extensionDescriptor().failureCode());
+            emit("endpointPresent=" + diagnostics.agentReadiness().endpointPresent());
+            emit("lifecycle=" + diagnostics.agentReadiness().lifecycle());
+            emit("failureCode=" + diagnostics.agentReadiness().failureCode());
             require(diagnostics.runtimeState() == expectedState,
                     "Ожидалось состояние " + expectedState + ", получено " + diagnostics.runtimeState());
             emit("COMPLETE");

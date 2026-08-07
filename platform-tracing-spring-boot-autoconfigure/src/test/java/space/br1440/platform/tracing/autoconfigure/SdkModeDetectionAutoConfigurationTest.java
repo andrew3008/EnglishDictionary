@@ -21,10 +21,12 @@ class TracingEnabledAutoConfigurationTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
-                    TracingRuntimeAutoConfiguration.class))
+                    TracingRuntimeAutoConfiguration.class)
+            )
             .withPropertyValues(
                     "platform.tracing.configuration.authority=HELM",
-                    "platform.environment=LOCAL");
+                    "platform.environment=LOCAL"
+            );
 
     @Test
     void enabledByDefaultWithoutControlledAgentFailsStartup() {
@@ -33,7 +35,8 @@ class TracingEnabledAutoConfigurationTest {
             assertThat(context.getStartupFailure())
                     .hasRootCauseMessage(
                             "platform.tracing.enabled=true rejected observed runtime state=AGENT_MISSING, "
-                                    + "failureCode=CONTROLLED_AGENT_MISSING");
+                                    + "failureCode=CONTROLLED_AGENT_MISSING"
+                    );
         });
     }
 
@@ -45,6 +48,7 @@ class TracingEnabledAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(TraceOperations.class)).isInstanceOf(NoopTraceOperations.class);
+
                     TracingDeploymentDiagnostics diagnostics = context.getBean(TracingDeploymentDiagnostics.class);
                     assertThat(diagnostics.tracingEnabled()).isFalse();
                     assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
@@ -56,8 +60,7 @@ class TracingEnabledAutoConfigurationTest {
     void applicationSdkBeanIsRejectedEvenWhenDisabled() {
         contextRunner
                 .withUserConfiguration(OpenTelemetryConfiguration.class)
-                .withPropertyValues(
-                        "platform.tracing.enabled=false")
+                .withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())

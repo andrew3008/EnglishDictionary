@@ -21,7 +21,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProce
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRulesLoader;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.StartupDiagnostics;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.PriorityHardening;

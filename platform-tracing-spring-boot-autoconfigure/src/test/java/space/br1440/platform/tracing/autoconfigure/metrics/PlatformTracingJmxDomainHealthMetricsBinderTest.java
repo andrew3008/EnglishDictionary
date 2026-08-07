@@ -51,19 +51,19 @@ class PlatformTracingJmxDomainHealthMetricsBinderTest {
     }
 
     @Test
-    void доменные_гейджи_дают_честный_ноль_если_MBean_не_зарегистрирован() {
+    void domain_gauges_report_honest_zero_when_MBean_unregistered() {
         assertThat(gauge(REGISTERED_METRIC, "sampling")).isEqualTo(0.0);
         assertThat(gauge(READABLE_METRIC, "sampling")).isEqualTo(0.0);
         assertThat(gauge(FRESHNESS_METRIC, "sampling")).isNaN();
     }
 
     @Test
-    void owner_present_NaN_пока_домен_не_прочитан_успешно() {
+    void owner_present_NaN_until_domain_read_succeeds() {
         assertThat(ownerGauge("sampling", "sampler")).isNaN();
     }
 
     @Test
-    void доменные_гейджи_переходят_в_1_после_регистрации_и_успешного_чтения() throws Exception {
+    void domain_gauges_become_1_after_registration_and_successful_read() throws Exception {
         registerSamplingMBean();
 
         assertThat(gauge(REGISTERED_METRIC, "sampling")).isEqualTo(1.0);
@@ -72,7 +72,7 @@ class PlatformTracingJmxDomainHealthMetricsBinderTest {
     }
 
     @Test
-    void owner_present_0_если_домен_читаем_но_владелец_отсутствует() throws Exception {
+    void owner_present_0_when_domain_readable_but_owner_absent() throws Exception {
         registerSamplingMBean();
 
         assertThat(ownerGauge("sampling", "sampler")).isEqualTo(0.0);

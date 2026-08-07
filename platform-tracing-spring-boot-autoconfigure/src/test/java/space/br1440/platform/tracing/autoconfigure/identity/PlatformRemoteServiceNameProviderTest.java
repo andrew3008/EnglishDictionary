@@ -31,26 +31,26 @@ class PlatformRemoteServiceNameProviderTest {
     }
 
     @Test
-    void пустой_optional_когда_MDC_не_содержит_ключ() {
+    void empty_optional_when_MDC_lacks_key() {
         assertThat(provider.get()).isEmpty();
     }
 
     @Test
-    void читает_имя_upstream_сервиса_из_MDC() {
+    void reads_upstream_service_name_from_MDC() {
         MDC.put(TracingMdcKeys.REMOTE_SERVICE, "billing-service");
 
         assertThat(provider.get()).contains("billing-service");
     }
 
     @Test
-    void пустая_строка_в_MDC_трактуется_как_отсутствие_значения() {
+    void blank_MDC_value_treated_as_absent() {
         MDC.put(TracingMdcKeys.REMOTE_SERVICE, "  ");
 
         assertThat(provider.get()).isEmpty();
     }
 
     @Test
-    void метод_get_никогда_не_бросает_исключений() {
+    void get_never_throws() {
         assertThat(provider.get()).isEmpty();
         MDC.put(TracingMdcKeys.REMOTE_SERVICE, "ok");
         assertThat(provider.get()).contains("ok");
@@ -61,7 +61,7 @@ class PlatformRemoteServiceNameProviderTest {
      * resolver вызывается с resolve(traceId) — mirror читается по явному ключу.
      */
     @Test
-    void читает_trace_scoped_mirror_через_активный_span() {
+    void reads_trace_scoped_mirror_via_active_span() {
         RemoteServiceMdc.putIfPresent("upstream-from-mirror", TRACE_ID);
         MDC.remove(TracingMdcKeys.REMOTE_SERVICE);
 
@@ -79,7 +79,7 @@ class PlatformRemoteServiceNameProviderTest {
      * отсутствие NPE/падений (fail-soft §37), а не различие resolve() vs resolve(traceId).
      */
     @Test
-    void без_активного_span_mirror_не_читается() {
+    void without_active_span_mirror_is_not_read() {
         RemoteServiceMdc.putIfPresent("upstream-from-mirror", TRACE_ID);
         MDC.remove(TracingMdcKeys.REMOTE_SERVICE);
 
@@ -87,7 +87,7 @@ class PlatformRemoteServiceNameProviderTest {
     }
 
     @Test
-    void contributor_через_resolver() {
+    void contributor_via_resolver() {
         PlatformRemoteServiceNameProvider withSource = new PlatformRemoteServiceNameProvider(
                 new RemoteServiceNameResolver(List.of(() -> Optional.of("from-contributor"))));
 

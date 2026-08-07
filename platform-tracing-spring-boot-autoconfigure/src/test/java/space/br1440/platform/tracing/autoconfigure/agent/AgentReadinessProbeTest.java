@@ -56,23 +56,21 @@ class AgentReadinessProbeTest {
         assertThat(counting.getAttributesCalls).isEqualTo(1);
         assertThat(result).isInstanceOf(AgentReadinessProbe.ProbeResult.Present.class);
         AgentReadinessSnapshot snapshot = ((AgentReadinessProbe.ProbeResult.Present) result).snapshot();
-        assertThat(snapshot.extensionVersion()).isEqualTo("development");
-        assertThat(snapshot.protocolVersion()).isEqualTo(1);
-        assertThat(snapshot.profile()).isEqualTo("platform-agent-secure-v1");
-        assertThat(snapshot.lifecycle()).isEqualTo("READY");
-        assertThat(snapshot.failureCode()).isEmpty();
-        assertThat(snapshot.capabilities()).containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
-        assertThat(snapshot.requiredCapabilities()).containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
-        assertThat(snapshot.sanitizerInstalled()).isTrue();
-        assertThat(snapshot.samplerInstalled()).isTrue();
-        assertThat(snapshot.requiredSpanProcessorsInstalled()).isTrue();
-        assertThat(snapshot.propagationHooksInstalled()).isTrue();
-        assertThat(snapshot.exportPathProtected()).isTrue();
+        assertThat(snapshot.protocol().extensionVersion()).isEqualTo("development");
+        assertThat(snapshot.protocol().protocolVersion()).isEqualTo(1);
+        assertThat(snapshot.protocol().profile()).isEqualTo("platform-agent-secure-v1");
+        assertThat(snapshot.status().lifecycle()).isEqualTo("READY");
+        assertThat(snapshot.status().failureCode()).isEmpty();
+        assertThat(snapshot.capabilities().advertised())
+                .containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
+        assertThat(snapshot.capabilities().required())
+                .containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
+        assertThat(snapshot.installFlags().isComplete()).isTrue();
 
-        assertThatThrownBy(() -> snapshot.capabilities().add("INJECTED"))
+        assertThatThrownBy(() -> snapshot.capabilities().advertised().add("INJECTED"))
                 .as("capabilities set returned by the probe must be defensively unmodifiable")
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> snapshot.requiredCapabilities().add("INJECTED"))
+        assertThatThrownBy(() -> snapshot.capabilities().required().add("INJECTED"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -215,11 +213,124 @@ class AgentReadinessProbeTest {
             boolean componentFlags) throws Exception {
         server.registerMBean(
                 new StandardMBean(
-                        new AgentExtensionObserverTest.ReadinessView(
-                                lifecycle, protocol, capabilities, failureCode, componentFlags),
-                        AgentExtensionObserverTest.ReadinessViewMBean.class),
+                        new ReadinessView(lifecycle, protocol, capabilities, failureCode, componentFlags),
+                        ReadinessViewMBean.class),
                 PlatformTracingJmxObjectNames.EXTENSION_READINESS);
         return server;
+    }
+
+    public interface ReadinessViewMBean {
+        String getExtensionVersion();
+
+        int getProtocolVersion();
+
+        String getProfile();
+
+        String getLifecycleState();
+
+        String getFailureCode();
+
+        String getFailureMessage();
+
+        String[] getCapabilities();
+
+        String[] getRequiredCapabilities();
+
+        boolean isSanitizerInstalled();
+
+        boolean isSamplerInstalled();
+
+        boolean isRequiredSpanProcessorsInstalled();
+
+        boolean isPropagationHooksInstalled();
+
+        boolean isExportPathProtected();
+    }
+
+    public static final class ReadinessView implements ReadinessViewMBean {
+        private final String lifecycle;
+        private final int protocol;
+        private final Set<String> capabilities;
+        private final String failureCode;
+        private final boolean componentFlags;
+
+        ReadinessView(
+                String lifecycle,
+                int protocol,
+                Set<String> capabilities,
+                String failureCode,
+                boolean componentFlags) {
+            this.lifecycle = lifecycle;
+            this.protocol = protocol;
+            this.capabilities = capabilities;
+            this.failureCode = failureCode;
+            this.componentFlags = componentFlags;
+        }
+
+        @Override
+        public String getExtensionVersion() {
+            return "development";
+        }
+
+        @Override
+        public int getProtocolVersion() {
+            return protocol;
+        }
+
+        @Override
+        public String getProfile() {
+            return "platform-agent-secure-v1";
+        }
+
+        @Override
+        public String getLifecycleState() {
+            return lifecycle;
+        }
+
+        @Override
+        public String getFailureCode() {
+            return failureCode;
+        }
+
+        @Override
+        public String getFailureMessage() {
+            return failureCode.isBlank() ? "" : "safe failure";
+        }
+
+        @Override
+        public String[] getCapabilities() {
+            return capabilities.toArray(String[]::new);
+        }
+
+        @Override
+        public String[] getRequiredCapabilities() {
+            return COMPLETE_CAPABILITIES.toArray(String[]::new);
+        }
+
+        @Override
+        public boolean isSanitizerInstalled() {
+            return componentFlags;
+        }
+
+        @Override
+        public boolean isSamplerInstalled() {
+            return componentFlags;
+        }
+
+        @Override
+        public boolean isRequiredSpanProcessorsInstalled() {
+            return componentFlags;
+        }
+
+        @Override
+        public boolean isPropagationHooksInstalled() {
+            return componentFlags;
+        }
+
+        @Override
+        public boolean isExportPathProtected() {
+            return componentFlags;
+        }
     }
 
     public interface PartialReadinessViewMBean {

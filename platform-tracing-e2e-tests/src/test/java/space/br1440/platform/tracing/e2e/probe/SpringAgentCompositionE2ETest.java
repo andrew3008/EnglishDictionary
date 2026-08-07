@@ -36,6 +36,7 @@ class SpringAgentCompositionE2ETest {
                 .contains(PREFIX + "agent.facadeNoop=false")
                 .contains(PREFIX + "agent.openTelemetryBeans=0")
                 .contains(PREFIX + "agent.currentContextVisible=true")
+                .contains(PREFIX + "agent.implementationVersionPresent=true")
                 .contains(PREFIX + "disabledTracing.liveAgentRejected=true")
                 .contains(PREFIX + "COMPLETE");
     }

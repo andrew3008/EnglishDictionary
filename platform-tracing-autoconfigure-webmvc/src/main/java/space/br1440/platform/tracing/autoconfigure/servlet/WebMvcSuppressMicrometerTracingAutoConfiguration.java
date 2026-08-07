@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.http.client.observation.ClientRequestObservationContext;
 import org.springframework.http.server.observation.ServerRequestObservationContext;
-import space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector;
+import space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDetector;
 import space.br1440.platform.tracing.autoconfigure.integrations.observation.SuppressMicrometerTracingCondition;
 
 /**
@@ -85,7 +85,8 @@ public class WebMvcSuppressMicrometerTracingAutoConfiguration {
             });
             log.info("Suppressed Servlet HTTP server/client Micrometer Observations — spans and metrics "
                     + "for these observations are not published. HTTP telemetry should come from "
-                    + "OpenTelemetry Java Agent. (agentDetected={})", OtelAgentDetector.isAgentPresent());
+                    + "OpenTelemetry Java Agent. (agentDetected={})",
+                    OtelJavaAgentMarkerDetector.isAgentPresent());
         };
     }
 }

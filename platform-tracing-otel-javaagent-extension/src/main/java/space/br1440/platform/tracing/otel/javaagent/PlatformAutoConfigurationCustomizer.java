@@ -40,11 +40,6 @@ public class PlatformAutoConfigurationCustomizer implements AutoConfigurationCus
     private final BaggagePropagationCustomizer baggageCustomizer = new BaggagePropagationCustomizer();
     private final PlatformPropagatorsDefaultsCustomizer propagatorsDefaults = new PlatformPropagatorsDefaultsCustomizer();
 
-    /**
-     * Единственный экземпляр {@link ExtensionConfig} для этого bootstrap-прохода.
-     * Создаётся в первом {@code addPropertiesCustomizer} (до любых factory callbacks)
-     * и переиспользуется всеми factory lambdas.
-     */
     private final AtomicReference<ExtensionConfig> extensionConfig = new AtomicReference<>();
     private final AtomicReference<AcceptedPolicyAccess> acceptedPolicy = new AtomicReference<>();
     private final AtomicReference<AutoCloseable> privateControlPlane = new AtomicReference<>();

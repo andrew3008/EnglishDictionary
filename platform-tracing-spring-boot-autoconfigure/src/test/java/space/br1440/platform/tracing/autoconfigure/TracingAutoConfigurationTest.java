@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.integrations.aop.TracedAspect;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration;
@@ -44,10 +45,11 @@ class TracingAutoConfigurationTest {
                     "platform.environment=LOCAL");
 
     private final ApplicationContextRunner controlledAgentRunner = contextRunner
-            .withInitializer(ControlledAgentTestRuntime::initialize);
+            .withInitializer(ControlledAgentTestRuntime::initialize)
+            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier);
 
     @Test
-    void регистрируетTraceOperationsПриОтсутствииOpenTelemetry() {
+    void registersTraceOperationsWhenOpenTelemetryIsAbsent() {
         contextRunner.run(context -> {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure()).hasMessageContaining("CONTROLLED_AGENT_MISSING");
@@ -55,7 +57,7 @@ class TracingAutoConfigurationTest {
     }
 
     @Test
-    void регистрируетDefaultTraceOperationsПриНаличииOpenTelemetry() {
+    void registersDefaultTraceOperationsWhenOpenTelemetryIsPresent() {
         controlledAgentRunner
                 .run(context -> {
                     TraceOperations traceOperations = context.getBean(TraceOperations.class);
@@ -65,7 +67,7 @@ class TracingAutoConfigurationTest {
     }
 
     @Test
-    void отключаетсяПриЯвномВыключении() {
+    void disablesWhenExplicitlyTurnedOff() {
         contextRunner
                 .withPropertyValues(
                         "platform.tracing.enabled=false")
@@ -77,7 +79,7 @@ class TracingAutoConfigurationTest {
     }
 
     @Test
-    void декорируетPlatformTracingMetricsПриНаличииMeterRegistry() {
+    void decoratesPlatformTracingMetricsWhenMeterRegistryIsPresent() {
         controlledAgentRunner
                 .withUserConfiguration(MeterRegistryConfiguration.class)
                 .run(context -> {
@@ -89,14 +91,14 @@ class TracingAutoConfigurationTest {
     }
 
     @Test
-    void регистрируетAspectДляAnnotation() {
+    void registersAspectForAnnotation() {
         controlledAgentRunner.run(context -> {
             assertThat(context).hasSingleBean(TracedAspect.class);
         });
     }
 
     @Test
-    void регистрируетHealthIndicatorИEndpoint() {
+    void registersHealthIndicatorAndEndpoint() {
         controlledAgentRunner
                 .withConfiguration(AutoConfigurations.of(
                         EndpointAutoConfiguration.class,
@@ -111,9 +113,6 @@ class TracingAutoConfigurationTest {
                     assertThat(context).hasBean("tracingStartupContractHealthIndicator");
                 });
     }
-
-    // Тест регистрации Servlet WebFilter'ов вынесен в модуль platform-tracing-autoconfigure-webmvc,
-    // вместе с самим ServletTracingAutoConfiguration. Аналогично — для WebFlux-аналога.
 
     @Configuration
     static class MeterRegistryConfiguration {

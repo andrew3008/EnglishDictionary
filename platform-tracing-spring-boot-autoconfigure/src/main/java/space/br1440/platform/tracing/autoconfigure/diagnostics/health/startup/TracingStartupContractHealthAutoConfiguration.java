@@ -44,7 +44,7 @@ public class TracingStartupContractHealthAutoConfiguration {
                                                              TracingDeploymentDiagnostics diagnostics) {
         TracingRuntimeMode mode = tracingRuntime.state().mode();
         AgentRuntimeState agentState = diagnostics.runtimeState();
-        String failureCode = diagnostics.extensionDescriptor().failureCode();
+        String failureCode = diagnostics.agentReadiness().failureCode();
 
         return new TracingStartupContractSnapshot(
                 diagnostics.tracingEnabled(),

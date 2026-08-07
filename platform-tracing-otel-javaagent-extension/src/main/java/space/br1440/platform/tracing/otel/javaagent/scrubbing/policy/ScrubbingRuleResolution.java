@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.policy;
 
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import java.util.ArrayList;
 import java.util.List;

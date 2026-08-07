@@ -1,12 +1,9 @@
 # Exact public type allowlist for platform-tracing-spring-boot-autoconfigure.
 # Changes require architecture review. Internal cross-module contracts are not application SPI.
 
-space.br1440.platform.tracing.autoconfigure.agent.AgentDeploymentExpectation
-space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor
-space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionObserver
-space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeContractValidator
 space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState
-space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector
+space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier
+space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDetector
 space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics
 space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture
 space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames

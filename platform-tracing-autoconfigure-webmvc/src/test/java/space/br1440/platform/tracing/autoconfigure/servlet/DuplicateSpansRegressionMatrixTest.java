@@ -65,7 +65,7 @@ class DuplicateSpansRegressionMatrixTest {
     void productionScenario_suppressorActiveAndAgentDetectedConceptually() {
         // Agent-сторона унит-тестом не имитируется (detect через системную JVM-инициализацию).
         // Здесь фиксируется только bean-контракт. Agent-side детектируется
-        // OtelAgentDetector, и его поведение в combination с suppress=on покрыто
+        // OtelJavaAgentMarkerDetector, и его поведение в combination с suppress=on покрыто
         // TracingObservationSuppressStartupTest#noWarnWhenSuppressTrueAndAgentDetected.
         contextRunner
                 .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")

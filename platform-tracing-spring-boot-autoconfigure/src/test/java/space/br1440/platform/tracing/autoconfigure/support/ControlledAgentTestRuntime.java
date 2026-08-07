@@ -5,6 +5,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
 
 import javax.management.MBeanServer;
@@ -90,6 +91,18 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
 
     public static ControlledAgentTestRuntime startIncompatible() {
         return start(null, new IncompatibleExtension());
+    }
+
+    /**
+     * The {@link AgentStartupVerifier} counterpart of every fixture in this class: all of
+     * {@link ReadyExtension}, {@link IncompatibleExtension} report {@code development} as
+     * {@code ExtensionVersion}, so a Spring context under test must register this bean (overriding
+     * the production {@code @ConditionalOnMissingBean} default) to reach the two-sided
+     * {@code development}/{@code development} unit seam (plan &sect;6.1) — the exploded test
+     * classpath has no packaged {@code Implementation-Version} manifest attribute.
+     */
+    public static AgentStartupVerifier verifier() {
+        return new AgentStartupVerifier(ManagementFactory.getPlatformMBeanServer(), "development");
     }
 
     private static void closeWithContext(

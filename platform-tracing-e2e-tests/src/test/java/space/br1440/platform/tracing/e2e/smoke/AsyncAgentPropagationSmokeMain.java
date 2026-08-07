@@ -79,8 +79,10 @@ public class AsyncAgentPropagationSmokeMain {
                 "--logging.level.root=WARN")) {
             String mode = context.getEnvironment().getRequiredProperty("async.probe.executor-mode");
             TracingDeploymentDiagnostics diagnostics = context.getBean(TracingDeploymentDiagnostics.class);
-            print(mode, "agentDetected", diagnostics.agentDetected());
+            print(mode, "agentDetected", diagnostics.agentMarkerVisible());
             print(mode, "runtimeState", diagnostics.runtimeState());
+            print(mode, "implementationVersionPresent",
+                    TracingDeploymentDiagnostics.class.getPackage().getImplementationVersion() != null);
             print(mode, "openTelemetryBeans", context.getBeansOfType(OpenTelemetry.class).size());
 
             if ("CUSTOM".equals(mode)) {

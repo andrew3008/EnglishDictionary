@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing;
 
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.otel.javaagent.processor.utils.IpPrefixTruncator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.integrations.observation;
 import org.springframework.core.env.Environment;
 
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector;
+import space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDetector;
 
 import lombok.experimental.UtilityClass;
 
@@ -14,7 +14,7 @@ public final class MicrometerTracingSuppressionResolver {
 
     public static boolean resolve(Environment environment) {
         Boolean explicit = environment.getProperty(PROPERTY_NAME, Boolean.class);
-        return (explicit != null) ? explicit : OtelAgentDetector.isAgentPresent();
+        return (explicit != null) ? explicit : OtelJavaAgentMarkerDetector.isAgentPresent();
     }
 
     public static boolean isExplicitlySet(Environment environment) {

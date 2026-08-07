@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlatformTracingMetricsTest {
 
     @Test
-    void инкрементируетСчётчикSpansStartedСТэгомКатегории() {
+    void incrementsSpansStartedCounterWithCategoryTag() {
         MeterRegistry registry = new SimpleMeterRegistry();
         PlatformTracingMetrics metrics = new PlatformTracingMetrics(registry);
 
@@ -36,7 +36,7 @@ class PlatformTracingMetricsTest {
     }
 
     @Test
-    void инкрементируетСчётчикИсключений() {
+    void incrementsExceptionCounter() {
         MeterRegistry registry = new SimpleMeterRegistry();
         PlatformTracingMetrics metrics = new PlatformTracingMetrics(registry);
 
@@ -49,7 +49,7 @@ class PlatformTracingMetricsTest {
     }
 
     @Test
-    void инкрементируетСчётчикЗакрытыхScope() {
+    void incrementsClosedScopeCounter() {
         MeterRegistry registry = new SimpleMeterRegistry();
         PlatformTracingMetrics metrics = new PlatformTracingMetrics(registry);
 
@@ -63,7 +63,7 @@ class PlatformTracingMetricsTest {
     }
 
     @Test
-    void инкрементируетСчётчикПовторныхЗакрытий() {
+    void incrementsDoubleCloseCounter() {
         MeterRegistry registry = new SimpleMeterRegistry();
         PlatformTracingMetrics metrics = new PlatformTracingMetrics(registry);
 
@@ -75,7 +75,7 @@ class PlatformTracingMetricsTest {
     }
 
     @Test
-    void инкрементируетСчётчикWatchdogПринудительныхЗакрытийСТэгомReason() {
+    void incrementsWatchdogForcedCloseCounterWithReasonTag() {
         MeterRegistry registry = new SimpleMeterRegistry();
         PlatformTracingMetrics metrics = new PlatformTracingMetrics(registry);
 

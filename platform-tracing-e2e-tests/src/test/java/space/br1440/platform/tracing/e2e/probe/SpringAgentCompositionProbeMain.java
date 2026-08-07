@@ -42,13 +42,13 @@ public class SpringAgentCompositionProbeMain {
             TraceOperations traceOperations = context.getBean(TraceOperations.class);
 
             emit("agent.runtimeState=" + diagnostics.runtimeState());
-            if (diagnostics.extensionDescriptor() != null) {
-                emit("agent.extensionLifecycle=" + diagnostics.extensionDescriptor().lifecycle());
-                emit("agent.extensionCapabilities=" + diagnostics.extensionDescriptor().capabilities());
-            }
+            emit("agent.extensionLifecycle=" + diagnostics.agentReadiness().lifecycle());
+            emit("agent.extensionCapabilities=" + diagnostics.agentReadiness().capabilities());
+            emit("agent.implementationVersionPresent="
+                    + isNotBlank(TracingDeploymentDiagnostics.class.getPackage().getImplementationVersion()));
 
             require(diagnostics.tracingEnabled(), "tracing должен быть включён");
-            require(diagnostics.agentDetected(), "agent marker должен быть обнаружен");
+            require(diagnostics.agentMarkerVisible(), "agent marker должен быть обнаружен");
             require(!(traceOperations instanceof NoopTraceOperations), "AGENT facade не должен быть no-op");
             require(context.getBeansOfType(OpenTelemetry.class).isEmpty(),
                     "Spring не должен регистрировать второй OpenTelemetry bean");
@@ -67,7 +67,7 @@ public class SpringAgentCompositionProbeMain {
             }
 
             emit("agent.tracingEnabled=" + diagnostics.tracingEnabled());
-            emit("agent.agentDetected=" + diagnostics.agentDetected());
+            emit("agent.agentDetected=" + diagnostics.agentMarkerVisible());
             emit("agent.facadeNoop=false");
             emit("agent.openTelemetryBeans=0");
         }
@@ -113,5 +113,9 @@ public class SpringAgentCompositionProbeMain {
     private static void emit(String value) {
         System.out.println(PREFIX + value);
         System.out.flush();
+    }
+
+    private static boolean isNotBlank(String value) {
+        return value != null && !value.isBlank();
     }
 }

@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.policy;
 
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

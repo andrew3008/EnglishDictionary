@@ -15,7 +15,7 @@ class ServiceNameProviderAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(ServiceNameProviderAutoConfiguration.class));
 
     @Test
-    void провайдеры_поднимаются_по_умолчанию() {
+    void providers_start_by_default() {
         runner.run(context -> {
             assertThat(context).hasSingleBean(PlatformLocalServiceNameProvider.class);
             assertThat(context).hasSingleBean(PlatformRemoteServiceNameProvider.class);
@@ -23,7 +23,7 @@ class ServiceNameProviderAutoConfigurationTest {
     }
 
     @Test
-    void провайдеры_поднимаются_даже_при_tracing_enabled_false() {
+    void providers_start_even_when_tracing_enabled_false() {
         runner.withPropertyValues("platform.tracing.enabled=false").run(context -> {
             assertThat(context).hasSingleBean(PlatformLocalServiceNameProvider.class);
             assertThat(context).hasSingleBean(PlatformRemoteServiceNameProvider.class);
@@ -31,7 +31,7 @@ class ServiceNameProviderAutoConfigurationTest {
     }
 
     @Test
-    void local_provider_использует_spring_application_name() {
+    void local_provider_uses_spring_application_name() {
         runner.withPropertyValues("spring.application.name=order-service").run(context -> {
             PlatformLocalServiceNameProvider provider = context.getBean(PlatformLocalServiceNameProvider.class);
             assertThat(provider.get()).isEqualTo("order-service");
@@ -39,7 +39,7 @@ class ServiceNameProviderAutoConfigurationTest {
     }
 
     @Test
-    void local_provider_не_читает_platform_tracing_service_name() {
+    void local_provider_does_not_read_platform_tracing_service_name() {
         runner.withPropertyValues(
                 "spring.application.name=spring-name",
                 "platform.tracing.service.name=tracing-name"

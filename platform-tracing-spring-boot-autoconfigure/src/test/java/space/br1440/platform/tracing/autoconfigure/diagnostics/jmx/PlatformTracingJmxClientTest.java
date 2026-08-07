@@ -50,7 +50,7 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void registrationSnapshot_все_NOT_REGISTERED_если_ни_один_MBean_не_зарегистрирован() {
+    void registrationSnapshot_all_NOT_REGISTERED_when_no_MBean_is_registered() {
         JmxMBeanRegistrationSnapshot snapshot = client.registrationSnapshot();
         assertThat(snapshot.allRegistered()).isFalse();
         assertThat(snapshot.sampling()).isEqualTo(JmxMBeanRegistrationState.NOT_REGISTERED);
@@ -58,33 +58,33 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void sampling_observation_пусто_если_MBean_недоступен() {
+    void sampling_observation_empty_when_MBean_unavailable() {
         assertThat(client.sampling().observation()).isEmpty();
     }
 
     @Test
-    void scrubbing_observation_пусто_если_MBean_недоступен() {
+    void scrubbing_observation_empty_when_MBean_unavailable() {
         assertThat(client.scrubbing().observation()).isEmpty();
     }
 
     @Test
-    void diagnostics_observation_пусто_если_MBean_недоступен() {
+    void diagnostics_observation_empty_when_MBean_unavailable() {
         assertThat(client.diagnostics().observation()).isEmpty();
     }
 
     @Test
-    void export_observation_пусто_если_MBean_недоступен() {
+    void export_observation_empty_when_MBean_unavailable() {
         assertThat(client.export().observation()).isEmpty();
     }
 
     @Test
-    void jmxContractDiagnostics_пуст_до_первого_нарушения_контракта() {
+    void jmxContractDiagnostics_empty_until_first_contract_violation() {
         List<JmxDiagnosticSnapshot> diagnostics = client.jmxContractDiagnostics();
         assertThat(diagnostics).isEmpty();
     }
 
     @Test
-    void sampling_observation_возвращает_значение_после_регистрации() throws Exception {
+    void sampling_observation_returns_value_after_registration() throws Exception {
         registerSamplingMBean();
 
         Optional<SamplingObservation> observation = client.sampling().observation();
@@ -95,7 +95,7 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void registrationSnapshot_REGISTERED_только_для_sampling_после_его_регистрации() throws Exception {
+    void registrationSnapshot_REGISTERED_only_for_sampling_after_its_registration() throws Exception {
         registerSamplingMBean();
 
         JmxMBeanRegistrationSnapshot snapshot = client.registrationSnapshot();
@@ -104,7 +104,7 @@ class PlatformTracingJmxClientTest {
     }
 
     @Test
-    void decisionCounts_owner_absent_если_composite_sampler_не_подключён() throws Exception {
+    void decisionCounts_owner_absent_when_composite_sampler_not_attached() throws Exception {
         registerSamplingMBean();
 
         Optional<SamplingObservation> observation = client.sampling().observation();

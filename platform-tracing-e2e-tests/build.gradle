@@ -326,6 +326,10 @@ test {
                 testClassLoaderProbeJar.archiveFile.get().asFile.absolutePath
         systemProperty 'smoke.readiness.fixture.extension.jar',
                 testReadinessFixtureExtensionJar.archiveFile.get().asFile.absolutePath
+        // Fixture default version must match the packaged autoconfigure JAR's Implementation-Version
+        // (see platform-tracing-spring-boot-autoconfigure/build.gradle) so that E1 lifecycle/capability
+        // scenarios are not all pre-empted by the packaged version-attestation check.
+        systemProperty 'e1.fixture.extension.version', project.version.toString()
     }
 }
 

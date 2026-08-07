@@ -17,8 +17,8 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironment
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
@@ -30,12 +30,12 @@ class TracingStatusAssemblerTest {
         TracingStatusAssembler disabled = assembler(
                 false,
                 TracingConfigurationAuthority.HELM,
-                descriptor(AgentRuntimeState.AGENT_MISSING),
+                diagnostics(AgentRuntimeState.AGENT_MISSING),
                 Optional.empty());
         TracingStatusAssembler helm = assembler(
                 true,
                 TracingConfigurationAuthority.HELM,
-                descriptor(AgentRuntimeState.AGENT_MISSING),
+                diagnostics(AgentRuntimeState.AGENT_MISSING),
                 Optional.empty());
 
         assertThat(disabled.assemble().policy().reason())
@@ -49,12 +49,12 @@ class TracingStatusAssemblerTest {
         TracingStatusAssembler unavailable = assembler(
                 true,
                 TracingConfigurationAuthority.CONFIG_SERVER,
-                descriptor(AgentRuntimeState.EXTENSION_FAILED),
+                diagnostics(AgentRuntimeState.EXTENSION_FAILED),
                 Optional.empty());
         TracingStatusAssembler notAccepted = assembler(
                 true,
                 TracingConfigurationAuthority.CONFIG_SERVER,
-                descriptor(AgentRuntimeState.AGENT_READY),
+                diagnostics(AgentRuntimeState.AGENT_READY),
                 Optional.empty());
 
         assertThat(unavailable.assemble().policy().reason())
@@ -65,8 +65,8 @@ class TracingStatusAssemblerTest {
 
     @Test
     void acceptedPolicyIsSecretSafeAndPostStartAgentLossIsObserved() {
-        AtomicReference<AgentExtensionDescriptor> state =
-                new AtomicReference<>(descriptor(AgentRuntimeState.AGENT_READY));
+        AtomicReference<TracingDeploymentDiagnostics> state =
+                new AtomicReference<>(diagnostics(AgentRuntimeState.AGENT_READY));
         AcceptedPolicyProjection projection = new AcceptedPolicyProjection(
                 new AgentReadinessView("runtime-1", 7L, true),
                 new AcceptedPolicyLeaves(true, 0.25, 3, true, false, true, true, "INFO"));
@@ -80,7 +80,7 @@ class TracingStatusAssemblerTest {
         assertThat(initial.policy().available()).isTrue();
         assertThat(initial.policy().accepted().samplingRouteRatiosCount()).isEqualTo(3);
 
-        state.set(descriptor(AgentRuntimeState.AGENT_MISSING));
+        state.set(diagnostics(AgentRuntimeState.AGENT_MISSING));
         TracingStatusSnapshot degraded = assembler.assemble();
         assertThat(degraded.policy().available()).isFalse();
         assertThat(degraded.policy().reason()).isEqualTo(PolicyAbsenceReason.AGENT_UNAVAILABLE);
@@ -88,14 +88,14 @@ class TracingStatusAssemblerTest {
 
     private static TracingStatusAssembler assembler(boolean enabled,
                                                     TracingConfigurationAuthority authority,
-                                                    AgentExtensionDescriptor descriptor,
+                                                    TracingDeploymentDiagnostics diagnostics,
                                                     Optional<AcceptedPolicyProjection> projection) {
-        return assembler(enabled, authority, new AtomicReference<>(descriptor), projection);
+        return assembler(enabled, authority, new AtomicReference<>(diagnostics), projection);
     }
 
     private static TracingStatusAssembler assembler(boolean enabled,
                                                     TracingConfigurationAuthority authority,
-                                                    AtomicReference<AgentExtensionDescriptor> descriptor,
+                                                    AtomicReference<TracingDeploymentDiagnostics> diagnostics,
                                                     Optional<AcceptedPolicyProjection> projection) {
         TracingBootstrapSettings settings = new TracingBootstrapSettings(
                 enabled,
@@ -111,19 +111,20 @@ class TracingStatusAssemblerTest {
                 settings,
                 mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS),
                 () -> projection,
-                descriptor::get);
+                diagnostics::get);
     }
 
-    private static AgentExtensionDescriptor descriptor(AgentRuntimeState state) {
-        return new AgentExtensionDescriptor(
+    private static TracingDeploymentDiagnostics diagnostics(AgentRuntimeState state) {
+        return new TracingDeploymentDiagnostics(
+                state == AgentRuntimeState.AGENT_READY,
+                state == AgentRuntimeState.AGENT_READY,
                 state,
-                state == AgentRuntimeState.AGENT_READY,
-                state == AgentRuntimeState.AGENT_READY,
-                "development",
-                1,
-                "platform-agent-secure-v1",
-                state == AgentRuntimeState.AGENT_READY ? "READY" : "FAILED",
-                state == AgentRuntimeState.AGENT_READY ? "" : "TEST_FAILURE",
-                Set.of());
+                new TracingDeploymentDiagnostics.AgentReadiness(
+                        state == AgentRuntimeState.AGENT_READY,
+                        "development",
+                        1,
+                        state == AgentRuntimeState.AGENT_READY ? "READY" : "FAILED",
+                        state == AgentRuntimeState.AGENT_READY ? "" : "TEST_FAILURE",
+                        Set.of()));
     }
 }

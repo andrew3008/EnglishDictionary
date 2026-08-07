@@ -33,6 +33,14 @@ class AutoconfigurePackageArchitectureTest {
     private static final Pattern PACKAGE = Pattern.compile("(?m)^package\\s+([^;]+);");
     private static final Pattern PUBLIC_TYPE = Pattern.compile(
             "(?m)^public\\s+(?:(?:sealed|non-sealed|final|abstract)\\s+)*(?:class|record|interface|enum)\\s+([A-Za-z0-9_]+)");
+    private static final Set<String> AGENT_PACKAGE_ALLOWED_PUBLIC_TYPES = Set.of(
+            BASE_PACKAGE + ".agent.AgentRuntimeState",
+            BASE_PACKAGE + ".agent.AgentStartupVerifier",
+            BASE_PACKAGE + ".agent.OtelJavaAgentMarkerDetector",
+            BASE_PACKAGE + ".agent.TracingDeploymentDiagnostics");
+    private static final Set<String> AGENT_PACKAGE_DELETED_LEGACY_TYPES = Set.of(
+            "AgentExtensionObserver", "AgentExtensionDescriptor",
+            "AgentRuntimeContractValidator", "AgentDeploymentExpectation", "OtelAgentDetector");
 
     @Test
     void targetPackageTreeAndDependencyDirectionsAreEnforced() throws Exception {
@@ -103,6 +111,50 @@ class AutoconfigurePackageArchitectureTest {
                 .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                 .toList());
         assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    void agentPackageExportsExactlyFourPublicTypes() throws Exception {
+        Path root = repositoryRoot();
+        Path agentPackageRoot = root.resolve(SOURCE_ROOT).resolve(BASE_PACKAGE.replace('.', '/') + "/agent");
+        Set<String> actual = new TreeSet<>();
+        for (Path source : javaSources(agentPackageRoot)) {
+            String text = Files.readString(source, StandardCharsets.UTF_8);
+            Matcher type = PUBLIC_TYPE.matcher(text);
+            if (type.find()) {
+                Matcher packageMatcher = PACKAGE.matcher(text);
+                assertThat(packageMatcher.find()).as(source.toString()).isTrue();
+                actual.add(packageMatcher.group(1) + "." + type.group(1));
+            }
+        }
+        assertThat(actual)
+                .as("agent package must export exactly the reviewed four-type public surface")
+                .isEqualTo(AGENT_PACKAGE_ALLOWED_PUBLIC_TYPES);
+    }
+
+    @Test
+    void deletedLegacyAgentSymbolsAreAbsentFromProductionCode() throws Exception {
+        Path root = repositoryRoot();
+        List<String> violations = new ArrayList<>();
+        for (String moduleSourceRoot : List.of(
+                SOURCE_ROOT,
+                "platform-tracing-autoconfigure-webmvc/src/main/java",
+                "platform-tracing-autoconfigure-webflux/src/main/java")) {
+            Path moduleRoot = root.resolve(moduleSourceRoot);
+            if (!Files.isDirectory(moduleRoot)) {
+                continue;
+            }
+            for (Path source : javaSources(moduleRoot)) {
+                String text = Files.readString(source, StandardCharsets.UTF_8);
+                for (String legacyName : AGENT_PACKAGE_DELETED_LEGACY_TYPES) {
+                    if (text.contains(legacyName)) {
+                        violations.add(normalized(root.relativize(source)) + ": references deleted symbol "
+                                + legacyName);
+                    }
+                }
+            }
+        }
+        assertThat(violations).as("Deleted legacy agent-package symbols must not reappear").isEmpty();
     }
 
     @Test

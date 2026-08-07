@@ -3,11 +3,10 @@ package space.br1440.platform.tracing.autoconfigure;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -18,12 +17,9 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.metrics.MeteredTracingRuntime;
 import space.br1440.platform.tracing.autoconfigure.metrics.PlatformTracingMetrics;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentDeploymentExpectation;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionObserver;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeContractValidator;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
+import space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDetector;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
@@ -34,7 +30,6 @@ import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
-@Slf4j
 @AutoConfiguration
 @ConditionalOnClass(OpenTelemetry.class)
 @EnableConfigurationProperties(TracingProperties.class)
@@ -65,33 +60,28 @@ public class TracingRuntimeAutoConfiguration {
         }
     }
 
+    /**
+     * Overridable only so isolated test fixtures can supply an {@link AgentStartupVerifier} composed
+     * with an explicit application version (plan &sect;6.1 unit seam) instead of this JAR's own
+     * manifest, which is absent from an exploded test classpath. Production always gets the default.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public AgentStartupVerifier agentStartupVerifier() {
+        return new AgentStartupVerifier();
+    }
+
     @Bean
     public TracingDeploymentDiagnostics platformTracingDeploymentDiagnostics(
             ConfigurableListableBeanFactory beanFactory,
-            TracingBootstrapSettings bootstrapSettings) {
-        boolean agentPresent = OtelAgentDetector.isAgentPresent();
+            TracingBootstrapSettings bootstrapSettings,
+            AgentStartupVerifier agentStartupVerifier) {
+        boolean agentPresent = OtelJavaAgentMarkerDetector.isAgentPresent();
         boolean userBeanPresent = beanFactory.getBeanNamesForType(OpenTelemetry.class, false, false).length > 0;
         boolean globalOpenTelemetrySet = GlobalOpenTelemetry.isSet();
-        AgentDeploymentExpectation expectation = bootstrapSettings.tracingEnabled()
-                ? AgentDeploymentExpectation.REQUIRED
-                : AgentDeploymentExpectation.FORBIDDEN;
 
-        AgentExtensionDescriptor extension = new AgentExtensionObserver().awaitStartupDecision(
-                expectation, agentPresent, userBeanPresent, globalOpenTelemetrySet);
-
-        AgentRuntimeContractValidator.validate(bootstrapSettings.tracingEnabled(), extension);
-
-        if (extension.state() != AgentRuntimeState.AGENT_READY
-                && extension.state() != AgentRuntimeState.DISABLED) {
-            log.error("Platform tracing runtime rejected: state={}, failureCode={}",
-                    extension.state(), extension.failureCode());
-        }
-
-        return new TracingDeploymentDiagnostics(
-                bootstrapSettings.tracingEnabled(),
-                agentPresent,
-                extension.state(),
-                extension);
+        return agentStartupVerifier.verify(
+                bootstrapSettings.tracingEnabled(), agentPresent, userBeanPresent, globalOpenTelemetrySet);
     }
 
     @Bean

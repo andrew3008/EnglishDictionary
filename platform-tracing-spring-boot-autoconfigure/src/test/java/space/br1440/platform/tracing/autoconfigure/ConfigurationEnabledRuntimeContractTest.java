@@ -13,6 +13,7 @@ import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecReason;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationAuthorityAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.TracingRuntimeDiagnosticsAutoConfiguration;
@@ -31,6 +32,7 @@ class ConfigurationEnabledRuntimeContractTest {
             .withConfiguration(AutoConfigurations.of(
                     TracingConfigurationAuthorityAutoConfiguration.class,
                     TracingRuntimeAutoConfiguration.class))
+            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
                     "platform.tracing.configuration.authority=HELM",
                     "platform.environment=LOCAL");
@@ -42,6 +44,7 @@ class ConfigurationEnabledRuntimeContractTest {
                     TracingRuntimeDiagnosticsAutoConfiguration.class,
                     TracingStartupContractHealthAutoConfiguration.class,
                     TracingStatusAutoConfiguration.class))
+            .withBean(AgentStartupVerifier.class, ControlledAgentTestRuntime::verifier)
             .withPropertyValues(
                     "platform.tracing.configuration.authority=HELM",
                     "platform.environment=LOCAL");

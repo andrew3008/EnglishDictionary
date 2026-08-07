@@ -109,11 +109,14 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration` | S3 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.TracingStatusEndpoint` | S3 | DONE |
 | `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.status.TracingStatusSnapshot` | S3 | DONE |
-| `space.br1440.platform.tracing.autoconfigure.support.AgentExtensionDescriptor` | MOVE | `space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor` | S6b | DONE |
-| `space.br1440.platform.tracing.autoconfigure.support.AgentExtensionObserver` | MOVE | `space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionObserver` | S6b | DONE |
+| `space.br1440.platform.tracing.autoconfigure.support.AgentExtensionDescriptor` | MOVE→DELETE | `-` | S6b→agent-package-refactor-S3 | DONE (flattened into `TracingDeploymentDiagnostics`, no shim; see [tracing-autoconfigure-agent-package-refactoring-plan.md](../analysis/tracing-autoconfigure-agent-package-refactoring-plan.md)) |
+| `space.br1440.platform.tracing.autoconfigure.support.AgentExtensionObserver` | MOVE→DELETE | `-` | S6b→agent-package-refactor-S3 | DONE (hard cutover to `AgentStartupVerifier` + package-private `AgentReadinessProbe`/`AgentReadinessSnapshot`/`AgentReadinessClassifier`, no shim) |
+| `-` | CREATE | `space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier` | agent-package-refactor-S3 | DONE (public facade; single startup-decision owner) |
+| `-` | CREATE (package-private) | `space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessProbe` / `AgentReadinessSnapshot` / `AgentReadinessClassifier` | agent-package-refactor-S1..S3 | DONE (transport / decoded values / pure classifier split) |
 | `space.br1440.platform.tracing.autoconfigure.support.AgentRuntimeState` | MOVE | `space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.MicrometerTracingSuppressionResolver` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.observation.MicrometerTracingSuppressionResolver` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.OtelAgentDetector` | MOVE | `space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector` | S6b | DONE |
+| `space.br1440.platform.tracing.autoconfigure.agent.OtelAgentDetector` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDetector` | agent-package-refactor-S4 | DONE (boundary-polish rename; behavior unchanged) |
 | `space.br1440.platform.tracing.autoconfigure.support.RemoteServiceMdcBoundarySupport` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.RemoteServiceMdcBoundarySupport` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.RequestIdBoundarySupport` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.RequestIdentityBoundarySupport` | MOVE | `space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport` | S6b | DONE |
@@ -122,8 +125,8 @@ Baseline: `HEAD b4e4f5f`. Scope: 91 top-level production types originally owned 
 | `space.br1440.platform.tracing.autoconfigure.support.SdkModeDiagnostics` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics` | S5 | DONE |
 | `space.br1440.platform.tracing.autoconfigure.agent.TracingModeDiagnostics` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics` | boolean-enabled | DONE |
 | `space.br1440.platform.tracing.autoconfigure.support.SdkModeResolver` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.TracingRuntimeStateResolver` | S6a | DONE |
-| `space.br1440.platform.tracing.autoconfigure.agent.TracingRuntimeStateResolver` | RENAME | `space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeContractValidator` | boolean-enabled | DONE |
-| — | ADD | `space.br1440.platform.tracing.autoconfigure.agent.AgentDeploymentExpectation` (internal cross-package; not application API/SPI; consumers: TracingRuntimeAutoConfiguration, AgentExtensionObserver, owning-module tests) | boolean-enabled | DONE |
+| `space.br1440.platform.tracing.autoconfigure.agent.TracingRuntimeStateResolver` | RENAME→DELETE | `-` | boolean-enabled→agent-package-refactor-S3 | DONE (fail-closed contract enforcement folded into `AgentStartupVerifier.verify`, no standalone validator) |
+| `space.br1440.platform.tracing.autoconfigure.agent.AgentDeploymentExpectation` | DELETE | `-` | agent-package-refactor-S3 | DONE (REQUIRED/FORBIDDEN branching replaced by the `tracingEnabled` boolean already threaded through `AgentStartupVerifier`) |
 | `space.br1440.platform.tracing.autoconfigure.support.SuppressMicrometerTracingCondition` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.observation.SuppressMicrometerTracingCondition` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.TracingAopAutoConfiguration` | MOVE | `space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration` | S6b | DONE |
 | `space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration` | KEEP | `space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration` | UNCHANGED | DONE |

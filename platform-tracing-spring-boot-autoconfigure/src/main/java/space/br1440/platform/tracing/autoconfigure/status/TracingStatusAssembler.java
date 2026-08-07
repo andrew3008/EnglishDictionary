@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
@@ -35,7 +34,7 @@ public final class TracingStatusAssembler {
     private final TracingBootstrapSettings bootstrapSettings;
     private final PlatformTracingJmxClient jmxClient;
     private final AcceptedTracingPolicyReader acceptedPolicyReader;
-    private final Supplier<AgentExtensionDescriptor> agentDescriptorSupplier;
+    private final Supplier<TracingDeploymentDiagnostics> agentDiagnosticsSupplier;
 
     public TracingStatusAssembler(TraceOperations traceOperations,
                                   TracingRuntime tracingRuntime,
@@ -48,7 +47,7 @@ public final class TracingStatusAssembler {
                 bootstrapSettings,
                 jmxClient,
                 acceptedPolicyReader,
-                startupDiagnostics::extensionDescriptor);
+                () -> startupDiagnostics);
     }
 
     TracingStatusAssembler(TraceOperations traceOperations,
@@ -56,38 +55,39 @@ public final class TracingStatusAssembler {
                            TracingBootstrapSettings bootstrapSettings,
                            PlatformTracingJmxClient jmxClient,
                            AcceptedTracingPolicyReader acceptedPolicyReader,
-                           Supplier<AgentExtensionDescriptor> agentDescriptorSupplier) {
+                           Supplier<TracingDeploymentDiagnostics> agentDiagnosticsSupplier) {
         this.traceOperations = traceOperations;
         this.tracingRuntime = tracingRuntime;
         this.bootstrapSettings = bootstrapSettings;
         this.jmxClient = jmxClient;
         this.acceptedPolicyReader = acceptedPolicyReader;
-        this.agentDescriptorSupplier = agentDescriptorSupplier;
+        this.agentDiagnosticsSupplier = agentDiagnosticsSupplier;
     }
 
     public TracingStatusSnapshot assemble() {
-        AgentExtensionDescriptor descriptor = agentDescriptorSupplier.get();
+        TracingDeploymentDiagnostics diagnostics = agentDiagnosticsSupplier.get();
         return new TracingStatusSnapshot(
                 TracingStatusSnapshot.CURRENT_SCHEMA_VERSION,
                 bootstrapSettings.tracingEnabled(),
                 bootstrapSettings.authority().name(),
-                agentSection(descriptor),
+                agentSection(diagnostics),
                 runtimeSection(),
-                policyStatus(descriptor),
+                policyStatus(diagnostics),
                 jmxContractDiagnosticsSection()
         );
     }
 
-    private Map<String, Object> agentSection(AgentExtensionDescriptor descriptor) {
+    private Map<String, Object> agentSection(TracingDeploymentDiagnostics diagnostics) {
+        TracingDeploymentDiagnostics.AgentReadiness readiness = diagnostics.agentReadiness();
         Map<String, Object> agent = new LinkedHashMap<>();
-        agent.put("state", descriptor.state().name());
-        agent.put("markerVisible", descriptor.agentMarkerVisible());
-        agent.put("readinessEndpointPresent", descriptor.readinessEndpointPresent());
-        agent.put("extensionVersion", descriptor.extensionVersion());
-        agent.put("protocolVersion", descriptor.protocolVersion());
-        agent.put("lifecycle", descriptor.lifecycle());
-        agent.put("failureCode", descriptor.failureCode());
-        agent.put("capabilities", descriptor.capabilities());
+        agent.put("state", diagnostics.runtimeState().name());
+        agent.put("markerVisible", diagnostics.agentMarkerVisible());
+        agent.put("readinessEndpointPresent", readiness.endpointPresent());
+        agent.put("extensionVersion", readiness.extensionVersion());
+        agent.put("protocolVersion", readiness.protocolVersion());
+        agent.put("lifecycle", readiness.lifecycle());
+        agent.put("failureCode", readiness.failureCode());
+        agent.put("capabilities", readiness.capabilities());
         return agent;
     }
 
@@ -213,8 +213,8 @@ public final class TracingStatusAssembler {
         return Collections.unmodifiableList(points);
     }
 
-    private TracingStatusSnapshot.PolicyStatus policyStatus(AgentExtensionDescriptor descriptor) {
-        PolicyAbsenceReason absentReason = absentPolicyReason(descriptor.state());
+    private TracingStatusSnapshot.PolicyStatus policyStatus(TracingDeploymentDiagnostics diagnostics) {
+        PolicyAbsenceReason absentReason = absentPolicyReason(diagnostics.runtimeState());
         if (absentReason != null) {
             return TracingStatusSnapshot.PolicyStatus.absent(absentReason);
         }

@@ -25,7 +25,7 @@ class SemanticLayerAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(SemanticLayerAutoConfiguration.class));
 
     @Test
-    void поУмолчаниюРежимWARN() {
+    void defaultModeIsWARN() {
         contextRunner.run(context -> {
             assertThat(context).hasSingleBean(AttributePolicy.class);
             assertThat(context).hasSingleBean(SpanEnricher.class);
@@ -38,7 +38,7 @@ class SemanticLayerAutoConfigurationTest {
     }
 
     @Test
-    void property_переключаетРежимВDISABLED() {
+    void property_switchesModeToDISABLED() {
         contextRunner
                 .withPropertyValues("platform.tracing.semantic.validation-mode=DISABLED")
                 .run(context ->
@@ -46,7 +46,7 @@ class SemanticLayerAutoConfigurationTest {
     }
 
     @Test
-    void бинValidationModeИмеетПриоритетНадProperty() {
+    void validationModeBeanTakesPrecedenceOverProperty() {
         // SemconvStrictTestAutoConfiguration публикует бин SemconvValidationMode.STRICT,
         // который обязан переопределить property WARN.
         contextRunner
@@ -57,7 +57,7 @@ class SemanticLayerAutoConfigurationTest {
     }
 
     @Test
-    void флагОтключаетStrictTestConfig() {
+    void flagDisablesStrictTestConfig() {
         contextRunner
                 .withUserConfiguration(SemconvStrictTestAutoConfiguration.class)
                 .withPropertyValues("platform.tracing.test.semconv-strict=false")
@@ -66,7 +66,7 @@ class SemanticLayerAutoConfigurationTest {
     }
 
     @Test
-    void пользовательскийSpanEnricherПереопределяетDefaultРеализацию() {
+    void customSpanEnricherOverridesDefaultImplementation() {
         SpanEnricher custom = enrichment -> {
             // Тестовая реализация намеренно не вызывает callback.
         };

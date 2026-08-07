@@ -26,7 +26,7 @@ class RequestContextSupplierAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(RequestContextSupplierAutoConfiguration.class));
 
     @Test
-    void supplier_регистрируется_по_умолчанию() {
+    void supplier_registers_by_default() {
         runner.run(context -> {
             assertThat(context).hasBean("platformRequestTraceContextSnapshotSupplier");
             assertThat(context.getBean("platformRequestTraceContextSnapshotSupplier"))
@@ -35,7 +35,7 @@ class RequestContextSupplierAutoConfigurationTest {
     }
 
     @Test
-    void supplier_регистрируется_при_отключённой_трассировке() {
+    void supplier_registers_when_tracing_disabled() {
         // Главный регресс-тест: при platform.tracing.enabled=false bean всё равно есть.
         runner.withPropertyValues("platform.tracing.enabled=false")
                 .run(context -> {
@@ -54,7 +54,7 @@ class RequestContextSupplierAutoConfigurationTest {
     }
 
     @Test
-    void пользовательский_bean_замещает_дефолтный() {
+    void custom_bean_replaces_default() {
         runner.withUserConfiguration(CustomSupplierConfig.class)
                 .run(context -> {
                     assertThat(context).hasBean("platformRequestTraceContextSnapshotSupplier");

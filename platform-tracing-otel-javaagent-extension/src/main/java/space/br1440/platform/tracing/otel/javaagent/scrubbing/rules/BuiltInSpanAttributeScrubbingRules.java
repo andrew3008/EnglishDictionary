@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.scrubbing;
+package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 

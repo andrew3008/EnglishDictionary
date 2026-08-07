@@ -24,7 +24,7 @@ import space.br1440.platform.tracing.e2e.support.JaegerTestContainerSupport;
 import space.br1440.platform.tracing.e2e.support.JaegerV3QueryClient;
 import space.br1440.platform.tracing.e2e.support.OtelCollectorTestContainerSupport;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import java.time.Duration;
 import java.util.List;

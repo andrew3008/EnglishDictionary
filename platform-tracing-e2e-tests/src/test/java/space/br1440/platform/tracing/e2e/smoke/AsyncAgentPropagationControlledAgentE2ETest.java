@@ -47,6 +47,7 @@ class AsyncAgentPropagationControlledAgentE2ETest {
 
         assertThat(marker(output, mode, "agentDetected")).isEqualTo("true");
         assertThat(marker(output, mode, "runtimeState")).isEqualTo("AGENT_READY");
+        assertThat(marker(output, mode, "implementationVersionPresent")).isEqualTo("true");
         assertThat(marker(output, mode, "openTelemetryBeans")).isEqualTo("0");
         if ("CUSTOM".equals(mode)) {
             assertThat(marker(output, mode, "customTaskDecoratorConfigured")).isEqualTo("false");
@@ -107,7 +108,6 @@ class AsyncAgentPropagationControlledAgentE2ETest {
                 List.of(
                         "otel.traces.sampler=platform",
                         "platform.tracing.sampling.ratio=1",
-                        "platform.tracing.test.startup-readiness-timeout-ms=10000",
                         "async.probe.executor-mode=" + mode,
                         "async.probe.correlation-id=" + correlationId),
                 PROCESS_TIMEOUT,

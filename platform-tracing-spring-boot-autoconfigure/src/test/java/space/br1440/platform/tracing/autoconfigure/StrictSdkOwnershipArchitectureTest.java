@@ -5,15 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettingsResolver;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Исполнимые ограничения production ownership для Slice E.
- */
 class StrictSdkOwnershipArchitectureTest {
 
     @Test
@@ -33,11 +31,17 @@ class StrictSdkOwnershipArchitectureTest {
     }
 
     @Test
-    void applicationDescriptorDoesNotExposeAgentFailureMessage() {
-        assertThat(Arrays.stream(AgentExtensionDescriptor.class.getRecordComponents())
-                .map(component -> component.getName()))
+    void applicationDiagnosticsDoesNotExposeAgentFailureMessage() {
+        assertThat(Arrays.stream(TracingDeploymentDiagnostics.class.getRecordComponents())
+                .map(RecordComponent::getName))
                 .doesNotContain("failureMessage");
-        assertThat(Arrays.stream(AgentExtensionDescriptor.class.getDeclaredMethods())
+        assertThat(Arrays.stream(TracingDeploymentDiagnostics.class.getDeclaredMethods())
+                .map(Method::getName))
+                .doesNotContain("failureMessage");
+        assertThat(Arrays.stream(TracingDeploymentDiagnostics.AgentReadiness.class.getRecordComponents())
+                .map(RecordComponent::getName))
+                .doesNotContain("failureMessage");
+        assertThat(Arrays.stream(TracingDeploymentDiagnostics.AgentReadiness.class.getDeclaredMethods())
                 .map(Method::getName))
                 .doesNotContain("failureMessage");
     }

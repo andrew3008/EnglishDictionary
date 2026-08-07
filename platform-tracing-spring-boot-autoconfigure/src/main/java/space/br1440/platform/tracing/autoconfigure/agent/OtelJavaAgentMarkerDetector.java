@@ -5,7 +5,7 @@ import lombok.experimental.UtilityClass;
 import org.springframework.util.ClassUtils;
 
 @UtilityClass
-public final class OtelAgentDetector {
+public final class OtelJavaAgentMarkerDetector {
 
     private static final String AGENT_MARKER_CLASS = "io.opentelemetry.javaagent.OpenTelemetryAgent";
 

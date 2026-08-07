@@ -73,6 +73,20 @@ class AgentExtensionAttestationE2ETest {
     }
 
     @Test
+    void mismatchedNonDevelopmentVersionIsRejected() throws Exception {
+        String output = runWithFixture(
+                AgentRuntimeState.EXTENSION_INCOMPATIBLE,
+                true,
+                false,
+                List.of(
+                        "-De1.fixture.lifecycle=READY",
+                        "-De1.fixture.complete=true",
+                        "-De1.fixture.extension.version=9.9.9-does-not-match"));
+        assertCompleted(output, AgentRuntimeState.EXTENSION_INCOMPATIBLE)
+                .contains(PREFIX + "startupFailure=");
+    }
+
+    @Test
     void managementEndpointWithoutRequiredProcessorIsRejected() throws Exception {
         String output = runWithFixture(
                 AgentRuntimeState.CAPABILITY_MISSING,
@@ -108,7 +122,15 @@ class AgentExtensionAttestationE2ETest {
             boolean dual,
             List<String> properties) throws Exception {
         String fixture = requiredProperty("smoke.readiness.fixture.extension.jar");
-        return run(true, fixture, expected, tracingEnabled, dual, properties);
+        List<String> withDefaultFixtureVersion = new ArrayList<>();
+        // Matches the version stamped into the autoconfigure JAR's Implementation-Version so that
+        // fixture scenarios exercise lifecycle/capability classification rather than being rejected
+        // upfront by the packaged version-attestation check. Individual negative-version test cases
+        // append their own mismatching value afterward, which wins as the last -D on the command line.
+        withDefaultFixtureVersion.add(
+                "-De1.fixture.extension.version=" + requiredProperty("e1.fixture.extension.version"));
+        withDefaultFixtureVersion.addAll(properties);
+        return run(true, fixture, expected, tracingEnabled, dual, withDefaultFixtureVersion);
     }
 
     private static String run(

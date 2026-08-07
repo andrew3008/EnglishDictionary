@@ -9,6 +9,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.web.client.RestTemplate;
 
+import space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier;
 import space.br1440.platform.tracing.autoconfigure.support.ControlledAgentTestRuntime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,7 +71,9 @@ class TracingStartupContractHealthHttpContractTest {
                 .web(WebApplicationType.SERVLET)
                 .properties(properties)
                 .properties("spring.autoconfigure.exclude="
-                        + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS));
+                        + String.join(",", EXCLUDED_UNRELATED_AUTOCONFIGURATIONS))
+                .initializers(context -> context.getBeanFactory()
+                        .registerSingleton("agentStartupVerifier", ControlledAgentTestRuntime.verifier()));
         return builder.run();
     }
 

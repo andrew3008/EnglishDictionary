@@ -13,9 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.IpPrefixTruncator;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.IpAddressRule;
+import space.br1440.platform.tracing.otel.javaagent.processor.utils.IpPrefixTruncator;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
 import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
@@ -272,7 +272,7 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
             }
             case TRUNCATE -> {
                 truncatedActions.increment();
-                if (IpAddressRule.REASON.equals(decision.reason())) {
+                if (BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.configName().equals(decision.reason())) {
                     String truncated = IpPrefixTruncator.truncate(value);
                     if (truncated == null) {
                         // невалидный IP — не падаем: fallback MASK + метрика failures.

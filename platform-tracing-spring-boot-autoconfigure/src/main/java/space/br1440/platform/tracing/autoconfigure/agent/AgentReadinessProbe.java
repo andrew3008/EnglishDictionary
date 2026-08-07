@@ -6,7 +6,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.InstanceNotFoundException;
@@ -16,35 +15,16 @@ import javax.management.ReflectionException;
 import javax.management.RuntimeErrorException;
 import javax.management.RuntimeMBeanException;
 
-/**
- * Package-private JMX transport for the Controlled Platform Agent readiness MBean.
- * <p>
- * Owns attribute names, batch decoding, and defensive copying only. Protocol, profile, version, and
- * capability policy stay in the observer/classifier that consumes {@link AgentReadinessSnapshot}.
- * <p>
- * Endpoint registration is checked separately via {@link #endpointRegistered(ObjectName)} on every
- * polling attempt by the caller; {@link #read(ObjectName)} performs exactly one
- * {@link MBeanServer#getAttributes(ObjectName, String[])} call per invocation and never falls back
- * to reading individual attributes one at a time. A single batch call is not atomic with respect to
- * concurrent writers on the agent side — it only guarantees that this class issues one round trip.
- * <p>
- * {@code FailureMessage} is intentionally never requested: it is a recording-only diagnostic proof
- * channel on the agent side, never consumed by application policy.
- */
 final class AgentReadinessProbe {
 
-    /**
-     * Exactly the 12 attributes the application needs. The physical readiness MBean exposes a
-     * 13th attribute, {@code FailureMessage}, which is never requested here.
-     */
     static final Set<String> REQUESTED_ATTRIBUTE_NAMES = Set.of(
             "ExtensionVersion", "ProtocolVersion", "Profile", "LifecycleState", "FailureCode",
             "Capabilities", "RequiredCapabilities",
             "SanitizerInstalled", "SamplerInstalled", "RequiredSpanProcessorsInstalled",
-            "PropagationHooksInstalled", "ExportPathProtected");
+            "PropagationHooksInstalled", "ExportPathProtected"
+    );
 
-    private static final String[] REQUESTED_ATTRIBUTES_ARRAY =
-            REQUESTED_ATTRIBUTE_NAMES.toArray(String[]::new);
+    private static final String[] REQUESTED_ATTRIBUTES_ARRAY = REQUESTED_ATTRIBUTE_NAMES.toArray(String[]::new);
 
     private final MBeanServer server;
 
@@ -77,13 +57,6 @@ final class AgentReadinessProbe {
         return decode(values);
     }
 
-    /**
-     * JMX permits a batch read to silently return fewer attributes than requested (a partial
-     * {@link AttributeList}) instead of throwing. Any deviation from exactly the requested attribute
-     * names — unexpected name, duplicate name, non-{@link Attribute} element, or a missing expected
-     * name — is an immediate terminal rejection. This method never re-reads a missing attribute
-     * individually.
-     */
     private static ProbeReason validateShape(AttributeList attributes, Map<String, Object> values) {
         if (attributes == null) {
             return ProbeReason.MALFORMED_DESCRIPTOR;
@@ -140,51 +113,47 @@ final class AgentReadinessProbe {
             return new ProbeResult.Rejected(ProbeReason.MALFORMED_DESCRIPTOR);
         }
 
-        return new ProbeResult.Present(new AgentReadinessSnapshot(
-                (String) extensionVersion,
-                (Integer) protocolVersion,
-                (String) profile,
-                (String) lifecycle,
-                (String) failureCode,
-                toSet((String[]) capabilities),
-                toSet((String[]) requiredCapabilities),
-                (Boolean) sanitizerInstalled,
-                (Boolean) samplerInstalled,
-                (Boolean) requiredSpanProcessorsInstalled,
-                (Boolean) propagationHooksInstalled,
-                (Boolean) exportPathProtected));
+        return new ProbeResult.Present(
+                new AgentReadinessSnapshot(
+                        new AgentReadinessSnapshot.Protocol(
+                                (String) extensionVersion,
+                                (Integer) protocolVersion,
+                                (String) profile
+                        ),
+
+                        new AgentReadinessSnapshot.Status(
+                                (String) lifecycle,
+                                (String) failureCode
+                        ),
+
+                        new AgentReadinessSnapshot.Capabilities(
+                                toSet((String[]) capabilities),
+                                toSet((String[]) requiredCapabilities)
+                        ),
+
+                        new AgentReadinessSnapshot.InstallFlags(
+                                (Boolean) sanitizerInstalled,
+                                (Boolean) samplerInstalled,
+                                (Boolean) requiredSpanProcessorsInstalled,
+                                (Boolean) propagationHooksInstalled,
+                                (Boolean) exportPathProtected
+                        )
+                )
+        );
     }
 
     private static Set<String> toSet(String[] array) {
         return new LinkedHashSet<>(Arrays.asList(array));
     }
 
-    /**
-     * A-19 JMX exception matrix: distinguishes why a batch read failed. Only {@code
-     * ENDPOINT_DISAPPEARED}, {@code ACCESS_DENIED}, and {@code INVOCATION_FAILED} correspond to a
-     * caught JMX exception category; the remaining two are shape-validation failures on an
-     * otherwise successful read.
-     */
     enum ProbeReason {
-        /** {@link InstanceNotFoundException}: MBean unregistered between presence check and read. */
         ENDPOINT_DISAPPEARED,
-        /** {@link SecurityException} raised by the MBeanServer or the MBean implementation. */
         ACCESS_DENIED,
-        /** {@link ReflectionException}, {@link RuntimeMBeanException}, or {@link RuntimeErrorException}. */
         INVOCATION_FAILED,
-        /** Batch read returned fewer attributes than requested (partial {@link AttributeList}). */
         INCOMPLETE_DESCRIPTOR,
-        /** Unexpected/duplicate attribute name, non-{@link Attribute} element, or wrong value type. */
         MALFORMED_DESCRIPTOR
     }
 
-    /**
-     * Sealed transport-level outcome, mirroring the pattern used by
-     * {@code PrivateControlMarkerInspector.ProbeResult}: {@link Present} carries a fully decoded,
-     * defensively-copied snapshot; {@link Rejected} is a terminal structural rejection with no
-     * further diagnostic value; {@link Indeterminate} is a terminal JMX-exception outcome that
-     * retains its cause for diagnostics. No caller outside this package observes this type.
-     */
     sealed interface ProbeResult permits ProbeResult.Present, ProbeResult.Rejected, ProbeResult.Indeterminate {
 
         record Present(AgentReadinessSnapshot snapshot) implements ProbeResult {

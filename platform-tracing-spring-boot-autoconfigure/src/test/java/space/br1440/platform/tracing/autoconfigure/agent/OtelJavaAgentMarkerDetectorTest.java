@@ -13,10 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * в unit-тесте без модификации classloader'а невозможно. Положительный сценарий покрывается
  * E2E-тестами с реальным javaagent.
  */
-class OtelAgentDetectorTest {
+class OtelJavaAgentMarkerDetectorTest {
 
     @Test
     void returnsFalseWhenAgentNotPresentInTestJvm() {
-        assertThat(OtelAgentDetector.isAgentPresent()).isFalse();
+        assertThat(OtelJavaAgentMarkerDetector.isAgentPresent()).isFalse();
     }
 }

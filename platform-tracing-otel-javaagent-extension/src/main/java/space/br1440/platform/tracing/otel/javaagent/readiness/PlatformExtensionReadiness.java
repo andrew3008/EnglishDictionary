@@ -1,7 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.readiness;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Enumeration;
 import java.util.Set;
+import java.util.jar.Manifest;
 
 /**
  * Extension-local автомат состояния готовности secure agent profile.
@@ -13,6 +19,14 @@ public final class PlatformExtensionReadiness {
 
     public static final int PROTOCOL_VERSION = 1;
     public static final String PROFILE = "platform-agent-secure-v1";
+
+    /**
+     * Must equal the {@code Implementation-Title} manifest attribute this module's {@code jar} and
+     * {@code agentExtensionJar} tasks stamp (see {@code build.gradle}) — used to pick this
+     * extension's own manifest out of every {@code META-INF/MANIFEST.MF} visible through this class
+     * loader (see {@link #resolveImplementationVersion()}).
+     */
+    private static final String IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
 
     private static final Set<PlatformExtensionCapability> REQUIRED_CAPABILITIES = EnumSet.allOf(
             PlatformExtensionCapability.class);
@@ -26,13 +40,41 @@ public final class PlatformExtensionReadiness {
     private String failureMessage = "";
 
     public PlatformExtensionReadiness() {
-        Package extensionPackage = PlatformExtensionReadiness.class.getPackage();
-        String implementationVersion = extensionPackage == null
-                ? null
-                : extensionPackage.getImplementationVersion();
+        String implementationVersion = resolveImplementationVersion();
         this.extensionVersion = implementationVersion == null || implementationVersion.isBlank()
                 ? "development"
                 : implementationVersion;
+    }
+
+    /**
+     * {@link Package#getImplementationVersion()} is unreliable here, and so is a single
+     * {@code getResourceAsStream("META-INF/MANIFEST.MF")}: the OpenTelemetry Java Agent loads each
+     * {@code extensions/} JAR through its own {@code ExtensionClassLoader} (see
+     * javaagent-structure.md), and standard parent-first resource delegation means the first
+     * {@code META-INF/MANIFEST.MF} found on that lookup can belong to a parent (agent) class loader
+     * instead of this extension's own JAR. This walks every manifest visible through this class's
+     * loader and picks the one this module's own build stamps with {@link #IMPLEMENTATION_TITLE}.
+     */
+    private static String resolveImplementationVersion() {
+        ClassLoader loader = PlatformExtensionReadiness.class.getClassLoader();
+        if (loader == null) {
+            return null;
+        }
+        try {
+            Enumeration<URL> manifestUrls = loader.getResources("META-INF/MANIFEST.MF");
+            for (URL manifestUrl : Collections.list(manifestUrls)) {
+                try (InputStream manifestStream = manifestUrl.openStream()) {
+                    Manifest manifest = new Manifest(manifestStream);
+                    if (IMPLEMENTATION_TITLE.equals(
+                            manifest.getMainAttributes().getValue("Implementation-Title"))) {
+                        return manifest.getMainAttributes().getValue("Implementation-Version");
+                    }
+                }
+            }
+        } catch (IOException failure) {
+            return null;
+        }
+        return null;
     }
 
     public synchronized void markInstalled(PlatformExtensionCapability capability) {

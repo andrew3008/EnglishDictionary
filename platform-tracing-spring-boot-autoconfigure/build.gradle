@@ -70,12 +70,19 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': 'platform-tracing-spring-boot-autoconfigure',
+                'Implementation-Version': project.version
+        )
+    }
+}
+
 test {
     useJUnitPlatform {
         excludeTags 'known-defect'
     }
-    // Shorten FORBIDDEN startup poll in unit/context tests; production constant stays 2s.
-    systemProperty 'platform.tracing.test.startup-readiness-timeout-ms', '40'
 }
 
 tasks.register('knownDefectTest', Test) {

@@ -36,7 +36,7 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPro
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PropagationDefaults;
 import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceProvider;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 /**
  * Генерирует и проверяет полный репозиторный инвентарь tracing-конфигурации S-04.
@@ -314,8 +314,8 @@ class TracingConfigurationInventoryGeneratorTest {
         entry.readers.add(link(declarationPath, "Environment.getProperty(PROPERTY_NAME, Boolean.class)", "ENVIRONMENT_READ"));
         entry.consumers.add("MicrometerTracingSuppressionResolver");
         entry.valueType = "Boolean";
-        entry.defaultValue = "null (auto-derive: OtelAgentDetector.isAgentPresent())";
-        entry.defaultDefinitions.add("Environment:null -> OtelAgentDetector.isAgentPresent()");
+        entry.defaultValue = "null (auto-derive: OtelJavaAgentMarkerDetector.isAgentPresent())";
+        entry.defaultDefinitions.add("Environment:null -> OtelJavaAgentMarkerDetector.isAgentPresent()");
         entry.defaultOwner = "Spring startup";
         entry.lifecycleOwner = "Spring application context";
         entry.readerStatus = "ACTIVE_READER";

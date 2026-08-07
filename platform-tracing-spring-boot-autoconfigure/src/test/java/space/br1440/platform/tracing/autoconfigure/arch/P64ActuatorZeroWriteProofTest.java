@@ -4,14 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Set;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentExtensionDescriptor;
 import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
 import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
@@ -38,20 +35,11 @@ class P64ActuatorZeroWriteProofTest {
                     TracingConfigurationAuthority.HELM,
                     PlatformEnvironmentPosture.LOCAL))
             .withBean(PlatformTracingJmxClient.class, PlatformTracingJmxClient::new)
-            .withBean(TracingDeploymentDiagnostics.class, () -> new TracingDeploymentDiagnostics(
+            .withBean(TracingDeploymentDiagnostics.class, () -> TracingDeploymentDiagnostics.withoutAgentData(
                     false,
                     false,
                     AgentRuntimeState.DISABLED,
-                    new AgentExtensionDescriptor(
-                            AgentRuntimeState.DISABLED,
-                            false,
-                            false,
-                            "",
-                            -1,
-                            "",
-                            "",
-                            "",
-                            Set.of())));
+                    ""));
 
     @Test
     void tracingStatusHasNoWriteOperation() {
