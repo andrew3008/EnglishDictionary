@@ -25,8 +25,8 @@ import lombok.extern.slf4j.Slf4j;
  * Расположение файла задаётся свойством
  * {@link ExtensionPropertyNames#SCRUBBING_RULES_CONFIG}. Поддерживаемые префиксы:
  * <ul>
- *   <li>{@code classpath:tracing/scrubbing-rules.properties} — ресурс, доступный
- *       ClassLoader'у расширения OTel Java Agent;</li>
+ *   <li>{@code classpath:tracing/scrubbing-rules.properties} — ресурс,
+ *       доступный ClassLoader'у расширения OTel Java Agent;</li>
  *   <li>{@code file:/var/lib/app/scrubbing.properties} — путь в файловой системе;</li>
  *   <li>абсолютный или относительный путь без префикса (трактуется как файловый).</li>
  * </ul>

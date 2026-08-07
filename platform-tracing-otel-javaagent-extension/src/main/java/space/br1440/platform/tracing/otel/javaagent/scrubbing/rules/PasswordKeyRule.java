@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
-
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 

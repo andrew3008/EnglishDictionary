@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +41,7 @@ class ScrubbingBenchmarkFixtureContractTest {
         assertThat(rule).as("правило %s должно резолвиться", ruleName).isNotNull();
 
         HitFixture fixture = hitFixtureFor(ruleName);
-        List<RuleExecutionWrapper> wrappers = ScrubbingSnapshot.compileWrappers(List.of(rule));
+        List<ExecutableRule> wrappers = ScrubbingSnapshot.toExecutableRules(List.of(rule));
         ScrubbingDecision decision = MergeEngine.evaluate(
                 wrappers, fixture.key().toLowerCase(Locale.ROOT).trim(), fixture.value());
 
@@ -61,7 +61,7 @@ class ScrubbingBenchmarkFixtureContractTest {
                 defaults.add(r);
             }
         }
-        List<RuleExecutionWrapper> wrappers = ScrubbingSnapshot.compileWrappers(defaults);
+        List<ExecutableRule> wrappers = ScrubbingSnapshot.toExecutableRules(defaults);
 
         ScrubbingDecision shortClean = MergeEngine.evaluate(
                 wrappers, "http.route", "/api/v1/orders/{id}");

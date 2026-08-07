@@ -107,7 +107,7 @@ class ScrubbingSpanProcessorAdvancedTest {
 
     @Test
     void exception_в_custom_правиле_изолируется_circuit_breaker_ом_не_роняя_процессор() {
-        // PR-4/PR-5: сбой custom-правила теперь перехватывается в RuleExecutionWrapper и считается
+        // PR-4/PR-5: сбой custom-правила теперь перехватывается в ExecutableRule и считается
         // в circuit breaker — он НЕ всплывает в PlatformCompositeSpanProcessor. Для custom-правила
         // (critical=false) поведение при сбое — skip: атрибут остаётся нетронутым, остальные целы.
         SpanAttributeScrubbingRule faulty = new SpanAttributeScrubbingRule() {

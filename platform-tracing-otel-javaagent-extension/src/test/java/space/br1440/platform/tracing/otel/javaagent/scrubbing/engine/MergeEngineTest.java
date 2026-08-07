@@ -28,8 +28,8 @@ class MergeEngineTest {
         };
     }
 
-    private static RuleExecutionWrapper wrap(SpanAttributeScrubbingRule r) {
-        return new RuleExecutionWrapper(r, new RuleCircuitBreaker(r.name()));
+    private static ExecutableRule wrap(SpanAttributeScrubbingRule r) {
+        return new ExecutableRule(r, new RuleCircuitBreaker(r.name()));
     }
 
     @Test

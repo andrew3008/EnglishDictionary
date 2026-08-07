@@ -17,14 +17,13 @@ import space.br1440.platform.tracing.otel.javaagent.processor.utils.IpPrefixTrun
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -107,7 +106,7 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
         // Каждое правило оборачивается собственным circuit breaker'ом (изоляция ошибок, PR-4),
         // затем список clamp'ится и детерминированно сортируется (PR-3). Стартовый снимок
         // (enabled=true, version=1, source=startup) фиксируется навсегда — Category B freeze.
-        this.policy = ScrubbingSnapshot.fromRules(true, rules, 1, Instant.now(), "startup");
+        this.policy = ScrubbingSnapshot.fromRules(true, rules, 1, "startup");
 
         this.hasHmacKey = Strings.isNotBlank(hmacKey);
         if (!hasHmacKey && failFast) {
@@ -147,7 +146,7 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
             if (!policy.enabled()) {
                 return;
             }
-            List<RuleExecutionWrapper> wrappers = policy.wrappers();
+            List<ExecutableRule> wrappers = policy.executableRules();
             if (wrappers.isEmpty()) {
                 return;
             }
@@ -163,7 +162,7 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
                 apply(span, key, value, decision);
             });
         } catch (Throwable t) {
-            // Последний рубеж: изоляция ошибок отдельных правил уже выполнена в RuleExecutionWrapper,
+            // Последний рубеж: изоляция ошибок отдельных правил уже выполнена в ExecutableRule,
             // сюда попадают только катастрофические сбои самого процессора. Без печати в System.err.
             log.error("[scrubbing] onEnding завершился аварийно: {}", t.toString());
         }
@@ -431,16 +430,16 @@ public final class ScrubbingSpanProcessor implements ExtendedSpanProcessor {
 
     /** Число загруженных правил (после dedup/clamp). */
     public long getRuleCount() {
-        return policy.wrappers().size();
+        return policy.executableRules().size();
     }
 
     /** Число правил, чей circuit breaker сейчас в состоянии OPEN. */
     public long getOpenBreakerCount() {
-        return policy.wrappers().stream().filter(w -> w.getBreaker().isOpen()).count();
+        return policy.executableRules().stream().filter(w -> w.getBreaker().isOpen()).count();
     }
 
     /** Суммарное число сбоев правил, зафиксированных circuit breaker'ами. */
     public long getTotalBreakerFailures() {
-        return policy.wrappers().stream().mapToLong(w -> w.getBreaker().getTotalFailures()).sum();
+        return policy.executableRules().stream().mapToLong(w -> w.getBreaker().getTotalFailures()).sum();
     }
 }

@@ -1,12 +1,10 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
-
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
 /**
  * Правило для инфраструктурных credentials: пароли БД и брокеров.
- * Key-based, DROP.
  */
 final class InfraCredentialRule extends AbstractBuiltInRule {
 
@@ -25,6 +23,7 @@ final class InfraCredentialRule extends AbstractBuiltInRule {
         if (KeyMatcher.containsAny(KeyMatcher.normalize(key), TOKENS)) {
             return ScrubbingDecision.drop("infra-credential");
         }
+
         return ScrubbingDecision.keep();
     }
 }

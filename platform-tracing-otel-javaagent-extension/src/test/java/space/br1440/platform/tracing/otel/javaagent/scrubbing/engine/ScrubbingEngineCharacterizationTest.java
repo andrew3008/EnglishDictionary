@@ -16,8 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ScrubbingEngineCharacterizationTest {
 
-    private static RuleExecutionWrapper wrap(SpanAttributeScrubbingRule rule) {
-        return new RuleExecutionWrapper(rule, new RuleCircuitBreaker(rule.name()));
+    private static ExecutableRule wrap(SpanAttributeScrubbingRule rule) {
+        return new ExecutableRule(rule, new RuleCircuitBreaker(rule.name()));
     }
 
     private static SpanAttributeScrubbingRule rule(boolean critical, int priority, ScrubbingDecision result) {

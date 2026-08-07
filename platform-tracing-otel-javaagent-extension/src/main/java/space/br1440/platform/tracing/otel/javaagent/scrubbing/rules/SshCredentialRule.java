@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
-
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
@@ -22,6 +21,7 @@ final class SshCredentialRule extends AbstractBuiltInRule {
         if (KeyMatcher.containsAny(KeyMatcher.normalize(key), TOKENS)) {
             return ScrubbingDecision.drop("ssh-credential");
         }
+
         return ScrubbingDecision.keep();
     }
 }

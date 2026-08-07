@@ -9,7 +9,7 @@ import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import java.util.List;
@@ -25,7 +25,7 @@ class ScrubbingCircuitBreakerCharacterizationTest {
     @Test
     void critical_rule_open_returns_scrubbing_failed_in_merge_engine() {
         SpanAttributeScrubbingRule criticalFaulty = criticalThrowingRule("critical-open");
-        var wrapper = new RuleExecutionWrapper(
+        var wrapper = new ExecutableRule(
                 criticalFaulty,
                 new RuleCircuitBreaker("critical-open", 1, 0L, 0L));
 
@@ -63,7 +63,7 @@ class ScrubbingCircuitBreakerCharacterizationTest {
                 throw new RuntimeException("boom");
             }
         };
-        var wrapper = new RuleExecutionWrapper(
+        var wrapper = new ExecutableRule(
                 customFaulty,
                 new RuleCircuitBreaker("custom-open", 1, 0L, 0L));
         wrapper.execute("k", "v");

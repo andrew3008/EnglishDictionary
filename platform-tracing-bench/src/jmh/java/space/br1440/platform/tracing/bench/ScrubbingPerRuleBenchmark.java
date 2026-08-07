@@ -14,7 +14,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 
 import java.util.List;
 import java.util.Locale;
@@ -49,7 +49,7 @@ public class ScrubbingPerRuleBenchmark {
     })
     public String ruleName;
 
-    private List<RuleExecutionWrapper> singleRuleWrappers;
+    private List<ExecutableRule> singleRuleWrappers;
     private String hitKey;
     private Object hitValue;
 
@@ -59,7 +59,7 @@ public class ScrubbingPerRuleBenchmark {
         if (rule == null) {
             throw new IllegalStateException("Неизвестное имя правила в @Param: " + ruleName);
         }
-        singleRuleWrappers = ScrubbingSnapshot.compileWrappers(List.of(rule));
+        singleRuleWrappers = ScrubbingSnapshot.toExecutableRules(List.of(rule));
         ScrubbingFixtures.HitFixture fixture = ScrubbingFixtures.hitFixtureFor(ruleName);
         // Нормализация ключа как в ScrubbingSpanProcessor.normalizeForSpi (lowercase+trim) —
         // метод package-private, поэтому дублируем контракт здесь.

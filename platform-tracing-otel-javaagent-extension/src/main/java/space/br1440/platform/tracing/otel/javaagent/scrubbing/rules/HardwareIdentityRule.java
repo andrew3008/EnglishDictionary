@@ -1,12 +1,10 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
-
 import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
 /**
  * Правило для идентификаторов оборудования: {@code hardwareId}, {@code imei}, {@code serialNumber}.
- * Key-based, HASH.
  */
 final class HardwareIdentityRule extends AbstractBuiltInRule {
 
@@ -24,6 +22,7 @@ final class HardwareIdentityRule extends AbstractBuiltInRule {
         if (KeyMatcher.containsAny(KeyMatcher.normalize(key), TOKENS)) {
             return ScrubbingDecision.hash("hardware-identity");
         }
+
         return ScrubbingDecision.keep();
     }
 }

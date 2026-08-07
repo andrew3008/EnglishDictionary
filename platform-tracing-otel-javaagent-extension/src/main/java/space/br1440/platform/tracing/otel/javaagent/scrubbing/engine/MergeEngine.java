@@ -10,7 +10,7 @@ import java.util.List;
  * <p>
  * Старый процессор возвращал первое не-KEEP решение и выходил. Новый движок:
  * <ol>
- *   <li>обходит ВСЕ правила (через {@link RuleExecutionWrapper}, с учётом {@code supports()} и
+ *   <li>обходит ВСЕ правила (через {@link ExecutableRule}, с учётом {@code supports()} и
  *       состояния circuit breaker);</li>
  *   <li>сводит решения по строгости: KEEP &lt; TRUNCATE &lt; HASH &lt; MASK &lt; DROP;</li>
  *   <li>делает ранний выход (early-exit), как только получено терминальное решение от
@@ -25,7 +25,7 @@ import java.util.List;
  * KEEP от любого правила не может заменить уже накопленное более строгое действие.
  *
  * <h3>Терминальность</h3>
- * Решение считается терминальным, если правило {@link RuleExecutionWrapper#isCritical() critical}
+ * Решение считается терминальным, если правило {@link ExecutableRule#isCritical() critical}
  * и его действие не KEEP. Это запрещает ослаблять решение critical built-in последующими
  * правилами и даёт ранний выход на горячем пути.
  */
@@ -43,10 +43,10 @@ public final class MergeEngine {
      * @param value    сырое значение атрибута
      * @return итоговое решение; никогда {@code null}
      */
-    public static ScrubbingDecision evaluate(List<RuleExecutionWrapper> wrappers, String key, Object value) {
+    public static ScrubbingDecision evaluate(List<ExecutableRule> wrappers, String key, Object value) {
         ScrubbingDecision accumulated = ScrubbingDecision.keep();
 
-        for (RuleExecutionWrapper wrapper : wrappers) {
+        for (ExecutableRule wrapper : wrappers) {
             ScrubbingDecision candidate = wrapper.execute(key, value);
             if (candidate == null) {
                 continue; // правило пропущено (custom в OPEN)

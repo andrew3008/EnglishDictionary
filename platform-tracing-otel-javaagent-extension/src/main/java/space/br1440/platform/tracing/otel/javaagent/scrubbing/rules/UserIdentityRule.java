@@ -1,7 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
-
 import jakarta.annotation.Nonnull;
+
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 
 /**
@@ -13,6 +13,7 @@ final class UserIdentityRule extends AbstractBuiltInRule {
     private static final String[] DROP_TOKENS = {
             "firstname", "lastname", "fullname", "givenname", "familyname"
     };
+
     private static final String[] HASH_TOKENS = {
             "preferredusername", "email"
     };
@@ -28,9 +29,11 @@ final class UserIdentityRule extends AbstractBuiltInRule {
         if (KeyMatcher.containsAny(normalized, DROP_TOKENS)) {
             return ScrubbingDecision.drop("user-identity-pii");
         }
+
         if (KeyMatcher.containsAny(normalized, HASH_TOKENS)) {
             return ScrubbingDecision.hash("user-identity");
         }
+
         return ScrubbingDecision.keep();
     }
 }

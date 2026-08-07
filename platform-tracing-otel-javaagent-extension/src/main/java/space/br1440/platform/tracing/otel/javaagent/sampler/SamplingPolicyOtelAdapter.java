@@ -20,45 +20,52 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 import io.opentelemetry.sdk.trace.samplers.SamplingResult;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 final class SamplingPolicyOtelAdapter {
 
-    private static final AttributeKey<String> SAMPLING_REASON_KEY =
-            AttributeKey.stringKey(PlatformAttributes.PLATFORM_SAMPLING_REASON);
+    private static final AttributeKey<String> SAMPLING_REASON_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_SAMPLING_REASON);
     private static final AttributeKey<String> URL_PATH_KEY = AttributeKey.stringKey("url.path");
 
     private static final SamplingResult FALLBACK_DROP = SamplingResult.create(SamplingDecision.DROP);
     private static final SamplingResult KILL_SWITCH_DROP = SamplingResult.create(SamplingDecision.DROP);
     private static final SamplingResult DROP_HARD = SamplingResult.create(
             SamplingDecision.DROP,
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.DROP_PATH));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.DROP_PATH)
+    );
     private static final SamplingResult DROP_PARENT = SamplingResult.create(
             SamplingDecision.DROP,
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.PARENT_DROP));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.PARENT_DROP)
+    );
     private static final SamplingResult DROP_ROUTE_RATIO = SamplingResult.create(
             SamplingDecision.DROP,
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.ROUTE_RATIO_DROP));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.ROUTE_RATIO_DROP)
+    );
     private static final SamplingResult DROP_DEFAULT_RATIO = SamplingResult.create(
             SamplingDecision.DROP,
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO_DROP));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO_DROP)
+    );
     private static final SamplingResult SAMPLE_FORCE_HEADER = SamplingResult.create(
             SamplingDecision.RECORD_AND_SAMPLE,
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.FORCE_HEADER));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.FORCE_HEADER)
+    );
     private static final SamplingResult SAMPLE_QA_TRACE = SamplingResult.create(
             SamplingDecision.RECORD_AND_SAMPLE,
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.QA_TRACE));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.QA_TRACE)
+    );
     private static final SamplingResult SAMPLE_PARENT = SamplingResult.create(
             SamplingDecision.RECORD_AND_SAMPLE,
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.PARENT_SAMPLED));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.PARENT_SAMPLED)
+    );
     private static final SamplingResult ROUTE_RATIO_SAMPLE = new ForwardingSamplingResult(
             SamplingResult.create(SamplingDecision.RECORD_AND_SAMPLE),
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.ROUTE_RATIO));
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.ROUTE_RATIO)
+    );
     private static final SamplingResult DEFAULT_RATIO_SAMPLE = new ForwardingSamplingResult(
             SamplingResult.create(SamplingDecision.RECORD_AND_SAMPLE),
-            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO));
-
-    private SamplingPolicyOtelAdapter() {
-    }
+            Attributes.of(SAMPLING_REASON_KEY, PlatformSamplingReasons.GLOBAL_RATIO)
+    );
 
     static SamplingPolicyRequest toRequest(Context parentContext,
                                            String traceId,
@@ -82,7 +89,8 @@ final class SamplingPolicyOtelAdapter {
         if (decision.decisionType() == SamplingPolicyDecisionType.RECORD_ONLY) {
             return SamplingResult.create(
                     SamplingDecision.RECORD_ONLY,
-                    Attributes.of(SAMPLING_REASON_KEY, decision.reason().reasonCode()));
+                    Attributes.of(SAMPLING_REASON_KEY, decision.reason().reasonCode())
+            );
         }
 
         return switch (decision.reason()) {

@@ -1,14 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.scrubbing.rules;
 
 import jakarta.annotation.Nonnull;
+
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 
-/**
- * Базовый класс встроенных правил scrubbing'а: {@link #name()} и {@link #priority()}
- * делегируются enum-дескриптору {@link BuiltInSpanAttributeScrubbingRules}, чтобы имя конфигурации
- * и приоритет first-match хранились в одном месте. Подклассы реализуют только
- * {@link #evaluate}.
- */
 abstract class AbstractBuiltInRule implements SpanAttributeScrubbingRule {
 
     private final BuiltInSpanAttributeScrubbingRules descriptor;

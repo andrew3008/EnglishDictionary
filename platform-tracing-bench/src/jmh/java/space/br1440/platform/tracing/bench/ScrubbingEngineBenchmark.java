@@ -13,7 +13,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeEngine;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionWrapper;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
  *       от catastrophic backtracking).</li>
  * </ul>
  * Движок вызывается напрямую ({@code MergeEngine.evaluate} над wrappers из
- * {@code ScrubbingSnapshot.compileWrappers}) — без SDK/span'а, чтобы изолировать
+ * {@code ScrubbingSnapshot.toExecutableRules}) — без SDK/span'а, чтобы изолировать
  * стоимость правил от {@code toSpanData()} (последний уже измерен в
  * {@code CompositePipelineBenchmark}). Per-rule ранжирование — в
  * {@code ScrubbingPerRuleBenchmark} (отдельный класс, чтобы full-set сценарии
@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class ScrubbingEngineBenchmark {
 
-    private List<RuleExecutionWrapper> fullSetWrappers;
+    private List<ExecutableRule> fullSetWrappers;
     private String cleanKey;
     private String cleanValue;
     private String longCleanValue;
@@ -63,7 +63,7 @@ public class ScrubbingEngineBenchmark {
                 defaults.add(r);
             }
         }
-        fullSetWrappers = ScrubbingSnapshot.compileWrappers(defaults);
+        fullSetWrappers = ScrubbingSnapshot.toExecutableRules(defaults);
 
         cleanKey = "http.route";
         cleanValue = "/api/v1/orders/{id}";

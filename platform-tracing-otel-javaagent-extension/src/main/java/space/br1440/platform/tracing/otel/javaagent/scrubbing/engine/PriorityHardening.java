@@ -36,16 +36,16 @@ public final class PriorityHardening {
      * Применяет clamp к custom-правилам и возвращает новый детерминированно отсортированный
      * неизменяемый список.
      */
-    public static List<RuleExecutionWrapper> sortAndClamp(List<RuleExecutionWrapper> wrappers) {
+    public static List<ExecutableRule> sortAndClamp(List<ExecutableRule> wrappers) {
         return wrappers.stream()
                 .map(PriorityHardening::clampIfNeeded)
                 .sorted(Comparator
-                        .comparingInt(RuleExecutionWrapper::getEffectivePriority)
+                        .comparingInt(ExecutableRule::getEffectivePriority)
                         .thenComparing(w -> w.getRuleClass().getName()))
                 .toList();
     }
 
-    private static RuleExecutionWrapper clampIfNeeded(RuleExecutionWrapper wrapper) {
+    private static ExecutableRule clampIfNeeded(ExecutableRule wrapper) {
         if (!wrapper.isCritical() && wrapper.getEffectivePriority() < CUSTOM_PRIORITY_FLOOR) {
             log.warn("[scrubbing] Custom-правило '{}' имеет приоритет {} ниже допустимой границы {}. "
                             + "Приоритет поднят (clamp) до {}.",
