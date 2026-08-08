@@ -18,35 +18,35 @@ public final class PropagationDefaults {
     public static final String PROP_HEADER_QA_TRACE = "platform.tracing.propagation.platform-headers.qa-trace-header";
     public static final String PROP_HEADER_REQUEST_ID = "platform.tracing.propagation.platform-headers.request-id-header";
 
-    public static final boolean DEFAULT_BAGGAGE_ENABLED = true;
-    public static final List<String> DEFAULT_BAGGAGE_ALLOWED_KEYS = List.of("traffic_source", "tenant_class", "platform.correlation.id");
-    public static final List<String> DEFAULT_BAGGAGE_DENY_PATTERNS = List.of("password", "secret", "token");
+    static final boolean DEFAULT_BAGGAGE_ENABLED = true;
+    static final List<String> DEFAULT_BAGGAGE_ALLOWED_KEYS = List.of("traffic_source", "tenant_class", "platform.correlation.id");
+    static final List<String> DEFAULT_BAGGAGE_DENY_PATTERNS = List.of("password", "secret", "token");
 
-    public static final String DEFAULT_FORCE_HEADER = "X-Trace-On";
-    public static final String DEFAULT_QA_HEADER = "X-QA-Trace";
-    public static final String DEFAULT_REQUEST_ID_HEADER = "X-Request-Id";
+    static final String DEFAULT_FORCE_HEADER = "X-Trace-On";
+    static final String DEFAULT_QA_HEADER = "X-QA-Trace";
+    static final String DEFAULT_REQUEST_ID_HEADER = "X-Request-Id";
 
-    public static String getForceTraceHeader(ConfigProperties config) {
+    static String getForceTraceHeader(ConfigProperties config) {
         return orDefault(config.getString(PROP_HEADER_FORCE_TRACE), DEFAULT_FORCE_HEADER);
     }
 
-    public static String getQaTraceHeader(ConfigProperties config) {
+    static String getQaTraceHeader(ConfigProperties config) {
         return orDefault(config.getString(PROP_HEADER_QA_TRACE), DEFAULT_QA_HEADER);
     }
 
-    public static String getRequestIdHeader(ConfigProperties config) {
+    static String getRequestIdHeader(ConfigProperties config) {
         return orDefault(config.getString(PROP_HEADER_REQUEST_ID), DEFAULT_REQUEST_ID_HEADER);
     }
 
-    public static boolean isBaggageEnabled(ConfigProperties config) {
+    static boolean isBaggageEnabled(ConfigProperties config) {
         return config.getBoolean(PROP_BAGGAGE_ENABLED, DEFAULT_BAGGAGE_ENABLED);
     }
 
-    public static List<String> getBaggageAllowedKeys(ConfigProperties config) {
+    static List<String> getBaggageAllowedKeys(ConfigProperties config) {
         return orDefault(config.getList(PROP_BAGGAGE_ALLOWED_KEYS), DEFAULT_BAGGAGE_ALLOWED_KEYS);
     }
 
-    public static List<String> getBaggageDenyPatterns(ConfigProperties config) {
+    static List<String> getBaggageDenyPatterns(ConfigProperties config) {
         return orDefault(config.getList(PROP_BAGGAGE_DENY_PATTERNS), DEFAULT_BAGGAGE_DENY_PATTERNS);
     }
 }

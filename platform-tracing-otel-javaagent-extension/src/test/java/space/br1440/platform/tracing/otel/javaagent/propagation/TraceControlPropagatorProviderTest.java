@@ -18,8 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * PR-2 (Фаза 15): named {@code ConfigurablePropagatorProvider} ({@code platform-trace-control}).
  */
-@DisplayName("InboundTraceControlPropagatorProvider (named platform-trace-control)")
-class InboundTraceControlPropagatorProviderTest {
+@DisplayName("TraceControlPropagatorProvider (named platform-trace-control)")
+class TraceControlPropagatorProviderTest {
 
     private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
         @Override
@@ -40,7 +40,7 @@ class InboundTraceControlPropagatorProviderTest {
     @Test
     @DisplayName("getName == platform-trace-control")
     void getName_is_platform_trace_control() {
-        assertThat(new InboundTraceControlPropagatorProvider().getName())
+        assertThat(new TraceControlPropagatorProvider().getName())
                 .isEqualTo("platform-trace-control");
     }
 
@@ -48,7 +48,7 @@ class InboundTraceControlPropagatorProviderTest {
     @DisplayName("getPropagator извлекает X-Trace-On из carrier в Context")
     void getPropagator_extracts_X_Trace_On() {
         TextMapPropagator propagator =
-                new InboundTraceControlPropagatorProvider().getPropagator(config(Map.of()));
+                new TraceControlPropagatorProvider().getPropagator(config(Map.of()));
 
         // fields() публикует платформенные заголовки (дефолтные имена).
         assertThat(propagator.fields()).contains("X-Trace-On", "X-QA-Trace", "X-Request-Id");
@@ -68,10 +68,26 @@ class InboundTraceControlPropagatorProviderTest {
     @Test
     @DisplayName("getPropagator учитывает кастомные имена заголовков из ConfigProperties")
     void getPropagator_honors_custom_header_names() {
-        TextMapPropagator propagator = new InboundTraceControlPropagatorProvider()
+        TextMapPropagator propagator = new TraceControlPropagatorProvider()
                 .getPropagator(config(Map.of(
                         "platform.tracing.propagation.platform-headers.force-trace-header", "X-Force")));
 
         assertThat(propagator.fields()).contains("X-Force");
+    }
+
+    @Test
+    @DisplayName("возвращаемый propagator находится за SafeTextMapPropagator boundary")
+    void getPropagator_isBehindSafeTextMapPropagatorBoundary() {
+        TextMapPropagator propagator = new TraceControlPropagatorProvider().getPropagator(config(Map.of()));
+
+        assertThat(propagator).isInstanceOf(SafeTextMapPropagator.class);
+    }
+
+    @Test
+    @DisplayName("fields() содержит РОВНО настроенные control headers (default header names)")
+    void fields_containsExactlyConfiguredControlHeaders() {
+        TextMapPropagator propagator = new TraceControlPropagatorProvider().getPropagator(config(Map.of()));
+
+        assertThat(propagator.fields()).containsExactlyInAnyOrder("X-Trace-On", "X-QA-Trace", "X-Request-Id");
     }
 }

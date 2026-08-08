@@ -87,7 +87,7 @@ immutable registry). Этот deployment path не разрешён для pilot
 
 > **Изменено (Фаза 12 / context-first).** Флаг `-Dotel.instrumentation.http.server.capture-request-headers=X-Trace-On,X-QA-Trace`
 > **больше не требуется** для сэмплирования: `CompositeSampler` получает `InboundTraceControl` из OTel Context
-> (через `InboundTraceControlPropagator`), не из span-атрибутов. См. [ADR-context-first-propagation.md](./decisions/ADR-context-first-propagation.md).
+> (через `TraceControlPropagator`), не из span-атрибутов. См. [ADR-context-first-propagation.md](./decisions/ADR-context-first-propagation.md).
 
 Рекомендуемые agent-флаги (Фаза 12, опционально):
 

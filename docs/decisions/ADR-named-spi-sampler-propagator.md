@@ -45,11 +45,29 @@ SPI, не ломая существующий compose-путь и не созд�
 
 ### Named propagator `platform-trace-control` (`ConfigurablePropagatorProvider`)
 
-- `PlatformTraceControlPropagatorProvider implements ConfigurablePropagatorProvider`,
-  `getName()="platform-trace-control"`, `getPropagator(config)=PlatformTraceControlPropagatorBuilder.build(config)`
-  (имена заголовков из `PropagationDefaults`, обёрнут в `SafeTextMapPropagator`).
+- `TraceControlPropagatorProvider implements ConfigurablePropagatorProvider`,
+  `getName()="platform-trace-control"`, `getPropagator(config)` строит
+  `TraceControlPropagator` напрямую из трёх accessor'ов `PropagationDefaults` и оборачивает
+  результат в `SafeTextMapPropagator` (отдельный builder-тип не используется).
+- Имя без префикса `Inbound`: propagator реализует обе стороны OTel-контракта (`extract` inbound
+  headers + `inject` outbound через `TraceControlHeaderInjector`, secure-by-default). Прежнее
+  имя `InboundTraceControlPropagator*` вводило в заблуждение при outbound stack traces.
 - Строго **дополняет** W3C `tracecontext`/`baggage` (зона Агента), не заменяет
   ([ADR-context-first-propagation](ADR-context-first-propagation.md)).
+
+### OTel BOM upgrade protocol (version-sensitive contracts)
+
+Любое изменение `openTelemetryBomVersion` в `gradle.properties` обязано перепрогнать до merge:
+
+1. `PlatformSpiAutoconfigureIntegrationTest` (composition lifecycle: customizer до `composite`);
+2. packaged `OutboundBaggageAgentE2ETest` (activation `instanceof W3CBaggagePropagator` в
+   `ExtensionClassLoader` + raw `%20` wire);
+3. W3C limit/metadata conformance в `FilteringBaggagePropagatorInjectionTest` /
+   `FilteringBaggagePropagatorBaggageLimitsTest`.
+
+Эти контракты version-sensitive и не являются вневременной архитектурой. См. также
+[otel-compatibility-matrix.md](../tracing/otel-compatibility-matrix.md) и evidence
+[platform-tracing-propagation-cleanup-evidence.md](../analysis/platform-tracing-propagation-cleanup-evidence.md).
 
 ### Дефолт propagator — `addPropertiesCustomizer`, а НЕ `addPropertiesSupplier`
 

@@ -46,7 +46,9 @@ class SafeTextMapPropagatorTest {
 
         // Критично: именно исходный context (а не Context.root()) — W3C/B3 уже извлечён ранее.
         assertThat(result).isSameAs(input);
+        // Фактический diagnostics-контракт — только счётчик, без текстового логирования (см. §1.3 плана).
         assertThat(diagnostics.getPropagatorFailures()).isGreaterThanOrEqualTo(1);
+        assertThat(diagnostics.getSuppressedErrors()).isGreaterThanOrEqualTo(1);
     }
 
     @Test
@@ -63,6 +65,44 @@ class SafeTextMapPropagatorTest {
     void fields_при_сбое_возвращает_пустой_список() {
         SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS, new TracingDiagnostics());
         assertThat(safe.fields()).isEmpty();
+    }
+
+    // given: delegate бросает fatal LinkageError (VirtualMachineError и подобные обрабатываются
+    // так же через PlatformThrowables.propagateIfFatal — здесь фиксируем именно LinkageError,
+    // так как это наиболее вероятный fatal-класс в classloader-контексте Agent extension)
+    private static final TextMapPropagator ALWAYS_THROWS_FATAL = new TextMapPropagator() {
+        @Override
+        public Collection<String> fields() {
+            throw new LinkageError("fields fatal");
+        }
+
+        @Override
+        public <C> Context extract(Context context, C carrier, TextMapGetter<C> getter) {
+            throw new LinkageError("extract fatal");
+        }
+
+        @Override
+        public <C> void inject(Context context, C carrier, TextMapSetter<C> setter) {
+            throw new LinkageError("inject fatal");
+        }
+    };
+
+    @Test
+    void extract_при_fatal_throwable_не_поглощается_и_пробрасывается() {
+        // given: safe boundary поверх delegate, бросающего LinkageError
+        SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS_FATAL, new TracingDiagnostics());
+
+        // when/then: fatal throwable распространяется наружу, а не подавляется
+        org.junit.jupiter.api.Assertions.assertThrows(LinkageError.class,
+                () -> safe.extract(Context.root(), null, dummyGetter()));
+    }
+
+    @Test
+    void inject_при_fatal_throwable_не_поглощается_и_пробрасывается() {
+        SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS_FATAL, new TracingDiagnostics());
+
+        org.junit.jupiter.api.Assertions.assertThrows(LinkageError.class,
+                () -> safe.inject(Context.root(), null, dummySetter()));
     }
 
     private static TextMapGetter<Object> dummyGetter() {

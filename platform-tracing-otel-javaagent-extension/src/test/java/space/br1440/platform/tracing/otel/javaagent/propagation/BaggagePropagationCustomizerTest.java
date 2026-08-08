@@ -83,6 +83,30 @@ class BaggagePropagationCustomizerTest {
         assertThat(result).isSameAs(dummy);
     }
 
+    @Test
+    @DisplayName("характеризация: собранная цепочка фильтрует allowlist и убирает platform.correlation.id одновременно")
+    void assembledChain_filtersAllowlistAndStripsCorrelation_characterization() {
+        // given: enabled-цепочка, собранная customizer'ом поверх реального W3CBaggagePropagator
+        TextMapPropagator chain = customizer.apply(W3CBaggagePropagator.getInstance(), configWithBaggageEnabled(true));
+        io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root().with(
+                io.opentelemetry.api.baggage.Baggage.builder()
+                        .put("password", "secret123")
+                        .put("platform.correlation.id", "unverified-workflow")
+                        .put("traffic_source", "qa")
+                        .build());
+        Map<String, String> carrier = new java.util.HashMap<>();
+
+        // when
+        chain.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+
+        // then: deny/non-allowlisted и unverified correlation отсутствуют, allowlisted-ключ проходит
+        String header = carrier.get("baggage");
+        assertThat(header)
+                .doesNotContain("password")
+                .doesNotContain("platform.correlation.id")
+                .contains("traffic_source");
+    }
+
     private static DefaultConfigProperties configWithBaggageEnabled(boolean enabled) {
         return DefaultConfigProperties.createFromMap(
                 Map.of(PropagationDefaults.PROP_BAGGAGE_ENABLED, String.valueOf(enabled))

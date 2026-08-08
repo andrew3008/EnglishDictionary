@@ -13,16 +13,16 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
 
-public final class SafeTextMapPropagator implements TextMapPropagator {
+final class SafeTextMapPropagator implements TextMapPropagator {
 
     private final TextMapPropagator delegate;
     private final TracingDiagnostics diagnostics;
 
-    public SafeTextMapPropagator(TextMapPropagator delegate) {
+    SafeTextMapPropagator(TextMapPropagator delegate) {
         this(delegate, TracingDiagnostics.shared());
     }
 
-    public SafeTextMapPropagator(TextMapPropagator delegate, TracingDiagnostics diagnostics) {
+    SafeTextMapPropagator(TextMapPropagator delegate, TracingDiagnostics diagnostics) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }

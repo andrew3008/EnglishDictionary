@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * Каноническая реализация {@link TraceControlHeaderInjector}.
  * <p>
- * Единый источник истины для outbound-инжекции: и {@code InboundTraceControlPropagator.inject()}
+ * Единый источник истины для outbound-инжекции: и {@code TraceControlPropagator.inject()}
  * (agent classloader), и client-интерсепторы Spring (app classloader) делегируют сюда — это
  * исключает дрейф логики между классами и classloader'ами (см. ADR-outbound-propagation).
  * <p>

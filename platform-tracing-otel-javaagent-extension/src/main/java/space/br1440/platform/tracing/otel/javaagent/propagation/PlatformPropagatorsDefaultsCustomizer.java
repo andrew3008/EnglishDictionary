@@ -10,7 +10,7 @@ import java.util.function.Function;
 public final class PlatformPropagatorsDefaultsCustomizer implements Function<ConfigProperties, Map<String, String>> {
 
     static final String PROPAGATORS_KEY = "otel.propagators";
-    static final String PLATFORM_PROPAGATOR = InboundTraceControlPropagatorProvider.NAME;
+    static final String PLATFORM_PROPAGATOR = TraceControlPropagatorProvider.NAME;
     static final String NONE = "none";
     static final List<String> OTEL_DEFAULT_PROPAGATORS = List.of("tracecontext", "baggage");
 

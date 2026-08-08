@@ -126,6 +126,89 @@ class PlatformSpiAutoconfigureIntegrationTest {
         }
     }
 
+    // ---- Slice 1 (характеризация): pinned OTel 1.62.0 composition lifecycle -------------------
+
+    @Test
+    @DisplayName("characterization: tracecontext,baggage,platform-trace-control → final fields без дублей")
+    void finalFields_containAllExpectedHeaders_withoutDuplicates_characterization() {
+        // given: явный набор из трёх named propagator'ов, как это будет собрано real autoconfigure
+        AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
+                .addPropertiesSupplier(() -> Map.of(
+                        "otel.propagators", "tracecontext,baggage,platform-trace-control"))
+                .build();
+        try {
+            TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
+
+            // when
+            java.util.Collection<String> fields = root.fields();
+
+            // then: repository regression для pinned OTel 1.62.0 — customizer применяется к
+            // individual named propagator до final composite (см. §5.4 плана); проверяем результат
+            // этого поведения, а не сам internal lifecycle через reflection.
+            assertThat(fields).containsExactlyInAnyOrder(
+                    "traceparent", "tracestate", "baggage",
+                    "X-Trace-On", "X-QA-Trace", "X-Request-Id");
+        } finally {
+            sdk.getOpenTelemetrySdk().close();
+        }
+    }
+
+    // ---- Slice 2 (§6.3 плана): W3C outbound baggage через реальный autoconfigure/customizer -----
+
+    @Test
+    @DisplayName("integration: outbound baggage через final SDK propagator фильтрует allowlist, "
+            + "кодирует %20 и проходит stock round-trip")
+    void outboundBaggage_throughRealAutoconfigure_filtersAndRoundTrips() {
+        AutoConfiguredOpenTelemetrySdk sdk = baseBuilder()
+                .addPropertiesSupplier(() -> Map.of(
+                        "otel.propagators", "tracecontext,baggage",
+                        "platform.tracing.javaagent.propagation.baggage.allowed-keys", "tenant_class"))
+                .build();
+        try {
+            TextMapPropagator root = sdk.getOpenTelemetrySdk().getPropagators().getTextMapPropagator();
+
+            // given: allowlisted key с пробелом и metadata + denied key
+            io.opentelemetry.context.Context ctx = io.opentelemetry.context.Context.root().with(
+                    io.opentelemetry.api.baggage.Baggage.builder()
+                            .put("tenant_class", "DF 28",
+                                    io.opentelemetry.api.baggage.BaggageEntryMetadata.create("verified=true"))
+                            .put("internal_secret", "leak")
+                            .build());
+            Map<String, String> carrier = new java.util.HashMap<>();
+
+            // when: inject через реальный final composite propagator, полученный из autoconfigure
+            root.inject(ctx, carrier, (c, k, v) -> c.put(k, v));
+
+            // then: реальный autoconfigure callback применил customizer к direct W3CBaggagePropagator
+            // (а не к обёрнутому composite) — заголовок использует stock %20, а не ручной '+'
+            String header = carrier.get("baggage");
+            assertThat(header)
+                    .as("итоговый final SDK propagator обязан кодировать пробел как %%20")
+                    .contains("tenant_class=DF%2028")
+                    .doesNotContain("internal_secret")
+                    .doesNotContain("leak");
+
+            // and: тот же final propagator должен вернуть исходное значение через extract
+            io.opentelemetry.context.Context extracted =
+                    root.extract(io.opentelemetry.context.Context.root(), carrier,
+                            new io.opentelemetry.context.propagation.TextMapGetter<Map<String, String>>() {
+                                @Override
+                                public Iterable<String> keys(Map<String, String> c) {
+                                    return c.keySet();
+                                }
+
+                                @Override
+                                public String get(Map<String, String> c, String key) {
+                                    return c == null ? null : c.get(key);
+                                }
+                            });
+            assertThat(io.opentelemetry.api.baggage.Baggage.fromContext(extracted).getEntryValue("tenant_class"))
+                    .isEqualTo("DF 28");
+        } finally {
+            sdk.getOpenTelemetrySdk().close();
+        }
+    }
+
     @Test
     @DisplayName("otel.propagators=none → платформенный пропагатор НЕ добавляется")
     void propagators_none_excludes_platform() {

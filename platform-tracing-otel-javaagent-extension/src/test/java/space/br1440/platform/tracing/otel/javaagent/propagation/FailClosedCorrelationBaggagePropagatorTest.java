@@ -60,6 +60,43 @@ class FailClosedCorrelationBaggagePropagatorTest {
     }
 
     @Test
+    // given: F0 не содержит catch-блока — исключение из его собственной pre-processing логики
+    // (Baggage.fromContext на null-context, до вызова delegate.inject) должно пробрасываться
+    void injectWithNullContextPropagatesExceptionBeforeDelegateIsInvoked() {
+        Map<String, String> carrier = new ConcurrentHashMap<>();
+
+        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+                () -> propagator.inject(null, carrier, Map::put));
+
+        assertThat(carrier).isEmpty();
+    }
+
+    @Test
+    // given: F0 не содержит catch-блока — исключение из его собственной post-processing логики
+    // (Baggage.fromContext на null-результате delegate.extract) должно пробрасываться
+    void extractWithDelegateReturningNullPropagatesException() {
+        FailClosedCorrelationBaggagePropagator propagatorOverNullDelegate =
+                new FailClosedCorrelationBaggagePropagator(new io.opentelemetry.context.propagation.TextMapPropagator() {
+                    @Override
+                    public java.util.Collection<String> fields() {
+                        return java.util.List.of();
+                    }
+
+                    @Override
+                    public <C> void inject(Context context, C carrier, io.opentelemetry.context.propagation.TextMapSetter<C> setter) {
+                    }
+
+                    @Override
+                    public <C> Context extract(Context context, C carrier, TextMapGetter<C> getter) {
+                        return null;
+                    }
+                });
+
+        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+                () -> propagatorOverNullDelegate.extract(Context.root(), Map.of(), GETTER));
+    }
+
+    @Test
     void removesCanonicalCorrelationAlreadyPresentInInputContext() {
         Context input = Baggage.builder()
                 .put(FailClosedCorrelationBaggagePropagator.CORRELATION_BAGGAGE_KEY, "preexisting")

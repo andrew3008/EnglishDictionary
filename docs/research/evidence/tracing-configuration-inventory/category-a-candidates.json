@@ -89,7 +89,7 @@
 }, {
   "candidate" : "propagation.trace-control-headers.enabled",
   "canonicalCurrentNames" : [ "platform.tracing.policy.propagation.trace-control-headers.enabled" ],
-  "consumer" : [ "PlatformPropagationGate / InboundTraceControlPropagator" ],
+  "consumer" : [ "PlatformPropagationGate / TraceControlPropagator" ],
   "currentMutationPaths" : [ "private applySnapshot", "ACTUATOR typed leaf" ],
   "default" : "true",
   "performanceRelevantBehavior" : "Atomic snapshot read or startup-only behavior",

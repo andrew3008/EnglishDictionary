@@ -33,6 +33,10 @@ dependencies {
     // OpenTelemetry SDK для построения тестового pipeline'а в бенчмарках.
     jmh 'io.opentelemetry:opentelemetry-sdk'
     jmh 'io.opentelemetry:opentelemetry-sdk-testing'
+    // Supported-boundary propagation benchmarks (propagation cleanup Slice 1, G-PROP-6):
+    // измеряют итоговый final propagator через реальный autoconfigure/SPI, а не implementation-типы.
+    jmh 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    jmh 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
 
     jmh 'org.slf4j:slf4j-api'
     // Logback на уровне runtime, чтобы JMH-цикл не печатал WARN от SLF4J no-op binder'а.

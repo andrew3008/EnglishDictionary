@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.propagation;
 
+import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
@@ -8,7 +9,7 @@ import java.util.HashSet;
 public final class BaggagePropagationCustomizer {
 
     public TextMapPropagator apply(TextMapPropagator propagator, ConfigProperties config) {
-        if (!BaggagePropagatorTypeDetector.isW3cBaggagePropagator(propagator)) {
+        if (!(propagator instanceof W3CBaggagePropagator)) {
             return propagator;
         }
 
@@ -21,8 +22,7 @@ public final class BaggagePropagationCustomizer {
             );
         }
 
-        return new FailClosedCorrelationBaggagePropagator(
-                new SafeTextMapPropagator(outboundPolicy)
-        );
+        SafeTextMapPropagator safePropagator = new SafeTextMapPropagator(outboundPolicy);
+        return new FailClosedCorrelationBaggagePropagator(safePropagator);
     }
 }

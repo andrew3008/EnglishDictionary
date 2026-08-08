@@ -205,7 +205,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     @Test
     void пустое_имя_force_header_заменяется_дефолтом_X_Trace_On() {
         // Устаревший тест, так как CompositeSampler больше не хранит имена заголовков в description,
-        // они теперь инкапсулированы в InboundTraceControlPropagator
+        // они теперь инкапсулированы в TraceControlPropagator
     }
 
     @Test

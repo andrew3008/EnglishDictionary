@@ -73,6 +73,17 @@ Platform policy:
 4. P1 e2e smoke — required before production rollout (не блокирует architecture sign-off).
    - `./gradlew :platform-tracing-e2e-tests:test -PrunE2e` на Gentoo Docker (`DOCKER_HOST=tcp://192.168.100.70:2375`)
    - Re-validated: **2026-06-08**, 26/26 green, Agent 2.28.1 confirmed
+5. **OTel BOM upgrade protocol (propagation version-sensitive contracts):** любое изменение
+   `openTelemetryBomVersion` обязано до merge перепрогнать:
+   - `:platform-tracing-otel-javaagent-extension:test --tests PlatformSpiAutoconfigureIntegrationTest`
+     (composition: customizer применяется до `TextMapPropagator.composite`);
+   - `:platform-tracing-e2e-tests:test -PrunE2e --tests OutboundBaggageAgentE2ETest`
+     (`instanceof W3CBaggagePropagator` внутри Agent `ExtensionClassLoader` + raw `%20` wire);
+   - W3C limit/metadata conformance:
+     `FilteringBaggagePropagatorInjectionTest`, `FilteringBaggagePropagatorBaggageLimitsTest`.
+   Эти контракты не являются вневременной архитектурой; см.
+   [ADR-named-spi-sampler-propagator.md](../decisions/ADR-named-spi-sampler-propagator.md) и
+   [platform-tracing-propagation-cleanup-evidence.md](../analysis/platform-tracing-propagation-cleanup-evidence.md).
 
 ## 1.62.0 impact assessment (tracing-репозиторий)
 
@@ -99,7 +110,7 @@ Platform policy:
 | `AutoConfigurationCustomizerProvider` | `PlatformAutoConfigurationCustomizer` | всегда (customize-канал) | **stable** | — (базовый путь) |
 | `ResourceProvider` (`ConditionalResourceProvider`) | `SafeResourceProvider`/`PlatformResourceProvider` | всегда | `ConditionalResourceProvider` — **internal/unstable** | деградирует до обычного `ResourceProvider` (per-key omit) |
 | `ConfigurableSamplerProvider` | `PlatformSamplerProvider` (`platform`) | `otel.traces.sampler=platform` (явный opt-in) | **stable** | inline `addSamplerCustomizer` (compose-over-existing) — работает без named |
-| `ConfigurablePropagatorProvider` | `InboundTraceControlPropagatorProvider` (`platform-trace-control`) | `otel.propagators=...,platform-trace-control` (дефолт дописывается ENV-aware) | **stable** | дефолт-customizer + baggage-wrapper в inline-канале |
+| `ConfigurablePropagatorProvider` | `TraceControlPropagatorProvider` (`platform-trace-control`) | `otel.propagators=...,platform-trace-control` (дефолт дописывается ENV-aware) | **stable** | дефолт-customizer + baggage-wrapper в inline-канале |
 
 Примечания:
 

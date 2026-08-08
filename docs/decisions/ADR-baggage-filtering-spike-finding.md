@@ -94,3 +94,25 @@ Reflection на поле `textMapPropagators` — работает для intros
 - `BaggageFilteringSpikeTest.java`
 - `spike/baggage/SpikeFilteringBaggagePropagator.java` (spike-only, не публикуется)
 - План: `otel_extension_refactor` PR-2a/PR-2
+
+## Post-decision implementation note (propagation cleanup, 2026-08-08)
+
+Исходные spike findings выше **не переписываются**. После cleanup production-путь outbound
+baggage реализован так:
+
+1. `BaggagePropagationCustomizer` декорирует только непосредственный
+   `instanceof W3CBaggagePropagator` (без string-based type detection).
+2. `FilteringBaggagePropagator.inject()` строит **derived immutable** `Baggage` из allowlisted
+   entries (value + `BaggageEntryMetadata` без мутации исходного context) и делегирует
+   сериализацию pinned stock `W3CBaggagePropagator`.
+3. Wire encoding (`%20`, не `+`), metadata encoding и лимиты 64 entries / 8192 bytes принадлежат
+   stock OTel SDK **1.62.0** delegate; ручной `URLEncoder` / ручная запись header в production
+   package отсутствуют.
+4. Цепочка сборки: `FailClosedCorrelationBaggagePropagator(SafeTextMapPropagator(Filtering|stock))`.
+
+Доказательства (не spike):
+
+- conformance: `FilteringBaggagePropagatorInjectionTest` (value/metadata/deny/limits/immutability);
+- real autoconfigure: `PlatformSpiAutoconfigureIntegrationTest.outboundBaggage_throughRealAutoconfigure_filtersAndRoundTrips`;
+- packaged Agent wire: `OutboundBaggageAgentE2ETest` (positive + negative control);
+- сводный report: [platform-tracing-propagation-cleanup-evidence.md](../analysis/platform-tracing-propagation-cleanup-evidence.md).

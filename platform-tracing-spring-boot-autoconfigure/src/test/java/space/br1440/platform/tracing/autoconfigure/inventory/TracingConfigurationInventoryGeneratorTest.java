@@ -368,7 +368,7 @@ class TracingConfigurationInventoryGeneratorTest {
         entry.declarations.add(location(
                 declarationPath, "AcceptedPolicyAccess.traceControlHeadersEnabled", "boolean"));
         entry.readers.add(link(declarationPath, "PlatformPropagationGate.isEnabled", "DIRECT_CALL"));
-        entry.consumers.add("PlatformPropagationGate / InboundTraceControlPropagator");
+        entry.consumers.add("PlatformPropagationGate / TraceControlPropagator");
         entry.valueType = "boolean";
         entry.defaultValue = "true";
         entry.defaultDefinitions.add("AcceptedPolicyAccess.isolatedDefaults:true");
