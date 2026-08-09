@@ -80,10 +80,6 @@ public final class PlatformExtensionReadiness {
         return installedCapabilities.stream().map(Enum::name).sorted().toArray(String[]::new);
     }
 
-    public String[] requiredCapabilities() {
-        return REQUIRED_CAPABILITIES.stream().map(Enum::name).sorted().toArray(String[]::new);
-    }
-
     public synchronized boolean has(PlatformExtensionCapability capability) {
         Objects.requireNonNull(capability, "capability");
         return installedCapabilities.contains(capability);

@@ -22,7 +22,14 @@ class PlatformExtensionReadinessTest {
         readiness.markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
 
         assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
-        assertThat(readiness.capabilities()).containsExactlyInAnyOrder(readiness.requiredCapabilities());
+        assertThat(readiness.capabilities()).containsExactlyInAnyOrder(
+                "CONFIGURATION_LOADED",
+                "PLATFORM_SAMPLER_INSTALLED",
+                "REQUIRED_SPAN_PROCESSORS_INSTALLED",
+                "SANITIZER_INSTALLED",
+                "PROPAGATION_HOOKS_INSTALLED",
+                "SAFE_EXPORTER_INSTALLED",
+                "EXPORT_PATH_PROTECTED");
     }
 
     @Test

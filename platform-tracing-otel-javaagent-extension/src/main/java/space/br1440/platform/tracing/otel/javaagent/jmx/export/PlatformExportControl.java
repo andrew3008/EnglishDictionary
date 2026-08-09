@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.export;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.PlatformDropOldestExportSpanProcessor;
@@ -14,6 +15,7 @@ import javax.management.openmbean.TabularType;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,35 +37,36 @@ public final class PlatformExportControl implements PlatformExportControlMBean {
     public PlatformExportControl(OwnerRegistrationSlot<PlatformDropOldestExportSpanProcessor> processorSlot,
                                  OwnerRegistrationSlot<SafeSpanExporter> exporterSlot,
                                  UUID agentInstanceId) {
-        this.processorSlot = processorSlot;
-        this.exporterSlot = exporterSlot;
-        this.agentInstanceId = agentInstanceId;
+        this.processorSlot = Objects.requireNonNull(processorSlot, "processorSlot");
+        this.exporterSlot = Objects.requireNonNull(exporterSlot, "exporterSlot");
+        this.agentInstanceId = Objects.requireNonNull(agentInstanceId, "agentInstanceId");
     }
 
     @Override
     public CompositeData getExportObservation() {
         long sequence = captureSequence.incrementAndGet();
         long captureStartedAtMillis = Instant.now().toEpochMilli();
-        long baseNanos = System.nanoTime();
 
-        CompositeData processorValues = buildProcessorValues(processorSlot.capture(), baseNanos);
-        CompositeData exporterValues = buildExporterValues(exporterSlot.capture(), baseNanos);
+        OwnerCapture<PlatformDropOldestExportSpanProcessor> processorCapture = OwnerCapture.of(processorSlot);
+        OwnerCapture<SafeSpanExporter> exporterCapture = OwnerCapture.of(exporterSlot);
+
+        CompositeData processorValues = buildProcessorValues(processorCapture.state(), processorCapture.offsetNanos());
+        CompositeData exporterValues = buildExporterValues(exporterCapture.state(), exporterCapture.offsetNanos());
 
         long captureCompletedAtMillis = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(OBSERVATION_TYPE,
+        return JmxOpenTypeSupport.compositeData(
+                OBSERVATION_TYPE,
                 JmxObservationWireContract.SCHEMA_VERSION,
                 sequence,
                 agentInstanceId.toString(),
                 captureStartedAtMillis,
                 captureCompletedAtMillis,
                 processorValues,
-                exporterValues);
+                exporterValues
+        );
     }
 
-    private static CompositeData buildProcessorValues(OwnerRegistrationState<PlatformDropOldestExportSpanProcessor> state,
-                                                      long baseNanos) {
-        long offsetNanos = (System.nanoTime() - baseNanos);
-
+    private static CompositeData buildProcessorValues(OwnerRegistrationState<PlatformDropOldestExportSpanProcessor> state, long offsetNanos) {
         if (state instanceof OwnerRegistrationState.Present<PlatformDropOldestExportSpanProcessor>(
                 PlatformDropOldestExportSpanProcessor owner, long generation
         )) {
@@ -80,16 +83,17 @@ public final class PlatformExportControl implements PlatformExportControlMBean {
         );
     }
 
-    private static CompositeData buildExporterValues(OwnerRegistrationState<SafeSpanExporter> state, long baseNanos) {
-        long offsetNanos = System.nanoTime() - baseNanos;
-
-        if (state instanceof OwnerRegistrationState.Present<SafeSpanExporter>(SafeSpanExporter owner, long generation)) {
+    private static CompositeData buildExporterValues(OwnerRegistrationState<SafeSpanExporter> state, long offsetNanos) {
+        if (state instanceof OwnerRegistrationState.Present<SafeSpanExporter>(
+                SafeSpanExporter owner, long generation
+        )) {
             Map<String, Long> metrics = owner.metricsSnapshot();
             return JmxOpenTypeSupport.compositeData(EXPORTER_VALUES_SCHEMA,
                     true, generation, offsetNanos,
                     owner.isExportEnabled(),
                     owner.getLastExportDurationNanos(),
-                    JmxOpenTypeSupport.stringLongMap(SAFE_EXPORTER_METRICS_TYPE, metrics));
+                    JmxOpenTypeSupport.stringLongMap(SAFE_EXPORTER_METRICS_TYPE, metrics)
+            );
         }
 
         return JmxOpenTypeSupport.compositeData(

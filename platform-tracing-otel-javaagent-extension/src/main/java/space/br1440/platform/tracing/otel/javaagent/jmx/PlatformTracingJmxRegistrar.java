@@ -44,9 +44,7 @@ public final class PlatformTracingJmxRegistrar {
     final LongAdder sharedInvalidConfigCounter = new LongAdder();
 
     private final UUID agentInstanceId = UUID.randomUUID();
-
     private final AtomicReference<AcceptedPolicyAccess> registeredAcceptedPolicy = new AtomicReference<>();
-
     private final OwnerRegistrationSlot<CompositeSampler> compositeSamplerSlot = new OwnerRegistrationSlot<>();
     private final OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot = new OwnerRegistrationSlot<>();
     private final OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot = new OwnerRegistrationSlot<>();
@@ -71,10 +69,6 @@ public final class PlatformTracingJmxRegistrar {
         this.extensionReadiness = extensionReadiness;
         registerReadinessMBean();
     }
-
-    // =========================================================================
-    // Holder setters
-    // =========================================================================
 
     public void setAcceptedPolicy(AcceptedPolicyAccess acceptedPolicy) {
         registeredAcceptedPolicy.set(acceptedPolicy);

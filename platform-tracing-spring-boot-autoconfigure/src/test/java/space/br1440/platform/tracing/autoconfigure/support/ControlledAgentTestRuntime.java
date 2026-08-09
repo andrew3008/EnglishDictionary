@@ -147,18 +147,6 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         String getFailureMessage();
 
         String[] getCapabilities();
-
-        String[] getRequiredCapabilities();
-
-        boolean isSanitizerInstalled();
-
-        boolean isSamplerInstalled();
-
-        boolean isRequiredSpanProcessorsInstalled();
-
-        boolean isPropagationHooksInstalled();
-
-        boolean isExportPathProtected();
     }
 
     public static class ReadyExtension implements ReadyExtensionMBean {
@@ -196,36 +184,6 @@ public final class ControlledAgentTestRuntime implements AutoCloseable {
         @Override
         public String[] getCapabilities() {
             return COMPLETE_CAPABILITIES.toArray(String[]::new);
-        }
-
-        @Override
-        public String[] getRequiredCapabilities() {
-            return COMPLETE_CAPABILITIES.toArray(String[]::new);
-        }
-
-        @Override
-        public boolean isSanitizerInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isSamplerInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isRequiredSpanProcessorsInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isPropagationHooksInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isExportPathProtected() {
-            return true;
         }
     }
 

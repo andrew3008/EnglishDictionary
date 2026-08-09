@@ -48,6 +48,7 @@ dependencies {
     testImplementation platform(project(':platform-tracing-bom'))
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.mockito:mockito-core'
     testImplementation 'io.opentelemetry:opentelemetry-sdk'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'

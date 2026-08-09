@@ -218,18 +218,6 @@ class AgentStartupVerifierTest {
         String getFailureCode();
 
         String[] getCapabilities();
-
-        String[] getRequiredCapabilities();
-
-        boolean isSanitizerInstalled();
-
-        boolean isSamplerInstalled();
-
-        boolean isRequiredSpanProcessorsInstalled();
-
-        boolean isPropagationHooksInstalled();
-
-        boolean isExportPathProtected();
     }
 
     /**
@@ -273,36 +261,6 @@ class AgentStartupVerifierTest {
         @Override
         public String[] getCapabilities() {
             return capabilities.toArray(String[]::new);
-        }
-
-        @Override
-        public String[] getRequiredCapabilities() {
-            return COMPLETE_CAPABILITIES.toArray(String[]::new);
-        }
-
-        @Override
-        public boolean isSanitizerInstalled() {
-            return "READY".equals(lifecycle);
-        }
-
-        @Override
-        public boolean isSamplerInstalled() {
-            return "READY".equals(lifecycle);
-        }
-
-        @Override
-        public boolean isRequiredSpanProcessorsInstalled() {
-            return "READY".equals(lifecycle);
-        }
-
-        @Override
-        public boolean isPropagationHooksInstalled() {
-            return "READY".equals(lifecycle);
-        }
-
-        @Override
-        public boolean isExportPathProtected() {
-            return "READY".equals(lifecycle);
         }
     }
 }

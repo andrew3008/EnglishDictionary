@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
+import java.util.Set;
+
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -7,6 +9,16 @@ final class AgentReadinessClassifier {
 
     static final int SUPPORTED_PROTOCOL_VERSION = 1;
     static final String SUPPORTED_PROFILE = "platform-agent-secure-v1";
+
+    private static final Set<String> EXPECTED_CAPABILITIES = Set.of(
+            "CONFIGURATION_LOADED",
+            "PLATFORM_SAMPLER_INSTALLED",
+            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
+            "SANITIZER_INSTALLED",
+            "PROPAGATION_HOOKS_INSTALLED",
+            "SAFE_EXPORTER_INSTALLED",
+            "EXPORT_PATH_PROTECTED"
+    );
 
     static AgentRuntimeState classify(AgentReadinessSnapshot snapshot, String applicationVersion) {
         AgentReadinessSnapshot.Protocol protocol = snapshot.protocol();
@@ -25,7 +37,7 @@ final class AgentReadinessClassifier {
 
         if ("INITIALIZING".equals(status.lifecycle())) {
             return status.failureCode().isBlank()
-                    && snapshot.capabilities().mismatchesRequired()
+                    && !capabilitiesComplete(snapshot)
                     ? AgentRuntimeState.EXTENSION_INITIALIZING
                     : AgentRuntimeState.EXTENSION_INCOMPATIBLE;
         }
@@ -34,11 +46,15 @@ final class AgentReadinessClassifier {
             return AgentRuntimeState.EXTENSION_INCOMPATIBLE;
         }
 
-        if (snapshot.capabilities().mismatchesRequired() || !snapshot.installFlags().isComplete()) {
+        if (!capabilitiesComplete(snapshot)) {
             return AgentRuntimeState.CAPABILITY_MISSING;
         }
 
         return AgentRuntimeState.AGENT_READY;
+    }
+
+    private static boolean capabilitiesComplete(AgentReadinessSnapshot snapshot) {
+        return EXPECTED_CAPABILITIES.equals(snapshot.capabilities());
     }
 
     private static boolean versionsCompatible(String extensionVersion, String applicationVersion) {

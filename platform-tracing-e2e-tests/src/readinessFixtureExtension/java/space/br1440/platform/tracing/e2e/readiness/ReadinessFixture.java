@@ -52,34 +52,4 @@ final class ReadinessFixture implements ReadinessFixtureMBean {
                 : List.of("CONFIGURATION_LOADED", "PLATFORM_SAMPLER_INSTALLED");
         return capabilities.toArray(String[]::new);
     }
-
-    @Override
-    public String[] getRequiredCapabilities() {
-        return COMPLETE_CAPABILITIES.toArray(String[]::new);
-    }
-
-    @Override
-    public boolean isSanitizerInstalled() {
-        return complete;
-    }
-
-    @Override
-    public boolean isSamplerInstalled() {
-        return true;
-    }
-
-    @Override
-    public boolean isRequiredSpanProcessorsInstalled() {
-        return complete;
-    }
-
-    @Override
-    public boolean isPropagationHooksInstalled() {
-        return complete;
-    }
-
-    @Override
-    public boolean isExportPathProtected() {
-        return complete;
-    }
 }

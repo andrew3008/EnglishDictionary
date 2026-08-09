@@ -33,11 +33,14 @@ class PlatformExtensionReadinessIntegrationTest {
                     .isEqualTo("READY");
             assertThat((String[]) server.getAttribute(
                     PlatformTracingObjectNames.EXTENSION_READINESS, "Capabilities"))
-                    .containsExactlyInAnyOrder((String[]) server.getAttribute(
-                            PlatformTracingObjectNames.EXTENSION_READINESS, "RequiredCapabilities"));
-            assertThat(server.getAttribute(
-                    PlatformTracingObjectNames.EXTENSION_READINESS, "ExportPathProtected"))
-                    .isEqualTo(true);
+                    .containsExactlyInAnyOrder(
+                            "CONFIGURATION_LOADED",
+                            "PLATFORM_SAMPLER_INSTALLED",
+                            "REQUIRED_SPAN_PROCESSORS_INSTALLED",
+                            "SANITIZER_INSTALLED",
+                            "PROPAGATION_HOOKS_INSTALLED",
+                            "SAFE_EXPORTER_INSTALLED",
+                            "EXPORT_PATH_PROTECTED");
         } catch (Exception e) {
             throw new AssertionError(e);
         } finally {

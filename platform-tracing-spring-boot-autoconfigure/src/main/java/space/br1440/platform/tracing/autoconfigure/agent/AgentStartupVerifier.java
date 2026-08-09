@@ -195,7 +195,7 @@ public final class AgentStartupVerifier {
                         snapshot.protocol().protocolVersion(),
                         snapshot.status().lifecycle(),
                         failureCode,
-                        snapshot.capabilities().advertised()
+                        snapshot.capabilities()
                 )
         );
     }

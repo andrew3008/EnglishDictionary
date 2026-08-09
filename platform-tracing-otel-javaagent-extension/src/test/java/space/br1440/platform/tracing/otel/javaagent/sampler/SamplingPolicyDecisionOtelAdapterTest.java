@@ -79,45 +79,50 @@ class SamplingPolicyDecisionOtelAdapterTest {
      */
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("allReasonCodeMappings")
-    void metricReasonCode_coversAllElevenWireKeys(SamplingPolicyDecision decision, String expectedReasonCode) {
-        assertThat(SamplingPolicyOtelAdapter.metricReasonCode(decision)).isEqualTo(expectedReasonCode);
+    void metricKeyCoversAllElevenWireKeys(SamplingPolicyDecision decision, String expectedWireKey) {
+        SamplingResult result = SamplingPolicyOtelAdapter.toSamplingResult(decision);
+        String actualWireKey = result.getDecision().name()
+                + ":"
+                + SamplingPolicyOtelAdapter.metricReasonCode(decision);
+
+        assertThat(actualWireKey).isEqualTo(expectedWireKey);
     }
 
     private static Stream<Arguments> allReasonCodeMappings() {
         return Stream.of(
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.FORCE_HEADER, "force_header_rule"),
-                        PlatformSamplingReasons.FORCE_HEADER),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.FORCE_HEADER),
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.QA_TRACE, "qa_trace_rule"),
-                        PlatformSamplingReasons.QA_TRACE),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.QA_TRACE),
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.PARENT_DECISION, "parent_decision"),
-                        PlatformSamplingReasons.PARENT_SAMPLED),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.PARENT_SAMPLED),
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.ROUTE_RATIO, "route_ratio"),
-                        PlatformSamplingReasons.ROUTE_RATIO),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.ROUTE_RATIO),
                 Arguments.of(
                         SamplingPolicyDecision.recordAndSample(SamplingPolicyReason.DEFAULT_RATIO, "default_ratio"),
-                        PlatformSamplingReasons.GLOBAL_RATIO),
+                        "RECORD_AND_SAMPLE:" + PlatformSamplingReasons.GLOBAL_RATIO),
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.KILL_SWITCH, "kill_switch"),
-                        PlatformSamplingReasons.KILL_SWITCH),
+                        "DROP:" + PlatformSamplingReasons.KILL_SWITCH),
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.HARD_DROP, "hard_drop"),
-                        PlatformSamplingReasons.DROP_PATH),
+                        "DROP:" + PlatformSamplingReasons.DROP_PATH),
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.PARENT_DROP, "parent_decision"),
-                        PlatformSamplingReasons.PARENT_DROP),
+                        "DROP:" + PlatformSamplingReasons.PARENT_DROP),
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.ROUTE_RATIO_DROP, "route_ratio"),
-                        PlatformSamplingReasons.ROUTE_RATIO_DROP),
+                        "DROP:" + PlatformSamplingReasons.ROUTE_RATIO_DROP),
                 Arguments.of(
                         SamplingPolicyDecision.drop(SamplingPolicyReason.DEFAULT_RATIO_DROP, "default_ratio"),
-                        PlatformSamplingReasons.GLOBAL_RATIO_DROP),
+                        "DROP:" + PlatformSamplingReasons.GLOBAL_RATIO_DROP),
                 Arguments.of(
                         SamplingPolicyDecision.abstain(),
-                        PlatformSamplingReasons.FALLBACK_DROP));
+                        "DROP:" + PlatformSamplingReasons.FALLBACK_DROP));
     }
 
     @ParameterizedTest(name = "{0}")

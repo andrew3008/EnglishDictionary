@@ -1,24 +1,24 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
-import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.ConfigReloadDiagnostics;
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
-
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularType;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
+import javax.management.openmbean.ArrayType;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularType;
+
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.ConfigReloadDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
+import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 
 public final class PlatformDiagnosticsControl implements PlatformDiagnosticsControlMBean {
 
@@ -45,21 +45,21 @@ public final class PlatformDiagnosticsControl implements PlatformDiagnosticsCont
     public CompositeData getDiagnosticsObservation() {
         long sequence = captureSequence.incrementAndGet();
         long startedAt = Instant.now().toEpochMilli();
-
         long invalidConfigCount = invalidConfigCounter.sum();
-        var configReloadMetrics = JmxOpenTypeSupport.stringLongMap(
-                CONFIG_RELOAD_METRICS_TYPE, ConfigReloadDiagnostics.shared().snapshot());
-        // JMX wire остаётся String[]: форматирование AuditEntry откладывается до границы экспорта.
-        String[] configAuditTrail = ConfigReloadDiagnostics.shared().auditTrail().stream()
+
+        ConfigReloadDiagnostics configReloadDiagnostics = ConfigReloadDiagnostics.shared();
+        var configReloadMetrics = JmxOpenTypeSupport.stringLongMap(CONFIG_RELOAD_METRICS_TYPE, configReloadDiagnostics.snapshot());
+        String[] configAuditTrail = configReloadDiagnostics.auditTrail().stream()
                 .map(ConfigReloadDiagnostics.AuditEntry::toString)
                 .toArray(String[]::new);
-        var safeWrapperMetrics = JmxOpenTypeSupport.stringLongMap(
-                SAFE_WRAPPER_METRICS_TYPE, TracingDiagnostics.shared().snapshot());
+
+        var safeWrapperMetrics = JmxOpenTypeSupport.stringLongMap(SAFE_WRAPPER_METRICS_TYPE, TracingDiagnostics.shared().snapshot());
         String platformLogLevel = PlatformLogControl.shared().getLevel().name();
         boolean propagationEnabled = PlatformPropagationGate.shared().isEnabled();
 
         long completedAt = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(OBSERVATION_TYPE,
+        return JmxOpenTypeSupport.compositeData(
+                OBSERVATION_TYPE,
                 JmxObservationWireContract.SCHEMA_VERSION,
                 sequence,
                 agentInstanceId.toString(),
@@ -70,7 +70,8 @@ public final class PlatformDiagnosticsControl implements PlatformDiagnosticsCont
                 configAuditTrail,
                 safeWrapperMetrics,
                 platformLogLevel,
-                propagationEnabled);
+                propagationEnabled
+        );
     }
 
     private static JmxOpenTypeSupport.CompositeSchema buildObservationType() {
@@ -88,7 +89,7 @@ public final class PlatformDiagnosticsControl implements PlatformDiagnosticsCont
         try {
             return ArrayType.getArrayType(SimpleType.STRING);
         } catch (OpenDataException e) {
-            throw new IllegalStateException("Некорректный ArrayType для configAuditTrail", e);
+            throw new IllegalStateException("Invalid ArrayType for configAuditTrail", e);
         }
     }
 }

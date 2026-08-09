@@ -15,16 +15,4 @@ public interface ReadinessFixtureMBean {
     String getFailureMessage();
 
     String[] getCapabilities();
-
-    String[] getRequiredCapabilities();
-
-    boolean isSanitizerInstalled();
-
-    boolean isSamplerInstalled();
-
-    boolean isRequiredSpanProcessorsInstalled();
-
-    boolean isPropagationHooksInstalled();
-
-    boolean isExportPathProtected();
 }

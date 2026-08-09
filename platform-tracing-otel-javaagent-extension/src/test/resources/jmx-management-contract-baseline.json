@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "ceec63fb4f1633753b996261463ef898ecdb074f",
+  "generatedFromCommit": "8cb579f541fa0ea452a88ede4ba18f3dfecacbce",
   "javaVersion": "21.0.6",
   "objectNameCount": 7,
-  "memberCount": 19,
-  "readOnlyMemberCount": 19,
+  "memberCount": 13,
+  "readOnlyMemberCount": 13,
   "mutatingMemberCount": 0,
   "objectNames": [
     {
@@ -107,16 +107,6 @@
           "isIs": false
         },
         {
-          "name": "ExportPathProtected",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
           "name": "ExtensionVersion",
           "description": "Attribute exposed for management",
           "javaType": "java.lang.String",
@@ -167,16 +157,6 @@
           "isIs": false
         },
         {
-          "name": "PropagationHooksInstalled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
           "name": "ProtocolVersion",
           "description": "Attribute exposed for management",
           "javaType": "int",
@@ -185,46 +165,6 @@
           "readable": true,
           "writable": false,
           "isIs": false
-        },
-        {
-          "name": "RequiredCapabilities",
-          "description": "Attribute exposed for management",
-          "javaType": "[Ljava.lang.String;",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": false
-        },
-        {
-          "name": "RequiredSpanProcessorsInstalled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "SamplerInstalled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
-        },
-        {
-          "name": "SanitizerInstalled",
-          "description": "Attribute exposed for management",
-          "javaType": "boolean",
-          "descriptor": [
-          ],
-          "readable": true,
-          "writable": false,
-          "isIs": true
         }
       ],
       "operations": [

@@ -6,8 +6,6 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.agent.AgentReadinessSnapshot.InstallFlags;
-
 /**
  * Pure classifier tests: no JMX, no clock, application version supplied explicitly by the caller.
  */
@@ -28,7 +26,7 @@ class AgentReadinessClassifierTest {
     void readyRequiresCompleteConsistentSecureProfileAndExactVersionEquality() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.AGENT_READY);
@@ -38,7 +36,7 @@ class AgentReadinessClassifierTest {
     void developmentUnitSeamIsAcceptedOnlyWhenBothSidesAreExplicitlyDevelopment() {
         AgentRuntimeState state = classify(snapshot(
                 "development", 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 "development");
 
         assertThat(state).isEqualTo(AgentRuntimeState.AGENT_READY);
@@ -49,7 +47,7 @@ class AgentReadinessClassifierTest {
         // No one-sided wildcard: a null application version rejects a "development" extension.
         AgentRuntimeState state = classify(snapshot(
                 "development", 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 null);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -59,7 +57,7 @@ class AgentReadinessClassifierTest {
     void mismatchedNonDevelopmentVersionsAreRejected() {
         AgentRuntimeState state = classify(snapshot(
                 "9.9.9-not-matching", 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -69,7 +67,7 @@ class AgentReadinessClassifierTest {
     void unsupportedProtocolVersionIsIncompatible() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 999, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -79,7 +77,7 @@ class AgentReadinessClassifierTest {
     void unsupportedProfileIsIncompatible() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "unknown-profile", "READY", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -89,7 +87,7 @@ class AgentReadinessClassifierTest {
     void initializingWithoutFailureCodeAndIncompleteCapabilitiesIsInitializing() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "INITIALIZING", "",
-                Set.of(), COMPLETE_CAPABILITIES, InstallFlags.absent()),
+                Set.of()),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INITIALIZING);
@@ -99,7 +97,7 @@ class AgentReadinessClassifierTest {
     void initializingWithCompleteCapabilitiesIsIncompatibleRatherThanStuckInitializing() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "INITIALIZING", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -109,7 +107,7 @@ class AgentReadinessClassifierTest {
     void failedWithFailureCodeIsExtensionFailed() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "FAILED", "SANITIZER_FAILED",
-                Set.of(), COMPLETE_CAPABILITIES, InstallFlags.absent()),
+                Set.of()),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_FAILED);
@@ -119,7 +117,7 @@ class AgentReadinessClassifierTest {
     void failedWithoutFailureCodeIsIncompatible() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "FAILED", "",
-                Set.of(), COMPLETE_CAPABILITIES, InstallFlags.absent()),
+                Set.of()),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -129,18 +127,23 @@ class AgentReadinessClassifierTest {
     void readyWithMismatchedCapabilitiesIsCapabilityMissing() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                Set.of("CONFIGURATION_LOADED"), COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                Set.of("CONFIGURATION_LOADED")),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.CAPABILITY_MISSING);
     }
 
     @Test
-    void readyWithExactCapabilitiesButMissingComponentFlagIsCapabilityMissing() {
+    void readyWithoutSafeExporterCapabilityIsCapabilityMissing() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES,
-                new InstallFlags(false, true, true, true, true)),
+                Set.of(
+                        "CONFIGURATION_LOADED",
+                        "PLATFORM_SAMPLER_INSTALLED",
+                        "REQUIRED_SPAN_PROCESSORS_INSTALLED",
+                        "SANITIZER_INSTALLED",
+                        "PROPAGATION_HOOKS_INSTALLED",
+                        "EXPORT_PATH_PROTECTED")),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.CAPABILITY_MISSING);
@@ -155,7 +158,7 @@ class AgentReadinessClassifierTest {
                 "EXPORT_PATH_PROTECTED", "UNEXPECTED_EXTRA_CAPABILITY");
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "",
-                superset, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                superset),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.CAPABILITY_MISSING);
@@ -165,7 +168,7 @@ class AgentReadinessClassifierTest {
     void readyWithNonBlankFailureCodeIsIncompatible() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "READY", "UNEXPECTED",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -175,7 +178,7 @@ class AgentReadinessClassifierTest {
     void unknownLifecycleIsIncompatible() {
         AgentRuntimeState state = classify(snapshot(
                 APPLICATION_VERSION, 1, "platform-agent-secure-v1", "UNKNOWN", "",
-                COMPLETE_CAPABILITIES, COMPLETE_CAPABILITIES, InstallFlags.complete()),
+                COMPLETE_CAPABILITIES),
                 APPLICATION_VERSION);
 
         assertThat(state).isEqualTo(AgentRuntimeState.EXTENSION_INCOMPATIBLE);
@@ -191,13 +194,10 @@ class AgentReadinessClassifierTest {
             String profile,
             String lifecycle,
             String failureCode,
-            Set<String> advertisedCapabilities,
-            Set<String> requiredCapabilities,
-            InstallFlags installFlags) {
+            Set<String> capabilities) {
         return new AgentReadinessSnapshot(
                 new AgentReadinessSnapshot.Protocol(extensionVersion, protocolVersion, profile),
                 new AgentReadinessSnapshot.Status(lifecycle, failureCode),
-                new AgentReadinessSnapshot.Capabilities(advertisedCapabilities, requiredCapabilities),
-                installFlags);
+                capabilities);
     }
 }

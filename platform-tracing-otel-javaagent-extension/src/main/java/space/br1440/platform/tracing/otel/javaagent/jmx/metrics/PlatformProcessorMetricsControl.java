@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.metrics;
 
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.MetricsSpanProcessor;
@@ -36,11 +37,10 @@ public final class PlatformProcessorMetricsControl implements PlatformProcessorM
     private final UUID agentInstanceId;
     private final AtomicLong captureSequence = new AtomicLong();
 
-    public PlatformProcessorMetricsControl(
-            OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot,
-            OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
-            OwnerRegistrationSlot<MetricsSpanProcessor> metricsSlot,
-            UUID agentInstanceId) {
+    public PlatformProcessorMetricsControl(OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot,
+                                           OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
+                                           OwnerRegistrationSlot<MetricsSpanProcessor> metricsSlot,
+                                           UUID agentInstanceId) {
         this.watchdogSlot = Objects.requireNonNull(watchdogSlot, "watchdogSlot");
         this.compositeSlot = Objects.requireNonNull(compositeSlot, "compositeSlot");
         this.metricsSlot = Objects.requireNonNull(metricsSlot, "metricsSlot");
@@ -51,14 +51,18 @@ public final class PlatformProcessorMetricsControl implements PlatformProcessorM
     public CompositeData getProcessorMetricsObservation() {
         long sequence = captureSequence.incrementAndGet();
         long startedAt = Instant.now().toEpochMilli();
-        long baseNanos = System.nanoTime();
 
-        CompositeData watchdogValues = buildWatchdogValues(watchdogSlot.capture(), baseNanos);
-        CompositeData compositeValues = buildCompositeValues(compositeSlot.capture(), baseNanos);
-        CompositeData metricsValues = buildMetricsValues(metricsSlot.capture(), baseNanos);
+        OwnerCapture<SpanWatchdogProcessor> watchdogCapture = OwnerCapture.of(watchdogSlot);
+        OwnerCapture<PlatformCompositeSpanProcessor> compositeCapture = OwnerCapture.of(compositeSlot);
+        OwnerCapture<MetricsSpanProcessor> metricsCapture = OwnerCapture.of(metricsSlot);
+
+        CompositeData watchdogValues = buildWatchdogValues(watchdogCapture.state(), watchdogCapture.offsetNanos());
+        CompositeData compositeValues = buildCompositeValues(compositeCapture.state(), compositeCapture.offsetNanos());
+        CompositeData metricsValues = buildMetricsValues(metricsCapture.state(), metricsCapture.offsetNanos());
 
         long completedAt = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(OBSERVATION_TYPE,
+        return JmxOpenTypeSupport.compositeData(
+                OBSERVATION_TYPE,
                 JmxObservationWireContract.SCHEMA_VERSION,
                 sequence,
                 agentInstanceId.toString(),
@@ -66,18 +70,20 @@ public final class PlatformProcessorMetricsControl implements PlatformProcessorM
                 completedAt,
                 watchdogValues,
                 compositeValues,
-                metricsValues);
+                metricsValues
+        );
     }
 
-    private static CompositeData buildWatchdogValues(OwnerRegistrationState<SpanWatchdogProcessor> state, long baseNanos) {
-        long offsetNanos = System.nanoTime() - baseNanos;
+    private static CompositeData buildWatchdogValues(OwnerRegistrationState<SpanWatchdogProcessor> state, long offsetNanos) {
         if (state instanceof OwnerRegistrationState.Present<SpanWatchdogProcessor>(
                 SpanWatchdogProcessor owner, long generation
         )) {
-            return JmxOpenTypeSupport.compositeData(WATCHDOG_VALUES_SCHEMA,
+            return JmxOpenTypeSupport.compositeData(
+                    WATCHDOG_VALUES_SCHEMA,
                     true, generation, offsetNanos,
                     owner.getForcedSpanCloses(), owner.getForcedTraceCloses(),
-                    owner.getActiveSpanCount(), owner.getActiveTraceCount());
+                    owner.getActiveSpanCount(), owner.getActiveTraceCount()
+            );
         }
 
         return JmxOpenTypeSupport.compositeData(
@@ -86,8 +92,7 @@ public final class PlatformProcessorMetricsControl implements PlatformProcessorM
         );
     }
 
-    private static CompositeData buildCompositeValues(OwnerRegistrationState<PlatformCompositeSpanProcessor> state, long baseNanos) {
-        long offsetNanos = System.nanoTime() - baseNanos;
+    private static CompositeData buildCompositeValues(OwnerRegistrationState<PlatformCompositeSpanProcessor> state, long offsetNanos) {
         if (state instanceof OwnerRegistrationState.Present<PlatformCompositeSpanProcessor>(
                 PlatformCompositeSpanProcessor owner, long generation
         )) {
@@ -99,9 +104,11 @@ public final class PlatformProcessorMetricsControl implements PlatformProcessorM
                 }
             }
 
-            return JmxOpenTypeSupport.compositeData(COMPOSITE_VALUES_SCHEMA,
+            return JmxOpenTypeSupport.compositeData(
+                    COMPOSITE_VALUES_SCHEMA,
                     true, generation, offsetNanos,
-                    total, JmxOpenTypeSupport.stringLongMap(ERRORS_BY_NAME_TYPE, errorsByName));
+                    total, JmxOpenTypeSupport.stringLongMap(ERRORS_BY_NAME_TYPE, errorsByName)
+            );
         }
 
         return JmxOpenTypeSupport.compositeData(
@@ -111,8 +118,7 @@ public final class PlatformProcessorMetricsControl implements PlatformProcessorM
         );
     }
 
-    private static CompositeData buildMetricsValues(OwnerRegistrationState<MetricsSpanProcessor> state, long baseNanos) {
-        long offsetNanos = System.nanoTime() - baseNanos;
+    private static CompositeData buildMetricsValues(OwnerRegistrationState<MetricsSpanProcessor> state, long offsetNanos) {
         if (state instanceof OwnerRegistrationState.Present<MetricsSpanProcessor>(
                 MetricsSpanProcessor owner, long generation
         )) {

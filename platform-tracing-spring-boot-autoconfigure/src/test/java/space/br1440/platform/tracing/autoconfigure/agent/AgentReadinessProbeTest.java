@@ -38,16 +38,16 @@ class AgentReadinessProbeTest {
 
         assertThat(probe.endpointRegistered(PlatformTracingJmxObjectNames.EXTENSION_READINESS)).isFalse();
 
-        registerReadinessView(server, "READY", 1, COMPLETE_CAPABILITIES, "", true);
+        registerReadinessView(server, "READY", 1, COMPLETE_CAPABILITIES, "");
 
         assertThat(probe.endpointRegistered(PlatformTracingJmxObjectNames.EXTENSION_READINESS)).isTrue();
     }
 
     @Test
-    void readDecodesAllTwelveAttributesInASingleBatchCallIntoAnImmutableSnapshot() throws Exception {
+    void readDecodesAllSixAttributesInASingleBatchCallIntoAnImmutableSnapshot() throws Exception {
         CountingMBeanServer counting = new CountingMBeanServer(
                 registerReadinessView(
-                        MBeanServerFactory.createMBeanServer(), "READY", 1, COMPLETE_CAPABILITIES, "", true));
+                        MBeanServerFactory.createMBeanServer(), "READY", 1, COMPLETE_CAPABILITIES, ""));
         AgentReadinessProbe probe = new AgentReadinessProbe(counting.asProxy());
 
         AgentReadinessProbe.ProbeResult result = probe.read(PlatformTracingJmxObjectNames.EXTENSION_READINESS);
@@ -61,23 +61,18 @@ class AgentReadinessProbeTest {
         assertThat(snapshot.protocol().profile()).isEqualTo("platform-agent-secure-v1");
         assertThat(snapshot.status().lifecycle()).isEqualTo("READY");
         assertThat(snapshot.status().failureCode()).isEmpty();
-        assertThat(snapshot.capabilities().advertised())
+        assertThat(snapshot.capabilities())
                 .containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
-        assertThat(snapshot.capabilities().required())
-                .containsExactlyInAnyOrderElementsOf(COMPLETE_CAPABILITIES);
-        assertThat(snapshot.installFlags().isComplete()).isTrue();
 
-        assertThatThrownBy(() -> snapshot.capabilities().advertised().add("INJECTED"))
+        assertThatThrownBy(() -> snapshot.capabilities().add("INJECTED"))
                 .as("capabilities set returned by the probe must be defensively unmodifiable")
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> snapshot.capabilities().required().add("INJECTED"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
     void readNeverRequestsFailureMessage() throws Exception {
         assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).doesNotContain("FailureMessage");
-        assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).hasSize(12);
+        assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).hasSize(6);
     }
 
     @Test
@@ -170,7 +165,7 @@ class AgentReadinessProbeTest {
 
     /**
      * Set-arithmetic proof (not a hardcoded string) that the physical readiness MBean exposes
-     * exactly 13 attributes, the probe requests exactly 12, and the delta is exactly
+     * exactly 7 attributes, the probe requests exactly 6, and the delta is exactly
      * {@code FailureMessage} in both directions.
      */
     @Test
@@ -189,8 +184,8 @@ class AgentReadinessProbeTest {
                 agentAttributeNames.add(attribute.getName());
             }
 
-            assertThat(agentAttributeNames).hasSize(13);
-            assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).hasSize(12);
+            assertThat(agentAttributeNames).hasSize(7);
+            assertThat(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES).hasSize(6);
 
             Set<String> agentMinusRequested = new HashSet<>(agentAttributeNames);
             agentMinusRequested.removeAll(AgentReadinessProbe.REQUESTED_ATTRIBUTE_NAMES);
@@ -209,11 +204,10 @@ class AgentReadinessProbeTest {
             String lifecycle,
             int protocol,
             Set<String> capabilities,
-            String failureCode,
-            boolean componentFlags) throws Exception {
+            String failureCode) throws Exception {
         server.registerMBean(
                 new StandardMBean(
-                        new ReadinessView(lifecycle, protocol, capabilities, failureCode, componentFlags),
+                        new ReadinessView(lifecycle, protocol, capabilities, failureCode),
                         ReadinessViewMBean.class),
                 PlatformTracingJmxObjectNames.EXTENSION_READINESS);
         return server;
@@ -233,18 +227,6 @@ class AgentReadinessProbeTest {
         String getFailureMessage();
 
         String[] getCapabilities();
-
-        String[] getRequiredCapabilities();
-
-        boolean isSanitizerInstalled();
-
-        boolean isSamplerInstalled();
-
-        boolean isRequiredSpanProcessorsInstalled();
-
-        boolean isPropagationHooksInstalled();
-
-        boolean isExportPathProtected();
     }
 
     public static final class ReadinessView implements ReadinessViewMBean {
@@ -252,19 +234,16 @@ class AgentReadinessProbeTest {
         private final int protocol;
         private final Set<String> capabilities;
         private final String failureCode;
-        private final boolean componentFlags;
 
         ReadinessView(
                 String lifecycle,
                 int protocol,
                 Set<String> capabilities,
-                String failureCode,
-                boolean componentFlags) {
+                String failureCode) {
             this.lifecycle = lifecycle;
             this.protocol = protocol;
             this.capabilities = capabilities;
             this.failureCode = failureCode;
-            this.componentFlags = componentFlags;
         }
 
         @Override
@@ -301,36 +280,6 @@ class AgentReadinessProbeTest {
         public String[] getCapabilities() {
             return capabilities.toArray(String[]::new);
         }
-
-        @Override
-        public String[] getRequiredCapabilities() {
-            return COMPLETE_CAPABILITIES.toArray(String[]::new);
-        }
-
-        @Override
-        public boolean isSanitizerInstalled() {
-            return componentFlags;
-        }
-
-        @Override
-        public boolean isSamplerInstalled() {
-            return componentFlags;
-        }
-
-        @Override
-        public boolean isRequiredSpanProcessorsInstalled() {
-            return componentFlags;
-        }
-
-        @Override
-        public boolean isPropagationHooksInstalled() {
-            return componentFlags;
-        }
-
-        @Override
-        public boolean isExportPathProtected() {
-            return componentFlags;
-        }
     }
 
     public interface PartialReadinessViewMBean {
@@ -356,18 +305,6 @@ class AgentReadinessProbeTest {
         String getFailureCode();
 
         String[] getCapabilities();
-
-        String[] getRequiredCapabilities();
-
-        boolean isSanitizerInstalled();
-
-        boolean isSamplerInstalled();
-
-        boolean isRequiredSpanProcessorsInstalled();
-
-        boolean isPropagationHooksInstalled();
-
-        boolean isExportPathProtected();
     }
 
     public static class WrongTypeReadinessView implements WrongTypeReadinessViewMBean {
@@ -399,36 +336,6 @@ class AgentReadinessProbeTest {
         @Override
         public String[] getCapabilities() {
             return new String[0];
-        }
-
-        @Override
-        public String[] getRequiredCapabilities() {
-            return new String[0];
-        }
-
-        @Override
-        public boolean isSanitizerInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isSamplerInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isRequiredSpanProcessorsInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isPropagationHooksInstalled() {
-            return true;
-        }
-
-        @Override
-        public boolean isExportPathProtected() {
-            return true;
         }
     }
 

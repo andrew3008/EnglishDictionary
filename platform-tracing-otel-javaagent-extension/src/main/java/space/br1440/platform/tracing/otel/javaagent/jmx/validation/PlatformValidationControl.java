@@ -1,19 +1,20 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.validation;
 
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
-
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 
 public final class PlatformValidationControl implements PlatformValidationControlMBean {
 
@@ -32,41 +33,35 @@ public final class PlatformValidationControl implements PlatformValidationContro
     public CompositeData getValidationObservation() {
         long sequence = captureSequence.incrementAndGet();
         long startedAt = Instant.now().toEpochMilli();
-        long baseNanos = System.nanoTime();
 
-        OwnerRegistrationState<ValidatingSpanProcessor> state = validatingSlot.capture();
-        long offsetNanos = System.nanoTime() - baseNanos;
-        boolean ownerPresent = false;
-        boolean enabled = false;
-        boolean strict = false;
-        boolean strictRuntimeAllowed = false;
-        long configVersion = 0L;
-        String configSource = "";
+        OwnerCapture<ValidatingSpanProcessor> capture = OwnerCapture.of(validatingSlot);
+        OwnerRegistrationState<ValidatingSpanProcessor> state = capture.state();
+        long offsetNanos = capture.offsetNanos();
+
+        ValidationSnapshot snapshot;
         if (state instanceof OwnerRegistrationState.Present<ValidatingSpanProcessor> present) {
-            ValidatingSpanProcessor validating = present.owner();
-            ownerPresent = true;
-            enabled = validating.isEnabled();
-            strict = validating.isStrict();
-            strictRuntimeAllowed = validating.isStrictRuntimeAllowed();
-            configVersion = validating.getPolicyVersion();
-            configSource = validating.getPolicySource();
+            snapshot = ValidationSnapshot.from(present.owner());
+        } else {
+            snapshot = ValidationSnapshot.absent();
         }
 
         long completedAt = Instant.now().toEpochMilli();
-        return JmxOpenTypeSupport.compositeData(OBSERVATION_TYPE,
+        return JmxOpenTypeSupport.compositeData(
+                OBSERVATION_TYPE,
                 JmxObservationWireContract.SCHEMA_VERSION,
                 sequence,
                 agentInstanceId.toString(),
                 startedAt,
                 completedAt,
-                ownerPresent,
+                snapshot.ownerPresent(),
                 state.generation(),
                 offsetNanos,
-                enabled,
-                strict,
-                strictRuntimeAllowed,
-                configVersion,
-                configSource);
+                snapshot.enabled(),
+                snapshot.strict(),
+                snapshot.strictRuntimeAllowed(),
+                snapshot.configVersion(),
+                snapshot.configSource()
+        );
     }
 
     private static JmxOpenTypeSupport.CompositeSchema buildObservationType() {
@@ -80,5 +75,31 @@ public final class PlatformValidationControl implements PlatformValidationContro
         items.put(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_VERSION, SimpleType.LONG);
         items.put(JmxObservationWireContract.VALIDATION_ITEM_CONFIG_LAST_UPDATED_SOURCE, SimpleType.STRING);
         return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.VALIDATION_COMPOSITE_TYPE_NAME, items);
+    }
+
+    private record ValidationSnapshot(boolean ownerPresent,
+                                      boolean enabled,
+                                      boolean strict,
+                                      boolean strictRuntimeAllowed,
+                                      long configVersion,
+                                      String configSource) {
+
+        private static final ValidationSnapshot ABSENT =
+                new ValidationSnapshot(false, false, false, false, 0L, "");
+
+        static ValidationSnapshot absent() {
+            return ABSENT;
+        }
+
+        static ValidationSnapshot from(ValidatingSpanProcessor validating) {
+            return new ValidationSnapshot(
+                    true,
+                    validating.isEnabled(),
+                    validating.isStrict(),
+                    validating.isStrictRuntimeAllowed(),
+                    validating.getPolicyVersion(),
+                    validating.getPolicySource()
+            );
+        }
     }
 }

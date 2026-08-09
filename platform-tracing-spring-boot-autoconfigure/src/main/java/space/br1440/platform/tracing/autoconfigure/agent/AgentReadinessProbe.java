@@ -19,9 +19,7 @@ final class AgentReadinessProbe {
 
     static final Set<String> REQUESTED_ATTRIBUTE_NAMES = Set.of(
             "ExtensionVersion", "ProtocolVersion", "Profile", "LifecycleState", "FailureCode",
-            "Capabilities", "RequiredCapabilities",
-            "SanitizerInstalled", "SamplerInstalled", "RequiredSpanProcessorsInstalled",
-            "PropagationHooksInstalled", "ExportPathProtected"
+            "Capabilities"
     );
 
     private static final String[] REQUESTED_ATTRIBUTES_ARRAY = REQUESTED_ATTRIBUTE_NAMES.toArray(String[]::new);
@@ -89,25 +87,13 @@ final class AgentReadinessProbe {
         Object lifecycle = values.get("LifecycleState");
         Object failureCode = values.get("FailureCode");
         Object capabilities = values.get("Capabilities");
-        Object requiredCapabilities = values.get("RequiredCapabilities");
-        Object sanitizerInstalled = values.get("SanitizerInstalled");
-        Object samplerInstalled = values.get("SamplerInstalled");
-        Object requiredSpanProcessorsInstalled = values.get("RequiredSpanProcessorsInstalled");
-        Object propagationHooksInstalled = values.get("PropagationHooksInstalled");
-        Object exportPathProtected = values.get("ExportPathProtected");
 
         boolean typesValid = extensionVersion instanceof String
                 && protocolVersion instanceof Integer
                 && profile instanceof String
                 && lifecycle instanceof String
                 && failureCode instanceof String
-                && capabilities instanceof String[]
-                && requiredCapabilities instanceof String[]
-                && sanitizerInstalled instanceof Boolean
-                && samplerInstalled instanceof Boolean
-                && requiredSpanProcessorsInstalled instanceof Boolean
-                && propagationHooksInstalled instanceof Boolean
-                && exportPathProtected instanceof Boolean;
+                && capabilities instanceof String[];
 
         if (!typesValid) {
             return new ProbeResult.Rejected(ProbeReason.MALFORMED_DESCRIPTOR);
@@ -125,19 +111,7 @@ final class AgentReadinessProbe {
                                 (String) lifecycle,
                                 (String) failureCode
                         ),
-
-                        new AgentReadinessSnapshot.Capabilities(
-                                toSet((String[]) capabilities),
-                                toSet((String[]) requiredCapabilities)
-                        ),
-
-                        new AgentReadinessSnapshot.InstallFlags(
-                                (Boolean) sanitizerInstalled,
-                                (Boolean) samplerInstalled,
-                                (Boolean) requiredSpanProcessorsInstalled,
-                                (Boolean) propagationHooksInstalled,
-                                (Boolean) exportPathProtected
-                        )
+                        toSet((String[]) capabilities)
                 )
         );
     }

@@ -4,7 +4,6 @@ import javax.management.openmbean.CompositeData;
 
 public interface PlatformDiagnosticsControlMBean {
 
-    @SuppressWarnings("unused")
     CompositeData getDiagnosticsObservation();
 
 }

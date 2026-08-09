@@ -47,12 +47,6 @@ class PlatformExtensionReadinessJmxTest {
             String[] capabilities = (String[]) server.getAttribute(
                     PlatformTracingObjectNames.EXTENSION_READINESS, "Capabilities");
             assertThat(Arrays.asList(capabilities)).containsExactly("PLATFORM_SAMPLER_INSTALLED");
-            assertThat(server.getAttribute(
-                    PlatformTracingObjectNames.EXTENSION_READINESS, "SamplerInstalled"))
-                    .isEqualTo(true);
-            assertThat(server.getAttribute(
-                    PlatformTracingObjectNames.EXTENSION_READINESS, "SanitizerInstalled"))
-                    .isEqualTo(false);
         } finally {
             MBeanServerFactory.releaseMBeanServer(server);
         }

@@ -116,22 +116,24 @@ Wire-контракт — две зеркальные копии констан�
 
 Фасад **не** импортирует `JmxObservationWireContract`, но является единственной точкой входа downstream.
 
-### 5.3 Classification lists / allowlist — **не** runtime direct consumers
+### 5.3 Симметрия wire-контракта и владение metric key-space
 
-Следующие поля контракта **объявлены в обеих копиях**, но в production main-коде autoconfigure/agent **не читаются** binders/views:
+Обе production-копии `JmxObservationWireContract` содержат один и тот же набор
+скалярных констант: версию схемы, имена `CompositeType`, имена элементов и значения
+состояний. В них нет списков классификации, allowlist и иных метаданных, которые не
+передаются через JMX OpenType. Это сохраняет строгую симметрию контракта между Agent и
+application classloader planes.
 
-- `SAMPLING_DECISION_COUNTS_CLASSIFICATION`
-- `SAMPLING_ROUTE_RATIOS_CLASSIFICATION`
-- `SCRUBBING_METRICS_CLASSIFICATION`
-- `EXPORT_EXPORTER_METRICS_CLASSIFICATION`
-- `DIAGNOSTICS_CONFIG_RELOAD_CLASSIFICATION`
-- `DIAGNOSTICS_SAFE_WRAPPER_CLASSIFICATION`
-- `PROCESSOR_ERRORS_BY_NAME_ALLOWLIST`
-- `COMPOSITE_TYPE_NAMES_BY_DOMAIN` (используется в unit-тестах type-name gate)
+Закрытым пространством ключей Micrometer владеют package-private enum в пакете
+`autoconfigure.metrics`: `SamplerDecisionKey`, `ScrubbingMetricKey`,
+`ExportExporterMetricKey` и `ProcessorCompositeErrorKey`. Их полный bounded-набор
+проверяет `MetricWireKeyContractTest`, а фактическое decode→Micrometer поведение —
+тесты соответствующих binder'ов.
 
-Runtime Micrometer key-space зеркалит их через **отдельные package-private enum** (`SamplerDecisionKey`, `ScrubbingMetricKey`, …). Связь enum↔classification защищена parity-тестами, не runtime lookup `List<DynamicMapKey>`.
-
-Для комитета: classification — **нормативная спецификация + CI sync**, не hot-path consumer.
+Agent-side producer semantics проверяется непосредственно на
+`SamplingPolicyOtelAdapter` и `CompositeSampler`. Таким образом, production wire-класс
+не содержит test-only policy metadata, а правила экспорта метрик принадлежат их
+фактическим producer/consumer слоям.
 
 ---
 
@@ -215,11 +217,8 @@ Wiring: `TracingMetricsAutoConfiguration` (все `@ConditionalOnBean(PlatformTr
 | `jmxWireGoldenFilesIdenticalCheck` / `jmxWireGoldenParityVerify` | byte-identity двух golden |
 | `JmxObservationCodecTypeNameTest` | gate kind на 11 typeName |
 | `JmxViewTypeNameMismatchWiringTest` | gate реально вызван из каждого `*JmxView` |
-| `SamplingDecisionCountsClassificationParityTest` (agent) | producer keys ↔ agent classification |
-| `SamplerDecisionKeyClassificationParityTest` | autoconfigure classification ↔ `SamplerDecisionKey` |
-| `ScrubbingMetricKeyClassificationParityTest` | cumulative scrubbing enum ↔ classification |
-| `ExportExporterMetricKeyClassificationParityTest` | cumulative exporter enum ↔ classification |
-| `ProcessorCompositeErrorKeyAllowlistParityTest` | named errors ↔ allowlist |
+| `SamplingPolicyDecisionOtelAdapterTest` / sampling characterization tests (agent) | producer reason codes и реально записываемые decision counters |
+| `MetricWireKeyContractTest` | полные bounded-наборы ключей sampler/scrubbing/exporter/processor в их фактических enum-владельцах |
 | Binder unit/functional tests | decode→Micrometer поведение |
 | `domainObservationE2eTest` | cross-CL encode(agent)→decode(autoconfigure) |
 | Smoke mains (`KafkaAgentParitySmokeMain`, др.) | ручной/smoke probe observation attributes |
@@ -235,7 +234,7 @@ Wiring: `TracingMetricsAutoConfiguration` (все `@ConditionalOnBean(PlatformTr
 | Control-protocol / candidate digests | Отдельный control wire |
 | `TracingStatusSnapshot.CURRENT_SCHEMA_VERSION` | Схема JSON status endpoint, не JMX observation schema |
 | Agent sampler/processor business logic (`CompositeSampler`, scrubbing engine) | Пишет свои counters; wire-контракт использует только JMX control при encode snapshot |
-| Binders' closed enums | Зеркалят classification, но **не** читают `JmxObservationWireContract` в runtime |
+| Binders' closed enums | Владеют bounded metric key-space, но **не** читают `JmxObservationWireContract` в runtime |
 | Historical docs `docs/refactoring/jmx-client-domain-split/*` | Описание, не executable consumer |
 
 ---
@@ -244,7 +243,7 @@ Wiring: `TracingMetricsAutoConfiguration` (все `@ConditionalOnBean(PlatformTr
 
 1. **Wire-контракт — не «diagnostics-only».** Его production consumers — status read-model **и** Micrometer operational metrics **и** domain health gauges.
 2. **Узкое горло decode:** единственный production consumer констант — `JmxObservationCodec` + шесть `*JmxView`. Все остальное — downstream от `PlatformTracingJmxClient`.
-3. **Classification lists** — нормативная спецификация + CI; не hot-path runtime consumers.
+3. **Metric classifications не входят в wire-класс.** Их bounded-набор принадлежит enum/binder-слою и защищён отдельным contract-тестом.
 4. **Расширение потребителей** должно идти через `PlatformTracingJmxClient` / decode DTO, а не через прямой импорт контракта из app-кода или второй decode path.
 5. **Несовместимость agent↔starter** ломает сразу весь fan-out §6 (status + metrics + health), поэтому type-name/schema diagnostics — compatibility alarm для всего operational read-model, не только для секции `jmxContractDiagnostics`.
 
