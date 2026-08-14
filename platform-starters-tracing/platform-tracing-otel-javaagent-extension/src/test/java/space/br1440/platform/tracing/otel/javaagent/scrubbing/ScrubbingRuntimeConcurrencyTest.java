@@ -75,15 +75,14 @@ class ScrubbingRuntimeConcurrencyTest {
 
         assertThat(first.hmacHex("value")).isNotEqualTo(second.hmacHex("value"));
 
-        first.boundaryInputSpansAdder().increment();
+        first.recordBoundaryInputSpan();
         first.recordCollapsedSpan();
         first.markAttributesUnverified();
 
-        assertThat(second.boundaryInputSpansAdder().sum()).isZero();
+        assertThat(second.boundaryMetrics().inputSpans()).isZero();
         assertThat(second.collapsedSpans()).isZero();
         assertThat(second.attributesVerified()).isTrue();
         assertThat(first.attributesVerified()).isFalse();
-        assertThat(first.installation().wrappedExporterCount()).isZero();
     }
 
     @Test
@@ -139,11 +138,11 @@ class ScrubbingRuntimeConcurrencyTest {
         assertThat(runtime.droppedActions())
                 .as("processor-плоскость: одно DROP на span")
                 .isEqualTo(perPlane);
-        assertThat(runtime.boundaryInputSpansAdder().sum()).isEqualTo(perPlane);
-        assertThat(runtime.boundaryEventsScrubbedAdder().sum()).isEqualTo(perPlane);
+        assertThat(runtime.boundaryMetrics().inputSpans()).isEqualTo(perPlane);
+        assertThat(runtime.boundaryMetrics().eventsScrubbed()).isEqualTo(perPlane);
         assertThat(runtime.failures()).isZero();
-        assertThat(runtime.boundaryCriticalFailuresAdder().sum()).isZero();
-        assertThat(runtime.boundaryNonCriticalFailuresAdder().sum()).isZero();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isZero();
         assertThat(runtime.openBreakerCount()).isZero();
         assertThat(runtime.attributesVerified())
                 .as("исправная конкурентная работа не должна деградировать сессию")

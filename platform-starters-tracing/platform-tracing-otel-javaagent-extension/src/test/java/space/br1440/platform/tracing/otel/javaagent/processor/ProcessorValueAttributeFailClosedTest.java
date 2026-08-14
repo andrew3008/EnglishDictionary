@@ -30,6 +30,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
 /**
  * Fail-closed контракт для {@code AttributeType.VALUE} в processor-плоскости: атрибут нельзя
@@ -78,7 +80,7 @@ class ProcessorValueAttributeFailClosedTest {
         ReadWriteSpan span = spanWith(Attributes.of(KEY, value));
 
         // when
-        new ScrubbingSpanProcessor(List.of(ruleReturning(action))).onEnding(span);
+        ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(ruleReturning(action))).onEnding(span);
 
         // then
         verify(span).setAttribute(KEY, SENTINEL);
@@ -89,7 +91,8 @@ class ProcessorValueAttributeFailClosedTest {
     void realSdkSpanExportsSentinelWithoutRetainingComplexValueSecret() {
         // given
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(List.of(ruleReturning(ScrubbingAction.MASK)));
+        ScrubbingSpanProcessor processor = ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
+                List.of(ruleReturning(ScrubbingAction.MASK)));
 
         // when
         try (SdkTracerProvider provider = SdkTracerProvider.builder()
@@ -121,7 +124,7 @@ class ProcessorValueAttributeFailClosedTest {
         // KEEP недостоверен и весь атрибут схлопывается в sentinel независимо от решения правила.
         ReadWriteSpan span = spanWith(Attributes.of(KEY, Value.of("harmless")));
 
-        new ScrubbingSpanProcessor(List.of(ruleReturning(null))).onEnding(span);
+        ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(ruleReturning(null))).onEnding(span);
 
         verify(span).setAttribute(KEY, SENTINEL);
     }
@@ -145,11 +148,12 @@ class ProcessorValueAttributeFailClosedTest {
         };
         ReadWriteSpan span = spanWith(Attributes.of(KEY, Value.of("supersecret")));
 
-        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(List.of(failing));
+        ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(List.of(failing));
+        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(runtime);
         processor.onEnding(span);
 
         verify(span).setAttribute(KEY, SENTINEL);
-        assertThat(processor.runtime().failures())
+        assertThat(runtime.failures())
                 .as("VALUE is intercepted before MergeEngine runs; the rule is never consulted")
                 .isZero();
     }

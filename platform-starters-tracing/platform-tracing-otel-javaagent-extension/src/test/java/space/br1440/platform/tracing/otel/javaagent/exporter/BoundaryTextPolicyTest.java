@@ -66,7 +66,7 @@ class BoundaryTextPolicyTest {
         String result = BoundaryTextPolicy.scrubSpanName("contact ivan@example.com", runtime).value();
 
         assertThat(result).isEqualTo(BoundaryTextPolicy.REDACTED);
-        assertThat(runtime.boundaryHashDowngradedToMaskAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().hashDowngradedToMask()).isEqualTo(1L);
     }
 
     @Test
@@ -87,7 +87,7 @@ class BoundaryTextPolicyTest {
         String result = BoundaryTextPolicy.scrubSpanName("connect from 10.1.2.3", runtime).value();
 
         assertThat(result).isEqualTo(BoundaryTextPolicy.REDACTED);
-        assertThat(runtime.boundaryTruncateDowngradedToMaskAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().truncateDowngradedToMask()).isEqualTo(1L);
     }
 
     @Test

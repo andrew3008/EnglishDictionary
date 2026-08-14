@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingBoundaryMetrics;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingFailureLog;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
@@ -42,14 +43,6 @@ public final class SafeSpanExporter implements SpanExporter {
     private final AtomicLong lastExportDurationNanos = new AtomicLong();
 
     private final LongAdder gatedSpans = new LongAdder();
-
-    SafeSpanExporter(SpanExporter delegate) {
-        this(delegate, TracingSettingsSource.isolatedDefaults(), ScrubbingRuntime.disabled());
-    }
-
-    SafeSpanExporter(SpanExporter delegate, TracingSettingsSource acceptedPolicy) {
-        this(delegate, acceptedPolicy, ScrubbingRuntime.disabled());
-    }
 
     public SafeSpanExporter(SpanExporter delegate, TracingSettingsSource acceptedPolicy, ScrubbingRuntime scrubbingRuntime) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
@@ -114,7 +107,7 @@ public final class SafeSpanExporter implements SpanExporter {
             return batch;
         }
 
-        scrubbingRuntime.boundaryExporterInvocationsAdder().increment();
+        scrubbingRuntime.recordBoundaryExporterInvocation();
 
         List<SpanData> ordered;
         boolean snapshotRequired;
@@ -191,9 +184,9 @@ public final class SafeSpanExporter implements SpanExporter {
     }
 
     private void recordBoundaryBatchPreparationFailure(int originalCount, Throwable failure) {
-        scrubbingRuntime.boundaryBatchPreparationFailuresAdder().increment();
+        scrubbingRuntime.recordBoundaryBatchPreparationFailure();
         if (originalCount > 0) {
-            scrubbingRuntime.boundarySpansDroppedFailClosedAdder().add(originalCount);
+            scrubbingRuntime.recordBoundarySpansDroppedFailClosed(originalCount);
         }
 
         ScrubbingFailureLog.error(log, "BOUNDARY_BATCH_PREPARATION_FAILED", failure);
@@ -263,23 +256,24 @@ public final class SafeSpanExporter implements SpanExporter {
         snapshot.put(SpanExporterMetrics.EXPORT_ENABLED, isExportEnabled() ? 1L : 0L);
 
         if (scrubbingRuntime.enabled()) {
-            snapshot.put("boundary.input_spans", scrubbingRuntime.boundaryInputSpansAdder().sum());
-            snapshot.put("boundary.output_spans", scrubbingRuntime.boundaryOutputSpansAdder().sum());
-            snapshot.put("boundary.spans_changed", scrubbingRuntime.boundarySpansChangedAdder().sum());
-            snapshot.put("boundary.spans_dropped_fail_closed", scrubbingRuntime.boundarySpansDroppedFailClosedAdder().sum());
-            snapshot.put("boundary.events_scrubbed", scrubbingRuntime.boundaryEventsScrubbedAdder().sum());
-            snapshot.put("boundary.links_scrubbed", scrubbingRuntime.boundaryLinksScrubbedAdder().sum());
-            snapshot.put("boundary.span_names_scrubbed", scrubbingRuntime.boundarySpanNamesScrubbedAdder().sum());
-            snapshot.put("boundary.exception_events_canonicalized", scrubbingRuntime.boundaryExceptionEventsCanonicalizedAdder().sum());
-            snapshot.put("boundary.collapse_failures", scrubbingRuntime.boundaryCollapseFailuresAdder().sum());
-            snapshot.put("boundary.batch_preparation_failures", scrubbingRuntime.boundaryBatchPreparationFailuresAdder().sum());
-            snapshot.put("boundary.exporter_invocations", scrubbingRuntime.boundaryExporterInvocationsAdder().sum());
-            snapshot.put("boundary.text.hash_downgraded_to_mask", scrubbingRuntime.boundaryHashDowngradedToMaskAdder().sum());
-            snapshot.put("boundary.text.truncate_downgraded_to_mask", scrubbingRuntime.boundaryTruncateDowngradedToMaskAdder().sum());
-            snapshot.put("boundary.critical_failures", scrubbingRuntime.boundaryCriticalFailuresAdder().sum());
-            snapshot.put("boundary.non_critical_failures", scrubbingRuntime.boundaryNonCriticalFailuresAdder().sum());
-            snapshot.put("boundary.skipped_circuit_open", scrubbingRuntime.boundarySkippedCircuitOpenAdder().sum());
-            snapshot.put("boundary.surfaces_collapsed_fail_closed", scrubbingRuntime.boundarySurfacesCollapsedFailClosedAdder().sum());
+            ScrubbingBoundaryMetrics boundaryMetrics = scrubbingRuntime.boundaryMetrics();
+            snapshot.put("boundary.input_spans", boundaryMetrics.inputSpans());
+            snapshot.put("boundary.output_spans", boundaryMetrics.outputSpans());
+            snapshot.put("boundary.spans_changed", boundaryMetrics.spansChanged());
+            snapshot.put("boundary.spans_dropped_fail_closed", boundaryMetrics.spansDroppedFailClosed());
+            snapshot.put("boundary.events_scrubbed", boundaryMetrics.eventsScrubbed());
+            snapshot.put("boundary.links_scrubbed", boundaryMetrics.linksScrubbed());
+            snapshot.put("boundary.span_names_scrubbed", boundaryMetrics.spanNamesScrubbed());
+            snapshot.put("boundary.exception_events_canonicalized", boundaryMetrics.exceptionEventsCanonicalized());
+            snapshot.put("boundary.collapse_failures", boundaryMetrics.collapseFailures());
+            snapshot.put("boundary.batch_preparation_failures", boundaryMetrics.batchPreparationFailures());
+            snapshot.put("boundary.exporter_invocations", boundaryMetrics.exporterInvocations());
+            snapshot.put("boundary.text.hash_downgraded_to_mask", boundaryMetrics.hashDowngradedToMask());
+            snapshot.put("boundary.text.truncate_downgraded_to_mask", boundaryMetrics.truncateDowngradedToMask());
+            snapshot.put("boundary.critical_failures", boundaryMetrics.criticalFailures());
+            snapshot.put("boundary.non_critical_failures", boundaryMetrics.nonCriticalFailures());
+            snapshot.put("boundary.skipped_circuit_open", boundaryMetrics.skippedCircuitOpen());
+            snapshot.put("boundary.surfaces_collapsed_fail_closed", boundaryMetrics.surfacesCollapsedFailClosed());
             snapshot.put("attributes_verified", scrubbingRuntime.attributesVerified() ? 1L : 0L);
             snapshot.put("collapse_mode_activations", scrubbingRuntime.collapseModeActivations());
             snapshot.put("collapsed_spans", scrubbingRuntime.collapsedSpans());

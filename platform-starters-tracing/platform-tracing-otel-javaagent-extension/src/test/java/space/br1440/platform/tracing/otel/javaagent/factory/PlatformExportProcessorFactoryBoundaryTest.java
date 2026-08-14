@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,10 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBean
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -37,12 +37,8 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-
 /**
- * P5: UPSTREAM and DROP_OLDEST share the same {@code SafeSpanExporter} boundary wrap,
- * and {@code wrappedExporterCount} counts every wrapped exporter.
+ * P5: UPSTREAM and DROP_OLDEST share the same {@code SafeSpanExporter} boundary wrap.
  */
 class PlatformExportProcessorFactoryBoundaryTest {
 
@@ -62,26 +58,12 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 stock, upstream.queue(), stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "UPSTREAM"));
 
         assertThat(result).isSameAs(stock);
-        assertThat(runtime.installation().wrappedExporterCount()).isEqualTo(1);
         assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)).isTrue();
 
         wrapped.export(List.of(spanWithPasswordEvent()));
         assertThat(captured).hasSize(1);
         assertThat(captured.get(0).getEvents().get(0).getAttributes().get(AttributeKey.stringKey("db.password")))
                 .isNull();
-    }
-
-    @Test
-    @DisplayName("wrappedExporterCount increments for each captureExporter call")
-    void eachCapturedExporterIncrementsWrappedCount() {
-        ScrubbingRuntime runtime = runtimeOfPassword();
-        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
-                new DomainMBeanRegistrar(), runtime);
-
-        factory.captureExporter(capturing(new ArrayList<>()), TracingSettingsSource.isolatedDefaults());
-        factory.captureExporter(capturing(new ArrayList<>()), TracingSettingsSource.isolatedDefaults());
-
-        assertThat(runtime.installation().wrappedExporterCount()).isEqualTo(2);
     }
 
     @Test
@@ -108,7 +90,6 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 dropOldest.queue(),
                 stringConfig(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY, "DROP_OLDEST"));
 
-        assertThat(runtime.installation().wrappedExporterCount()).isEqualTo(1);
         assertThat(registrar.extensionReadiness().has(PlatformExtensionCapability.EXPORT_PATH_PROTECTED)
                 || registrar.extensionReadiness().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED))
                 .isTrue();
@@ -120,7 +101,8 @@ class PlatformExportProcessorFactoryBoundaryTest {
         ScrubbingRuntime session = runtimeOfPassword();
         List<SpanData> captured = new ArrayList<>();
         SafeSpanExporter foreign = new SafeSpanExporter(
-                capturing(captured), TracingSettingsSource.isolatedDefaults(), ScrubbingRuntime.disabled());
+                capturing(captured), TracingSettingsSource.isolatedDefaults(),
+                ScrubbingRuntimeTestFixtures.disabled());
         assertThat(foreign.isProtectedBy(session)).isFalse();
 
         PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
@@ -133,10 +115,7 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 .isInstanceOf(SanitizerBootstrapException.class)
                 .extracting(t -> ((SanitizerBootstrapException) t).code())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
-        assertThat(session.installation().wrappedExporterCount())
-                .as("installation barrier must stay incomplete")
-                .isZero();
-        assertThat(catchThrowable(() -> session.installation().requireComplete()))
+        assertThat(catchThrowable(session::requireInstallationComplete))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -162,7 +141,6 @@ class PlatformExportProcessorFactoryBoundaryTest {
                 .isInstanceOf(SanitizerBootstrapException.class)
                 .extracting(t -> ((SanitizerBootstrapException) t).code())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
-        assertThat(session.installation().wrappedExporterCount()).isZero();
     }
 
     @Test
@@ -183,21 +161,14 @@ class PlatformExportProcessorFactoryBoundaryTest {
         assertThat(captured).hasSize(1);
         assertThat(captured.get(0).getEvents().get(0).getAttributes().get(AttributeKey.stringKey("db.password")))
                 .isNull();
-        assertThat(session.installation().wrappedExporterCount())
-                .as("re-entry with the factory's own output must not increment the wrap counter again")
-                .isEqualTo(1);
-        assertThat(session.boundaryInputSpansAdder().sum())
+        assertThat(session.boundaryMetrics().inputSpans())
                 .as("exactly one boundary pass, not one per re-entry")
                 .isEqualTo(1L);
     }
 
     private static ScrubbingRuntime runtimeOfPassword() {
         SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.resolve("password");
-        return ScrubbingRuntime.create(
-                List.of(new RuntimeRule(
-                        new ExecutableRule(password, new RuleCircuitBreaker(password.name())),
-                        RuleOrigin.BUILT_IN)),
-                1L, "test", null, false);
+        return ScrubbingRuntimeTestFixtures.fromBuiltInRules(List.of(password));
     }
 
     private static SpanExporter capturing(List<SpanData> captured) {

@@ -24,7 +24,7 @@ class ScrubbingSecurityNegativeTest {
     void rule_priority_conflict_authorization_дропается_а_не_хэшируется() {
         // authorization матчит и OAuthHeaderRule (DROP, priority 10), и EmailRule по значению
         // (HASH, priority 130). Должен победить DROP независимо от порядка регистрации.
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("email"),
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         ), MaskedSecret.of("key"), false))) {
@@ -41,7 +41,7 @@ class ScrubbingSecurityNegativeTest {
 
     @Test
     void drop_integration_секрет_отсутствует_в_экспортированной_SpanData() {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
             Tracer tracer = h.tracer("t");
@@ -57,7 +57,7 @@ class ScrubbingSecurityNegativeTest {
 
     @Test
     void mixed_ip_header_masks_entire_value_in_exported_span() {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("ip-address")
         )))) {
             Tracer tracer = h.tracer("t");
@@ -88,14 +88,15 @@ class ScrubbingSecurityNegativeTest {
     @Test
     void fail_fast_без_ключа_бросает_на_старте() {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> new ScrubbingSpanProcessor(List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), null, true));
+                () -> ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
+                        List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), null, true));
     }
 
     @Test
     void event_scope_токен_в_событии_не_вычищается_SDK_процессором() {
         // Документируем честную границу: ScrubbingSpanProcessor мутирует только span attributes.
         // Атрибуты событий через ReadWriteSpan не модифицируются — это safety net Collector'а.
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
             Tracer tracer = h.tracer("t");
@@ -111,7 +112,7 @@ class ScrubbingSecurityNegativeTest {
     }
 
     private static String hashEmail(String key) {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("email")
         ), MaskedSecret.of(key), false))) {
             Tracer tracer = h.tracer("t");

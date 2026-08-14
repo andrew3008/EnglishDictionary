@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing;
 
 import java.util.concurrent.atomic.LongAdder;
 
-public final class MonotonicCounter {
+final class MonotonicCounter {
 
     private final LongAdder adder = new LongAdder();
 

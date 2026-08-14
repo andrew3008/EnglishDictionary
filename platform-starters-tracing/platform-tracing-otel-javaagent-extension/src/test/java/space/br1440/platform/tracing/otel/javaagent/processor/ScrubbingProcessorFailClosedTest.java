@@ -20,6 +20,8 @@ import org.mockito.ArgumentMatchers;
 
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
 class ScrubbingProcessorFailClosedTest {
 
@@ -46,7 +48,9 @@ class ScrubbingProcessorFailClosedTest {
             return span;
         }).when(span).setAttribute(ArgumentMatchers.<AttributeKey<String>>any(), anyString());
 
-        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(List.of(new MaskEveryStringRule()));
+        ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(new MaskEveryStringRule()));
+        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(runtime);
 
         processor.onEnding(span);
 
@@ -54,8 +58,8 @@ class ScrubbingProcessorFailClosedTest {
         verify(span).setAttribute(secondKey, FAILED);
         assertThat(snapshot.get(firstKey)).isEqualTo("first-raw-secret");
         assertThat(snapshot.get(secondKey)).isEqualTo("second-raw-secret");
-        assertThat(processor.runtime().failures()).isEqualTo(1);
-        assertThat(processor.runtime().attributesVerified())
+        assertThat(runtime.failures()).isEqualTo(1);
+        assertThat(runtime.attributesVerified())
                 .as("частично применённый collapse не даёт гарантии — сессия обязана перейти в "
                         + "collapse-режим на exporter-boundary")
                 .isFalse();
@@ -74,17 +78,19 @@ class ScrubbingProcessorFailClosedTest {
             throw new IllegalStateException("synthetic mutation failure");
         }).when(span).setAttribute(ArgumentMatchers.<AttributeKey<String>>any(), anyString());
 
-        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(List.of(new MaskEveryStringRule()));
+        ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(new MaskEveryStringRule()));
+        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(runtime);
 
         processor.onEnding(span);
 
-        assertThat(processor.runtime().attributesVerified())
+        assertThat(runtime.attributesVerified())
                 .as("ни один атрибут не удалось схлопнуть: сырое значение осталось в span'е")
                 .isFalse();
-        assertThat(processor.runtime().collapseModeActivations())
+        assertThat(runtime.collapseModeActivations())
                 .as("переход режима считается один раз")
                 .isEqualTo(1L);
-        assertThat(processor.runtime().failures()).isGreaterThanOrEqualTo(2L);
+        assertThat(runtime.failures()).isGreaterThanOrEqualTo(2L);
     }
 
     @Test
@@ -92,12 +98,14 @@ class ScrubbingProcessorFailClosedTest {
         ReadWriteSpan span = mock(ReadWriteSpan.class);
         when(span.toSpanData()).thenThrow(new IllegalStateException("snapshot unavailable"));
 
-        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(List.of(new MaskEveryStringRule()));
+        ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
+                List.of(new MaskEveryStringRule()));
+        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(runtime);
 
         processor.onEnding(span);
 
-        assertThat(processor.runtime().attributesVerified()).isFalse();
-        assertThat(processor.runtime().collapseModeActivations()).isEqualTo(1L);
+        assertThat(runtime.attributesVerified()).isFalse();
+        assertThat(runtime.collapseModeActivations()).isEqualTo(1L);
     }
 
     private static final class MaskEveryStringRule implements SpanAttributeScrubbingRule {

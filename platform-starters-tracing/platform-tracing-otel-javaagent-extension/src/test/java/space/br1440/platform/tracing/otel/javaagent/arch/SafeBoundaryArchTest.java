@@ -1,11 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.arch;
 
+import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.type;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameStartingWith;
+import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.library.GeneralCodingRules.ACCESS_STANDARD_STREAMS;
+
+import java.util.List;
+
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-
-import java.util.List;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
@@ -14,14 +22,6 @@ import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProce
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-
-import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.type;
-import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameStartingWith;
-import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static com.tngtech.archunit.library.GeneralCodingRules.ACCESS_STANDARD_STREAMS;
 
 /**
  * ArchUnit-гардрейл safe-границ (Фаза 11).
@@ -156,24 +156,31 @@ class SafeBoundaryArchTest {
                     .and().doNotHaveSimpleName("PlatformSpanProcessorFactory")
                     .and().doNotHaveSimpleName("ScrubbingRuntime")
                     .should().callMethodWhere(
-                            target(owner(type(ScrubbingRuntime.Installation.class)))
+                            target(owner(type(ScrubbingRuntime.class)))
                                     .and(target(nameStartingWith("acknowledge"))))
                     .because("acknowledge* принадлежит сборке pipeline'а; произвольный вызов "
                             + "подтверждает installation barrier без реальной защиты экспорта");
 
-    /**
-     * {@code ScrubbingRuntimeSupport} и list-конструкторы {@code ScrubbingSpanProcessor} строят
-     * собственный runtime вне сессии. Они публичны только потому, что нужны тестам, JMH и E2E из
-     * других модулей; production-код обязан идти через {@code PlatformScrubberFactory}.
-     */
     @ArchTest
-    static final ArchRule production_code_builds_scrubbing_runtime_only_through_the_factory =
+    static final ArchRule boundary_counters_are_recorded_only_by_boundary_owners =
             noClasses()
-                    .that().doNotHaveSimpleName("ScrubbingSpanProcessor")
-                    .should().accessClassesThat().haveSimpleName("ScrubbingRuntimeSupport")
-                    .because("единственная production-точка создания ScrubbingRuntime — "
-                            + "PlatformScrubberFactory; ScrubbingRuntimeSupport остаётся "
-                            + "test-fixture поверхностью для тестов, JMH и E2E");
+                    .that().doNotHaveSimpleName("SafeSpanExporter")
+                    .and().doNotHaveSimpleName("SpanDataBoundaryScrubber")
+                    .and().doNotHaveSimpleName("BoundaryTextPolicy")
+                    .and().doNotHaveSimpleName("AttributesScrubber")
+                    .and().doNotHaveFullyQualifiedName(
+                            "space.br1440.platform.tracing.otel.javaagent.exporter.AttributesScrubber$ScrubPass")
+                    .and().doNotHaveSimpleName("ScrubbingRuntime")
+                    .should().callMethodWhere(
+                            target(owner(type(ScrubbingRuntime.class)))
+                                    .and(target(nameStartingWith("recordBoundary"))))
+                    .because("изменять boundary-счётчики могут только владельцы exporter-boundary");
+
+    @ArchTest
+    static final ArchRule production_artifact_does_not_contain_scrubbing_runtime_support =
+            noClasses()
+                    .should().haveSimpleName("ScrubbingRuntimeSupport")
+                    .because("test fixture не должен возвращаться в production classes");
 
     @ArchTest
     static final ArchRule production_code_does_not_use_rule_list_scrubbing_processor_constructors =

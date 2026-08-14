@@ -219,7 +219,7 @@ final class BootstrapCoordinator {
             resources.push(activeSession.jmxRegistrar().registerRuntimeControls(activeSession.policy()),"runtime-jmx-controls");
             resources.installShutdownHook("platform-tracing-bootstrap-shutdown");
 
-            activeSession.scrubbingRuntime().installation().requireComplete();
+            activeSession.scrubbingRuntime().requireInstallationComplete();
             activeSession.readiness().markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
             activeSession.readiness().requireReady();
 

@@ -6,7 +6,7 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeSupport;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import javax.management.openmbean.CompositeData;
@@ -27,7 +27,7 @@ class ScrubbingControlTest {
     private static final UUID AGENT_INSTANCE_ID = UUID.randomUUID();
 
     private static ScrubbingRuntime enabledRuntime() {
-        return ScrubbingRuntimeSupport.fromBuiltInRules(
+        return ScrubbingRuntimeTestFixtures.fromBuiltInRules(
                 List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")),
                 MaskedSecret.of("k"),
                 false);

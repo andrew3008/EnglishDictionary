@@ -5,10 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
-import jakarta.annotation.Nullable;
 
-import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
@@ -21,8 +18,6 @@ import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProces
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -34,29 +29,11 @@ import lombok.extern.slf4j.Slf4j;
 public final class PlatformSpanProcessorFactory {
 
     private final DomainMBeanRegistrar jmxRegistrar;
-    private final PlatformScrubberFactory scrubberFactory;
-    @Nullable
-    private final ScrubbingRuntime sharedRuntime;
+    private final ScrubbingRuntime scrubbingRuntime;
 
-    PlatformSpanProcessorFactory(DomainMBeanRegistrar jmxRegistrar) {
-        this(jmxRegistrar, new PlatformScrubberFactory(), null);
-    }
-
-    public PlatformSpanProcessorFactory(DomainMBeanRegistrar jmxRegistrar, ScrubbingRuntime sharedRuntime) {
-        this(jmxRegistrar, new PlatformScrubberFactory(), Objects.requireNonNull(sharedRuntime, "sharedRuntime"));
-    }
-
-    PlatformSpanProcessorFactory(DomainMBeanRegistrar jmxRegistrar,
-                                 Supplier<List<SpanAttributeScrubbingRule>> spiScrubbingRuleSource) {
-        this(jmxRegistrar, new PlatformScrubberFactory(spiScrubbingRuleSource), null);
-    }
-
-    private PlatformSpanProcessorFactory(DomainMBeanRegistrar jmxRegistrar,
-                                         PlatformScrubberFactory scrubberFactory,
-                                         @Nullable ScrubbingRuntime sharedRuntime) {
+    public PlatformSpanProcessorFactory(DomainMBeanRegistrar jmxRegistrar, ScrubbingRuntime scrubbingRuntime) {
         this.jmxRegistrar = Objects.requireNonNull(jmxRegistrar, "jmxRegistrar must not be null");
-        this.scrubberFactory = Objects.requireNonNull(scrubberFactory, "scrubberFactory must not be null");
-        this.sharedRuntime = sharedRuntime;
+        this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime must not be null");
     }
 
     public SdkTracerProviderBuilder registerSpanProcessors(SdkTracerProviderBuilder tpBuilder,
@@ -88,7 +65,7 @@ public final class PlatformSpanProcessorFactory {
         classificationProcessor(extConfig).ifPresent(delegates::add);
         watchdogProcessor(extConfig).ifPresent(delegates::add);
         metricsProcessor(extConfig).ifPresent(delegates::add);
-        scrubbingProcessor(extConfig, config).ifPresent(delegates::add);
+        scrubbingProcessor(extConfig).ifPresent(delegates::add);
         return delegates;
     }
 
@@ -119,27 +96,14 @@ public final class PlatformSpanProcessorFactory {
         return Optional.of(processor);
     }
 
-    private Optional<SpanProcessor> scrubbingProcessor(ExtensionConfig extConfig,
-                                                       ConfigProperties config) {
+    private Optional<SpanProcessor> scrubbingProcessor(ExtensionConfig extConfig) {
         if (!extConfig.scrubbing().enabled()) {
             return Optional.empty();
         }
 
-        ScrubbingRuntime runtime;
-        if (sharedRuntime != null) {
-            runtime = sharedRuntime;
-        } else {
-            try {
-                runtime = scrubberFactory.buildRuntime(extConfig, config);
-            } catch (SanitizerBootstrapException e) {
-                jmxRegistrar.extensionReadiness().fail(e.code(), e);
-                throw e;
-            }
-        }
-
-        ScrubbingSpanProcessor scrubbing = new ScrubbingSpanProcessor(runtime);
-        jmxRegistrar.setScrubbing(runtime);
-        runtime.installation().acknowledgeProcessorInstalled();
+        ScrubbingSpanProcessor scrubbing = new ScrubbingSpanProcessor(scrubbingRuntime);
+        jmxRegistrar.setScrubbing(scrubbingRuntime);
+        scrubbingRuntime.acknowledgeProcessorInstalled();
         return Optional.of(scrubbing);
     }
 

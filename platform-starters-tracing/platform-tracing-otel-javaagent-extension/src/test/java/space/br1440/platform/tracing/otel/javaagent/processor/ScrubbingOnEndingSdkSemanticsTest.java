@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
@@ -73,7 +74,7 @@ class ScrubbingOnEndingSdkSemanticsTest {
 
     private static ScrubbingRuntime passwordRuntime() {
         SpanAttributeScrubbingRule password = BuiltInSpanAttributeScrubbingRules.resolve("password");
-        return ScrubbingRuntime.create(
+        return ScrubbingRuntimeTestFixtures.create(
                 List.of(new RuntimeRule(
                         new ExecutableRule(password, new RuleCircuitBreaker(password.name())), RuleOrigin.BUILT_IN)),
                 1L, "test", null, false);

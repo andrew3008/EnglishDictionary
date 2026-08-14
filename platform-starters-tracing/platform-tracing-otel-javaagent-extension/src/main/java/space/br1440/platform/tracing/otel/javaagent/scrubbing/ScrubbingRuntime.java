@@ -128,7 +128,7 @@ public final class ScrubbingRuntime {
         }
     }
 
-    public static ScrubbingRuntime disabled() {
+    static ScrubbingRuntime disabled() {
         return new ScrubbingRuntime(false, List.of(), 0L, "disabled", null, false);
     }
 
@@ -455,79 +455,121 @@ public final class ScrubbingRuntime {
         return collapsedSpans.sum();
     }
 
-    public MonotonicCounter boundaryInputSpansAdder() {
-        return boundaryInputSpans;
+    public ScrubbingBoundaryMetrics boundaryMetrics() {
+        return new ScrubbingBoundaryMetrics(
+                boundaryInputSpans.sum(),
+                boundaryOutputSpans.sum(),
+                boundarySpansChanged.sum(),
+                boundarySpansDroppedFailClosed.sum(),
+                boundaryEventsScrubbed.sum(),
+                boundaryLinksScrubbed.sum(),
+                boundarySpanNamesScrubbed.sum(),
+                boundaryExceptionEventsCanonicalized.sum(),
+                boundaryCollapseFailures.sum(),
+                boundaryExporterInvocations.sum(),
+                boundaryHashDowngradedToMask.sum(),
+                boundaryTruncateDowngradedToMask.sum(),
+                boundaryCriticalFailures.sum(),
+                boundaryNonCriticalFailures.sum(),
+                boundarySkippedCircuitOpen.sum(),
+                boundarySurfacesCollapsedFailClosed.sum(),
+                boundaryBatchPreparationFailures.sum()
+        );
     }
 
-    public MonotonicCounter boundaryOutputSpansAdder() {
-        return boundaryOutputSpans;
+    public void recordBoundaryInputSpan() {
+        boundaryInputSpans.increment();
     }
 
-    public MonotonicCounter boundarySpansChangedAdder() {
-        return boundarySpansChanged;
+    public void recordBoundaryOutputSpan() {
+        boundaryOutputSpans.increment();
     }
 
-    public MonotonicCounter boundarySpansDroppedFailClosedAdder() {
-        return boundarySpansDroppedFailClosed;
+    public void recordBoundarySpanChanged() {
+        boundarySpansChanged.increment();
     }
 
-    public MonotonicCounter boundaryEventsScrubbedAdder() {
-        return boundaryEventsScrubbed;
+    public void recordBoundarySpanDroppedFailClosed() {
+        boundarySpansDroppedFailClosed.increment();
     }
 
-    public MonotonicCounter boundaryLinksScrubbedAdder() {
-        return boundaryLinksScrubbed;
+    public void recordBoundarySpansDroppedFailClosed(long count) {
+        boundarySpansDroppedFailClosed.add(count);
     }
 
-    public MonotonicCounter boundarySpanNamesScrubbedAdder() {
-        return boundarySpanNamesScrubbed;
+    public void recordBoundaryEventScrubbed() {
+        boundaryEventsScrubbed.increment();
     }
 
-    public MonotonicCounter boundaryExceptionEventsCanonicalizedAdder() {
-        return boundaryExceptionEventsCanonicalized;
+    public void recordBoundaryLinkScrubbed() {
+        boundaryLinksScrubbed.increment();
     }
 
-    public MonotonicCounter boundaryCollapseFailuresAdder() {
-        return boundaryCollapseFailures;
+    public void recordBoundarySpanNameScrubbed() {
+        boundarySpanNamesScrubbed.increment();
     }
 
-    public MonotonicCounter boundaryExporterInvocationsAdder() {
-        return boundaryExporterInvocations;
+    public void recordBoundaryExceptionEventCanonicalized() {
+        boundaryExceptionEventsCanonicalized.increment();
     }
 
-    public MonotonicCounter boundaryHashDowngradedToMaskAdder() {
-        return boundaryHashDowngradedToMask;
+    public void recordBoundaryCollapseFailure() {
+        boundaryCollapseFailures.increment();
     }
 
-    public MonotonicCounter boundaryTruncateDowngradedToMaskAdder() {
-        return boundaryTruncateDowngradedToMask;
+    public void recordBoundaryExporterInvocation() {
+        boundaryExporterInvocations.increment();
     }
 
-    public MonotonicCounter boundaryCriticalFailuresAdder() {
-        return boundaryCriticalFailures;
+    public void recordBoundaryHashDowngradedToMask() {
+        boundaryHashDowngradedToMask.increment();
     }
 
-    public MonotonicCounter boundaryNonCriticalFailuresAdder() {
-        return boundaryNonCriticalFailures;
+    public void recordBoundaryTruncateDowngradedToMask() {
+        boundaryTruncateDowngradedToMask.increment();
     }
 
-    public MonotonicCounter boundarySkippedCircuitOpenAdder() {
-        return boundarySkippedCircuitOpen;
+    public void recordBoundaryCriticalFailures(long count) {
+        boundaryCriticalFailures.add(count);
     }
 
-    public MonotonicCounter boundarySurfacesCollapsedFailClosedAdder() {
-        return boundarySurfacesCollapsedFailClosed;
+    public void recordBoundaryNonCriticalFailures(long count) {
+        boundaryNonCriticalFailures.add(count);
     }
 
-    public MonotonicCounter boundaryBatchPreparationFailuresAdder() {
-        return boundaryBatchPreparationFailures;
+    public void recordBoundarySkippedCircuitOpen(long count) {
+        boundarySkippedCircuitOpen.add(count);
     }
 
-    public Installation installation() {
-        return installation;
+    public void recordBoundarySurfaceCollapsedFailClosed() {
+        boundarySurfacesCollapsedFailClosed.increment();
     }
 
-    public static final class Installation {
+    public void recordBoundaryBatchPreparationFailure() {
+        boundaryBatchPreparationFailures.increment();
+    }
+
+    public void acknowledgeProcessorInstalled() {
+        installation.acknowledgeProcessorInstalled();
+    }
+
+    public void acknowledgeExportModeResolved() {
+        installation.acknowledgeExportModeResolved();
+    }
+
+    public void acknowledgeExporterWrapped() {
+        installation.acknowledgeExporterWrapped();
+    }
+
+    public void acknowledgeExportPathProtected() {
+        installation.acknowledgeExportPathProtected();
+    }
+
+    public void requireInstallationComplete() {
+        installation.requireComplete();
+    }
+
+    private static final class Installation {
 
         private final AtomicBoolean processorInstalled = new AtomicBoolean();
         private final AtomicBoolean exportModeResolved = new AtomicBoolean();
@@ -537,34 +579,30 @@ public final class ScrubbingRuntime {
         private Installation() {
         }
 
-        public void acknowledgeProcessorInstalled() {
+        private void acknowledgeProcessorInstalled() {
             processorInstalled.set(true);
         }
 
-        public void acknowledgeExportModeResolved() {
+        private void acknowledgeExportModeResolved() {
             exportModeResolved.set(true);
         }
 
-        public void acknowledgeExporterWrapped() {
+        private void acknowledgeExporterWrapped() {
             wrappedExporterCount.incrementAndGet();
         }
 
-        public void acknowledgeExportPathProtected() {
+        private void acknowledgeExportPathProtected() {
             exportPathProtected.set(true);
         }
 
-        public int wrappedExporterCount() {
-            return wrappedExporterCount.get();
-        }
-
-        public boolean isComplete() {
+        private boolean isComplete() {
             return processorInstalled.get()
                     && exportModeResolved.get()
                     && wrappedExporterCount.get() >= 1
                     && exportPathProtected.get();
         }
 
-        public void requireComplete() {
+        private void requireComplete() {
             if (!isComplete()) {
                 throw new IllegalStateException("Scrubbing installation barrier incomplete: " + describe());
             }
@@ -578,8 +616,8 @@ public final class ScrubbingRuntime {
         }
     }
 
-    public static ScrubbingRuntime create(List<RuntimeRule> rules, long policyVersion, String policySource,
-                                          MaskedSecret hmacSecret, boolean failFast) {
+    static ScrubbingRuntime create(List<RuntimeRule> rules, long policyVersion, String policySource,
+                                   MaskedSecret hmacSecret, boolean failFast) {
         Objects.requireNonNull(rules, "rules");
         return new ScrubbingRuntime(true, rules, policyVersion, policySource, hmacSecret, failFast);
     }

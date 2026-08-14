@@ -1,18 +1,22 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
 import jakarta.annotation.Nonnull;
+
 import org.junit.jupiter.api.Test;
+
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
 
 /**
  * Characterization {@link ScrubbingSpanProcessor} integration behavior (PR-5B).
@@ -21,9 +25,11 @@ class ScrubbingSpanProcessorCharacterizationTest {
 
     @Test
     void mandatory_scrubbing_enabled_by_default() {
-        ScrubbingSpanProcessor processor = new ScrubbingSpanProcessor(
+        ScrubbingRuntime runtime = ScrubbingRuntimeTestFixtures.fromBuiltInRules(
                 ScrubbingCharacterizationSupport.resolveRules(List.of("password")));
-        assertThat(processor.runtime().enabled()).isTrue();
+        new ScrubbingSpanProcessor(runtime);
+
+        assertThat(runtime.enabled()).isTrue();
     }
 
     @Test
@@ -40,7 +46,7 @@ class ScrubbingSpanProcessorCharacterizationTest {
             }
         };
 
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                 List.of(customHash), MaskedSecret.of("hmac-key"), false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -57,7 +63,7 @@ class ScrubbingSpanProcessorCharacterizationTest {
     void built_in_email_with_hmac_produces_deterministic_hash() {
         String first;
         String second;
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                 List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -66,7 +72,7 @@ class ScrubbingSpanProcessorCharacterizationTest {
             first = h.exporter().getFinishedSpanItems().getFirst().getAttributes()
                     .get(io.opentelemetry.api.common.AttributeKey.stringKey("user.email"));
         }
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                 List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), MaskedSecret.of("secret-key"), false))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();

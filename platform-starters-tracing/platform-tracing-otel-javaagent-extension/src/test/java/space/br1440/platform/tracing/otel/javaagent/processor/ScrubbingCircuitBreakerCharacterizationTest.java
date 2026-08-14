@@ -40,7 +40,8 @@ class ScrubbingCircuitBreakerCharacterizationTest {
     void critical_rule_failure_masks_attribute_with_scrubbing_failed() {
         SpanAttributeScrubbingRule criticalFaulty = criticalThrowingRule("critical-boom");
 
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(criticalFaulty)))) {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(
+                ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(criticalFaulty)))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("secret.key", "leak-me");

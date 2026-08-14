@@ -113,7 +113,7 @@ class SpanDataBoundaryScrubberTest {
                 .noneMatch(value -> String.valueOf(value).contains(secret));
         assertThat(resultEvent.toString()).doesNotContain(secret);
         assertThat(outcome.spanData().toString()).doesNotContain(secret);
-        assertThat(runtime.boundaryExceptionEventsCanonicalizedAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().exceptionEventsCanonicalized()).isEqualTo(1L);
 
         for (EventData exported : outcome.spanData().getEvents()) {
             assertThat(exported)
@@ -176,7 +176,7 @@ class SpanDataBoundaryScrubberTest {
 
         assertThat(outcome.changed()).isTrue();
         assertThat(outcome.spanData().getName()).isEqualTo("<redacted>");
-        assertThat(runtime.boundaryHashDowngradedToMaskAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().hashDowngradedToMask()).isEqualTo(1L);
     }
 
     @Test
@@ -222,7 +222,7 @@ class SpanDataBoundaryScrubberTest {
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(poisoned);
 
         assertThat(outcome.dropSpan()).isTrue();
-        assertThat(runtime.boundaryCollapseFailuresAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
     }
 
     @Test
@@ -251,7 +251,7 @@ class SpanDataBoundaryScrubberTest {
         assertThat(outcome.spanData().getEvents().get(0).getName()).isEqualTo("<redacted>");
         assertThat(outcome.spanData().getEvents().get(0).getName())
                 .isNotEqualTo(runtime.hmacHex("contact ivan@example.com now"));
-        assertThat(runtime.boundaryHashDowngradedToMaskAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().hashDowngradedToMask()).isEqualTo(1L);
     }
 
     @Test

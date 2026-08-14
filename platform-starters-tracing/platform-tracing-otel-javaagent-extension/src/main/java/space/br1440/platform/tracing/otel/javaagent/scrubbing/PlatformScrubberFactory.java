@@ -41,7 +41,7 @@ public final class PlatformScrubberFactory {
         this(PlatformScrubberFactory::loadSpiScrubbingRules);
     }
 
-    public PlatformScrubberFactory(Supplier<List<SpanAttributeScrubbingRule>> spiScrubbingRuleSource) {
+    PlatformScrubberFactory(Supplier<List<SpanAttributeScrubbingRule>> spiScrubbingRuleSource) {
         this.spiScrubbingRuleSource = Objects.requireNonNull(spiScrubbingRuleSource, "spiScrubbingRuleSource must not be null");
     }
 

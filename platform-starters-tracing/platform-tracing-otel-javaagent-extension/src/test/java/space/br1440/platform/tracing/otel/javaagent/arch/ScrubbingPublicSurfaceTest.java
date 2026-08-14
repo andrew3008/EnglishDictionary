@@ -33,23 +33,16 @@ class ScrubbingPublicSurfaceTest {
             "space.br1440.platform.tracing.otel.javaagent.scrubbing",
             "space.br1440.platform.tracing.otel.javaagent.exporter");
 
-    /**
-     * {@code ScrubbingRuntimeSupport} остаётся публичным осознанно: он нужен unit-тестам,
-     * JMH-бенчмаркам и E2E из других модулей, а production-путь к нему закрыт правилом
-     * {@code SafeBoundaryArchTest.production_code_builds_scrubbing_runtime_only_through_the_factory}.
-     */
     private static final Set<String> ALLOWED_PUBLIC_TYPES = Set.of(
             "space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter",
             "space.br1440.platform.tracing.otel.javaagent.exporter.SpanExporterMetrics",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.MonotonicCounter",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException",
+            "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingBoundaryMetrics",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingFailureLog",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingKeyNormalizer",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRulesLoader",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime$Installation",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeSupport",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.StableScrubbingRule",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker",
@@ -63,7 +56,6 @@ class ScrubbingPublicSurfaceTest {
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.PriorityHardening",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionOutcome",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOutcome",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader$FailedEntry",
@@ -83,12 +75,13 @@ class ScrubbingPublicSurfaceTest {
                     + " space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource,"
                     + " space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory.<init>()",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory"
-                    + ".<init>(java.util.function.Supplier)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException"
                     + ".<init>(java.lang.String, java.lang.String)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException"
                     + ".<init>(java.lang.String, java.lang.String, java.lang.Throwable)",
+            "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingBoundaryMetrics"
+                    + ".<init>(long, long, long, long, long, long, long, long, long, long, long, long,"
+                    + " long, long, long, long, long)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot"
                     + ".<init>(boolean, java.util.List, long, java.lang.String)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker"
@@ -100,9 +93,6 @@ class ScrubbingPublicSurfaceTest {
                     + " space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.MergeOutcome"
                     + ".<init>(space.br1440.platform.tracing.api.spi.ScrubbingDecision, long, long, long)",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOutcome"
-                    + ".<init>(space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionOutcome,"
-                    + " space.br1440.platform.tracing.api.spi.ScrubbingDecision)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule"
                     + ".<init>(space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule,"
                     + " space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin)",
@@ -115,11 +105,6 @@ class ScrubbingPublicSurfaceTest {
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.policy.ScrubbingRuleResolutionResult"
                     + ".<init>(java.util.List, java.util.List)");
 
-    /**
-     * {@code ScrubbingRuntime.create} и {@code ScrubbingRuntime.disabled} строят runtime вне
-     * сессии, поэтому остаются под отдельным ArchUnit-запретом на production-вызовы; здесь они
-     * фиксируются как известная и осознанно оставленная поверхность.
-     */
     private static final Set<String> ALLOWED_PUBLIC_STATIC_METHODS = Set.of(
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingFailureLog"
                     + ".error(space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger,"
@@ -131,13 +116,6 @@ class ScrubbingPublicSurfaceTest {
                     + ".normalize(java.lang.String)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRulesLoader"
                     + ".load(java.lang.String, java.lang.ClassLoader)",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime"
-                    + ".create(java.util.List, long, java.lang.String,"
-                    + " space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret, boolean)",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime.disabled()",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeSupport"
-                    + ".fromBuiltInRules(java.util.List,"
-                    + " space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret, boolean)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot"
                     + ".fromRules(boolean, java.util.List, long, java.lang.String)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingSnapshot"
@@ -168,13 +146,6 @@ class ScrubbingPublicSurfaceTest {
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleExecutionOutcome.values()",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin.valueOf(java.lang.String)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin.values()",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOutcome"
-                    + ".criticalFailure(space.br1440.platform.tracing.api.spi.ScrubbingDecision)",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOutcome"
-                    + ".decision(space.br1440.platform.tracing.api.spi.ScrubbingDecision)",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOutcome.keep()",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOutcome.nonCriticalFailure()",
-            "space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOutcome.skippedCircuitOpen()",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader$ValidationMode"
                     + ".valueOf(java.lang.String)",
             "space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader$ValidationMode"

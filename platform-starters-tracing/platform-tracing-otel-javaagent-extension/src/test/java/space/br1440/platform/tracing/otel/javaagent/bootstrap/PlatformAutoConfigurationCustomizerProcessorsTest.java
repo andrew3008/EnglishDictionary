@@ -79,10 +79,10 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
             session.readiness().markInstalled(capability);
         }
-        session.scrubbingRuntime().installation().acknowledgeProcessorInstalled();
-        session.scrubbingRuntime().installation().acknowledgeExportModeResolved();
-        session.scrubbingRuntime().installation().acknowledgeExporterWrapped();
-        session.scrubbingRuntime().installation().acknowledgeExportPathProtected();
+        session.scrubbingRuntime().acknowledgeProcessorInstalled();
+        session.scrubbingRuntime().acknowledgeExportModeResolved();
+        session.scrubbingRuntime().acknowledgeExporterWrapped();
+        session.scrubbingRuntime().acknowledgeExportPathProtected();
     }
 
     @Test

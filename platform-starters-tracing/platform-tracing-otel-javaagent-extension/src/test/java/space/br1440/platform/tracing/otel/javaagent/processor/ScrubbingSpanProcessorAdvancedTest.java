@@ -25,7 +25,8 @@ class ScrubbingSpanProcessorAdvancedTest {
 
     @Test
     void пустой_список_правил_не_роняет_процессор_и_не_изменяет_атрибуты() {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of()))) {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(
+                ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("user.email", "ivan@example.com");
@@ -65,7 +66,7 @@ class ScrubbingSpanProcessorAdvancedTest {
         };
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
-                new ScrubbingSpanProcessor(List.of(maskRule, dropRule)))) {
+                ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(maskRule, dropRule)))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("any", "x");
@@ -93,7 +94,8 @@ class ScrubbingSpanProcessorAdvancedTest {
             }
         };
 
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(List.of(dropDoubles)))) {
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(
+                ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(dropDoubles)))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
             span.setAttribute("geo.lat", 55.751244d);
@@ -125,7 +127,7 @@ class ScrubbingSpanProcessorAdvancedTest {
         };
 
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(
-                List.of(new ScrubbingSpanProcessor(List.of(faulty))));
+                List.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(faulty))));
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite)) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();

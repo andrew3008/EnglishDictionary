@@ -14,9 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-/**
- * Выполнение {@link ScrubbingDecisionCase} против текущего {@link ScrubbingSpanProcessor}.
- */
 final class ScrubbingCharacterizationSupport {
 
     private ScrubbingCharacterizationSupport() {
@@ -25,8 +22,9 @@ final class ScrubbingCharacterizationSupport {
     static void assertScrubbingCase(ScrubbingDecisionCase c) {
         List<SpanAttributeScrubbingRule> rules = resolveRules(c.ruleNames());
         ScrubbingSpanProcessor processor = c.hmacKey() == null
-                ? new ScrubbingSpanProcessor(rules)
-                : new ScrubbingSpanProcessor(rules, MaskedSecret.of(c.hmacKey()), false);
+                ? ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(rules)
+                : ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
+                        rules, MaskedSecret.of(c.hmacKey()), false);
 
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor)) {
             Tracer tracer = harness.tracer("scrubbing-characterization");
@@ -34,7 +32,7 @@ final class ScrubbingCharacterizationSupport {
             span.setAttribute(c.inputKey(), c.inputValue());
             span.end();
 
-            SpanData data = harness.exporter().getFinishedSpanItems().get(0);
+            SpanData data = harness.exporter().getFinishedSpanItems().getFirst();
             ScrubbingAssertions.assertExportAlive(data);
 
             if (c.valuePreservedExactly()) {

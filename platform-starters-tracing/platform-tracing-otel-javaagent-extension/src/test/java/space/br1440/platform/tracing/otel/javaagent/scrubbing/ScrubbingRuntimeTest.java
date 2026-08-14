@@ -79,38 +79,37 @@ class ScrubbingRuntimeTest {
     @Test
     @DisplayName("Installation barrier: requireComplete() throws until every acknowledgement is present")
     void installationBarrierRequiresAllFourAcknowledgements() {
+        // given
         ScrubbingRuntime runtime = ScrubbingRuntime.create(
                 List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)), 1L, "test", null, false);
 
-        assertThatThrownBy(() -> runtime.installation().requireComplete())
+        // then
+        assertThatThrownBy(runtime::requireInstallationComplete)
                 .isInstanceOf(IllegalStateException.class);
 
-        runtime.installation().acknowledgeProcessorInstalled();
-        assertThatThrownBy(() -> runtime.installation().requireComplete()).isInstanceOf(IllegalStateException.class);
+        // when
+        runtime.acknowledgeProcessorInstalled();
 
-        runtime.installation().acknowledgeExportModeResolved();
-        assertThatThrownBy(() -> runtime.installation().requireComplete()).isInstanceOf(IllegalStateException.class);
+        // then
+        assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
 
-        runtime.installation().acknowledgeExporterWrapped();
-        assertThatThrownBy(() -> runtime.installation().requireComplete()).isInstanceOf(IllegalStateException.class);
+        // when
+        runtime.acknowledgeExportModeResolved();
 
-        runtime.installation().acknowledgeExportPathProtected();
-        runtime.installation().requireComplete(); // does not throw
-        assertThat(runtime.installation().isComplete()).isTrue();
-        assertThat(runtime.installation().wrappedExporterCount()).isEqualTo(1);
-    }
+        // then
+        assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
 
-    @Test
-    @DisplayName("wrappedExporterCount increments for every wrapped exporter, not only the first")
-    void wrappedExporterCountCountsEveryWrap() {
-        ScrubbingRuntime runtime = ScrubbingRuntime.create(
-                List.of(runtimeRule(new MatchEverythingRule(), RuleOrigin.BUILT_IN)), 1L, "test", null, false);
+        // when
+        runtime.acknowledgeExporterWrapped();
 
-        runtime.installation().acknowledgeExporterWrapped();
-        runtime.installation().acknowledgeExporterWrapped();
-        runtime.installation().acknowledgeExporterWrapped();
+        // then
+        assertThatThrownBy(runtime::requireInstallationComplete).isInstanceOf(IllegalStateException.class);
 
-        assertThat(runtime.installation().wrappedExporterCount()).isEqualTo(3);
+        // when
+        runtime.acknowledgeExportPathProtected();
+
+        // then
+        runtime.requireInstallationComplete();
     }
 
     @Test
@@ -122,6 +121,22 @@ class ScrubbingRuntimeTest {
         assertThat(runtime.attributeExecutableRules()).isEmpty();
         assertThat(runtime.builtInTextRules()).isEmpty();
         assertThat(runtime.hasHmacKey()).isFalse();
+    }
+
+    @Test
+    void boundary_count_recording_is_monotonic() {
+        // given
+        ScrubbingRuntime runtime = ScrubbingRuntime.disabled();
+
+        // when
+        runtime.recordBoundaryCriticalFailures(0L);
+        runtime.recordBoundaryCriticalFailures(3L);
+
+        // then
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isEqualTo(3L);
+        assertThatThrownBy(() -> runtime.recordBoundaryCriticalFailures(-1L))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isEqualTo(3L);
     }
 
     @Test

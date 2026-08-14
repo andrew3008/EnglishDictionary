@@ -21,7 +21,7 @@ class ProcessorDefaultLifecycleContractTest {
     private static final List<SpanProcessor> STATELESS_LIFECYCLE_PROCESSORS = List.of(
             new BaggageSpanProcessor(Set.of(), List.of()),
             new EnrichingSpanProcessor(),
-            new ScrubbingSpanProcessor(List.of()),
+            ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
             new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false)),
             new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1))
     );

@@ -80,6 +80,15 @@ def platformExtendedAgentJarTask = tasks.register('platformExtendedAgentJar', Ja
     }
 }
 
+tasks.named('test') {
+    dependsOn extensionJarTask, platformExtendedAgentJarTask
+    doFirst {
+        systemProperty 'platformTracing.extensionJar', extensionJarTask.get().archiveFile.get().asFile.absolutePath
+        systemProperty 'platformTracing.controlledAgentJar',
+                platformExtendedAgentJarTask.get().archiveFile.get().asFile.absolutePath
+    }
+}
+
 publishing {
     publications.withType(MavenPublication).configureEach {
         artifact platformExtendedAgentJarTask

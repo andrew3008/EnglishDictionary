@@ -108,9 +108,9 @@ class SpanDataBoundaryFailClosedTest {
                 .as("span attributes belong to the processor plane and must not be re-processed here")
                 .isEqualTo("raw-span-value");
 
-        assertThat(runtime.boundaryCriticalFailuresAdder().sum()).isPositive();
-        assertThat(runtime.boundarySurfacesCollapsedFailClosedAdder().sum()).isEqualTo(1L);
-        assertThat(runtime.boundarySpansDroppedFailClosedAdder().sum()).isZero();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isPositive();
+        assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansDroppedFailClosed()).isZero();
     }
 
     @Test
@@ -123,9 +123,9 @@ class SpanDataBoundaryFailClosedTest {
 
         assertThat(outcome.dropSpan()).isFalse();
         assertThat(outcome.spanData().getName()).isEqualTo("op");
-        assertThat(runtime.boundaryNonCriticalFailuresAdder().sum()).isPositive();
-        assertThat(runtime.boundaryCriticalFailuresAdder().sum()).isZero();
-        assertThat(runtime.boundarySurfacesCollapsedFailClosedAdder().sum()).isZero();
+        assertThat(runtime.boundaryMetrics().nonCriticalFailures()).isPositive();
+        assertThat(runtime.boundaryMetrics().criticalFailures()).isZero();
+        assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed()).isZero();
     }
 
     @Test
@@ -138,10 +138,10 @@ class SpanDataBoundaryFailClosedTest {
 
         assertThat(outcome.dropSpan()).isFalse();
         assertThat(outcome.spanData().getName()).isEqualTo(BoundaryTextPolicy.REDACTED);
-        assertThat(runtime.boundaryCollapseFailuresAdder().sum()).isEqualTo(1L);
-        assertThat(runtime.boundarySurfacesCollapsedFailClosedAdder().sum()).isEqualTo(1L);
-        assertThat(runtime.boundarySpansDroppedFailClosedAdder().sum()).isZero();
-        assertThat(runtime.boundaryOutputSpansAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansDroppedFailClosed()).isZero();
+        assertThat(runtime.boundaryMetrics().outputSpans()).isEqualTo(1L);
     }
 
     @Test
@@ -153,14 +153,14 @@ class SpanDataBoundaryFailClosedTest {
         SpanBoundaryOutcome outcome = scrubber.scrub(new FlakySpanData(richSpan(), Integer.MAX_VALUE));
 
         assertThat(outcome.dropSpan()).isTrue();
-        assertThat(runtime.boundaryCollapseFailuresAdder().sum()).isEqualTo(1L);
-        assertThat(runtime.boundarySpansDroppedFailClosedAdder().sum())
+        assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansDroppedFailClosed())
                 .as("a dropped span must be visible in boundary.spans_dropped_fail_closed")
                 .isEqualTo(1L);
-        assertThat(runtime.boundarySurfacesCollapsedFailClosedAdder().sum())
+        assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed())
                 .as("a failed collapse must not be counted as a successful surface collapse")
                 .isZero();
-        assertThat(runtime.boundaryOutputSpansAdder().sum()).isZero();
+        assertThat(runtime.boundaryMetrics().outputSpans()).isZero();
     }
 
     private static SpanData richSpan() {

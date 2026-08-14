@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
 /**
  * Проверяет safe export path и отсутствие повторного replacement-aware wrapping.
@@ -21,7 +22,8 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @Test
     @DisplayName("captureExporter сохраняет safe export path за replacement-aware границей")
     void captureExporterKeepsSafeExportPathBehindReplacementBoundary() {
-        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(null);
+        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
+                null, ScrubbingRuntimeTestFixtures.disabled());
         CountingExporter delegate = new CountingExporter();
 
         SpanExporter result = factory.captureExporter(delegate);
@@ -34,7 +36,8 @@ class PlatformExportProcessorFactorySafeWrapTest {
     @Test
     @DisplayName("Повторный проход не создаёт вторую replacement-aware границу")
     void captureExporterDoesNotDoubleWrap() {
-        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(null);
+        PlatformExportProcessorFactory factory = new PlatformExportProcessorFactory(
+                null, ScrubbingRuntimeTestFixtures.disabled());
 
         SpanExporter once = factory.captureExporter(SpanExporter.noop());
         SpanExporter twice = factory.captureExporter(once);

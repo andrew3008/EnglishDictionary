@@ -1,23 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import jakarta.annotation.Nonnull;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
-import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -25,9 +9,27 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import jakarta.annotation.Nonnull;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
+import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
@@ -118,7 +120,8 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         @Test
         void scrubbing_disabled_ext_config_no_scrubbing_processor() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = scrubbingDisabledExtConfig();
             factory.registerSpanProcessors(
@@ -140,13 +143,14 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
         @Test
         void scrubbing_enabled_default_rules_registers_processor() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
-
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
+            ConfigProperties config = otelOnlyConfig();
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, config));
             factory.registerSpanProcessors(
                     SdkTracerProvider.builder(),
                     extensionConfig,
-                    otelOnlyConfig(),
+                    config,
                     TracingSettingsSource.fromStartup(extensionConfig));
 
             assertThat(getScrubbing(registrar))
@@ -160,27 +164,19 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
 
         @Test
         void empty_effective_rule_set_fails_secure_profile() {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar, List::of);
             ExtensionConfig extensionConfig = scrubbingEnabledWithoutBuiltInsExtConfig();
+            PlatformScrubberFactory factory = ScrubbingRuntimeTestFixtures.factory(List::of);
 
-            assertThatThrownBy(() -> factory.registerSpanProcessors(
-                    SdkTracerProvider.builder(),
-                    extensionConfig,
-                    otelOnlyConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig)))
+            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig, otelOnlyConfig()))
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Scrubbing is enabled, but no effective sanitizing rules were loaded")
                     .extracting(failure -> ((SanitizerBootstrapException) failure).code())
                     .isEqualTo(SanitizerBootstrapException.RULE_SET_EMPTY);
 
-            assertThat(registrar.extensionReadiness().lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
-            assertThat(registrar.extensionReadiness().failureCode()).isEqualTo("SANITIZER_RULE_SET_EMPTY");
         }
 
         @Test
         void bundled_rule_metadata_failure_does_not_expose_exception_message() {
-            DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
             SpanAttributeScrubbingRule unsafeRule = new SpanAttributeScrubbingRule() {
                 @Nonnull
                 @Override public String name() { return "unsafe"; }
@@ -190,16 +186,11 @@ class PlatformSpanProcessorFactoryScrubbingAdoptionTest {
                     return ScrubbingDecision.keep();
                 }
             };
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                    registrar,
+            PlatformScrubberFactory factory = ScrubbingRuntimeTestFixtures.factory(
                     () -> List.of(unsafeRule));
             ExtensionConfig extensionConfig = scrubbingEnabledDefaultsExtConfig();
 
-            assertThatThrownBy(() -> factory.registerSpanProcessors(
-                    SdkTracerProvider.builder(),
-                    extensionConfig,
-                    otelOnlyConfig(),
-                    TracingSettingsSource.fromStartup(extensionConfig)))
+            assertThatThrownBy(() -> factory.buildRuntime(extensionConfig, otelOnlyConfig()))
                     .isInstanceOf(SanitizerBootstrapException.class)
                     .hasMessage("Bundled scrubbing rule metadata validation failed "
                             + "(java.lang.IllegalStateException)")

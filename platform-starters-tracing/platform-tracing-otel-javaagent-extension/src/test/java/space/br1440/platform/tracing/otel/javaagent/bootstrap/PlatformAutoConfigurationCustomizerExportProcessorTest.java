@@ -29,7 +29,7 @@ import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.Platfor
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
 /**
  * Регрессионные тесты замены стандартного {@code BatchSpanProcessor} платформенным
@@ -281,7 +281,7 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         BootstrapCoordinator bootstrap = BootstrapCoordinator.create();
         AutoConfiguredOpenTelemetrySdkBuilder builder = baseBuilder();
         builder.addSpanExporterCustomizer((exporter, config) -> new SafeSpanExporter(
-                exporter, TracingSettingsSource.isolatedDefaults(), ScrubbingRuntime.disabled()));
+                exporter, TracingSettingsSource.isolatedDefaults(), ScrubbingRuntimeTestFixtures.disabled()));
         new BootstrapAutoConfigurationCustomizerProvider(bootstrap).customize(builder);
 
         // when
@@ -297,7 +297,6 @@ class PlatformAutoConfigurationCustomizerExportProcessorTest {
         assertThat(session.readiness().failureCode())
                 .isEqualTo(SanitizerBootstrapException.FOREIGN_SAFE_EXPORTER);
         assertThat(session.readiness().has(PlatformExtensionCapability.SAFE_EXPORTER_INSTALLED)).isFalse();
-        assertThat(session.scrubbingRuntime().installation().wrappedExporterCount()).isZero();
         assertThat(bootstrap.currentSnapshot().wire().lifecycle()).isEqualTo("FAILED");
     }
 

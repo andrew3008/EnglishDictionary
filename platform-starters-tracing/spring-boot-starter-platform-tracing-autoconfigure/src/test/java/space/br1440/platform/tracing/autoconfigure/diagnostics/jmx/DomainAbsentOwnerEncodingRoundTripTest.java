@@ -34,7 +34,6 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationCon
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
@@ -150,7 +149,7 @@ class DomainAbsentOwnerEncodingRoundTripTest {
                 new SamplingControl(acceptedPolicy, new OwnerRegistrationSlot<CompositeSampler>(), agentInstanceId),
                 DomainObjectNames.SAMPLING);
         server.registerMBean(
-                new ScrubbingControl(new OwnerRegistrationSlot<ScrubbingRuntime>(), agentInstanceId),
+                new ScrubbingControl(new OwnerRegistrationSlot<>(), agentInstanceId),
                 DomainObjectNames.SCRUBBING);
         server.registerMBean(
                 new ValidationControl(new OwnerRegistrationSlot<ValidatingSpanProcessor>(), agentInstanceId),

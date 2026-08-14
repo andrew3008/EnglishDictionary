@@ -184,7 +184,7 @@ class ExporterBoundaryRealPayloadTest {
                 .isNotInstanceOf(ExceptionEventData.class);
         assertThat(exceptionEvent.getAttributes().asMap().values().toString())
                 .doesNotContain(EMAIL_CANARY);
-        assertThat(runtime.boundaryExceptionEventsCanonicalizedAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().exceptionEventsCanonicalized()).isEqualTo(1L);
     }
 
     @Test
@@ -263,7 +263,7 @@ class ExporterBoundaryRealPayloadTest {
             provider.forceFlush().join(10, TimeUnit.SECONDS);
         }
 
-        assertThat(runtime.boundaryExceptionEventsCanonicalizedAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().exceptionEventsCanonicalized()).isEqualTo(1L);
     }
 
     private static byte[] concat(List<byte[]> chunks) {

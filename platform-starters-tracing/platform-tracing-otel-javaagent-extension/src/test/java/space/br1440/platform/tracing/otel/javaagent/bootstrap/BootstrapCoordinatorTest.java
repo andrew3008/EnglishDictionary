@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -15,19 +18,16 @@ import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionLifecycle;
-import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 /**
  * Direct state-machine tests for {@link BootstrapCoordinator} (r5 plan &sect;3, &sect;4,
@@ -153,9 +153,9 @@ class BootstrapCoordinatorTest {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         markAllCapabilitiesExcept(session, PlatformExtensionCapability.SANITIZER_INSTALLED);
-        session.scrubbingRuntime().installation().acknowledgeExportModeResolved();
-        session.scrubbingRuntime().installation().acknowledgeExporterWrapped();
-        session.scrubbingRuntime().installation().acknowledgeExportPathProtected();
+        session.scrubbingRuntime().acknowledgeExportModeResolved();
+        session.scrubbingRuntime().acknowledgeExporterWrapped();
+        session.scrubbingRuntime().acknowledgeExportPathProtected();
 
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
@@ -173,9 +173,9 @@ class BootstrapCoordinatorTest {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         markAllCapabilitiesExcept(session, PlatformExtensionCapability.SANITIZER_INSTALLED);
-        session.scrubbingRuntime().installation().acknowledgeProcessorInstalled();
-        session.scrubbingRuntime().installation().acknowledgeExportModeResolved();
-        session.scrubbingRuntime().installation().acknowledgeExportPathProtected();
+        session.scrubbingRuntime().acknowledgeProcessorInstalled();
+        session.scrubbingRuntime().acknowledgeExportModeResolved();
+        session.scrubbingRuntime().acknowledgeExportPathProtected();
 
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
@@ -191,9 +191,9 @@ class BootstrapCoordinatorTest {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         markAllCapabilitiesExcept(session, PlatformExtensionCapability.SANITIZER_INSTALLED);
-        session.scrubbingRuntime().installation().acknowledgeProcessorInstalled();
-        session.scrubbingRuntime().installation().acknowledgeExportModeResolved();
-        session.scrubbingRuntime().installation().acknowledgeExporterWrapped();
+        session.scrubbingRuntime().acknowledgeProcessorInstalled();
+        session.scrubbingRuntime().acknowledgeExportModeResolved();
+        session.scrubbingRuntime().acknowledgeExporterWrapped();
 
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
@@ -213,10 +213,10 @@ class BootstrapCoordinatorTest {
                 session.readiness().markInstalled(capability);
             }
         }
-        session.scrubbingRuntime().installation().acknowledgeProcessorInstalled();
-        session.scrubbingRuntime().installation().acknowledgeExportModeResolved();
-        session.scrubbingRuntime().installation().acknowledgeExporterWrapped();
-        session.scrubbingRuntime().installation().acknowledgeExportPathProtected();
+        session.scrubbingRuntime().acknowledgeProcessorInstalled();
+        session.scrubbingRuntime().acknowledgeExportModeResolved();
+        session.scrubbingRuntime().acknowledgeExporterWrapped();
+        session.scrubbingRuntime().acknowledgeExportPathProtected();
 
         assertThatThrownBy(coordinator::activate)
                 .isInstanceOf(BootstrapException.class)
@@ -232,7 +232,8 @@ class BootstrapCoordinatorTest {
     void empty_built_in_rule_set_preserves_SANITIZER_RULE_SET_EMPTY() {
         // На test classpath AutoService регистрирует ExampleMerchantAccountRule;
         // пустой SPI-источник нужен, чтобы prepare() увидел пустой effective rule set.
-        BootstrapCoordinator coordinator = BootstrapCoordinator.create(new PlatformScrubberFactory(List::of));
+        BootstrapCoordinator coordinator = BootstrapCoordinator.create(
+                ScrubbingRuntimeTestFixtures.factory(List::of));
 
         assertThatThrownBy(() -> coordinator.prepare(emptyBuiltInRulesConfig()))
                 .isInstanceOf(BootstrapException.class)
@@ -253,7 +254,7 @@ class BootstrapCoordinatorTest {
 
     @Test
     void rule_source_failure_preserves_SANITIZER_RULE_LOADING_FAILED() {
-        BootstrapCoordinator coordinator = BootstrapCoordinator.create(new PlatformScrubberFactory(() -> {
+        BootstrapCoordinator coordinator = BootstrapCoordinator.create(ScrubbingRuntimeTestFixtures.factory(() -> {
             throw new IllegalStateException("rule source unavailable");
         }));
 
@@ -279,7 +280,7 @@ class BootstrapCoordinatorTest {
             }
         };
         BootstrapCoordinator coordinator = BootstrapCoordinator.create(
-                new PlatformScrubberFactory(() -> List.of(brokenMetadata)));
+                ScrubbingRuntimeTestFixtures.factory(() -> List.of(brokenMetadata)));
 
         assertThatThrownBy(() -> coordinator.prepare(config(Map.of())))
                 .isInstanceOf(BootstrapException.class)
@@ -289,7 +290,7 @@ class BootstrapCoordinatorTest {
 
     @Test
     void linkage_error_from_rule_source_is_not_classified_as_a_sanitizer_failure() {
-        BootstrapCoordinator coordinator = BootstrapCoordinator.create(new PlatformScrubberFactory(() -> {
+        BootstrapCoordinator coordinator = BootstrapCoordinator.create(ScrubbingRuntimeTestFixtures.factory(() -> {
             throw new NoClassDefFoundError("simulated missing SPI class");
         }));
 
@@ -330,10 +331,10 @@ class BootstrapCoordinatorTest {
         for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
             session.readiness().markInstalled(capability);
         }
-        session.scrubbingRuntime().installation().acknowledgeProcessorInstalled();
-        session.scrubbingRuntime().installation().acknowledgeExportModeResolved();
-        session.scrubbingRuntime().installation().acknowledgeExporterWrapped();
-        session.scrubbingRuntime().installation().acknowledgeExportPathProtected();
+        session.scrubbingRuntime().acknowledgeProcessorInstalled();
+        session.scrubbingRuntime().acknowledgeExportModeResolved();
+        session.scrubbingRuntime().acknowledgeExporterWrapped();
+        session.scrubbingRuntime().acknowledgeExportPathProtected();
     }
 
     private static void markAllCapabilitiesExcept(AutoconfigureSession session,

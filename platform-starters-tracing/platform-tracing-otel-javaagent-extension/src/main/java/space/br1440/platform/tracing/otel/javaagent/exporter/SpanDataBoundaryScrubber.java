@@ -30,23 +30,23 @@ final class SpanDataBoundaryScrubber {
     }
 
     SpanBoundaryOutcome scrub(SpanData spanData) {
-        runtime.boundaryInputSpansAdder().increment();
+        runtime.recordBoundaryInputSpan();
 
         SpanBoundaryOutcome outcome;
         try {
             outcome = doScrub(spanData);
         } catch (Throwable t) {
-            runtime.boundaryCollapseFailuresAdder().increment();
+            runtime.recordBoundaryCollapseFailure();
             ScrubbingFailureLog.error(log, "boundary.scrub_failed", t);
             outcome = collapseFailClosed(spanData);
         }
 
         if (outcome.dropSpan()) {
-            runtime.boundarySpansDroppedFailClosedAdder().increment();
+            runtime.recordBoundarySpanDroppedFailClosed();
         } else {
-            runtime.boundaryOutputSpansAdder().increment();
+            runtime.recordBoundaryOutputSpan();
             if (outcome.changed()) {
-                runtime.boundarySpansChangedAdder().increment();
+                runtime.recordBoundarySpanChanged();
             }
         }
 
@@ -87,7 +87,7 @@ final class SpanDataBoundaryScrubber {
         }
 
         if (nameChanged) {
-            runtime.boundarySpanNamesScrubbedAdder().increment();
+            runtime.recordBoundarySpanNameScrubbed();
         }
 
         StatusData scrubbedStatus = statusChanged
@@ -134,7 +134,7 @@ final class SpanDataBoundaryScrubber {
                 events, links, status
         );
 
-        runtime.boundarySurfacesCollapsedFailClosedAdder().increment();
+        runtime.recordBoundarySurfaceCollapsedFailClosed();
         return collapsed;
     }
 
@@ -146,10 +146,10 @@ final class SpanDataBoundaryScrubber {
         List<EventData> collapsed = new ArrayList<>(events.size());
         for (EventData event : events) {
             if (event instanceof ExceptionEventData) {
-                runtime.boundaryExceptionEventsCanonicalizedAdder().increment();
+                runtime.recordBoundaryExceptionEventCanonicalized();
             }
 
-            runtime.boundaryEventsScrubbedAdder().increment();
+            runtime.recordBoundaryEventScrubbed();
             collapsed.add(EventData.create(
                     event.getEpochNanos(),
                     BoundaryTextPolicy.REDACTED,
@@ -168,7 +168,7 @@ final class SpanDataBoundaryScrubber {
 
         List<LinkData> collapsed = new ArrayList<>(links.size());
         for (LinkData link : links) {
-            runtime.boundaryLinksScrubbedAdder().increment();
+            runtime.recordBoundaryLinkScrubbed();
             collapsed.add(LinkData.create(
                     link.getSpanContext(),
                     AttributesScrubber.collapseToSentinel(link.getAttributes()),
@@ -197,7 +197,7 @@ final class SpanDataBoundaryScrubber {
                     result.addAll(events.subList(0, i));
                 }
 
-                runtime.boundaryEventsScrubbedAdder().increment();
+                runtime.recordBoundaryEventScrubbed();
                 result.add(scrubbed.event());
             } else if (result != null) {
                 result.add(event);
@@ -222,7 +222,7 @@ final class SpanDataBoundaryScrubber {
         }
 
         if (isException) {
-            runtime.boundaryExceptionEventsCanonicalizedAdder().increment();
+            runtime.recordBoundaryExceptionEventCanonicalized();
         }
 
         EventData canonical = EventData.create(
@@ -248,7 +248,7 @@ final class SpanDataBoundaryScrubber {
                     result.addAll(links.subList(0, i));
                 }
 
-                runtime.boundaryLinksScrubbedAdder().increment();
+                runtime.recordBoundaryLinkScrubbed();
                 result.add(LinkData.create(link.getSpanContext(), scrubbed.attributes(), link.getTotalAttributeCount()));
             } else if (result != null) {
                 result.add(link);

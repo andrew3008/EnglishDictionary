@@ -43,10 +43,6 @@ public final class PlatformExportProcessorFactory {
     private final DomainMBeanRegistrar jmxRegistrar;
     private final ScrubbingRuntime scrubbingRuntime;
 
-    PlatformExportProcessorFactory(DomainMBeanRegistrar jmxRegistrar) {
-        this(jmxRegistrar, ScrubbingRuntime.disabled());
-    }
-
     public PlatformExportProcessorFactory(DomainMBeanRegistrar jmxRegistrar, ScrubbingRuntime scrubbingRuntime) {
         this.jmxRegistrar = jmxRegistrar;
         this.scrubbingRuntime = Objects.requireNonNull(scrubbingRuntime, "scrubbingRuntime");
@@ -60,7 +56,7 @@ public final class PlatformExportProcessorFactory {
         int exporterRegistrationIndex = exporterCount.incrementAndGet();
 
         SafeSpanExporter safeExporter = wrapOnce(exporter, acceptedPolicy);
-        scrubbingRuntime.installation().acknowledgeExporterWrapped();
+        scrubbingRuntime.acknowledgeExporterWrapped();
 
         ReplacementAwareSpanExporter stockExporter = new ReplacementAwareSpanExporter(safeExporter);
         if (exporterRegistrationIndex == 1) {
@@ -106,7 +102,7 @@ public final class PlatformExportProcessorFactory {
     public SpanProcessor maybeReplaceExportProcessor(SpanProcessor processor,
                                                      QueueExtensionConfig queueConfig,
                                                      ConfigProperties config) {
-        scrubbingRuntime.installation().acknowledgeExportModeResolved();
+        scrubbingRuntime.acknowledgeExportModeResolved();
         if (isExplicitUpstream(queueConfig)) {
             markExportPathProtected();
             return processor;
@@ -185,7 +181,7 @@ public final class PlatformExportProcessorFactory {
     private void markExportPathProtected() {
         if (jmxRegistrar != null && capturedExporter.get() != null) {
             jmxRegistrar.extensionReadiness().markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
-            scrubbingRuntime.installation().acknowledgeExportPathProtected();
+            scrubbingRuntime.acknowledgeExportPathProtected();
         }
     }
 

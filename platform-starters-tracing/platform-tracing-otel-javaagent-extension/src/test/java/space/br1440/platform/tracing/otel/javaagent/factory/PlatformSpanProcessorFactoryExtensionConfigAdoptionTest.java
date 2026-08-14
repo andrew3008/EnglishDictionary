@@ -1,20 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
-import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -22,7 +8,24 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
+import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
+import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
+
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 
 class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
@@ -162,7 +165,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void composite_contains_only_passive_validation_carrier() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
             factory.registerSpanProcessors(
@@ -179,7 +183,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void validation_owner_is_the_processor_installed_in_composite() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
             factory.registerSpanProcessors(
@@ -196,7 +201,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void no_metrics_set_when_all_disabled() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
             factory.registerSpanProcessors(
@@ -211,7 +217,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void no_watchdog_set_when_all_disabled() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithAllDisabled();
             factory.registerSpanProcessors(
@@ -227,9 +234,10 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
     @Test
     void factory_preserves_required_on_ending_order() throws Exception {
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar, List::of);
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties));
 
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(),
@@ -266,7 +274,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void metrics_enabled_registers_metrics_processor() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithMetricsEnabled();
             factory.registerSpanProcessors(
@@ -284,7 +293,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void metrics_enabled_registers_composite() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithMetricsEnabled();
             factory.registerSpanProcessors(
@@ -301,7 +311,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void watchdog_enabled_registers_watchdog_processor() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithWatchdogEnabled();
             factory.registerSpanProcessors(
@@ -319,7 +330,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void validation_enabled_registers_validating_processor() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             ExtensionConfig extensionConfig = configWithValidationEnabled();
             factory.registerSpanProcessors(
@@ -342,7 +354,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void factoryAddsBaggageProcessorWithCanonicalDefaults() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
             ExtensionConfig defaultConfig = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String name) { return null; }
                 @Override public Boolean getBoolean(String name) {
@@ -370,7 +383,8 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         @Test
         void factoryDoesNotAddWatchdogProcessorByDefault() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
-            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(registrar);
+            PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                    registrar, ScrubbingRuntimeTestFixtures.disabled());
 
             // Default ExtensionConfig (no watchdog.enabled property) + scrubbing disabled for test safety.
             ExtensionConfig defaultConfig = new ExtensionConfig(new ConfigProperties() {

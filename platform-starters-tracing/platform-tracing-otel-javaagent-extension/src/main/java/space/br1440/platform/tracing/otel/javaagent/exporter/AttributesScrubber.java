@@ -128,15 +128,15 @@ final class AttributesScrubber {
 
         private void recordOutcome(MergeOutcome outcome) {
             if (outcome.skippedCircuitOpen() > 0L) {
-                runtime.boundarySkippedCircuitOpenAdder().add(outcome.skippedCircuitOpen());
+                runtime.recordBoundarySkippedCircuitOpen(outcome.skippedCircuitOpen());
             }
 
             if (outcome.nonCriticalFailures() > 0L) {
-                runtime.boundaryNonCriticalFailuresAdder().add(outcome.nonCriticalFailures());
+                runtime.recordBoundaryNonCriticalFailures(outcome.nonCriticalFailures());
             }
 
             if (outcome.criticalFailures() > 0L) {
-                runtime.boundaryCriticalFailuresAdder().add(outcome.criticalFailures());
+                runtime.recordBoundaryCriticalFailures(outcome.criticalFailures());
                 criticalFailure = true;
             }
         }

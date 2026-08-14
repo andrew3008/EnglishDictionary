@@ -83,15 +83,15 @@ final class BoundaryTextPolicy {
 
     private static boolean recordOutcome(MergeOutcome outcome, ScrubbingRuntime runtime) {
         if (outcome.skippedCircuitOpen() > 0L) {
-            runtime.boundarySkippedCircuitOpenAdder().add(outcome.skippedCircuitOpen());
+            runtime.recordBoundarySkippedCircuitOpen(outcome.skippedCircuitOpen());
         }
 
         if (outcome.nonCriticalFailures() > 0L) {
-            runtime.boundaryNonCriticalFailuresAdder().add(outcome.nonCriticalFailures());
+            runtime.recordBoundaryNonCriticalFailures(outcome.nonCriticalFailures());
         }
 
         if (outcome.criticalFailures() > 0L) {
-            runtime.boundaryCriticalFailuresAdder().add(outcome.criticalFailures());
+            runtime.recordBoundaryCriticalFailures(outcome.criticalFailures());
             return true;
         }
 
@@ -103,7 +103,7 @@ final class BoundaryTextPolicy {
             case MASK -> REDACTED;
             case DROP -> REDACTED;
             case HASH -> {
-                runtime.boundaryHashDowngradedToMaskAdder().increment();
+                runtime.recordBoundaryHashDowngradedToMask();
                 yield REDACTED;
             }
             case TRUNCATE -> truncate(value, decision, runtime);
@@ -113,7 +113,7 @@ final class BoundaryTextPolicy {
 
     private static String truncate(String value, ScrubbingDecision decision, ScrubbingRuntime runtime) {
         if (BuiltInSpanAttributeScrubbingRules.IP_ADDRESS.configName().equals(decision.reason())) {
-            runtime.boundaryTruncateDowngradedToMaskAdder().increment();
+            runtime.recordBoundaryTruncateDowngradedToMask();
             return REDACTED;
         }
 
@@ -123,7 +123,7 @@ final class BoundaryTextPolicy {
         }
 
         if (max <= 0) {
-            runtime.boundaryTruncateDowngradedToMaskAdder().increment();
+            runtime.recordBoundaryTruncateDowngradedToMask();
             return REDACTED;
         }
 

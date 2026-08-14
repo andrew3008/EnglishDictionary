@@ -24,6 +24,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutati
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
+import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
 import ch.qos.logback.classic.Level;
@@ -43,10 +44,25 @@ class SafeSpanExporterTest {
         return Collections.nCopies(n, (SpanData) null);
     }
 
+    private static SafeSpanExporter safeExporter(SpanExporter delegate) {
+        return safeExporter(delegate, TracingSettingsSource.isolatedDefaults(),
+                ScrubbingRuntimeTestFixtures.disabled());
+    }
+
+    private static SafeSpanExporter safeExporter(SpanExporter delegate, TracingSettingsSource acceptedPolicy) {
+        return safeExporter(delegate, acceptedPolicy, ScrubbingRuntimeTestFixtures.disabled());
+    }
+
+    private static SafeSpanExporter safeExporter(SpanExporter delegate,
+                                                 TracingSettingsSource acceptedPolicy,
+                                                 ScrubbingRuntime runtime) {
+        return new SafeSpanExporter(delegate, acceptedPolicy, runtime);
+    }
+
     @Test
     @DisplayName("Успешный export: exported += size, failures и dropped не растут")
     void successfulExportCountsExportedSpans() {
-        SafeSpanExporter safe = new SafeSpanExporter(delegate(CompletableResultCode.ofSuccess()));
+        SafeSpanExporter safe = safeExporter(delegate(CompletableResultCode.ofSuccess()));
 
         CompletableResultCode result = safe.export(spansOfSize(3));
 
@@ -60,7 +76,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("Failed-результат делегата: failures += 1 (batch), dropped += size (spans)")
     void failedResultIncrementsBatchFailureAndSpanDrops() {
-        SafeSpanExporter safe = new SafeSpanExporter(delegate(CompletableResultCode.ofFailure()));
+        SafeSpanExporter safe = safeExporter(delegate(CompletableResultCode.ofFailure()));
 
         CompletableResultCode result = safe.export(spansOfSize(5));
 
@@ -73,7 +89,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("Исключение делегата изолировано: наружу ofFailure(), исключение не пробрасывается")
     void delegateExceptionIsIsolated() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 throw new RuntimeException("simulated transport failure");
@@ -92,7 +108,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("Делегат вернул null: трактуем как failure без NPE")
     void nullResultTreatedAsFailure() {
-        SafeSpanExporter safe = new SafeSpanExporter(delegate(null));
+        SafeSpanExporter safe = safeExporter(delegate(null));
 
         CompletableResultCode result = safe.export(spansOfSize(2));
 
@@ -104,7 +120,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("Семантика счётчиков: два failed-batch'а по 3 → failures=2, dropped=6")
     void countersDistinguishBatchesFromSpans() {
-        SafeSpanExporter safe = new SafeSpanExporter(delegate(CompletableResultCode.ofFailure()));
+        SafeSpanExporter safe = safeExporter(delegate(CompletableResultCode.ofFailure()));
 
         safe.export(spansOfSize(3));
         safe.export(spansOfSize(3));
@@ -116,7 +132,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("flush(): исключение делегата изолировано, инкремент flushFailures")
     void flushExceptionIsIsolated() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override public CompletableResultCode export(Collection<SpanData> spans) { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode flush() { throw new RuntimeException("flush boom"); }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
@@ -131,7 +147,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("shutdown(): исключение делегата изолировано, инкремент shutdownFailures")
     void shutdownExceptionIsIsolated() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override public CompletableResultCode export(Collection<SpanData> spans) { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { throw new RuntimeException("shutdown boom"); }
@@ -146,7 +162,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("metricsSnapshot содержит стабильный набор ключей")
     void metricsSnapshotHasStableKeys() {
-        SafeSpanExporter safe = new SafeSpanExporter(delegate(CompletableResultCode.ofSuccess()));
+        SafeSpanExporter safe = safeExporter(delegate(CompletableResultCode.ofSuccess()));
         safe.export(spansOfSize(1));
 
         Map<String, Long> snapshot = safe.metricsSnapshot();
@@ -163,7 +179,7 @@ class SafeSpanExporterTest {
     void exportGateDropsBatchWithoutCallingDelegate() {
         AtomicInteger delegateCalls = new AtomicInteger();
         TracingSettingsSource access = TracingSettingsSource.isolatedDefaults();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 delegateCalls.incrementAndGet();
@@ -196,7 +212,7 @@ class SafeSpanExporterTest {
         ScrubbingRuntime runtime = enabledRuntime("password");
         TracingSettingsSource access = TracingSettingsSource.isolatedDefaults();
         AtomicInteger delegateCalls = new AtomicInteger();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 delegateCalls.incrementAndGet();
@@ -217,16 +233,16 @@ class SafeSpanExporterTest {
         assertThat(gated.isSuccess()).isTrue();
         assertThat(delegateCalls.get()).isZero();
         assertThat(safe.getGatedSpans()).isEqualTo(2);
-        assertThat(runtime.boundaryExporterInvocationsAdder().sum())
+        assertThat(runtime.boundaryMetrics().exporterInvocations())
                 .as("gated export must not enter the boundary")
                 .isZero();
-        assertThat(runtime.boundaryInputSpansAdder().sum()).isZero();
+        assertThat(runtime.boundaryMetrics().inputSpans()).isZero();
     }
 
     @Test
     @DisplayName("SP-04: InterruptedException — флаг прерывания восстановлен, возвращается failure")
     void restoresInterruptFlagWhenDelegateThrowsInterruptedException() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 sneakyThrow(new InterruptedException("simulated interrupt during export"));
@@ -261,7 +277,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("SP-04: LinkageError (fatal) пробрасывается наружу, не поглощается")
     void propagatesFatalThrowableAccordingToPlatformThrowablesPolicy() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 throw new LinkageError("simulated fatal linkage error");
@@ -285,7 +301,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("SP-04: flush() null-результат → ofFailure() без NPE, flushFailures не растёт")
     void flushNullResultTreatedAsFailureWithoutIncrementingFailureCounter() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override public CompletableResultCode export(Collection<SpanData> spans) { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode flush() { return null; }
             @Override public CompletableResultCode shutdown() { return CompletableResultCode.ofSuccess(); }
@@ -307,7 +323,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("SP-04: shutdown() null-результат → ofFailure() без NPE, shutdownFailures не растёт")
     void shutdownNullResultTreatedAsFailureWithoutIncrementingFailureCounter() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override public CompletableResultCode export(Collection<SpanData> spans) { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode flush() { return CompletableResultCode.ofSuccess(); }
             @Override public CompletableResultCode shutdown() { return null; }
@@ -330,7 +346,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("SP-04: metricsSnapshot корректно отражает export/flush/shutdown failures")
     void metricsSnapshotReflectsAllFailureCounters() {
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override public CompletableResultCode export(Collection<SpanData> spans) { throw new RuntimeException("export boom"); }
             @Override public CompletableResultCode flush() { throw new RuntimeException("flush boom"); }
             @Override public CompletableResultCode shutdown() { throw new RuntimeException("shutdown boom"); }
@@ -397,7 +413,7 @@ class SafeSpanExporterTest {
     void delegateReceivesTheBoundaryScrubbedBatch() {
         ScrubbingRuntime runtime = enabledRuntime("password");
         List<SpanData> captured = new ArrayList<>();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 captured.addAll(spans);
@@ -425,7 +441,7 @@ class SafeSpanExporterTest {
     void failClosedBoundaryDropShrinksEffectiveBatchWithoutTransportFailure() {
         ScrubbingRuntime runtime = enabledRuntime("email");
         AtomicInteger delegateBatchSize = new AtomicInteger(-1);
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 delegateBatchSize.set(spans.size());
@@ -450,7 +466,7 @@ class SafeSpanExporterTest {
         assertThat(delegateBatchSize.get()).as("only the healthy span reaches the delegate").isEqualTo(1);
         assertThat(safe.getExportFailures()).isZero();
         assertThat(safe.getDroppedSpans()).isZero();
-        assertThat(runtime.boundaryCollapseFailuresAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().collapseFailures()).isEqualTo(1L);
     }
 
     @Test
@@ -458,7 +474,7 @@ class SafeSpanExporterTest {
     void hostileBatchThrowingDuringBoundaryPreparationFailsClosedWithoutCallingDelegate() {
         ScrubbingRuntime runtime = enabledRuntime("email");
         AtomicInteger delegateCalls = new AtomicInteger();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 delegateCalls.incrementAndGet();
@@ -492,8 +508,8 @@ class SafeSpanExporterTest {
         // at zero, and the dedicated boundary counters must record the drop instead.
         assertThat(safe.getExportFailures()).as("boundary failure is not a transport failure").isZero();
         assertThat(safe.getDroppedSpans()).as("boundary failure is not a transport drop").isZero();
-        assertThat(runtime.boundaryBatchPreparationFailuresAdder().sum()).isEqualTo(1L);
-        assertThat(runtime.boundarySpansDroppedFailClosedAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().batchPreparationFailures()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansDroppedFailClosed()).isEqualTo(1L);
     }
 
     @Test
@@ -501,7 +517,7 @@ class SafeSpanExporterTest {
     void hostileBatchThrowingFromSizeFailsClosedWithoutCallingDelegate() {
         ScrubbingRuntime runtime = enabledRuntime("email");
         AtomicInteger delegateCalls = new AtomicInteger();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 delegateCalls.incrementAndGet();
@@ -534,8 +550,8 @@ class SafeSpanExporterTest {
         assertThat(delegateCalls.get()).as("delegate must never be called").isZero();
         assertThat(safe.getExportFailures()).isZero();
         assertThat(safe.getDroppedSpans()).isZero();
-        assertThat(runtime.boundaryBatchPreparationFailuresAdder().sum()).isEqualTo(1L);
-        assertThat(runtime.boundarySpansDroppedFailClosedAdder().sum())
+        assertThat(runtime.boundaryMetrics().batchPreparationFailures()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().spansDroppedFailClosed())
                 .as("original count is unknown when size() itself throws; nothing countable was dropped")
                 .isZero();
     }
@@ -545,7 +561,7 @@ class SafeSpanExporterTest {
     void boundaryPreparationFailureNeverLogsSensitiveThrowableMessage() {
         String secret = "secret-canary-4111111111111111";
         ScrubbingRuntime runtime = enabledRuntime("email");
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 throw new AssertionError("delegate must never be invoked");
@@ -602,7 +618,7 @@ class SafeSpanExporterTest {
     void hostileBatchWhoseSecondSizeCallThrowsFailsClosed() {
         ScrubbingRuntime runtime = enabledRuntime("email");
         AtomicInteger delegateCalls = new AtomicInteger();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 delegateCalls.incrementAndGet();
@@ -649,7 +665,7 @@ class SafeSpanExporterTest {
         assertThat(delegateCalls.get()).as("delegate must never be called").isZero();
         assertThat(safe.getExportFailures()).isZero();
         assertThat(safe.getDroppedSpans()).isZero();
-        assertThat(runtime.boundaryBatchPreparationFailuresAdder().sum()).isEqualTo(1L);
+        assertThat(runtime.boundaryMetrics().batchPreparationFailures()).isEqualTo(1L);
     }
 
     @Test
@@ -657,7 +673,7 @@ class SafeSpanExporterTest {
     void wholeBatchBoundaryDroppedNeverCallsDelegate() {
         ScrubbingRuntime runtime = enabledRuntime("email");
         AtomicInteger delegateCalls = new AtomicInteger();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 delegateCalls.incrementAndGet();
@@ -685,7 +701,7 @@ class SafeSpanExporterTest {
     @Test
     @DisplayName("metricsSnapshot exposes boundary counters only when scrubbing is enabled")
     void metricsSnapshotExposesBoundaryCountersOnlyWhenEnabled() {
-        ScrubbingRuntime disabled = ScrubbingRuntime.disabled();
+        ScrubbingRuntime disabled = ScrubbingRuntimeTestFixtures.disabled();
         SafeSpanExporter withDisabledRuntime = new SafeSpanExporter(
                 delegate(CompletableResultCode.ofSuccess()), TracingSettingsSource.isolatedDefaults(), disabled);
         assertThat(withDisabledRuntime.metricsSnapshot()).doesNotContainKey("boundary.input_spans");
@@ -714,7 +730,7 @@ class SafeSpanExporterTest {
     void cleanBatchIsForwardedWithoutCopying() {
         ScrubbingRuntime enabled = enabledRuntime("email");
         List<Collection<SpanData>> seen = new ArrayList<>();
-        SafeSpanExporter safe = new SafeSpanExporter(new SpanExporter() {
+        SafeSpanExporter safe = safeExporter(new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> spans) {
                 seen.add(spans);

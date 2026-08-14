@@ -45,7 +45,7 @@ class ScrubbingSecurityCharacterizationTest {
 
     @Test
     void prefixed_password_key_is_scrubbed() {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                 ScrubbingCharacterizationSupport.resolveRules(List.of("password"))))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -59,7 +59,7 @@ class ScrubbingSecurityCharacterizationTest {
 
     @Test
     void event_attributes_not_scrubbed_by_span_processor_observed_behavior() {
-        try (SpanProcessorHarness h = SpanProcessorHarness.of(new ScrubbingSpanProcessor(
+        try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                 ScrubbingCharacterizationSupport.resolveRules(List.of("oauth-header"))))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").startSpan();
