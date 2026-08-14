@@ -5,13 +5,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class TracePipelineAttackProbe {
 
     public static final AtomicBoolean ACP_EXPORTER_CUSTOMIZER_CALLED = new AtomicBoolean();
-    public static final AtomicBoolean TRACER_CONFIGURER_CALLED = new AtomicBoolean();
+    public static final AtomicBoolean LEGACY_TRACER_CONFIGURER_CONSTRUCTED = new AtomicBoolean();
 
     private TracePipelineAttackProbe() {
     }
 
     public static void reset() {
         ACP_EXPORTER_CUSTOMIZER_CALLED.set(false);
-        TRACER_CONFIGURER_CALLED.set(false);
+        LEGACY_TRACER_CONFIGURER_CONSTRUCTED.set(false);
     }
 }

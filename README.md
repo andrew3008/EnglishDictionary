@@ -29,16 +29,13 @@
 | [`spring-boot-starter-platform-security`](./spring-boot-starter-platform-security) | [README](./spring-boot-starter-platform-security/README.md) |
 | [`spring-boot-starter-platform-postgres-read-write-split-jdbc`](./spring-boot-starter-platform-postgres-read-write-split-jdbc) | [README](./spring-boot-starter-platform-postgres-read-write-split-jdbc/README.md) |
 
-### Обработка ошибок (каталог `spring-boot-starter-platform-error-handling/`)
-
-Физически лежат в одной папке; в Gradle каждый артефакт — отдельный проект с префиксом `spring-boot-starter-platform-error-handling-`:
+### Обработка ошибок (`platform-starters-error-handling/`)
 
 | Gradle-проект | Каталог |
 |-----------------|---------|
-| `:spring-boot-starter-platform-error-handling-model` | `error-handling-model/` |
-| `:spring-boot-starter-platform-error-handling-core` | `error-handling-core/` |
-| `:spring-boot-starter-platform-error-handling-mvc` | `error-handling-mvc/` |
-| `:spring-boot-starter-platform-error-handling-webflux` | `error-handling-webflux/` |
+| `:platform-starters-error-handling:platform-error-handling-core` | [`platform-error-handling-core`](platform-starters-error-handling/platform-error-handling-core) |
+| `:platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc` | [`spring-boot-starter-platform-error-handling-mvc`](platform-starters-error-handling/spring-boot-starter-platform-error-handling-mvc) |
+| `:platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux` | [`spring-boot-starter-platform-error-handling-webflux`](platform-starters-error-handling/spring-boot-starter-platform-error-handling-webflux) |
 
 ### Трассировка (`platform-starters-tracing/`)
 
@@ -63,15 +60,15 @@ Controlled Platform Agent поставляется classifier-артефакто
 временно хранится в Git только для передачи SRE. Это не Gradle-проект и не часть сборки,
 BOM или публикации tracing-платформы.
 
-### Общие стартеры (каталог `spring-boot-starter-platform-common/`)
+### Общие стартеры (`platform-starters-common/`)
 
-Корневого `build.gradle` у каталога **нет**: модули объявлены в корневом `settings.gradle`, как и для error-handling.
+Имена Gradle-проектов не совпадают с каталогами, поэтому для common оставлен явный `projectDir`.
 
 | Gradle-проект | Каталог | Документация |
 |----------------|---------|----------------|
-| `:spring-boot-starter-platform-common-uid1440` | `spring-boot-starter-uid1440/` | [README](platform-starters-common/spring-boot-starter-uid1440/README.md) |
-| `:spring-boot-starter-platform-common-header-based-routing` | `spring-boot-starter-header-based-routing/` | [README](platform-starters-common/spring-boot-starter-header-based-routing/README.md) |
-| `:spring-boot-starter-platform-common-x-trace-id` | `spring-boot-starter-x-trace-id/` | [README](platform-starters-common/spring-boot-starter-x-trace-id/README.md) |
+| `:platform-starters-common:spring-boot-starter-platform-common-uid1440` | [`spring-boot-starter-uid1440`](platform-starters-common/spring-boot-starter-uid1440) | [README](platform-starters-common/spring-boot-starter-uid1440/README.md) |
+| `:platform-starters-common:spring-boot-starter-platform-common-header-based-routing` | [`spring-boot-starter-header-based-routing`](platform-starters-common/spring-boot-starter-header-based-routing) | [README](platform-starters-common/spring-boot-starter-header-based-routing/README.md) |
+| `:platform-starters-common:spring-boot-starter-platform-common-x-trace-id` | [`spring-boot-starter-x-trace-id`](platform-starters-common/spring-boot-starter-x-trace-id) | [README](platform-starters-common/spring-boot-starter-x-trace-id/README.md) |
 
 ## Публикация
 

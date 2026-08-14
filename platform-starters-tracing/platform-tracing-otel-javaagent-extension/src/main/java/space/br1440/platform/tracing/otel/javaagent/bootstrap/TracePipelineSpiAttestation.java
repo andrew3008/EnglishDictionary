@@ -1,9 +1,16 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.TreeSet;
 
 import lombok.experimental.UtilityClass;
 
@@ -11,12 +18,14 @@ import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowable
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @UtilityClass
 final class TracePipelineSpiAttestation {
+
+    static final String LEGACY_TRACER_PROVIDER_CONFIGURER_SPI =
+            "io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer";
 
     static void attest(int platformOrder, Class<?> platformProviderType) {
         attest(platformOrder, platformProviderType, platformProviderType.getClassLoader());
@@ -24,7 +33,7 @@ final class TracePipelineSpiAttestation {
 
     static void attest(int platformOrder, Class<?> platformProviderType, ClassLoader classLoader) {
         attestAutoConfigurationProviders(platformOrder, platformProviderType, classLoader);
-        attestNoTracerProviderConfigurers(classLoader);
+        attestNoLegacyTracerProviderConfigurers(classLoader);
     }
 
     private static void attestAutoConfigurationProviders(int platformOrder,
@@ -64,26 +73,21 @@ final class TracePipelineSpiAttestation {
         }
     }
 
-    private static void attestNoTracerProviderConfigurers(ClassLoader classLoader) {
-        List<ServiceLoader.Provider<SdkTracerProviderConfigurer>> configurers =
-                discover(SdkTracerProviderConfigurer.class, classLoader);
+    private static void attestNoLegacyTracerProviderConfigurers(ClassLoader classLoader) {
+        List<String> providerNames = discoverServiceProviderNames(
+                LEGACY_TRACER_PROVIDER_CONFIGURER_SPI, classLoader);
 
-        if (configurers.isEmpty()) {
+        if (providerNames.isEmpty()) {
             return;
         }
-
-        List<String> names = configurers.stream()
-                .map(TracePipelineSpiAttestation::providerType)
-                .map(Class::getName)
-                .toList();
 
         log.error("[bootstrap] {}: classloader-visible SdkTracerProviderConfigurer {} is forbidden "
                         + "in the secure Controlled Agent profile; it is applied after exporter/processor "
                         + "customization and can add a parallel SpanProcessor with an unwrapped exporter, "
                         + "bypassing the platform SafeSpanExporter boundary entirely",
-                SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED, names);
+                SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED, providerNames);
 
-        fail("SdkTracerProviderConfigurer is forbidden in the secure Controlled Agent profile: " + names);
+        fail("SdkTracerProviderConfigurer is forbidden in the secure Controlled Agent profile: " + providerNames);
     }
 
     private static <T> Class<? extends T> providerType(ServiceLoader.Provider<T> provider) {
@@ -125,5 +129,34 @@ final class TracePipelineSpiAttestation {
         }
 
         return providers;
+    }
+
+    private static List<String> discoverServiceProviderNames(String spiName, ClassLoader classLoader) {
+        String resourceName = "META-INF/services/" + spiName;
+        TreeSet<String> providerNames = new TreeSet<>();
+        try {
+            Enumeration<URL> resources = classLoader.getResources(resourceName);
+            while (resources.hasMoreElements()) {
+                readServiceProviderNames(resources.nextElement(), providerNames);
+            }
+        } catch (IOException | RuntimeException e) {
+            PlatformThrowables.propagateFatalCauseChain(e);
+            throw discoveryFailed(e);
+        }
+        return List.copyOf(providerNames);
+    }
+
+    private static void readServiceProviderNames(URL resource, TreeSet<String> providerNames) throws IOException {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resource.openStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                int commentStart = line.indexOf('#');
+                String providerName = (commentStart >= 0 ? line.substring(0, commentStart) : line).trim();
+                if (!providerName.isEmpty()) {
+                    providerNames.add(providerName);
+                }
+            }
+        }
     }
 }

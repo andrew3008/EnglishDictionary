@@ -9,7 +9,7 @@ platformJavaLibrary {
 }
 
 dependencies {
-    api project(':platform-error-handling-core')
+    api project(':platform-starters-error-handling:platform-error-handling-core')
     api 'org.springframework.boot:spring-boot-starter-web'
 
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
@@ -35,5 +35,5 @@ dependencies {
 
     testImplementation libs.byte.buddy
 
-    testImplementation project(':spring-boot-starter-platform-error-handling-webflux')
+    testImplementation project(':platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux')
 }

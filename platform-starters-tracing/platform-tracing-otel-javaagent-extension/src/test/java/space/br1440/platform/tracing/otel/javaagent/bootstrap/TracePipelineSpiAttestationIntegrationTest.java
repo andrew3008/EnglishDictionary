@@ -16,19 +16,20 @@ import org.junit.jupiter.api.io.TempDir;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.AutoConfiguredSdkPrivateControlIsolationExtension;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.BootstrapIsolatedClassLoader;
+import space.br1440.platform.tracing.otel.javaagent.testsupport.spi.LegacyTracerProviderConfigurerProbe;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.spi.LowerOrderDelayedMutationProvider;
 import space.br1440.platform.tracing.otel.javaagent.testsupport.spi.TracePipelineAttackProbe;
-import space.br1440.platform.tracing.otel.javaagent.testsupport.spi.UnsafeTracerProviderConfigurer;
 
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 @ExtendWith(AutoConfiguredSdkPrivateControlIsolationExtension.class)
 class TracePipelineSpiAttestationIntegrationTest {
+
+    private static final int PLATFORM_ORDER = 100;
 
     @BeforeEach
     void resetProbe() {
@@ -50,17 +51,23 @@ class TracePipelineSpiAttestationIntegrationTest {
     }
 
     @Test
-    void realBuildFailsBeforeTracerProviderConfigurerIsApplied_whenForeignConfigurerIsPresent(
+    void isolatedServiceClassLoaderRejectsLegacyTracerProviderConfigurerDescriptorWithoutLoadingProvider(
             @TempDir Path overlayDir) throws IOException {
         ClassLoader serviceClassLoader = isolatedClassLoaderWithOverlay(
-                overlayDir, SdkTracerProviderConfigurer.class, UnsafeTracerProviderConfigurer.class);
+                overlayDir,
+                TracePipelineSpiAttestation.LEGACY_TRACER_PROVIDER_CONFIGURER_SPI,
+                LegacyTracerProviderConfigurerProbe.class);
+        String serviceResource = "META-INF/services/"
+                + TracePipelineSpiAttestation.LEGACY_TRACER_PROVIDER_CONFIGURER_SPI;
 
-        Throwable failure = catchThrowable(() -> buildSdk(serviceClassLoader));
+        assertThat(serviceClassLoader.getResources(serviceResource).hasMoreElements()).isTrue();
+
+        Throwable failure = catchThrowable(() -> TracePipelineSpiAttestation.attest(
+                PLATFORM_ORDER, BootstrapAutoConfigurationCustomizerProvider.class, serviceClassLoader));
 
         assertAttestationFailed(failure);
-        assertThat(TracePipelineAttackProbe.TRACER_CONFIGURER_CALLED)
-                .as("the forbidden configurer's configure(...) — which would add a raw parallel "
-                        + "SpanProcessor — must never actually run")
+        assertThat(TracePipelineAttackProbe.LEGACY_TRACER_CONFIGURER_CONSTRUCTED)
+                .as("the forbidden legacy provider must never be loaded")
                 .isFalse();
     }
 
@@ -98,10 +105,15 @@ class TracePipelineSpiAttestationIntegrationTest {
 
     private static ClassLoader isolatedClassLoaderWithOverlay(
             Path overlayDir, Class<?> spiType, Class<?> providerType) throws IOException {
+        return isolatedClassLoaderWithOverlay(overlayDir, spiType.getName(), providerType);
+    }
+
+    private static ClassLoader isolatedClassLoaderWithOverlay(
+            Path overlayDir, String spiName, Class<?> providerType) throws IOException {
         Path servicesDir = overlayDir.resolve("META-INF").resolve("services");
         Files.createDirectories(servicesDir);
         Files.writeString(
-                servicesDir.resolve(spiType.getName()),
+                servicesDir.resolve(spiName),
                 providerType.getName(),
                 StandardCharsets.UTF_8);
 

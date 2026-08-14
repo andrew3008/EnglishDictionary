@@ -18,9 +18,6 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrap
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer;
-import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,9 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Unit-level coverage for {@link TracePipelineSpiAttestation}: closed allowlist for
  * {@link AutoConfigurationCustomizerProvider} (order-only attestation was a BLOCKER — order()
  * determines only when {@code customize()} runs, not whether a provider can mutate the exporter
- * chain later from a properties-customizer callback) and the empty allowlist for
- * {@link SdkTracerProviderConfigurer} (a separate, older autoconfigure SPI applied by
- * {@code mergeSdkTracerProviderConfigurer()} strictly after exporter/processor customization).
+ * chain later from a properties-customizer callback) and the empty allowlist for the legacy
+ * tracer-provider configurer service descriptor applied after exporter/processor customization.
  *
  * <p>These tests overlay a synthetic {@code META-INF/services} entry on top of the real
  * application classloader (without touching the real registration) and call
@@ -122,22 +118,15 @@ class TracePipelineSpiAttestationTest {
     }
 
     @Test
-    void anySdkTracerProviderConfigurerFails(@TempDir Path overlayDir) throws IOException {
-        // SdkTracerProviderConfigurer is a separate autoconfigure SPI: mergeSdkTracerProviderConfigurer()
-        // applies it after TracerProviderConfiguration.configureTracerProvider() already built
-        // exporters/processors and applied spanExporterCustomizer/spanProcessorCustomizer. A configurer
-        // can add a parallel SpanProcessor with an unwrapped exporter, bypassing SafeSpanExporter
-        // entirely even though the AutoConfigurationCustomizerProvider inventory passed attestation.
-        // For the secure profile, the allowlist for this SPI is empty: no third party configurer has
-        // architectural value that would justify this bypass.
-        ClassLoader overlay = withOverlayConfigurer(overlayDir, UnsafeTracerProviderConfigurer.class);
-        UnsafeTracerProviderConfigurer.CONFIGURED.set(false);
+    void legacyTracerProviderConfigurerDescriptorFailsWithoutLoadingProvider(@TempDir Path overlayDir)
+            throws IOException {
+        ClassLoader overlay = withOverlayConfigurer(overlayDir, LegacyConfigurerDescriptorProbe.class);
+        LegacyConfigurerDescriptorProbe.CONSTRUCTED.set(false);
 
         assertAttestationFails(overlay);
 
-        assertThat(UnsafeTracerProviderConfigurer.CONFIGURED)
-                .as("attestation runs before mergeSdkTracerProviderConfigurer(); the forbidden "
-                        + "configurer's configure(...) must never run")
+        assertThat(LegacyConfigurerDescriptorProbe.CONSTRUCTED)
+                .as("attestation must reject the legacy service descriptor without loading its provider")
                 .isFalse();
     }
 
@@ -154,15 +143,21 @@ class TracePipelineSpiAttestationTest {
     }
 
     static ClassLoader withOverlayConfigurer(Path overlayDir, Class<?> configurerType) throws IOException {
-        return withOverlayProvider(overlayDir, SdkTracerProviderConfigurer.class, configurerType);
+        return withOverlayProvider(
+                overlayDir, TracePipelineSpiAttestation.LEGACY_TRACER_PROVIDER_CONFIGURER_SPI, configurerType);
     }
 
     private static ClassLoader withOverlayProvider(Path overlayDir, Class<?> spiType, Class<?> providerType)
             throws IOException {
+        return withOverlayProvider(overlayDir, spiType.getName(), providerType);
+    }
+
+    private static ClassLoader withOverlayProvider(Path overlayDir, String spiName, Class<?> providerType)
+            throws IOException {
         Path servicesDir = overlayDir.resolve("META-INF").resolve("services");
         Files.createDirectories(servicesDir);
         Files.writeString(
-                servicesDir.resolve(spiType.getName()),
+                servicesDir.resolve(spiName),
                 providerType.getName(),
                 StandardCharsets.UTF_8);
 
@@ -262,13 +257,12 @@ class TracePipelineSpiAttestationTest {
         }
     }
 
-    public static final class UnsafeTracerProviderConfigurer implements SdkTracerProviderConfigurer {
+    public static final class LegacyConfigurerDescriptorProbe {
 
-        static final AtomicBoolean CONFIGURED = new AtomicBoolean();
+        static final AtomicBoolean CONSTRUCTED = new AtomicBoolean();
 
-        @Override
-        public void configure(SdkTracerProviderBuilder builder, ConfigProperties config) {
-            CONFIGURED.set(true);
+        public LegacyConfigurerDescriptorProbe() {
+            CONSTRUCTED.set(true);
         }
     }
 }

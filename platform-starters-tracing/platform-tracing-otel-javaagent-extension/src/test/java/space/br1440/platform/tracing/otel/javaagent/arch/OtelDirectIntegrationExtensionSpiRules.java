@@ -7,7 +7,6 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import io.opentelemetry.javaagent.extension.AgentListener;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.internal.ExtendedSpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
@@ -67,9 +66,11 @@ public final class OtelDirectIntegrationExtensionSpiRules {
             .and().resideInAPackage("space.br1440.platform.tracing..")
             .should().beAssignableTo(AgentListener.class);
 
-    public static final ArchRule PRODUCTION_DOES_NOT_IMPLEMENT_SDK_TRACER_PROVIDER_CONFIGURER = noClasses()
+    public static final ArchRule PRODUCTION_DOES_NOT_DEPEND_ON_LEGACY_TRACER_PROVIDER_CONFIGURER = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
-            .should().beAssignableTo(SdkTracerProviderConfigurer.class)
+            .should().dependOnClassesThat()
+            .haveFullyQualifiedName(
+                    "io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer")
             .because("SdkTracerProviderConfigurer is forbidden in the secure Controlled Agent profile; "
                     + "it is applied after exporter/processor customization and can add a parallel "
                     + "unwrapped export path");

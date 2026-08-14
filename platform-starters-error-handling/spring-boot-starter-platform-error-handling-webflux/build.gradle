@@ -9,7 +9,7 @@ platformJavaLibrary {
 }
 
 dependencies {
-    api project(':platform-error-handling-core')
+    api project(':platform-starters-error-handling:platform-error-handling-core')
     api 'org.springframework.boot:spring-boot-starter-webflux'
 
     implementation 'io.micrometer:context-propagation'

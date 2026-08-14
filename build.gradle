@@ -15,10 +15,10 @@ allprojects {
 
 configure(subprojects.findAll { project ->
     project.path in [
-            ':platform-error-handling-core',
-            ':spring-boot-starter-platform-error-handling-mvc',
-            ':spring-boot-starter-platform-error-handling-webflux',
-            ':spring-boot-starter-platform-error-handling-grpc',
+            ':platform-starters-error-handling:platform-error-handling-core',
+            ':platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc',
+            ':platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux',
+            ':platform-starters-error-handling:spring-boot-starter-platform-error-handling-grpc',
     ]
 }) {
     group = 'space.br1440.platform.starters.errorhandling'
@@ -27,6 +27,8 @@ configure(subprojects.findAll { project ->
 def nonPublishedProjects = [
         ':platform-starters-tracing',
         ':platform-starters-tracing:platform-tracing-testkit',
+        ':platform-starters-error-handling',
+        ':platform-starters-common',
 ] as Set
 
 def publishedProjects = subprojects.findAll { project -> project.path !in nonPublishedProjects }

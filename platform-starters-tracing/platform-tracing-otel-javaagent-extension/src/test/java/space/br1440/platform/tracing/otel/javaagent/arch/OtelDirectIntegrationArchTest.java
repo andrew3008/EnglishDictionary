@@ -75,8 +75,8 @@ class OtelDirectIntegrationArchTest {
             OtelDirectIntegrationExtensionSpiRules.PLATFORM_ACTIVATION_AGENT_LISTENER_IMPLEMENTS_SPI;
 
     @ArchTest
-    static final ArchRule productionDoesNotImplementSdkTracerProviderConfigurer =
-            OtelDirectIntegrationExtensionSpiRules.PRODUCTION_DOES_NOT_IMPLEMENT_SDK_TRACER_PROVIDER_CONFIGURER;
+    static final ArchRule productionDoesNotDependOnLegacyTracerProviderConfigurer =
+            OtelDirectIntegrationExtensionSpiRules.PRODUCTION_DOES_NOT_DEPEND_ON_LEGACY_TRACER_PROVIDER_CONFIGURER;
 
     @ArchTest
     static final ArchRule bootstrapDoesNotDependOnAgentTooling =

@@ -67,20 +67,18 @@ include('platform-starters-tracing:spring-boot-starter-platform-tracing-webflux'
 include('platform-starters-tracing:platform-tracing-testkit')
 include('platform-starters-tracing:platform-tracing-otel-javaagent-extension')
 
-include(':platform-error-handling-core')
-project(':platform-error-handling-core').projectDir = file("${rootDir}/platform-starters-error-handling/platform-error-handling-core")
+include('platform-starters-error-handling')
+include('platform-starters-error-handling:platform-error-handling-core')
+include('platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc')
+include('platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux')
 
-include(':spring-boot-starter-platform-error-handling-mvc')
-project(':spring-boot-starter-platform-error-handling-mvc').projectDir = file("${rootDir}/platform-starters-error-handling/spring-boot-starter-platform-error-handling-mvc")
-
-include(':spring-boot-starter-platform-error-handling-webflux')
-project(':spring-boot-starter-platform-error-handling-webflux').projectDir = file("${rootDir}/platform-starters-error-handling/spring-boot-starter-platform-error-handling-webflux")
-
-include(':spring-boot-starter-platform-common-uid1440')
-project(':spring-boot-starter-platform-common-uid1440').projectDir = file("${rootDir}/platform-starters-common/spring-boot-starter-uid1440")
-
-include(':spring-boot-starter-platform-common-header-based-routing')
-project(':spring-boot-starter-platform-common-header-based-routing').projectDir = file("${rootDir}/platform-starters-common/spring-boot-starter-header-based-routing")
-
-include(':spring-boot-starter-platform-common-x-trace-id')
-project(':spring-boot-starter-platform-common-x-trace-id').projectDir = file("${rootDir}/platform-starters-common/spring-boot-starter-x-trace-id")
+include('platform-starters-common')
+include('platform-starters-common:spring-boot-starter-platform-common-uid1440')
+include('platform-starters-common:spring-boot-starter-platform-common-header-based-routing')
+include('platform-starters-common:spring-boot-starter-platform-common-x-trace-id')
+project(':platform-starters-common:spring-boot-starter-platform-common-uid1440').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-uid1440")
+project(':platform-starters-common:spring-boot-starter-platform-common-header-based-routing').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-header-based-routing")
+project(':platform-starters-common:spring-boot-starter-platform-common-x-trace-id').projectDir =
+        file("${rootDir}/platform-starters-common/spring-boot-starter-x-trace-id")
