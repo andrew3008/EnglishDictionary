@@ -93,8 +93,7 @@ def agentArtifactTestTask = tasks.register('agentArtifactTest', Test) {
     }
     doFirst {
         systemProperty 'platformTracing.extensionJar', extensionJarTask.get().archiveFile.get().asFile.absolutePath
-        systemProperty 'platformTracing.controlledAgentJar',
-                platformExtendedAgentJarTask.get().archiveFile.get().asFile.absolutePath
+        systemProperty 'platformTracing.controlledAgentJar', platformExtendedAgentJarTask.get().archiveFile.get().asFile.absolutePath
     }
 }
 
