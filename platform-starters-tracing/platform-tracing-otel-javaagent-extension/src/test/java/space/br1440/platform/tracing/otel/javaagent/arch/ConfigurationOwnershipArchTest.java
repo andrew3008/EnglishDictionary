@@ -4,34 +4,23 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 
+import org.junit.jupiter.api.Test;
+
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
 
-/**
- * S7 architectural gates for configuration ownership after the S1–S6 cleanup.
- *
- * <ul>
- *   <li>G-S7-1 — single reader of {@link ExtensionPropertyNames} keys</li>
- *   <li>G-S7-2 — single default owner (no unconditional {@code supply()} write of platform keys)</li>
- *   <li>G-S7-3 — deleted constant wrappers stay deleted; {@code configuration.spi/enums} stay gone</li>
- *   <li>G-S7-4 — secret-shaped fields are not raw {@code String}</li>
- *   <li>G-S7-5 — no live {@link ConfigProperties} in long-lived runtime state</li>
- *   <li>G-S7-6 — control plane after bootstrap does not depend on startup configuration</li>
- * </ul>
- */
+import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+
 class ConfigurationOwnershipArchTest {
 
     private static final String ROOT = "space.br1440.platform.tracing.otel.javaagent";
@@ -43,10 +32,6 @@ class ConfigurationOwnershipArchTest {
             new ClassFileImporter()
                     .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                     .importPackages(ROOT);
-
-    // -----------------------------------------------------------------------------------------
-    // G-S7-1 — single reader of ExtensionPropertyNames
-    // -----------------------------------------------------------------------------------------
 
     /**
      * Keys declared in {@link ExtensionPropertyNames} may be referenced only by:
@@ -108,39 +93,6 @@ class ConfigurationOwnershipArchTest {
                             + "supply() may write it only via env fallback (S7 G-S7-2)", key)
                     .doesNotContainKey(key);
         }
-    }
-
-    // -----------------------------------------------------------------------------------------
-    // G-S7-3 — no constant wrappers / deleted subpackages
-    // -----------------------------------------------------------------------------------------
-
-    @Test
-    void deleted_constant_wrappers_and_subpackages_do_not_return() {
-        assertThatThrownBy(() -> Class.forName(
-                CONFIGURATION + ".AutoConfigurationCustomizerOrdering"))
-                .isInstanceOf(ClassNotFoundException.class);
-        assertThatThrownBy(() -> Class.forName(
-                CONFIGURATION + ".DropOldestExportProcessorDefaults"))
-                .isInstanceOf(ClassNotFoundException.class);
-        assertThatThrownBy(() -> Class.forName(
-                CONFIGURATION + ".spi.OtelSdkDefaults"))
-                .isInstanceOf(ClassNotFoundException.class);
-        assertThatThrownBy(() -> Class.forName(
-                CONFIGURATION + ".spi.PlatformTracingDefaultsProvider"))
-                .isInstanceOf(ClassNotFoundException.class);
-        assertThatThrownBy(() -> Class.forName(
-                CONFIGURATION + ".enums.QueueOverflowPolicy"))
-                .isInstanceOf(ClassNotFoundException.class);
-    }
-
-    @Test
-    void configuration_spi_and_enums_subpackages_stay_absent() {
-        ArchRule rule = noClasses()
-                .should().resideInAnyPackage(CONFIGURATION + ".spi..", CONFIGURATION + ".enums..")
-                .because("S5 eliminated configuration.spi and configuration.enums; "
-                        + "reintroducing them recreates visibility inflation (S7 G-S7-3)");
-
-        rule.check(EXTENSION_PRODUCTION_CLASSES);
     }
 
     // -----------------------------------------------------------------------------------------

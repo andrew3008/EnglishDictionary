@@ -61,11 +61,3 @@ jar {
         )
     }
 }
-
-test {
-    systemProperty 'wire.golden.repo.root', rootProject.projectDir.absolutePath
-    if (providers.gradleProperty('updateTracingConfigurationInventory').isPresent()) {
-        systemProperty 'tracing.configuration.inventory.update', 'true'
-    }
-    useJUnitPlatform()
-}

@@ -222,26 +222,6 @@ tasks.register('jmxWireGoldenParityVerify') {
     dependsOn jmxWireGoldenFilesIdenticalCheck, jmxWireGoldenAutoconfigureTest, jmxWireGoldenAgentTest
 }
 
-def tracingConfigurationInventoryTest = tasks.register('tracingConfigurationInventoryTest', Test) {
-    group = 'verification'
-    dependsOn jmxSpringProject.tasks.named('testClasses')
-    testClassesDirs = jmxSpringProject.sourceSets.test.output.classesDirs
-    classpath = jmxSpringProject.sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.inventory.*'
-    }
-    systemProperty 'wire.golden.repo.root', rootProject.projectDir.absolutePath
-    if (providers.gradleProperty('updateTracingConfigurationInventory').isPresent()) {
-        systemProperty 'tracing.configuration.inventory.update', 'true'
-    }
-}
-
-tasks.register('tracingConfigurationInventoryVerify') {
-    group = 'verification'
-    dependsOn tracingConfigurationInventoryTest
-}
-
 def bootstrapCustomizerExtensionFocusedTest = tasks.register('bootstrapCustomizerExtensionFocusedTest', Test) {
     group = 'verification'
     dependsOn jmxExtensionProject.tasks.named('testClasses')

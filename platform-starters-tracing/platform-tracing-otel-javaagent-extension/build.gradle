@@ -81,12 +81,25 @@ def platformExtendedAgentJarTask = tasks.register('platformExtendedAgentJar', Ja
 }
 
 tasks.named('test') {
+    exclude '**/AgentExtensionArtifactSurfaceTest.class'
+}
+
+def agentArtifactTestTask = tasks.register('agentArtifactTest', Test) {
     dependsOn extensionJarTask, platformExtendedAgentJarTask
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.arch.AgentExtensionArtifactSurfaceTest'
+    }
     doFirst {
         systemProperty 'platformTracing.extensionJar', extensionJarTask.get().archiveFile.get().asFile.absolutePath
         systemProperty 'platformTracing.controlledAgentJar',
                 platformExtendedAgentJarTask.get().archiveFile.get().asFile.absolutePath
     }
+}
+
+tasks.named('check') {
+    dependsOn agentArtifactTestTask
 }
 
 publishing {

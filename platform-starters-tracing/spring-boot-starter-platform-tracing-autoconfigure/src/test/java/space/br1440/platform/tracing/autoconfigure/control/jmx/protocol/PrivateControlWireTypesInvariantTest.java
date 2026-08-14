@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.jmx.protocol;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -10,17 +12,6 @@ import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.autoconfigure.control.jmx.protocol.PrivateControlWireTypes.WireField;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Гарантирует внутреннюю согласованность каталога {@link WireField} независимо от
- * {@link PrivateControlWireSchemaGoldenTest}: уникальность wire-имён и точное соответствие
- * key-set каждой из пяти схем заявленному в дескрипторах membership.
- * <p>
- * Сверка Spring-схемы с Agent-схемой здесь не дублируется — она уже выполняется
- * {@code ObjectNameConstantsConsistencyTest} и {@code PrivateControlWireSchemaGoldenTest}
- * (метод {@code springAndAgentOpenTypesAreMutuallyEqual}), оба обязаны оставаться зелёными.
- */
 class PrivateControlWireTypesInvariantTest {
 
     @Test

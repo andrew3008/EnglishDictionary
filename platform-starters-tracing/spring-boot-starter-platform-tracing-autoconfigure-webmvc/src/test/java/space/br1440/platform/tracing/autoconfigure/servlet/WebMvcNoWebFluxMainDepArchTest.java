@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -7,9 +9,6 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 
-/**
- * PR-1 guardrail: Servlet autoconfigure main sources must not depend on WebFlux/Reactor stack.
- */
 @AnalyzeClasses(
         packages = "space.br1440.platform.tracing.autoconfigure.servlet",
         importOptions = ImportOption.DoNotIncludeTests.class
@@ -36,6 +35,8 @@ class WebMvcNoWebFluxMainDepArchTest {
             ModuleTaxonomyArchRules.WEB_MAIN_NO_INTERNAL_PROPAGATION_TYPES;
 
     @ArchTest
-    static final ArchRule identityInternalTypesNotPublic =
-            ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
+    static final ArchRule outboundInstrumentationDoesNotCreateSpans =
+            noClasses().that().haveSimpleNameStartingWith("PlatformOutbound")
+                    .should().dependOnClassesThat().resideInAnyPackage("io.opentelemetry..")
+                    .because("the Java Agent owns outbound HTTP span creation and propagation");
 }

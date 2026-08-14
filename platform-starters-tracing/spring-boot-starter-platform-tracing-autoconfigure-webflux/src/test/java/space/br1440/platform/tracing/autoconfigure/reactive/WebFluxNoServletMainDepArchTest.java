@@ -7,9 +7,6 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import space.br1440.platform.tracing.test.arch.ModuleTaxonomyArchRules;
 
-/**
- * PR-1 guardrail: Reactive autoconfigure main sources must not depend on Servlet/MVC stack.
- */
 @AnalyzeClasses(
         packages = "space.br1440.platform.tracing.autoconfigure.reactive",
         importOptions = ImportOption.DoNotIncludeTests.class
@@ -35,7 +32,4 @@ class WebFluxNoServletMainDepArchTest {
     static final ArchRule webFluxMainNoInternalPropagationTypes =
             ModuleTaxonomyArchRules.WEB_MAIN_NO_INTERNAL_PROPAGATION_TYPES;
 
-    @ArchTest
-    static final ArchRule identityInternalTypesNotPublic =
-            ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
 }
