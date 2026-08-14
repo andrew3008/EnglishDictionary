@@ -1,0 +1,106 @@
+package space.br1440.platform.tracing.otel.javaagent.readiness;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.Test;
+
+class PlatformExtensionReadinessTest {
+
+    @Test
+    void readyRequiresEverySecureProfileCapability() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+
+        for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
+            if (capability != PlatformExtensionCapability.EXPORT_PATH_PROTECTED) {
+                readiness.markInstalled(capability);
+            }
+        }
+
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.INITIALIZING);
+
+        readiness.markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
+
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
+        assertThat(readiness.capabilities()).containsExactlyInAnyOrder(
+                "CONFIGURATION_LOADED",
+                "PLATFORM_SAMPLER_INSTALLED",
+                "REQUIRED_SPAN_PROCESSORS_INSTALLED",
+                "SANITIZER_INSTALLED",
+                "PROPAGATION_HOOKS_INSTALLED",
+                "SAFE_EXPORTER_INSTALLED",
+                "EXPORT_PATH_PROTECTED");
+    }
+
+    @Test
+    void failedStateIsStickyAndMessageIsSafeAndBounded() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+
+        readiness.fail("SANITIZER_INIT_FAILED", new IllegalStateException("rule load failed"));
+        readiness.markInstalled(PlatformExtensionCapability.SANITIZER_INSTALLED);
+
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(readiness.failureCode()).isEqualTo("SANITIZER_INIT_FAILED");
+        assertThat(readiness.failureMessage()).isEqualTo("IllegalStateException: rule load failed");
+        assertThat(readiness.has(PlatformExtensionCapability.SANITIZER_INSTALLED)).isFalse();
+    }
+
+    @Test
+    void failIsWriteOnceAndPreservesTheOriginalRootCause() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+
+        readiness.fail("FIRST_FAILURE", new IllegalStateException("first cause"));
+        readiness.fail("SECOND_FAILURE", new IllegalArgumentException("second cause"));
+
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.FAILED);
+        assertThat(readiness.failureCode()).isEqualTo("FIRST_FAILURE");
+        assertThat(readiness.failureMessage()).isEqualTo("IllegalStateException: first cause");
+    }
+
+    @Test
+    void markInstalledAndHasRejectNullCapability() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+
+        assertThatThrownBy(() -> readiness.markInstalled(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> readiness.has(null)).isInstanceOf(NullPointerException.class);
+    }
+
+    /**
+     * ADR-scrubbing-hybrid-processor-export-boundary.md BLOCKER 3: {@code requireReady()} is the
+     * defensive completeness gate that {@code BootstrapCoordinator.activate()} must call before
+     * constructing a READY wire snapshot — it must reject any incomplete capability set, even one
+     * capability short.
+     */
+    @Test
+    void requireReadyThrowsWhileAnySingleCapabilityIsMissing() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+
+        for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
+            if (capability != PlatformExtensionCapability.EXPORT_PATH_PROTECTED) {
+                readiness.markInstalled(capability);
+            }
+        }
+
+        assertThatThrownBy(readiness::requireReady)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("EXPORT_PATH_PROTECTED");
+
+        readiness.markInstalled(PlatformExtensionCapability.EXPORT_PATH_PROTECTED);
+
+        assertThatCode(readiness::requireReady).doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireReadyThrowsAfterFailEvenIfCapabilitiesWerePreviouslyComplete() {
+        PlatformExtensionReadiness readiness = new PlatformExtensionReadiness();
+        for (PlatformExtensionCapability capability : PlatformExtensionCapability.values()) {
+            readiness.markInstalled(capability);
+        }
+        assertThat(readiness.lifecycle()).isEqualTo(PlatformExtensionLifecycle.READY);
+
+        readiness.fail("LATE_FAILURE", new IllegalStateException("late failure"));
+
+        assertThatThrownBy(readiness::requireReady).isInstanceOf(IllegalStateException.class);
+    }
+}

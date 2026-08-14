@@ -1,92 +1,44 @@
-// =============================================================================
-//  Платформенный BOM (Bill of Materials)
-// =============================================================================
-//
-//  Назначение
-//  ----------
-//  Артефакт публикуется как POM-only-модуль и подключается потребителями платформы
-//  выражением `api platform(...)` (Gradle). За счёт этого версии управляемых зависимостей 
-//  выравниваются между всеми сервисами, использующими платформенные стартеры.
-//
-//  Импортирует общий `space.br1440.platform:platform-bom` (тот, в свою очередь,
-//  подтягивает Spring Boot BOM `spring-boot-dependencies`) и расширяет результат
-//  набором ограничений (constraints), необходимых стартерам вне контракта Spring Boot.
-//  Задавать в `constraints` зависимости, которые уже управляет Spring Boot / platform-bom,
-//  не следует — это создаёт дрейф версий между релизами.
-//
-//  Критерий включения зависимости
-//  ------------------------------
-//  В `constraints` помещаются только те версии, что используются в `src/main` 
-//  хотя бы одного платформенного стартера (конфигурации `api`, `implementation`, `compileOnly`). 
-//  Зависимости, востребованные исключительно тестовым кодом стартеров (`testImplementation`, `testRuntimeOnly`), 
-//  в BOM не публикуются — их версии хранятся в `gradle/libs.versions.toml` и не предлагаются потребителям.
-//
-//  Регламент обновления
-//  --------------------
-//  1. Перед добавлением констрейнта убедиться, что зависимость присутствует
-//     в `src/main` хотя бы одного платформенного стартера. Если зависимость
-//     используется только в тестовом коде (`src/test`), её версия задаётся
-//     в каталоге версий `gradle/libs.versions.toml`, а не в этом BOM.
-//  2. Перед изменением версии проверить отсутствие конфликта с управлением
-//     Spring Boot BOM (`./gradlew dependencyInsight`).
-//  3. Любое изменение констрейнтов должно сопровождаться повышением версии
-//     BOM согласно политике совместимости платформы.
-//  4. Для констрейнтов, ссылающихся на модули этого же монорепозитория, версия
-//     по умолчанию задаётся подстановкой `${rootProject.version}` и не должна
-//     указываться литералом — иначе при подъёме общей версии платформы получают
-//     расхождение между опубликованным BOM и фактическими артефактами.
-//     Контрактные модули (`error-handling-model`, `tracing-api`) публикуются
-//     из собственных репозиториев; их версии в `constraints` фиксируются литералом.
-// =============================================================================
 
 plugins {
     id 'platform.java-platform-publish'
 }
 
 dependencies {
-    // Общий платформенный BOM: Spring Boot + общие constraints (commons-lang3, jetbrains и т.д.)
     api platform("space.br1440.platform:platform-bom:${libs.versions.platformBom.get()}")
+    api platform("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.bom.springcloud.get()}")
+    api platform("io.opentelemetry:opentelemetry-bom:${libs.versions.bom.opentelemetry.get()}")
+    api platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:${libs.versions.bom.otelinstrumentation.get()}")
 
     constraints {
-        // ---------------------------------------------------------------------
-        // Логирование и диагностика
-        // ---------------------------------------------------------------------
         api "net.logstash.logback:logstash-logback-encoder:${libs.versions.bom.logstash.get()}"
 
-        // ---------------------------------------------------------------------
-        // Общие утилиты и инструменты сборки
-        // ---------------------------------------------------------------------
         api "com.github.f4b6a3:uuid-creator:${libs.versions.bom.uuid.get()}"
 
-        // ---------------------------------------------------------------------
-        // Интеграция gRPC
-        // ---------------------------------------------------------------------
         api "org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:${libs.versions.bom.grpc.get()}"
 
-        // ---------------------------------------------------------------------
-        // Spring Cloud OpenFeign (нет в spring-boot-dependencies — нужен явный constraint)
-        // ---------------------------------------------------------------------
         api "org.springframework.cloud:spring-cloud-openfeign-core:${libs.versions.bom.openfeign.get()}"
 
-        // ---------------------------------------------------------------------
-        // Контрактные модули платформы (публикуются из отдельных репозиториев)
-        // ---------------------------------------------------------------------
         api "space.br1440.platform:error-handling-model:${libs.versions.errorHandlingModel.get()}"
-        api "space.br1440.platform.starters:spring-boot-starter-platform-tracing-api:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-api:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-otel:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-spring-boot-autoconfigure:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-autoconfigure-webmvc:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-autoconfigure-webflux:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-mvc:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-webflux:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-otel-javaagent-extension:${rootProject.version}"
 
-        api "space.br1440.platform.starters.error-handling:spring-boot-starter-platform-error-handling-core:${rootProject.version}"
-        api "space.br1440.platform.starters.error-handling:spring-boot-starter-platform-error-handling-mvc:${rootProject.version}"
-        api "space.br1440.platform.starters.error-handling:spring-boot-starter-platform-error-handling-webflux:${rootProject.version}"
+        api "space.br1440.platform.starters.errorhandling:platform-error-handling-core:${rootProject.version}"
+        api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-mvc:${rootProject.version}"
+        api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-webflux:${rootProject.version}"
+        api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-grpc:${rootProject.version}"
 
-        // ---------------------------------------------------------------------
-        // Zalando Logbook
-        // ---------------------------------------------------------------------
+        api "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}"
+        api "com.tngtech.archunit:archunit-junit5:${libs.versions.archunit.get()}"
+
         api "org.zalando:logbook-core:${libs.versions.bom.logbook.get()}"
         api "org.zalando:logbook-servlet:${libs.versions.bom.logbook.get()}"
 
-        // ---------------------------------------------------------------------
-        // Сторонние интеграционные клиенты
-        // ---------------------------------------------------------------------
         api "io.minio:minio:${libs.versions.bom.minio.get()}"
         api "com.squareup.okhttp3:okhttp:${libs.versions.bom.okhttp.get()}"
         api "io.github.resilience4j:resilience4j-timelimiter:${libs.versions.bom.resilience.get()}"

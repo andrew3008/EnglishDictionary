@@ -1,0 +1,43 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+dependencies {
+    api project(':platform-tracing-spring-boot-autoconfigure')
+    api project(':platform-tracing-api')
+    api 'io.micrometer:micrometer-observation'
+    api 'io.micrometer:context-propagation'
+
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.springframework.boot:spring-boot'
+    implementation 'org.slf4j:slf4j-api'
+
+    compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
+    compileOnly 'org.springframework:spring-webflux'
+    compileOnly 'io.projectreactor:reactor-core'
+    compileOnly 'org.springframework.boot:spring-boot-actuator-autoconfigure'
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':spring-boot-starter-platform-tracing-webflux')
+    testImplementation project(':platform-tracing-testkit')
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

@@ -40,11 +40,28 @@
 | `:spring-boot-starter-platform-error-handling-mvc` | `error-handling-mvc/` |
 | `:spring-boot-starter-platform-error-handling-webflux` | `error-handling-webflux/` |
 
-### Трассировка API
+### Трассировка (`platform-starters-tracing/`)
+
+Все артефакты семейства публикуются в группе `space.br1440.platform.starters.tracing`.
 
 | Gradle-проект | Каталог |
 |-----------------|---------|
-| `:spring-boot-starter-platform-tracing-api` | [`spring-boot-starter-platform-tracing/tracing-api`](platform-starters-tracing/tracing-api) |
+| `:platform-tracing-api` | [`spring-boot-starter-platform-tracing-api`](platform-starters-tracing/spring-boot-starter-platform-tracing-api) |
+| `:platform-tracing-otel` | [`spring-boot-starter-platform-tracing-otel`](platform-starters-tracing/spring-boot-starter-platform-tracing-otel) |
+| `:platform-tracing-spring-boot-autoconfigure` | [`spring-boot-starter-platform-tracing-autoconfigure`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure) |
+| `:platform-tracing-autoconfigure-webmvc` | [`spring-boot-starter-platform-tracing-autoconfigure-webmvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webmvc) |
+| `:platform-tracing-autoconfigure-webflux` | [`spring-boot-starter-platform-tracing-autoconfigure-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webflux) |
+| `:spring-boot-starter-platform-tracing-mvc` | [`spring-boot-starter-platform-tracing-mvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-mvc) |
+| `:spring-boot-starter-platform-tracing-webflux` | [`spring-boot-starter-platform-tracing-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-webflux) |
+| `:platform-tracing-testkit` | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются |
+| `:platform-tracing-otel-javaagent-extension` | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) |
+
+Controlled Platform Agent поставляется classifier-артефактом
+`platform-tracing-otel-javaagent-extension:<version>:controlled-agent@jar`.
+
+[`platform-tracing-collector-config`](platform-starters-tracing/platform-tracing-collector-config)
+временно хранится в Git только для передачи SRE. Это не Gradle-проект и не часть сборки,
+BOM или публикации tracing-платформы.
 
 ### Общие стартеры (каталог `spring-boot-starter-platform-common/`)
 

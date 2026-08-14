@@ -12,82 +12,52 @@ platformJavaLibrary {
 }
 
 dependencies {
-    // Implementation
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-
-    // === Optional / conditional dependencies (compileOnly) ===
-
-    // SLF4J API
     compileOnly 'org.slf4j:slf4j-api'
 
-    // Spring for Apache Kafka
     compileOnly 'org.springframework.kafka:spring-kafka'
 
-    // Spring Boot
     compileOnly 'org.springframework.boot:spring-boot-starter'
 
-    // Spring MVC
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
 
-    // Spring WebFlux
     compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
 
-    // Spring gRPC Server
     compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
 
-
-    // === Annotation processors ===
-
-    // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
-
-    // === Test infrastructure ===
-
-    // JUnit 5
     testImplementation platform('org.junit:junit-bom')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 
-    // Spring Boot Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
-    // Spring for Apache Kafka
     testImplementation 'org.springframework.kafka:spring-kafka'
 
-    // Autoconfigure
     testImplementation 'org.springframework.boot:spring-boot-autoconfigure'
 
-    // WebFlux
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
 
-    // Servlet/WebMVC
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
 
-    // Spring gRPC Server
     testImplementation 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
 
-    // spring-kafka-test
     testImplementation 'org.springframework.kafka:spring-kafka-test'
 
-    // Kafka Streams API
     testImplementation 'org.apache.kafka:kafka-streams'
 
-    // micrometer-observation-test
     testImplementation 'io.micrometer:micrometer-observation-test'
 
-    // Awaitility
     testImplementation 'org.awaitility:awaitility'
 
-    // ArchUnit — конвенция пакета internal (независимость interceptors/конфигурации от фабрик)
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
 
-    // Launcher JUnit Platform для Gradle test task.
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -118,7 +88,6 @@ def resolvedVersion = project.version.toString()
 
 def generateBuildInfo = tasks.register('generateBuildInfo', GenerateBuildInfoTask) {
     group = 'build'
-    description = 'Генерирует build-info.json (version, buildTime) для метаданных артефакта'
     projectVersion.set(resolvedVersion)
 
     buildTime.set(

@@ -20,7 +20,6 @@ spotbugs {
 }
 
 dependencies {
-    // API
     api 'org.springframework.boot:spring-boot-starter-validation'
     api 'space.br1440.platform:error-handling-model'
 
@@ -31,17 +30,11 @@ dependencies {
     api 'org.springframework:spring-tx'
     api 'org.springframework:spring-aop'
 
-
-    // Авто-конфигурация (публичный API стартера)
     api 'org.springframework.boot:spring-boot-autoconfigure'
 
-    // === Optional / conditional dependencies (compileOnly) ===
-
-    // JPA / jOOQ
     compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
     compileOnly 'org.springframework.boot:spring-boot-starter-jooq'
 
-    // Observability
     compileOnly 'io.micrometer:micrometer-core'
     compileOnly 'io.micrometer:micrometer-observation'
 
@@ -51,23 +44,16 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok'
 
-    // Annotation Processors
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.projectlombok:lombok'
 
-
-    // === Test infrastructure ===
-
-    // Базовые тестовые зависимости
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Полный стек persistence / web для сценариев IT
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     testImplementation 'org.springframework.boot:spring-boot-starter-jooq'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-    // Observability
     testImplementation 'io.micrometer:micrometer-core'
     testImplementation 'io.micrometer:micrometer-observation'
     testImplementation 'io.micrometer:micrometer-observation-test'
@@ -75,10 +61,8 @@ dependencies {
     testImplementation 'org.springframework:spring-web'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
 
-    // Встраиваемая БД для быстрых тестов без Docker.
     testImplementation 'com.h2database:h2'
 
-    // Разделяемые тестовые зависимости — из каталога `gradle/libs.versions.toml`
     testImplementation libs.bundles.testcontainers
     testImplementation libs.testcontainers.postgresql
     testImplementation libs.testcontainers.toxiproxy

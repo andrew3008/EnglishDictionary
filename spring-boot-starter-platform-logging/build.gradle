@@ -9,39 +9,26 @@ platformJavaLibrary {
 }
 
 dependencies {
-    // Implementation
     implementation 'org.slf4j:slf4j-api'
     implementation 'net.logstash.logback:logstash-logback-encoder'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.aspectj:aspectjweaver'
 
-
-    // === Optional / conditional dependencies (compileOnly) ===
-
-    // Logbook: фильтрация, форматирование и запись HTTP-запросов/ответов
     compileOnly 'org.zalando:logbook-core'
-    // Logbook: servlet-интеграция (LogbookFilter для Servlet/MVC стека)
     compileOnly 'org.zalando:logbook-servlet'
 
-    // Jakarta Servlet API
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
 
-    // Spring MVC (Servlet)
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
 
-    // Spring Security
     compileOnly 'org.springframework.boot:spring-boot-starter-security'
 
-    // Spring gRPC
     compileOnly 'org.springframework.grpc:spring-grpc-server-web-spring-boot-starter'
 
-    // Spring WebFlux
     compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
 
-    // SpringBoot Configuration
     compileOnly 'org.springframework.boot:spring-boot-configuration-processor'
 
-    // Annotation Processors
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

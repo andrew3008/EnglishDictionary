@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "generatedFromCommit": "7fb61184bc4a7fa2d79e07c6fd71209b5e6aa629",
+  "javaVersion": "21.0.6",
+  "objectNameCount": 7,
+  "memberCount": 13,
+  "readOnlyMemberCount": 13,
+  "mutatingMemberCount": 0,
+  "objectNames": [
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformDiagnosticsControl,type=Diagnostics",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.diagnostics.DiagnosticsControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "DiagnosticsObservation",
+          "description": "Attribute exposed for management",
+          "javaType": "javax.management.openmbean.CompositeData",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformExportControl,type=Export",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.export.ExportControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ExportObservation",
+          "description": "Attribute exposed for management",
+          "javaType": "javax.management.openmbean.CompositeData",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformExtension,type=Readiness",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessDynamicMBean",
+      "description": "Platform extension readiness (protocol v1, snapshot-backed)",
+      "descriptor": [
+      ],
+      "attributes": [
+        {
+          "name": "Capabilities",
+          "description": "Capabilities",
+          "javaType": "[Ljava.lang.String;",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ExtensionVersion",
+          "description": "ExtensionVersion",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "FailureCode",
+          "description": "FailureCode",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "FailureMessage",
+          "description": "FailureMessage",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "LifecycleState",
+          "description": "LifecycleState",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "Profile",
+          "description": "Profile",
+          "javaType": "java.lang.String",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        },
+        {
+          "name": "ProtocolVersion",
+          "description": "ProtocolVersion",
+          "javaType": "int",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformProcessorMetricsControl,type=Metrics",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.metrics.ProcessorMetricsControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ProcessorMetricsObservation",
+          "description": "Attribute exposed for management",
+          "javaType": "javax.management.openmbean.CompositeData",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformSamplingControl,type=Sampling",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.sampling.SamplingControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "SamplingObservation",
+          "description": "Attribute exposed for management",
+          "javaType": "javax.management.openmbean.CompositeData",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformScrubbingControl,type=Scrubbing",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.scrubbing.ScrubbingControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ScrubbingObservation",
+          "description": "Attribute exposed for management",
+          "javaType": "javax.management.openmbean.CompositeData",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    },
+    {
+      "objectName": "space.br1440.platform.tracing:name=PlatformValidationControl,type=Validation",
+      "className": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControl",
+      "description": "Information on the management interface of the MBean",
+      "descriptor": [
+        {
+          "name": "immutableInfo",
+          "value": "true"
+        },
+        {
+          "name": "interfaceClassName",
+          "value": "space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationControlMBean"
+        },
+        {
+          "name": "mxbean",
+          "value": "false"
+        }
+      ],
+      "attributes": [
+        {
+          "name": "ValidationObservation",
+          "description": "Attribute exposed for management",
+          "javaType": "javax.management.openmbean.CompositeData",
+          "descriptor": [
+          ],
+          "readable": true,
+          "writable": false,
+          "isIs": false
+        }
+      ],
+      "operations": [
+      ],
+      "notifications": [
+      ]
+    }
+  ]
+}

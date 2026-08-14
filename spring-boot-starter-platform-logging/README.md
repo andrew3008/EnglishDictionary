@@ -164,7 +164,9 @@ rules:
 
 ## MDC-контракт с platform-tracing v1
 
-При подключении `spring-boot-starter-platform-tracing` tracing-стarter **записывает** в SLF4J MDC
+При подключении `space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-mvc`
+или `space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-webflux` tracing-стarter
+**записывает** в SLF4J MDC
 следующие ключи (camelCase, W3C/Micrometer):
 
 | MDC-ключ | Константа в logging | Источник (writer) |

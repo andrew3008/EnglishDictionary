@@ -1,0 +1,26 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+dependencies {
+    api 'jakarta.annotation:jakarta.annotation-api'
+
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':platform-tracing-testkit')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.yaml:snakeyaml'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

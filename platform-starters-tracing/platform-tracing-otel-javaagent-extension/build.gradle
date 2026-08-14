@@ -1,0 +1,87 @@
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+def platformAgentBinary = configurations.detachedConfiguration(
+        dependencies.create("io.opentelemetry.javaagent:opentelemetry-javaagent:${libs.versions.bom.otelinstrumentation.get()}")
+)
+
+dependencies {
+    implementation project(':platform-tracing-api')
+    implementation project(':platform-tracing-otel')
+    implementation 'org.slf4j:slf4j-api'
+
+    compileOnly 'io.opentelemetry:opentelemetry-sdk'
+    compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    compileOnly 'io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api'
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':platform-tracing-testkit')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+    testImplementation('io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api') {
+        exclude group: 'net.bytebuddy', module: 'byte-buddy-dep'
+    }
+    testImplementation 'io.opentelemetry:opentelemetry-extension-trace-propagators'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-logging'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-logging-otlp'
+    testImplementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    testImplementation 'ch.qos.logback:logback-classic'
+
+    testCompileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
+
+    testAnnotationProcessor 'com.google.auto.service:auto-service:1.1.1'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+def extensionJarTask = tasks.named('jar', Jar) {
+    from project(':platform-tracing-api').sourceSets.main.output
+    from project(':platform-tracing-otel').sourceSets.main.output
+    from { zipTree(configurations.runtimeClasspath.find { it.name.startsWith('slf4j-api') }) }
+    manifest {
+        attributes 'Implementation-Title': project.name, 'Implementation-Version': project.version
+    }
+}
+
+def platformExtendedAgentJarTask = tasks.register('platformExtendedAgentJar', Jar) {
+    archiveClassifier.set('controlled-agent')
+    from(zipTree(platformAgentBinary.singleFile)) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+
+    from(extensionJarTask.flatMap { it.archiveFile }) {
+        into 'extensions'
+        rename { 'platform-tracing-otel-javaagent-extension.jar' }
+    }
+
+    manifest {
+        from {
+            zipTree(platformAgentBinary.singleFile).matching {
+                include 'META-INF/MANIFEST.MF'
+            }.singleFile
+        }
+    }
+}
+
+publishing {
+    publications.withType(MavenPublication).configureEach {
+        artifact platformExtendedAgentJarTask
+    }
+}

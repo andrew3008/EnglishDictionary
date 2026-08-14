@@ -56,8 +56,32 @@ include('spring-boot-starter-platform-health-checks')
 include('spring-boot-starter-platform-security')
 include('spring-boot-starter-platform-postgres-read-write-split-jdbc')
 
-include(':spring-boot-starter-platform-tracing-api')
-project(':spring-boot-starter-platform-tracing-api').projectDir = file("${rootDir}/platform-starters-tracing/tracing-api")
+include(':platform-tracing-api')
+project(':platform-tracing-api').projectDir = file("${rootDir}/platform-starters-tracing/spring-boot-starter-platform-tracing-api")
+
+include(':platform-tracing-otel')
+project(':platform-tracing-otel').projectDir = file("${rootDir}/platform-starters-tracing/spring-boot-starter-platform-tracing-otel")
+
+include(':platform-tracing-spring-boot-autoconfigure')
+project(':platform-tracing-spring-boot-autoconfigure').projectDir = file("${rootDir}/platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure")
+
+include(':platform-tracing-autoconfigure-webmvc')
+project(':platform-tracing-autoconfigure-webmvc').projectDir = file("${rootDir}/platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webmvc")
+
+include(':platform-tracing-autoconfigure-webflux')
+project(':platform-tracing-autoconfigure-webflux').projectDir = file("${rootDir}/platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webflux")
+
+include(':spring-boot-starter-platform-tracing-mvc')
+project(':spring-boot-starter-platform-tracing-mvc').projectDir = file("${rootDir}/platform-starters-tracing/spring-boot-starter-platform-tracing-mvc")
+
+include(':spring-boot-starter-platform-tracing-webflux')
+project(':spring-boot-starter-platform-tracing-webflux').projectDir = file("${rootDir}/platform-starters-tracing/spring-boot-starter-platform-tracing-webflux")
+
+include(':platform-tracing-testkit')
+project(':platform-tracing-testkit').projectDir = file("${rootDir}/platform-starters-tracing/platform-tracing-testkit")
+
+include(':platform-tracing-otel-javaagent-extension')
+project(':platform-tracing-otel-javaagent-extension').projectDir = file("${rootDir}/platform-starters-tracing/platform-tracing-otel-javaagent-extension")
 
 include(':platform-error-handling-core')
 project(':platform-error-handling-core').projectDir = file("${rootDir}/platform-starters-error-handling/platform-error-handling-core")
