@@ -1,5 +1,5 @@
 pluginManagement {
-    def platformConventionsVersion = '1.0.3'
+    def platformConventionsVersion = '1.0.4'
     
     repositories {
         maven {
