@@ -17,7 +17,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
  * <p>
  * Co-located with the two cross-module codec parity tests in the Agent protocol test package.
  * It calls the real Agent {@code TracingSettingsDigest.sha256(TracingSettings)} through the
- * existing {@code testImplementation project(':platform-tracing-otel-javaagent-extension')}
+ * existing {@code testImplementation project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')}
  * dependency; no digest algorithm or wire schema is duplicated in this test.
  * <p>
  * Verifies, for several representative policies, that the Spring-side

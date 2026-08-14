@@ -11,7 +11,7 @@ platformJavaLibrary {
 }
 
 dependencies {
-    api project(':platform-tracing-spring-boot-autoconfigure')
-    api project(':platform-tracing-autoconfigure-webmvc')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc')
     api 'org.springframework.boot:spring-boot-starter-web'
 }

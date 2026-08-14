@@ -11,8 +11,8 @@ platformJavaLibrary {
 }
 
 dependencies {
-    api project(':platform-tracing-spring-boot-autoconfigure')
-    api project(':platform-tracing-api')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     api 'io.micrometer:micrometer-observation'
     api 'io.opentelemetry:opentelemetry-api'
 
@@ -28,8 +28,8 @@ dependencies {
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.projectlombok:lombok'
 
-    testImplementation project(':platform-tracing-testkit')
-    testImplementation project(':platform-tracing-autoconfigure-webflux')
+    testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
+    testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator'

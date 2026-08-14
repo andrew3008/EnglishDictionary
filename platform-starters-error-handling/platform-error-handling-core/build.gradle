@@ -25,7 +25,7 @@ dependencies {
     api 'org.springframework.boot:spring-boot-starter'
     api 'org.springframework:spring-web'
     api 'space.br1440.platform:error-handling-model'
-    api project(':platform-tracing-api')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
 
     implementation 'org.apache.commons:commons-lang3'
     implementation 'org.slf4j:slf4j-api'

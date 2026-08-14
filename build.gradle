@@ -25,7 +25,8 @@ configure(subprojects.findAll { project ->
 }
 
 def nonPublishedProjects = [
-        ':platform-tracing-testkit',
+        ':platform-starters-tracing',
+        ':platform-starters-tracing:platform-tracing-testkit',
 ] as Set
 
 def publishedProjects = subprojects.findAll { project -> project.path !in nonPublishedProjects }
@@ -59,14 +60,14 @@ tasks.register('publishAllToMavenLocal') {
 
 def tracingPublicationProjects = [
         ':spring-boot-starter-platform-bom',
-        ':platform-tracing-api',
-        ':platform-tracing-otel',
-        ':platform-tracing-spring-boot-autoconfigure',
-        ':platform-tracing-autoconfigure-webmvc',
-        ':platform-tracing-autoconfigure-webflux',
-        ':spring-boot-starter-platform-tracing-mvc',
-        ':spring-boot-starter-platform-tracing-webflux',
-        ':platform-tracing-otel-javaagent-extension',
+        ':platform-starters-tracing:spring-boot-starter-platform-tracing-api',
+        ':platform-starters-tracing:spring-boot-starter-platform-tracing-otel',
+        ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure',
+        ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc',
+        ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux',
+        ':platform-starters-tracing:spring-boot-starter-platform-tracing-mvc',
+        ':platform-starters-tracing:spring-boot-starter-platform-tracing-webflux',
+        ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
 ]
 
 tasks.register('publishTracingToVerificationRepository') {
@@ -147,8 +148,8 @@ def verifyOtelUnstableApiBoundariesTask = tasks.register('verifyOtelUnstableApiB
     }
 }
 
-def jmxExtensionProject = project(':platform-tracing-otel-javaagent-extension')
-def jmxSpringProject = project(':platform-tracing-spring-boot-autoconfigure')
+def jmxExtensionProject = project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
+def jmxSpringProject = project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
 
 def jmxManagementContractBaselineTest = tasks.register('jmxManagementContractBaselineTest', Test) {
     group = 'verification'
@@ -280,11 +281,11 @@ tasks.register('bootstrapCustomizerQualification') {
 tasks.register('tracingArchitectureFitnessVerify') {
     group = 'verification'
     dependsOn verifyOtelUnstableApiBoundariesTask,
-            ':platform-tracing-api:test',
-            ':platform-tracing-otel:test',
-            ':platform-tracing-spring-boot-autoconfigure:test',
-            ':platform-tracing-autoconfigure-webmvc:test',
-            ':platform-tracing-autoconfigure-webflux:test',
-            ':platform-tracing-otel-javaagent-extension:test',
-            ':platform-tracing-testkit:test'
+            ':platform-starters-tracing:spring-boot-starter-platform-tracing-api:test',
+            ':platform-starters-tracing:spring-boot-starter-platform-tracing-otel:test',
+            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure:test',
+            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc:test',
+            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux:test',
+            ':platform-starters-tracing:platform-tracing-otel-javaagent-extension:test',
+            ':platform-starters-tracing:platform-tracing-testkit:test'
 }

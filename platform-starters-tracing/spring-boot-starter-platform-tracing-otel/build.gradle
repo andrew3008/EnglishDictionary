@@ -11,7 +11,7 @@ platformJavaLibrary {
 }
 
 dependencies {
-    api project(':platform-tracing-api')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     api 'io.opentelemetry:opentelemetry-api'
 
     implementation 'org.slf4j:slf4j-api'
@@ -20,7 +20,7 @@ dependencies {
 
     annotationProcessor 'org.projectlombok:lombok'
 
-    testImplementation project(':platform-tracing-testkit')
+    testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

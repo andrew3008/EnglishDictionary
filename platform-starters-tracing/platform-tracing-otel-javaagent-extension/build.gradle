@@ -15,8 +15,8 @@ def platformAgentBinary = configurations.detachedConfiguration(
 )
 
 dependencies {
-    implementation project(':platform-tracing-api')
-    implementation project(':platform-tracing-otel')
+    implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
+    implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel')
     implementation 'org.slf4j:slf4j-api'
 
     compileOnly 'io.opentelemetry:opentelemetry-sdk'
@@ -27,7 +27,7 @@ dependencies {
 
     annotationProcessor 'org.projectlombok:lombok'
 
-    testImplementation project(':platform-tracing-testkit')
+    testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.mockito:mockito-core'
@@ -52,8 +52,8 @@ dependencies {
 }
 
 def extensionJarTask = tasks.named('jar', Jar) {
-    from project(':platform-tracing-api').sourceSets.main.output
-    from project(':platform-tracing-otel').sourceSets.main.output
+    from project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api').sourceSets.main.output
+    from project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel').sourceSets.main.output
     from { zipTree(configurations.runtimeClasspath.find { it.name.startsWith('slf4j-api') }) }
     manifest {
         attributes 'Implementation-Title': project.name, 'Implementation-Version': project.version

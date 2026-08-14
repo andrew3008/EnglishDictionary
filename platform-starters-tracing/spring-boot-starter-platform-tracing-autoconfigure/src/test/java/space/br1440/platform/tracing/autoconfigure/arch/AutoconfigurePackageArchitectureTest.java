@@ -88,7 +88,7 @@ class AutoconfigurePackageArchitectureTest {
         assertThat(violations).as("Package-boundary violations").isEmpty();
 
         String build = Files.readString(root.resolve(AUTOCONFIGURE_MODULE + "/build.gradle"));
-        assertThat(build).doesNotContain("api project(':platform-tracing-otel')");
+        assertThat(build).doesNotContain("api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel')");
     }
 
     @Test

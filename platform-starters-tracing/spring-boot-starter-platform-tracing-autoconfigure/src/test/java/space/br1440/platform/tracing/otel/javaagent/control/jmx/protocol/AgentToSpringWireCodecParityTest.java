@@ -35,7 +35,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
  * {@code PrivateControlOpenTypeCodec.encodeAcceptedComplete(TracingSettingsRevision)} directly —
  * no Agent production API is widened, no wire schema is hand-duplicated for the positive
  * path. This relies on the existing
- * {@code testImplementation project(':platform-tracing-otel-javaagent-extension')}
+ * {@code testImplementation project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')}
  * dependency declared in this module's build.gradle (same technique as
  * {@link CandidateDigestAgentParityTest}).
  * <p>

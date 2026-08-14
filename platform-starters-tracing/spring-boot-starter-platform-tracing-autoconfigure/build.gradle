@@ -11,11 +11,11 @@ platformJavaLibrary {
 }
 
 dependencies {
-    api project(':platform-tracing-api')
+    api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     api 'io.opentelemetry:opentelemetry-api'
     api 'io.micrometer:micrometer-observation'
 
-    implementation project(':platform-tracing-otel')
+    implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel')
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework.boot:spring-boot'
     implementation 'org.slf4j:slf4j-api'
@@ -32,10 +32,10 @@ dependencies {
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.projectlombok:lombok'
 
-    testImplementation project(':platform-tracing-autoconfigure-webflux')
-    testImplementation project(':platform-tracing-autoconfigure-webmvc')
-    testImplementation project(':platform-tracing-testkit')
-    testImplementation project(':platform-tracing-otel-javaagent-extension')
+    testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux')
+    testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc')
+    testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
+    testImplementation project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
@@ -55,7 +55,7 @@ dependencies {
 jar {
     manifest {
         attributes(
-                'Implementation-Title': 'platform-tracing-spring-boot-autoconfigure',
+                'Implementation-Title': 'spring-boot-starter-platform-tracing-autoconfigure',
                 'Implementation-Version': project.version
         )
     }
