@@ -60,12 +60,14 @@ Controlled Platform Agent поставляется classifier-артефакто
 временно хранится в Git только для передачи SRE. Это не Gradle-проект и не часть сборки,
 BOM или публикации tracing-платформы.
 
-### Общие стартеры (`platform-starters-common/`)
+### Общие модули (`platform-starters-common/`)
 
-Имена Gradle-проектов не совпадают с каталогами, поэтому для common оставлен явный `projectDir`.
+Для стартеров имена Gradle-проектов не совпадают с каталогами, поэтому для них задан явный `projectDir`.
+`platform-common-util` совпадает с последним сегментом path и `projectDir` не требует.
 
 | Gradle-проект | Каталог | Документация |
 |----------------|---------|----------------|
+| `:platform-starters-common:platform-common-util` | [`platform-common-util`](platform-starters-common/platform-common-util) | [README](platform-starters-common/platform-common-util/README.md) |
 | `:platform-starters-common:spring-boot-starter-platform-common-uid1440` | [`spring-boot-starter-uid1440`](platform-starters-common/spring-boot-starter-uid1440) | [README](platform-starters-common/spring-boot-starter-uid1440/README.md) |
 | `:platform-starters-common:spring-boot-starter-platform-common-header-based-routing` | [`spring-boot-starter-header-based-routing`](platform-starters-common/spring-boot-starter-header-based-routing) | [README](platform-starters-common/spring-boot-starter-header-based-routing/README.md) |
 | `:platform-starters-common:spring-boot-starter-platform-common-x-trace-id` | [`spring-boot-starter-x-trace-id`](platform-starters-common/spring-boot-starter-x-trace-id) | [README](platform-starters-common/spring-boot-starter-x-trace-id/README.md) |

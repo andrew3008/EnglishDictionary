@@ -33,6 +33,8 @@ dependencies {
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-webflux:${rootProject.version}"
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-grpc:${rootProject.version}"
 
+        api "space.br1440.platform.starters:platform-common-util:${rootProject.version}"
+
         api "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}"
         api "com.tngtech.archunit:archunit-junit5:${libs.versions.archunit.get()}"
 

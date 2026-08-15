@@ -76,6 +76,7 @@ include('platform-starters-common')
 include('platform-starters-common:spring-boot-starter-platform-common-uid1440')
 include('platform-starters-common:spring-boot-starter-platform-common-header-based-routing')
 include('platform-starters-common:spring-boot-starter-platform-common-x-trace-id')
+include('platform-starters-common:platform-common-util')
 project(':platform-starters-common:spring-boot-starter-platform-common-uid1440').projectDir =
         file("${rootDir}/platform-starters-common/spring-boot-starter-uid1440")
 project(':platform-starters-common:spring-boot-starter-platform-common-header-based-routing').projectDir =
