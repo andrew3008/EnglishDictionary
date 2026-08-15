@@ -17,7 +17,7 @@ def platformAgentBinary = configurations.detachedConfiguration(
 dependencies {
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel')
-    implementation project(':platform-starters-common:platform-common-util')
+    implementation project(':platform-starters-common:platform-starters-common-util')
     implementation 'org.slf4j:slf4j-api'
 
     compileOnly 'io.opentelemetry:opentelemetry-sdk'
@@ -55,7 +55,7 @@ dependencies {
 def extensionJarTask = tasks.named('jar', Jar) {
     from project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api').sourceSets.main.output
     from project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel').sourceSets.main.output
-    from project(':platform-starters-common:platform-common-util').sourceSets.main.output
+    from project(':platform-starters-common:platform-starters-common-util').sourceSets.main.output
     from { zipTree(configurations.runtimeClasspath.find { it.name.startsWith('slf4j-api') }) }
     manifest {
         attributes 'Implementation-Title': project.name, 'Implementation-Version': project.version

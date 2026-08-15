@@ -1,4 +1,4 @@
-# platform-common-util
+# platform-starters-common-util
 
 Внутренняя JDK-библиотека null-безопасных проверок пустоты. Это не Spring Boot starter:
 автоконфигурации, Spring, OpenTelemetry и JMX в модуле нет.
@@ -8,12 +8,13 @@
 | | Значение |
 |---|---|
 | Group | `space.br1440.platform.starters` |
-| Artifact | `platform-common-util` |
-| Gradle | `:platform-starters-common:platform-common-util` |
+| Artifact | `platform-starters-common-util` |
+| Gradle | `:platform-starters-common:platform-starters-common-util` |
+| Каталог | `platform-starters-common/platform-starters-common-util` |
 | Пакет | `space.br1440.platform.common.util` |
 
 ```groovy
-implementation 'space.br1440.platform.starters:platform-common-util:{версия}'
+implementation 'space.br1440.platform.starters:platform-starters-common-util:{версия}'
 ```
 
 Версия выравнивается platform BOM:
