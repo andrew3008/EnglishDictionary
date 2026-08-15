@@ -4,6 +4,8 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
@@ -27,7 +29,7 @@ public final class ExceptionMessagePolicy {
         }
 
         String message = exception.getMessage();
-        if (message == null || message.isBlank()) {
+        if (StringUtils.isNullOrBlank(message)) {
             return null;
         }
 

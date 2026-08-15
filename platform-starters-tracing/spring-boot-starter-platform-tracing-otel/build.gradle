@@ -14,6 +14,7 @@ dependencies {
     api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     api 'io.opentelemetry:opentelemetry-api'
 
+    implementation project(':platform-starters-common:platform-starters-common-util')
     implementation 'org.slf4j:slf4j-api'
 
     compileOnly 'org.projectlombok:lombok'

@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 
 import io.opentelemetry.api.trace.Span;
@@ -42,7 +43,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     @Override
     @Nonnull
     public Optional<RemoteSpanLink> read(@Nullable String traceparent, @Nullable String tracestate) {
-        if (traceparent == null || traceparent.isBlank()) {
+        if (StringUtils.isNullOrBlank(traceparent)) {
             return Optional.empty();
         }
 
@@ -74,7 +75,7 @@ public final class OtelTraceparentReaderImpl implements OtelTraceparentReader {
     }
 
     private static Map<String, String> buildCarrier(@Nonnull String traceparent, @Nullable String tracestate) {
-        if (tracestate == null || tracestate.isBlank()) {
+        if (StringUtils.isNullOrBlank(tracestate)) {
             return Map.of(HDR_TRACEPARENT, traceparent);
         }
 

@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.sampling.policy;
 
+import space.br1440.platform.common.util.SetUtils;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
@@ -20,19 +22,19 @@ final class ForceHeaderPolicyRule implements SamplingPolicyRule {
     }
 
     @Override
-    public SamplingPolicyDecision evaluate(
-            SamplingPolicyRequest request,
-            boolean enabled,
-            Map<String, Double> routeRatios,
-            double defaultRatio,
-            SamplingPolicySnapshot startupRules) {
+    public SamplingPolicyDecision evaluate(SamplingPolicyRequest request,
+                                           boolean enabled,
+                                           Map<String, Double> routeRatios,
+                                           double defaultRatio,
+                                           SamplingPolicySnapshot startupRules) {
         if (startupRules.getForceRecordValues().isEmpty()) {
             return null;
         }
 
         if (matchesForceValue(
                 startupRules.getForceRecordValues(),
-                request.forceTraceHeaderValue())) {
+                request.forceTraceHeaderValue()
+        )) {
             return FORCE;
         }
 
@@ -40,8 +42,7 @@ final class ForceHeaderPolicyRule implements SamplingPolicyRule {
     }
 
     private static boolean matchesForceValue(Set<String> normalizedValues, String rawValue) {
-        if (rawValue == null || rawValue.isEmpty()
-                || normalizedValues == null || normalizedValues.isEmpty()) {
+        if (StringUtils.isNullOrEmpty(rawValue) || SetUtils.isNullOrEmpty(normalizedValues)) {
             return false;
         }
 

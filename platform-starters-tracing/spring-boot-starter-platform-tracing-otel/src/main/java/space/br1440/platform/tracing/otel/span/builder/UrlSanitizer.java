@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.otel.span.builder;
 
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.experimental.UtilityClass;
 
 /**
@@ -19,7 +21,7 @@ class UrlSanitizer {
 
     @Nullable
     static String sanitize(@Nullable String url) {
-        if (url == null || url.isBlank()) {
+        if (StringUtils.isNullOrBlank(url)) {
             return null;
         }
 

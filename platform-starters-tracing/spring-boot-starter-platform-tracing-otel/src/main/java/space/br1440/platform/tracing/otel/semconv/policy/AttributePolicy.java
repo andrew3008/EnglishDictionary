@@ -1,24 +1,23 @@
 package space.br1440.platform.tracing.otel.semconv.policy;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.common.AttributesBuilder;
-import jakarta.annotation.Nonnull;
-import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
-import space.br1440.platform.tracing.api.semconv.SemconvViolation;
-import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
-import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
-import space.br1440.platform.tracing.api.span.SpanCategory;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import jakarta.annotation.Nonnull;
+
+import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.api.semconv.SemconvValidationMode;
+import space.br1440.platform.tracing.api.semconv.SemconvViolation;
+import space.br1440.platform.tracing.api.semconv.SemconvViolationException;
+import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.AttributesBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Валидация платформенного semantic-контракта. Принимает {@link CategoryContract} из
@@ -112,7 +111,7 @@ public final class AttributePolicy {
             return UnsafeKeyClass.REJECTED;
         }
 
-        if (key == null || key.isBlank() || key.length() > MAX_KEY_LENGTH) {
+        if (StringUtils.isNullOrBlank(key) || key.length() > MAX_KEY_LENGTH) {
             return UnsafeKeyClass.REJECTED;
         }
 

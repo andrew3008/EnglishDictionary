@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.mdc.remote;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
 /**
@@ -18,7 +19,7 @@ import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 public final class RemoteServiceMdc {
 
     public static void putIfPresent(String remoteService) {
-        if (remoteService == null || remoteService.isBlank()) {
+        if (StringUtils.isNullOrBlank(remoteService)) {
             return;
         }
 

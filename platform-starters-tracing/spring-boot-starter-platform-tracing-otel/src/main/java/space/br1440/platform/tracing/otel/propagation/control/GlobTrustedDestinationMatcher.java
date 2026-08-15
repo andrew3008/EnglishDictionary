@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.propagation.control;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 
 import java.util.List;
@@ -18,7 +19,7 @@ final class GlobTrustedDestinationMatcher implements TrustedDestinationMatcher {
         this.hostMode = hostMode;
         this.allowIpLiterals = allowIpLiterals;
         this.patterns = (globs == null) ? List.of() : globs.stream()
-                .filter(p -> (p != null) && !p.isBlank())
+                .filter(p -> !StringUtils.isNullOrBlank(p))
                 .map(p -> compileGlob(p, hostMode))
                 .toList();
     }

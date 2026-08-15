@@ -1,12 +1,15 @@
 package space.br1440.platform.tracing.otel.sampling.properties;
 
-import lombok.experimental.UtilityClass;
-import space.br1440.platform.tracing.otel.sampling.model.RouteRatioPrefix;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import space.br1440.platform.common.util.MapUtils;
+import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.sampling.model.RouteRatioPrefix;
+import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
+
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class SamplingPolicySnapshotFactory {
@@ -25,7 +28,7 @@ public final class SamplingPolicySnapshotFactory {
     }
 
     private static List<RouteRatioPrefix> buildRouteRatios(Map<String, Double> routeRatios) {
-        if (routeRatios == null || routeRatios.isEmpty()) {
+        if (MapUtils.isNullOrEmpty(routeRatios)) {
             return List.of();
         }
 
@@ -34,7 +37,7 @@ public final class SamplingPolicySnapshotFactory {
             String route = entry.getKey();
             Double ratioValue = entry.getValue();
 
-            if (route == null || route.isBlank() || ratioValue == null) {
+            if (StringUtils.isNullOrBlank(route) || ratioValue == null) {
                 continue;
             }
 

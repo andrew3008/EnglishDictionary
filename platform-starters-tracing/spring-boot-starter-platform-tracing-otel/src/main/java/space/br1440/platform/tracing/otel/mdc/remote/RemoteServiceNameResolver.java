@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.mdc.remote;
 
 import org.slf4j.MDC;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
@@ -33,7 +34,7 @@ public final class RemoteServiceNameResolver {
     private Optional<String> resolveFromMdcAndSources() {
         try {
             String fromMdc = MDC.get(TracingMdcKeys.REMOTE_SERVICE);
-            if (fromMdc != null && !fromMdc.isBlank()) {
+            if (!StringUtils.isNullOrBlank(fromMdc)) {
                 return Optional.of(fromMdc);
             }
         } catch (RuntimeException ignored) {
@@ -43,7 +44,7 @@ public final class RemoteServiceNameResolver {
         for (RemoteServiceNameSource source : sources) {
             try {
                 Optional<String> value = source.resolve();
-                if (value.isPresent() && !value.get().isBlank()) {
+                if (value.isPresent() && !StringUtils.isNullOrBlank(value.get())) {
                     return value;
                 }
             } catch (RuntimeException ignored) {

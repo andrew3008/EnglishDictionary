@@ -12,6 +12,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
@@ -165,7 +166,7 @@ public final class OtelTracingRuntime implements TracingRuntime {
 
     @Nonnull
     private static TraceState resolveTraceState(@Nullable String raw) {
-        if (raw == null || raw.isBlank()) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return TraceState.getDefault();
         }
 

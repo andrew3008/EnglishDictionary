@@ -8,6 +8,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.LongSupplier;
 
+import space.br1440.platform.common.util.StringUtils;
+
 /**
  * Ограниченное trace-scoped зеркало для {@code platform.remote.service}.
  * <p>
@@ -45,7 +47,7 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
     }
 
     synchronized void put(String traceId, String remoteService) {
-        if (closed || isBlank(traceId) || isBlank(remoteService)) {
+        if (closed || StringUtils.isNullOrBlank(traceId) || StringUtils.isNullOrBlank(remoteService)) {
             return;
         }
 
@@ -57,14 +59,14 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
     }
 
     synchronized Optional<String> get(String traceId) {
-        if (closed || isBlank(traceId)) {
+        if (closed || StringUtils.isNullOrBlank(traceId)) {
             return Optional.empty();
         }
 
         removeExpired(ticker.getAsLong());
 
         Entry entry = entries.get(traceId);
-        if (entry == null || isBlank(entry.remoteService())) {
+        if (entry == null || StringUtils.isNullOrBlank(entry.remoteService())) {
             return Optional.empty();
         }
 
@@ -72,7 +74,7 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
     }
 
     synchronized void clear(String traceId) {
-        if (!isBlank(traceId)) {
+        if (!StringUtils.isNullOrBlank(traceId)) {
             entries.remove(traceId);
         }
     }
@@ -106,10 +108,6 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
             iterator.next();
             iterator.remove();
         }
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 
     private record Entry(String remoteService, long createdAtNanos) {

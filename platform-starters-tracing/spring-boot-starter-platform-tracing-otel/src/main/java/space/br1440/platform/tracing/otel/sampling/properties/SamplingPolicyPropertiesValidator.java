@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import space.br1440.platform.common.util.StringUtils;
+
 @UtilityClass
 public final class SamplingPolicyPropertiesValidator {
 
@@ -73,7 +75,7 @@ public final class SamplingPolicyPropertiesValidator {
 
         for (Map.Entry<String, Double> entry : routeRatios.entrySet()) {
             String prefix = entry.getKey();
-            if (prefix == null || prefix.isBlank()) {
+            if (StringUtils.isNullOrBlank(prefix)) {
                 throw new IllegalArgumentException("Route ratio prefix must not be null or blank");
             }
 

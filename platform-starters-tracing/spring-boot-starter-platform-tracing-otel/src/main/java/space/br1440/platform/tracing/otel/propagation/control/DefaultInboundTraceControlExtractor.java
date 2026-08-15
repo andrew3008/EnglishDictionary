@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.otel.propagation.control;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
@@ -19,7 +20,7 @@ public final class DefaultInboundTraceControlExtractor implements InboundTraceCo
                                            @Nullable String qaTrace,
                                            @Nullable String requestId) {
         boolean isForceTrace = "on".equalsIgnoreCase(traceOn);
-        boolean isQaTrace = (qaTrace != null) && !qaTrace.isBlank();
+        boolean isQaTrace = !StringUtils.isNullOrBlank(qaTrace);
 
         String reason = null;
         if (isForceTrace) {

@@ -1,8 +1,10 @@
 package space.br1440.platform.tracing.otel.validation;
 
-import lombok.experimental.UtilityClass;
-
 import java.time.Instant;
+
+import space.br1440.platform.common.util.StringUtils;
+
+import lombok.experimental.UtilityClass;
 
 /**
  * Формирует {@link ValidationSnapshot} для атомарного runtime-обновления политики.
@@ -19,11 +21,12 @@ public final class ValidationPolicyUpdate {
                 strict,
                 previous.version() + 1,
                 Instant.now(),
-                normalizeSource(source));
+                normalizeSource(source)
+        );
     }
 
     public static String normalizeSource(String source) {
-        if (source == null || source.isBlank()) {
+        if (StringUtils.isNullOrBlank(source)) {
             return "JMX";
         }
 

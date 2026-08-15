@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder;
 import space.br1440.platform.tracing.api.span.builder.HttpServerSpanBuilder;
@@ -96,7 +97,7 @@ final class DefaultHttpTracing implements HttpTracing {
         @Nonnull
         public HttpClientSpanBuilder url(@Nonnull String rawUrl) {
             String sanitized = UrlSanitizer.sanitize(rawUrl);
-            if (sanitized == null || sanitized.isBlank()) {
+            if (StringUtils.isNullOrBlank(sanitized)) {
                 throw new IllegalArgumentException("url must not be blank");
             }
 

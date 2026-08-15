@@ -5,6 +5,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import lombok.experimental.UtilityClass;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 
@@ -35,7 +36,7 @@ final class PlatformSpanNameBuilder {
             case KAFKA_PRODUCER, KAFKA_CONSUMER -> kafka(attributes, explicitName);
             case INTERNAL -> orFallback(explicitName, "internal");
         };
-        return (name == null) || name.isBlank() ? category.value() : name;
+        return StringUtils.isNullOrBlank(name) ? category.value() : name;
     }
 
     private static String http(Attributes attrs, String explicitName) {
@@ -96,6 +97,6 @@ final class PlatformSpanNameBuilder {
 
     @SuppressWarnings("SameParameterValue")
     private static String orFallback(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
+        return StringUtils.isNullOrBlank(value) ? fallback : value;
     }
 }

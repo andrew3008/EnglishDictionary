@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.sampling.policy;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
@@ -33,7 +34,7 @@ final class RouteRatioPolicyRule implements SamplingPolicyRule {
         }
 
         String urlPath = request.urlPath();
-        if (urlPath == null || urlPath.isEmpty()) {
+        if (StringUtils.isNullOrEmpty(urlPath)) {
             return null;
         }
 
