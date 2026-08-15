@@ -1,12 +1,12 @@
 package space.br1440.platform.tracing.otel.sampling.properties;
 
-import lombok.experimental.UtilityClass;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import space.br1440.platform.common.util.StringUtils;
+
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class SamplingPolicyPropertiesValidator {

@@ -1,6 +1,8 @@
 package space.br1440.platform.tracing.otel.span.builder;
 
+import java.util.Objects;
 import jakarta.annotation.Nonnull;
+
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.builder.HttpClientSpanBuilder;
@@ -10,8 +12,6 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader;
 import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 import space.br1440.platform.tracing.otel.span.spec.DefaultSpanSpecFactory;
-
-import java.util.Objects;
 
 final class DefaultHttpTracing implements HttpTracing {
 

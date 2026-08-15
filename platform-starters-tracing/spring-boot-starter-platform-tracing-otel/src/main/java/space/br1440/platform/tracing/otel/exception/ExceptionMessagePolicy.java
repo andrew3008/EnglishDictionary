@@ -1,13 +1,13 @@
 package space.br1440.platform.tracing.otel.exception;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import lombok.RequiredArgsConstructor;
 
 import space.br1440.platform.common.util.StringUtils;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public final class ExceptionMessagePolicy {

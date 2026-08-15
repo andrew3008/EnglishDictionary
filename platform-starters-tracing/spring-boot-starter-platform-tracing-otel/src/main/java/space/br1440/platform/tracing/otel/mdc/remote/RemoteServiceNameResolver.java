@@ -1,12 +1,13 @@
 package space.br1440.platform.tracing.otel.mdc.remote;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.slf4j.MDC;
+
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Read-chain для {@link TracingMdcKeys#REMOTE_SERVICE}: MDC → contributed sources → (опционально) built-in mirror fallback.

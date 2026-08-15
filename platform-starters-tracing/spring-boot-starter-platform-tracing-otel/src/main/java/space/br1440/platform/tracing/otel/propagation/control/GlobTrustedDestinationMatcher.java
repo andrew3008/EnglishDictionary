@@ -1,11 +1,11 @@
 package space.br1440.platform.tracing.otel.propagation.control;
 
-import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
-
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
+
+import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 
 final class GlobTrustedDestinationMatcher implements TrustedDestinationMatcher {
 

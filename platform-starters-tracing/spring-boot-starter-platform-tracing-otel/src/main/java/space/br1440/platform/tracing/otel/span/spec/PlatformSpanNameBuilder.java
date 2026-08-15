@@ -1,13 +1,14 @@
 package space.br1440.platform.tracing.otel.span.spec;
 
-import io.opentelemetry.api.common.Attributes;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-import lombok.experimental.UtilityClass;
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
 import space.br1440.platform.tracing.api.span.SpanCategory;
+import space.br1440.platform.tracing.otel.semconv.SemconvKeys;
+
+import io.opentelemetry.api.common.Attributes;
+import lombok.experimental.UtilityClass;
 
 /**
  * Строит low-cardinality имя span'а по категории и нормализованным атрибутам
