@@ -16,8 +16,6 @@ class MapUtilsTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("isNullOrEmptyCases")
     void isNullOrEmpty_returnsExpectedResult(String caseName, boolean expected, Map<String, String> map) {
-        // given
-
         // when
         boolean actual = MapUtils.isNullOrEmpty(map);
 
@@ -27,13 +25,10 @@ class MapUtilsTest {
 
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("containsKeyCases")
-    void containsKey_returnsExpectedResult(
-            String caseName,
-            boolean expected,
-            Map<String, String> map,
-            String key) {
-        // given
-
+    void containsKey_returnsExpectedResult(String caseName,
+                                           boolean expected,
+                                           Map<String, String> map,
+                                           String key) {
         // when
         boolean actual = MapUtils.containsKey(map, key);
 
@@ -43,14 +38,11 @@ class MapUtilsTest {
 
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("getOrDefaultCases")
-    void getOrDefault_returnsExpectedResult(
-            String caseName,
-            String expected,
-            Map<String, String> map,
-            String key,
-            String defaultValue) {
-        // given
-
+    void getOrDefault_returnsExpectedResult(String caseName,
+                                            String expected,
+                                            Map<String, String> map,
+                                            String key,
+                                            String defaultValue) {
         // when
         String actual = MapUtils.getOrDefault(map, key, defaultValue);
 
@@ -61,8 +53,6 @@ class MapUtilsTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("sizeCases")
     void size_returnsExpectedResult(String caseName, int expected, Map<String, String> map) {
-        // given
-
         // when
         int actual = MapUtils.size(map);
 
@@ -109,6 +99,7 @@ class MapUtilsTest {
         );
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Map<String, String> mapWithValue(String key, String value) {
         Map<String, String> map = new HashMap<>();
         map.put(key, value);

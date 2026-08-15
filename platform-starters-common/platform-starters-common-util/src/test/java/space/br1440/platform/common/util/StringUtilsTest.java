@@ -14,8 +14,6 @@ class StringUtilsTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("isNullOrEmptyCases")
     void isNullOrEmpty_returnsExpectedResult(String value, boolean expected) {
-        // given
-
         // when
         boolean actual = StringUtils.isNullOrEmpty(value);
 
@@ -26,8 +24,6 @@ class StringUtilsTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("isNullOrBlankCases")
     void isNullOrBlank_returnsExpectedResult(String value, boolean expected) {
-        // given
-
         // when
         boolean actual = StringUtils.isNullOrBlank(value);
 

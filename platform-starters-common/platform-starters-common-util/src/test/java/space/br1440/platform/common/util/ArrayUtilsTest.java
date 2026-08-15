@@ -14,8 +14,6 @@ class ArrayUtilsTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("isNullOrEmptyCases")
     void isNullOrEmpty_returnsExpectedResult(String caseName, boolean expected, String[] values) {
-        // given
-
         // when
         boolean actual = ArrayUtils.isNullOrEmpty(values);
 

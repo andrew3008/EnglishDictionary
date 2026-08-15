@@ -8,22 +8,6 @@ platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }
 
-group = rootProject.group
-version = rootProject.version
-
-description = 'Null-safe emptiness and blank predicates for String, arrays, List, Set and Map.'
-
-tasks.named('jar', Jar).configure {
-    archiveBaseName = 'platform-starters-common-util'
-}
-
-publishing {
-    publications.named('mavenJava', MavenPublication).configure {
-        artifactId = 'platform-starters-common-util'
-        pom.description.set(project.description)
-    }
-}
-
 dependencies {
     api 'jakarta.annotation:jakarta.annotation-api'
 

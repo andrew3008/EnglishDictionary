@@ -16,8 +16,6 @@ class ListUtilsTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("isNullOrEmptyCases")
     void isNullOrEmpty_returnsExpectedResult(String caseName, boolean expected, List<String> values) {
-        // given
-
         // when
         boolean actual = ListUtils.isNullOrEmpty(values);
 
