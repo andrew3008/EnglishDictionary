@@ -1,70 +1,55 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.validation;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.common.util.StringUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
- * SP-02: Requested or effective validation mode for {@link
- * space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor}.
+ * SP-02: Запрошенный или действующий режим валидации для {@code ValidatingSpanProcessor}.
  * <p>
- * The configuration property is {@code platform.tracing.validation.mode} — see {@link
+ * Конфигурационное свойство — {@code platform.tracing.validation.mode}, см. {@link
  * space.br1440.platform.tracing.otel.javaagent.configuration.ValidationExtensionConfig}.
  * <p>
- * Accepted values for {@code platform.tracing.validation.mode} (case-insensitive):
+ * Допустимые значения для {@code platform.tracing.validation.mode} (без учёта регистра):
  * <ul>
- *   <li>{@code LENIENT} — validate and warn on missing attributes; never throw</li>
- *   <li>{@code STRICT} — validate and emit a throttled ERROR diagnostic on missing
- *       attributes without interrupting span completion; allowed only in {@link PlatformEnvironment#DEV} and
+ *   <li>{@code LENIENT} — валидировать и предупреждать о недостающих атрибутах; никогда не бросать исключение</li>
+ *   <li>{@code STRICT} — валидировать и выдавать throttled ERROR-диагностику при недостающих
+ *       атрибутах без прерывания завершения span; разрешён только в {@link PlatformEnvironment#DEV} и
  *       {@link PlatformEnvironment#STAGING}</li>
- *   <li>{@code DISABLED} — skip validation entirely; allowed everywhere with risk visibility</li>
+ *   <li>{@code DISABLED} — полностью пропускать валидацию; разрешён везде с видимостью риска</li>
  * </ul>
- * Unknown or blank values default to {@link #LENIENT}.
+ * Неизвестные или пустые значения по умолчанию сводятся к {@link #LENIENT}.
  */
+@Slf4j
 public enum ValidationMode {
 
     LENIENT,
     STRICT,
     DISABLED;
 
-    private static final Logger log = LoggerFactory.getLogger(ValidationMode.class);
-
-    /**
-     * {@code true} только для {@link #LENIENT}.
-     */
     public boolean isLenient() {
-        return this == LENIENT;
+        return (this == LENIENT);
     }
 
-    /**
-     * {@code true} только для {@link #STRICT}.
-     */
     public boolean isStrict() {
-        return this == STRICT;
+        return (this == STRICT);
     }
 
-    /**
-     * {@code true} только для {@link #DISABLED}.
-     */
     public boolean isDisabled() {
-        return this == DISABLED;
+        return (this == DISABLED);
     }
 
-    /**
-     * Parses a {@code platform.tracing.validation.mode} value.
-     * Returns {@link #LENIENT} and logs a warning for any blank or unrecognized value.
-     */
     public static ValidationMode parse(String value) {
         if (StringUtils.isNullOrBlank(value)) {
             return LENIENT;
         }
+
         return switch (value.trim().toUpperCase()) {
             case "LENIENT" -> LENIENT;
             case "STRICT" -> STRICT;
             case "DISABLED" -> DISABLED;
             default -> {
-                log.warn("SP-02: Unrecognized platform.tracing.validation.mode='{}'; defaulting to LENIENT", value);
+                log.warn("Unrecognized platform.tracing.validation.mode='{}'; defaulting to LENIENT", value);
                 yield LENIENT;
             }
         };
