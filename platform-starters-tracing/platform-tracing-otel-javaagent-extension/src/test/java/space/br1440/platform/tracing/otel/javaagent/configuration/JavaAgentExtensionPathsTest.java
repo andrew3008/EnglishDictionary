@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import java.time.Duration;
 import java.util.List;
@@ -60,7 +60,7 @@ class JavaAgentExtensionPathsTest {
         String result = JavaAgentExtensionPaths.resolveRawValue(config);
 
         // env var OTEL_JAVAAGENT_EXTENSIONS отсутствует в тестовой JVM; ожидаем null или blank.
-        assertThat(Strings.isBlank(result)).isTrue();
+        assertThat(StringUtils.isNullOrBlank(result)).isTrue();
     }
 
     @Test

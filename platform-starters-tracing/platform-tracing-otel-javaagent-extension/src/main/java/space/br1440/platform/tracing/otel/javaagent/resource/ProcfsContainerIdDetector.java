@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 /**
  * Локальный резолвер {@code container.id} из {@code /proc/self/cgroup}.
@@ -45,7 +45,7 @@ public final class ProcfsContainerIdDetector {
     }
 
     static Optional<String> parse(String cgroupContent) {
-        if (Strings.isBlank(cgroupContent)) {
+        if (StringUtils.isNullOrBlank(cgroupContent)) {
             return Optional.empty();
         }
 

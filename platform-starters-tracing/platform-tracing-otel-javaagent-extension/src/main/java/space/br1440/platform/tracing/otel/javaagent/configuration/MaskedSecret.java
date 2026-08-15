@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.configuration;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import space.br1440.platform.common.util.StringUtils;
+
 public final class MaskedSecret {
 
     private static final MaskedSecret ABSENT = new MaskedSecret(null);
@@ -14,7 +16,7 @@ public final class MaskedSecret {
     }
 
     public static MaskedSecret of(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
+        if (StringUtils.isNullOrBlank(rawValue)) {
             return ABSENT;
         }
 

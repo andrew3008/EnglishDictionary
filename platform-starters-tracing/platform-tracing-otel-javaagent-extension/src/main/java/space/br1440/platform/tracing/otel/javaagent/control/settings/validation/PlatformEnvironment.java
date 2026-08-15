@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.validation;
 
+import space.br1440.platform.common.util.StringUtils;
+
 /**
  * SP-02: Control-plane environment signal, derived from the {@code platform.environment} property.
  * <p>
@@ -29,7 +31,7 @@ public enum PlatformEnvironment {
      * Returns {@link #UNKNOWN} for any missing, blank, or unrecognized value.
      */
     public static PlatformEnvironment parse(String value) {
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             return UNKNOWN;
         }
         return switch (value.trim().toLowerCase()) {

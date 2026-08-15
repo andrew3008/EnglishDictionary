@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import space.br1440.platform.tracing.otel.javaagent.resource.PlatformResourceCustomizer;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 public final class PlatformTracingDefaultsProvider {
 
@@ -54,7 +54,7 @@ public final class PlatformTracingDefaultsProvider {
 
     private void putEnvFallback(Map<String, String> defaults, String envKey, String propKey) {
         String value = envSupplier.get(envKey);
-        if (Strings.isNotBlank(value)) {
+        if (!StringUtils.isNullOrBlank(value)) {
             defaults.put(propKey, value.trim());
         }
     }

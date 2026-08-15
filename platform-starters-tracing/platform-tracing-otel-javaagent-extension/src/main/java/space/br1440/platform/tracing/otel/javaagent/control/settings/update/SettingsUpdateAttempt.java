@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
 
@@ -41,7 +42,7 @@ public record SettingsUpdateAttempt(String attemptId,
     }
 
     static boolean isCanonicalAttemptId(String value) {
-        if (value == null || value.isEmpty()) {
+        if (StringUtils.isNullOrEmpty(value)) {
             return false;
         }
 

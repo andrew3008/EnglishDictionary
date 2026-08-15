@@ -4,7 +4,7 @@ import java.io.InputStream;
 import java.util.Optional;
 import java.util.Properties;
 
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 public final class BuildInfoReader {
 
@@ -40,7 +40,7 @@ public final class BuildInfoReader {
             Properties props = new Properties();
             props.load(in);
             String version = props.getProperty(VERSION_KEY);
-            if (Strings.isNotBlank(version)) {
+            if (!StringUtils.isNullOrBlank(version)) {
                 return Optional.of(version.trim());
             }
 

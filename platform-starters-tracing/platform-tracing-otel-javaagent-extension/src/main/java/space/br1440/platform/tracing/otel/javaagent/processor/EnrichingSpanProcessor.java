@@ -7,7 +7,7 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceTraceContext;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -65,7 +65,7 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
     public EnrichingSpanProcessor(List<String> remoteServicePriority) {
         List<AttributeKey<String>> keys = new ArrayList<>(remoteServicePriority.size());
         for (String name : remoteServicePriority) {
-            if (Strings.isNotBlank(name)) {
+            if (!StringUtils.isNullOrBlank(name)) {
                 keys.add(AttributeKey.stringKey(name.trim()));
             }
         }
@@ -175,7 +175,7 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
         try {
             for (AttributeKey<String> key : remoteServicePriority) {
                 String value = span.getAttribute(key);
-                if (Strings.isBlank(value)) {
+                if (StringUtils.isNullOrBlank(value)) {
                     continue;
                 }
 

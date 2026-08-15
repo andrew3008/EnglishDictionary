@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -187,15 +187,15 @@ public final class PlatformResourceCustomizer {
     }
 
     private static String firstNonBlank(String first, String second) {
-        if (Strings.isNotBlank(first)) {
+        if (!StringUtils.isNullOrBlank(first)) {
             return first;
         }
 
-        return Strings.isNotBlank(second) ? second : null;
+        return !StringUtils.isNullOrBlank(second) ? second : null;
     }
 
     private static boolean present(String value) {
-        return Strings.isNotBlank(value);
+        return !StringUtils.isNullOrBlank(value);
     }
 
     private static <T> Supplier<T> memoize(Supplier<T> delegate) {

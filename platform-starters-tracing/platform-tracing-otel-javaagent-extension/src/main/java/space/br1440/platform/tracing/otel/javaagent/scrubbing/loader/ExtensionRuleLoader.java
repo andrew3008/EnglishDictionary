@@ -20,7 +20,8 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.StableScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.FailedProviderReason;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.ArrayUtils;
+import space.br1440.platform.common.util.StringUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -57,7 +58,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
     }
 
     public List<SpanAttributeScrubbingRule> load(String rawProperty) {
-        if (Strings.isBlank(rawProperty)) {
+        if (StringUtils.isNullOrBlank(rawProperty)) {
             return List.of();
         }
 
@@ -147,7 +148,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
                         && !f.getName().startsWith(".")
                         && !f.getName().endsWith(".tmp")
                         && f.getName().endsWith(".jar"));
-        if (jars == null || jars.length == 0) {
+        if (ArrayUtils.isNullOrEmpty(jars)) {
             return;
         }
 

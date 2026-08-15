@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -47,6 +47,6 @@ public final class ResourceStartupDiagnostics {
     }
 
     private static String orAbsent(String value) {
-        return Strings.isBlank(value) ? "<absent>" : value;
+        return StringUtils.isNullOrBlank(value) ? "<absent>" : value;
     }
 }

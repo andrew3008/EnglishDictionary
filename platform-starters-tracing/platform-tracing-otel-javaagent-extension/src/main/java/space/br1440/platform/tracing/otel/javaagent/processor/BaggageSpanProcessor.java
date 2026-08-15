@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.BaggageEntry;
@@ -89,7 +89,7 @@ public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagn
         }
 
         String value = entry.getValue();
-        if (Strings.isBlank(value)) {
+        if (StringUtils.isNullOrBlank(value)) {
             return;
         }
 

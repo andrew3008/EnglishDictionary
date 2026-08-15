@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 public final class ManifestVersionReader {
 
@@ -52,6 +52,6 @@ public final class ManifestVersionReader {
         String version = attributes.getValue(IMPLEMENTATION_VERSION);
         return Optional.ofNullable(version)
                 .map(String::trim)
-                .filter(Strings::isNotBlank);
+                .filter(value -> !StringUtils.isNullOrBlank(value));
     }
 }

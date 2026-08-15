@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.control.settings.validation
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import space.br1440.platform.common.util.StringUtils;
+
 /**
  * SP-02: Requested or effective validation mode for {@link
  * space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor}.
@@ -54,7 +56,7 @@ public enum ValidationMode {
      * Returns {@link #LENIENT} and logs a warning for any blank or unrecognized value.
      */
     public static ValidationMode parse(String value) {
-        if (value == null || value.isBlank()) {
+        if (StringUtils.isNullOrBlank(value)) {
             return LENIENT;
         }
         return switch (value.trim().toUpperCase()) {

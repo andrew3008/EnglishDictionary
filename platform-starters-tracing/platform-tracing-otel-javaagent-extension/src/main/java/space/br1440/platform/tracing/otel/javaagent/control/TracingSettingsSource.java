@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import lombok.Getter;
 
+import space.br1440.platform.common.util.MapUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
@@ -183,7 +184,7 @@ public final class TracingSettingsSource {
     }
 
     private static Map<String, Double> parseRouteRatios(Map<String, String> source) {
-        if (source == null || source.isEmpty()) {
+        if (MapUtils.isNullOrEmpty(source)) {
             return Map.of();
         }
 

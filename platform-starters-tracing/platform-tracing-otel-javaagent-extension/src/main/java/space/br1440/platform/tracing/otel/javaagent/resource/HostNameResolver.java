@@ -7,7 +7,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,7 +35,7 @@ public final class HostNameResolver {
         }
 
         String fromInet = inetAddressHostName.get();
-        if (Strings.isNotBlank(fromInet)) {
+        if (!StringUtils.isNullOrBlank(fromInet)) {
             return Optional.of(fromInet.toLowerCase(Locale.ROOT));
         }
 
@@ -43,11 +43,11 @@ public final class HostNameResolver {
     }
 
     private static String firstNonBlank(String a, String b) {
-        if (Strings.isNotBlank(a)) {
+        if (!StringUtils.isNullOrBlank(a)) {
             return a;
         }
 
-        return Strings.isNotBlank(b) ? b : null;
+        return !StringUtils.isNullOrBlank(b) ? b : null;
     }
 
     private static String resolveLocalHostNameWithTimeout() {

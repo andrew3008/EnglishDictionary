@@ -10,6 +10,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.jar.Manifest;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -108,7 +110,7 @@ public final class PlatformExtensionReadiness {
 
     private static String resolveExtensionVersion() {
         String implementationVersion = readImplementationVersionFromManifest();
-        return (implementationVersion == null || implementationVersion.isBlank())
+        return StringUtils.isNullOrBlank(implementationVersion)
                 ? "development"
                 : implementationVersion;
     }
@@ -144,12 +146,12 @@ public final class PlatformExtensionReadiness {
         }
 
         String message = failure.getMessage();
-        String value = failure.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
+        String value = failure.getClass().getSimpleName() + (StringUtils.isNullOrBlank(message) ? "" : ": " + message);
         return (value.length() <= FAILURE_MESSAGE_MAX_LENGTH) ? value : value.substring(0, FAILURE_MESSAGE_MAX_LENGTH);
     }
 
     @SuppressWarnings("SameParameterValue")
     private static String orDefault(String value, String fallback) {
-        return (value == null || value.isBlank()) ? fallback : value;
+        return StringUtils.isNullOrBlank(value) ? fallback : value;
     }
 }

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +50,7 @@ public final class ScrubbingRulesLoader {
     private static final String KEY_ADDITIONAL_RULES = "additional-built-in-rules";
 
     public static List<String> load(String path, ClassLoader classLoader) {
-        if (Strings.isBlank(path)) {
+        if (StringUtils.isNullOrBlank(path)) {
             return Collections.emptyList();
         }
 
@@ -69,7 +69,7 @@ public final class ScrubbingRulesLoader {
         }
 
         String raw = properties.getProperty(KEY_ADDITIONAL_RULES);
-        if (Strings.isBlank(raw)) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return Collections.emptyList();
         }
 

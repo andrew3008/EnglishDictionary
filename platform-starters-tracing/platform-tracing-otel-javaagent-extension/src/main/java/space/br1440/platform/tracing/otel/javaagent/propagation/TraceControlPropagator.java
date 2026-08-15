@@ -6,7 +6,7 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.otel.propagation.control.DefaultTraceControlHeaderInjector;
 import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
@@ -74,6 +74,6 @@ final class TraceControlPropagator implements TextMapPropagator {
     }
 
     private static boolean isEmpty(String val) {
-        return Strings.isBlank(val);
+        return StringUtils.isNullOrBlank(val);
     }
 }

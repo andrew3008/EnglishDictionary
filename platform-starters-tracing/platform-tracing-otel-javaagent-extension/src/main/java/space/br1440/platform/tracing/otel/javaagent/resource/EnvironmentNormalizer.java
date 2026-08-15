@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import java.util.Locale;
 
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import lombok.experimental.UtilityClass;
 
@@ -12,7 +12,7 @@ public final class EnvironmentNormalizer {
     public static final String UNKNOWN = "unknown";
 
     public static String normalize(String raw, boolean enabled) {
-        if (Strings.isBlank(raw)) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return UNKNOWN;
         }
 

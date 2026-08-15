@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import java.util.Locale;
 
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 public enum ResourceValidationMode {
 
@@ -10,7 +10,7 @@ public enum ResourceValidationMode {
     STRICT;
 
     public static ResourceValidationMode fromConfig(String raw) {
-        if (Strings.isBlank(raw)) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return LENIENT;
         }
 

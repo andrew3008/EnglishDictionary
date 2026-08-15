@@ -2,6 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.exporter;
 
 import java.util.List;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingKeyNormalizer;
@@ -33,7 +34,7 @@ final class BoundaryTextPolicy {
     }
 
     private static TextResult scrubName(String name, String ruleKey, ScrubbingRuntime runtime) {
-        if (name == null || name.isEmpty()) {
+        if (StringUtils.isNullOrEmpty(name)) {
             return new TextResult(name, false);
         }
 
@@ -52,11 +53,11 @@ final class BoundaryTextPolicy {
         }
 
         String result = apply(name, decision, runtime);
-        return new TextResult((result == null || result.isEmpty()) ? REDACTED : result, criticalFailure);
+        return new TextResult(StringUtils.isNullOrEmpty(result) ? REDACTED : result, criticalFailure);
     }
 
     static TextResult scrubStatusDescription(String description, ScrubbingRuntime runtime) {
-        if (description == null || description.isEmpty()) {
+        if (StringUtils.isNullOrEmpty(description)) {
             return new TextResult(description, false);
         }
 

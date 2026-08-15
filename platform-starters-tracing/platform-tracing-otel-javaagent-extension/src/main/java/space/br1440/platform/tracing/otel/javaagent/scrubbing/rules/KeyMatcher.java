@@ -4,11 +4,13 @@ import lombok.experimental.UtilityClass;
 
 import java.util.Locale;
 
+import space.br1440.platform.common.util.StringUtils;
+
 @UtilityClass
 final class KeyMatcher {
 
     static String normalize(String key) {
-        if (key == null || key.isEmpty()) {
+        if (StringUtils.isNullOrEmpty(key)) {
             return "";
         }
 

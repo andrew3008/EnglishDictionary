@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.engine;
 
 import lombok.experimental.UtilityClass;
 
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 /**
  * Усечение IP-адресов до подсети (prefix-grouping): IPv4 → {@code /24}, IPv6 → {@code /64}.
@@ -16,7 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
 public final class IpPrefixTruncator {
 
     public static String truncate(String value) {
-        if (Strings.isBlank(value)) {
+        if (StringUtils.isNullOrBlank(value)) {
             return null;
         }
 

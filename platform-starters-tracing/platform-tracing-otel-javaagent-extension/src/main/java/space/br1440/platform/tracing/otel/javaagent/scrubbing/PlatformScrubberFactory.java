@@ -27,7 +27,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -159,7 +159,7 @@ public final class PlatformScrubberFactory {
                 .filter(r -> !r.critical() && r.priority() < PriorityHardening.CUSTOM_PRIORITY_FLOOR)
                 .count());
 
-        String loadingMode = Strings.isBlank(rulesExtensionsProperty) ? "NONE" : "PLATFORM_RULES_EXTENSIONS";
+        String loadingMode = StringUtils.isNullOrBlank(rulesExtensionsProperty) ? "NONE" : "PLATFORM_RULES_EXTENSIONS";
         StartupDiagnostics.emit(
                 builtInRules.size(), bundledSpiRules.size(), customRules.size(),
                 loadingMode, extensionRuleLoader.getFailedProviders(),
@@ -208,7 +208,7 @@ public final class PlatformScrubberFactory {
 
     private static Set<String> collectOtelExtensionCanonicalPaths(ConfigProperties config) {
         String raw = JavaAgentExtensionPaths.resolveRawValue(config);
-        if (Strings.isBlank(raw)) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return Set.of();
         }
 

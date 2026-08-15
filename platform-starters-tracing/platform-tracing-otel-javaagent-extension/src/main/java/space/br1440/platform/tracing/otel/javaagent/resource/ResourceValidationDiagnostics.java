@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.utils.Strings;
+import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -66,7 +66,7 @@ public final class ResourceValidationDiagnostics {
                 otelEnv.getAttribute(SERVICE_NAME),
                 existing.getAttribute(SERVICE_NAME));
 
-        return Strings.isNotBlank(name)
+        return !StringUtils.isNullOrBlank(name)
                 && !ResourceAttributeResolver.SDK_UNKNOWN_SERVICE.equals(name)
                 && !name.startsWith("unknown_service");
     }
@@ -76,7 +76,7 @@ public final class ResourceValidationDiagnostics {
                                             Resource otelEnv,
                                             Resource existing) {
         String value = firstNonNull(resolved.get(key), otelEnv.getAttribute(key), existing.getAttribute(key));
-        return Strings.isBlank(value) || EnvironmentNormalizer.UNKNOWN.equals(value);
+        return StringUtils.isNullOrBlank(value) || EnvironmentNormalizer.UNKNOWN.equals(value);
     }
 
     private static String firstNonNull(String a, String b, String c) {
