@@ -7,6 +7,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.kafka.annotation.KafkaListener;
+import space.br1440.platform.common.util.ListUtils;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
@@ -48,7 +49,7 @@ public class KafkaBatchLinksAspect {
             return pjp.proceed();
         }
 
-        if (records == null || records.isEmpty()) {
+        if (ListUtils.isNullOrEmpty(records)) {
             return pjp.proceed();
         }
 

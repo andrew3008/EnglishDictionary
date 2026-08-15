@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.core.env.Environment;
+
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
 
 @Slf4j
 @UtilityClass
@@ -55,7 +55,7 @@ public final class TracingBootstrapSettingsResolver {
                                                            String propertyName,
                                                            Class<E> enumType) {
         String raw = environment.getProperty(propertyName);
-        if (raw == null || raw.trim().isEmpty()) {
+        if (StringUtils.isNullOrBlank(raw)) {
             if (TracingBootstrapPropertyNames.CONFIGURATION_AUTHORITY.equals(propertyName)) {
                 throw new IllegalStateException("Missing platform.tracing.configuration.authority");
             }

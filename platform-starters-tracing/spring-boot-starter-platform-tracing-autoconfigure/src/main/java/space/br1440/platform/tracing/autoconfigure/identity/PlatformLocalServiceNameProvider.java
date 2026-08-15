@@ -4,6 +4,8 @@ import java.util.function.Supplier;
 
 import org.springframework.core.env.Environment;
 
+import space.br1440.platform.common.util.StringUtils;
+
 /**
  * Поставщик логического имени текущего сервиса.
  * <p>
@@ -52,6 +54,6 @@ public final class PlatformLocalServiceNameProvider implements Supplier<String> 
     }
 
     private static boolean isPresent(String value) {
-        return (value != null) && !value.isBlank();
+        return !StringUtils.isNullOrBlank(value);
     }
 }

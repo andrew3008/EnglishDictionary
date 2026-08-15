@@ -1,9 +1,11 @@
 package space.br1440.platform.tracing.autoconfigure.control.settings;
 
+import space.br1440.platform.common.util.StringUtils;
+
 public record ExpectedSettingsRevision(String runtimeInstanceId, long acceptedSequence) {
 
     public ExpectedSettingsRevision {
-        if (runtimeInstanceId == null || runtimeInstanceId.isBlank()) {
+        if (StringUtils.isNullOrBlank(runtimeInstanceId)) {
             throw new IllegalArgumentException("runtimeInstanceId must not be blank");
         }
 

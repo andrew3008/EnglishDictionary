@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 import space.br1440.platform.tracing.otel.semconv.policy.SemconvMetrics;
 import space.br1440.platform.tracing.otel.span.enrich.DefaultSpanEnricher;
+import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.api.OpenTelemetry;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +69,7 @@ public class SemanticLayerAutoConfiguration {
                     WARN is recommended for production runtime (see ADR-semconv-validation-modes)""");
 
             case DISABLED -> {
-                String reason = (disabledReason == null || disabledReason.isBlank()) ? UNSPECIFIED_REASON : disabledReason;
+                String reason = StringUtils.isNullOrBlank(disabledReason) ? UNSPECIFIED_REASON : disabledReason;
                 log.warn("""
                         platform.tracing.semantic.validation-mode=DISABLED: runtime semantic validation is off \
                         (reason='{}'). This is an emergency opt-out, NOT a migration mode. PII scrubbing \
