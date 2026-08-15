@@ -5,7 +5,7 @@ import space.br1440.platform.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * SP-02: Запрошенный или действующий режим валидации для {@code ValidatingSpanProcessor}.
+ * Запрошенный или действующий режим валидации для {@code ValidatingSpanProcessor}.
  * <p>
  * Конфигурационное свойство — {@code platform.tracing.validation.mode}, см. {@link
  * space.br1440.platform.tracing.otel.javaagent.configuration.ValidationExtensionConfig}.
