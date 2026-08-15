@@ -10,6 +10,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.TreeSet;
 
 import lombok.experimental.UtilityClass;
@@ -23,6 +24,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @UtilityClass
 final class TracePipelineSpiAttestation {
+
+    private static final Set<String> PINNED_UPSTREAM_AGENT_PROVIDERS = Set.of(
+            "io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer",
+            "io.opentelemetry.javaagent.tooling.config.ConfigurationPropertiesSupplier",
+            "io.opentelemetry.javaagent.tooling.config.OtlpProtocolPropertiesSupplier",
+            "io.opentelemetry.contrib.baggage.processor.BaggageProcessorCustomizer",
+            "io.opentelemetry.javaagent.shaded.instrumentation.resources.internal.ResourceProviderPropertiesCustomizer"
+    );
 
     static final String LEGACY_TRACER_PROVIDER_CONFIGURER_SPI =
             "io.opentelemetry.sdk.autoconfigure.spi.traces.SdkTracerProviderConfigurer";
@@ -53,6 +62,10 @@ final class TracePipelineSpiAttestation {
                     fail("Platform AutoConfigurationCustomizerProvider " + platformProviderType.getName()
                             + " reports order=" + order + ", expected=" + platformOrder);
                 }
+                continue;
+            }
+
+            if (isAllowlistedUpstreamProviderName(type.getName())) {
                 continue;
             }
 
@@ -129,6 +142,10 @@ final class TracePipelineSpiAttestation {
         }
 
         return providers;
+    }
+
+    static boolean isAllowlistedUpstreamProviderName(String providerName) {
+        return PINNED_UPSTREAM_AGENT_PROVIDERS.contains(providerName);
     }
 
     private static List<String> discoverServiceProviderNames(String spiName, ClassLoader classLoader) {

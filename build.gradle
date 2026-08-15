@@ -62,6 +62,7 @@ tasks.register('publishAllToMavenLocal') {
 
 def tracingPublicationProjects = [
         ':spring-boot-starter-platform-bom',
+        ':platform-starters-common:platform-starters-common-util',
         ':platform-starters-tracing:spring-boot-starter-platform-tracing-api',
         ':platform-starters-tracing:spring-boot-starter-platform-tracing-otel',
         ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure',

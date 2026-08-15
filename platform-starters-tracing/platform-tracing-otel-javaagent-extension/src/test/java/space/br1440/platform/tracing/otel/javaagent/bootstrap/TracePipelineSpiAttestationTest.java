@@ -40,6 +40,23 @@ class TracePipelineSpiAttestationTest {
     private static final int PLATFORM_ORDER = 100;
 
     @Test
+    void pinnedJavaAgentTracerProviderConfigurerIsAllowlistedByExactNameOnly() {
+        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+                "io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer")).isTrue();
+        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+                "io.opentelemetry.javaagent.tooling.config.ConfigurationPropertiesSupplier")).isTrue();
+        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+                "io.opentelemetry.javaagent.tooling.config.OtlpProtocolPropertiesSupplier")).isTrue();
+        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+                "io.opentelemetry.contrib.baggage.processor.BaggageProcessorCustomizer")).isTrue();
+        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+                "io.opentelemetry.javaagent.shaded.instrumentation.resources.internal."
+                        + "ResourceProviderPropertiesCustomizer")).isTrue();
+        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+                "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer")).isFalse();
+    }
+
+    @Test
     void platformProviderAlonePasses() {
         TracePipelineSpiAttestation.attest(PLATFORM_ORDER, BootstrapAutoConfigurationCustomizerProvider.class);
     }
