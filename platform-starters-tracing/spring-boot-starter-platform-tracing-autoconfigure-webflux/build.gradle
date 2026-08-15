@@ -16,6 +16,7 @@ dependencies {
     api 'io.micrometer:micrometer-observation'
     api 'io.micrometer:context-propagation'
 
+    implementation project(':platform-starters-common:platform-starters-common-util')
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework.boot:spring-boot'
     implementation 'org.slf4j:slf4j-api'

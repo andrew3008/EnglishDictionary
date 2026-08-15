@@ -15,6 +15,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.function.client.WebClient;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
@@ -82,7 +83,7 @@ public class ReactiveTracingAutoConfiguration {
         return () -> {
             try {
                 String fromMdc = MDC.get(TracingMdcKeys.REMOTE_SERVICE);
-                if (fromMdc != null && !fromMdc.isBlank()) {
+                if (!StringUtils.isNullOrBlank(fromMdc)) {
                     return Optional.of(fromMdc);
                 }
             } catch (RuntimeException e) {

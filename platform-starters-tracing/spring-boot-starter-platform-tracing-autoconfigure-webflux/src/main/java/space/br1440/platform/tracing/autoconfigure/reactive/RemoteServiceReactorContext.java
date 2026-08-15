@@ -3,6 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.reactive;
 import lombok.experimental.UtilityClass;
 import reactor.util.context.Context;
 import reactor.util.context.ContextView;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 
 import java.util.Optional;
@@ -13,7 +14,7 @@ public final class RemoteServiceReactorContext {
     public static final String CONTEXT_KEY = TracingMdcKeys.REMOTE_SERVICE;
 
     public static Context contextWrite(String remoteService) {
-        if (remoteService == null || remoteService.isBlank()) {
+        if (StringUtils.isNullOrBlank(remoteService)) {
             return Context.empty();
         }
 
@@ -26,7 +27,7 @@ public final class RemoteServiceReactorContext {
         }
 
         Object value = contextView.get(CONTEXT_KEY);
-        if (value instanceof String string && !string.isBlank()) {
+        if (value instanceof String string && !StringUtils.isNullOrBlank(string)) {
             return Optional.of(string);
         }
 
