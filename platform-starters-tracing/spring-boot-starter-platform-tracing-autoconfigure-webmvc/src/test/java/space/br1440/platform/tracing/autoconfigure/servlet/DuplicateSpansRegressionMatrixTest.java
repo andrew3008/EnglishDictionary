@@ -39,7 +39,7 @@ class DuplicateSpansRegressionMatrixTest {
                     WebMvcSuppressMicrometerTracingAutoConfiguration.class));
 
     @Test
-    @DisplayName("[suppress off] suppressor bean отсутствует — Micrometer Observation работает штатно")
+    @DisplayName("[suppress off] suppressor bean is absent — Micrometer Observation works normally")
     void suppressorAbsent_whenSuppressOff() {
         contextRunner
                 .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=false")
@@ -47,13 +47,13 @@ class DuplicateSpansRegressionMatrixTest {
     }
 
     @Test
-    @DisplayName("[suppress off, default] suppressor bean отсутствует по умолчанию")
+    @DisplayName("[suppress off, default] suppressor bean is absent by default")
     void suppressorAbsent_byDefault() {
         contextRunner.run(ctx -> assertThat(ctx).doesNotHaveBean("platformMvcHttpObservationSuppressor"));
     }
 
     @Test
-    @DisplayName("[suppress on] suppressor bean активен — Micrometer Observation подавлен")
+    @DisplayName("[suppress on] suppressor bean is active — Micrometer Observation is suppressed")
     void suppressorActive_whenSuppressOn() {
         contextRunner
                 .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
@@ -61,7 +61,7 @@ class DuplicateSpansRegressionMatrixTest {
     }
 
     @Test
-    @DisplayName("[Agent on, suppress on] комбинация = штатный prod-сценарий: suppressor активен")
+    @DisplayName("[Agent on, suppress on] combination = standard prod scenario: suppressor is active")
     void productionScenario_suppressorActiveAndAgentDetectedConceptually() {
         // Agent-сторона унит-тестом не имитируется (detect через системную JVM-инициализацию).
         // Здесь фиксируется только bean-контракт. Agent-side детектируется
