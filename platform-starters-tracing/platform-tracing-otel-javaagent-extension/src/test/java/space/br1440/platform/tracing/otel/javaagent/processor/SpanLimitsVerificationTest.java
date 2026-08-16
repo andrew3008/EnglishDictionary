@@ -41,7 +41,7 @@ class SpanLimitsVerificationTest {
     }
 
     @Test
-    void превышение_лимита_атрибутов_учитывается_как_dropped() {
+    void attribute_limit_exceeded_is_counted_as_dropped() {
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxNumberOfAttributes(2).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
@@ -57,7 +57,7 @@ class SpanLimitsVerificationTest {
     }
 
     @Test
-    void превышение_лимита_событий_учитывается_как_dropped() {
+    void event_limit_exceeded_is_counted_as_dropped() {
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxNumberOfEvents(1).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
@@ -72,7 +72,7 @@ class SpanLimitsVerificationTest {
     }
 
     @Test
-    void превышение_лимита_links_учитывается_как_dropped() {
+    void link_limit_exceeded_is_counted_as_dropped() {
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxNumberOfLinks(1).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
@@ -88,7 +88,7 @@ class SpanLimitsVerificationTest {
     }
 
     @Test
-    void усечение_значения_атрибута_по_числу_символов() {
+    void attribute_value_is_truncated_by_character_count() {
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         SpanLimits limits = SpanLimits.builder().setMaxAttributeValueLength(5).build();
         Tracer tracer = tracerWithLimits(metrics, limits);
@@ -105,7 +105,7 @@ class SpanLimitsVerificationTest {
     }
 
     @Test
-    void отсутствие_превышения_не_даёт_отрицательных_счётчиков() {
+    void no_limit_exceeded_does_not_yield_negative_counters() {
         SpanLimitsMetricsProcessor metrics = new SpanLimitsMetricsProcessor();
         Tracer tracer = tracerWithLimits(metrics, SpanLimits.getDefault());
 

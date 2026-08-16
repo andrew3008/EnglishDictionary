@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SamplingRuntimeUpdateCharacterizationTest {
 
     @Test
-    void route_ratio_update_меняет_reason_с_global_на_route() throws Exception {
+    void route_ratio_update_changes_reason_from_global_to_route() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -53,7 +53,7 @@ class SamplingRuntimeUpdateCharacterizationTest {
     }
 
     @Test
-    void параллельное_чтение_после_валидного_update_не_видит_невалидный_ratio() throws Exception {
+    void parallel_read_after_valid_update_does_not_see_invalid_ratio() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));

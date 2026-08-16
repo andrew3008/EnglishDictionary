@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class KeyMatcherTest {
 
     @Test
-    void разные_стили_записи_client_secret_нормализуются_одинаково() {
+    void different_client_secret_spellings_normalize_identically() {
         String expected = KeyMatcher.normalize("client-secret");
         assertThat(KeyMatcher.normalize("client_secret")).isEqualTo(expected);
         assertThat(KeyMatcher.normalize("client.secret")).isEqualTo(expected);
@@ -20,7 +20,7 @@ class KeyMatcherTest {
     }
 
     @Test
-    void containsAny_находит_токен_в_нормализованном_ключе() {
+    void containsAny_finds_token_in_normalized_key() {
         assertThat(KeyMatcher.containsAny(KeyMatcher.normalize("http.request.header.authorization"),
                 "authorization")).isTrue();
         assertThat(KeyMatcher.containsAny(KeyMatcher.normalize("user.name"), "secret", "password"))
@@ -28,7 +28,7 @@ class KeyMatcherTest {
     }
 
     @Test
-    void пустой_или_null_ключ_не_матчится() {
+    void empty_or_null_key_does_not_match() {
         assertThat(KeyMatcher.normalize(null)).isEmpty();
         assertThat(KeyMatcher.containsAny("", "secret")).isFalse();
     }

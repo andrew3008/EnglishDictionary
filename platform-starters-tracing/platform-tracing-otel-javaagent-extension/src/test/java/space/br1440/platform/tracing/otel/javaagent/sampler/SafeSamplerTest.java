@@ -36,7 +36,7 @@ class SafeSamplerTest {
     };
 
     @Test
-    void падение_делегата_не_бросается_и_закрывается_drop() {
+    void delegate_failure_is_not_thrown_and_falls_back_to_drop() {
         TracingDiagnostics diagnostics = new TracingDiagnostics();
         SafeSampler safe = new SafeSampler(ALWAYS_THROWS, diagnostics);
 
@@ -47,13 +47,13 @@ class SafeSamplerTest {
     }
 
     @Test
-    void getDescription_безопасен_при_падении_делегата() {
+    void getDescription_is_safe_when_delegate_fails() {
         SafeSampler safe = new SafeSampler(ALWAYS_THROWS, new TracingDiagnostics());
         assertThat(safe.getDescription()).isEqualTo("SafeSampler{description_unavailable}");
     }
 
     @Test
-    void null_результат_делегата_трактуется_как_сбой() {
+    void null_delegate_result_is_treated_as_failure() {
         Sampler returnsNull = new Sampler() {
             @Override
             public SamplingResult shouldSample(Context parentContext, String traceId, String name,
@@ -76,7 +76,7 @@ class SafeSamplerTest {
     }
 
     @Test
-    void degraded_mode_перестаёт_дёргать_стабильно_падающий_делегат() {
+    void degraded_mode_stops_calling_consistently_failing_delegate() {
         AtomicInteger delegateCalls = new AtomicInteger();
         Sampler counting = new Sampler() {
             @Override

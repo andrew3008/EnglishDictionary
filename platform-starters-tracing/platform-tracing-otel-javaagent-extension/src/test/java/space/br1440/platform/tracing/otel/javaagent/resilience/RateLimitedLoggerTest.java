@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RateLimitedLoggerTest {
 
     @Test
-    void двухфазный_throttling_подавляет_лишние_сообщения() {
+    void two_phase_throttling_suppresses_extra_messages() {
         AtomicLong clock = new AtomicLong(0);
         // fast=2/мин, throttled=1/мин, время не идёт.
         RateLimitedLogger logger = new RateLimitedLogger(
@@ -36,7 +36,7 @@ class RateLimitedLoggerTest {
     }
 
     @Test
-    void recovery_once_срабатывает_однократно_после_проблемы() {
+    void recovery_once_fires_once_after_problem() {
         RateLimitedLogger logger = new RateLimitedLogger(NOPLogger.NOP_LOGGER);
 
         // Пока проблем не было — recovery не пишется.
@@ -48,7 +48,7 @@ class RateLimitedLoggerTest {
     }
 
     @Test
-    void runtime_log_level_приглушает_warn_при_уровне_ниже_WARN() {
+    void runtime_log_level_suppresses_warn_when_level_below_WARN() {
         AtomicLong clock = new AtomicLong(0);
         PlatformLogControl control = new PlatformLogControl();
         RateLimitedLogger logger = new RateLimitedLogger(

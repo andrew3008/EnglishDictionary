@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 class SpanWatchdogProcessorAdvancedTest {
 
     @Test
-    void getActiveSpanCount_отражает_число_живых_span_ов_до_close() {
+    void getActiveSpanCount_reflects_live_span_count_before_close() {
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
@@ -52,7 +52,7 @@ class SpanWatchdogProcessorAdvancedTest {
     }
 
     @Test
-    void повторный_shutdown_не_бросает_и_оставляет_счётчики_в_нуле() {
+    void repeated_shutdown_does_not_throw_and_keeps_counters_at_zero() {
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime);
 
@@ -63,7 +63,7 @@ class SpanWatchdogProcessorAdvancedTest {
     }
 
     @Test
-    void forceFlush_на_пустом_наборе_не_роняет_и_возвращает_success() {
+    void forceFlush_on_empty_set_does_not_crash_and_returns_success() {
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 Duration.ofMillis(1), Duration.ofMillis(1), System::nanoTime);
 
@@ -75,7 +75,7 @@ class SpanWatchdogProcessorAdvancedTest {
     }
 
     @Test
-    void платформенный_атрибут_PLATFORM_TIMEOUT_проставляется_корректным_значением_для_span() {
+    void platform_attribute_PLATFORM_TIMEOUT_is_set_with_correct_value_for_span() {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
@@ -100,7 +100,7 @@ class SpanWatchdogProcessorAdvancedTest {
     }
 
     @Test
-    void проставка_таймаута_трассы_имеет_приоритет_над_span_кейсом_только_когда_оба_сработали() {
+    void trace_timeout_attribute_takes_priority_over_span_case_only_when_both_fired() {
         // Если оба таймаута одновременно превышены, кодовая ветка выбирает spanExpired раньше:
         // тест документирует фактическое поведение реализации (spanExpired->span; иначе trace).
         InMemorySpanExporter exporter = InMemorySpanExporter.create();

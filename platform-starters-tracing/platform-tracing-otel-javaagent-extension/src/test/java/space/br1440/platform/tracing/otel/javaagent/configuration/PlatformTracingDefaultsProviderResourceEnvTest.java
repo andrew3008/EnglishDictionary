@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlatformTracingDefaultsProviderResourceEnvTest {
 
     @Test
-    void env_service_name_пробрасывается_в_property() {
+    void env_service_name_is_propagated_to_property() {
         Map<String, String> env = Map.of(ExtensionEnvironmentVariables.SERVICE_NAME, "via-env");
 
         Map<String, String> defaults = new PlatformTracingDefaultsProvider(env::get).supply();
@@ -25,7 +25,7 @@ class PlatformTracingDefaultsProviderResourceEnvTest {
     }
 
     @Test
-    void все_resource_env_переменные_маппятся() {
+    void all_resource_env_variables_are_mapped() {
         Map<String, String> env = Map.of(
                 ExtensionEnvironmentVariables.SERVICE_VERSION,     "1.2.3",
                 ExtensionEnvironmentVariables.SERVICE_ENVIRONMENT, "production",
@@ -42,7 +42,7 @@ class PlatformTracingDefaultsProviderResourceEnvTest {
     }
 
     @Test
-    void пустой_env_не_добавляет_resource_ключи() {
+    void empty_env_does_not_add_resource_keys() {
         Map<String, String> defaults = new PlatformTracingDefaultsProvider(name -> null).supply();
 
         assertThat(defaults).doesNotContainKey(PlatformResourceCustomizer.PROP_SERVICE_NAME);

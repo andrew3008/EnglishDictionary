@@ -29,7 +29,7 @@ class CompositeSamplerRouteRatioTest {
             AttributeKey.stringKey(PlatformAttributes.PLATFORM_SAMPLING_REASON);
 
     @Test
-    void route_ratio_1_сэмплирует_при_глобальном_ratio_0() {
+    void route_ratio_1_samples_when_global_ratio_0() {
         // Route-правило стоит в цепочке ДО DefaultRatioRule — глобальный 0.0 не должен задавить route 1.0.
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
                 true, Map.of("/api/v1/critical", 1.0), 0.0);
@@ -47,7 +47,7 @@ class CompositeSamplerRouteRatioTest {
     }
 
     @Test
-    void route_ratio_0_дропает_при_глобальном_ratio_1() {
+    void route_ratio_0_drops_when_global_ratio_1() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
                 true, Map.of("/api/v1/noisy", 0.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
@@ -64,7 +64,7 @@ class CompositeSamplerRouteRatioTest {
     }
 
     @Test
-    void путь_вне_route_ratios_падает_на_глобальный_ratio() {
+    void path_outside_route_ratios_falls_back_to_global_ratio() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
                 true, Map.of("/api/v1/noisy", 0.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
@@ -81,7 +81,7 @@ class CompositeSamplerRouteRatioTest {
     }
 
     @Test
-    void решение_детерминировано_по_traceId_при_дробном_ratio() {
+    void decision_is_deterministic_by_traceId_for_fractional_ratio() {
         // ADR раздел 2.3: traceIdRatioBased — функция traceId; повторные вызовы и независимые
         // инстансы сэмплера с одинаковой конфигурацией обязаны давать одно и то же решение.
         TracingSettingsSource holderA = TracingSettingsSource.isolatedSampling(true, Map.of("/api", 0.5), 0.0);
@@ -126,7 +126,7 @@ class CompositeSamplerRouteRatioTest {
     }
 
     @Test
-    void hard_drop_сильнее_route_ratio_1() {
+    void hard_drop_beats_route_ratio_1() {
         // Порядок цепочки (ADR 2.1): HardDropRule (#2) стоит до RouteRatioRule (#6).
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(
                 true, Map.of("/api/v1/critical", 1.0), 1.0);

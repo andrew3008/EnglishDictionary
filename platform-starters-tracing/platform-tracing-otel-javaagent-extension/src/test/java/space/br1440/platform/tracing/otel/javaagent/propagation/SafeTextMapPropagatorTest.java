@@ -37,7 +37,7 @@ class SafeTextMapPropagatorTest {
     };
 
     @Test
-    void extract_при_сбое_возвращает_исходный_context() {
+    void extract_on_failure_returns_original_context() {
         TracingDiagnostics diagnostics = new TracingDiagnostics();
         SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS, diagnostics);
         Context input = Context.root();
@@ -52,7 +52,7 @@ class SafeTextMapPropagatorTest {
     }
 
     @Test
-    void inject_при_сбое_не_бросает() {
+    void inject_on_failure_does_not_throw() {
         TracingDiagnostics diagnostics = new TracingDiagnostics();
         SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS, diagnostics);
 
@@ -62,7 +62,7 @@ class SafeTextMapPropagatorTest {
     }
 
     @Test
-    void fields_при_сбое_возвращает_пустой_список() {
+    void fields_on_failure_returns_empty_list() {
         SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS, new TracingDiagnostics());
         assertThat(safe.fields()).isEmpty();
     }
@@ -88,7 +88,7 @@ class SafeTextMapPropagatorTest {
     };
 
     @Test
-    void extract_при_fatal_throwable_не_поглощается_и_пробрасывается() {
+    void extract_on_fatal_throwable_is_not_swallowed_and_is_rethrown() {
         // given: safe boundary поверх delegate, бросающего LinkageError
         SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS_FATAL, new TracingDiagnostics());
 
@@ -98,7 +98,7 @@ class SafeTextMapPropagatorTest {
     }
 
     @Test
-    void inject_при_fatal_throwable_не_поглощается_и_пробрасывается() {
+    void inject_on_fatal_throwable_is_not_swallowed_and_is_rethrown() {
         SafeTextMapPropagator safe = new SafeTextMapPropagator(ALWAYS_THROWS_FATAL, new TracingDiagnostics());
 
         org.junit.jupiter.api.Assertions.assertThrows(LinkageError.class,

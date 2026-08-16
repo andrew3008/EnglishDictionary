@@ -39,7 +39,7 @@ import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 class BootstrapCoordinatorTest {
 
     @Test
-    void activate_без_предшествующего_prepare_классифицируется_как_PLATFORM_ACP_NOT_EXECUTED() {
+    void activate_without_prior_prepare_classified_as_PLATFORM_ACP_NOT_EXECUTED() {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
 
         assertThatThrownBy(coordinator::activate)
@@ -49,7 +49,7 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
-    void повторный_activate_после_успешной_активации_классифицируется_как_DUPLICATE_ACTIVATION() {
+    void repeated_activate_after_successful_activation_classified_as_DUPLICATE_ACTIVATION() {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         satisfyReadinessBarrier(session);
@@ -62,7 +62,7 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
-    void второй_prepare_с_идентичной_конфигурацией_классифицируется_как_SECOND_SDK_BUILD() {
+    void second_prepare_with_identical_configuration_classified_as_SECOND_SDK_BUILD() {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         coordinator.prepare(config(Map.of()));
 
@@ -73,7 +73,7 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
-    void второй_prepare_с_иной_конфигурацией_классифицируется_как_CONFIGURATION_SPLIT_BRAIN() {
+    void second_prepare_with_different_configuration_classified_as_CONFIGURATION_SPLIT_BRAIN() {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         coordinator.prepare(config(Map.of()));
 
@@ -84,7 +84,7 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
-    void сбой_в_середине_activate_откатывает_LIFO_и_сохраняет_диагностический_MBean_с_FAILED() {
+    void failure_mid_activate_rolls_back_LIFO_and_keeps_diagnostic_MBean_with_FAILED() {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         // Пре-отравление runtime-generation: сама activate() внутри вызовет registerRuntimeControls()
@@ -102,7 +102,7 @@ class BootstrapCoordinatorTest {
     }
 
     @Test
-    void терминальный_coordinator_повторяет_один_и_тот_же_код_для_любой_последующей_операции() {
+    void terminal_coordinator_repeats_same_code_for_any_subsequent_operation() {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         assertThatThrownBy(coordinator::activate);
 
@@ -119,7 +119,7 @@ class BootstrapCoordinatorTest {
      * {@code lifecycle=ACTIVE} together with {@code wire.lifecycle=INITIALIZING}.
      */
     @Test
-    void currentSnapshot_никогда_не_виден_читателю_в_рассогласованной_комбинации_во_время_activate() throws InterruptedException {
+    void currentSnapshot_never_visible_to_reader_in_inconsistent_combination_during_activate() throws InterruptedException {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         AutoconfigureSession session = coordinator.prepare(config(Map.of()));
         satisfyReadinessBarrier(session);

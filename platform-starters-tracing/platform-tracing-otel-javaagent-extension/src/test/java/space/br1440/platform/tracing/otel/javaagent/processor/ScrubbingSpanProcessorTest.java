@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ScrubbingSpanProcessorTest {
 
     @Test
-    void drop_по_имени_password_ключа_перезаписывает_пустой_строкой() {
+    void drop_by_password_key_name_overwrites_with_empty_string() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("password")
         )))) {
@@ -33,7 +33,7 @@ class ScrubbingSpanProcessorTest {
     }
 
     @Test
-    void jwt_значение_полностью_удаляется() {
+    void jwt_value_is_fully_removed() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("jwt")
         )))) {
@@ -48,7 +48,7 @@ class ScrubbingSpanProcessorTest {
     }
 
     @Test
-    void email_хэшируется_когда_задан_hmac_ключ() {
+    void email_is_hashed_when_hmac_key_is_set() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("email")
         ), MaskedSecret.of("secret-key"), false))) {
@@ -67,7 +67,7 @@ class ScrubbingSpanProcessorTest {
     }
 
     @Test
-    void email_деградирует_до_маски_без_hmac_ключа() {
+    void email_degrades_to_mask_without_hmac_key() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("email")
         )))) {
@@ -84,7 +84,7 @@ class ScrubbingSpanProcessorTest {
     }
 
     @Test
-    void oauth_authorization_заголовок_удаляется() {
+    void oauth_authorization_header_is_removed() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {

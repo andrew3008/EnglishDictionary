@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DegradedModeControllerTest {
 
     @Test
-    void деградирует_при_открытии_breaker_компонента_и_публикует_флаг() {
+    void degrades_when_component_breaker_opens_and_publishes_flag() {
         TracingDiagnostics diagnostics = new TracingDiagnostics();
         DegradedModeController controller = new DegradedModeController(
                 diagnostics,
@@ -31,7 +31,7 @@ class DegradedModeControllerTest {
     }
 
     @Test
-    void успех_processor_не_влияет_на_открытый_sampler() {
+    void processor_success_does_not_affect_open_sampler() {
         TracingDiagnostics diagnostics = new TracingDiagnostics();
         DegradedModeController controller = new DegradedModeController(
                 diagnostics,

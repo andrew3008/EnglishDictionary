@@ -39,7 +39,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void tryRegisterMBeans_регистрирует_все_шесть_доменных_MBean() throws Exception {
+    void tryRegisterMBeans_registers_all_six_domain_MBeans() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
         wireRequiredComponents(registrar, holder);
@@ -53,7 +53,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void tryRegisterMBeans_требует_configHolder_перед_регистрацией() {
+    void tryRegisterMBeans_requires_configHolder_before_registration() {
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         wireComponentsExceptAcceptedPolicy(registrar, holder);
@@ -62,7 +62,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void tryRegisterMBeans_идемпотентен_повторный_вызов_не_дублирует_регистрацию() throws Exception {
+    void tryRegisterMBeans_is_idempotent_repeated_call_does_not_duplicate_registration() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
         wireRequiredComponents(registrar, holder);
@@ -72,7 +72,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void tryRegisterMBeans_второй_registrar_применяет_REPLACE_EXISTING() throws Exception {
+    void tryRegisterMBeans_second_registrar_applies_REPLACE_EXISTING() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         DomainMBeanRegistrar first = new DomainMBeanRegistrar();
         wireRequiredComponents(first, holder);
@@ -83,7 +83,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void unregisterAllMBeans_снимает_регистрацию_всех_шести() throws Exception {
+    void unregisterAllMBeans_unregisters_all_six() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
         wireRequiredComponents(registrar, holder);
@@ -100,7 +100,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void concurrentDoubleCall_tryRegisterMBeans_не_нарушает_инварианты() throws Exception {
+    void concurrentDoubleCall_tryRegisterMBeans_does_not_break_invariants() throws Exception {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.5);
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
         wireRequiredComponents(registrar, holder);
@@ -132,7 +132,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void spy_registerMBean_вызывается_ровно_6_раз_ровно_у_одного_победителя_среди_параллельных_вызовов() throws Exception {
+    void spy_registerMBean_called_exactly_6_times_by_exactly_one_winner_among_parallel_calls() throws Exception {
         AtomicInteger registerCallCount = new AtomicInteger();
         MBeanServer countingSpy = new DelegatingMBeanServer(server) {
             @Override
@@ -185,7 +185,7 @@ class DomainMBeanRegistrarTest {
     }
 
     @Test
-    void rollback_addSuppressed_присутствует_если_откат_падает() throws Exception {
+    void rollback_addSuppressed_present_when_rollback_fails() throws Exception {
         final int[] registerCallCount = {0};
         MBeanServer faultySpy = new DelegatingMBeanServer(server) {
             @Override

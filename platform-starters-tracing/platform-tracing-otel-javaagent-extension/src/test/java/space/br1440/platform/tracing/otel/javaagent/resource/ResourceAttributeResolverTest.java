@@ -34,7 +34,7 @@ class ResourceAttributeResolverTest {
     }
 
     @Test
-    void platform_service_name_когда_otel_пуст() {
+    void platform_service_name_when_otel_empty() {
         Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-svc"));
 
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("platform-svc");
@@ -48,28 +48,28 @@ class ResourceAttributeResolverTest {
     }
 
     @Test
-    void version_из_platform_config() {
+    void version_from_platform_config() {
         Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_SERVICE_VERSION, "1.0"));
 
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("1.0");
     }
 
     @Test
-    void version_из_build_info_когда_platform_пуст() {
+    void version_from_build_info_when_platform_empty() {
         Attributes attrs = resolver.resolve(new TestConfigProperties(Map.of()), Resource.empty(), "2.0", null);
 
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("2.0");
     }
 
     @Test
-    void environment_нормализуется() {
+    void environment_is_normalized() {
         Attributes attrs = resolve(Map.of(PlatformResourceCustomizer.PROP_ENVIRONMENT, "prod"));
 
         assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo("production");
     }
 
     @Test
-    void все_пусто_c_group_id_unknown_policy_default() {
+    void all_empty_with_group_id_unknown_policy_default() {
         Attributes attrs = resolve(Map.of());
 
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();

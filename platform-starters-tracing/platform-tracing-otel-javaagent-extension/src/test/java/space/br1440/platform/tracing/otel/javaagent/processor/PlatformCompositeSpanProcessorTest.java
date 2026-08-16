@@ -47,7 +47,7 @@ class PlatformCompositeSpanProcessorTest {
     }
 
     @Test
-    void пустой_список_делегатов_не_роняет_композит() {
+    void empty_delegate_list_does_not_crash_composite() {
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of());
 
         // Все aggregate-флаги должны быть false — иначе SDK будет его без надобности дёргать.
@@ -61,7 +61,7 @@ class PlatformCompositeSpanProcessorTest {
     }
 
     @Test
-    void исключение_в_одном_делегате_не_прерывает_остальные_и_инкрементирует_счётчик() {
+    void exception_in_one_delegate_does_not_stop_others_and_increments_counter() {
         AtomicInteger okCalls = new AtomicInteger();
 
         SpanProcessor faulty = new NamedFaultyProcessor("faulty-onstart");
@@ -98,7 +98,7 @@ class PlatformCompositeSpanProcessorTest {
     }
 
     @Test
-    void onEnding_вызывается_только_для_ExtendedSpanProcessor() {
+    void onEnding_is_called_only_for_ExtendedSpanProcessor() {
         AtomicInteger onEndingCalls = new AtomicInteger();
 
         SpanProcessor plain = identified("test_plain", new SpanProcessor() {
@@ -168,7 +168,7 @@ class PlatformCompositeSpanProcessorTest {
     }
 
     @Test
-    void getProcessorErrorCounts_возвращает_immutable_snapshot() {
+    void getProcessorErrorCounts_returns_immutable_snapshot() {
         SpanProcessor faulty = new NamedFaultyProcessor("faulty");
         PlatformCompositeSpanProcessor composite =
                 new PlatformCompositeSpanProcessor(List.of(faulty));

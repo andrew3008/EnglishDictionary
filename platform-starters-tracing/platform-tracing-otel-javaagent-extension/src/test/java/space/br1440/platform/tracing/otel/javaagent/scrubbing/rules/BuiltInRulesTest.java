@@ -16,7 +16,7 @@ class BuiltInRulesTest {
     @Nested
     class Registry {
         @Test
-        void resolve_возвращает_корректные_типы() {
+        void resolve_returns_correct_types() {
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("email")).isInstanceOf(EmailRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("jwt")).isInstanceOf(JwtRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("password")).isInstanceOf(PasswordKeyRule.class);
@@ -32,14 +32,14 @@ class BuiltInRulesTest {
         }
 
         @Test
-        void resolve_не_зависит_от_регистра_и_возвращает_null_для_неизвестных() {
+        void resolve_is_case_insensitive_and_returns_null_for_unknown() {
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("EMAIL")).isInstanceOf(EmailRule.class);
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve("unknown")).isNull();
             assertThat(BuiltInSpanAttributeScrubbingRules.resolve(null)).isNull();
         }
 
         @Test
-        void приоритеты_заданы_в_enum_и_возрастают_от_строгих_к_мягким_действиям() {
+        void priorities_are_defined_in_enum_and_increase_from_strict_to_soft_actions() {
             // Единый источник истины — BuiltInSpanAttributeScrubbingRules enum.
             assertThat(BuiltInSpanAttributeScrubbingRules.OAUTH_HEADER.priority())
                     .isLessThan(BuiltInSpanAttributeScrubbingRules.X_AUTH_HEADER.priority());
@@ -60,7 +60,7 @@ class BuiltInRulesTest {
     }
 
     @Test
-    void password_key_правило_дропает_по_имени() {
+    void password_key_rule_drops_by_name() {
         SpanAttributeScrubbingRule rule = new PasswordKeyRule();
         assertThat(rule.evaluate("db.password", "x").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("app.client-secret", "x").action()).isEqualTo(ScrubbingAction.DROP);
@@ -68,7 +68,7 @@ class BuiltInRulesTest {
     }
 
     @Test
-    void jwt_правило_дропает_только_строковое_значение_с_eyJ() {
+    void jwt_rule_drops_only_string_value_starting_with_eyJ() {
         SpanAttributeScrubbingRule rule = new JwtRule();
         assertThat(rule.evaluate("v", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.sig").action())
                 .isEqualTo(ScrubbingAction.DROP);
@@ -77,14 +77,14 @@ class BuiltInRulesTest {
     }
 
     @Test
-    void email_правило_хэширует_строку_с_email() {
+    void email_rule_hashes_string_with_email() {
         SpanAttributeScrubbingRule rule = new EmailRule();
         assertThat(rule.evaluate("c", "ivan@example.com").action()).isEqualTo(ScrubbingAction.HASH);
         assertThat(rule.evaluate("c", "no email here").action()).isEqualTo(ScrubbingAction.KEEP);
     }
 
     @Test
-    void user_identity_дропает_фио_и_хэширует_логин() {
+    void user_identity_drops_full_name_and_hashes_login() {
         SpanAttributeScrubbingRule rule = new UserIdentityRule();
         assertThat(rule.evaluate("user.firstName", "Иван").action()).isEqualTo(ScrubbingAction.DROP);
         assertThat(rule.evaluate("user.family_name", "Петров").action()).isEqualTo(ScrubbingAction.DROP);
@@ -92,7 +92,7 @@ class BuiltInRulesTest {
     }
 
     @Test
-    void location_дропает_геокоординаты() {
+    void location_drops_geocoordinates() {
         SpanAttributeScrubbingRule rule = new LocationRule();
         assertThat(rule.evaluate("geo.latitude", 55.7).action())
                 .isEqualTo(ScrubbingAction.DROP);
@@ -101,7 +101,7 @@ class BuiltInRulesTest {
     }
 
     @Test
-    void ip_address_возвращает_truncate_с_маркером() {
+    void ip_address_returns_truncate_with_marker() {
         SpanAttributeScrubbingRule rule = new IpAddressRule();
         var decision = rule.evaluate("client.address", "10.1.2.3");
         assertThat(decision.action()).isEqualTo(ScrubbingAction.TRUNCATE);
@@ -109,7 +109,7 @@ class BuiltInRulesTest {
     }
 
     @Test
-    void critical_признак_у_секьюрити_правил_true_у_остальных_false() {
+    void critical_flag_true_for_security_rules_false_for_others() {
         assertThat(new OAuthHeaderRule().critical()).isTrue();
         assertThat(new PasswordKeyRule().critical()).isTrue();
         assertThat(new JwtRule().critical()).isTrue();

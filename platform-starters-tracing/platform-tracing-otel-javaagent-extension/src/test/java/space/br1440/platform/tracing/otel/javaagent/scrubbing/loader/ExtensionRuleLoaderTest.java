@@ -28,7 +28,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void пустое_свойство_даёт_ноль_правил_без_ошибок() {
+    void empty_property_yields_zero_rules_without_errors() {
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load(null)).isEmpty();
             assertThat(loader.load("   ")).isEmpty();
@@ -38,7 +38,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void несуществующий_путь_фиксируется_как_MISSING_PATH() {
+    void nonexistent_path_is_recorded_as_MISSING_PATH() {
         try (ExtensionRuleLoader loader = loader()) {
             assertThat(loader.load("/no/such/path/rules.jar")).isEmpty();
             assertThat(loader.getFailedEntries())
@@ -48,7 +48,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void jar_с_запрещённым_class_отбраковывается_hygiene(@TempDir Path dir) throws IOException {
+    void jar_with_forbidden_class_is_rejected_by_hygiene(@TempDir Path dir) throws IOException {
         Path jar = dir.resolve("dirty.jar");
         writeJar(jar, Map.of(
                 "io/opentelemetry/Foo.class", "x",
@@ -63,7 +63,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void не_class_записи_с_запрещённым_префиксом_не_триггерят_hygiene(@TempDir Path dir) throws IOException {
+    void non_class_entries_with_forbidden_prefix_do_not_trigger_hygiene(@TempDir Path dir) throws IOException {
         // Записи с префиксом space/br1440 и io/opentelemetry, но НЕ *.class, не должны давать
         // ложного hygiene-отказа (Javadoc, POM, package-info.html и т.п.).
         Path jar = dir.resolve("clean.jar");
@@ -80,7 +80,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void битый_services_файл_фиксируется_как_SERVICE_CONFIGURATION_ERROR(@TempDir Path dir) throws IOException {
+    void corrupt_services_file_is_recorded_as_SERVICE_CONFIGURATION_ERROR(@TempDir Path dir) throws IOException {
         // META-INF/services ссылается на несуществующий класс — JAR не должен валить старт.
         Path jar = dir.resolve("broken.jar");
         writeJar(jar, Map.of(
@@ -96,7 +96,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void duplicate_jar_при_LENIENT_пропускается_с_DUPLICATE_CONFIG(@TempDir Path dir) throws IOException {
+    void duplicate_jar_in_LENIENT_is_skipped_with_DUPLICATE_CONFIG(@TempDir Path dir) throws IOException {
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
         String canonical = jar.toFile().getCanonicalPath();
@@ -111,7 +111,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void duplicate_jar_при_STRICT_бросает(@TempDir Path dir) throws IOException {
+    void duplicate_jar_in_STRICT_throws(@TempDir Path dir) throws IOException {
         Path jar = dir.resolve("rules.jar");
         writeJar(jar, Map.of("com/example/Marker.txt", "x"));
         String canonical = jar.toFile().getCanonicalPath();
@@ -124,7 +124,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void STRICT_режим_бросает_на_нарушении_hygiene(@TempDir Path dir) throws IOException {
+    void STRICT_mode_throws_on_hygiene_violation(@TempDir Path dir) throws IOException {
         Path jar = dir.resolve("dirty.jar");
         writeJar(jar, Map.of("io/opentelemetry/Foo.class", "x"));
 
@@ -136,7 +136,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void тот_же_jar_указанный_дважды_дедуплицируется_по_canonical_path(@TempDir Path dir) throws IOException {
+    void same_jar_listed_twice_is_deduplicated_by_canonical_path(@TempDir Path dir) throws IOException {
         // Один и тот же JAR передан и как файл, и через директорию: должен учитываться один раз
         // и не попадать в failed (это не ошибка, а штатная дедупликация).
         Path jar = dir.resolve("rules.jar");
@@ -150,14 +150,14 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void linkage_error_пробрасывается_как_fatal_и_не_классифицируется_как_sanitizer_failure() {
+    void linkage_error_is_rethrown_as_fatal_and_not_classified_as_sanitizer_failure() {
         NoClassDefFoundError linkage = new NoClassDefFoundError("company/MandatoryRule");
         org.junit.jupiter.api.Assertions.assertThrows(NoClassDefFoundError.class,
                 () -> PlatformThrowables.propagateFatalCauseChain(linkage));
     }
 
     @Test
-    void linkage_error_обёрнутый_ServiceConfigurationError_как_cause_всё_равно_fatal() {
+    void linkage_error_wrapped_as_ServiceConfigurationError_cause_is_still_fatal() {
         NoClassDefFoundError linkage = new NoClassDefFoundError("company/MandatoryRule");
         ServiceConfigurationError wrapper = new ServiceConfigurationError("provider init failed", linkage);
 
@@ -166,7 +166,7 @@ class ExtensionRuleLoaderTest {
     }
 
     @Test
-    void обычный_RuntimeException_в_LENIENT_режиме_всё_ещё_пропускается_как_skip() {
+    void ordinary_RuntimeException_in_LENIENT_mode_is_still_skipped() {
         PlatformThrowables.propagateFatalCauseChain(new IllegalStateException("provider misbehaved"));
     }
 

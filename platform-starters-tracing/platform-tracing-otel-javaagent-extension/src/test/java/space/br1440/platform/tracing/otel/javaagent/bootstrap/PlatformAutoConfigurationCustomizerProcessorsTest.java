@@ -86,7 +86,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void все_включённые_подсистемы_добавляются_в_tracer_provider_builder() {
+    void all_enabled_subsystems_are_added_to_tracer_provider_builder() {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -108,7 +108,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void отключение_отдельной_подсистемы_не_ломает_остальные() {
+    void disabling_one_subsystem_does_not_break_others() {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -124,7 +124,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void кастомный_remote_service_priority_передаётся_в_EnrichingSpanProcessor() {
+    void custom_remote_service_priority_is_passed_to_EnrichingSpanProcessor() {
         // Прямой instance EnrichingSpanProcessor мы получить не можем (он внутри
         // PlatformCompositeSpanProcessor), но можем убедиться, что customize не падает
         // с невалидным списком и принимает любой список строк.
@@ -148,7 +148,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void sampler_customizer_создает_PlatformRuleBasedSampler() {
+    void sampler_customizer_creates_PlatformRuleBasedSampler() {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -164,7 +164,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void sampler_customizer_с_явным_ratio_создает_accepted_policy_с_дефолтным_ratio() {
+    void sampler_customizer_with_explicit_ratio_creates_accepted_policy_with_default_ratio() {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -179,7 +179,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void регистрация_MBean_выполняется_после_activation() throws Exception {
+    void MBean_registration_runs_after_activation() throws Exception {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
@@ -198,7 +198,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void кастомный_sampling_ratio_отражается_в_зарегистрированном_MBean_е() throws Exception {
+    void custom_sampling_ratio_is_reflected_in_registered_MBean() throws Exception {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());
@@ -223,12 +223,12 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void order_расширения_равен_100_приоритет_над_дефолтом() {
+    void extension_order_equals_100_priority_over_default() {
         assertThat(newProvider(BootstrapCoordinator.create()).order()).isEqualTo(100);
     }
 
     @Test
-    void без_явного_ratio_используется_дефолтный_ratio() {
+    void without_explicit_ratio_default_ratio_is_used() {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -243,13 +243,13 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void пустое_имя_force_header_заменяется_дефолтом_X_Trace_On() {
+    void blank_force_header_name_is_replaced_with_default_X_Trace_On() {
         // Устаревший тест, так как CompositeSampler больше не хранит имена заголовков в description,
         // они теперь инкапсулированы в TraceControlPropagator
     }
 
     @Test
-    void unknown_имя_правила_scrubbing_не_роняет_конфигурацию() {
+    void unknown_scrubbing_rule_name_does_not_crash_configuration() {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -270,7 +270,7 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
     }
 
     @Test
-    void обнуление_всех_подсистем_не_создаёт_MBean_до_создания_sampler_а() throws Exception {
+    void disabling_all_subsystems_does_not_create_MBean_before_sampler_creation() throws Exception {
         Recorder recorder = new Recorder();
         newProvider(BootstrapCoordinator.create()).customize(recorder.proxy());
 
@@ -401,14 +401,14 @@ class PlatformAutoConfigurationCustomizerProcessorsTest {
 
     /** Sanity-check: sampling-домен MBean зафиксирован контрактом. */
     @Test
-    void object_name_sampling_MBean_совпадает_с_публичным_контрактом() {
+    void object_name_sampling_MBean_matches_public_contract() {
         assertThat(DomainObjectNames.SAMPLING_OBJECT_NAME_STR)
                 .isEqualTo("space.br1440.platform.tracing:type=Sampling,name=PlatformSamplingControl");
     }
 
     /** Единственный атрибут sampling-домена ({@code SamplingObservation}) не writable после перехода на CompositeData. */
     @Test
-    void setSamplingRatio_через_platform_JMX_отвергается() throws Exception {
+    void setSamplingRatio_via_platform_JMX_is_rejected() throws Exception {
         BootstrapCoordinator coordinator = BootstrapCoordinator.create();
         Recorder recorder = new Recorder();
         newProvider(coordinator).customize(recorder.proxy());

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 class SpanWatchdogArchitectureGateTest {
 
     @Test
-    void g9_watchdog_имеет_одного_authoritative_trace_owner() {
+    void g9_watchdog_has_single_authoritative_trace_owner() {
         List<Field> outerMaps = Arrays.stream(SpanWatchdogProcessor.class.getDeclaredFields())
                 .filter(field -> ConcurrentHashMap.class.isAssignableFrom(field.getType()))
                 .toList();

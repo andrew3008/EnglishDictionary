@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CircuitBreakerTest {
 
     @Test
-    void открывается_после_порога_сбоев() {
+    void opens_after_failure_threshold() {
         CircuitBreaker breaker = new CircuitBreaker("c", 3, 60_000L);
         breaker.recordFailure();
         breaker.recordFailure();
@@ -22,7 +22,7 @@ class CircuitBreakerTest {
     }
 
     @Test
-    void half_open_только_одному_потоку() {
+    void half_open_allows_only_one_thread() {
         CircuitBreaker breaker = new CircuitBreaker("c", 1, 0L);
         breaker.recordFailure();
         assertThat(breaker.acquireExecutionState()).isEqualTo(CircuitBreaker.State.HALF_OPEN);
@@ -30,7 +30,7 @@ class CircuitBreakerTest {
     }
 
     @Test
-    void успешный_probe_закрывает() {
+    void successful_probe_closes() {
         CircuitBreaker breaker = new CircuitBreaker("c", 1, 0L);
         breaker.recordFailure();
         assertThat(breaker.acquireExecutionState()).isEqualTo(CircuitBreaker.State.HALF_OPEN);
@@ -39,7 +39,7 @@ class CircuitBreakerTest {
     }
 
     @Test
-    void упавший_probe_возвращает_в_open() {
+    void failed_probe_returns_to_open() {
         CircuitBreaker breaker = new CircuitBreaker("c", 1, 0L);
         breaker.recordFailure();
         assertThat(breaker.acquireExecutionState()).isEqualTo(CircuitBreaker.State.HALF_OPEN);

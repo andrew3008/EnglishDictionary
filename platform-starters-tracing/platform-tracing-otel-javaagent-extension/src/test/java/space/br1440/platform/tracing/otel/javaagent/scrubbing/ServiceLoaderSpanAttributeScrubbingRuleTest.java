@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ServiceLoaderSpanAttributeScrubbingRuleTest {
 
     @Test
-    void serviceLoader_находит_правило_с_test_classpath_через_autoservice() {
+    void serviceLoader_finds_rule_from_test_classpath_via_autoservice() {
         List<SpanAttributeScrubbingRule> rules = new ArrayList<>();
         ServiceLoader.load(SpanAttributeScrubbingRule.class, getClass().getClassLoader())
                 .forEach(rules::add);
@@ -35,7 +35,7 @@ class ServiceLoaderSpanAttributeScrubbingRuleTest {
     }
 
     @Test
-    void правила_корректно_сортируются_по_приоритету_независимо_от_порядка_загрузки() {
+    void rules_are_sorted_by_priority_independently_of_load_order() {
         SpanAttributeScrubbingRule highPriorityRule = new TestRule("high-priority", 5);
         SpanAttributeScrubbingRule mediumPriorityRule = new TestRule("medium-priority", 50);
         SpanAttributeScrubbingRule lowPriorityRule = new ExampleMerchantAccountRule(); // priority = 2000

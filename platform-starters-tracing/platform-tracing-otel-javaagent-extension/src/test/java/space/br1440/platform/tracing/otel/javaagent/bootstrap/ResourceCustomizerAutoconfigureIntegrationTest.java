@@ -37,7 +37,7 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
             AttributeKey.stringKey("test.detector.marker");
 
     @Test
-    void explicit_otel_resource_побеждает_platform_fallback() {
+    void explicit_otel_resource_wins_over_platform_fallback() {
         // given
         Map<String, String> properties = Map.of(
                 "otel.service.name", "otel-service",
@@ -60,7 +60,7 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
     }
 
     @Test
-    void platform_заполняет_только_отсутствующие_ключи_и_сохраняет_detector_attributes() {
+    void platform_fills_only_missing_keys_and_preserves_detector_attributes() {
         // given
         Map<String, String> properties = Map.of(
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "platform-service",
@@ -79,7 +79,7 @@ class ResourceCustomizerAutoconfigureIntegrationTest {
     }
 
     @Test
-    void disabled_keys_не_возвращаются_platform_customizer() {
+    void disabled_keys_are_not_returned_by_platform_customizer() {
         // given
         Map<String, String> properties = Map.of(
                 "otel.resource.disabled.keys", "platform.c_group,host.name",

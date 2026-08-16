@@ -33,7 +33,7 @@ class MergeEngineTest {
     }
 
     @Test
-    void keep_не_ослабляет_mask() {
+    void keep_does_not_weaken_mask() {
         var mask = wrap(rule(true, 10, ScrubbingDecision.mask("oauth")));
         var keep = wrap(rule(false, 900, ScrubbingDecision.keep()));
 
@@ -42,7 +42,7 @@ class MergeEngineTest {
     }
 
     @Test
-    void critical_drop_не_ослабляется_последующим_hash() {
+    void critical_drop_is_not_weakened_by_subsequent_hash() {
         var drop = wrap(rule(true, 10, ScrubbingDecision.drop("oauth")));
         var hash = wrap(rule(false, 130, ScrubbingDecision.hash("email")));
 
@@ -52,7 +52,7 @@ class MergeEngineTest {
     }
 
     @Test
-    void терминальное_решение_custom_правила_не_блокирует_последующее_правило() {
+    void terminal_custom_rule_decision_does_not_block_subsequent_rule() {
         // Custom-правило вернуло maskTerminal — если бы terminal учитывался, был бы early-exit и
         // MASK заблокировал бы последующее. Но для custom terminal игнорируется → DROP перекрывает.
         var customTerminalMask = wrap(rule(false, 900, ScrubbingDecision.maskTerminal("custom")));
@@ -63,7 +63,7 @@ class MergeEngineTest {
     }
 
     @Test
-    void tie_breaker_drop_бьёт_mask_для_двух_critical() {
+    void tie_breaker_drop_beats_mask_for_two_critical() {
         var criticalDrop = wrap(rule(true, 10, ScrubbingDecision.drop("oauth")));
         var criticalMask = wrap(rule(true, 20, ScrubbingDecision.mask("other")));
 
@@ -72,7 +72,7 @@ class MergeEngineTest {
     }
 
     @Test
-    void весь_keep_даёт_keep() {
+    void all_keep_yields_keep() {
         var a = wrap(rule(false, 900, ScrubbingDecision.keep()));
         var b = wrap(rule(true, 10, ScrubbingDecision.keep()));
         assertThat(MergeEngine.evaluate(List.of(a, b), "k", "v").action()).isEqualTo(ScrubbingAction.KEEP);

@@ -12,35 +12,35 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTru
 class IpPrefixTruncatorTest {
 
     @Test
-    void ipv4_усекается_до_24() {
+    void ipv4_is_truncated_to_24() {
         assertThat(IpPrefixTruncator.truncate("192.168.12.34")).isEqualTo("192.168.12.0");
     }
 
     @Test
-    void ipv4_с_портом_усекается_без_падения() {
+    void ipv4_with_port_is_truncated_without_failure() {
         assertThat(IpPrefixTruncator.truncate("10.1.2.3:8080")).isEqualTo("10.1.2.0");
     }
 
     @Test
-    void x_forwarded_for_обрабатывает_каждый_элемент() {
+    void x_forwarded_for_processes_each_element() {
         String result = IpPrefixTruncator.truncate("1.2.3.4, 10.0.0.1");
         assertThat(result).isEqualTo("1.2.3.0, 10.0.0.0");
     }
 
     @Test
-    void x_forwarded_for_с_невалидным_элементом_отклоняется_целиком() {
+    void x_forwarded_for_with_invalid_element_is_rejected_entirely() {
         assertThat(IpPrefixTruncator.truncate("1.2.3.4, attacker.example, 10.0.0.1")).isNull();
         assertThat(IpPrefixTruncator.truncate("1.2.3.4, ")).isNull();
     }
 
     @Test
-    void ipv6_усекается_до_64() {
+    void ipv6_is_truncated_to_64() {
         assertThat(IpPrefixTruncator.truncate("2001:db8:3333:4444:5555:6666:7777:8888"))
                 .isEqualTo("2001:db8:3333:4444::");
     }
 
     @Test
-    void compressed_ipv6_усекается_по_реальным_восьми_группам() {
+    void compressed_ipv6_is_truncated_by_real_eight_groups() {
         assertThat(IpPrefixTruncator.truncate("2001:db8::1"))
                 .isEqualTo("2001:db8:0:0::");
         assertThat(IpPrefixTruncator.truncate("::1"))
@@ -50,12 +50,12 @@ class IpPrefixTruncatorTest {
     }
 
     @Test
-    void ipv4_mapped_ipv6_сводится_к_ipv4() {
+    void ipv4_mapped_ipv6_reduces_to_ipv4() {
         assertThat(IpPrefixTruncator.truncate("::ffff:192.168.1.1")).isEqualTo("192.168.1.0");
     }
 
     @Test
-    void невалидный_ip_возвращает_null_без_исключения() {
+    void invalid_ip_returns_null_without_exception() {
         assertThat(IpPrefixTruncator.truncate("not-an-ip")).isNull();
         assertThat(IpPrefixTruncator.truncate("999.999.999.999")).isNull();
         assertThat(IpPrefixTruncator.truncate("")).isNull();

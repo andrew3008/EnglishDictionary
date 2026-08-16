@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 class SpanWatchdogProcessorConcurrencyTest {
 
     @Test
-    void scanner_и_onEnd_сериализованы_на_trace_state() throws Exception {
+    void scanner_and_onEnd_are_serialized_on_trace_state() throws Exception {
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 Duration.ofNanos(1), Duration.ofHours(1), clock::get);

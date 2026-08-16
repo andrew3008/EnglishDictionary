@@ -32,7 +32,7 @@ class EnrichingSpanProcessorAdvancedTest {
             AttributeKey.stringKey(PlatformAttributes.PLATFORM_REMOTE_SERVICE);
 
     @Test
-    void кастомный_приоритет_атрибутов_передаётся_через_конструктор() {
+    void custom_attribute_priority_is_passed_via_constructor() {
         // Меняем порядок: сначала server.address, потом peer.service. Должны получить server.address.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 new EnrichingSpanProcessor(List.of("server.address", "peer.service")))) {
@@ -49,7 +49,7 @@ class EnrichingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void blank_и_null_имена_атрибутов_фильтруются_при_конструировании() {
+    void blank_and_null_attribute_names_are_filtered_at_construction() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 new EnrichingSpanProcessor(Arrays.asList(null, "", "  ", "peer.service")))) {
             Tracer tracer = h.tracer("t");
@@ -64,7 +64,7 @@ class EnrichingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void имена_атрибутов_триммятся_перед_использованием() {
+    void attribute_names_are_trimmed_before_use() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 new EnrichingSpanProcessor(List.of("  peer.service  ")))) {
             Tracer tracer = h.tracer("t");
@@ -79,7 +79,7 @@ class EnrichingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void INTERNAL_kind_получает_категорию_internal() {
+    void INTERNAL_kind_gets_internal_category() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
             h.tracer("t").spanBuilder("internal-op").setSpanKind(SpanKind.INTERNAL).startSpan().end();
             assertThat(h.exporter().getFinishedSpanItems().get(0).getAttributes().get(PLATFORM_TYPE_KEY))
@@ -88,7 +88,7 @@ class EnrichingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void PRODUCER_и_CONSUMER_kind_получают_категории_kafka() {
+    void PRODUCER_and_CONSUMER_kind_get_kafka_categories() {
         // Фаза 13: единая категория rpc разделена — PRODUCER→kafka_producer, CONSUMER→kafka_consumer.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
             Tracer tracer = h.tracer("t");
@@ -101,7 +101,7 @@ class EnrichingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void platform_remote_service_не_перезаписывает_заранее_заданное_значение() {
+    void platform_remote_service_does_not_overwrite_pre_set_value() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();
@@ -116,7 +116,7 @@ class EnrichingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void platform_result_не_перезаписывается_если_уже_задан_приложением() {
+    void platform_result_is_not_overwritten_if_already_set_by_application() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor())) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("op").setSpanKind(SpanKind.SERVER).startSpan();
@@ -130,13 +130,13 @@ class EnrichingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void DEFAULT_REMOTE_SERVICE_PRIORITY_совпадает_с_контрактом_семантических_конвенций() {
+    void DEFAULT_REMOTE_SERVICE_PRIORITY_matches_semantic_conventions_contract() {
         assertThat(EnrichingSpanProcessor.DEFAULT_REMOTE_SERVICE_PRIORITY)
                 .containsExactly("peer.service", "rpc.service", "server.address");
     }
 
     @Test
-    void пустой_приоритет_приводит_к_отсутствию_извлечения_имени() {
+    void empty_priority_results_in_no_name_extraction() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(new EnrichingSpanProcessor(List.of()))) {
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("client").setSpanKind(SpanKind.CLIENT).startSpan();

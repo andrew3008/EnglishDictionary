@@ -34,7 +34,7 @@ class CompositeSamplerEdgeCasesTest {
     }
 
     @Test
-    void не_падает_на_пустом_списке_значений() {
+    void does_not_fail_on_empty_value_list() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of()));
@@ -47,7 +47,7 @@ class CompositeSamplerEdgeCasesTest {
     }
 
     @Test
-    void пустой_префикс_в_конфиге_не_отбрасывает_все_пути() {
+    void empty_prefix_in_config_does_not_drop_all_paths() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("", "   ", "/actuator/health"), List.of("on")));
@@ -60,7 +60,7 @@ class CompositeSamplerEdgeCasesTest {
     }
 
     @Test
-    void null_url_path_не_вызывает_npe() {
+    void null_url_path_does_not_cause_npe() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
@@ -73,7 +73,7 @@ class CompositeSamplerEdgeCasesTest {
     }
 
     @Test
-    void kill_switch_отменяет_даже_force_и_qa() {
+    void kill_switch_overrides_even_force_and_qa() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(false, java.util.Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -85,7 +85,7 @@ class CompositeSamplerEdgeCasesTest {
     }
 
     @Test
-    void форсирование_не_отменяет_drop_paths() {
+    void forcing_does_not_override_drop_paths() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
@@ -98,7 +98,7 @@ class CompositeSamplerEdgeCasesTest {
     }
 
     @Test
-    void qa_сигнал_не_отменяет_drop_paths() {
+    void qa_signal_does_not_override_drop_paths() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, java.util.Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));

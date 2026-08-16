@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SpanWatchdogProcessorTest {
 
     @Test
-    void принудительно_закрывает_span_по_таймауту_и_проставляет_атрибут_platform_timeout() {
+    void force_closes_span_on_timeout_and_sets_platform_timeout_attribute() {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
@@ -54,7 +54,7 @@ class SpanWatchdogProcessorTest {
     }
 
     @Test
-    void не_трогает_span_завершившийся_до_таймаута() {
+    void does_not_touch_span_finished_before_timeout() {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime);
 
@@ -76,7 +76,7 @@ class SpanWatchdogProcessorTest {
     }
 
     @Test
-    void принудительно_закрывает_span_по_таймауту_трассы() {
+    void force_closes_span_on_trace_timeout() {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
@@ -103,7 +103,7 @@ class SpanWatchdogProcessorTest {
     }
 
     @Test
-    void forceFlush_закрывает_зависшие_span_синхронно() {
+    void forceFlush_closes_stuck_spans_synchronously() {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
@@ -131,7 +131,7 @@ class SpanWatchdogProcessorTest {
     }
 
     @Test
-    void concurrency_все_внутренние_индексы_очищаются_после_завершения_span_ов() throws InterruptedException {
+    void concurrency_all_internal_indexes_cleared_after_spans_finish() throws InterruptedException {
         // Регрессионный тест на BUG-3 + BUG-4: после одновременного завершения всех span'ов
         // единый trace-owned state должен полностью освободиться.
         InMemorySpanExporter exporter = InMemorySpanExporter.create();

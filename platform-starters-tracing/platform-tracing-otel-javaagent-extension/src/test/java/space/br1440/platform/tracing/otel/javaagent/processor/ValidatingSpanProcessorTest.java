@@ -26,7 +26,7 @@ class ValidatingSpanProcessorTest {
     }
 
     @Test
-    void проставляет_platform_validation_missing_когда_span_атрибуты_отсутствуют() {
+    void sets_platform_validation_missing_when_span_attributes_absent() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(lenient(), Resource.empty())) {
             Tracer tracer = h.tracer("test");
             Span span = tracer.spanBuilder("op").startSpan();
@@ -42,7 +42,7 @@ class ValidatingSpanProcessorTest {
     }
 
     @Test
-    void не_фиксирует_нарушение_когда_span_атрибуты_type_и_result_заданы() {
+    void does_not_record_violation_when_span_type_and_result_attributes_are_set() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(lenient(), Resource.empty())) {
             h.tracer("test").spanBuilder("op")
                     .setAttribute(PlatformAttributes.PLATFORM_TYPE, "HTTP")
@@ -55,7 +55,7 @@ class ValidatingSpanProcessorTest {
     }
 
     @Test
-    void throttling_подавляет_повторные_warn_и_не_двигает_метку_времени() {
+    void throttling_suppresses_repeated_warn_and_does_not_move_timestamp() {
         // Виртуальное время: clock возвращает фиксированную метку 1000 — это эмулирует «сразу же»
         // 1000 span'ов друг за другом в пределах одного throttle-окна.
         ValidatingSpanProcessor validator = new ValidatingSpanProcessor(

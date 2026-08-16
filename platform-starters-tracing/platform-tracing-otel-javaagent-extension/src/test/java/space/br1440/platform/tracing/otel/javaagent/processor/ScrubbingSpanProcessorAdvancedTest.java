@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ScrubbingSpanProcessorAdvancedTest {
 
     @Test
-    void пустой_список_правил_не_роняет_процессор_и_не_изменяет_атрибуты() {
+    void empty_rule_list_does_not_crash_processor_and_does_not_change_attributes() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()))) {
             Tracer tracer = h.tracer("t");
@@ -38,7 +38,7 @@ class ScrubbingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void merge_строгое_действие_выигрывает_над_мягким() {
+    void merge_strict_action_wins_over_soft() {
         // Merge-движок (PR-3) обходит ВСЕ правила и сводит решения по строгости:
         // оба custom-правила вызываются, побеждает более строгое DROP над MASK.
         AtomicInteger dropInvocations = new AtomicInteger();
@@ -81,7 +81,7 @@ class ScrubbingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void нестроковый_DROP_перезаписывает_type_neutral_sentinel() {
+    void non_string_DROP_overwrites_type_neutral_sentinel() {
         SpanAttributeScrubbingRule dropDoubles = new SpanAttributeScrubbingRule() {
             @Nonnull
             @Override public String name() { return "geo"; }
@@ -109,7 +109,7 @@ class ScrubbingSpanProcessorAdvancedTest {
     }
 
     @Test
-    void exception_в_custom_правиле_изолируется_circuit_breaker_ом_не_роняя_процессор() {
+    void exception_in_custom_rule_is_isolated_by_circuit_breaker_without_crashing_processor() {
         // PR-4/PR-5: сбой custom-правила теперь перехватывается в ExecutableRule и считается
         // в circuit breaker — он НЕ всплывает в PlatformCompositeSpanProcessor. Для custom-правила
         // (critical=false) поведение при сбое — skip: атрибут остаётся нетронутым, остальные целы.

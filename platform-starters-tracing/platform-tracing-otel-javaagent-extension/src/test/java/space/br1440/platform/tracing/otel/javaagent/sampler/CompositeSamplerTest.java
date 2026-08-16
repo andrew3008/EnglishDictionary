@@ -42,7 +42,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void форсированная_запись_возвращает_record_and_sample() {
+    void forced_recording_returns_record_and_sample() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -55,7 +55,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void отсутствие_сигнала_делегирует_решение_внешнему_семплеру() {
+    void absent_signal_delegates_decision_to_external_sampler() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -67,7 +67,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void наличие_QA_сигнала_включает_запись() {
+    void QA_signal_presence_enables_recording() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -80,7 +80,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void сравнение_кастомных_значений_зависит_от_forceRecordValues() {
+    void custom_value_comparison_depends_on_forceRecordValues() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("custom-force")));
@@ -93,7 +93,7 @@ class CompositeSamplerTest {
     }
     
     @Test
-    void drop_paths_отбрасывают_спан_если_нет_force_сигнала() {
+    void drop_paths_drop_span_when_no_force_signal() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator/health"), List.of("on")));
@@ -106,7 +106,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void force_сигнал_не_переопределяет_hard_drop() {
+    void force_signal_does_not_override_hard_drop() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator/health"), List.of("on")));
@@ -120,7 +120,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void qa_сигнал_не_переопределяет_hard_drop() {
+    void qa_signal_does_not_override_hard_drop() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator/health"), List.of("on")));
@@ -134,7 +134,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void причина_семплирования_от_force_header() {
+    void sampling_reason_from_force_header() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -148,7 +148,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void причина_семплирования_от_parent() {
+    void sampling_reason_from_parent() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -165,7 +165,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void причина_семплирования_от_ratio() {
+    void sampling_reason_from_ratio() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -177,7 +177,7 @@ class CompositeSamplerTest {
     }
 
     @Test
-    void причина_семплирования_при_drop_paths() {
+    void sampling_reason_on_drop_paths() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator/health"), List.of("on")));

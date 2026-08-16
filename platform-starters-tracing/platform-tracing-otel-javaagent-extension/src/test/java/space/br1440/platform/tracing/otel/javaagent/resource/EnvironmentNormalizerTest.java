@@ -28,12 +28,12 @@ class EnvironmentNormalizerTest {
     }
 
     @Test
-    void normalize_disabled_не_подменяет_алиасы() {
+    void normalize_disabled_does_not_replace_aliases() {
         assertThat(EnvironmentNormalizer.normalize("prod", false)).isEqualTo("prod");
     }
 
     @Test
-    void null_и_blank_дают_unknown() {
+    void null_and_blank_yield_unknown() {
         assertThat(EnvironmentNormalizer.normalize(null, true)).isEqualTo(EnvironmentNormalizer.UNKNOWN);
         assertThat(EnvironmentNormalizer.normalize("  ", true)).isEqualTo(EnvironmentNormalizer.UNKNOWN);
     }

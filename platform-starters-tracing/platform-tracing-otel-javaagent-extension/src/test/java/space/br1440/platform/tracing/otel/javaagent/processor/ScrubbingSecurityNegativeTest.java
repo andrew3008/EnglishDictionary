@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ScrubbingSecurityNegativeTest {
 
     @Test
-    void rule_priority_conflict_authorization_дропается_а_не_хэшируется() {
+    void rule_priority_conflict_authorization_is_dropped_not_hashed() {
         // authorization матчит и OAuthHeaderRule (DROP, priority 10), и EmailRule по значению
         // (HASH, priority 130). Должен победить DROP независимо от порядка регистрации.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
@@ -40,7 +40,7 @@ class ScrubbingSecurityNegativeTest {
     }
 
     @Test
-    void drop_integration_секрет_отсутствует_в_экспортированной_SpanData() {
+    void drop_integration_secret_absent_from_exported_SpanData() {
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(
                 BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")
         )))) {
@@ -76,7 +76,7 @@ class ScrubbingSecurityNegativeTest {
     }
 
     @Test
-    void hmac_детерминизм_одинаковый_ключ_даёт_одинаковый_хэш() {
+    void hmac_determinism_same_key_yields_same_hash() {
         String h1 = hashEmail("secret-key");
         String h2 = hashEmail("secret-key");
         String h3 = hashEmail("another-key");
@@ -86,14 +86,14 @@ class ScrubbingSecurityNegativeTest {
     }
 
     @Test
-    void fail_fast_без_ключа_бросает_на_старте() {
+    void fail_fast_without_key_throws_at_startup() {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                 () -> ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(
                         List.of(BuiltInSpanAttributeScrubbingRules.resolve("email")), null, true));
     }
 
     @Test
-    void event_scope_токен_в_событии_не_вычищается_SDK_процессором() {
+    void event_scope_token_in_event_is_not_scrubbed_by_SDK_processor() {
         // Документируем честную границу: ScrubbingSpanProcessor мутирует только span attributes.
         // Атрибуты событий через ReadWriteSpan не модифицируются — это safety net Collector'а.
         try (SpanProcessorHarness h = SpanProcessorHarness.of(ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of(

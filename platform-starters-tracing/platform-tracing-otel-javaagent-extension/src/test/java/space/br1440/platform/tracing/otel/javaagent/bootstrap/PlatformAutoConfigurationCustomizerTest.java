@@ -46,7 +46,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void customize_регистрирует_sampler_и_tracer_provider_customizer() {
+    void customize_registers_sampler_and_tracer_provider_customizer() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -55,7 +55,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void customize_регистрирует_propertiesSupplier_с_платформенными_дефолтами_OTel_SDK() {
+    void customize_registers_propertiesSupplier_with_platform_OTel_SDK_defaults() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -82,7 +82,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void propertiesSupplier_возвращает_только_строковые_значения_для_всех_ключей() {
+    void propertiesSupplier_returns_only_string_values_for_all_keys() {
         // Контракт OTel SDK: addPropertiesSupplier поставляет Map<String, String>; любое значение,
         // не приводимое к строке, привело бы к ClassCastException на стороне ConfigProperties.
         Recorder recorder = new Recorder();
@@ -104,7 +104,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void sampler_по_умолчанию_оборачивается_в_PlatformCompositeSampler() {
+    void sampler_by_default_is_wrapped_in_PlatformCompositeSampler() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -120,7 +120,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void sampler_использует_кастомный_ratio_из_свойства() {
+    void sampler_uses_custom_ratio_from_property() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -133,7 +133,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void sampler_без_явного_ratio_делегирует_в_existing() {
+    void sampler_without_explicit_ratio_delegates_to_existing() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -148,7 +148,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void sampler_existing_alwaysOff_с_force_header_записывает_span() {
+    void sampler_existing_alwaysOff_with_force_header_records_span() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -170,7 +170,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void sampler_явный_ratio_0_создаёт_PlatformRuleBasedSampler() {
+    void sampler_explicit_ratio_0_creates_PlatformRuleBasedSampler() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 
@@ -183,7 +183,7 @@ class PlatformAutoConfigurationCustomizerTest {
     }
 
     @Test
-    void отключение_всех_процессоров_не_трогает_tracer_provider_builder() {
+    void disabling_all_processors_does_not_touch_tracer_provider_builder() {
         Recorder recorder = new Recorder();
         newProvider().customize(recorder.proxy());
 

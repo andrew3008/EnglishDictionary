@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TracingDiagnosticsTest {
 
     @Test
-    void счётчики_и_snapshot_согласованы() {
+    void counters_and_snapshot_are_consistent() {
         TracingDiagnostics d = new TracingDiagnostics();
 
         d.recordSamplerFailure();

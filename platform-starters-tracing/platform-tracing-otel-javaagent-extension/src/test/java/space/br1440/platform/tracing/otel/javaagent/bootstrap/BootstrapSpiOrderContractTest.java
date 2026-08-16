@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BootstrapSpiOrderContractTest {
 
     @Test
-    void ACP_provider_и_AgentListener_используют_один_и_тот_же_документированный_order() {
+    void ACP_provider_and_AgentListener_use_same_documented_order() {
         int providerOrder = new BootstrapAutoConfigurationCustomizerProvider(BootstrapCoordinator.create()).order();
         int listenerOrder = new ActivationAgentListener(BootstrapCoordinator.create()).order();
 

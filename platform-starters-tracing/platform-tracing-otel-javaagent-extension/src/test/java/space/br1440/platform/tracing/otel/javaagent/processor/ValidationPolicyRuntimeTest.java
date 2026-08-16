@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ValidationPolicyRuntimeTest {
 
     @Test
-    void updateValidation_атомарно_меняет_enabled_without_strict() {
+    void updateValidation_atomically_changes_enabled_without_strict() {
         TracingSettingsSource access = TracingSettingsSource.isolatedValidation(true, false, true);
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(access);
         assertThat(processor.isEnabled()).isTrue();

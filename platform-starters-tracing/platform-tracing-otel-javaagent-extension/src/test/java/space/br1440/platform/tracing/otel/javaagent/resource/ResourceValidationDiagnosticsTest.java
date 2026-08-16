@@ -26,7 +26,7 @@ class ResourceValidationDiagnosticsTest {
     }
 
     @Test
-    void passed_когда_все_required_присутствуют() {
+    void passed_when_all_required_present() {
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
                 fullIdentity(), Resource.empty(), Resource.empty(), ResourceValidationMode.STRICT);
 
@@ -35,7 +35,7 @@ class ResourceValidationDiagnosticsTest {
     }
 
     @Test
-    void strict_throw_при_отсутствии_service_name() {
+    void strict_throw_when_service_name_absent() {
         Attributes resolved = Attributes.builder()
                 .put(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production")
                 .put(key(PlatformAttributes.PLATFORM_C_GROUP), "billing")
@@ -51,7 +51,7 @@ class ResourceValidationDiagnosticsTest {
     }
 
     @Test
-    void effective_view_otelEnv_закрывает_service_name() {
+    void effective_view_otelEnv_covers_service_name() {
         // resolved без service.name, но otelEnv содержит (OTEL_SERVICE_NAME) → не missing
         Attributes resolved = Attributes.builder()
                 .put(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production")
@@ -66,7 +66,7 @@ class ResourceValidationDiagnosticsTest {
     }
 
     @Test
-    void unknown_service_трактуется_как_отсутствие() {
+    void unknown_service_treated_as_absence() {
         Attributes resolved = Attributes.builder()
                 .put(key(PlatformAttributes.SERVICE_NAME), "unknown_service:java")
                 .put(key(PlatformAttributes.PLATFORM_ENVIRONMENT), "production")
@@ -81,7 +81,7 @@ class ResourceValidationDiagnosticsTest {
     }
 
     @Test
-    void lenient_не_бросает() {
+    void lenient_does_not_throw() {
         ResourceValidationDiagnostics.ValidationResult result = diagnostics.validate(
                 Attributes.empty(), Resource.empty(), Resource.empty(), ResourceValidationMode.LENIENT);
 

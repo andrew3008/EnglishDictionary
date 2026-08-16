@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TokenBucketRateLimiterTest {
 
     @Test
-    void списывает_до_исчерпания_затем_отказывает() {
+    void debits_until_exhausted_then_rejects() {
         AtomicLong clock = new AtomicLong(0);
         // 3 токена за минуту, ёмкость 3, время не идёт.
         TokenBucketRateLimiter limiter = TokenBucketRateLimiter.perInterval(3, 1, TimeUnit.MINUTES, clock::get);
@@ -25,7 +25,7 @@ class TokenBucketRateLimiterTest {
     }
 
     @Test
-    void пополняется_со_временем() {
+    void refills_over_time() {
         AtomicLong clock = new AtomicLong(0);
         TokenBucketRateLimiter limiter = TokenBucketRateLimiter.perInterval(1, 1, TimeUnit.MINUTES, clock::get);
 

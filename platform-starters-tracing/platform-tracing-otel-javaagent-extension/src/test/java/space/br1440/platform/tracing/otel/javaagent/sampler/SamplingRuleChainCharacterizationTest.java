@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SamplingRuleChainCharacterizationTest {
 
     @Test
-    void kill_switch_блокирует_force_qa_route_и_global_ratio() {
+    void kill_switch_blocks_force_qa_route_and_global_ratio() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(false, Map.of("/api", 1.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -41,7 +41,7 @@ class SamplingRuleChainCharacterizationTest {
     }
 
     @Test
-    void hard_drop_раньше_force_header_и_qa() {
+    void hard_drop_before_force_header_and_qa() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of("/internal", 1.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/internal"), List.of("on")));
@@ -62,7 +62,7 @@ class SamplingRuleChainCharacterizationTest {
     }
 
     @Test
-    void force_header_раньше_parent_decision() {
+    void force_header_before_parent_decision() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -77,7 +77,7 @@ class SamplingRuleChainCharacterizationTest {
     }
 
     @Test
-    void qa_trace_раньше_parent_decision() {
+    void qa_trace_before_parent_decision() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("on")));
@@ -92,7 +92,7 @@ class SamplingRuleChainCharacterizationTest {
     }
 
     @Test
-    void отсутствие_url_path_пропускает_hard_drop_и_route_ratio() {
+    void absent_url_path_skips_hard_drop_and_route_ratio() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of("/api", 0.0), 1.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of("/actuator"), List.of("on")));
@@ -104,7 +104,7 @@ class SamplingRuleChainCharacterizationTest {
     }
 
     @Test
-    void custom_force_value_срабатывает_при_совпадении_forceRecordValues() {
+    void custom_force_value_fires_when_forceRecordValues_match() {
         TracingSettingsSource holder = TracingSettingsSource.isolatedSampling(true, Map.of(), 0.0);
         CompositeSampler sampler = new CompositeSampler(
                 holder, CategoryBSamplingAccess.snapshot(List.of(), List.of("custom-force")));

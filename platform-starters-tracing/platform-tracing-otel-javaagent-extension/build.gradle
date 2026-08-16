@@ -14,11 +14,21 @@ def platformAgentBinary = configurations.detachedConfiguration(
         dependencies.create("io.opentelemetry.javaagent:opentelemetry-javaagent:${libs.versions.bom.otelinstrumentation.get()}")
 )
 
+def agentLoggingProviderConfiguration = configurations.create('agentLoggingProvider') {
+    canBeConsumed = false
+    canBeResolved = true
+}
+
 dependencies {
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
     implementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel')
     implementation project(':platform-starters-common:platform-starters-common-util')
     implementation 'org.slf4j:slf4j-api'
+
+    add(agentLoggingProviderConfiguration.name, platform(project(':spring-boot-starter-platform-bom')))
+    add(agentLoggingProviderConfiguration.name, 'org.slf4j:slf4j-simple') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
 
     compileOnly 'io.opentelemetry:opentelemetry-sdk'
     compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
@@ -57,6 +67,12 @@ def extensionJarTask = tasks.named('jar', Jar) {
     from project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel').sourceSets.main.output
     from project(':platform-starters-common:platform-starters-common-util').sourceSets.main.output
     from { zipTree(configurations.runtimeClasspath.find { it.name.startsWith('slf4j-api') }) }
+    from(zipTree(agentLoggingProviderConfiguration.singleFile)) {
+        exclude 'META-INF/LICENSE.txt',
+                'META-INF/MANIFEST.MF',
+                'META-INF/versions/*/module-info.class',
+                'module-info.class'
+    }
     manifest {
         attributes 'Implementation-Title': project.name, 'Implementation-Version': project.version
     }
@@ -71,6 +87,10 @@ def platformExtendedAgentJarTask = tasks.register('platformExtendedAgentJar', Ja
     from(extensionJarTask.flatMap { it.archiveFile }) {
         into 'extensions'
         rename { 'platform-tracing-otel-javaagent-extension.jar' }
+    }
+
+    from('src/main/resources') {
+        include 'simplelogger.properties'
     }
 
     manifest {

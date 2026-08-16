@@ -13,26 +13,26 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 class PlatformThrowablesTest {
 
     @Test
-    void пробрасывает_VirtualMachineError() {
+    void rethrows_VirtualMachineError() {
         assertThatThrownBy(() -> PlatformThrowables.propagateIfFatal(new OutOfMemoryError("boom")))
                 .isInstanceOf(OutOfMemoryError.class);
     }
 
     @Test
-    void пробрасывает_LinkageError() {
+    void rethrows_LinkageError() {
         assertThatThrownBy(() -> PlatformThrowables.propagateIfFatal(new NoClassDefFoundError("x")))
                 .isInstanceOf(LinkageError.class);
     }
 
     @Test
-    void обычное_исключение_не_бросается() {
+    void ordinary_exception_is_not_thrown() {
         // propagateIfFatal не должен бросать для не-фатальных — обёртка сама подавит его.
         assertThat(catchThrowable(() -> PlatformThrowables.propagateIfFatal(new RuntimeException("ordinary"))))
                 .isNull();
     }
 
     @Test
-    void interruptedException_восстанавливает_флаг_прерывания() {
+    void interruptedException_restores_interrupt_flag() {
         // Снимаем возможный ранее выставленный флаг.
         Thread.interrupted();
         PlatformThrowables.propagateIfFatal(new InterruptedException("cancel"));
@@ -44,18 +44,18 @@ class PlatformThrowablesTest {
     }
 
     @Test
-    void null_безопасен() {
+    void null_is_safe() {
         assertThat(catchThrowable(() -> PlatformThrowables.propagateIfFatal(null))).isNull();
     }
 
     @Test
-    void propagateFatalCauseChain_пробрасывает_верхний_LinkageError() {
+    void propagateFatalCauseChain_rethrows_top_LinkageError() {
         assertThatThrownBy(() -> PlatformThrowables.propagateFatalCauseChain(new NoClassDefFoundError("company/Rule")))
                 .isInstanceOf(LinkageError.class);
     }
 
     @Test
-    void propagateFatalCauseChain_пробрасывает_LinkageError_обёрнутый_как_cause() {
+    void propagateFatalCauseChain_rethrows_LinkageError_wrapped_as_cause() {
         NoClassDefFoundError linkage = new NoClassDefFoundError("company/Rule");
         java.util.ServiceConfigurationError wrapper =
                 new java.util.ServiceConfigurationError("provider init failed", linkage);
@@ -65,14 +65,14 @@ class PlatformThrowablesTest {
     }
 
     @Test
-    void propagateFatalCauseChain_обычное_исключение_не_бросается() {
+    void propagateFatalCauseChain_ordinary_exception_is_not_thrown() {
         assertThat(catchThrowable(
                 () -> PlatformThrowables.propagateFatalCauseChain(new IllegalStateException("ordinary"))))
                 .isNull();
     }
 
     @Test
-    void propagateFatalCauseChain_self_referencing_cause_не_бесконечно_зацикливается() {
+    void propagateFatalCauseChain_self_referencing_cause_does_not_loop_forever() {
         RuntimeException selfCaused = new RuntimeException("self") {
             @Override
             public synchronized Throwable getCause() {

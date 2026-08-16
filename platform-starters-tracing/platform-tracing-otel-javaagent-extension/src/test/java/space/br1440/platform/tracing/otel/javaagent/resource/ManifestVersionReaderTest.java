@@ -19,7 +19,7 @@ class ManifestVersionReaderTest {
     }
 
     @Test
-    void читает_implementation_version() {
+    void reads_implementation_version() {
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\nImplementation-Version: 1.0.0\r\n\r\n"));
 
@@ -27,12 +27,12 @@ class ManifestVersionReaderTest {
     }
 
     @Test
-    void empty_когда_manifest_отсутствует() {
+    void empty_when_manifest_absent() {
         assertThat(new ManifestVersionReader(loaderOf(Map.of())).readVersion()).isEqualTo(Optional.empty());
     }
 
     @Test
-    void empty_когда_ключ_отсутствует() {
+    void empty_when_key_absent() {
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\n\r\n"));
 

@@ -52,7 +52,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void платформенные_свойства_заполняют_identity() {
+    void platform_properties_fill_identity() {
         Map<String, String> values = Map.of(
                 PlatformResourceCustomizer.PROP_SERVICE_NAME, "demo-service",
                 PlatformResourceCustomizer.PROP_SERVICE_VERSION, "1.0.0",
@@ -74,7 +74,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void otel_service_name_блокирует_platform_override() {
+    void otel_service_name_blocks_platform_override() {
         // OTEL_SERVICE_NAME задан → provider ОМИТИТ service.name (его допишет EnvironmentResourceProvider).
         Map<String, String> values = Map.of(
                 "otel.service.name", "otel-svc",
@@ -87,7 +87,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void service_version_из_build_info_когда_explicit_не_задан() {
+    void service_version_from_build_info_when_explicit_not_set() {
         Resource resource = customizer(NO_ENV, () -> Optional.of("2.17.4"), Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
@@ -95,7 +95,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void service_version_explicit_побеждает_build_info() {
+    void service_version_explicit_wins_over_build_info() {
         Map<String, String> values = Map.of(PlatformResourceCustomizer.PROP_SERVICE_VERSION, "9.9.9");
 
         Resource resource = customizer(NO_ENV, () -> Optional.of("2.17.4"), Optional::empty, NO_CONTAINER, noHost())
@@ -105,7 +105,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void host_name_omit_когда_не_определён() {
+    void host_name_omit_when_undefined() {
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, noHost())
                 .customize(Resource.empty(), new TestConfigProperties(Map.of()));
 
@@ -114,7 +114,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void host_name_из_HOSTNAME_env() {
+    void host_name_from_HOSTNAME_env() {
         HostNameResolver host = new HostNameResolver(
                 name -> "HOSTNAME".equals(name) ? "pod-billing-7f9c" : null,
                 () -> {
@@ -138,7 +138,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void container_id_procfs_только_при_opt_in() {
+    void container_id_procfs_only_with_opt_in() {
         Supplier<Optional<String>> procfs = () -> Optional.of("procfs-id");
 
         // detect-container-id не задан (default false) → procfs НЕ вызывается, container.id отсутствует
@@ -154,7 +154,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void k8s_pod_uid_больше_не_пишется() {
+    void k8s_pod_uid_is_no_longer_written() {
         // Ключ k8s.pod.uid удалён из провайдера (зона Collector). Даже при заданном старом свойстве — absent.
         Map<String, String> values = Map.of("platform.tracing.service.k8s-pod-uid", "pod-uid-123");
 
@@ -165,7 +165,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void existing_resource_побеждает_platform_fallback() {
+    void existing_resource_wins_over_platform_fallback() {
         // given
         Resource existing = Resource.create(Attributes.builder()
                 .put(key(PlatformAttributes.SERVICE_NAME), "existing-service")
@@ -188,7 +188,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void strict_падает_при_отсутствии_обязательных_ключей() {
+    void strict_fails_when_required_keys_absent() {
         Map<String, String> values = Map.of(ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "STRICT");
 
         PlatformResourceCustomizer customizer =
@@ -199,7 +199,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void strict_не_падает_при_otel_service_name_effective_view() {
+    void strict_does_not_fail_with_otel_service_name_effective_view() {
         // RV-08: service.name приходит через OTEL_*, env/c_group заданы — STRICT НЕ должен падать.
         Map<String, String> values = Map.of(
                 ExtensionPropertyNames.RESOURCE_VALIDATION_MODE, "STRICT",
@@ -215,7 +215,7 @@ class PlatformResourceCustomizerTest {
     }
 
     @Test
-    void legacy_provider_controls_отклоняются_явно() {
+    void legacy_provider_controls_are_rejected_explicitly() {
         // given
         TestConfigProperties config = new TestConfigProperties(Map.of(
                 "otel.java.disabled.resource.providers",

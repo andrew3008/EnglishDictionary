@@ -19,7 +19,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class SpiApiCompatibilityArchTest {
 
     @Test
-    void spi_контракт_не_зависит_от_opentelemetry() {
+    void spi_contract_does_not_depend_on_opentelemetry() {
         JavaClasses spiClasses = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("space.br1440.platform.tracing.api.spi");

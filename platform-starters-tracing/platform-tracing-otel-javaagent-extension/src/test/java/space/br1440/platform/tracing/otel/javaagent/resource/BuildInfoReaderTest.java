@@ -21,7 +21,7 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void читает_build_version_из_root() {
+    void reads_build_version_from_root() {
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "META-INF/build-info.properties", "build.version=2.17.4\nbuild.name=demo\n"));
 
@@ -29,7 +29,7 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void fallback_на_BOOT_INF_classes() {
+    void fallback_to_BOOT_INF_classes() {
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "BOOT-INF/classes/META-INF/build-info.properties", "build.version=3.0.0\n"));
 
@@ -37,12 +37,12 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void empty_когда_файл_отсутствует() {
+    void empty_when_file_absent() {
         assertThat(new BuildInfoReader(loaderOf(Map.of())).readVersion()).isEqualTo(Optional.empty());
     }
 
     @Test
-    void empty_когда_ключ_отсутствует() {
+    void empty_when_key_absent() {
         ClasspathResourceLoader loader = loaderOf(Map.of(
                 "META-INF/build-info.properties", "build.name=demo\n"));
 
@@ -50,7 +50,7 @@ class BuildInfoReaderTest {
     }
 
     @Test
-    void empty_при_ошибке_чтения() {
+    void empty_on_read_error() {
         ClasspathResourceLoader broken = path -> new InputStream() {
             @Override
             public int read() {

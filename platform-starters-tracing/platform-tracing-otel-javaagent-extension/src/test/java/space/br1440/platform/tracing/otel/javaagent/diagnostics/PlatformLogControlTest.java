@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlatformLogControlTest {
 
     @Test
-    void порог_печати_по_severity() {
+    void print_threshold_by_severity() {
         PlatformLogControl control = new PlatformLogControl();
         control.setLevel(PlatformLogControl.LogLevel.WARN);
 
@@ -22,14 +22,14 @@ class PlatformLogControlTest {
     }
 
     @Test
-    void парсинг_регистронезависимый() {
+    void parsing_is_case_insensitive() {
         PlatformLogControl control = new PlatformLogControl();
         assertThat(control.setLevel("debug")).isTrue();
         assertThat(control.getLevel()).isEqualTo(PlatformLogControl.LogLevel.DEBUG);
     }
 
     @Test
-    void неизвестный_уровень_сохраняет_LKG() {
+    void unknown_level_preserves_LKG() {
         PlatformLogControl control = new PlatformLogControl();
         control.setLevel(PlatformLogControl.LogLevel.INFO);
 

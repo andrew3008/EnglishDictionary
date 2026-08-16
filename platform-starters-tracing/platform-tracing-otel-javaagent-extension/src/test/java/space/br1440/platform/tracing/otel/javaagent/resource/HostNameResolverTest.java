@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HostNameResolverTest {
 
     @Test
-    void hostname_из_env_HOSTNAME_lowercase() {
+    void hostname_from_env_HOSTNAME_lowercase() {
         HostNameResolver resolver = new HostNameResolver(
                 name -> "HOSTNAME".equals(name) ? "Pod-ABC" : null,
                 () -> {
@@ -20,7 +20,7 @@ class HostNameResolverTest {
     }
 
     @Test
-    void computername_fallback_на_windows() {
+    void computername_fallback_on_windows() {
         HostNameResolver resolver = new HostNameResolver(
                 name -> "COMPUTERNAME".equals(name) ? "DEV-BOX" : null,
                 () -> null);
@@ -29,14 +29,14 @@ class HostNameResolverTest {
     }
 
     @Test
-    void inet_fallback_когда_env_пуст() {
+    void inet_fallback_when_env_empty() {
         HostNameResolver resolver = new HostNameResolver(name -> null, () -> "Inet-Host");
 
         assertThat(resolver.resolve()).contains("inet-host");
     }
 
     @Test
-    void empty_когда_ничего_не_определено() {
+    void empty_when_nothing_defined() {
         HostNameResolver resolver = new HostNameResolver(name -> null, () -> null);
 
         assertThat(resolver.resolve()).isEqualTo(Optional.empty());

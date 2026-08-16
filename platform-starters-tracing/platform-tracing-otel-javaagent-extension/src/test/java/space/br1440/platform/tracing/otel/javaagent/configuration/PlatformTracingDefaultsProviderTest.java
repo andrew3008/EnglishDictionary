@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlatformTracingDefaultsProviderTest {
 
     @Test
-    void supply_возвращает_все_BSP_дефолты() {
+    void supply_returns_all_BSP_defaults() {
         // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
 
@@ -28,7 +28,7 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
-    void supply_возвращает_все_span_limit_дефолты() {
+    void supply_returns_all_span_limit_defaults() {
         // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
 
@@ -47,7 +47,7 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
-    void supply_не_содержит_пустых_значений() {
+    void supply_does_not_contain_empty_values() {
         // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
 
@@ -58,7 +58,7 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
-    void supply_без_env_var_не_переопределяет_overflow_policy() {
+    void supply_without_env_var_does_not_override_overflow_policy() {
         // S2 (single-default-owner): без явного env-var supply() не должен переопределять
         // ключ. Единственный владелец дефолта DROP_OLDEST — ExtensionDefaults, потребляемый
         // QueueExtensionConfig; дублировать его здесь запрещено правилом одного дефолта.
@@ -69,7 +69,7 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
-    void supply_env_var_переопределяет_default_overflow_policy() {
+    void supply_env_var_overrides_default_overflow_policy() {
         // Env-var имеет приоритет над платформенным default, но уступает System property.
         PlatformTracingDefaultsProvider provider =
                 new PlatformTracingDefaultsProvider(name ->
@@ -82,7 +82,7 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
-    void supply_возвращает_независимую_копию_на_каждый_вызов() {
+    void supply_returns_independent_copy_on_each_call() {
         // given
         PlatformTracingDefaultsProvider provider = new PlatformTracingDefaultsProvider();
 
