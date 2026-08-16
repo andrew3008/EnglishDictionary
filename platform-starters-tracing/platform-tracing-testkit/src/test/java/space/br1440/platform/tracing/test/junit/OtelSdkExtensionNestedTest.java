@@ -30,7 +30,7 @@ class OtelSdkExtensionNestedTest {
     private static final AtomicReference<OpenTelemetrySdk> sdkInNested = new AtomicReference<>();
 
     @Test
-    void корневой_тест(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void root_test(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         sdkInRoot.set(sdk);
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
         Tracer tracer = sdk.getTracer("root");
@@ -43,7 +43,7 @@ class OtelSdkExtensionNestedTest {
     class Внутри {
 
         @Test
-        void вложенный_тест_видит_тот_же_SDK_и_пустой_exporter(
+        void nested_test_sees_same_SDK_and_empty_exporter(
                 OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
             sdkInNested.set(sdk);
             // CLASS-scope + reset перед каждым тестом: exporter пуст даже после корневого теста.
@@ -56,7 +56,7 @@ class OtelSdkExtensionNestedTest {
     }
 
     @AfterAll
-    static void sdk_тот_же_в_корне_и_во_вложенном_блоке() {
+    static void sdk_is_same_in_root_and_nested_block() {
         assertThat(sdkInRoot.get()).isNotNull();
         assertThat(sdkInNested.get()).isNotNull();
         assertThat(sdkInRoot.get()).isSameAs(sdkInNested.get());

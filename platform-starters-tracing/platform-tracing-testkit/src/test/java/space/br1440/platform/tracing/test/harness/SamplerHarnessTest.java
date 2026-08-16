@@ -15,19 +15,19 @@ class SamplerHarnessTest {
     private final Sampler alwaysOff = Sampler.alwaysOff();
 
     @Test
-    void alwaysOn_возвращает_RECORD_AND_SAMPLE() {
+    void alwaysOn_returns_RECORD_AND_SAMPLE() {
         SamplerDecisionAssert.assertThat(SamplerHarness.of(alwaysOn).sample())
                 .isRecordAndSample();
     }
 
     @Test
-    void alwaysOff_возвращает_DROP() {
+    void alwaysOff_returns_DROP() {
         SamplerDecisionAssert.assertThat(SamplerHarness.of(alwaysOff).sample())
                 .isDrop();
     }
 
     @Test
-    void накопленные_атрибуты_передаются_в_sampler() {
+    void accumulated_attributes_are_passed_to_sampler() {
         SamplerHarness harness = SamplerHarness.of(alwaysOn)
                 .spanKind(SpanKind.SERVER)
                 .putStringAttribute("http.method", "GET")

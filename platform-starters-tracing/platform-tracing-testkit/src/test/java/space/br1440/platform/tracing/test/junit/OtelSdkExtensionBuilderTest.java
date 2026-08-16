@@ -26,14 +26,14 @@ class OtelSdkExtensionBuilderTest {
             .build();
 
     @Test
-    void builder_без_scope_бросает_IllegalStateException() {
+    void builder_without_scope_throws_IllegalStateException() {
         assertThatThrownBy(() -> OtelSdkExtension.builder().build())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("scope");
     }
 
     @Test
-    void кастомный_sampler_применяется(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void custom_sampler_is_applied(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         Tracer tracer = sdk.getTracer("test");
         Span span = tracer.spanBuilder("dropped").startSpan();
         span.end();
@@ -43,7 +43,7 @@ class OtelSdkExtensionBuilderTest {
     }
 
     @Test
-    void sampler_доступен_через_ParameterResolver(Sampler sampler) {
+    void sampler_is_available_via_ParameterResolver(Sampler sampler) {
         SamplingResult result = sampler.shouldSample(
                 io.opentelemetry.context.Context.root(),
                 "00000000000000000000000000000001",

@@ -24,7 +24,7 @@ class OtelSdkExtensionSharedScopeTest {
 
     @Test
     @Order(1)
-    void шаг1_создаёт_span(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void step1_creates_span(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
         Tracer tracer = sdk.getTracer("saga");
         Span span = tracer.spanBuilder("step-1").startSpan();
@@ -34,7 +34,7 @@ class OtelSdkExtensionSharedScopeTest {
 
     @Test
     @Order(2)
-    void шаг2_видит_span_шага1_и_добавляет_свой(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void step2_sees_step1_span_and_adds_own(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         // SHARED_NESTED: reset не вызывался, span шага 1 остался в exporter.
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
 

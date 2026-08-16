@@ -24,7 +24,7 @@ class OtelSdkExtensionClassScopeTest {
     private static OpenTelemetrySdk secondSdk;
 
     @Test
-    void тест1(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void test1(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         firstSdk = sdk;
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
 
@@ -36,14 +36,14 @@ class OtelSdkExtensionClassScopeTest {
     }
 
     @Test
-    void тест2(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void test2(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         secondSdk = sdk;
         // Reset был выполнен между тестами — exporter пуст.
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
     }
 
     @AfterAll
-    static void проверяемЧтоSdkОдинАТотЖе() {
+    static void verifiesSameSdkInstance() {
         assertThat(firstSdk).isSameAs(secondSdk);
     }
 }

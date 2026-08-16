@@ -16,18 +16,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TraceOperationsTestExtensionTest {
 
     @Test
-    void инжектит_TraceOperations_и_InMemorySpanExporter(TraceOperations tracing, InMemorySpanExporter exporter) {
+    void injects_TraceOperations_and_InMemorySpanExporter(TraceOperations tracing, InMemorySpanExporter exporter) {
         assertThat(tracing).isNotNull();
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
     }
 
     @Test
-    void инжектит_OpenTelemetry_и_OpenTelemetrySdk(OpenTelemetry openTelemetry, OpenTelemetrySdk sdk) {
+    void injects_OpenTelemetry_and_OpenTelemetrySdk(OpenTelemetry openTelemetry, OpenTelemetrySdk sdk) {
         assertThat(openTelemetry).isSameAs(sdk);
     }
 
     @Test
-    void span_записанный_в_тесте_попадает_в_exporter(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
+    void span_written_in_test_lands_in_exporter(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
         Tracer tracer = sdk.getTracer("test");
         Span span = tracer.spanBuilder("op").startSpan();
         span.end();
@@ -45,7 +45,7 @@ class TraceOperationsTestExtensionTest {
 
         @Test
         @ExtendWith(TraceOperationsTestExtension.class)
-        void BeforeEach_получает_параметр_tracing(InMemorySpanExporter exporter) {
+        void BeforeEach_receives_tracing_parameter(InMemorySpanExporter exporter) {
             assertThat(tracing).isNotNull();
             assertThat(exporter.getFinishedSpanItems()).isEmpty();
         }
