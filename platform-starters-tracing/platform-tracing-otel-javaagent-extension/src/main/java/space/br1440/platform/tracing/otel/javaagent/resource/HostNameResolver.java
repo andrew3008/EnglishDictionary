@@ -58,7 +58,7 @@ public final class HostNameResolver {
                 result[0] = InetAddress.getLocalHost().getHostName();
             } catch (Throwable failure) {
                 PlatformThrowables.propagateIfFatal(failure);
-                log.debug("Не удалось резолвить hostname через InetAddress.getLocalHost(): {}", failure.toString());
+                log.debug("Failed to resolve hostname via InetAddress.getLocalHost(): {}", failure.toString());
             }
         }, "platform-tracing-hostname-resolve");
         t.setDaemon(true);

@@ -216,13 +216,13 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
 
         private void applyValidationWithSafeFallback() {
             if (maxQueueSize <= 0) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: maxQueueSize={} некорректен, fallback={}",
+                log.warn("PlatformDropOldestExportSpanProcessor.builder: maxQueueSize={} is invalid, fallback={}",
                         maxQueueSize, DEFAULT_MAX_QUEUE_SIZE);
                 maxQueueSize = DEFAULT_MAX_QUEUE_SIZE;
             }
 
             if (maxExportBatchSize <= 0) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: maxExportBatchSize={} некорректен, fallback={}",
+                log.warn("PlatformDropOldestExportSpanProcessor.builder: maxExportBatchSize={} is invalid, fallback={}",
                         maxExportBatchSize, DEFAULT_MAX_EXPORT_BATCH_SIZE);
                 maxExportBatchSize = DEFAULT_MAX_EXPORT_BATCH_SIZE;
             }
@@ -235,19 +235,19 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
             }
 
             if (scheduleDelay == null || scheduleDelay.isNegative() || scheduleDelay.isZero()) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: scheduleDelay={} некорректен, fallback={}",
+                log.warn("PlatformDropOldestExportSpanProcessor.builder: scheduleDelay={} is invalid, fallback={}",
                         scheduleDelay, DEFAULT_SCHEDULE_DELAY);
                 scheduleDelay = DEFAULT_SCHEDULE_DELAY;
             }
 
             if (exportTimeout == null || exportTimeout.isNegative() || exportTimeout.isZero()) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: exportTimeout={} некорректен, fallback={}",
+                log.warn("PlatformDropOldestExportSpanProcessor.builder: exportTimeout={} is invalid, fallback={}",
                         exportTimeout, DEFAULT_EXPORT_TIMEOUT);
                 exportTimeout = DEFAULT_EXPORT_TIMEOUT;
             }
 
             if (shutdownTimeout == null || shutdownTimeout.isNegative() || shutdownTimeout.isZero()) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: shutdownTimeout={} некорректен, fallback={}",
+                log.warn("PlatformDropOldestExportSpanProcessor.builder: shutdownTimeout={} is invalid, fallback={}",
                         shutdownTimeout, ExtensionDefaults.DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT);
                 shutdownTimeout = ExtensionDefaults.DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT;
             }

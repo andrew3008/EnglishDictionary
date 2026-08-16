@@ -131,7 +131,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
         int leakedSpans = getActiveSpanCount();
         int leakedTraces = activeTraces.size();
         if (leakedSpans > 0 || leakedTraces > 0) {
-            log.warn("SDK shutdown: остались {} незакрытых span'ов в {} трассах — возможна утечка span.end() в приложении",
+            log.warn("SDK shutdown: {} unfinished spans remain across {} traces — possible missing span.end() in the application",
                     leakedSpans, leakedTraces);
         }
 
@@ -173,7 +173,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
         try {
             scan();
         } catch (RuntimeException e) {
-            log.warn("Ошибка фонового сканирования watchdog: {}", e.getMessage());
+            log.warn("Watchdog background scan failed: {}", e.getMessage());
         }
     }
 
@@ -229,10 +229,10 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
                 forcedTraceCloses.incrementAndGet();
             }
 
-            log.warn("Watchdog принудительно завершил span '{}' (traceId={}, причина={})",
+            log.warn("Watchdog force-ended span '{}' (traceId={}, reason={})",
                     span.getName(), candidate.traceId(), candidate.reason().value());
         } catch (RuntimeException e) {
-            log.warn("Не удалось закрыть span watchdog'ом ({}): {}", candidate.reason().value(), e.getMessage());
+            log.warn("Watchdog failed to end span ({}): {}", candidate.reason().value(), e.getMessage());
         }
     }
 

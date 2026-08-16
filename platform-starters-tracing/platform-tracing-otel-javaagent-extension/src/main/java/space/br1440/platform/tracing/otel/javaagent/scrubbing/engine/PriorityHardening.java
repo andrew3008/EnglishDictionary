@@ -47,8 +47,8 @@ public final class PriorityHardening {
 
     private static ExecutableRule clampIfNeeded(ExecutableRule wrapper) {
         if (!wrapper.isCritical() && wrapper.getEffectivePriority() < CUSTOM_PRIORITY_FLOOR) {
-            log.warn("[scrubbing] Custom-правило '{}' имеет приоритет {} ниже допустимой границы {}. "
-                            + "Приоритет поднят (clamp) до {}.",
+            log.warn("[scrubbing] Custom rule '{}' has priority {} below the allowed floor {}. "
+                            + "Priority clamped to {}.",
                     wrapper.getRuleClass().getName(),
                     wrapper.getEffectivePriority(),
                     CUSTOM_PRIORITY_FLOOR,

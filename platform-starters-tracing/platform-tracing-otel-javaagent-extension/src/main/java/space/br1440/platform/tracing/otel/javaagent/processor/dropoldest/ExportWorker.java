@@ -70,7 +70,7 @@ final class ExportWorker implements Runnable {
         } catch (Throwable failure) {
             buffer.failTerminal();
             PlatformThrowables.propagateIfFatal(failure);
-            log.error("PlatformDropOldestExportSpanProcessor worker завершился аварийно: {}", failure.getMessage(), failure);
+            log.error("PlatformDropOldestExportSpanProcessor worker terminated abnormally: {}", failure.getMessage(), failure);
         } finally {
             terminated.countDown();
         }

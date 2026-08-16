@@ -42,11 +42,11 @@ public final class RateLimitedLogger {
     }
 
     public boolean warn(String format, Object... args) {
-        return log(PlatformLogControl.LogLevel.WARN, warnFast, warnThrottled, warnThrottledMode,"предупреждений", format, args);
+        return log(PlatformLogControl.LogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings", format, args);
     }
 
     public boolean error(String format, Object... args) {
-        return log(PlatformLogControl.LogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode,"ошибок", format, args);
+        return log(PlatformLogControl.LogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors", format, args);
     }
 
     public boolean isDebugEnabled() {
@@ -85,8 +85,8 @@ public final class RateLimitedLogger {
         }
 
         if (throttledMode.compareAndSet(false, true)) {
-            delegate.warn("Слишком много {} tracing-слоя — дальнейшие будут писаться не чаще "
-                            + "лимита (throttled). Основной канал наблюдаемости — счётчики JMX/метрики.",
+            delegate.warn("Too many tracing-layer {}; further messages will be written at most "
+                            + "at the configured limit (throttled). Primary observability channel is JMX/metrics counters.",
                     throttleAnnouncementNoun);
             emit(level, format, args);
             problemLogged.set(true);

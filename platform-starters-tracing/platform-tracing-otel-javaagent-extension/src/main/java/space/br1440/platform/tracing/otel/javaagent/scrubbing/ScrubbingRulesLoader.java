@@ -57,14 +57,14 @@ public final class ScrubbingRulesLoader {
         Properties properties;
         try (InputStream in = openStream(path, classLoader)) {
             if (in == null) {
-                log.warn("Файл правил маскирования не найден: '{}'", path);
+                log.warn("Scrubbing rules file not found: '{}'", path);
                 return Collections.emptyList();
             }
 
             properties = new Properties();
             properties.load(in);
         } catch (IOException e) {
-            log.warn("Не удалось прочитать файл правил маскирования '{}': {}", path, e.toString());
+            log.warn("Failed to read scrubbing rules file '{}': {}", path, e.toString());
             return Collections.emptyList();
         }
 

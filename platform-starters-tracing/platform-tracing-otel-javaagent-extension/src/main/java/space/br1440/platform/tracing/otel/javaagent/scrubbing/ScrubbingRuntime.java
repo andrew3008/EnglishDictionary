@@ -107,13 +107,13 @@ public final class ScrubbingRuntime {
         this.hasHmacKey = hmacSecret != null && hmacSecret.isPresent();
         if (!hasHmacKey && failFast) {
             throw new SanitizerBootstrapException(SanitizerBootstrapException.HMAC_INITIALIZATION_FAILED,
-                    "HMAC-ключ scrubbing не задан, а missing-key-policy=fail-fast: "
-                            + "задайте platform.tracing.scrubbing.hmac-key");
+                    "Scrubbing HMAC key is not set and missing-key-policy=fail-fast: "
+                            + "set platform.tracing.scrubbing.hmac-key");
         }
 
         if (enabled && !hasHmacKey) {
-            log.warn("Scrubbing HMAC-ключ не задан (missing-key-policy=continue): все правила с "
-                    + "действием HASH будут применяться как MASK на весь срок жизни runtime");
+            log.warn("Scrubbing HMAC key is not set (missing-key-policy=continue): all rules with "
+                    + "HASH action will degrade to MASK for the lifetime of this runtime");
         }
 
         this.hmacKey = hasHmacKey ? hmacSecret.copyBytes() : null;
@@ -123,7 +123,7 @@ public final class ScrubbingRuntime {
                 newMac();
             } catch (IllegalStateException e) {
                 throw new SanitizerBootstrapException(SanitizerBootstrapException.HMAC_INITIALIZATION_FAILED,
-                        "Не удалось инициализировать HMAC-SHA256", e);
+                        "Failed to initialize HMAC-SHA256", e);
             }
         }
     }
@@ -138,7 +138,7 @@ public final class ScrubbingRuntime {
             mac.init(new SecretKeySpec(hmacKey, HMAC_ALGORITHM));
             return mac;
         } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Не удалось инициализировать HMAC-SHA256", e);
+            throw new IllegalStateException("Failed to initialize HMAC-SHA256", e);
         }
     }
 
@@ -439,7 +439,7 @@ public final class ScrubbingRuntime {
     public void markAttributesUnverified() {
         if (attributesVerified.compareAndSet(true, false)) {
             collapseModeActivations.increment();
-            log.error("attributesVerified снят: exporter-boundary переходит в collapse-режим для span attributes");
+            log.error("attributesVerified cleared: exporter boundary enters collapse mode for span attributes");
         }
     }
 

@@ -14,7 +14,7 @@ final class TokenBucketRateLimiter {
 
     TokenBucketRateLimiter(double permitsPerInterval, long intervalNanos, double maxTokens, LongSupplier nanoClock) {
         if (permitsPerInterval <= 0 || intervalNanos <= 0 || maxTokens <= 0) {
-            throw new IllegalArgumentException("permitsPerInterval, intervalNanos и maxTokens должны быть > 0");
+            throw new IllegalArgumentException("permitsPerInterval, intervalNanos and maxTokens must be > 0");
         }
 
         this.maxTokens = maxTokens;

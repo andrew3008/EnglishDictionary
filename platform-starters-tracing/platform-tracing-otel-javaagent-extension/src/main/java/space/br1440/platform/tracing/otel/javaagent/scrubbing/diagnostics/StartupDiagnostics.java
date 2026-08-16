@@ -19,13 +19,13 @@ public final class StartupDiagnostics {
                             int clampedPriorities,
                             int openBreakers,
                             List<ExtensionRuleLoader.FailedEntry> failedEntries) {
-        log.info("[scrubbing] Инициализировано — builtInRules={}, bundledSpiRules={}, customRules={}, "
+        log.info("[scrubbing] Initialized — builtInRules={}, bundledSpiRules={}, customRules={}, "
                         + "loadingMode={}, failedProviders={}, clampedPriorities={}, openBreakers={}",
                 builtInRules, bundledSpiRules, customRules,
                 loadingMode, failedProviders, clampedPriorities, openBreakers);
 
         for (ExtensionRuleLoader.FailedEntry entry : failedEntries) {
-            log.warn("[scrubbing] Неуспешный провайдер: name='{}', reason={}", entry.name(), entry.reason());
+            log.warn("[scrubbing] Failed provider: name='{}', reason={}", entry.name(), entry.reason());
         }
     }
 }

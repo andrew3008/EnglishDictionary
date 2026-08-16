@@ -68,16 +68,16 @@ public final class RuleCircuitBreaker {
             openedAtMs.set(System.currentTimeMillis());
             state.set(State.OPEN);
             probeInProgress.set(0);
-            throttledWarn("Circuit breaker probe УПАЛ для правила '{}' — возврат в OPEN");
+            throttledWarn("Circuit breaker probe FAILED for rule '{}' — returning to OPEN");
             return;
         }
 
         int failures = failureCount.incrementAndGet();
         if (failures >= failureThreshold && state.compareAndSet(State.CLOSED, State.OPEN)) {
             openedAtMs.set(System.currentTimeMillis());
-            throttledWarn("Circuit breaker ОТКРЫТ (OPEN) для правила '{}' после серии сбоев");
+            throttledWarn("Circuit breaker OPEN for rule '{}' after consecutive failures");
         } else {
-            throttledWarn("Зафиксирован сбой правила '{}'");
+            throttledWarn("Recorded failure for rule '{}'");
         }
     }
 
@@ -86,7 +86,7 @@ public final class RuleCircuitBreaker {
         long last = lastLoggedMs.get();
         if ((now - last) >= logThrottleMs && lastLoggedMs.compareAndSet(last, now)) {
             log.warn("[scrubbing] " + template
-                    + " (счётчик={} порог={}; последующие ошибки подавлены на {}мс)",
+                    + " (count={} threshold={}; subsequent errors suppressed for {}ms)",
                     ruleName, failureCount.get(), failureThreshold, logThrottleMs);
         }
     }
