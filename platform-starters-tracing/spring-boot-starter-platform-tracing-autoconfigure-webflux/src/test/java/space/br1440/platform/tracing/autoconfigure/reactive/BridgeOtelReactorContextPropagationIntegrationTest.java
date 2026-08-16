@@ -40,7 +40,7 @@ class BridgeOtelReactorContextPropagationIntegrationTest {
     private int port;
 
     @Test
-    void publishOn_сохраняет_traceId_через_bridge_otel_path() {
+    void publishOn_preserves_traceId_via_bridge_otel_path() {
         WebTestClient client = WebTestClient.bindToServer()
                 .baseUrl("http://127.0.0.1:" + port)
                 .build();

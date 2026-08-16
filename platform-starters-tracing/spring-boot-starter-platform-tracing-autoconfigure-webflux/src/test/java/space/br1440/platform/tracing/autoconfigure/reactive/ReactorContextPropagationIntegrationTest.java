@@ -63,7 +63,7 @@ class ReactorContextPropagationIntegrationTest {
     }
 
     @Test
-    void otelContext_виден_внутри_Mono_fromCallable_исполняемого_на_том_же_потоке() {
+    void otelContext_visible_inside_Mono_fromCallable_on_same_thread() {
         Span parent = openTelemetry.getTracer("test").spanBuilder("parent").startSpan();
         String expectedTraceId = parent.getSpanContext().getTraceId();
         try (Scope ignored = parent.makeCurrent()) {
@@ -81,7 +81,7 @@ class ReactorContextPropagationIntegrationTest {
     }
 
     @Test
-    void schedulers_parallel_доступен_и_создаёт_worker_threads_отличные_от_caller_thread() {
+    void schedulers_parallel_available_and_creates_worker_threads_different_from_caller() {
         // Sanity-чек тестовой инфраструктуры: parallel-scheduler действительно переключает
         // выполнение на другой поток. Без этого assertion тест выше мог бы пройти даже
         // на полностью сломанной propagation, потому что worker == caller.

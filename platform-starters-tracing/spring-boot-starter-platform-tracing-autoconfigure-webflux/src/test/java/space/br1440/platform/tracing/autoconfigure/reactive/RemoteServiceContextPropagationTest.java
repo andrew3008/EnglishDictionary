@@ -28,7 +28,7 @@ class RemoteServiceContextPropagationTest {
     }
 
     @Test
-    void successSignal_восстанавливает_MDC_только_на_время_callback() {
+    void successSignal_restores_MDC_only_for_callback_duration() {
         String observed = Mono.deferContextual(ignored -> Mono.fromSupplier(
                         () -> MDC.get(TracingMdcKeys.REMOTE_SERVICE)))
                 .contextWrite(RemoteServiceReactorContext.contextWrite("billing"))
@@ -39,7 +39,7 @@ class RemoteServiceContextPropagationTest {
     }
 
     @Test
-    void errorSignal_не_оставляет_MDC_на_потоке_подписчика() {
+    void errorSignal_does_not_leave_MDC_on_subscriber_thread() {
         Mono<String> failed = Mono.deferContextual(ignored -> {
                     assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isEqualTo("billing");
                     return Mono.<String>error(new IllegalStateException("boom"));
@@ -51,7 +51,7 @@ class RemoteServiceContextPropagationTest {
     }
 
     @Test
-    void cancelSignal_не_оставляет_MDC_на_потоке_подписчика() {
+    void cancelSignal_does_not_leave_MDC_on_subscriber_thread() {
         Mono<String> pending = Mono.deferContextual(ignored -> {
                     assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isEqualTo("billing");
                     return Mono.<String>never();
