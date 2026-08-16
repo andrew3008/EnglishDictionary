@@ -37,7 +37,7 @@ class AttributePolicyTest {
     }
 
     @Test
-    void warn_приОтсутствииRequired_неБросает_подставляетSafeDefault_иПишетМетрику() {
+    void warn_whenRequiredAbsent_doesNotThrow_appliesSafeDefault_andWritesMetric() {
         CapturingMetrics metrics = new CapturingMetrics();
         AttributePolicy policy = new AttributePolicy(SemconvValidationMode.WARN, false, metrics);
 
@@ -53,7 +53,7 @@ class AttributePolicyTest {
     }
 
     @Test
-    void strict_приОтсутствииRequired_бросаетSemconvViolationException() {
+    void strict_whenRequiredAbsent_throwsSemconvViolationException() {
         AttributePolicy policy = new AttributePolicy(SemconvValidationMode.STRICT, false, SemconvMetrics.NOOP);
 
         assertThatExceptionOfType(SemconvViolationException.class)
@@ -62,7 +62,7 @@ class AttributePolicyTest {
     }
 
     @Test
-    void disabled_возвращаетАтрибутыAsIs_безДефолтовЛоговМетрик() {
+    void disabled_returnsAttributesAsIs_withoutDefaultsLogsMetrics() {
         CapturingMetrics metrics = new CapturingMetrics();
         AttributePolicy policy = new AttributePolicy(SemconvValidationMode.DISABLED, false, metrics);
 
@@ -75,7 +75,7 @@ class AttributePolicyTest {
     }
 
     @Test
-    void warn_приЗапрещённомАтрибуте_фиксируетForbiddenНарушение() {
+    void warn_onForbiddenAttribute_recordsForbiddenViolation() {
         CapturingMetrics metrics = new CapturingMetrics();
         AttributePolicy policy = new AttributePolicy(SemconvValidationMode.WARN, false, metrics);
 
@@ -94,7 +94,7 @@ class AttributePolicyTest {
     }
 
     @Test
-    void warn_dbBezDbSystem_фиксируетRequiredAnyOf_аСНим_проходит() {
+    void warn_dbWithoutDbSystem_recordsRequiredAnyOf_andPassesWithIt() {
         AttributePolicy policy = new AttributePolicy(SemconvValidationMode.WARN, false, SemconvMetrics.NOOP);
 
         Attributes without = Attributes.builder()
@@ -118,7 +118,7 @@ class AttributePolicyTest {
     }
 
     @Test
-    void unsafeAttribute_классифицируетKnownUnknownRejected_иПишетМетрику() {
+    void unsafeAttribute_classifiesKnownUnknownRejected_andWritesMetric() {
         CapturingMetrics metrics = new CapturingMetrics();
 
         AttributePolicy allowed = new AttributePolicy(SemconvValidationMode.WARN, true, metrics);
@@ -135,7 +135,7 @@ class AttributePolicyTest {
     }
 
     @Test
-    void disabled_неОтключаетВыполнение_другихРежимов_конструкторПоУмолчаниюWarn() {
+    void disabled_doesNotDisableOtherModes_defaultConstructorIsWarn() {
         assertThatNoException().isThrownBy(() -> new AttributePolicy().validateAndNormalize(
                 SpanCategory.INTERNAL, Attributes.empty(), "default"));
         assertThat(new AttributePolicy().mode()).isEqualTo(SemconvValidationMode.WARN);

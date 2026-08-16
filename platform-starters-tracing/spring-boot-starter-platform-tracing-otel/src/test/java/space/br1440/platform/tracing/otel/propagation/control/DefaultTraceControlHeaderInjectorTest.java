@@ -38,7 +38,7 @@ class DefaultTraceControlHeaderInjectorTest {
     }
 
     @Test
-    @DisplayName("без PROPAGATION_DECISION ничего не инжектится (secure-by-default)")
+    @DisplayName("without PROPAGATION_DECISION nothing is injected (secure-by-default)")
     void noDecisionInjectsNothing() {
         Map<String, String> carrier = new HashMap<>();
         injector.inject(contextWith(null), carrier, MAP_SETTER);
@@ -46,7 +46,7 @@ class DefaultTraceControlHeaderInjectorTest {
     }
 
     @Test
-    @DisplayName("DENY_ALL ничего не инжектит")
+    @DisplayName("DENY_ALL injects nothing")
     void denyAllInjectsNothing() {
         Map<String, String> carrier = new HashMap<>();
         injector.inject(contextWith(OutboundPropagationDecision.DENY_ALL), carrier, MAP_SETTER);
@@ -54,7 +54,7 @@ class DefaultTraceControlHeaderInjectorTest {
     }
 
     @Test
-    @DisplayName("requestId-only: только X-Request-Id")
+    @DisplayName("requestId-only: only X-Request-Id")
     void requestIdOnly() {
         Map<String, String> carrier = new HashMap<>();
         injector.inject(contextWith(new OutboundPropagationDecision(false, false, true)), carrier, MAP_SETTER);
@@ -63,7 +63,7 @@ class DefaultTraceControlHeaderInjectorTest {
     }
 
     @Test
-    @DisplayName("force по умолчанию не пробрасывается (decision=false) даже при forceTrace в control")
+    @DisplayName("force is not propagated by default (decision=false) even with forceTrace in control")
     void forceSkippedWhenDecisionFalse() {
         Map<String, String> carrier = new HashMap<>();
         injector.inject(contextWith(new OutboundPropagationDecision(false, false, false)), carrier, MAP_SETTER);
@@ -71,7 +71,7 @@ class DefaultTraceControlHeaderInjectorTest {
     }
 
     @Test
-    @DisplayName("ALLOW_ALL инжектит все три заголовка")
+    @DisplayName("ALLOW_ALL injects all three headers")
     void allowAllInjectsAll() {
         Map<String, String> carrier = new HashMap<>();
         injector.inject(contextWith(OutboundPropagationDecision.ALLOW_ALL), carrier, MAP_SETTER);
@@ -80,7 +80,7 @@ class DefaultTraceControlHeaderInjectorTest {
     }
 
     @Test
-    @DisplayName("application port читает current context и возвращает типизированные slots")
+    @DisplayName("application port reads current context and returns typed slots")
     void resolveReadsCurrentContext() {
         try (Scope ignored = contextWith(OutboundPropagationDecision.ALLOW_ALL).makeCurrent()) {
             OutboundPropagationHeaders headers = propagation.resolve(OutboundPropagationDecision.ALLOW_ALL);
@@ -95,7 +95,7 @@ class DefaultTraceControlHeaderInjectorTest {
     }
 
     @Test
-    @DisplayName("application port fail-closed при отсутствии decision или current control")
+    @DisplayName("application port fail-closed when decision or current control absent")
     void resolveWithoutRequiredStateIsEmpty() {
         assertThat(propagation.resolve(null)).isEqualTo(OutboundPropagationHeaders.EMPTY);
         assertThat(propagation.resolve(OutboundPropagationDecision.ALLOW_ALL))

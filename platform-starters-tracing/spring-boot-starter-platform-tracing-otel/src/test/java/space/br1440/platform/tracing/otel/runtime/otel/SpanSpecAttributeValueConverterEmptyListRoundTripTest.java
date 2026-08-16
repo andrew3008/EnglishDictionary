@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SpanSpecAttributeValueConverterEmptyListRoundTripTest {
 
     @Test
-    void emptyLists_сохраняютТипИзAttributeKey() {
+    void emptyLists_preserveTypeFromAttributeKey() {
         assertThat(SpanSpecAttributeValueConverter.fromOtelValue(
                 AttributeKey.stringArrayKey("strings"), List.of()))
                 .isEqualTo(SpanSpecAttributeValue.stringList(List.of()));

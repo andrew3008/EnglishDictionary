@@ -20,25 +20,25 @@ class NoOpPlatformContextPropagationTest {
     private final PlatformContextPropagation propagation = NoOpPlatformContextPropagation.INSTANCE;
 
     @Test
-    void wrapRunnable_возвращает_исходный_объект() {
+    void wrapRunnable_returns_original_object() {
         Runnable task = () -> {};
         assertThat(propagation.wrap(task)).isSameAs(task);
     }
 
     @Test
-    void wrapThrowingSupplier_возвращает_исходный_объект() {
+    void wrapThrowingSupplier_returns_original_object() {
         ThrowingSupplier<String> task = () -> "v";
         assertThat(propagation.wrap(task)).isSameAs(task);
     }
 
     @Test
-    void contextAwareExecutor_возвращает_исходный_объект() {
+    void contextAwareExecutor_returns_original_object() {
         Executor delegate = Runnable::run;
         assertThat(propagation.contextAware(delegate)).isSameAs(delegate);
     }
 
     @Test
-    void contextAwareExecutorService_возвращает_исходный_объект() {
+    void contextAwareExecutorService_returns_original_object() {
         ExecutorService delegate = Executors.newSingleThreadExecutor();
         try {
             assertThat(propagation.contextAware(delegate)).isSameAs(delegate);

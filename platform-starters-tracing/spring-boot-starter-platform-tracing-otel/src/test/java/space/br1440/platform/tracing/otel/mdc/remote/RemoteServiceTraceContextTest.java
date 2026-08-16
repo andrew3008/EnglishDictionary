@@ -15,7 +15,7 @@ class RemoteServiceTraceContextTest {
     }
 
     @Test
-    void recordFindClear_образуют_узкий_trace_scoped_lifecycle() {
+    void recordFindClear_form_narrow_trace_scoped_lifecycle() {
         RemoteServiceTraceContext.record(TRACE_ID, "billing");
 
         assertThat(RemoteServiceTraceContext.find(TRACE_ID)).contains("billing");
@@ -26,7 +26,7 @@ class RemoteServiceTraceContextTest {
     }
 
     @Test
-    void повторное_использование_traceId_не_возвращает_предыдущее_значение() {
+    void traceId_reuse_does_not_return_previous_value() {
         RemoteServiceTraceContext.record(TRACE_ID, "first");
         RemoteServiceTraceContext.clear(TRACE_ID);
         RemoteServiceTraceContext.record(TRACE_ID, "second");

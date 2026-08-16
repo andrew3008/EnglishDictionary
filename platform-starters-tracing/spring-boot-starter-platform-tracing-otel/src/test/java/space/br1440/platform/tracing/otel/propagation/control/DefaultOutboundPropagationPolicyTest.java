@@ -19,21 +19,21 @@ class DefaultOutboundPropagationPolicyTest {
     }
 
     @Test
-    @DisplayName("outbound выключен -> DENY_ALL даже для доверенного хоста")
+    @DisplayName("outbound disabled -> DENY_ALL even for trusted host")
     void disabledReturnsDenyAll() {
         assertThat(policy(false, true, true, true).decide("a.trusted.com"))
                 .isEqualTo(OutboundPropagationDecision.DENY_ALL);
     }
 
     @Test
-    @DisplayName("недоверенный хост -> DENY_ALL")
+    @DisplayName("untrusted host -> DENY_ALL")
     void untrustedReturnsDenyAll() {
         assertThat(policy(true, true, true, true).decide("evil.com"))
                 .isEqualTo(OutboundPropagationDecision.DENY_ALL);
     }
 
     @Test
-    @DisplayName("доверенный хост -> per-header флаги")
+    @DisplayName("trusted host -> per-header flags")
     void trustedAppliesPerHeaderFlags() {
         OutboundPropagationDecision d = policy(true, false, false, true).decide("a.trusted.com");
         assertThat(d.propagateRequestId()).isTrue();

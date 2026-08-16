@@ -49,7 +49,7 @@ class OtelPlatformContextPropagationTest {
     }
 
     @Test
-    void wrapRunnable_переносит_traceId_в_completableFuture() throws Exception {
+    void wrapRunnable_propagates_traceId_into_completableFuture() throws Exception {
         try (var parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             AtomicReference<String> captured = new AtomicReference<>();
@@ -64,7 +64,7 @@ class OtelPlatformContextPropagationTest {
     }
 
     @Test
-    void runnable_без_wrap_теряет_traceId_в_completableFuture() throws Exception {
+    void runnable_without_wrap_loses_traceId_in_completableFuture() throws Exception {
         try (var parent = tracing.spans().operation("parent").start()) {
             AtomicReference<String> captured = new AtomicReference<>();
 
@@ -77,7 +77,7 @@ class OtelPlatformContextPropagationTest {
     }
 
     @Test
-    void wrapThrowingSupplier_переносит_traceId_и_возвращает_значение() throws Exception {
+    void wrapThrowingSupplier_propagates_traceId_and_returns_value() throws Exception {
         try (var parent = tracing.spans().operation("parent").start()) {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
 
@@ -98,7 +98,7 @@ class OtelPlatformContextPropagationTest {
     }
 
     @Test
-    void wrapThrowingSupplier_корректно_пробрасывает_checked_исключение() {
+    void wrapThrowingSupplier_correctly_rethrows_checked_exception() {
         try (var parent = tracing.spans().operation("parent").start()) {
             var wrapped = propagation.wrap((space.br1440.platform.tracing.api.util.ThrowingSupplier<String>) () -> {
                 throw new Exception("checked failure");
@@ -111,7 +111,7 @@ class OtelPlatformContextPropagationTest {
     }
 
     @Test
-    void contextAwareExecutor_переносит_traceId_на_каждом_submit() throws Exception {
+    void contextAwareExecutor_propagates_traceId_on_each_submit() throws Exception {
         ExecutorService aware = (ExecutorService) propagation.contextAware(executor);
 
         AtomicReference<String> firstCapture = new AtomicReference<>();
@@ -134,7 +134,7 @@ class OtelPlatformContextPropagationTest {
     }
 
     @Test
-    void wrap_внутри_nested_spans_сохраняет_child_контекст_а_не_parent() throws Exception {
+    void wrap_inside_nested_spans_keeps_child_context_not_parent() throws Exception {
         try (var parent = tracing.spans().operation("parent").start()) {
             try (var child = tracing.spans().operation("child").child().start()) {
                 String childTraceId = tracing.traceContext().traceId().orElseThrow();

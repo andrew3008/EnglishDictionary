@@ -44,7 +44,7 @@ class DefaultTraceOperationsTest {
     }
 
     @Test
-    void childSpan_наследует_traceId_родителя() {
+    void childSpan_inherits_parent_traceId() {
         try (var parent = tracing.spans().operation("parent").start()) {
             try (var child = tracing.spans().operation("child").child().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
@@ -60,7 +60,7 @@ class DefaultTraceOperationsTest {
     }
 
     @Test
-    void facadeDisabled_не_создаёт_span() {
+    void facadeDisabled_does_not_create_span() {
         tracing.setFacadeEnabled(false);
         assertThat(tracing.isFacadeEnabled()).isFalse();
 
@@ -78,7 +78,7 @@ class DefaultTraceOperationsTest {
     }
 
     @Test
-    void rootSpan_создаёт_новую_трассу_без_родителя() {
+    void rootSpan_creates_new_trace_without_parent() {
         try (var parent = tracing.spans().operation("parent").start()) {
             try (var root = tracing.spans().operation("job").root().start()) {
                 assertThat(tracing.traceContext().traceId()).isPresent();
@@ -94,7 +94,7 @@ class DefaultTraceOperationsTest {
     }
 
     @Test
-    void detachedSpan_не_имеет_родителя() {
+    void detachedSpan_has_no_parent() {
         try (var detached = tracing.spans().operation("orphan").detached().start()) {
             assertThat(tracing.traceContext().traceId()).isPresent();
         }
@@ -104,7 +104,7 @@ class DefaultTraceOperationsTest {
     }
 
     @Test
-    void fromSpec_создаёт_span_с_remote_links() {
+    void fromSpec_creates_span_with_remote_links() {
         RemoteSpanLink link1 = RemoteSpanLink.sampled(
                 "0000000000000000000000000000000a", "0000000000000001");
         RemoteSpanLink link2 = RemoteSpanLink.sampled(
@@ -135,7 +135,7 @@ class DefaultTraceOperationsTest {
     }
 
     @Test
-    void rootSpan_эквивалентен_explicit_root() {
+    void rootSpan_is_equivalent_to_explicit_root() {
         try (var scope = tracing.spans().operation("job").root().start()) {
             assertThat(tracing.traceContext().spanId()).isPresent();
         }

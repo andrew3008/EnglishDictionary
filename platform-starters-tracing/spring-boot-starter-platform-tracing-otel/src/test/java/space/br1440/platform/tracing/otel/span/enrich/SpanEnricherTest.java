@@ -41,7 +41,7 @@ class SpanEnricherTest {
     }
 
     @Test
-    void enrichCurrentSpan_пишетТолькоPlatformSafeАтрибуты() {
+    void enrichCurrentSpan_writesOnlyPlatformSafeAttributes() {
         Tracer tracer = sdk.getTracer("test");
         Span span = tracer.spanBuilder("op").startSpan();
         try (Scope ignored = span.makeCurrent()) {
@@ -60,7 +60,7 @@ class SpanEnricherTest {
     }
 
     @Test
-    void enrichCurrentSpan_безАктивногоSpan_noOp() {
+    void enrichCurrentSpan_withoutActiveSpan_noOp() {
         enricher.enrichCurrentSpan(scope -> scope.requestId("x"));
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
     }

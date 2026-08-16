@@ -55,7 +55,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("builder бросил VirtualMachineError → пробрасывается, LKG сохранён")
+    @DisplayName("builder threw VirtualMachineError → rethrown, LKG preserved")
     void builderFatalErrorRethrown() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -70,7 +70,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("validator бросил LinkageError → пробрасывается, LKG сохранён")
+    @DisplayName("validator threw LinkageError → rethrown, LKG preserved")
     void validatorFatalErrorRethrown() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -88,7 +88,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("builder бросил InterruptedException → interrupt flag, false, LKG")
+    @DisplayName("builder threw InterruptedException → interrupt flag, false, LKG")
     void builderInterruptedSetsFlagReturnsFalse() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -105,7 +105,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("validator бросил InterruptedException → interrupt flag, false, LKG")
+    @DisplayName("validator threw InterruptedException → interrupt flag, false, LKG")
     void validatorInterruptedSetsFlagReturnsFalse() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -124,7 +124,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("version() делегирует current().version()")
+    @DisplayName("version() delegates to current().version()")
     void versionDelegatesToCurrent() {
         // given
         VersionedStateHolder<Snapshot> holder = new VersionedStateHolder<>(new Snapshot(42, 0));
@@ -137,7 +137,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("tryUpdate(builder) эквивалентен tryUpdate(builder, null)")
+    @DisplayName("tryUpdate(builder) is equivalent to tryUpdate(builder, null)")
     void singleArgOverloadEquivalentToNullValidator() {
         // given
         VersionedStateHolder<Snapshot> singleArg = holder();
@@ -154,7 +154,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("успешный tryUpdate публикует новый снимок и поднимает версию")
+    @DisplayName("successful tryUpdate publishes new snapshot and bumps version")
     void successfulUpdatePublishes() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -169,7 +169,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("builder вернул null → keep last-known-good")
+    @DisplayName("builder returned null → keep last-known-good")
     void nullCandidateKeepsLkg() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -185,7 +185,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("builder бросил исключение → keep last-known-good, наружу не пробрасывается")
+    @DisplayName("builder threw exception → keep last-known-good, not rethrown")
     void builderThrowKeepsLkg() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -202,7 +202,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("validator отверг кандидата → keep last-known-good")
+    @DisplayName("validator rejected candidate → keep last-known-good")
     void validatorRejectKeepsLkg() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -217,7 +217,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("validator бросил исключение → keep last-known-good")
+    @DisplayName("validator threw exception → keep last-known-good")
     void validatorThrowKeepsLkg() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -234,7 +234,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("null builder → NullPointerException, состояние не меняется")
+    @DisplayName("null builder → NullPointerException, state unchanged")
     void nullBuilderThrowsAndKeepsState() {
         // given
         VersionedStateHolder<Snapshot> holder = holder();
@@ -248,7 +248,7 @@ class VersionedStateHolderTest {
     }
 
     @Test
-    @DisplayName("конкурентные апдейты: все применяются, версии монотонны, без потерь (CAS-retry)")
+    @DisplayName("concurrent updates: all applied, versions monotonic, no loss (CAS-retry)")
     void concurrentUpdatesAreSerializedWithoutLoss() throws InterruptedException {
         // given
         VersionedStateHolder<Snapshot> holder = holder();

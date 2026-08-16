@@ -40,7 +40,7 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void record_секьюрДефолт_неПишетMessageИStacktrace_ноСтавитErrorTypeИStatus() {
+    void record_secureDefault_doesNotWriteMessageAndStacktrace_butSetsErrorTypeAndStatus() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
         runInSpan(() -> recorder.record(new IllegalStateException("SELECT * FROM users WHERE ssn='123'")));
 
@@ -61,7 +61,7 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void record_сРазрешённымMessage_пишетУсечённыйMessageИDescription() {
+    void record_withAllowedMessage_writesTruncatedMessageAndDescription() {
         ExceptionRecorder recorder = new ExceptionRecorder(new ExceptionMessagePolicy(true, false));
         runInSpan(() -> recorder.record(new IllegalArgumentException("boom")));
 
@@ -74,7 +74,7 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void record_безАктивногоSpan_иNull_неБросаютИНеСоздаютSpan() {
+    void record_withoutActiveSpan_andNull_doNotThrowAndDoNotCreateSpan() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
         assertThatCode(() -> recorder.record(new RuntimeException("no span"))).doesNotThrowAnyException();
         runInSpan(() -> recorder.record(null));
@@ -86,7 +86,7 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void record_сЯвнымSpan_пишетВПереданныйSpanАНеВCurrent() {
+    void record_withExplicitSpan_writesToPassedSpanNotCurrent() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
         // span НЕ делаем current — overload record(Span, Throwable) должен писать именно в него.
         Span span = tracer.spanBuilder("explicit").startSpan();
@@ -102,7 +102,7 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void record_сNullSpan_иInvalidSpan_неБросают() {
+    void record_withNullSpan_andInvalidSpan_doNotThrow() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
         assertThatCode(() -> recorder.record((Span) null, new RuntimeException("x")))
                 .doesNotThrowAnyException();
@@ -113,7 +113,7 @@ class ExceptionRecorderTest {
     }
 
     @Test
-    void markCurrentSpanAsError_ставитStatusErrorИResultFailure() {
+    void markCurrentSpanAsError_setsStatusErrorAndResultFailure() {
         ExceptionRecorder recorder = ExceptionRecorder.secureDefault();
         runInSpan(recorder::markCurrentSpanAsError);
 

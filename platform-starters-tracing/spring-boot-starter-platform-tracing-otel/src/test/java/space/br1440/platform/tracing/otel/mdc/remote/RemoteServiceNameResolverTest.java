@@ -24,7 +24,7 @@ class RemoteServiceNameResolverTest {
     }
 
     @Test
-    void mdc_имеет_приоритет_над_contributors() {
+    void mdc_has_priority_over_contributors() {
         RemoteServiceTraceContext.record(TRACE_ID, "from-mirror");
         MDC.put(TracingMdcKeys.REMOTE_SERVICE, "from-mdc");
 
@@ -34,7 +34,7 @@ class RemoteServiceNameResolverTest {
     }
 
     @Test
-    void contributor_цепочка_возвращает_первое_непустое() {
+    void contributor_chain_returns_first_non_blank() {
         RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(List.of(
                 () -> Optional.empty(),
                 () -> Optional.of("second"),
@@ -44,7 +44,7 @@ class RemoteServiceNameResolverTest {
     }
 
     @Test
-    void mirror_fallback_когда_MDC_и_contributors_пусты() {
+    void mirror_fallback_when_MDC_and_contributors_empty() {
         RemoteServiceTraceContext.record(TRACE_ID, "upstream-from-mirror");
 
         RemoteServiceNameResolver resolver = new RemoteServiceNameResolver(List.of());
@@ -53,7 +53,7 @@ class RemoteServiceNameResolverTest {
     }
 
     @Test
-    void resolve_без_traceId_не_смотрит_в_mirror() {
+    void resolve_without_traceId_does_not_look_in_mirror() {
         RemoteServiceTraceContext.record(TRACE_ID, "upstream-from-mirror");
         MDC.remove(TracingMdcKeys.REMOTE_SERVICE);
 
@@ -72,7 +72,7 @@ class RemoteServiceNameResolverTest {
     }
 
     @Test
-    void constructor_делает_immutable_copy() {
+    void constructor_makes_immutable_copy() {
         List<RemoteServiceNameSource> mutable = new ArrayList<>();
         mutable.add(() -> Optional.of("first"));
 
@@ -89,7 +89,7 @@ class RemoteServiceNameResolverTest {
     }
 
     @Test
-    void пустой_optional_когда_ничего_не_найдено() {
+    void empty_optional_when_nothing_found() {
         assertThat(new RemoteServiceNameResolver(List.of()).resolve()).isEmpty();
     }
 }

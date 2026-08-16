@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("DefaultInboundTraceControlExtractor: парсинг inbound заголовков")
+@DisplayName("DefaultInboundTraceControlExtractor: inbound header parsing")
 class DefaultInboundTraceControlExtractorTest {
 
     private final DefaultInboundTraceControlExtractor extractor = new DefaultInboundTraceControlExtractor();
@@ -32,7 +32,7 @@ class DefaultInboundTraceControlExtractorTest {
     }
 
     @Test
-    @DisplayName("force + qa одновременно -> FORCE_HEADER имеет приоритет над QA_TRACE")
+    @DisplayName("force + qa together -> FORCE_HEADER takes priority over QA_TRACE")
     void forceTracePriorityOverQaTrace() {
         InboundTraceControl control = extractor.fromHeaders("on", "1", null);
         assertThat(control.forceTrace()).isTrue();
@@ -48,7 +48,7 @@ class DefaultInboundTraceControlExtractorTest {
     }
 
     @Test
-    @DisplayName("все null -> пустой контроль без reason")
+    @DisplayName("all null -> empty control without reason")
     void allNullHeaders() {
         InboundTraceControl control = extractor.fromHeaders(null, null, null);
         assertThat(control.forceTrace()).isFalse();

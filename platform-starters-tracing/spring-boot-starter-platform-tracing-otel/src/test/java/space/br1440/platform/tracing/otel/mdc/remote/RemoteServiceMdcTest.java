@@ -15,14 +15,14 @@ class RemoteServiceMdcTest {
     }
 
     @Test
-    void putIfPresent_записывает_непустое_значение() {
+    void putIfPresent_writes_non_blank_value() {
         RemoteServiceMdc.putIfPresent("order-service");
 
         assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isEqualTo("order-service");
     }
 
     @Test
-    void putIfPresent_игнорирует_null_и_blank() {
+    void putIfPresent_ignores_null_and_blank() {
         RemoteServiceMdc.putIfPresent(null);
         RemoteServiceMdc.putIfPresent("  ");
 
@@ -30,7 +30,7 @@ class RemoteServiceMdcTest {
     }
 
     @Test
-    void clear_удаляет_ключ() {
+    void clear_removes_key() {
         MDC.put(TracingMdcKeys.REMOTE_SERVICE, "billing");
 
         RemoteServiceMdc.clear();

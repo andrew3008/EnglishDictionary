@@ -47,7 +47,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void run_создаёт_и_закрывает_span() {
+    void run_creates_and_closes_span() {
         tracing.spans().operation("op").run(() ->
                 assertThat(tracing.traceContext().spanId()).isPresent());
 
@@ -58,7 +58,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void call_возвращает_значение() {
+    void call_returns_value() {
         String result = tracing.spans().operation("op").call(() -> "value");
 
         assertThat(result).isEqualTo("value");
@@ -66,7 +66,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void run_при_RuntimeException_регистрирует_исключение_и_пробрасывает() {
+    void run_on_RuntimeException_records_exception_and_rethrows() {
         assertThatThrownBy(() -> tracing.spans().operation("op").run(() -> {
             throw new IllegalStateException("boom");
         })).isInstanceOf(IllegalStateException.class).hasMessage("boom");
@@ -81,7 +81,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void callChecked_пробрасывает_checked_исключение() {
+    void callChecked_rethrows_checked_exception() {
         assertThatExceptionOfType(IOException.class).isThrownBy(() ->
                 tracing.spans().operation("io-op").callChecked(() -> {
                     throw new IOException("io failure");
@@ -93,7 +93,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void callChecked_lambda_compatible_с_checked_exception() throws Exception {
+    void callChecked_lambda_compatible_with_checked_exception() throws Exception {
         String value = tracing.spans().operation("io-op").callChecked(this::readSimulated);
 
         assertThat(value).isEqualTo("payload");
@@ -101,7 +101,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void run_формирует_дочерний_span_внутри_родительского() {
+    void run_creates_child_span_inside_parent() {
         tracing.spans().operation("parent").run(() -> {
             String parentTraceId = tracing.traceContext().traceId().orElseThrow();
             tracing.spans().operation("child").run(() ->
@@ -117,7 +117,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void run_root_создаёт_новую_трассу() {
+    void run_root_creates_new_trace() {
         tracing.spans().operation("outer").run(() -> {
             String outerTrace = tracing.traceContext().traceId().orElseThrow();
             tracing.spans().operation("scheduled").root().run(() -> {
@@ -134,7 +134,7 @@ class DefaultTraceOperationsInSpanTest {
     }
 
     @Test
-    void run_восстанавливает_current_span_родителя_после_закрытия_child() {
+    void run_restores_parent_current_span_after_child_close() {
         tracing.spans().operation("parent").run(() -> {
             String parentSpanId = Span.current().getSpanContext().getSpanId();
             tracing.spans().operation("child").run(() ->

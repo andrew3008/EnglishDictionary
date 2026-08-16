@@ -8,11 +8,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("TrustedDestinationMatchers: host hardening и label-aware glob")
+@DisplayName("TrustedDestinationMatchers: host hardening and label-aware glob")
 class TrustedDestinationMatchersTest {
 
     @Test
-    @DisplayName("точное совпадение хоста")
+    @DisplayName("exact host match")
     void exactHostMatch() {
         TrustedDestinationMatcher m = TrustedDestinationMatchers.forHttpHosts(List.of("api.internal"), false);
         assertThat(m.isTrusted("api.internal")).isTrue();
@@ -21,7 +21,7 @@ class TrustedDestinationMatchersTest {
     }
 
     @Test
-    @DisplayName("* соответствует ровно одному label'у, не нескольким")
+    @DisplayName("* matches exactly one label, not multiple")
     void singleLabelWildcard() {
         TrustedDestinationMatcher m = TrustedDestinationMatchers.forHttpHosts(List.of("*.trusted.com"), false);
         assertThat(m.isTrusted("a.trusted.com")).isTrue();
@@ -29,7 +29,7 @@ class TrustedDestinationMatchersTest {
     }
 
     @Test
-    @DisplayName("** соответствует одному и более label'ам")
+    @DisplayName("** matches one or more labels")
     void multiLabelWildcard() {
         TrustedDestinationMatcher m = TrustedDestinationMatchers.forHttpHosts(List.of("**.trusted.com"), false);
         assertThat(m.isTrusted("a.trusted.com")).isTrue();
@@ -37,7 +37,7 @@ class TrustedDestinationMatchersTest {
     }
 
     @Test
-    @DisplayName("обходные кейсы allowlist отклоняются (DENY)")
+    @DisplayName("allowlist bypass cases are rejected (DENY)")
     void bypassAttemptsDenied() {
         TrustedDestinationMatcher m = TrustedDestinationMatchers.forHttpHosts(
                 List.of("trusted.com", "*.trusted.com"), false);
@@ -50,7 +50,7 @@ class TrustedDestinationMatchersTest {
     }
 
     @Test
-    @DisplayName("IP-литералы запрещены по умолчанию")
+    @DisplayName("IP literals forbidden by default")
     void ipLiteralsDeniedByDefault() {
         TrustedDestinationMatcher m = TrustedDestinationMatchers.forHttpHosts(
                 List.of("*", "**", "127.0.0.1"), false);
@@ -67,7 +67,7 @@ class TrustedDestinationMatchersTest {
     }
 
     @Test
-    @DisplayName("Kafka-топики: case-sensitive, * — любая последовательность")
+    @DisplayName("Kafka topics: case-sensitive, * — any sequence")
     void kafkaTopics() {
         TrustedDestinationMatcher m = TrustedDestinationMatchers.forKafkaTopics(List.of("orders.*", "billing_events"));
         assertThat(m.isTrusted("orders.v1")).isTrue();

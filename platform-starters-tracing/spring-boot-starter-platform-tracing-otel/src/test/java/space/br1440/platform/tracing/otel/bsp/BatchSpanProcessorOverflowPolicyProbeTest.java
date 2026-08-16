@@ -61,7 +61,7 @@ class BatchSpanProcessorOverflowPolicyProbeTest {
     private static final int OVERFLOW_FACTOR = 8;
 
     @Test
-    @DisplayName("Probe: фактическая политика overflow стандартного BSP SDK 1.64.0 (snapshot)")
+    @DisplayName("Probe: actual overflow policy of stock BSP SDK 1.64.0 (snapshot)")
     void observeOverflowPolicy_pinnedSdk() throws InterruptedException {
         ControlledExporter exporter = new ControlledExporter();
 

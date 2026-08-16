@@ -22,14 +22,14 @@ class CategoryContractsTest {
 
     @ParameterizedTest
     @EnumSource(SpanCategory.class)
-    void каждаяКатегорияИмеетКонтракт(SpanCategory category) {
+    void eachCategoryHasContract(SpanCategory category) {
         assertThatCode(() -> CategoryContracts.of(category)).doesNotThrowAnyException();
         assertThat(CategoryContracts.of(category).category()).isEqualTo(category);
     }
 
     @ParameterizedTest
     @EnumSource(SpanCategory.class)
-    void requiredВходитВAllowlist(SpanCategory category) {
+    void requiredIsInAllowlist(SpanCategory category) {
         CategoryContract c = CategoryContracts.of(category);
         assertThat(c.allowlist())
                 .as("required-атрибуты должны быть частью allowlist категории %s", category)
@@ -38,7 +38,7 @@ class CategoryContractsTest {
 
     @ParameterizedTest
     @EnumSource(SpanCategory.class)
-    void requiredAnyOfВходитВAllowlist(SpanCategory category) {
+    void requiredAnyOfIsInAllowlist(SpanCategory category) {
         CategoryContract c = CategoryContracts.of(category);
         for (Set<AttributeKey<?>> anyOf : c.requiredAnyOf()) {
             assertThat(c.allowlist())
@@ -49,7 +49,7 @@ class CategoryContractsTest {
 
     @ParameterizedTest
     @EnumSource(SpanCategory.class)
-    void forbiddenНеПересекаетсяСAllowlist(SpanCategory category) {
+    void forbiddenDoesNotIntersectAllowlist(SpanCategory category) {
         CategoryContract c = CategoryContracts.of(category);
         Set<AttributeKey<?>> intersection = new HashSet<>(c.allowlist());
         intersection.retainAll(c.forbidden());
@@ -59,13 +59,13 @@ class CategoryContractsTest {
     }
 
     @Test
-    void реестрВозвращаетОдинИТотЖеЭкземпляр() {
+    void registryReturnsSameInstance() {
         assertThat(CategoryContracts.of(SpanCategory.DATABASE))
                 .isSameAs(CategoryContracts.of(SpanCategory.DATABASE));
     }
 
     @Test
-    void platformTypeОбязателенВовсехКатегориях() {
+    void platformTypeRequiredInAllCategories() {
         for (SpanCategory category : SpanCategory.values()) {
             assertThat(CategoryContracts.of(category).required())
                     .as("platform.trace.type обязателен в категории %s", category)

@@ -44,7 +44,7 @@ class SpanEnricherV3CharacterizationTest {
     }
 
     @Test
-    void enrichCurrentSpan_наV3ManualSpan_пишетPlatformSafeАтрибуты() {
+    void enrichCurrentSpan_onV3ManualSpan_writesPlatformSafeAttributes() {
         try (var ignored = tracing.spans().operation("checkout").start()) {
             enricher.enrichCurrentSpan(scope -> scope
                     .requestId("req-v3")
@@ -59,7 +59,7 @@ class SpanEnricherV3CharacterizationTest {
     }
 
     @Test
-    void enrichCurrentSpan_внеАктивногоSpan_noOp() {
+    void enrichCurrentSpan_withoutActiveSpan_noOp() {
         enricher.enrichCurrentSpan(scope -> scope.requestId("orphan"));
         assertThat(exporter.getFinishedSpanItems()).isEmpty();
     }

@@ -43,7 +43,7 @@ class OtelTracingRuntimeCreationAttributesTest {
             AttributeKey.booleanArrayKey("test.empty.booleans");
 
     @Test
-    void samplerИExporterПолучаютОдинаковыеTypedАтрибутыДоСтартаSpan() {
+    void samplerAndExporterReceiveSameTypedAttributesBeforeSpanStart() {
         AtomicReference<Attributes> sampledAttributes = new AtomicReference<>();
         Sampler sampler = new CapturingSampler(sampledAttributes);
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
