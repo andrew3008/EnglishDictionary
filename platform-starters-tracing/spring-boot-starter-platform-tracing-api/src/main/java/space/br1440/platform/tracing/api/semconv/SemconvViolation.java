@@ -16,11 +16,11 @@ public record SemconvViolation(@Nonnull String ruleId,
 
     public SemconvViolation {
         if (ruleId.isBlank()) {
-            throw new IllegalArgumentException("ruleId не должен быть пустым");
+            throw new IllegalArgumentException("ruleId must not be blank");
         }
 
         if (builder.isBlank()) {
-            throw new IllegalArgumentException("builder не должен быть пустым");
+            throw new IllegalArgumentException("builder must not be blank");
         }
     }
 }
