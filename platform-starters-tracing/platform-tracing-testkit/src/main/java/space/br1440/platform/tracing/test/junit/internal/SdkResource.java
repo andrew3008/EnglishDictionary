@@ -42,7 +42,7 @@ public final class SdkResource implements ExtensionContext.Store.CloseableResour
 
         for (SpanProcessor extra : extraProcessors) {
             if (extra == null) {
-                throw new IllegalArgumentException("extraProcessors не должен содержать null");
+                throw new IllegalArgumentException("extraProcessors must not contain null");
             }
 
             tracerProviderBuilder.addSpanProcessor(extra);

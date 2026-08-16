@@ -75,12 +75,11 @@ public final class TracingArchRules {
     public static final ArchRule NO_TRACED_AND_OBSERVED_ON_SAME_METHOD = methods()
             .that(haveEffectiveTracedAndObserved())
             .should(neverExist(
-                    "помечен effective @Traced и @Observed одновременно — double instrumentation. "
-                            + "Оставьте только одну из аннотаций."))
-            .because("@Traced и @Observed создают span каждый — одновременная разметка приводит "
-                    + "к двойной инструментации (double instrumentation). Используйте только одну "
-                    + "из аннотаций; обычно — @Traced для бизнес-методов и @Observed для интеграции "
-                    + "с Micrometer Observation handlers.")
+                    "is marked with effective @Traced and @Observed at the same time — double instrumentation. "
+                            + "Keep only one of the annotations."))
+            .because("@Traced and @Observed each create a span — simultaneous use causes "
+                    + "double instrumentation. Use only one annotation; typically @Traced for business "
+                    + "methods and @Observed for Micrometer Observation handler integration.")
             .allowEmptyShould(true);
 
     /**
@@ -98,9 +97,9 @@ public final class TracingArchRules {
     public static final ArchRule NO_TRACED_ON_ASYNC_OR_REACTIVE_METHOD = methods()
             .that(haveEffectiveTraced())
             .should(notBeAsyncOrReactive())
-            .because("Синхронный AOP-lifecycle @Traced закрывает span при return; async/reactive "
-                    + "возвращаемые типы и @Async дают неверную длительность и теряют "
-                    + "completeExceptionally/cancel. Используйте fluent API.")
+            .because("Synchronous AOP lifecycle of @Traced ends the span on return; async/reactive "
+                    + "return types and @Async yield incorrect duration and lose "
+                    + "completeExceptionally/cancel. Use the fluent API.")
             .allowEmptyShould(true);
 
     /**
@@ -112,8 +111,8 @@ public final class TracingArchRules {
     public static final ArchRule TRACED_ATTRIBUTE_PARAMETER_TYPE_ALLOWLIST = methods()
             .that(haveTracedAttributeParameter())
             .should(haveOnlyAllowedTracedAttributeParameterTypes())
-            .because("@TracedAttribute принимает только скаляры и enum: String.valueOf на "
-                    + "произвольном объекте раздувает span и повышает риск PII.")
+            .because("@TracedAttribute accepts only scalars and enums: String.valueOf on an "
+                    + "arbitrary object inflates the span and increases PII risk.")
             .allowEmptyShould(true);
 
     private static DescribedPredicate<JavaMethod> haveEffectiveTraced() {
@@ -166,7 +165,7 @@ public final class TracingArchRules {
             @Override
             public void check(JavaMethod method, ConditionEvents events) {
                 events.add(SimpleConditionEvent.violated(method,
-                        "Метод " + method.getFullName() + " " + reasonSuffix));
+                        "Method " + method.getFullName() + " " + reasonSuffix));
             }
         };
     }
@@ -181,14 +180,14 @@ public final class TracingArchRules {
                         || isAssignableToFqcn(returnType, MONO_FQCN)
                         || isAssignableToFqcn(returnType, FLUX_FQCN)) {
                     events.add(SimpleConditionEvent.violated(method,
-                            "Метод " + method.getFullName()
-                                    + " имеет effective @Traced и возвращает async/reactive тип "
+                            "Method " + method.getFullName()
+                                    + " has effective @Traced and returns async/reactive type "
                                     + returnType.getName()));
                 }
                 if (hasEffectiveAsync(method)) {
                     events.add(SimpleConditionEvent.violated(method,
-                            "Метод " + method.getFullName()
-                                    + " имеет effective @Traced и effective @Async"));
+                            "Method " + method.getFullName()
+                                    + " has effective @Traced and effective @Async"));
                 }
             }
         };
@@ -205,9 +204,9 @@ public final class TracingArchRules {
                     JavaClass type = parameter.getRawType();
                     if (!isAllowedTracedAttributeType(type)) {
                         events.add(SimpleConditionEvent.violated(method,
-                                "Параметр #" + parameter.getIndex() + " метода "
+                                "Parameter #" + parameter.getIndex() + " of method "
                                         + method.getFullName()
-                                        + " помечен @TracedAttribute и имеет недопустимый тип "
+                                        + " is annotated with @TracedAttribute and has disallowed type "
                                         + type.getName()));
                     }
                 }

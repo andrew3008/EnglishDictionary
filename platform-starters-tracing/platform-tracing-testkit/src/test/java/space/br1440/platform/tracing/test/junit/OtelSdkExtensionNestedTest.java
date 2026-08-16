@@ -40,7 +40,7 @@ class OtelSdkExtensionNestedTest {
     }
 
     @Nested
-    class Внутри {
+    class NestedBlock {
 
         @Test
         void nested_test_sees_same_SDK_and_empty_exporter(

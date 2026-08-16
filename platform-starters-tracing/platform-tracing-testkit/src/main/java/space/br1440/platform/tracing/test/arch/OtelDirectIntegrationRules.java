@@ -59,8 +59,8 @@ public final class OtelDirectIntegrationRules {
             .and(haveSimpleNameIn(FORBIDDEN_OTEL_SDK_SIMPLE_NAMES))
             .should(neverExist())
             .allowEmptyShould(true)
-            .because("локальная копия SDK-класса OpenTelemetry создаёт fork/merge-debt; "
-                    + "используйте официальные типы из opentelemetry-sdk как dependency");
+            .because("a local copy of an OpenTelemetry SDK class creates fork/merge debt; "
+                    + "use the official types from opentelemetry-sdk as a dependency");
 
     /**
      * Rule 2: в platform namespace не должно быть под-пакетов, имитирующих {@code io.opentelemetry}.
@@ -70,7 +70,7 @@ public final class OtelDirectIntegrationRules {
             .and(resideInFakeOtelSubPackage())
             .should(neverExist())
             .allowEmptyShould(true)
-            .because("под-пакет io.opentelemetry внутри space.br1440 имитирует upstream namespace");
+            .because("an io.opentelemetry sub-package under space.br1440 mimics the upstream namespace");
 
     /**
      * Rule 3: запрет локальных интерфейсов/классов с точными именами OTel-контрактов (только main).
@@ -82,8 +82,8 @@ public final class OtelDirectIntegrationRules {
             .and(haveSimpleNameIn(FORBIDDEN_LOCAL_OTEL_CONTRACT_NAMES))
             .should(neverExist())
             .allowEmptyShould(true)
-            .because("локальный контракт с именем OTel SPI создаёт собственный tracing runtime; "
-                    + "реализуйте io.opentelemetry.sdk.* интерфейсы");
+            .because("a local contract named after an OTel SPI creates a proprietary tracing runtime; "
+                    + "implement io.opentelemetry.sdk.* interfaces");
 
     /** FQN OTel-интерфейса {@code Span}, на котором объявлен {@code recordException}. */
     private static final String OTEL_SPAN_FQN = "io.opentelemetry.api.trace.Span";
@@ -100,12 +100,12 @@ public final class OtelDirectIntegrationRules {
     public static final ArchRule NO_RAW_RECORD_EXCEPTION_OUTSIDE_RECORDER = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing..")
             .should().callMethodWhere(isOtelSpanRecordException())
-            .because("raw Span.recordException(t) пишет НЕскрабленный exception-event "
-                    + "(exception.message/stacktrace мимо ScrubbingSpanProcessor); используйте "
-                    + "ExceptionRecorder — см. ADR-collector-boundary и план Wave A");
+            .because("raw Span.recordException(t) writes an unsanitized exception event "
+                    + "(exception.message/stacktrace bypass ScrubbingSpanProcessor); use "
+                    + "ExceptionRecorder — see ADR-collector-boundary and Wave A plan");
 
     private static DescribedPredicate<JavaMethodCall> isOtelSpanRecordException() {
-        return new DescribedPredicate<>("вызов io.opentelemetry.api.trace.Span.recordException(..)") {
+        return new DescribedPredicate<>("call to io.opentelemetry.api.trace.Span.recordException(..)") {
             @Override
             public boolean test(JavaMethodCall call) {
                 return "recordException".equals(call.getTarget().getName())
@@ -137,8 +137,8 @@ public final class OtelDirectIntegrationRules {
             @Override
             public void check(JavaClass item, ConditionEvents events) {
                 events.add(SimpleConditionEvent.violated(item,
-                        "Класс " + item.getName() + " нарушает guardrail direct OTel integration — "
-                                + "см. ADR-otel-direct-integration и otel-compatibility-matrix"));
+                        "Class " + item.getName() + " violates the direct OTel integration guardrail — "
+                                + "see ADR-otel-direct-integration and otel-compatibility-matrix"));
             }
         };
     }
