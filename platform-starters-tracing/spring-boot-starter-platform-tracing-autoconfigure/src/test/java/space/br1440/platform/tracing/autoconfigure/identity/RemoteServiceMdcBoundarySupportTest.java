@@ -20,7 +20,7 @@ class RemoteServiceMdcBoundarySupportTest {
     }
 
     @Test
-    void project_и_clear_разделяют_MDC_и_trace_context_owners() {
+    void project_and_clear_separate_MDC_and_trace_context_owners() {
         RemoteServiceTraceContext.record(TRACE_ID, "billing");
 
         RemoteServiceMdcBoundarySupport.project(RemoteServiceTraceContext.find(TRACE_ID).orElse(null));
@@ -35,7 +35,7 @@ class RemoteServiceMdcBoundarySupportTest {
     }
 
     @Test
-    void повторное_использование_boundary_не_видит_предыдущее_значение() {
+    void boundary_reuse_does_not_see_previous_value() {
         RemoteServiceTraceContext.record(TRACE_ID, "first");
         RemoteServiceMdcBoundarySupport.project("first");
         RemoteServiceMdcBoundarySupport.clear(TRACE_ID);

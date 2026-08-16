@@ -161,7 +161,7 @@ class AgentStartupVerifierTest {
      * Spring side. This is a regression against silently swallowing an unrecognized failure code.
      */
     @Test
-    void новыеКлассифицированныеКодыКоординатораОтклоняютсяКакEXTENSION_FAILED() throws Exception {
+    void newClassifiedCoordinatorCodesAreRejectedAsEXTENSION_FAILED() throws Exception {
         for (String failureCode : Set.of(
                 "PLATFORM_ACP_NOT_EXECUTED", "DUPLICATE_ACTIVATION", "ACTIVATION_FAILED",
                 "CONFIGURATION_INITIALIZATION_FAILED", "DIAGNOSTIC_MBEAN_REGISTRATION_FAILED",
