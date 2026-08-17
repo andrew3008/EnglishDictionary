@@ -3,10 +3,6 @@ package space.br1440.platform.tracing.otel.javaagent.logging;
 import java.util.Locale;
 import java.util.Objects;
 
-/**
- * Уровень Agent-логирования.
- * {@link #OFF} допустим только как настроенный уровень, но не как уровень отдельного события.
- */
 public enum AgentLogLevel {
 
     OFF(-1, false),

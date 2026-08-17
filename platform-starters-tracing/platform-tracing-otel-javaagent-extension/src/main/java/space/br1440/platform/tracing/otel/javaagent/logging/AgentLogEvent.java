@@ -10,10 +10,6 @@ public final class AgentLogEvent {
 
     public static final int MAX_ENCODED_BYTES = 8192;
     public static final int MAX_ARGUMENT_CHARS = 512;
-    /**
-     * Policy-only bound для {@code logger}. Owner schema задаёт только {@code minLength: 1};
-     * {@code maxLength: 256} в schema не публикуем.
-     */
     public static final int MAX_LOGGER_CHARS = 512;
     public static final int MAX_FRAMES = 30;
     public static final int MAX_CAUSES = 3;
@@ -39,11 +35,13 @@ public final class AgentLogEvent {
         this.eventCode = Objects.requireNonNull(eventCode, "eventCode");
         this.logger = Objects.requireNonNull(logger, "logger");
         this.message = Objects.requireNonNull(message, "message");
+
         Objects.requireNonNull(fields, "fields");
         if (fields.size() > AgentLogFieldNamePolicy.maxFields()) {
             throw new IllegalArgumentException("fields");
         }
         this.fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
+
         this.throwableDigest = throwableDigest;
     }
 

@@ -103,7 +103,7 @@ public final class AgentEventCodes {
     }
 
     static boolean isKnown(String eventCode) {
-        return eventCode != null && KNOWN_CODES.contains(eventCode);
+        return (eventCode != null) && KNOWN_CODES.contains(eventCode);
     }
 
     static Set<String> knownCodes() {

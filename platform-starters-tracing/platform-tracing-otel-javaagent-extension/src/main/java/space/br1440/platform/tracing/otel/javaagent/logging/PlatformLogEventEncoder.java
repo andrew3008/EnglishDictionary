@@ -7,10 +7,8 @@ import java.util.Map;
 public final class PlatformLogEventEncoder {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ISO_INSTANT;
-    private static final String FALLBACK_LOGGER =
-            "space.br1440.platform.tracing.otel.javaagent.logging";
-    private static final String FALLBACK_MESSAGE =
-            "Platform Agent log event could not be encoded safely";
+    private static final String FALLBACK_LOGGER = "space.br1440.platform.tracing.otel.javaagent.logging";
+    private static final String FALLBACK_MESSAGE = "Platform Agent log event could not be encoded safely";
     private static final byte[] MINIMAL_SCHEMA_VALID_ASCII_FALLBACK =
             ("{\"timestamp\":\"1970-01-01T00:00:00Z\",\"level\":\"ERROR\",\"logger\":\""
                     + FALLBACK_LOGGER
@@ -40,6 +38,7 @@ public final class PlatformLogEventEncoder {
         if (fallback.length <= AgentLogEvent.MAX_ENCODED_BYTES) {
             return fallback;
         }
+
         return MINIMAL_SCHEMA_VALID_ASCII_FALLBACK.clone();
     }
 
@@ -47,11 +46,13 @@ public final class PlatformLogEventEncoder {
         if (!AgentEventCodes.isKnown(event.eventCode())) {
             return true;
         }
+
         if (event.logger().isBlank()
                 || event.logger().length() > AgentLogEvent.MAX_LOGGER_CHARS
                 || AgentLogTextSanitizer.isWireUnsafe(event.logger())) {
             return true;
         }
+
         if (event.message().isBlank()
                 || event.message().length() > AgentLogEvent.MAX_ARGUMENT_CHARS
                 || AgentLogTextSanitizer.isWireUnsafe(event.message())) {
@@ -62,10 +63,12 @@ public final class PlatformLogEventEncoder {
         if (fields.size() > AgentLogFieldNamePolicy.maxFields()) {
             return true;
         }
+
         for (Map.Entry<String, String> field : fields.entrySet()) {
             if (AgentLogFieldNamePolicy.isRejectedFieldName(field.getKey())) {
                 return true;
             }
+
             String value = field.getValue();
             if (value != null
                     && (value.length() > AgentLogEvent.MAX_ARGUMENT_CHARS
@@ -81,7 +84,9 @@ public final class PlatformLogEventEncoder {
     private static String render(AgentLogEvent event, Map<String, String> fields, String throwableDigest) {
         JsonWriter json = new JsonWriter();
         json.beginObject();
+
         writeKnownFields(json, event);
+
         json.writeKey("fields");
         writeFieldsObject(json, fields);
 
