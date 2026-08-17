@@ -267,7 +267,7 @@ tasks.register('tracingArchitectureFitnessVerify') {
     group = 'verification'
     dependsOn verifyOtelUnstableApiBoundariesTask,
             ':platform-starters-tracing:spring-boot-starter-platform-tracing-api:test',
-            ':spring-boot-starter-platform-logging:verifyPlatformLogSchema',
+            ':spring-boot-starter-platform-logging:test',
             ':platform-starters-tracing:platform-tracing-runtime-policy:test',
             ':platform-starters-tracing:spring-boot-starter-platform-tracing-otel:test',
             ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure:test',

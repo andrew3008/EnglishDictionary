@@ -13,16 +13,18 @@ JUL path не сохраняется: process-global `LogManager` не изол�
 ## Schema ownership
 
 Canonical schema owner: один файл
-`platform-log-event-v1.schema.json` в resources модуля `spring-boot-starter-platform-logging`.
-Схема входит в published starter JAR. YAML fields/security-policy удалены.
+`platform-log-event.schema.json` в resources модуля
+`platform-tracing-otel-javaagent-extension`.
+Схема не входит в published logging starter и не входит в production
+`agentExtensionJar`. YAML fields/security-policy удалены.
 
 Корень схемы открыт. Encoder закрыт. Версия в имени файла, не только в `$id`.
 Published wire limits: `logger.minLength` 1, `message`/`fields` values `maxLength` 512,
 `error_stacktrace.maxLength` 4119.
 
-Agent — только build/test consumer через named outgoing configuration
-`platformLogSchemaElements`. Production `agentExtensionJar` не содержит
-`space/br1440/platform/logging/**` и несёт только schema identity
+Agent считает identity из локального owner-файла. Production
+`agentExtensionJar` не содержит `platform-log-event.schema.json` и
+`space/br1440/platform/logging/**`; несёт только schema identity
 (properties resource + derived manifest attributes). Layout и child-JVM
 проверки controlled Agent принадлежат модулю distribution.
 

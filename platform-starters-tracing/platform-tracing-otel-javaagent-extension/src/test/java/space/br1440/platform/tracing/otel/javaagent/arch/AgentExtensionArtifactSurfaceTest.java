@@ -34,6 +34,7 @@ class AgentExtensionArtifactSurfaceTest {
     private static final String FIELD_SANITIZER_MARKER = "FieldSanitizer";
     private static final String INPUT_POLICY_MARKER = "AgentLogInputPolicy";
     private static final String MASKING_YAML = "platform-log-masking-rules.yaml";
+    private static final String SCHEMA_RESOURCE = "platform-log-event.schema.json";
     private static final String MANIFEST_FRAGMENT =
             "agent-logging-schema-manifest.mf";
     private static final List<String> FORBIDDEN_PREFIXES = List.of(
@@ -66,7 +67,7 @@ class AgentExtensionArtifactSurfaceTest {
                 .noneMatch(name -> name.startsWith("space/br1440/platform/tracing/runtime/"))
                 .noneMatch(name -> name.startsWith("space/br1440/platform/common/util/"))
                 .noneMatch(name -> name.startsWith("org/slf4j/"))
-                .doesNotContain(IDENTITY_RESOURCE)
+                .doesNotContain(IDENTITY_RESOURCE, SCHEMA_RESOURCE)
                 .noneMatch(name -> name.startsWith("space/br1440/platform/logging/"));
     }
 
@@ -140,6 +141,7 @@ class AgentExtensionArtifactSurfaceTest {
 
         // then
         assertThat(entries)
+                .doesNotContain(SCHEMA_RESOURCE)
                 .noneMatch(name -> name.startsWith("space/br1440/platform/logging/"));
     }
 

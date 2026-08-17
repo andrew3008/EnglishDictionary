@@ -35,8 +35,9 @@ Sink — `FileOutputStream(FileDescriptor.err)`. `System.setErr` не перех
 ## Schema ownership
 
 Canonical schema owner: один файл
-`platform-log-event-v1.schema.json` в resources `spring-boot-starter-platform-logging`.
-Версия в имени файла — принятая практика release bundle; `$id` остаётся стабильным URI.
+`platform-log-event.schema.json` в resources
+`platform-tracing-otel-javaagent-extension`.
+`$id` совпадает с именем файла. `title` остаётся `platform-log-event-v1`.
 Dual v1/v2 не вводим: решение pre-production.
 
 Корень схемы открыт (`additionalProperties: true`): аддитивное поле не ломает строгих потребителей.
@@ -46,9 +47,10 @@ Encoder закрыт: пишет только известные ключи, б�
 `message` и field values — `maxLength` 512 (`AgentLogEvent.MAX_ARGUMENT_CHARS`).
 `error_stacktrace.maxLength` = 4119 (renderer body 4096 + truncation suffix).
 
-Agent потребляет schema на build/test через `platformLogSchemaElements` и вшивает только
+Agent считает schema identity на build/test из локального owner-файла и вшивает только
 `PLATFORM_LOG_SCHEMA_SET_SHA256_V1` identity в `agentExtensionJar`
-(properties + derived manifest fragment). YAML-дубли fields/security-policy удалены.
+(properties + derived manifest fragment). Production JAR schema не содержит.
+YAML-дубли fields/security-policy удалены.
 Лимиты message/value живут в `AgentLogEvent`. Имена и `MAX_FIELDS` —
 в `AgentLogFieldNamePolicy`. Текст — в `AgentLogTextSanitizer`.
 Это не DLP: denylist не ищет секреты в values.

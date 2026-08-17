@@ -20,7 +20,7 @@ final class PlatformLogSchemaSetHash {
 
     static final String ALGORITHM_ID = "PLATFORM_LOG_SCHEMA_SET_SHA256_V1";
     static final List<String> FILE_NAMES = List.of(
-            "platform-log-event-v1.schema.json"
+            "platform-log-event.schema.json"
     );
 
     private PlatformLogSchemaSetHash() {

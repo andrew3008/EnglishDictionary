@@ -32,8 +32,8 @@ class AgentLoggingSchemaConformanceTest {
     @BeforeAll
     static void loadSchema() throws IOException {
         try (InputStream input = AgentLoggingSchemaConformanceTest.class
-                .getResourceAsStream("/platform-log-event-v1.schema.json")) {
-            assertThat(input).as("synced owner schema must be on the test classpath").isNotNull();
+                .getResourceAsStream("/platform-log-event.schema.json")) {
+            assertThat(input).as("owner schema must be on the test classpath").isNotNull();
             // Draft 2020-12 не проверяет format без явного включения assertions.
             SchemaValidatorsConfig config = SchemaValidatorsConfig.builder()
                     .formatAssertionsEnabled(true)
@@ -193,7 +193,7 @@ class AgentLoggingSchemaConformanceTest {
         // given
         JsonNode schemaNode;
         try (InputStream input = AgentLoggingSchemaConformanceTest.class
-                .getResourceAsStream("/platform-log-event-v1.schema.json")) {
+                .getResourceAsStream("/platform-log-event.schema.json")) {
             schemaNode = JSON.readTree(input);
         }
         Set<String> schemaProperties = new LinkedHashSet<>();
@@ -212,7 +212,7 @@ class AgentLoggingSchemaConformanceTest {
         // given
         JsonNode schemaNode;
         try (InputStream input = AgentLoggingSchemaConformanceTest.class
-                .getResourceAsStream("/platform-log-event-v1.schema.json")) {
+                .getResourceAsStream("/platform-log-event.schema.json")) {
             schemaNode = JSON.readTree(input);
         }
 

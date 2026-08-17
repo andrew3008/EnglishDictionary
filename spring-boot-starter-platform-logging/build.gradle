@@ -1,7 +1,3 @@
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.process.CommandLineArgumentProvider
-
 plugins {
     id 'platform.java-library-publish'
     id 'platform.java-library'
@@ -43,67 +39,12 @@ dependencies {
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'ch.qos.logback:logback-classic'
-    testImplementation libs.jsonschema.validator
-}
-
-apply from: rootProject.file('gradle/platformLogSchemaHash.gradle')
-
-// Класс applied-скрипта недоступен как property; берём его из ext на конфигурации.
-def schemaHashes = platformLogSchemaHashesType
-
-def platformLogSchemaElements = configurations.register('platformLogSchemaElements') {
-    it.canBeConsumed = true
-    it.canBeResolved = false
-    it.visible = false
 }
 
 def platformLogMaskingElements = configurations.register('platformLogMaskingElements') {
     it.canBeConsumed = true
     it.canBeResolved = false
     it.visible = false
-}
-
-def preparePlatformLogSchema = tasks.register('preparePlatformLogSchema', Sync) {
-    from('src/main/resources/space/br1440/platform/logging') {
-        include 'platform-log-event-v1.schema.json'
-    }
-    into layout.buildDirectory.dir('platform-log-schema')
-    doLast {
-        destinationDir.eachFile { File file ->
-            file.bytes = schemaHashes.normalize(file.bytes)
-        }
-        Set<String> names = destinationDir.list() as Set
-        if (names != (schemaHashes.FILE_NAMES as Set)) {
-            throw new GradleException("preparePlatformLogSchema allowlist mismatch: ${names}")
-        }
-    }
-}
-
-abstract class PlatformLogSchemaDirArguments implements CommandLineArgumentProvider {
-    @InputDirectory
-    @PathSensitive(PathSensitivity.NONE)
-    abstract DirectoryProperty getSchemaDir()
-
-    @Override
-    Iterable<String> asArguments() {
-        ["-DplatformLog.schemaDir=${schemaDir.get().asFile.absolutePath}"]
-    }
-}
-
-def verifyPlatformLogSchema = tasks.register('verifyPlatformLogSchema', Test) {
-    // platform.testing отключает дополнительные Test-задачи; gate должен выполняться.
-    enabled = true
-    dependsOn preparePlatformLogSchema
-    group = 'verification'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.logging.schema.PlatformLogSchemaOwnerVerificationTest'
-    }
-    def arguments = objects.newInstance(PlatformLogSchemaDirArguments)
-    arguments.schemaDir.fileProvider(preparePlatformLogSchema.map { it.destinationDir })
-    jvmArgumentProviders.add(arguments)
 }
 
 def preparePlatformLogMasking = tasks.register('preparePlatformLogMasking', Sync) {
@@ -114,10 +55,6 @@ def preparePlatformLogMasking = tasks.register('preparePlatformLogMasking', Sync
 }
 
 artifacts {
-    add(platformLogSchemaElements.name, preparePlatformLogSchema.map { it.destinationDir }) {
-        builtBy(verifyPlatformLogSchema)
-        type = 'directory'
-    }
     add(platformLogMaskingElements.name, preparePlatformLogMasking.map { it.destinationDir }) {
         builtBy(preparePlatformLogMasking)
         type = 'directory'
@@ -126,18 +63,10 @@ artifacts {
 
 tasks.named('test', Test) {
     enabled = true
-    exclude '**/PlatformLogSchemaOwnerVerificationTest.class'
-}
-
-tasks.named('check') {
-    dependsOn verifyPlatformLogSchema
 }
 
 afterEvaluate {
     tasks.named('test', Test) {
-        enabled = true
-    }
-    tasks.named('verifyPlatformLogSchema', Test) {
         enabled = true
     }
 }

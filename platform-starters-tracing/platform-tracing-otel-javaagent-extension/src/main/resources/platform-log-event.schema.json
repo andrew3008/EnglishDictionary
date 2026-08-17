@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://br1440.space/schemas/platform-log-event-v1.schema.json",
+  "$id": "https://br1440.space/schemas/platform-log-event.schema.json",
   "title": "platform-log-event-v1",
   "type": "object",
   "additionalProperties": true,

@@ -33,12 +33,6 @@ def agentExtensionJarElements = configurations.create('agentExtensionJarElements
     visible = false
 }
 
-def platformLogSchema = configurations.register('platformLogSchema') {
-    it.canBeConsumed = false
-    it.canBeResolved = true
-    it.visible = false
-}
-
 def platformLogMasking = configurations.register('platformLogMasking') {
     it.canBeConsumed = false
     it.canBeResolved = true
@@ -50,11 +44,6 @@ dependencies {
     implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     implementation project(':platform-starters-common:platform-starters-common-util')
 
-    add(platformLogSchema.name, project(
-            path: ':spring-boot-starter-platform-logging',
-            configuration: 'platformLogSchemaElements')) {
-        transitive = false
-    }
     add(platformLogMasking.name, project(
             path: ':spring-boot-starter-platform-logging',
             configuration: 'platformLogMaskingElements')) {
@@ -130,11 +119,27 @@ abstract class GenerateAgentLoggingSchemaIdentity extends DefaultTask {
     }
 }
 
+def preparePlatformLogSchema = tasks.register('preparePlatformLogSchema', Sync) {
+    from('src/main/resources') {
+        include 'platform-log-event.schema.json'
+    }
+    into layout.buildDirectory.dir('platform-log-schema')
+    doLast {
+        destinationDir.eachFile { File file ->
+            file.bytes = schemaHashes.normalize(file.bytes)
+        }
+        Set<String> names = destinationDir.list() as Set
+        if (names != (schemaHashes.FILE_NAMES as Set)) {
+            throw new GradleException("preparePlatformLogSchema allowlist mismatch: ${names}")
+        }
+    }
+}
+
 def generateAgentLoggingSchemaIdentity = tasks.register(
         'generateAgentLoggingSchemaIdentity',
         GenerateAgentLoggingSchemaIdentity
 ) {
-    schemaFiles.from(platformLogSchema)
+    schemaFiles.from(preparePlatformLogSchema.map { it.destinationDir })
     outputDirectory.convention(layout.buildDirectory.dir('generated/agent-logging-schema-identity'))
     schemaHashType = schemaHashes
 }
@@ -142,9 +147,6 @@ def generateAgentLoggingSchemaIdentity = tasks.register(
 def identityOutput = generateAgentLoggingSchemaIdentity.flatMap { it.outputDirectory }
 
 tasks.named('processTestResources', ProcessResources) {
-    from(platformLogSchema) {
-        include 'platform-log-event-v1.schema.json'
-    }
     from(platformLogMasking) {
         include 'platform-log-masking-rules.yaml'
     }
@@ -155,6 +157,7 @@ tasks.named('processTestResources', ProcessResources) {
 }
 
 tasks.named('jar', Jar) {
+    exclude 'platform-log-event.schema.json'
     manifest {
         attributes 'Implementation-Title': project.name, 'Implementation-Version': project.version
     }
@@ -163,6 +166,7 @@ tasks.named('jar', Jar) {
 def agentExtensionJarTask = tasks.register('agentExtensionJar', Jar) {
     archiveClassifier.set('extension')
     inputs.files(agentExtensionRuntime)
+    exclude 'platform-log-event.schema.json'
     from sourceSets.main.output
     from {
         agentExtensionRuntime.incoming.files.findAll { it.name.endsWith('.jar') }.collect { file ->

@@ -1,12 +1,8 @@
-package space.br1440.platform.logging.schema;
+package space.br1440.platform.tracing.otel.javaagent.logging;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -27,22 +23,19 @@ class PlatformLogSchemaOwnerVerificationTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String EVENT_CODE_PATTERN = "^[A-Z]{2,6}-[A-Z]+-[0-9]{3}$";
-    private static final List<String> SCHEMA_FILE_NAMES = List.of(
-            "platform-log-event-v1.schema.json"
-    );
+    private static final String SCHEMA_RESOURCE = "/platform-log-event.schema.json";
 
-    private static Path schemaDir;
+    private static byte[] schemaBytes;
     private static JsonNode schemaNode;
     private static JsonSchema jsonSchema;
 
     @BeforeAll
-    static void loadPreparedSchema() throws IOException {
-        String configured = System.getProperty("platformLog.schemaDir");
-        assertThat(configured)
-                .as("platformLog.schemaDir must point at preparePlatformLogSchema output")
-                .isNotBlank();
-        schemaDir = Path.of(configured);
-        schemaNode = JSON.readTree(schemaDir.resolve("platform-log-event-v1.schema.json").toFile());
+    static void loadOwnerSchema() throws IOException {
+        try (InputStream input = PlatformLogSchemaOwnerVerificationTest.class.getResourceAsStream(SCHEMA_RESOURCE)) {
+            assertThat(input).as("owner schema must be on the test classpath").isNotNull();
+            schemaBytes = input.readAllBytes();
+        }
+        schemaNode = JSON.readTree(schemaBytes);
         SchemaValidatorsConfig config = SchemaValidatorsConfig.builder()
                 .formatAssertionsEnabled(true)
                 .build();
@@ -50,33 +43,14 @@ class PlatformLogSchemaOwnerVerificationTest {
     }
 
     @Test
-    void prepared_directory_contains_exact_allowlist() throws IOException {
-        // given
-        Set<String> names = new LinkedHashSet<>();
-
-        // when
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(schemaDir)) {
-            for (Path path : stream) {
-                names.add(path.getFileName().toString());
-            }
-        }
-
-        // then
-        assertThat(names).containsExactlyInAnyOrderElementsOf(SCHEMA_FILE_NAMES);
-    }
-
-    @Test
-    void prepared_files_are_utf8_without_bom_and_use_lf() throws IOException {
+    void owner_schema_is_utf8_without_bom_and_uses_lf() {
         // given
         // when
         // then
-        for (String name : SCHEMA_FILE_NAMES) {
-            byte[] raw = Files.readAllBytes(schemaDir.resolve(name));
-            assertThat(raw.length).isGreaterThanOrEqualTo(3);
-            assertThat(raw[0] & 0xFF).isNotEqualTo(0xEF);
-            String text = new String(raw, StandardCharsets.UTF_8);
-            assertThat(text).doesNotContain("\r");
-        }
+        assertThat(schemaBytes.length).isGreaterThanOrEqualTo(3);
+        assertThat(schemaBytes[0] & 0xFF).isNotEqualTo(0xEF);
+        String text = new String(schemaBytes, StandardCharsets.UTF_8);
+        assertThat(text).doesNotContain("\r");
     }
 
     @Test
@@ -85,6 +59,8 @@ class PlatformLogSchemaOwnerVerificationTest {
         // when
         // then
         assertThat(schemaNode.path("title").asText()).isEqualTo("platform-log-event-v1");
+        assertThat(schemaNode.path("$id").asText())
+                .isEqualTo("https://br1440.space/schemas/platform-log-event.schema.json");
         assertThat(schemaNode.path("additionalProperties").asBoolean()).isTrue();
         assertThat(schemaNode.path("properties").path("event_code").path("pattern").asText())
                 .isEqualTo(EVENT_CODE_PATTERN);

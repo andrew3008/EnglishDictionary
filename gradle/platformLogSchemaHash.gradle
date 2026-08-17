@@ -6,7 +6,7 @@ class PlatformLogSchemaHashes {
     static final String NAME = 'platform-log-event-v1'
     static final String SEMANTIC_VERSION = '1'
     static final List<String> FILE_NAMES = [
-            'platform-log-event-v1.schema.json'
+            'platform-log-event.schema.json'
     ].asImmutable()
 
     static byte[] normalize(byte[] raw) {
