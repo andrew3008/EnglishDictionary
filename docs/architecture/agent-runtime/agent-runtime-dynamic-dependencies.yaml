@@ -1,0 +1,62 @@
+# Dynamic dependency ledger (Slice 0.1)
+# Static import graph недостаточен: ServiceLoader, descriptors, reflection.
+
+schemaVersion: 1
+generatedAt: "2026-08-16"
+commit: 5ac5d5a82cc021ff1bc0777f2e8b0c0c4d28750e
+
+entries:
+  - target: io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider
+    mechanism: SERVICE_LOADER
+    source: META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider
+    implementation: space.br1440.platform.tracing.otel.javaagent.bootstrap.BootstrapAutoConfigurationCustomizerProvider
+    owner: platform-tracing-otel-javaagent-extension
+    required: true
+
+  - target: io.opentelemetry.javaagent.extension.AgentListener
+    mechanism: SERVICE_LOADER
+    source: META-INF/services/io.opentelemetry.javaagent.extension.AgentListener
+    implementation: space.br1440.platform.tracing.otel.javaagent.bootstrap.ActivationAgentListener
+    owner: platform-tracing-otel-javaagent-extension
+    required: true
+
+  - target: io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider
+    mechanism: SERVICE_LOADER
+    source: META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.ConfigurablePropagatorProvider
+    owner: platform-tracing-otel-javaagent-extension
+    required: true
+
+  - target: io.opentelemetry.sdk.autoconfigure.spi.traces.ConfigurableSamplerProvider
+    mechanism: SERVICE_LOADER
+    source: META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.traces.ConfigurableSamplerProvider
+    implementation: space.br1440.platform.tracing.otel.javaagent.sampler.PlatformSamplerProvider
+    owner: platform-tracing-otel-javaagent-extension
+    required: true
+
+  - target: space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule
+    mechanism: SERVICE_LOADER
+    source: ExtensionRuleLoader / PlatformScrubberFactory
+    owner: platform-tracing-otel-javaagent-extension
+    required: false
+    condition: optional custom scrubbing extensions on isolated URLClassLoader
+
+  - target: org.slf4j.spi.SLF4JServiceProvider
+    mechanism: SERVICE_LOADER
+    source: embedded slf4j-simple META-INF/services
+    owner: platform-tracing-otel-javaagent-extension (current hybrid artifact)
+    required: true
+    note: residual of current slf4j-simple packaging; must disappear after typed-backend cutover if residual SLF4J is zero
+
+  - target: simplelogger.properties
+    mechanism: RESOURCE_LOOKUP
+    source: src/main/resources/simplelogger.properties copied onto controlled-agent JAR root
+    owner: platform-tracing-otel-javaagent-extension
+    required: true
+    note: ADV-01 surface; removed after slf4j-simple retirement
+
+assertions:
+  tracingOtelMainResources: none
+  tracingApiMainResources: none
+  commonUtilMainResources: none
+  slf4jInApprovedOtelClosure: 0
+  mdcInApprovedOtelClosure: 0

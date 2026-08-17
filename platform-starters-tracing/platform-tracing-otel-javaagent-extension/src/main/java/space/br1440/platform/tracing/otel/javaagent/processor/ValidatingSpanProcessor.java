@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 
 import jakarta.annotation.Nonnull;
 
-import lombok.extern.slf4j.Slf4j;
-
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.context.Context;
@@ -35,8 +35,9 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
  * и hot-path overhead. Если span-атрибут не задан, валидатор пишет предупреждение и проставляет
  * служебный {@code platform.validation.missing}, чтобы SRE отследили нарушение.
  */
-@Slf4j
 public final class ValidatingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ValidatingSpanProcessor.class);
 
     private static final String DIAGNOSTIC_ID = "validation";
 
@@ -53,7 +54,6 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
     );
 
     private static final AttributeKey<String> VALIDATION_MISSING_KEY = AttributeKey.stringKey("platform.validation.missing");
-    private static final String MISSING_ATTRIBUTES_DIAGNOSTIC = "PT-VALIDATION-MISSING-ATTRIBUTES: span violates the mandatory attribute contract";
     static final Duration MISSING_ATTRIBUTES_DIAGNOSTIC_THROTTLE_INTERVAL = Duration.ofSeconds(60);
 
     private static final long NEVER_WARNED = (Long.MIN_VALUE / 2);
@@ -113,9 +113,9 @@ public final class ValidatingSpanProcessor implements PlatformEndingSpanProcesso
         }
 
         if (strict) {
-            log.error(MISSING_ATTRIBUTES_DIAGNOSTIC);
+            log.error(AgentEventCodes.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
         } else {
-            log.warn(MISSING_ATTRIBUTES_DIAGNOSTIC);
+            log.warn(AgentEventCodes.VALID_MISSING_ATTRIBUTES, "Required span attributes are missing");
         }
     }
 

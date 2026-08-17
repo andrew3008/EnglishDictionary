@@ -6,13 +6,10 @@ import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
@@ -25,8 +22,13 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
 class AcceptedPolicyCoordinatorTest {
+
+    @RegisterExtension
+    AgentLogCapture capture = new AgentLogCapture();
 
     @Test
     void exposesAllApplyOutcomesWithoutHiddenRetry() throws Exception {
@@ -56,17 +58,11 @@ class AcceptedPolicyCoordinatorTest {
                 strictPolicy());
 
         SettingsUpdateAttempt failedAttempt = AcceptedPolicyTestFixtures.attempt(5L);
-        ListAppender<ILoggingEvent> appender = startAppender();
-        SettingsUpdateResult failed;
-        try {
-            setAcceptedSequence(store, Long.MAX_VALUE);
-            failed = updater.apply(
-                    failedAttempt,
-                    store.current().base(),
-                    AcceptedPolicyTestFixtures.policy(0.4d));
-        } finally {
-            logger().detachAppender(appender);
-        }
+        setAcceptedSequence(store, Long.MAX_VALUE);
+        SettingsUpdateResult failed = updater.apply(
+                failedAttempt,
+                store.current().base(),
+                AcceptedPolicyTestFixtures.policy(0.4d));
 
         assertThat(applied.outcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
         assertThat(applied.accepted().acceptedSequence()).isEqualTo(1L);
@@ -80,14 +76,13 @@ class AcceptedPolicyCoordinatorTest {
                 .isEqualTo(SettingsRejectionReason.STRICT_RUNTIME_NOT_ALLOWED);
         assertThat(failed.outcome()).isEqualTo(SettingsUpdateStatus.FAILED);
         assertThat(failed.messageCode()).isEqualTo(SettingsRejectionReason.INTERNAL_FAILURE);
-        assertThat(appender.list)
-                .filteredOn(event -> event.getLevel() == Level.WARN)
+        assertThat(capture.events())
+                .filteredOn(event -> event.level() == AgentLogLevel.WARN)
                 .singleElement()
                 .satisfies(event -> {
-                    assertThat(event.getFormattedMessage())
-                            .isEqualTo("Unexpected failure while evaluating settings update, attemptId="
-                                    + failedAttempt.attemptId());
-                    assertThat(event.getThrowableProxy()).isNotNull();
+                    assertThat(event.eventCode()).isEqualTo(AgentEventCodes.CTRL_UPDATE);
+                    assertThat(event.fields()).containsEntry("attemptId", failedAttempt.attemptId());
+                    assertThat(event.throwableDigest()).isNotNull();
                 });
 
         LastSettingsUpdateSnapshot snapshot = diagnostics.snapshot();
@@ -123,19 +118,6 @@ class AcceptedPolicyCoordinatorTest {
         return new TracingSettingsStore(
                 AcceptedPolicyTestFixtures.RUNTIME_INSTANCE_ID,
                 AcceptedPolicyTestFixtures.policy(0.1d));
-    }
-
-    private static ListAppender<ILoggingEvent> startAppender() {
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        Logger logger = logger();
-        logger.addAppender(appender);
-        logger.setLevel(Level.ALL);
-        return appender;
-    }
-
-    private static Logger logger() {
-        return (Logger) LoggerFactory.getLogger(TracingSettingsUpdater.class);
     }
 
     private static TracingSettings strictPolicy() {

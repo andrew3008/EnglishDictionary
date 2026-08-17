@@ -12,9 +12,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
@@ -28,21 +25,21 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 
 /** Фиксирует подтверждённые дефекты до изменения production-кода owning slices. */
 class ProcessorDefectCharacterizationTest {
 
+    @RegisterExtension
+    AgentLogCapture capture = new AgentLogCapture();
+
     @Test
     void compositeDiagnosticsDoNotDiscloseRawSpanOrExceptionText() {
-        Logger logger = (Logger) LoggerFactory.getLogger(PlatformCompositeSpanProcessor.class);
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        logger.addAppender(appender);
-
         PlatformCompositeSpanProcessor composite =
                 new PlatformCompositeSpanProcessor(List.of(new SensitiveFailureProcessor()));
         SdkTracerProvider provider = SdkTracerProvider.builder()
@@ -54,16 +51,21 @@ class ProcessorDefectCharacterizationTest {
                     .startSpan()
                     .end();
 
-            assertThat(appender.list)
-                    .extracting(ILoggingEvent::getFormattedMessage)
-                    .anySatisfy(message -> assertThat(message)
-                            .contains("Processor callback failed:")
-                            .contains("test_sensitive_failure")
-                            .doesNotContain("customer-secret-span-name", "customer-secret-exception"));
+            assertThat(capture.events())
+                    .anySatisfy(event -> assertThat(event.eventCode())
+                            .isEqualTo(AgentEventCodes.EXPORT_CALLBACK));
+            assertThat(capture.rendered())
+                    .doesNotContain("customer-secret-span-name", "customer-secret-exception");
+            assertThat(capture.events()).allSatisfy(event -> {
+                assertThat(event.fields().toString())
+                        .doesNotContain("customer-secret-span-name", "customer-secret-exception");
+                if (event.throwableDigest() != null) {
+                    assertThat(event.throwableDigest())
+                            .doesNotContain("customer-secret-span-name", "customer-secret-exception");
+                }
+            });
         } finally {
             provider.close();
-            logger.detachAppender(appender);
-            appender.stop();
         }
     }
 

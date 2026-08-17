@@ -44,6 +44,7 @@
 | Gradle-проект | Каталог |
 |-----------------|---------|
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-api` | [`spring-boot-starter-platform-tracing-api`](platform-starters-tracing/spring-boot-starter-platform-tracing-api) |
+| `:platform-starters-tracing:platform-tracing-runtime-policy` | [`platform-tracing-runtime-policy`](platform-starters-tracing/platform-tracing-runtime-policy) |
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-otel` | [`spring-boot-starter-platform-tracing-otel`](platform-starters-tracing/spring-boot-starter-platform-tracing-otel) |
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure` | [`spring-boot-starter-platform-tracing-autoconfigure`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure) |
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc` | [`spring-boot-starter-platform-tracing-autoconfigure-webmvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure-webmvc) |
@@ -52,9 +53,10 @@
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-webflux` | [`spring-boot-starter-platform-tracing-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-webflux) |
 | `:platform-starters-tracing:platform-tracing-testkit` | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются |
 | `:platform-starters-tracing:platform-tracing-otel-javaagent-extension` | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution` | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — публикуется как `platform-tracing-javaagent` |
 
-Controlled Platform Agent поставляется classifier-артефактом
-`platform-tracing-otel-javaagent-extension:<version>:controlled-agent@jar`.
+Controlled Platform Agent поставляется артефактом
+`space.br1440.platform.starters.tracing:platform-tracing-javaagent:<version>`.
 
 [`platform-tracing-collector-config`](platform-starters-tracing/platform-tracing-collector-config)
 временно хранится в Git только для передачи SRE. Это не Gradle-проект и не часть сборки,

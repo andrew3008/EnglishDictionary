@@ -4,9 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingFailureLog;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
@@ -20,9 +19,7 @@ import io.opentelemetry.sdk.trace.data.StatusData;
 
 final class SpanDataBoundaryScrubber {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(
-            LoggerFactory.getLogger(SpanDataBoundaryScrubber.class)
-    );
+    private static final RateLimitedLogger log = new RateLimitedLogger(SpanDataBoundaryScrubber.class);
 
     private final ScrubbingRuntime runtime;
 
@@ -83,7 +80,8 @@ final class SpanDataBoundaryScrubber {
                 || events.criticalFailure()
                 || links.criticalFailure();
         if (criticalFailure) {
-            log.warn("Critical scrubbing rule failed at the export boundary; collapsing all boundary surfaces");
+            log.warn(AgentEventCodes.SCRUB_EXPORT_BOUNDARY,
+                    "Critical scrubbing rule failed; collapsing all boundary surfaces");
             return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData, collapseAttributes));
         }
 

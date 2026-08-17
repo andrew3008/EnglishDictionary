@@ -1,48 +1,19 @@
 package space.br1440.platform.tracing.otel.javaagent.diagnostics;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
+
+/**
+ * Фасад политики порога. Не владеет effective runtime state — его держит runtime.
+ */
 public final class PlatformLogControl {
 
-    public enum LogLevel {
-        OFF,
-        ERROR,
-        WARN,
-        INFO,
-        DEBUG,
-        TRACE;
-
-        public int severity() {
-            return ordinal();
-        }
-
-        @SuppressWarnings("SameParameterValue")
-        static LogLevel parseOrDefault(String raw, LogLevel fallback) {
-            if (raw == null) {
-                return fallback;
-            }
-
-            String normalized = raw.trim().toUpperCase(Locale.ROOT);
-            if (normalized.isEmpty()) {
-                return fallback;
-            }
-
-            for (LogLevel level : values()) {
-                if (level.name().equals(normalized)) {
-                    return level;
-                }
-            }
-
-            return fallback;
-        }
-    }
-
-    private static final LogLevel PARSE_FALLBACK = LogLevel.WARN;
+    private static final AgentLogLevel PARSE_FALLBACK = AgentLogLevel.WARN;
     private static final PlatformLogControl SHARED = new PlatformLogControl();
 
     private final AtomicReference<TracingSettingsSource> acceptedPolicy =
@@ -58,6 +29,7 @@ public final class PlatformLogControl {
 
     public static void resetSharedForTests() {
         SHARED.releaseActiveForTests();
+        AgentLoggingRuntime.resetSharedForTests();
     }
 
     private void releaseActiveForTests() {
@@ -67,26 +39,27 @@ public final class PlatformLogControl {
         }
     }
 
-    public LogLevel getLevel() {
-        String raw = acceptedPolicy.get().current().diagnosticsLogLevel();
-        return LogLevel.parseOrDefault(raw, PARSE_FALLBACK);
+    public AgentLogLevel getLevel() {
+        return runtime().effectiveLevel();
     }
 
-    public void setLevel(LogLevel newLevel) {
+    public void setLevel(AgentLogLevel newLevel) {
         if (newLevel == null) {
             return;
         }
-
-        acceptedPolicy.get().applyLogLevel(newLevel.name());
+        projectLevel(newLevel);
     }
 
     public boolean setLevel(String raw) {
         if (raw == null) {
             return false;
         }
-
-        String normalized = raw.trim().toUpperCase(Locale.ROOT);
-        return acceptedPolicy.get().applyLogLevel(normalized);
+        AgentLogLevel parsed = AgentLogLevel.parseOrDefault(raw, null);
+        if (parsed == null) {
+            return false;
+        }
+        projectLevel(parsed);
+        return true;
     }
 
     public AutoCloseable bindAcceptedPolicy(TracingSettingsSource policy) {
@@ -103,13 +76,26 @@ public final class PlatformLogControl {
             acceptedPolicy.set(policy);
             activeGeneration = token;
             bindCount.incrementAndGet();
+            projectConfiguredPolicy();
             return new AcceptedPolicyRegistration(token, previous);
         }
     }
 
-    public boolean isEnabled(LogLevel messageLevel) {
-        Objects.requireNonNull(messageLevel, "messageLevel");
-        return (messageLevel != LogLevel.OFF) && (getLevel().severity() >= messageLevel.severity());
+    private void projectLevel(AgentLogLevel newLevel) {
+        runtime().applyLevel(newLevel);
+        acceptedPolicy.get().applyLogLevel(newLevel.name());
+    }
+
+    private void projectConfiguredPolicy() {
+        AgentLogLevel configured = AgentLogLevel.parseOrDefault(
+                acceptedPolicy.get().current().diagnosticsLogLevel(),
+                PARSE_FALLBACK
+        );
+        runtime().applyLevel(configured);
+    }
+
+    private static AgentLoggingRuntime runtime() {
+        return AgentLoggingRuntime.shared();
     }
 
     private final class AcceptedPolicyRegistration implements AutoCloseable {
@@ -137,6 +123,7 @@ public final class PlatformLogControl {
 
                 acceptedPolicy.set(previous);
                 activeGeneration = 0L;
+                projectConfiguredPolicy();
             }
         }
     }

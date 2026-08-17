@@ -3,9 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.sampler;
 import java.util.List;
 import java.util.Objects;
 
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.TracingDiagnostics;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.resilience.CircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.resilience.DegradedModeController;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
@@ -22,9 +21,7 @@ import lombok.NonNull;
 
 public final class SafeSampler implements Sampler, PlatformManagedSampler {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(
-            LoggerFactory.getLogger(SafeSampler.class)
-    );
+    private static final RateLimitedLogger log = new RateLimitedLogger(SafeSampler.class);
 
     private final Sampler delegate;
     private final TracingDiagnostics diagnostics;
@@ -59,12 +56,12 @@ public final class SafeSampler implements Sampler, PlatformManagedSampler {
 
                 degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
                 diagnostics.recordSamplerFailure();
-                log.warn("SafeSampler: delegate returned a null SamplingResult - applying fallback");
+                log.warn(AgentEventCodes.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling");
             } catch (Throwable ex) {
                 PlatformThrowables.propagateIfFatal(ex);
                 degradedController.recordFailure(DegradedModeController.Component.SAMPLER);
                 diagnostics.recordSamplerFailure();
-                log.warn("SafeSampler: delegate shouldSample() failed ({}) - applying fallback", ex.toString());
+                log.warn(AgentEventCodes.SAMPLE_FALLBACK, "Sampler fell back to parent-based sampling", ex);
             }
         }
 

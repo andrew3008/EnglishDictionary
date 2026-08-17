@@ -18,6 +18,8 @@ import space.br1440.platform.tracing.otel.javaagent.configuration.JavaAgentExten
 import space.br1440.platform.tracing.otel.javaagent.configuration.ScrubbingExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingMissingKeyPolicy;
 import space.br1440.platform.tracing.otel.javaagent.factory.ScrubbingRulesValidationMode;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.StartupDiagnostics;
@@ -30,10 +32,10 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanA
 import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 public final class PlatformScrubberFactory {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformScrubberFactory.class);
 
     private final Supplier<List<SpanAttributeScrubbingRule>> spiScrubbingRuleSource;
 
@@ -78,8 +80,7 @@ public final class PlatformScrubberFactory {
     private static SanitizerBootstrapException classified(String code, String message, Throwable failure) {
         PlatformThrowables.propagateIfFatal(failure);
         if (log.isDebugEnabled()) {
-            log.debug("[scrubbing] {}: {} — detail is DEBUG-only and carries no exception message: {}",
-                    code, message, ThrowableDigest.render(failure));
+            log.debug(AgentEventCodes.SCRUB_FAILURE, message);
         }
 
         return new SanitizerBootstrapException(code, message + " (" + failure.getClass().getName() + ")");
@@ -101,7 +102,7 @@ public final class PlatformScrubberFactory {
             if (rule != null) {
                 builtIn.add(rule);
             } else {
-                log.warn("[scrubbing] Unknown built-in sensitive data rule: '{}'", name);
+                log.warn(AgentEventCodes.SCRUB_UNKNOWN_BUILTIN, "Unknown built-in scrubbing rule", "name", name);
             }
         }
 
@@ -195,7 +196,7 @@ public final class PlatformScrubberFactory {
                     origin
             ));
         } else {
-            log.debug("[scrubbing] Duplicate rule name '{}' ignored (first registration wins)", rule.name());
+            log.debug(AgentEventCodes.SCRUB_INITIALIZED, "Duplicate rule name ignored", "name", rule.name());
         }
     }
 

@@ -8,6 +8,8 @@ import java.util.Optional;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpanProcessor;
@@ -23,10 +25,10 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.SpanProcessor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 public final class PlatformSpanProcessorFactory {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformSpanProcessorFactory.class);
 
     private final DomainMBeanRegistrar jmxRegistrar;
     private final ScrubbingRuntime scrubbingRuntime;
@@ -50,7 +52,7 @@ public final class PlatformSpanProcessorFactory {
             installComposite(tpBuilder, delegates);
             return tpBuilder;
         } catch (Throwable t) {
-            log.error("[platform-tracing] registerSpanProcessors failed", t);
+            log.error(AgentEventCodes.BOOT_PROCESSOR_REGISTRATION, "Span processor registration failed", t);
             throw t;
         }
     }

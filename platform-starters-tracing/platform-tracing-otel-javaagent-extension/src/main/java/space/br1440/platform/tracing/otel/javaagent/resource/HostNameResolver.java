@@ -6,13 +6,14 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.common.util.StringUtils;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 public final class HostNameResolver {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(HostNameResolver.class);
 
     private static final long HOSTNAME_RESOLVE_TIMEOUT_MS = 1_000L;
 
@@ -58,7 +59,9 @@ public final class HostNameResolver {
                 result[0] = InetAddress.getLocalHost().getHostName();
             } catch (Throwable failure) {
                 PlatformThrowables.propagateIfFatal(failure);
-                log.debug("Failed to resolve hostname via InetAddress.getLocalHost(): {}", failure.toString());
+                if (log.isDebugEnabled()) {
+                    log.debug(AgentEventCodes.BOOT_HOSTNAME_FAILED, "Hostname resolution failed", "detail", failure.toString());
+                }
             }
         }, "platform-tracing-hostname-resolve");
         t.setDaemon(true);
@@ -72,7 +75,8 @@ public final class HostNameResolver {
         }
 
         if (t.isAlive()) {
-            log.warn("Hostname resolution via InetAddress.getLocalHost() exceeded {} ms; host.name will be omitted", HOSTNAME_RESOLVE_TIMEOUT_MS);
+            log.warn(AgentEventCodes.BOOT_HOSTNAME_TIMEOUT, "Hostname resolution timed out", "timeoutMs",
+                    String.valueOf(HOSTNAME_RESOLVE_TIMEOUT_MS));
             return null;
         }
 

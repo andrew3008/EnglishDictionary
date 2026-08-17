@@ -4,9 +4,8 @@ import java.time.Duration;
 import java.util.Objects;
 import jakarta.annotation.Nonnull;
 
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
 import io.opentelemetry.context.Context;
@@ -26,9 +25,7 @@ import lombok.NonNull;
  */
 public final class PlatformDropOldestExportSpanProcessor implements SpanProcessor {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(
-            LoggerFactory.getLogger(PlatformDropOldestExportSpanProcessor.class)
-    );
+    private static final RateLimitedLogger log = new RateLimitedLogger(PlatformDropOldestExportSpanProcessor.class);
 
     private final DropOldestExportConfig config;
     private final DropOldestExportMetrics metrics;
@@ -80,7 +77,7 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
         try {
             snapshot = span.toSpanData();
         } catch (RuntimeException e) {
-            log.warn("toSpanData() failed: {}", e.getMessage());
+            log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "toSpanData() failed", e);
             return;
         }
 
@@ -216,39 +213,38 @@ public final class PlatformDropOldestExportSpanProcessor implements SpanProcesso
 
         private void applyValidationWithSafeFallback() {
             if (maxQueueSize <= 0) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: maxQueueSize={} is invalid, fallback={}",
-                        maxQueueSize, DEFAULT_MAX_QUEUE_SIZE);
+                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
+                        "name", "maxQueueSize");
                 maxQueueSize = DEFAULT_MAX_QUEUE_SIZE;
             }
 
             if (maxExportBatchSize <= 0) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: maxExportBatchSize={} is invalid, fallback={}",
-                        maxExportBatchSize, DEFAULT_MAX_EXPORT_BATCH_SIZE);
+                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
+                        "name", "maxExportBatchSize");
                 maxExportBatchSize = DEFAULT_MAX_EXPORT_BATCH_SIZE;
             }
 
             if (maxExportBatchSize > maxQueueSize) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: maxExportBatchSize={} > maxQueueSize={}, "
-                                + "fallback maxExportBatchSize={}",
-                        maxExportBatchSize, maxQueueSize, maxQueueSize);
+                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Exceeds maxQueueSize; clamped to queue size",
+                        "name", "maxExportBatchSize");
                 maxExportBatchSize = maxQueueSize;
             }
 
             if (scheduleDelay == null || scheduleDelay.isNegative() || scheduleDelay.isZero()) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: scheduleDelay={} is invalid, fallback={}",
-                        scheduleDelay, DEFAULT_SCHEDULE_DELAY);
+                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
+                        "name", "scheduleDelay");
                 scheduleDelay = DEFAULT_SCHEDULE_DELAY;
             }
 
             if (exportTimeout == null || exportTimeout.isNegative() || exportTimeout.isZero()) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: exportTimeout={} is invalid, fallback={}",
-                        exportTimeout, DEFAULT_EXPORT_TIMEOUT);
+                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
+                        "name", "exportTimeout");
                 exportTimeout = DEFAULT_EXPORT_TIMEOUT;
             }
 
             if (shutdownTimeout == null || shutdownTimeout.isNegative() || shutdownTimeout.isZero()) {
-                log.warn("PlatformDropOldestExportSpanProcessor.builder: shutdownTimeout={} is invalid, fallback={}",
-                        shutdownTimeout, ExtensionDefaults.DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT);
+                log.warn(AgentEventCodes.EXPORT_DROP_OLDEST, "Invalid value; using fallback",
+                        "name", "shutdownTimeout");
                 shutdownTimeout = ExtensionDefaults.DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT;
             }
         }

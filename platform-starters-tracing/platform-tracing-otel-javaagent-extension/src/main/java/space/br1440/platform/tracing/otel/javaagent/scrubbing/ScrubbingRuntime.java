@@ -12,11 +12,10 @@ import java.util.concurrent.atomic.LongAdder;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.api.spi.ScrubbingAction;
 import space.br1440.platform.tracing.api.spi.ScrubbingDecision;
 import space.br1440.platform.tracing.otel.javaagent.configuration.MaskedSecret;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.IpPrefixTruncator;
@@ -34,9 +33,7 @@ import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
 public final class ScrubbingRuntime {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(
-            LoggerFactory.getLogger(ScrubbingRuntime.class)
-    );
+    private static final RateLimitedLogger log = new RateLimitedLogger(ScrubbingRuntime.class);
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     static final String MASK = "***";
@@ -112,8 +109,7 @@ public final class ScrubbingRuntime {
         }
 
         if (enabled && !hasHmacKey) {
-            log.warn("Scrubbing HMAC key is not set (missing-key-policy=continue): all rules with "
-                    + "HASH action will degrade to MASK for the lifetime of this runtime");
+            log.warn(AgentEventCodes.SCRUB_HMAC_MISSING, "Scrubbing HMAC key is not set");
         }
 
         this.hmacKey = hasHmacKey ? hmacSecret.copyBytes() : null;
@@ -255,7 +251,8 @@ public final class ScrubbingRuntime {
                 && ScrubbingDecision.SCRUBBING_FAILED_REASON.equals(decision.reason());
         if (failClosed) {
             failures.increment();
-            log.warn("Scrubbing rule evaluation reported failure for attribute '{}'; applying fail-closed mask", key.getKey());
+            log.warn(AgentEventCodes.SCRUB_RULE_FAILED, "Applying fail-closed mask",
+                    "attribute", key.getKey());
             applyFailClosed(span, key, type);
             return;
         }
@@ -307,7 +304,8 @@ public final class ScrubbingRuntime {
             case VALUE -> span.setAttribute((AttributeKey<Value<?>>) key, VALUE_SENTINEL);
 
             default -> {
-                log.warn("Unsupported attribute type {} cannot be scrubbed in place; collapsing the session", type);
+                log.warn(AgentEventCodes.SCRUB_UNSUPPORTED_TYPE, "Unsupported attribute type",
+                        "type", String.valueOf(type));
                 markAttributesUnverified();
                 return false;
             }
@@ -358,10 +356,8 @@ public final class ScrubbingRuntime {
             String truncated = IpPrefixTruncator.truncate(value);
             if (truncated == null) {
                 failures.increment();
-                log.warn("""
-                                IP prefix truncation failed for a scrubbed attribute; falling back to full mask \
-                                (reason={}, inputLength={})""",
-                        decision.reason(), value.length());
+                log.warn(AgentEventCodes.SCRUB_RULE_FAILED, "IP prefix truncation failed; falling back to full mask",
+                        "reason", decision.reason());
                 return MASK;
             }
             return truncated;
@@ -439,7 +435,7 @@ public final class ScrubbingRuntime {
     public void markAttributesUnverified() {
         if (attributesVerified.compareAndSet(true, false)) {
             collapseModeActivations.increment();
-            log.error("attributesVerified cleared: exporter boundary enters collapse mode for span attributes");
+            log.error(AgentEventCodes.SCRUB_BOUNDARY_COLLAPSE, "Scrubbing boundary collapsed");
         }
     }
 

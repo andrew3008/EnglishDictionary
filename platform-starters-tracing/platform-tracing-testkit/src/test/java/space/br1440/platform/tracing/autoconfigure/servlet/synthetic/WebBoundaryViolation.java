@@ -2,7 +2,7 @@ package space.br1440.platform.tracing.autoconfigure.servlet.synthetic;
 
 import io.opentelemetry.context.Context;
 
-import space.br1440.platform.tracing.otel.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.runtime.propagation.control.TraceControlHeaderInjector;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
 /** Синтетический нарушитель для self-test web-границ Slice I. */

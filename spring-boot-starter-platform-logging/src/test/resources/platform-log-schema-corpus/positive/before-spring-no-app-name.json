@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-08-16T19:00:00Z",
+  "level": "INFO",
+  "logger": "space.br1440.platform.logging.example.Owner",
+  "message": "Diagnostics before Spring context",
+  "event_code": "APP-BOOT-003",
+  "fields": {
+    "phase": "before-spring"
+  }
+}

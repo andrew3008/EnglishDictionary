@@ -1,8 +1,9 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.validation;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+
 import lombok.experimental.UtilityClass;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SP-02: Resolves the effective startup validation mode from the requested mode and the
@@ -28,7 +29,7 @@ import org.slf4j.LoggerFactory;
 @UtilityClass
 public final class ValidationModeResolver {
 
-    private static final Logger log = LoggerFactory.getLogger(ValidationModeResolver.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ValidationModeResolver.class);
 
     /**
      * The resolved startup configuration: effective mode + whether runtime updates to STRICT
@@ -52,29 +53,26 @@ public final class ValidationModeResolver {
 
         if (requested == ValidationMode.STRICT && !strictAllowed) {
             // SP-02 startup downgrade: production/UNKNOWN must never run fail-fast STRICT.
-            log.warn("SP-02: STRICT validation requested but platform.environment={} does not allow "
-                    + "fail-fast mode; downgrading to LENIENT. Runtime STRICT updates will also be "
-                    + "rejected. To allow STRICT, set platform.environment=dev or staging.", env);
+            log.warn(AgentEventCodes.VALID_POLICY, "STRICT validation requested; downgrading to LENIENT",
+                    "environment", env.name());
             return new Resolution(ValidationMode.LENIENT, false);
         }
 
         if (requested == ValidationMode.DISABLED) {
             if (env == PlatformEnvironment.PRODUCTION) {
                 // SP-02 risk visibility: DISABLED in production is intentionally risky.
-                log.warn("SP-02: Validation DISABLED in production environment. "
-                        + "Missing platform.trace.type / platform.trace.result attributes will NOT "
-                        + "be detected at runtime. Ensure this is intentional.");
+                log.warn(AgentEventCodes.VALID_POLICY, "Validation DISABLED in production",
+                        "environment", env.name());
             } else if (env == PlatformEnvironment.UNKNOWN) {
-                log.warn("SP-02: Validation DISABLED and platform.environment is UNKNOWN (missing or "
-                        + "unrecognized). Risk visibility: span attribute validation is inactive.");
+                log.warn(AgentEventCodes.VALID_POLICY, "Validation DISABLED and platform.environment is UNKNOWN",
+                        "environment", env.name());
             }
             return new Resolution(ValidationMode.DISABLED, false);
         }
 
         if (requested == ValidationMode.LENIENT && env == PlatformEnvironment.UNKNOWN) {
-            log.warn("SP-02: platform.environment is UNKNOWN (missing or unrecognized). "
-                    + "Validation is LENIENT (warn-only). "
-                    + "Set platform.environment=production|staging|dev explicitly.");
+            log.warn(AgentEventCodes.VALID_POLICY, "platform.environment is UNKNOWN; validation is LENIENT",
+                    "environment", env.name());
         }
 
         return new Resolution(requested, strictAllowed);

@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.identity;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-import space.br1440.platform.tracing.otel.propagation.RequestIdSupport;
+import space.br1440.platform.tracing.runtime.propagation.RequestIdSupport;
 
 import lombok.experimental.UtilityClass;
 

@@ -16,14 +16,15 @@ import javax.management.openmbean.CompositeData;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 public final class PrivateControlWriterMBean implements DynamicMBean {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PrivateControlWriterMBean.class);
 
     private static final String OP_APPLY = "applySnapshot";
     private static final String OP_READ = "readAcceptedComplete";
@@ -99,9 +100,7 @@ public final class PrivateControlWriterMBean implements DynamicMBean {
             SettingsUpdateResult rejected = updater.rejectBeforeApply(wireAttemptId, exception.messageCode());
             return encodePreApplyResult(rejected, wireAttemptId);
         } catch (RuntimeException exception) {
-            log.warn(
-                    "Unexpected failure while decoding settings snapshot, attemptId=<unavailable>",
-                    exception);
+            log.warn(AgentEventCodes.CTRL_WRITER, "Private control writer failed", exception, "attemptId", "<unavailable>");
             SettingsUpdateResult failed = updater.failBeforeApply(wireAttemptId, SettingsRejectionReason.INTERNAL_FAILURE);
             return encodePreApplyResult(failed, wireAttemptId);
         }
@@ -112,20 +111,14 @@ public final class PrivateControlWriterMBean implements DynamicMBean {
         try {
             result = updater.apply(decoded.attempt(), decoded.expectedBase(), decoded.settings());
         } catch (RuntimeException exception) {
-            log.warn(
-                    "Unexpected failure while applying settings snapshot, attemptId={}",
-                    attemptId,
-                    exception);
+            log.warn(AgentEventCodes.CTRL_WRITER, "Private control writer failed", exception, "attemptId", attemptId);
             throw new MBeanException(exception, "Settings snapshot update failed");
         }
 
         try {
             return codec.encode(result, attemptId);
         } catch (RuntimeException exception) {
-            log.warn(
-                    "Unexpected failure while encoding settings snapshot response, attemptId={}",
-                    attemptId,
-                    exception);
+            log.warn(AgentEventCodes.CTRL_WRITER, "Private control writer failed", exception, "attemptId", attemptId);
             throw new MBeanException(exception, "Settings snapshot response encoding failed");
         }
     }
@@ -134,9 +127,7 @@ public final class PrivateControlWriterMBean implements DynamicMBean {
         try {
             return codec.encode(result, wireAttemptId);
         } catch (RuntimeException exception) {
-            log.warn(
-                    "Unexpected failure while encoding pre-apply settings response, attemptId=<unavailable>",
-                    exception);
+            log.warn(AgentEventCodes.CTRL_WRITER, "Private control writer failed", exception, "attemptId", "<unavailable>");
             throw new MBeanException(exception, "Pre-apply settings response encoding failed");
         }
     }

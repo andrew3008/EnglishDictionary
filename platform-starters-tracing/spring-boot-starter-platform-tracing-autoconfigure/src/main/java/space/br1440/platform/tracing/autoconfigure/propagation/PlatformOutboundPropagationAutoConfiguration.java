@@ -12,9 +12,9 @@ import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationM
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
-import space.br1440.platform.tracing.otel.propagation.control.DefaultOutboundPropagationPolicy;
-import space.br1440.platform.tracing.otel.propagation.control.DefaultTraceControlHeaderInjector;
-import space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultOutboundPropagationPolicy;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultTraceControlHeaderInjector;
+import space.br1440.platform.tracing.runtime.propagation.control.TrustedDestinationMatchers;
 
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)

@@ -3,10 +3,9 @@ package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 import java.time.Instant;
 import java.util.Objects;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitOutcome;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.SettingsCommitResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
@@ -17,7 +16,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.model.Traci
 
 public final class TracingSettingsUpdater {
 
-    private static final Logger log = LoggerFactory.getLogger(TracingSettingsUpdater.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracingSettingsUpdater.class);
 
     private final TracingSettingsStore store;
     private final SettingsValidationConstraints validationConstraints;
@@ -42,9 +41,7 @@ public final class TracingSettingsUpdater {
         try {
             result = evaluate(expectedBase, candidate);
         } catch (RuntimeException exception) {
-            log.warn("Unexpected failure while evaluating settings update, attemptId={}",
-                    attempt.attemptId(),
-                    exception);
+            log.warn(AgentEventCodes.CTRL_UPDATE, "Tracing settings update failed", exception, "attemptId", attempt.attemptId());
             TracingSettingsRevision accepted = store.current();
             result = new SettingsUpdateResult(
                     SettingsUpdateStatus.FAILED,

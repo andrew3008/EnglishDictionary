@@ -7,11 +7,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import io.opentelemetry.sdk.common.CompletableResultCode;
-import lombok.extern.slf4j.Slf4j;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-@Slf4j
+import io.opentelemetry.sdk.common.CompletableResultCode;
+
 final class ProcessorLifecycle {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ProcessorLifecycle.class);
 
     private static final int TERMINATOR_POOL_SIZE = 2;
     private static final AtomicInteger TERMINATOR_SEQUENCE = new AtomicInteger();
@@ -46,11 +49,8 @@ final class ProcessorLifecycle {
         boolean drained = worker.awaitTermination(deadlineNanos - System.nanoTime());
         boolean budgetExceeded = !drained;
         if (budgetExceeded) {
-            log.warn("""
-                        PlatformDropOldestExportSpanProcessor: worker did not stop within {} ms; \
-                        discarding queued spans, exporter.shutdown() deferred until active export finishes""",
-                    TimeUnit.NANOSECONDS.toMillis(shutdownTimeoutNanos)
-            );
+            log.warn(AgentEventCodes.EXPORT_LIFECYCLE, "Processor lifecycle timed out", "timeoutMs",
+                    String.valueOf(TimeUnit.NANOSECONDS.toMillis(shutdownTimeoutNanos)));
 
             buffer.forceDiscardQueuedAndFailFlushes();
             worker.awaitTerminationUnbounded();

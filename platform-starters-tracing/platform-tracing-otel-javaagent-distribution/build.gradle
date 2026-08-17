@@ -1,0 +1,105 @@
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.process.CommandLineArgumentProvider
+
+plugins {
+    id 'platform.java-library-publish'
+    id 'platform.java-library'
+    id 'platform.testing'
+}
+
+group = 'space.br1440.platform.starters.tracing'
+
+platformJavaLibrary {
+    bomProjectPath = ':spring-boot-starter-platform-bom'
+}
+
+def platformAgentBinary = configurations.detachedConfiguration(
+        dependencies.create("io.opentelemetry.javaagent:opentelemetry-javaagent:${libs.versions.bom.otelinstrumentation.get()}")
+)
+
+def agentExtension = configurations.create('agentExtension') {
+    canBeConsumed = false
+    canBeResolved = true
+    visible = false
+}
+
+dependencies {
+    add(agentExtension.name, project(path: ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
+            configuration: 'agentExtensionJarElements'))
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// zipTree().singleFile живёт в build/tmp и пропадает после clean; jar в кэше зависимостей устойчив.
+def upstreamAgentFile = platformAgentBinary.singleFile
+def upstreamManifestAttributes = [:]
+new java.util.jar.JarFile(upstreamAgentFile).withCloseable { jarFile ->
+    jarFile.manifest.mainAttributes.forEach { Object key, Object value ->
+        upstreamManifestAttributes.put(key.toString(), value.toString())
+    }
+}
+
+tasks.named('jar', Jar) {
+    archiveBaseName.set('platform-tracing-javaagent')
+    from(zipTree(upstreamAgentFile)) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(agentExtension.incoming.files) {
+        into 'extensions'
+        rename '.*', 'platform-tracing-otel-javaagent-extension.jar'
+    }
+    manifest {
+        attributes(upstreamManifestAttributes)
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+publishing {
+    publications.withType(MavenPublication).configureEach {
+        artifactId = 'platform-tracing-javaagent'
+    }
+}
+
+abstract class DistributionArtifactArguments implements CommandLineArgumentProvider {
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getControlledAgentJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getExtensionJar()
+
+    @Override
+    Iterable<String> asArguments() {
+        [
+                "-DplatformTracing.controlledAgentJar=${controlledAgentJar.get().asFile.absolutePath}",
+                "-DplatformTracing.extensionJar=${extensionJar.get().asFile.absolutePath}"
+        ]
+    }
+}
+
+tasks.named('test', Test) {
+    // platform.testing отключает Test-задачи у packaging-модуля; gate должен выполняться.
+    enabled = true
+    def arguments = objects.newInstance(DistributionArtifactArguments)
+    arguments.controlledAgentJar.set(tasks.named('jar', Jar).flatMap { it.archiveFile })
+    arguments.extensionJar.fileProvider(agentExtension.incoming.files.elements.map { locations ->
+        def files = locations.collect { it.asFile }
+        if (files.size() != 1) {
+            throw new GradleException(
+                    "agentExtension must resolve to exactly one jar, got ${files.size()}: ${files}"
+            )
+        }
+        files[0]
+    })
+    jvmArgumentProviders.add(arguments)
+}
+
+afterEvaluate {
+    tasks.named('test', Test) {
+        enabled = true
+    }
+}

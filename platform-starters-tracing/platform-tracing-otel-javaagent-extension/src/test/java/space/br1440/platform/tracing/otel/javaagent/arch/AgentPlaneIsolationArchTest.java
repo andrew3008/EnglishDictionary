@@ -68,6 +68,30 @@ class AgentPlaneIsolationArchTest {
     }
 
     @Test
+    void productionExtensionDoesNotDependOnSlf4j() {
+        // given
+        ArchRule rule = noClasses()
+                .should().dependOnClassesThat().resideInAnyPackage("org.slf4j..")
+                .because("typed PlatformAgentLogger is the only Agent logging path");
+
+        // when
+        // then
+        rule.check(EXTENSION_CLASSES);
+    }
+
+    @Test
+    void productionExtensionDoesNotDependOnLoggingStarterPackages() {
+        // given
+        ArchRule rule = noClasses()
+                .should().dependOnClassesThat().resideInAnyPackage("space.br1440.platform.logging..")
+                .because("Agent consumes platform-log schema at build time only");
+
+        // when
+        // then
+        rule.check(EXTENSION_CLASSES);
+    }
+
+    @Test
     void onlyBootstrapOwnerCreatesExtensionConfiguration() {
         // given
         ArchRule rule = noClasses()

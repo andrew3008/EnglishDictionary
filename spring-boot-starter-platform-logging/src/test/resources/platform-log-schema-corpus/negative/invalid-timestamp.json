@@ -1,0 +1,7 @@
+{
+  "timestamp": "16-08-2026 19:00:00",
+  "level": "INFO",
+  "logger": "space.br1440.platform.logging.example.Owner",
+  "message": "Platform logging started",
+  "event_code": "APP-BOOT-001"
+}

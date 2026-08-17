@@ -7,10 +7,10 @@ import jakarta.annotation.Nonnull;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.propagation.control.DefaultInboundTraceControlExtractor;
-import space.br1440.platform.tracing.otel.propagation.control.DefaultTraceControlHeaderInjector;
-import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.otel.propagation.control.TraceControlHeaderInjector;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultTraceControlHeaderInjector;
+import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.runtime.propagation.control.TraceControlHeaderInjector;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;

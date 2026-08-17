@@ -14,8 +14,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
 import space.br1440.platform.tracing.otel.javaagent.control.CategoryBSamplingAccess;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyReason;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyReason;
 import space.br1440.platform.tracing.test.harness.SamplingDecisionCase;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -74,7 +74,7 @@ class SamplingPolicyDecisionOtelAdapterTest {
     /**
      * Полный список 11 wire-ключей {@code decision:reasonCode}, включая синтетический
      * {@code ABSTAIN → fallback_drop}, который недостижим через production-цепочку правил
-     * ({@link space.br1440.platform.tracing.otel.sampling.policy.ProductionSamplingPolicyChain#production()}
+     * ({@link space.br1440.platform.tracing.runtime.sampling.policy.ProductionSamplingPolicyChain#production()}
      * всегда завершается {@code DefaultRatioPolicyRule}, возвращающим только {@code SAMPLE}/
      * {@code DROP}) — поэтому проверяется здесь изолированно от {@link CompositeSampler},
      * а не через реальный прогон движка (см. интеграционный тест на 10 достижимых веток).

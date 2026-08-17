@@ -4,6 +4,7 @@ import org.slf4j.MDC;
 
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;

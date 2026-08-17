@@ -1,6 +1,6 @@
 package space.br1440.platform.tracing.otel.validation;
 
-import space.br1440.platform.tracing.otel.runtime.versioned.VersionedState;
+import space.br1440.platform.tracing.runtime.versioned.VersionedState;
 
 import java.time.Instant;
 

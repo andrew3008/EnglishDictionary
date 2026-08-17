@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
-import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 

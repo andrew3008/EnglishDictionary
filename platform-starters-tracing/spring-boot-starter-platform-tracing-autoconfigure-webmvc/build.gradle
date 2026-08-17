@@ -28,6 +28,7 @@ dependencies {
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.projectlombok:lombok'
 
+    testImplementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

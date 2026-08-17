@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.circuitbreaker.RuleCircuitBreaker;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.ExecutableRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.PriorityHardening;
-import space.br1440.platform.tracing.otel.runtime.versioned.VersionedState;
+import space.br1440.platform.tracing.runtime.versioned.VersionedState;
 
 public final class ScrubbingSnapshot implements VersionedState {
 

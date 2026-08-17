@@ -4,12 +4,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import lombok.extern.slf4j.Slf4j;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-@Slf4j
 public final class RuleCircuitBreaker {
 
     public enum State { CLOSED, OPEN, HALF_OPEN }
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(RuleCircuitBreaker.class);
 
     private final String ruleName;
     private final int failureThreshold;
@@ -68,26 +70,25 @@ public final class RuleCircuitBreaker {
             openedAtMs.set(System.currentTimeMillis());
             state.set(State.OPEN);
             probeInProgress.set(0);
-            throttledWarn("Circuit breaker probe FAILED for rule '{}' — returning to OPEN");
+            throttledWarn("Circuit breaker probe failed; returning to OPEN");
             return;
         }
 
         int failures = failureCount.incrementAndGet();
         if (failures >= failureThreshold && state.compareAndSet(State.CLOSED, State.OPEN)) {
             openedAtMs.set(System.currentTimeMillis());
-            throttledWarn("Circuit breaker OPEN for rule '{}' after consecutive failures");
+            throttledWarn("Circuit breaker opened after consecutive failures");
         } else {
-            throttledWarn("Recorded failure for rule '{}'");
+            throttledWarn("Recorded rule failure");
         }
     }
 
-    private void throttledWarn(String template) {
+    private void throttledWarn(String message) {
         long now = System.currentTimeMillis();
         long last = lastLoggedMs.get();
         if ((now - last) >= logThrottleMs && lastLoggedMs.compareAndSet(last, now)) {
-            log.warn("[scrubbing] " + template
-                    + " (count={} threshold={}; subsequent errors suppressed for {}ms)",
-                    ruleName, failureCount.get(), failureThreshold, logThrottleMs);
+            log.warn(AgentEventCodes.SCRUB_CIRCUIT_OPEN, message, "name", ruleName,
+                    "count", String.valueOf(failureCount.get()));
         }
     }
 

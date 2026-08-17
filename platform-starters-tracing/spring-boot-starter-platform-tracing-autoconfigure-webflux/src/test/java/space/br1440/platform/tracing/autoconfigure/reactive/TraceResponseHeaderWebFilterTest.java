@@ -27,7 +27,7 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RemoteServiceMdcBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
-import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceTraceContext;
+import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 

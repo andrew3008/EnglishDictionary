@@ -2,16 +2,19 @@ package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @UtilityClass
 public final class ResourceStartupDiagnostics {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ResourceStartupDiagnostics.class);
 
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey(PlatformAttributes.SERVICE_NAME);
     private static final AttributeKey<String> SERVICE_VERSION = AttributeKey.stringKey(PlatformAttributes.SERVICE_VERSION);
@@ -36,14 +39,14 @@ public final class ResourceStartupDiagnostics {
     }
 
     public static void emit(Summary summary) {
-        log.info("Platform resource identity: service={}, version={}, env={}, c_group={}, policy={}, mode={}, missing={}",
-                orAbsent(summary.serviceName()),
-                orAbsent(summary.serviceVersion()),
-                orAbsent(summary.environment()),
-                orAbsent(summary.cGroup()),
-                orAbsent(summary.policyVersion()),
-                summary.mode(),
-                summary.missingCount());
+        log.emit(AgentLogLevel.INFO, AgentEventCodes.BOOT_RESOURCE_IDENTITY, "Resource identity resolved", null,
+                "service", orAbsent(summary.serviceName()),
+                "environment", orAbsent(summary.environment()),
+                "version", orAbsent(summary.serviceVersion()),
+                "cGroup", orAbsent(summary.cGroup()),
+                "policy", orAbsent(summary.policyVersion()),
+                "kind", String.valueOf(summary.mode()),
+                "count", String.valueOf(summary.missingCount()));
     }
 
     private static String orAbsent(String value) {

@@ -1,0 +1,47 @@
+status: APPROVED
+slice: "0.6"
+baseline:
+  comparison: CLEAN_BOUNDARY_SIMPLE
+  historicalOnly: LEGACY_HYBRID_SIMPLE
+metrics:
+  - allocationBytesPerOperation
+  - allocationBytesPerEvent
+  - startupDelta
+  - rssDelta
+  - jarSizeDelta
+  - throughputEventsPerSecond
+  - p99Latency
+  - p99Contention
+hardNorms:
+  disabledPath:
+    allocationBytesPerOperation: 0
+  enabledWarn:
+    maxEncodedBytes: 8192
+referenceTargets:
+  status: REFERENCE_TARGET
+  disabledPath:
+    p99Nanos: 50
+  enabledWarn:
+    maxAllocationBytesPerEvent: 2048
+    minimumEventsPerSecond: 20000
+  startup:
+    maxDeltaMillis: 25
+    maxJarDeltaBytes: 262144
+    maxRssDeltaBytes: 4194304
+  contention:
+    threads: 16
+    maxP99Micros: 500
+jmhScenarios:
+  - disabled-no-args
+  - disabled-scalar-args
+  - disabled-captured-value
+  - enabled-scalar
+  - enabled-throwable
+  - enabled-max-size-event
+callSiteContract: |
+  if (logger.isDebugEnabled()) {
+      logger.debug(code, safeField1, safeField2);
+  }
+gates:
+  PERFORMANCE_METHODOLOGY_UNAPPROVED: Slice 1a measurement NOT_RUN
+  PERFORMANCE_BUDGET_UNAPPROVED: Slice 4 production qualification NOT_RUN

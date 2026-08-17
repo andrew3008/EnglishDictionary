@@ -3,8 +3,7 @@ package space.br1440.platform.tracing.otel.javaagent.processor.dropoldest;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.LoggerFactory;
-
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 
@@ -14,9 +13,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 final class TimedSpanExporter {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(
-            LoggerFactory.getLogger(PlatformDropOldestExportSpanProcessor.class)
-    );
+    private static final RateLimitedLogger log = new RateLimitedLogger(TimedSpanExporter.class);
 
     private final SpanExporter delegate;
     private final long exportTimeoutNanos;
@@ -40,13 +37,13 @@ final class TimedSpanExporter {
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
             metrics.incrementFailures();
-            log.warn("exporter.export() threw: {}", failure.getMessage());
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() threw", failure);
             return ExportOutcome.FAILURE;
         }
 
         if (resultCode == null) {
             metrics.incrementFailures();
-            log.warn("exporter.export() returned null");
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() returned null");
             return ExportOutcome.FAILURE;
         }
 
@@ -54,13 +51,14 @@ final class TimedSpanExporter {
         if (!completed) {
             metrics.incrementTimeouts();
             metrics.incrementFailures();
-            log.warn("exporter.export() timed out after {} ms", TimeUnit.NANOSECONDS.toMillis(exportTimeoutNanos));
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() timed out", "timeoutMs",
+                    String.valueOf(TimeUnit.NANOSECONDS.toMillis(exportTimeoutNanos)));
             return ExportOutcome.timedOut(resultCode);
         }
 
         if (!resultCode.isSuccess()) {
             metrics.incrementFailures();
-            log.warn("exporter.export() returned failure");
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.export() returned failure");
             return ExportOutcome.FAILURE;
         }
 
@@ -74,27 +72,28 @@ final class TimedSpanExporter {
         } catch (Throwable failure) {
             PlatformThrowables.propagateIfFatal(failure);
             metrics.incrementShutdownFailures();
-            log.warn("exporter.shutdown() failed: {}", failure.getMessage());
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.shutdown() failed", failure);
             return false;
         }
 
         if (resultCode == null) {
             metrics.incrementShutdownFailures();
-            log.warn("exporter.shutdown() returned null");
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.shutdown() returned null");
             return false;
         }
 
         boolean completed = resultCode.join(shutdownTimeoutNanos, TimeUnit.NANOSECONDS).isDone();
         if (!completed) {
             metrics.incrementShutdownFailures();
-            log.warn("exporter.shutdown() timed out after {} ms", TimeUnit.NANOSECONDS.toMillis(shutdownTimeoutNanos));
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.shutdown() timed out", "timeoutMs",
+                    String.valueOf(TimeUnit.NANOSECONDS.toMillis(shutdownTimeoutNanos)));
             return false;
         }
 
         boolean success = resultCode.isSuccess();
         if (!success) {
             metrics.incrementShutdownFailures();
-            log.warn("exporter.shutdown() returned failure");
+            log.warn(AgentEventCodes.EXPORT_TIMED, "exporter.shutdown() returned failure");
         }
 
         return success;

@@ -15,15 +15,17 @@ import java.util.TreeSet;
 
 import lombok.experimental.UtilityClass;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @UtilityClass
 final class TracePipelineSpiAttestation {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(TracePipelineSpiAttestation.class);
 
     private static final Set<String> PINNED_UPSTREAM_AGENT_PROVIDERS = Set.of(
             "io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer",
@@ -69,11 +71,9 @@ final class TracePipelineSpiAttestation {
                 continue;
             }
 
-            log.error("[bootstrap] {}: unknown AutoConfigurationCustomizerProvider {} is "
-                            + "not on the closed allowlist for this secure profile; its order() does "
-                            + "not prove it cannot mutate the exporter chain from a later "
-                            + "properties-customizer callback",
-                    SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED, type.getName());
+            log.error(AgentEventCodes.BOOT_FORBIDDEN_SPI,
+                    "Unknown AutoConfigurationCustomizerProvider is not on the closed allowlist",
+                    "name", type.getName());
 
             fail("Unknown AutoConfigurationCustomizerProvider " + type.getName()
                     + " is not on the closed allowlist for this secure profile; the final exporter "
@@ -94,11 +94,8 @@ final class TracePipelineSpiAttestation {
             return;
         }
 
-        log.error("[bootstrap] {}: classloader-visible SdkTracerProviderConfigurer {} is forbidden "
-                        + "in the secure Controlled Agent profile; it is applied after exporter/processor "
-                        + "customization and can add a parallel SpanProcessor with an unwrapped exporter, "
-                        + "bypassing the platform SafeSpanExporter boundary entirely",
-                SanitizerBootstrapException.TRACE_PIPELINE_ATTESTATION_FAILED, providerNames);
+        log.error(AgentEventCodes.BOOT_FORBIDDEN_SPI, "SdkTracerProviderConfigurer is forbidden",
+                "name", providerNames.toString());
 
         fail("SdkTracerProviderConfigurer is forbidden in the secure Controlled Agent profile: " + providerNames);
     }

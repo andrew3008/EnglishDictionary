@@ -3,7 +3,7 @@ package space.br1440.platform.tracing.autoconfigure.identity;
 import jakarta.annotation.Nullable;
 
 import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceMdc;
-import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceTraceContext;
+import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 
 import lombok.experimental.UtilityClass;
 

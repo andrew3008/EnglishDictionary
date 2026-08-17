@@ -20,6 +20,7 @@ dependencies {
 
         api "space.br1440.platform:error-handling-model:${libs.versions.errorHandlingModel.get()}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-api:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-runtime-policy:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-otel:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc:${rootProject.version}"
@@ -27,6 +28,7 @@ dependencies {
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-mvc:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-webflux:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:platform-tracing-otel-javaagent-extension:${rootProject.version}"
+        api "space.br1440.platform.starters.tracing:platform-tracing-javaagent:${rootProject.version}"
 
         api "space.br1440.platform.starters.errorhandling:platform-error-handling-core:${rootProject.version}"
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-mvc:${rootProject.version}"

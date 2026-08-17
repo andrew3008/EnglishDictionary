@@ -13,9 +13,10 @@ import java.util.Properties;
 import java.util.Set;
 
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Загрузчик внешней конфигурации правил маскирования из Properties-файла.
@@ -41,9 +42,10 @@ import lombok.extern.slf4j.Slf4j;
  * </ul>
  * <p>
  */
-@Slf4j
 @UtilityClass
 public final class ScrubbingRulesLoader {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ScrubbingRulesLoader.class);
 
     private static final String CLASSPATH_PREFIX = "classpath:";
     private static final String FILE_PREFIX = "file:";
@@ -57,14 +59,15 @@ public final class ScrubbingRulesLoader {
         Properties properties;
         try (InputStream in = openStream(path, classLoader)) {
             if (in == null) {
-                log.warn("Scrubbing rules file not found: '{}'", path);
+                log.warn(AgentEventCodes.SCRUB_RULES_UNREADABLE, "Scrubbing rules are unreadable",
+                        "path", path);
                 return Collections.emptyList();
             }
 
             properties = new Properties();
             properties.load(in);
         } catch (IOException e) {
-            log.warn("Failed to read scrubbing rules file '{}': {}", path, e.toString());
+            log.warn(AgentEventCodes.SCRUB_RULES_UNREADABLE, "Scrubbing rules are unreadable", e, "path", path);
             return Collections.emptyList();
         }
 

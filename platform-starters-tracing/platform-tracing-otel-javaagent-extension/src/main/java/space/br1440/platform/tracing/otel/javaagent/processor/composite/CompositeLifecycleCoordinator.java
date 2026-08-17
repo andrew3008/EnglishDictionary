@@ -3,14 +3,16 @@ package space.br1440.platform.tracing.otel.javaagent.processor.composite;
 import java.util.ArrayList;
 import java.util.List;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.SpanProcessor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 final class CompositeLifecycleCoordinator {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(CompositeLifecycleCoordinator.class);
 
     private final List<NamedDelegate> delegates;
     private final Object monitor = new Object();
@@ -130,8 +132,10 @@ final class CompositeLifecycleCoordinator {
 
     private static void recordError(NamedDelegate namedDelegate, Operation operation, String failureKind) {
         namedDelegate.errorCount().incrementAndGet();
-        log.warn("Processor lifecycle failure: operation={}, delegate={}, kind={}",
-                operation.displayName, namedDelegate.name(), failureKind);
+        log.warn(AgentEventCodes.EXPORT_COMPOSITE_LIFECYCLE, "Composite processor lifecycle failed",
+                "phase", operation.displayName,
+                "delegate", namedDelegate.name(),
+                "kind", failureKind);
     }
 
     private static void completeFrom(CompletableResultCode source, CompletableResultCode target) {

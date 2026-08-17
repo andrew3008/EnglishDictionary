@@ -10,9 +10,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import jakarta.annotation.Nullable;
 
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.resilience.RateLimitedLogger;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingBoundaryMetrics;
@@ -25,9 +24,7 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 
 public final class SafeSpanExporter implements SpanExporter {
 
-    private static final RateLimitedLogger log = new RateLimitedLogger(
-            LoggerFactory.getLogger(SafeSpanExporter.class)
-    );
+    private static final RateLimitedLogger log = new RateLimitedLogger(SafeSpanExporter.class);
 
     private final SpanExporter delegate;
     private final TracingSettingsSource acceptedPolicy;
@@ -89,7 +86,7 @@ public final class SafeSpanExporter implements SpanExporter {
             result = delegate.export(batch);
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
-            recordSyncFailure(effectiveCount, startedAt, "export() threw: " + ex);
+            recordSyncFailure(effectiveCount, startedAt, "export() threw", ex);
             return CompletableResultCode.ofFailure();
         }
 
@@ -153,7 +150,7 @@ public final class SafeSpanExporter implements SpanExporter {
             }
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
-            log.warn("SafeSpanExporter: completion callback failed: {}", ex.toString());
+            log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, "completion callback failed", ex);
         }
     }
 
@@ -165,7 +162,7 @@ public final class SafeSpanExporter implements SpanExporter {
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             flushFailures.increment();
-            logExportFailure("flush() threw: " + ex);
+            logExportFailure("flush() threw", ex);
             return CompletableResultCode.ofFailure();
         }
     }
@@ -178,7 +175,7 @@ public final class SafeSpanExporter implements SpanExporter {
         } catch (Throwable ex) {
             PlatformThrowables.propagateIfFatal(ex);
             shutdownFailures.increment();
-            logExportFailure("shutdown() threw: " + ex);
+            logExportFailure("shutdown() threw", ex);
             return CompletableResultCode.ofFailure();
         }
     }
@@ -193,18 +190,34 @@ public final class SafeSpanExporter implements SpanExporter {
     }
 
     private void recordSyncFailure(int count, long startedAt, String message) {
+        recordSyncFailure(count, startedAt, message, null);
+    }
+
+    private void recordSyncFailure(int count, long startedAt, String message, Throwable error) {
         lastExportDurationNanos.set(System.nanoTime() - startedAt);
-        recordFailureMetrics(count, message);
+        recordFailureMetrics(count, message, error);
     }
 
     private void recordFailureMetrics(int count, String message) {
+        recordFailureMetrics(count, message, null);
+    }
+
+    private void recordFailureMetrics(int count, String message, Throwable error) {
         exportFailures.increment();
         droppedSpans.add(count);
-        logExportFailure(message);
+        logExportFailure(message, error);
     }
 
     private void logExportFailure(String message) {
-        log.warn("SafeSpanExporter: {}", message);
+        logExportFailure(message, null);
+    }
+
+    private void logExportFailure(String message, Throwable error) {
+        if (error != null) {
+            log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, message, error);
+        } else {
+            log.warn(AgentEventCodes.EXPORT_SAFE_EXPORTER, message);
+        }
     }
 
     public long getExportFailures() {

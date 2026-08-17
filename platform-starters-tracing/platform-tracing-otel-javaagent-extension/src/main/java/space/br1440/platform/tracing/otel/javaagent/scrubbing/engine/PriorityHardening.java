@@ -3,8 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.scrubbing.engine;
 import java.util.Comparator;
 import java.util.List;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+
 import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Валидация приоритетов и детерминированный порядок исполнения правил.
@@ -21,9 +23,10 @@ import lombok.extern.slf4j.Slf4j;
  * платформенных правил. Critical-признак определяется <b>только</b> методом
  * {@code SpanAttributeScrubbingRule.critical()}, а не диапазоном приоритета.
  */
-@Slf4j
 @UtilityClass
 public final class PriorityHardening {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PriorityHardening.class);
 
     public static final int CUSTOM_PRIORITY_FLOOR = 900;
 
@@ -47,13 +50,8 @@ public final class PriorityHardening {
 
     private static ExecutableRule clampIfNeeded(ExecutableRule wrapper) {
         if (!wrapper.isCritical() && wrapper.getEffectivePriority() < CUSTOM_PRIORITY_FLOOR) {
-            log.warn("[scrubbing] Custom rule '{}' has priority {} below the allowed floor {}. "
-                            + "Priority clamped to {}.",
-                    wrapper.getRuleClass().getName(),
-                    wrapper.getEffectivePriority(),
-                    CUSTOM_PRIORITY_FLOOR,
-                    CUSTOM_PRIORITY_FLOOR
-            );
+            log.warn(AgentEventCodes.SCRUB_PRIORITY_FLOOR, "Scrubbing priority floor applied",
+                    "name", wrapper.getRuleClass().getName());
 
             return wrapper.withEffectivePriority(CUSTOM_PRIORITY_FLOOR);
         }

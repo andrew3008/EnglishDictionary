@@ -1,8 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.validation;
 
 import space.br1440.platform.common.util.StringUtils;
-
-import lombok.extern.slf4j.Slf4j;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 /**
  * Запрошенный или действующий режим валидации для {@code ValidatingSpanProcessor}.
@@ -20,12 +20,13 @@ import lombok.extern.slf4j.Slf4j;
  * </ul>
  * Неизвестные или пустые значения по умолчанию сводятся к {@link #LENIENT}.
  */
-@Slf4j
 public enum ValidationMode {
 
     LENIENT,
     STRICT,
     DISABLED;
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ValidationMode.class);
 
     public boolean isLenient() {
         return (this == LENIENT);
@@ -49,7 +50,8 @@ public enum ValidationMode {
             case "STRICT" -> STRICT;
             case "DISABLED" -> DISABLED;
             default -> {
-                log.warn("Unrecognized platform.tracing.validation.mode='{}'; defaulting to LENIENT", value);
+                log.warn(AgentEventCodes.VALID_UNRECOGNIZED_MODE, "Unrecognized validation mode",
+                        "name", value);
                 yield LENIENT;
             }
         };

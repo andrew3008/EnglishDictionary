@@ -1,118 +1,168 @@
 package space.br1440.platform.tracing.otel.javaagent.resilience;
 
-import org.slf4j.Logger;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
 
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.EmitResult;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
+/**
+ * Двухфазный rate-limit вокруг {@link PlatformAgentLogger}. Не владеет sink/backend.
+ */
 public final class RateLimitedLogger {
 
-    private final Logger delegate;
+    private final PlatformAgentLogger delegate;
     private final TokenBucketRateLimiter warnFast;
     private final TokenBucketRateLimiter warnThrottled;
     private final TokenBucketRateLimiter errorFast;
     private final TokenBucketRateLimiter errorThrottled;
-    private final PlatformLogControl logControl;
 
     private final AtomicBoolean warnThrottledMode = new AtomicBoolean(false);
     private final AtomicBoolean errorThrottledMode = new AtomicBoolean(false);
     private final AtomicBoolean problemLogged = new AtomicBoolean(false);
 
-    public RateLimitedLogger(Logger delegate) {
+    public RateLimitedLogger(Class<?> owner) {
+        this(PlatformAgentLogger.get(owner), 5, 1, 1, TimeUnit.MINUTES, System::nanoTime);
+    }
+
+    public RateLimitedLogger(PlatformAgentLogger delegate) {
         this(delegate, 5, 1, 1, TimeUnit.MINUTES, System::nanoTime);
     }
 
-    public RateLimitedLogger(Logger delegate, double fastLimit, double throttledLimit,
+    public RateLimitedLogger(PlatformAgentLogger delegate, double fastLimit, double throttledLimit,
                              long interval, TimeUnit unit, LongSupplier nanoClock) {
-        this(delegate, fastLimit, throttledLimit, interval, unit, nanoClock, PlatformLogControl.shared());
-    }
-
-    public RateLimitedLogger(Logger delegate, double fastLimit, double throttledLimit,
-                             long interval, TimeUnit unit, LongSupplier nanoClock,
-                             PlatformLogControl logControl) {
         this.delegate = delegate;
         this.warnFast = TokenBucketRateLimiter.perInterval(fastLimit, interval, unit, nanoClock);
         this.warnThrottled = TokenBucketRateLimiter.perInterval(throttledLimit, interval, unit, nanoClock);
         this.errorFast = TokenBucketRateLimiter.perInterval(fastLimit, interval, unit, nanoClock);
         this.errorThrottled = TokenBucketRateLimiter.perInterval(throttledLimit, interval, unit, nanoClock);
-        this.logControl = logControl;
     }
 
-    public boolean warn(String format, Object... args) {
-        return log(PlatformLogControl.LogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings", format, args);
+    public EmitResult warn(String eventCode, String message) {
+        return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
+                eventCode, message, null);
     }
 
-    public boolean error(String format, Object... args) {
-        return log(PlatformLogControl.LogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors", format, args);
+    public EmitResult warn(String eventCode, String message, String k1, String v1) {
+        return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
+                eventCode, message, null, k1, v1);
+    }
+
+    public EmitResult warn(String eventCode, String message, String k1, String v1, String k2, String v2) {
+        return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
+                eventCode, message, null, k1, v1, k2, v2);
+    }
+
+    public EmitResult warn(String eventCode, String message, Throwable error) {
+        return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
+                eventCode, message, error);
+    }
+
+    public EmitResult warn(String eventCode, String message, Throwable error, String k1, String v1) {
+        return log(AgentLogLevel.WARN, warnFast, warnThrottled, warnThrottledMode, "warnings",
+                eventCode, message, error, k1, v1);
+    }
+
+    public EmitResult error(String eventCode, String message) {
+        return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
+                eventCode, message, null);
+    }
+
+    public EmitResult error(String eventCode, String message, String k1, String v1) {
+        return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
+                eventCode, message, null, k1, v1);
+    }
+
+    public EmitResult error(String eventCode, String message, Throwable error) {
+        return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
+                eventCode, message, error);
+    }
+
+    public EmitResult error(String eventCode, String message, Throwable error, String k1, String v1) {
+        return log(AgentLogLevel.ERROR, errorFast, errorThrottled, errorThrottledMode, "errors",
+                eventCode, message, error, k1, v1);
     }
 
     public boolean isDebugEnabled() {
-        return logControl.isEnabled(PlatformLogControl.LogLevel.DEBUG) && delegate.isDebugEnabled();
+        return delegate.isDebugEnabled();
     }
 
-    public boolean debug(String format, Object... args) {
+    public EmitResult debug(String eventCode, String message, String k1, String v1) {
         if (!isDebugEnabled()) {
-            return false;
+            return EmitResult.FILTERED_BY_LEVEL;
         }
-
-        delegate.debug(format, args);
-        return true;
+        return delegate.debug(eventCode, message, k1, v1);
     }
 
-    private boolean log(PlatformLogControl.LogLevel level, TokenBucketRateLimiter fastBucket,
-                        TokenBucketRateLimiter throttledBucket, AtomicBoolean throttledMode,
-                        String throttleAnnouncementNoun, String format, Object[] args) {
-        if (!logControl.isEnabled(level)) {
-            return false;
+    public EmitResult debug(String eventCode, String message, String k1, String v1, String k2, String v2) {
+        if (!isDebugEnabled()) {
+            return EmitResult.FILTERED_BY_LEVEL;
+        }
+        return delegate.debug(eventCode, message, k1, v1, k2, v2);
+    }
+
+    private EmitResult log(AgentLogLevel level, TokenBucketRateLimiter fastBucket,
+                           TokenBucketRateLimiter throttledBucket, AtomicBoolean throttledMode,
+                           String throttleAnnouncementNoun, String eventCode, String message,
+                           Throwable error, String... fields) {
+        if (!delegate.isEnabled(level)) {
+            return EmitResult.FILTERED_BY_LEVEL;
         }
 
         if (throttledMode.get()) {
             if (throttledBucket.trySpend(1.0)) {
-                emit(level, format, args);
-                problemLogged.set(true);
-                return true;
+                EmitResult result = emit(level, eventCode, message, error, fields);
+                if (result == EmitResult.EMITTED) {
+                    problemLogged.set(true);
+                }
+                return result;
             }
-            return false;
+            return EmitResult.RATE_LIMITED;
         }
 
         if (fastBucket.trySpend(1.0)) {
-            emit(level, format, args);
-            problemLogged.set(true);
-            return true;
+            EmitResult result = emit(level, eventCode, message, error, fields);
+            if (result == EmitResult.EMITTED) {
+                problemLogged.set(true);
+            }
+            return result;
         }
 
         if (throttledMode.compareAndSet(false, true)) {
-            delegate.warn("Too many tracing-layer {}; further messages will be written at most "
-                            + "at the configured limit (throttled). Primary observability channel is JMX/metrics counters.",
-                    throttleAnnouncementNoun);
-            emit(level, format, args);
-            problemLogged.set(true);
-            return true;
-        }
-
-        return false;
-    }
-
-    private void emit(PlatformLogControl.LogLevel level, String format, Object[] args) {
-        if (level == PlatformLogControl.LogLevel.ERROR) {
-            delegate.error(format, args);
-        } else {
-            delegate.warn(format, args);
-        }
-    }
-
-    public boolean logRecoveryOnce(String format, Object... args) {
-        if (problemLogged.compareAndSet(true, false)) {
-            if (logControl.isEnabled(PlatformLogControl.LogLevel.INFO)) {
-                delegate.info(format, args);
-                return true;
+            delegate.warn(
+                    AgentEventCodes.RATE_THROTTLED,
+                    "Agent logging is throttled",
+                    "kind",
+                    throttleAnnouncementNoun
+            );
+            EmitResult result = emit(level, eventCode, message, error, fields);
+            if (result == EmitResult.EMITTED) {
+                problemLogged.set(true);
             }
+            return result;
         }
 
-        return false;
+        return EmitResult.RATE_LIMITED;
+    }
+
+    private EmitResult emit(
+            AgentLogLevel level,
+            String eventCode,
+            String message,
+            Throwable error,
+            String[] fields
+    ) {
+        return delegate.emit(level, eventCode, message, error, (Object[]) fields);
+    }
+
+    public EmitResult logRecoveryOnce(String message) {
+        if (problemLogged.compareAndSet(true, false)) {
+            return delegate.info(AgentEventCodes.RATE_RECOVERY, message);
+        }
+        return EmitResult.FILTERED_BY_LEVEL;
     }
 
     boolean isThrottled() {

@@ -31,6 +31,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-webflux')
+    testImplementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'

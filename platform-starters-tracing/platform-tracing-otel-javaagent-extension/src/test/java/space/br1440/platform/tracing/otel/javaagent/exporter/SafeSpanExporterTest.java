@@ -17,20 +17,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -581,35 +576,23 @@ class SafeSpanExporterTest {
             }
         };
 
-        Logger exporterLogger = (Logger) LoggerFactory.getLogger(SafeSpanExporter.class);
-        PlatformLogControl.LogLevel previousLevel = PlatformLogControl.shared().getLevel();
-        Level previousLoggerLevel = exporterLogger.getLevel();
-        PlatformLogControl.shared().setLevel(PlatformLogControl.LogLevel.DEBUG);
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        exporterLogger.addAppender(appender);
-        exporterLogger.setLevel(Level.ALL);
-
+        AgentLogCapture capture = new AgentLogCapture();
+        capture.install();
         try {
             CompletableResultCode result = safe.export(hostileBatch);
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(appender.list).isNotEmpty();
-            assertThat(appender.list).allSatisfy(event -> {
-                assertThat(event.getThrowableProxy())
-                        .as("a Throwable attached to the event would be rendered with its message")
-                        .isNull();
-                assertThat(event.getFormattedMessage()).doesNotContain(secret, "Cannot process customer token");
+            assertThat(capture.events()).isNotEmpty();
+            assertThat(capture.events()).allSatisfy(event -> {
+                assertThat(event.fields().toString())
+                        .doesNotContain(secret, "Cannot process customer token");
+                if (event.throwableDigest() != null) {
+                    assertThat(event.throwableDigest())
+                            .doesNotContain(secret, "Cannot process customer token");
+                }
             });
         } finally {
-            exporterLogger.detachAppender(appender);
-            appender.stop();
-            // Restore both the platform log gate and the underlying logback logger level: leaving
-            // the logger pinned at Level.ALL would make later tests order-dependent (e.g. a test
-            // asserting "nothing was logged" could start passing only because an earlier, unrelated
-            // test happened to run first and leave the logger wide open).
-            exporterLogger.setLevel(previousLoggerLevel);
-            PlatformLogControl.shared().setLevel(previousLevel);
+            capture.restore();
         }
     }
 

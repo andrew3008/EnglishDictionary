@@ -21,15 +21,11 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogEvent;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
@@ -42,25 +38,13 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Sett
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateStatus;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 
 class PrivateControlWriterFailureContractTest {
 
-    private ListAppender<ILoggingEvent> appender;
-    private Logger writerLogger;
-
-    @BeforeEach
-    void setUpLogger() {
-        appender = new ListAppender<>();
-        appender.start();
-        writerLogger = (Logger) LoggerFactory.getLogger(PrivateControlWriterMBean.class);
-        writerLogger.addAppender(appender);
-        writerLogger.setLevel(Level.ALL);
-    }
-
-    @AfterEach
-    void tearDownLogger() {
-        writerLogger.detachAppender(appender);
-    }
+    @RegisterExtension
+    AgentLogCapture capture = new AgentLogCapture();
 
     @Test
     void unexpectedDecodeFailureIsRecordedWithoutLoggingUntrustedAttemptId() throws Exception {
@@ -88,11 +72,11 @@ class PrivateControlWriterFailureContractTest {
                 maliciousAttemptId,
                 SettingsRejectionReason.INTERNAL_FAILURE);
         assertThat(warnEvents()).singleElement().satisfies(event -> {
-            assertThat(event.getFormattedMessage())
-                    .isEqualTo("Unexpected failure while decoding settings snapshot, "
-                            + "attemptId=<unavailable>")
-                    .doesNotContain(maliciousAttemptId, "forged-log-line");
-            assertThat(event.getThrowableProxy()).isNotNull();
+            assertThat(event.eventCode()).isEqualTo(AgentEventCodes.CTRL_WRITER);
+            assertThat(event.fields()).containsEntry("attemptId", "<unavailable>");
+            assertThat(event.fields().toString()).doesNotContain(maliciousAttemptId, "forged-log-line");
+            assertThat(capture.rendered()).doesNotContain(maliciousAttemptId, "forged-log-line");
+            assertThat(event.throwableDigest()).isNotNull();
         });
     }
 
@@ -127,10 +111,9 @@ class PrivateControlWriterFailureContractTest {
         assertThat(diagnostics.snapshot().countOf(SettingsUpdateStatus.FAILED)).isZero();
         verify(updater, never()).failBeforeApply(any(), any());
         assertThat(warnEvents()).singleElement().satisfies(event -> {
-            assertThat(event.getFormattedMessage())
-                    .isEqualTo("Unexpected failure while encoding settings snapshot response, attemptId="
-                            + attempt.attemptId());
-            assertThat(event.getThrowableProxy()).isNotNull();
+            assertThat(event.eventCode()).isEqualTo(AgentEventCodes.CTRL_WRITER);
+            assertThat(event.fields()).containsEntry("attemptId", attempt.attemptId());
+            assertThat(event.throwableDigest()).isNotNull();
         });
     }
 
@@ -156,9 +139,7 @@ class PrivateControlWriterFailureContractTest {
         assertThat(thrown.getTargetException()).isSameAs(encodeFailure);
         assertThat(diagnostics.snapshot().latestOutcome()).isEqualTo(SettingsUpdateStatus.FAILED);
         assertThat(warnEvents()).hasSize(2);
-        assertThat(warnEvents().get(1).getFormattedMessage())
-                .isEqualTo("Unexpected failure while encoding pre-apply settings response, "
-                        + "attemptId=<unavailable>");
+        assertThat(warnEvents().get(1).fields()).containsEntry("attemptId", "<unavailable>");
     }
 
     private static Object invoke(PrivateControlWriterMBean writer, CompositeData request)
@@ -169,9 +150,9 @@ class PrivateControlWriterFailureContractTest {
                 new String[]{CompositeData.class.getName()});
     }
 
-    private List<ILoggingEvent> warnEvents() {
-        return appender.list.stream()
-                .filter(event -> event.getLevel() == Level.WARN)
+    private List<AgentLogEvent> warnEvents() {
+        return capture.events().stream()
+                .filter(event -> event.level() == AgentLogLevel.WARN)
                 .toList();
     }
 

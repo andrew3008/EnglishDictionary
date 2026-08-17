@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 
 import java.util.ArrayList;
 import java.util.List;

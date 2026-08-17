@@ -1,16 +1,13 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import io.opentelemetry.sdk.resources.Resource;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import space.br1440.platform.tracing.test.harness.SpanProcessorHarness;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,36 +17,29 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ValidationStartupStrictPolicyTest {
 
-    private ListAppender<ILoggingEvent> appender;
-    private Logger processorLogger;
-
-    @BeforeEach
-    void setUp() {
-        appender = new ListAppender<>();
-        appender.start();
-        processorLogger = (Logger) LoggerFactory.getLogger(ValidatingSpanProcessor.class);
-        processorLogger.addAppender(appender);
-        processorLogger.setLevel(Level.ALL);
-    }
-
-    @AfterEach
-    void tearDown() {
-        processorLogger.detachAppender(appender);
-    }
+    @RegisterExtension
+    AgentLogCapture capture = new AgentLogCapture();
 
     @Test
     void strict_violation_emits_sanitized_error() {
+        // given
         ValidatingSpanProcessor processor = new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, true, false));
+
+        // when
         try (SpanProcessorHarness harness = SpanProcessorHarness.of(processor, Resource.empty())) {
             harness.tracer("test").spanBuilder("customer-secret-span-name").startSpan().end();
         }
 
-        assertThat(appender.list)
-                .filteredOn(e -> e.getLevel() == Level.ERROR)
-                .hasSize(1);
-        assertThat(appender.list.get(0).getFormattedMessage())
-                .isEqualTo("PT-VALIDATION-MISSING-ATTRIBUTES: span violates the mandatory attribute contract")
-                .doesNotContain("customer-secret-span-name", "platform.trace.type", "platform.trace.result");
+        // then
+        assertThat(capture.events())
+                .filteredOn(event -> event.level() == AgentLogLevel.ERROR)
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.eventCode()).isEqualTo(AgentEventCodes.VALID_MISSING_ATTRIBUTES);
+                    assertThat(event.message()).isEqualTo("Required span attributes are missing");
+                    assertThat(event.fields().toString())
+                            .doesNotContain("customer-secret-span-name", "platform.trace.type", "platform.trace.result");
+                });
     }
 
     @Test
@@ -59,11 +49,11 @@ class ValidationStartupStrictPolicyTest {
             harness.tracer("test").spanBuilder("missing-attributes").startSpan().end();
         }
 
-        assertThat(appender.list)
-                .filteredOn(e -> e.getLevel() == Level.WARN)
+        assertThat(capture.events())
+                .filteredOn(event -> event.level() == AgentLogLevel.WARN)
                 .hasSize(1);
-        assertThat(appender.list)
-                .filteredOn(e -> e.getLevel() == Level.ERROR)
+        assertThat(capture.events())
+                .filteredOn(event -> event.level() == AgentLogLevel.ERROR)
                 .isEmpty();
     }
 

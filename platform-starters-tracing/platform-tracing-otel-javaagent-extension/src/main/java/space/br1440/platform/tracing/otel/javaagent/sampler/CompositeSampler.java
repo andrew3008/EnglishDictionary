@@ -12,10 +12,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
-import space.br1440.platform.tracing.otel.sampling.engine.SamplingPolicyEngine;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyDecision;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicyRequest;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
+import space.br1440.platform.tracing.runtime.sampling.engine.SamplingPolicyEngine;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyDecision;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicyRequest;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapshot;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.SpanKind;

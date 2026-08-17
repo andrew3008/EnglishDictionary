@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
-import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceTraceContext;
+import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 
 import java.util.List;
 import java.util.Optional;

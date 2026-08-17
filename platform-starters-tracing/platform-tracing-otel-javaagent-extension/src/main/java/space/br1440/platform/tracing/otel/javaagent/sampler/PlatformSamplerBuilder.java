@@ -9,9 +9,9 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import lombok.experimental.UtilityClass;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
-import space.br1440.platform.tracing.otel.sampling.model.SamplingPolicySnapshot;
-import space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicyProperties;
-import space.br1440.platform.tracing.otel.sampling.properties.SamplingPolicySnapshotFactory;
+import space.br1440.platform.tracing.runtime.sampling.model.SamplingPolicySnapshot;
+import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicyProperties;
+import space.br1440.platform.tracing.runtime.sampling.properties.SamplingPolicySnapshotFactory;
 
 @UtilityClass
 public final class PlatformSamplerBuilder {

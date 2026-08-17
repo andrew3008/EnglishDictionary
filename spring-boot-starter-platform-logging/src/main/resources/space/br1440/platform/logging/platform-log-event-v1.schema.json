@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://br1440.space/schemas/platform-log-event-v1.schema.json",
+  "title": "platform-log-event-v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["timestamp", "level", "logger", "message", "event_code"],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "level": { "type": "string", "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"] },
+    "logger": { "type": "string", "minLength": 1 },
+    "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "event_code": { "type": "string", "pattern": "^[A-Z]{2,6}-[A-Z]+-[0-9]{3}$" },
+    "fields": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 512 } },
+    "error_stacktrace": { "type": "string", "maxLength": 4119 }
+  }
+}

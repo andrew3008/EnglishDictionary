@@ -10,12 +10,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.jar.Manifest;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.common.util.StringUtils;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 public final class PlatformExtensionReadiness {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PlatformExtensionReadiness.class);
 
     public static final int PROTOCOL_VERSION = 1;
     public static final String PROFILE = "platform-agent-secure-v1";
@@ -133,8 +134,10 @@ public final class PlatformExtensionReadiness {
                 }
             }
         } catch (IOException failure) {
-            log.debug("Unable to resolve {} Implementation-Version from MANIFEST.MF, falling back to 'development'",
-                    IMPLEMENTATION_TITLE, failure);
+            if (log.isDebugEnabled()) {
+                log.debug(AgentEventCodes.BOOT_MANIFEST_VERSION,
+                        "Unable to resolve Implementation-Version from MANIFEST.MF");
+            }
         }
 
         return null;

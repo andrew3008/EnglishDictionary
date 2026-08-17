@@ -5,10 +5,9 @@ import java.util.List;
 import java.util.Objects;
 import javax.management.MBeanServer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.protocol.PrivateControlWriterMBean;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.LastSettingsUpdate;
@@ -16,7 +15,7 @@ import space.br1440.platform.tracing.otel.javaagent.control.settings.update.Trac
 
 public final class PrivateControlPlane implements AutoCloseable {
 
-    private static final Logger log = LoggerFactory.getLogger(PrivateControlPlane.class);
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(PrivateControlPlane.class);
 
     private static final String STATE_MARKER_REGISTERED = "MARKER_REGISTERED";
     private static final String STATE_CODEC_READY = "CODEC_READY";
@@ -80,12 +79,12 @@ public final class PrivateControlPlane implements AutoCloseable {
             return privateServer.server();
 
         } catch (Exception exception) {
-            log.error("Failed to initialize Private Control Plane MBeanServer. Rolling back registration.", exception);
+            log.error(AgentEventCodes.CTRL_PLANE, "Private control plane failed", exception);
             candidateMarker.lifecycleState(STATE_FAILED);
 
             IllegalStateException startFailure = new IllegalStateException("Private control MBeanServer initialization failed", exception);
             for (Exception cleanupFailure : candidateServer.close()) {
-                log.warn("Suppressed cleanup failure during rollback", cleanupFailure);
+                log.warn(AgentEventCodes.CTRL_PLANE, "Suppressed cleanup failure during rollback", cleanupFailure);
                 startFailure.addSuppressed(cleanupFailure);
             }
             throw startFailure;
@@ -113,7 +112,7 @@ public final class PrivateControlPlane implements AutoCloseable {
             try {
                 marker.lifecycleState(STATE_STOPPED);
             } catch (Exception e) {
-                log.warn("Failed to update marker state to STOPPED during shutdown", e);
+                log.warn(AgentEventCodes.CTRL_PLANE, "Failed to update marker state to STOPPED during shutdown", e);
             }
         }
 
@@ -123,7 +122,8 @@ public final class PrivateControlPlane implements AutoCloseable {
 
         if (!failures.isEmpty()) {
             Exception rootCause = failures.getFirst();
-            log.error("Private Control Plane MBean cleanup encountered {} failures. Root cause attached.", failures.size(), rootCause);
+            log.error(AgentEventCodes.CTRL_PLANE, "Private control plane failed", rootCause,
+                    "count", String.valueOf(failures.size()));
 
             IllegalStateException cleanupFailure = new IllegalStateException("Private control MBean cleanup failed", rootCause);
             failures.stream().skip(1).forEach(cleanupFailure::addSuppressed);

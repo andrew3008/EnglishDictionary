@@ -8,7 +8,9 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
 import space.br1440.platform.common.util.StringUtils;
-import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceTraceContext;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
+import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
@@ -17,14 +19,14 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.data.StatusData;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Обогащает span platform-специфичными атрибутами: тип (HTTP/DB/Kafka/internal), результат
  * (success/failure) и, для ошибочных CLIENT-спанов, имя upstream remote-сервиса.
  */
-@Slf4j
 public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(EnrichingSpanProcessor.class);
 
     private static final String DIAGNOSTIC_ID = "enrichment";
 
@@ -186,7 +188,9 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
                 return value;
             }
         } catch (RuntimeException e) {
-            log.debug("Failed to extract upstream service name from CLIENT span: {}", e.getMessage());
+            if (log.isDebugEnabled()) {
+                log.debug(AgentEventCodes.BOOT_UPSTREAM_SERVICE, "Failed to extract upstream service name");
+            }
         }
 
         return null;

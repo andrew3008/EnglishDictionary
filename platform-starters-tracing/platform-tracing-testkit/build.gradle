@@ -11,6 +11,7 @@ platformJavaLibrary {
 
 dependencies {
     api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-api')
+    api project(':platform-starters-tracing:platform-tracing-runtime-policy')
     api project(':platform-starters-tracing:spring-boot-starter-platform-tracing-otel')
     api 'io.opentelemetry:opentelemetry-sdk'
     api 'io.opentelemetry:opentelemetry-sdk-testing'

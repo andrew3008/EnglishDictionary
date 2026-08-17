@@ -57,7 +57,7 @@ public final class ModuleTaxonomyArchRules {
                     "space.br1440.platform.tracing.autoconfigure..",
                     "space.br1440.platform.tracing.starter..")
             .and().resideOutsideOfPackage("..test..")
-            .should().dependOnClassesThat().resideInAnyPackage("..otel.runtime.versioned..")
+            .should().dependOnClassesThat().resideInAnyPackage("..runtime.versioned..")
             .because("versioned runtime state is agent infrastructure, not an application SDK");
 
     public static final ArchRule WEB_AUTOCONFIGURE_MAIN_NO_CORE_IMPL = noClasses()
@@ -108,7 +108,7 @@ public final class ModuleTaxonomyArchRules {
 
     public static final ArchRule CORE_POLICY_PACKAGES_NO_OTEL_OR_SPRING = noClasses()
             .that().resideInAnyPackage(
-                    "space.br1440.platform.tracing.otel.sampling..",
+                    "space.br1440.platform.tracing.runtime.sampling..",
                     "space.br1440.platform.tracing.otel.scrubbing..",
                     "space.br1440.platform.tracing.otel.validation..")
             .should().dependOnClassesThat().resideInAnyPackage(
@@ -123,31 +123,56 @@ public final class ModuleTaxonomyArchRules {
             .should().dependOnClassesThat().resideInAnyPackage("javax.management..")
             .because("runtime management belongs to the agent-side control plane");
 
-    public static final ArchRule SAMPLING_MODEL_IS_PURE = noClasses()
-            .that().resideInAPackage("..otel.sampling.model..")
+    public static final ArchRule RUNTIME_POLICY_LOGGING_AGNOSTIC = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.runtime..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..otel.sampling.policy..",
-                    "..otel.sampling.engine..",
-                    "..otel.sampling.properties..")
+                    "org.slf4j..",
+                    "java.util.logging..",
+                    "org.springframework..",
+                    "org.springframework.boot..",
+                    "ch.qos.logback..",
+                    "net.logstash.logback..",
+                    "reactor..",
+                    "jakarta.servlet..",
+                    "io.micrometer..",
+                    "javax.management..",
+                    "space.br1440.platform.logging..",
+                    "space.br1440.platform.tracing.autoconfigure..",
+                    "space.br1440.platform.tracing.otel.javaagent..")
+            .because("runtime-policy is a logging-agnostic shared primitive and must not depend on Agent or Spring");
+
+    public static final ArchRule OTEL_DOES_NOT_DEPEND_ON_AGENT_NAMED_MODULE = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.otel..")
+            .and().resideOutsideOfPackage("..javaagent..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "space.br1440.platform.tracing.otel.javaagent..")
+            .because("the application plane must not depend on an Agent-named module");
+
+    public static final ArchRule SAMPLING_MODEL_IS_PURE = noClasses()
+            .that().resideInAPackage("..runtime.sampling.model..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "..runtime.sampling.policy..",
+                    "..runtime.sampling.engine..",
+                    "..runtime.sampling.properties..")
             .because("the sampling model must not depend on policy, engine or configuration layers");
 
     public static final ArchRule PRODUCTION_CHAIN_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.otel.sampling.policy.ProductionSamplingPolicyChain")
+                    "space.br1440.platform.tracing.runtime.sampling.policy.ProductionSamplingPolicyChain")
             .should().onlyHaveDependentClassesThat().resideInAnyPackage(
-                    "..otel.sampling.policy..",
-                    "..otel.sampling.engine..")
+                    "..runtime.sampling.policy..",
+                    "..runtime.sampling.engine..")
             .because("the production policy chain is an internal engine integration type");
 
-    public static final ArchRule VERSIONED_STATE_PRIMITIVE_ONLY_IN_CORE = classes()
+    public static final ArchRule VERSIONED_STATE_PRIMITIVE_ONLY_IN_RUNTIME_POLICY = classes()
             .that().haveSimpleName("VersionedState")
             .or().haveSimpleName("VersionedStateHolder")
             .and().resideOutsideOfPackage("..test..")
-            .should().resideInAPackage("..otel.runtime.versioned..")
+            .should().resideInAPackage("..runtime.versioned..")
             .allowEmptyShould(true)
-            .because("the versioned-state primitive belongs to the core runtime");
+            .because("the versioned-state primitive belongs to the shared runtime-policy module");
 
-    public static final ArchRule CONTROL_IMPLS_ONLY_IN_CORE = classes()
+    public static final ArchRule CONTROL_IMPLS_ONLY_IN_RUNTIME_POLICY = classes()
             .that().implement("space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy")
             .or().implement("space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher")
             .or().implement("space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation")
@@ -156,12 +181,12 @@ public final class ModuleTaxonomyArchRules {
             .and().areNotMemberClasses()
             .and().resideOutsideOfPackage("..test..")
             .and().haveSimpleNameNotEndingWith("Test")
-            .should().resideInAPackage("..otel.propagation.control..")
-            .because("propagation control implementations belong to the core implementation module");
+            .should().resideInAPackage("..runtime.propagation.control..")
+            .because("propagation control implementations belong to the shared runtime-policy module");
 
     public static final ArchRule CONTROL_IMPL_ACCESS_RESTRICTED = classes()
             .that().haveFullyQualifiedName(
-                    "space.br1440.platform.tracing.otel.propagation.control.TrustedDestinationMatchers")
+                    "space.br1440.platform.tracing.runtime.propagation.control.TrustedDestinationMatchers")
             .should().onlyHaveDependentClassesThat(allowedTrustedDestinationMatchersDependent())
             .allowEmptyShould(true)
             .because("the trusted-destination factory is available only to approved composition owners");
@@ -172,7 +197,6 @@ public final class ModuleTaxonomyArchRules {
                 public boolean test(JavaClass input) {
                     String simpleName = input.getSimpleName();
                     return ("RemoteServiceMdc".equals(simpleName)
-                            || "RemoteServiceTraceContext".equals(simpleName)
                             || "RemoteServiceNameResolver".equals(simpleName))
                             && !input.getPackageName().contains(".test");
                 }
@@ -180,6 +204,14 @@ public final class ModuleTaxonomyArchRules {
             .should().resideInAPackage("..otel.mdc.remote..")
             .allowEmptyShould(true)
             .because("remote-service MDC implementation types belong to the core MDC package");
+
+    public static final ArchRule REMOTE_SERVICE_TRACE_CONTEXT_IN_RUNTIME_POLICY = classes()
+            .that().haveSimpleName("RemoteServiceTraceContext")
+            .or().haveSimpleName("RemoteServiceTraceMirror")
+            .and().resideOutsideOfPackage("..test..")
+            .should().resideInAPackage("..runtime.remote..")
+            .allowEmptyShould(true)
+            .because("the logging-agnostic remote-service mirror belongs to runtime-policy, not the MDC package");
 
     public static final ArchRule OTEL_EXTENSION_MDC_FROM_CORE = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
@@ -195,9 +227,9 @@ public final class ModuleTaxonomyArchRules {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return "space.br1440.platform.tracing.otel.propagation.control.TraceControlHeaderInjector"
+                return "space.br1440.platform.tracing.runtime.propagation.control.TraceControlHeaderInjector"
                         .equals(name)
-                        || "space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys"
+                        || "space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys"
                         .equals(name)
                         || "space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader"
                         .equals(name);
@@ -210,7 +242,8 @@ public final class ModuleTaxonomyArchRules {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return name.startsWith("space.br1440.platform.tracing.otel.")
+                return name.startsWith("space.br1440.platform.tracing.runtime.")
+                        || name.startsWith("space.br1440.platform.tracing.otel.")
                         || name.startsWith("space.br1440.platform.tracing.autoconfigure.")
                         || name.startsWith("space.br1440.platform.tracing.otel.javaagent.")
                         || name.contains(".test.")

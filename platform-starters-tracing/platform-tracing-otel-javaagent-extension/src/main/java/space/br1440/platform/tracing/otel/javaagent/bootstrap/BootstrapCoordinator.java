@@ -11,6 +11,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.control.jmx.lifecycle.PrivateControlPlane;
 import space.br1440.platform.tracing.otel.javaagent.diagnostics.PlatformLogControl;
 import space.br1440.platform.tracing.otel.javaagent.jmx.readiness.ExtensionReadinessWireSnapshot;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagationGate;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
@@ -20,10 +22,10 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 final class BootstrapCoordinator {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(BootstrapCoordinator.class);
 
     private final Object lock = new Object();
     private final ShutdownHookRegistry hookRegistry;
@@ -274,8 +276,7 @@ final class BootstrapCoordinator {
                 this.state = BootstrapState.FAILED;
             }
 
-            log.warn("Platform bootstrap classified failure [{}] during phase '{}': {}",
-                    failure.code(), phase, cause == null ? "n/a" : cause.toString());
+            log.warn(AgentEventCodes.BOOT_CLASSIFIED_FAILURE, "Bootstrap phase failed", cause, "phase", phase);
 
             return new BootstrapException(failure);
         }

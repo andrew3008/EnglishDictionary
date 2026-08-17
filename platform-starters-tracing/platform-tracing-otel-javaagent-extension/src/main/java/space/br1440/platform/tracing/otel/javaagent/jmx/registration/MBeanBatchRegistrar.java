@@ -7,10 +7,12 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import lombok.extern.slf4j.Slf4j;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-@Slf4j
 final class MBeanBatchRegistrar {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(MBeanBatchRegistrar.class);
 
     record Registration(ObjectName name, Object mbean) {
     }
@@ -36,7 +38,8 @@ final class MBeanBatchRegistrar {
         }
 
         if (firstFailure != null) {
-            log.error("MBean batch registration did not complete — rolling back {} MBean(s): {}", successfullyRegistered.size(), firstFailure.getMessage());
+            log.error(AgentEventCodes.CTRL_MBEAN_BATCH, "MBean batch registration failed", firstFailure, "count",
+                    String.valueOf(successfullyRegistered.size()));
             rollbackAndThrow(successfullyRegistered, firstFailure);
         }
     }
@@ -57,7 +60,10 @@ final class MBeanBatchRegistrar {
         } catch (InstanceNotFoundException alreadyUnregistered) {
             // MBean уже был незарегестрирован
         } catch (Exception e) {
-            log.debug("Failed to unregister MBean {}: {}", name, e.getMessage());
+            if (log.isDebugEnabled()) {
+                log.debug(AgentEventCodes.CTRL_MBEAN_BATCH, "Failed to unregister MBean",
+                        "name", name.toString());
+            }
         }
     }
 

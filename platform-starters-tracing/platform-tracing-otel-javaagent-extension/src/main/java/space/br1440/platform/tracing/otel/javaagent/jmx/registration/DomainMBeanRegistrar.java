@@ -1,9 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
-import lombok.extern.slf4j.Slf4j;
-
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -28,7 +25,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
 
-@Slf4j
 public final class DomainMBeanRegistrar {
 
     final LongAdder sharedInvalidConfigCounter = new LongAdder();

@@ -8,6 +8,7 @@ import org.slf4j.MDC;
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 
 /**
  * Read-chain для {@link TracingMdcKeys#REMOTE_SERVICE}: MDC → contributed sources → (опционально) built-in mirror fallback.

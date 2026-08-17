@@ -159,7 +159,7 @@ class PlatformAutoConfigurationCustomizerTest {
         space.br1440.platform.tracing.api.propagation.control.InboundTraceControl control =
                 new space.br1440.platform.tracing.api.propagation.control.InboundTraceControl(true, false, null, "x_trace_on", "on");
         io.opentelemetry.context.Context parentContext = io.opentelemetry.context.Context.root()
-                .with(space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys.TRACE_CONTROL, control);
+                .with(space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys.TRACE_CONTROL, control);
 
         SamplerDecisionAssert.assertThat(
                         space.br1440.platform.tracing.test.harness.SamplerHarness.of(produced)

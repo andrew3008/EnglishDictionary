@@ -18,13 +18,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
@@ -37,6 +34,9 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
 
 /**
@@ -49,6 +49,9 @@ import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.Platfor
  * которую эти дефекты обязаны были исправить.
  */
 class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
+
+    @RegisterExtension
+    AgentLogCapture capture = new AgentLogCapture();
 
     private Thread.UncaughtExceptionHandler previousDefaultHandler;
 
@@ -402,11 +405,6 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
     @Test
     void exportFailureLogThrottleRecoversViaRateLimitedLoggerInsteadOfPermanentOneShot() {
         // given: exporter, который никогда не перестаёт бросать исключение
-        Logger logger = (Logger) LoggerFactory.getLogger(PlatformDropOldestExportSpanProcessor.class);
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        logger.addAppender(appender);
-
         SpanExporter alwaysThrows = new SpanExporter() {
             @Override
             public CompletableResultCode export(Collection<SpanData> batch) {
@@ -432,9 +430,9 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
             // then: WARN о export failure троттлится RateLimitedLogger'ом (двухфазный fast/throttled
             // token bucket), а не глушится единственным permanent one-shot флагом — счётчик failuresTotal
             // при этом растёт на каждый вызов независимо от логирования
-            long exportFailureWarnCount = appender.list.stream()
-                    .map(ILoggingEvent::getFormattedMessage)
-                    .filter(message -> message.contains("exporter.export() threw"))
+            long exportFailureWarnCount = capture.events().stream()
+                    .filter(event -> event.level() == AgentLogLevel.WARN)
+                    .filter(event -> AgentEventCodes.EXPORT_TIMED.equals(event.eventCode()))
                     .count();
             assertThat(exportFailureWarnCount)
                     .as("RateLimitedLogger throttles bursts but is not a single permanent one-shot flag")
@@ -445,8 +443,6 @@ class PlatformDropOldestExportSpanProcessorPreRefactorCharacterizationTest {
                     .isEqualTo(10);
         } finally {
             tp.close();
-            logger.detachAppender(appender);
-            appender.stop();
         }
     }
 

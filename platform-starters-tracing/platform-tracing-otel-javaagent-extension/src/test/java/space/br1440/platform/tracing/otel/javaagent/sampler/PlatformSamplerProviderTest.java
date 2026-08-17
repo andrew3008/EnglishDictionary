@@ -18,8 +18,8 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.factory.PlatformSamplerFactory;
 import space.br1440.platform.tracing.otel.javaagent.jmx.DomainObjectNames;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
-import space.br1440.platform.tracing.otel.propagation.control.DefaultInboundTraceControlExtractor;
-import space.br1440.platform.tracing.otel.propagation.control.PlatformTraceContextKeys;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
+import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.SpanKind;

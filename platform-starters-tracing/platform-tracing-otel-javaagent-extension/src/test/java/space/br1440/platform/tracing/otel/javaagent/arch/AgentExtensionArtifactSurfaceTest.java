@@ -2,15 +2,16 @@ package space.br1440.platform.tracing.otel.javaagent.arch;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
+import java.util.Properties;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -20,13 +21,54 @@ class AgentExtensionArtifactSurfaceTest {
 
     private static final String EXTENSION_NAMESPACE =
             "space/br1440/platform/tracing/otel/javaagent/";
-    private static final String EMBEDDED_EXTENSION =
-            "extensions/platform-tracing-otel-javaagent-extension.jar";
-    private static final String SLF4J_PROVIDER =
-            "org/slf4j/simple/SimpleServiceProvider.class";
-    private static final String SLF4J_PROVIDER_REGISTRATION =
-            "META-INF/services/org.slf4j.spi.SLF4JServiceProvider";
-    private static final String SIMPLE_LOGGER_CONFIGURATION = "simplelogger.properties";
+    private static final String IDENTITY_RESOURCE =
+            "META-INF/platform-tracing/agent-logging-schema.properties";
+    private static final String FIELD_SANITIZER_CLASS =
+            "space/br1440/platform/tracing/otel/javaagent/logging/FieldSanitizer.class";
+    private static final String FIELD_NAME_POLICY_CLASS =
+            "space/br1440/platform/tracing/otel/javaagent/logging/AgentLogFieldNamePolicy.class";
+    private static final String TEXT_SANITIZER_CLASS =
+            "space/br1440/platform/tracing/otel/javaagent/logging/AgentLogTextSanitizer.class";
+    private static final String INPUT_POLICY_CLASS =
+            "space/br1440/platform/tracing/otel/javaagent/logging/AgentLogInputPolicy.class";
+    private static final String FIELD_SANITIZER_MARKER = "FieldSanitizer";
+    private static final String INPUT_POLICY_MARKER = "AgentLogInputPolicy";
+    private static final String MASKING_YAML = "platform-log-masking-rules.yaml";
+    private static final String MANIFEST_FRAGMENT =
+            "agent-logging-schema-manifest.mf";
+    private static final List<String> FORBIDDEN_PREFIXES = List.of(
+            "org/springframework/",
+            "ch/qos/logback/",
+            "reactor/",
+            "jakarta/servlet/",
+            "space/br1440/platform/logging/configuration/",
+            "space/br1440/platform/logging/logback/",
+            "space/br1440/platform/logging/logbook/",
+            "space/br1440/platform/logging/aspect/",
+            "space/br1440/platform/logging/masking/",
+            "space/br1440/platform/logging/mdc/",
+            "space/br1440/platform/tracing/otel/mdc/remote/RemoteServiceMdc",
+            "space/br1440/platform/tracing/otel/runtime/otel/",
+            "space/br1440/platform/tracing/autoconfigure/"
+    );
+
+    @Test
+    void library_jar_is_shallow_and_does_not_embed_shared_modules() throws IOException {
+        // given
+        Path libraryJar = Path.of(requiredProperty("platformTracing.libraryJar"));
+
+        // when
+        List<String> entries = listEntries(libraryJar);
+
+        // then
+        assertThat(entries)
+                .noneMatch(name -> name.startsWith("space/br1440/platform/tracing/api/"))
+                .noneMatch(name -> name.startsWith("space/br1440/platform/tracing/runtime/"))
+                .noneMatch(name -> name.startsWith("space/br1440/platform/common/util/"))
+                .noneMatch(name -> name.startsWith("org/slf4j/"))
+                .doesNotContain(IDENTITY_RESOURCE)
+                .noneMatch(name -> name.startsWith("space/br1440/platform/logging/"));
+    }
 
     @Test
     void extension_jar_does_not_publish_test_support_surface() throws IOException {
@@ -41,115 +83,127 @@ class AgentExtensionArtifactSurfaceTest {
     }
 
     @Test
-    void controlled_agent_embeds_the_exact_extension_jar() throws IOException {
-        // given
-        Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
-        Path controlledAgentJar = Path.of(requiredProperty("platformTracing.controlledAgentJar"));
-
-        // when
-        byte[] embeddedExtension = readEntry(controlledAgentJar, EMBEDDED_EXTENSION);
-
-        // then
-        assertThat(embeddedExtension).isEqualTo(Files.readAllBytes(extensionJar));
-    }
-
-    @Test
-    void extension_jar_embeds_the_stderr_logging_provider() throws IOException {
+    void extension_jar_does_not_contain_forbidden_application_packages() throws IOException {
         // given
         Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
 
         // when
-        byte[] providerClass = readEntry(extensionJar, SLF4J_PROVIDER);
-        String providerRegistration = new String(
-                readEntry(extensionJar, SLF4J_PROVIDER_REGISTRATION),
-                StandardCharsets.UTF_8
-        ).trim();
+        List<String> violations = listEntries(extensionJar).stream()
+                .filter(name -> FORBIDDEN_PREFIXES.stream().anyMatch(name::startsWith))
+                .toList();
 
         // then
-        assertThat(providerClass).isNotEmpty();
-        assertThat(providerRegistration).isEqualTo("org.slf4j.simple.SimpleServiceProvider");
+        assertThat(violations).isEmpty();
     }
 
     @Test
-    void controlled_agent_exposes_the_stderr_logging_configuration_to_the_agent_classloader()
-            throws IOException {
+    void extension_jar_contains_runtime_policy_and_not_application_otel() throws IOException {
         // given
-        Path controlledAgentJar = Path.of(requiredProperty("platformTracing.controlledAgentJar"));
+        Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
 
         // when
-        String configuration = new String(
-                readEntry(controlledAgentJar, SIMPLE_LOGGER_CONFIGURATION),
-                StandardCharsets.UTF_8
-        );
+        List<String> entries = listEntries(extensionJar);
 
         // then
-        assertThat(configuration)
-                .contains("org.slf4j.simpleLogger.logFile=System.err")
-                .contains("org.slf4j.simpleLogger.showDateTime=true")
-                .contains("org.slf4j.simpleLogger.showThreadName=true")
-                .contains("org.slf4j.simpleLogger.showLogName=true");
+        assertThat(entries)
+                .anyMatch(name -> name.startsWith("space/br1440/platform/tracing/runtime/sampling/"))
+                .anyMatch(name -> name.startsWith("space/br1440/platform/tracing/runtime/versioned/"))
+                .noneMatch(name -> name.startsWith("space/br1440/platform/tracing/otel/sampling/"))
+                .noneMatch(name -> name.contains("OtelTracingRuntime.class"));
     }
 
     @Test
-    void controlled_agent_writes_platform_logs_to_stderr_without_nop_fallback()
-            throws IOException, InterruptedException {
+    void extension_jar_contains_split_log_policies_and_not_legacy_types() throws IOException {
         // given
-        Path controlledAgentJar = Path.of(requiredProperty("platformTracing.controlledAgentJar"));
-        Path javaExecutable = Path.of(
-                System.getProperty("java.home"),
-                "bin",
-                isWindows() ? "java.exe" : "java"
-        );
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                javaExecutable.toString(),
-                "-Dfile.encoding=UTF-8",
-                "-Dsun.stderr.encoding=UTF-8",
-                "-javaagent:" + controlledAgentJar,
-                "-version"
-        );
-        processBuilder.environment().put("OTEL_SDK_DISABLED", "true");
-        Path stdoutFile = Files.createTempFile("platform-controlled-agent-stdout-", ".log");
-        Path stderrFile = Files.createTempFile("platform-controlled-agent-stderr-", ".log");
-        processBuilder.redirectOutput(stdoutFile.toFile());
-        processBuilder.redirectError(stderrFile.toFile());
+        Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
 
-        try {
-            // when
-            Process process = processBuilder.start();
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
-            }
-            String stdout = Files.readString(stdoutFile, StandardCharsets.UTF_8);
-            String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+        // when
+        List<String> entries = listEntries(extensionJar);
+        List<String> sanitizerHits = findUtf8Marker(extensionJar, FIELD_SANITIZER_MARKER);
+        List<String> policyHits = findUtf8Marker(extensionJar, INPUT_POLICY_MARKER);
 
-            // then
-            assertThat(finished).as("Controlled Agent child JVM must terminate").isTrue();
-            assertThat(process.exitValue()).isZero();
-            assertThat(stderr)
-                .doesNotContain("No SLF4J providers were found")
-                .doesNotContain("Defaulting to no-operation (NOP) logger implementation")
-                .contains("space.br1440.platform.tracing")
-                .containsPattern("(?m)^\\d{4}-\\d{2}-\\d{2}T.* \\[main] \\[(WARN|INFO|ERROR)] ");
-            assertThat(stdout).doesNotContain("space.br1440.platform.tracing");
-        } finally {
-            Files.deleteIfExists(stdoutFile);
-            Files.deleteIfExists(stderrFile);
+        // then
+        assertThat(entries).contains(FIELD_NAME_POLICY_CLASS, TEXT_SANITIZER_CLASS);
+        assertThat(entries).doesNotContain(FIELD_SANITIZER_CLASS, INPUT_POLICY_CLASS);
+        assertThat(entries).noneMatch(name -> name.endsWith(MASKING_YAML));
+        assertThat(sanitizerHits).isEmpty();
+        assertThat(policyHits).isEmpty();
+    }
+
+    @Test
+    void extension_jar_does_not_contain_platform_logging_schema_resources() throws IOException {
+        // given
+        Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
+
+        // when
+        List<String> entries = listEntries(extensionJar);
+
+        // then
+        assertThat(entries)
+                .noneMatch(name -> name.startsWith("space/br1440/platform/logging/"));
+    }
+
+    @Test
+    void extension_jar_embeds_schema_identity_only() throws IOException {
+        // given
+        Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
+
+        // when
+        List<String> entries = listEntries(extensionJar);
+        long identityCount = entries.stream().filter(IDENTITY_RESOURCE::equals).count();
+        Properties identity = new Properties();
+        identity.load(new ByteArrayInputStream(readEntry(extensionJar, IDENTITY_RESOURCE)));
+        Manifest manifest;
+        try (JarFile jar = new JarFile(extensionJar.toFile())) {
+            manifest = jar.getManifest();
         }
+
+        // then
+        assertThat(identityCount).isEqualTo(1);
+        assertThat(entries).doesNotContain(MANIFEST_FRAGMENT);
+        assertThat(identity.getProperty("schema.hashAlgorithm"))
+                .isEqualTo("PLATFORM_LOG_SCHEMA_SET_SHA256_V1");
+        assertThat(identity.getProperty("schema.sha256")).isNotBlank();
+        assertThat(manifest.getMainAttributes().getValue("Platform-Log-Schema-SHA256"))
+                .isEqualTo(identity.getProperty("schema.sha256"));
+        assertThat(manifest.getMainAttributes().getValue("Platform-Log-Schema-Version"))
+                .isEqualTo(identity.getProperty("schema.semanticVersion"));
+    }
+
+    @Test
+    void extension_jar_does_not_embed_slf4j() throws IOException {
+        // given
+        Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
+
+        // when
+        List<String> entries = listEntries(extensionJar);
+
+        // then
+        assertThat(entries)
+                .noneMatch(name -> name.startsWith("org/slf4j/"))
+                .noneMatch(name -> name.equals("simplelogger.properties"))
+                .noneMatch(name -> name.equals("META-INF/services/org.slf4j.spi.SLF4JServiceProvider"));
     }
 
     private static List<String> findTestSupportEntries(Path extensionJar) throws IOException {
         List<String> violations = new ArrayList<>();
-        try (ZipFile zip = new ZipFile(extensionJar.toFile())) {
-            Enumeration<? extends ZipEntry> entries = zip.entries();
-            while (entries.hasMoreElements()) {
-                String name = entries.nextElement().getName();
-                if (isTestSupportEntry(name)) {
-                    violations.add(name);
-                }
+        for (String name : listEntries(extensionJar)) {
+            if (isTestSupportEntry(name)) {
+                violations.add(name);
             }
         }
         return violations;
+    }
+
+    private static List<String> listEntries(Path jar) throws IOException {
+        List<String> names = new ArrayList<>();
+        try (ZipFile zip = new ZipFile(jar.toFile())) {
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                names.add(entries.nextElement().getName());
+            }
+        }
+        return names;
     }
 
     private static boolean isTestSupportEntry(String name) {
@@ -167,6 +221,45 @@ class AgentExtensionArtifactSurfaceTest {
                 || name.endsWith("TestSupport.class");
     }
 
+    private static List<String> findUtf8Marker(Path jar, String marker) throws IOException {
+        byte[] needle = marker.getBytes(StandardCharsets.UTF_8);
+        List<String> hits = new ArrayList<>();
+        try (ZipFile zip = new ZipFile(jar.toFile())) {
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                String name = entry.getName();
+                if (entry.isDirectory() || !(name.endsWith(".class")
+                        || name.endsWith(".properties")
+                        || name.endsWith(".json")
+                        || name.endsWith(".yaml")
+                        || name.endsWith(".txt")
+                        || name.endsWith(".md")
+                        || name.endsWith(".mf"))) {
+                    continue;
+                }
+                byte[] bytes = zip.getInputStream(entry).readAllBytes();
+                if (indexOf(bytes, needle) >= 0) {
+                    hits.add(name);
+                }
+            }
+        }
+        return hits;
+    }
+
+    private static int indexOf(byte[] haystack, byte[] needle) {
+        outer:
+        for (int i = 0; i <= haystack.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
     private static byte[] readEntry(Path jar, String entryName) throws IOException {
         try (ZipFile zip = new ZipFile(jar.toFile())) {
             ZipEntry entry = zip.getEntry(entryName);
@@ -181,9 +274,5 @@ class AgentExtensionArtifactSurfaceTest {
             throw new IllegalStateException("Required test system property is missing: " + name);
         }
         return value;
-    }
-
-    private static boolean isWindows() {
-        return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win");
     }
 }

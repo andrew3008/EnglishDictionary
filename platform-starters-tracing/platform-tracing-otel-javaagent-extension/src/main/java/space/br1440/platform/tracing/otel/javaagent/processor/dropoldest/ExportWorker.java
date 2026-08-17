@@ -5,13 +5,15 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 
 import io.opentelemetry.sdk.trace.data.SpanData;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 final class ExportWorker implements Runnable {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ExportWorker.class);
 
     private final ExportBuffer buffer;
     private final TimedSpanExporter exporter;
@@ -70,7 +72,7 @@ final class ExportWorker implements Runnable {
         } catch (Throwable failure) {
             buffer.failTerminal();
             PlatformThrowables.propagateIfFatal(failure);
-            log.error("PlatformDropOldestExportSpanProcessor worker terminated abnormally: {}", failure.getMessage(), failure);
+            log.error(AgentEventCodes.EXPORT_WORKER, "Export worker terminated abnormally", failure);
         } finally {
             terminated.countDown();
         }

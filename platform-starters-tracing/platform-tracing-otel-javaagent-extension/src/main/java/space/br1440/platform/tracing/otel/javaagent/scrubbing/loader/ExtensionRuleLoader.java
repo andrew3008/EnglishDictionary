@@ -17,20 +17,21 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 import space.br1440.platform.tracing.api.spi.SpanAttributeScrubbingRule;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowables;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.StableScrubbingRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.diagnostics.FailedProviderReason;
 import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.common.util.StringUtils;
 
-import lombok.extern.slf4j.Slf4j;
-
 /**
  * Загрузчик внешних кастомных правил {@link SpanAttributeScrubbingRule} из свойства
  * {@code platform.tracing.scrubbing.rules.extensions} — comma-separated списка JAR-файлов или директорий.
  */
-@Slf4j
 public final class ExtensionRuleLoader implements AutoCloseable {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(ExtensionRuleLoader.class);
 
     private static final List<String> FORBIDDEN_PREFIXES = List.of(
             "space/br1440/platform/tracing/api/",
@@ -226,7 +227,10 @@ public final class ExtensionRuleLoader implements AutoCloseable {
             throw new IllegalStateException("STRICT validation failed for '" + name + "': " + reason + " (" + safeDetails + ")");
         }
 
-        log.warn("Skipping scrubbing extension '{}': {} ({})", name, reason, safeDetails);
+        log.warn(AgentEventCodes.SCRUB_EXTENSION_SKIPPED, "Extension scrubbing rule skipped",
+                "name", name,
+                "reason", String.valueOf(reason),
+                "detail", safeDetails);
     }
 
     public int getFailedProviders() {

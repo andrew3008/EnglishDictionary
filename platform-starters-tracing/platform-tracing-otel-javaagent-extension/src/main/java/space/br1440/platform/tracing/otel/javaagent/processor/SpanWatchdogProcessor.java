@@ -15,6 +15,8 @@ import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanResult;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
@@ -22,7 +24,6 @@ import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Сторожевой процессор, принудительно завершающий «зависшие» span'ы и trace'ы.
@@ -48,8 +49,9 @@ import lombok.extern.slf4j.Slf4j;
  * одинаковые {@code spanId} в разных трассах не конфликтуют, а отдельные индексы и счётчики
  * активного состояния не требуются.
  */
-@Slf4j
 public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiagnosticIdentity {
+
+    private static final PlatformAgentLogger log = PlatformAgentLogger.get(SpanWatchdogProcessor.class);
 
     private static final String DIAGNOSTIC_ID = "watchdog";
 
@@ -131,8 +133,8 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
         int leakedSpans = getActiveSpanCount();
         int leakedTraces = activeTraces.size();
         if (leakedSpans > 0 || leakedTraces > 0) {
-            log.warn("SDK shutdown: {} unfinished spans remain across {} traces — possible missing span.end() in the application",
-                    leakedSpans, leakedTraces);
+            log.warn(AgentEventCodes.EXPORT_WATCHDOG, "Unfinished spans remain at SDK shutdown",
+                    "count", String.valueOf(leakedSpans));
         }
 
         activeTraces.clear();
@@ -173,7 +175,7 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
         try {
             scan();
         } catch (RuntimeException e) {
-            log.warn("Watchdog background scan failed: {}", e.getMessage());
+            log.warn(AgentEventCodes.EXPORT_WATCHDOG, "Watchdog background scan failed", e);
         }
     }
 
@@ -229,10 +231,11 @@ public final class SpanWatchdogProcessor implements SpanProcessor, ProcessorDiag
                 forcedTraceCloses.incrementAndGet();
             }
 
-            log.warn("Watchdog force-ended span '{}' (traceId={}, reason={})",
-                    span.getName(), candidate.traceId(), candidate.reason().value());
+            log.warn(AgentEventCodes.EXPORT_WATCHDOG, "Watchdog force-ended span",
+                    "reason", candidate.reason().value());
         } catch (RuntimeException e) {
-            log.warn("Watchdog failed to end span ({}): {}", candidate.reason().value(), e.getMessage());
+            log.warn(AgentEventCodes.EXPORT_WATCHDOG, "Watchdog force-ended span", e,
+                    "reason", candidate.reason().value());
         }
     }
 
