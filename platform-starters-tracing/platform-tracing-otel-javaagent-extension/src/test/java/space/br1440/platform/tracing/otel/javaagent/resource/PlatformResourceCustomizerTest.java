@@ -118,7 +118,7 @@ class PlatformResourceCustomizerTest {
         HostNameResolver host = new HostNameResolver(
                 name -> "HOSTNAME".equals(name) ? "pod-billing-7f9c" : null,
                 () -> {
-                    throw new AssertionError("InetAddress не должен вызываться при наличии HOSTNAME");
+                    throw new AssertionError("InetAddress must not be called when HOSTNAME is present");
                 });
 
         Resource resource = customizer(NO_ENV, Optional::empty, Optional::empty, NO_CONTAINER, host)

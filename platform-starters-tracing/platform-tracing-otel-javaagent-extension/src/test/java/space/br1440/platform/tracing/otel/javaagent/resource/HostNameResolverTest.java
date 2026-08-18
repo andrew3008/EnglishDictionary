@@ -13,7 +13,7 @@ class HostNameResolverTest {
         HostNameResolver resolver = new HostNameResolver(
                 name -> "HOSTNAME".equals(name) ? "Pod-ABC" : null,
                 () -> {
-                    throw new AssertionError("InetAddress не должен вызываться при наличии HOSTNAME");
+                    throw new AssertionError("InetAddress must not be called when HOSTNAME is present");
                 });
 
         assertThat(resolver.resolve()).contains("pod-abc");

@@ -26,12 +26,12 @@ class SafeSamplerTest {
         @Override
         public SamplingResult shouldSample(Context parentContext, String traceId, String name,
                                            SpanKind spanKind, Attributes attributes, List<LinkData> parentLinks) {
-            throw new IllegalStateException("делегат сломан");
+            throw new IllegalStateException("delegate is broken");
         }
 
         @Override
         public String getDescription() {
-            throw new IllegalStateException("описание недоступно");
+            throw new IllegalStateException("description is unavailable");
         }
     };
 

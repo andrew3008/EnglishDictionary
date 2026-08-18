@@ -22,17 +22,17 @@ class SafeTextMapPropagatorTest {
     private static final TextMapPropagator ALWAYS_THROWS = new TextMapPropagator() {
         @Override
         public Collection<String> fields() {
-            throw new IllegalStateException("fields сломан");
+            throw new IllegalStateException("fields is broken");
         }
 
         @Override
         public <C> Context extract(Context context, C carrier, TextMapGetter<C> getter) {
-            throw new IllegalStateException("extract сломан");
+            throw new IllegalStateException("extract is broken");
         }
 
         @Override
         public <C> void inject(Context context, C carrier, TextMapSetter<C> setter) {
-            throw new IllegalStateException("inject сломан");
+            throw new IllegalStateException("inject is broken");
         }
     };
 

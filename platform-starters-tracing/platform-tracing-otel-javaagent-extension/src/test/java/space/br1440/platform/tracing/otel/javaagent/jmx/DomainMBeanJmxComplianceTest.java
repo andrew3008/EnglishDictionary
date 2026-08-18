@@ -130,8 +130,8 @@ class DomainMBeanJmxComplianceTest {
                             }
                             """;
                 }
-                throw new AssertionError("Отсутствует baseline " + BASELINE_RESOURCE
-                        + ". Запустите ./gradlew jmxManagementContractVerify "
+                throw new AssertionError("Missing baseline " + BASELINE_RESOURCE
+                        + ". Run ./gradlew jmxManagementContractVerify "
                         + "-PupdateJmxContractBaseline.");
             }
             return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
@@ -158,7 +158,7 @@ class DomainMBeanJmxComplianceTest {
     private static String requiredProperty(String name) {
         String value = System.getProperty(name);
         if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Не задано обязательное system property: " + name);
+            throw new IllegalStateException("Required system property is not set: " + name);
         }
         return value;
     }
@@ -175,14 +175,14 @@ class DomainMBeanJmxComplianceTest {
             String expectedLine = index < expectedLines.size() ? expectedLines.get(index) : "<EOF>";
             String actualLine = index < actualLines.size() ? actualLines.get(index) : "<EOF>";
             if (!expectedLine.equals(actualLine)) {
-                return "JMX management contract изменился на строке " + (index + 1)
+                return "JMX management contract changed on line " + (index + 1)
                         + "\nexpected: " + expectedLine
                         + "\nactual:   " + actualLine
-                        + "\nДля намеренного обновления выполните "
+                        + "\nTo update the baseline intentionally, run "
                         + "./gradlew jmxManagementContractVerify -PupdateJmxContractBaseline";
             }
         }
-        return "JMX management contract отличается.";
+        return "JMX management contract differs.";
     }
 
     private static TracingSettingsSource holderWith(double ratio) {

@@ -38,7 +38,7 @@ final class JmxManagementContractSnapshot {
 
         for (ObjectName objectName : sortedNames) {
             if (!server.isRegistered(objectName)) {
-                throw new AssertionError("MBean не зарегистрирован: " + objectName.getCanonicalName());
+                throw new AssertionError("MBean is not registered: " + objectName.getCanonicalName());
             }
             MBeanInfo info = server.getMBeanInfo(objectName);
             List<AttributeContract> attributes = Arrays.stream(info.getAttributes())
@@ -79,7 +79,7 @@ final class JmxManagementContractSnapshot {
             missing.removeAll(observedMutations);
             Set<String> unexpected = new LinkedHashSet<>(observedMutations);
             unexpected.removeAll(MUTATING_OPERATIONS);
-            throw new AssertionError("Классификация mutating operations устарела. missing="
+            throw new AssertionError("Mutating operations classification is stale. missing="
                     + missing + ", unexpected=" + unexpected);
         }
 

@@ -22,10 +22,8 @@ import org.junit.jupiter.api.Test;
 
 class ControlledAgentDistributionTest {
 
-    private static final String EMBEDDED_EXTENSION =
-            "extensions/platform-tracing-otel-javaagent-extension.jar";
-    private static final String IDENTITY_RESOURCE =
-            "META-INF/platform-tracing/agent-logging-schema.properties";
+    private static final String EMBEDDED_EXTENSION = "extensions/platform-tracing-otel-javaagent-extension.jar";
+    private static final String IDENTITY_RESOURCE = "META-INF/platform-tracing/agent-logging-schema.properties";
 
     @Test
     void embedded_extension_is_at_canonical_path() throws IOException {
@@ -135,8 +133,7 @@ class ControlledAgentDistributionTest {
     }
 
     @Test
-    void controlled_agent_writes_platform_logs_to_stderr_without_nop_fallback()
-            throws IOException, InterruptedException {
+    void controlled_agent_writes_platform_logs_to_stderr_without_nop_fallback() throws IOException, InterruptedException {
         // given
         Path controlledAgentJar = Path.of(requiredProperty("platformTracing.controlledAgentJar"));
         Path javaExecutable = Path.of(
@@ -206,6 +203,7 @@ class ControlledAgentDistributionTest {
         return names;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static byte[] readEntry(Path jar, String entryName) throws IOException {
         try (ZipFile zip = new ZipFile(jar.toFile())) {
             ZipEntry entry = zip.getEntry(entryName);
