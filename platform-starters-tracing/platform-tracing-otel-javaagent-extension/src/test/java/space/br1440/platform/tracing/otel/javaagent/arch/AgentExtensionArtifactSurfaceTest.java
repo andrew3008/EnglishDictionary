@@ -17,6 +17,8 @@ import java.util.zip.ZipFile;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionReadiness;
+
 class AgentExtensionArtifactSurfaceTest {
 
     private static final String EXTENSION_NAMESPACE =
@@ -187,6 +189,11 @@ class AgentExtensionArtifactSurfaceTest {
                 .isEqualTo(identity.getProperty("schema.sha256"));
         assertThat(manifest.getMainAttributes().getValue("Platform-Log-Schema-Version"))
                 .isEqualTo(identity.getProperty("schema.semanticVersion"));
+        assertThat(manifest.getMainAttributes().getValue("Implementation-Title"))
+                .isEqualTo(PlatformExtensionReadiness.IMPLEMENTATION_TITLE);
+        assertThat(manifest.getMainAttributes().getValue("Implementation-Version"))
+                .isNotBlank()
+                .isNotEqualTo("development");
     }
 
     @Test

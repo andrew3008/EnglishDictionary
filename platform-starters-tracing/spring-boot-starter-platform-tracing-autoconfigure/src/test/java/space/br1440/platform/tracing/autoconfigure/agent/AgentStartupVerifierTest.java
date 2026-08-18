@@ -38,7 +38,10 @@ class AgentStartupVerifierTest {
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, false, false, false))
-                .withMessageContaining("state=AGENT_MISSING");
+                .withMessageContaining("runtimeState=AGENT_MISSING")
+                .withMessageContaining("reason=CONTROLLED_AGENT_MISSING")
+                .withMessageContaining("platform-tracing-javaagent")
+                .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
     }
 
     @Test
@@ -47,7 +50,8 @@ class AgentStartupVerifierTest {
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("state=EXTENSION_MISSING");
+                .withMessageContaining("runtimeState=EXTENSION_MISSING")
+                .withMessageContaining("reason=PLATFORM_EXTENSION_MISSING");
     }
 
     @Test
@@ -71,7 +75,8 @@ class AgentStartupVerifierTest {
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(false, false, true, false))
-                .withMessageContaining("state=DUAL_SDK_DETECTED");
+                .withMessageContaining("runtimeState=DUAL_SDK_DETECTED")
+                .withMessageContaining("reason=APPLICATION_RUNTIME_DETECTED");
     }
 
     @Test
@@ -101,7 +106,8 @@ class AgentStartupVerifierTest {
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(false, true, false, false))
-                .withMessageContaining("state=EXTENSION_MISSING");
+                .withMessageContaining("runtimeState=EXTENSION_MISSING")
+                .withMessageContaining("reason=PLATFORM_EXTENSION_MISSING");
     }
 
     @Test
@@ -150,7 +156,8 @@ class AgentStartupVerifierTest {
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("EXTENSION_READINESS_TIMEOUT");
+                .withMessageContaining("EXTENSION_READINESS_TIMEOUT")
+                .withMessageContaining("reason=EXTENSION_READINESS_TIMEOUT");
     }
 
     /**
@@ -177,8 +184,9 @@ class AgentStartupVerifierTest {
             assertThatIllegalStateException()
                     .as("failureCode=" + failureCode)
                     .isThrownBy(() -> verifier.verify(true, true, false, true))
-                    .withMessageContaining("state=EXTENSION_FAILED")
-                    .withMessageContaining(failureCode);
+                    .withMessageContaining("runtimeState=EXTENSION_FAILED")
+                    .withMessageContaining("reason=" + failureCode)
+                    .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
         }
     }
 
@@ -190,7 +198,8 @@ class AgentStartupVerifierTest {
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("state=EXTENSION_MISSING");
+                .withMessageContaining("runtimeState=EXTENSION_MISSING")
+                .withMessageContaining("reason=PLATFORM_EXTENSION_MISSING");
     }
 
     @Test
@@ -202,7 +211,8 @@ class AgentStartupVerifierTest {
 
         assertThatIllegalStateException()
                 .isThrownBy(() -> verifier.verify(true, true, false, true))
-                .withMessageContaining("READINESS_ACCESS_DENIED");
+                .withMessageContaining("reason=READINESS_ACCESS_DENIED")
+                .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
     }
 
     @Test
@@ -218,6 +228,28 @@ class AgentStartupVerifierTest {
         TracingDeploymentDiagnostics diagnostics = verifier.verify(false, false, false, false);
 
         assertThat(diagnostics.runtimeState()).isEqualTo(AgentRuntimeState.DISABLED);
+    }
+
+    @Test
+    void developmentExtensionVersionAgainstPackagedApplicationVersionExplainsManifestTitle() throws Exception {
+        MBeanServer server = MBeanServerFactory.createMBeanServer();
+        server.registerMBean(
+                new StandardMBean(
+                        new MutableReadinessView("READY", COMPLETE_CAPABILITIES, "", "development"),
+                        MutableReadinessViewMBean.class),
+                PlatformTracingJmxObjectNames.EXTENSION_READINESS);
+        AgentStartupVerifier verifier = new AgentStartupVerifier(
+                server, Duration.ofSeconds(2), System::nanoTime, nanos -> { }, "1.2.0-SNAPSHOT");
+
+        assertThatIllegalStateException()
+                .isThrownBy(() -> verifier.verify(true, true, false, true))
+                .withMessageContaining("runtimeState=EXTENSION_INCOMPATIBLE")
+                .withMessageContaining("reason=EXTENSION_VERSION_MISMATCH")
+                .withMessageContaining("applicationVersion=1.2.0-SNAPSHOT")
+                .withMessageContaining("extensionVersion=development")
+                .withMessageContaining("Implementation-Title="
+                        + AgentContractFailureMessages.EXPECTED_EXTENSION_IMPLEMENTATION_TITLE)
+                .satisfies(failure -> assertThat(failure.getMessage()).doesNotContain("NONE"));
     }
 
     private static AgentStartupVerifier verifier(MBeanServer server) {
@@ -257,6 +289,7 @@ class AgentStartupVerifierTest {
         volatile String lifecycle;
         volatile Set<String> capabilities;
         volatile String failureCode = "";
+        volatile String extensionVersion = "1.0.0";
 
         MutableReadinessView(String lifecycle, Set<String> capabilities) {
             this.lifecycle = lifecycle;
@@ -268,9 +301,14 @@ class AgentStartupVerifierTest {
             this.failureCode = failureCode;
         }
 
+        MutableReadinessView(String lifecycle, Set<String> capabilities, String failureCode, String extensionVersion) {
+            this(lifecycle, capabilities, failureCode);
+            this.extensionVersion = extensionVersion;
+        }
+
         @Override
         public String getExtensionVersion() {
-            return "1.0.0";
+            return extensionVersion;
         }
 
         @Override

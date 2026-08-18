@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
+import java.util.Objects;
 import java.util.Set;
 
 import lombok.experimental.UtilityClass;
@@ -20,37 +21,57 @@ final class AgentReadinessClassifier {
             "EXPORT_PATH_PROTECTED"
     );
 
+    record Decision(AgentRuntimeState state, String reasonCode) {
+        Decision {
+            Objects.requireNonNull(state, "state");
+            reasonCode = (reasonCode == null) ? "" : reasonCode;
+        }
+    }
+
     static AgentRuntimeState classify(AgentReadinessSnapshot snapshot, String applicationVersion) {
+        return decide(snapshot, applicationVersion).state();
+    }
+
+    static Decision decide(AgentReadinessSnapshot snapshot, String applicationVersion) {
         AgentReadinessSnapshot.Protocol protocol = snapshot.protocol();
-        if (protocol.protocolVersion() != SUPPORTED_PROTOCOL_VERSION
-                || !SUPPORTED_PROFILE.equals(protocol.profile())
-                || !versionsCompatible(protocol.extensionVersion(), applicationVersion)) {
-            return AgentRuntimeState.EXTENSION_INCOMPATIBLE;
+        if (protocol.protocolVersion() != SUPPORTED_PROTOCOL_VERSION) {
+            return new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_PROTOCOL_UNSUPPORTED");
+        }
+
+        if (!SUPPORTED_PROFILE.equals(protocol.profile())) {
+            return new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_PROFILE_UNSUPPORTED");
+        }
+
+        if (!versionsCompatible(protocol.extensionVersion(), applicationVersion)) {
+            return new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_VERSION_MISMATCH");
         }
 
         AgentReadinessSnapshot.Status status = snapshot.status();
         if ("FAILED".equals(status.lifecycle())) {
             return status.failureCode().isBlank()
-                    ? AgentRuntimeState.EXTENSION_INCOMPATIBLE
-                    : AgentRuntimeState.EXTENSION_FAILED;
+                    ? new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_FAILED_WITHOUT_CODE")
+                    : new Decision(AgentRuntimeState.EXTENSION_FAILED, status.failureCode());
         }
 
         if ("INITIALIZING".equals(status.lifecycle())) {
-            return status.failureCode().isBlank()
-                    && !capabilitiesComplete(snapshot)
-                    ? AgentRuntimeState.EXTENSION_INITIALIZING
-                    : AgentRuntimeState.EXTENSION_INCOMPATIBLE;
+            return status.failureCode().isBlank() && !capabilitiesComplete(snapshot)
+                    ? new Decision(AgentRuntimeState.EXTENSION_INITIALIZING, "")
+                    : new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_INITIALIZING_INCONSISTENT");
         }
 
-        if (!"READY".equals(status.lifecycle()) || !status.failureCode().isBlank()) {
-            return AgentRuntimeState.EXTENSION_INCOMPATIBLE;
+        if (!"READY".equals(status.lifecycle())) {
+            return new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_LIFECYCLE_UNEXPECTED");
+        }
+
+        if (!status.failureCode().isBlank()) {
+            return new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_READY_WITH_FAILURE_CODE");
         }
 
         if (!capabilitiesComplete(snapshot)) {
-            return AgentRuntimeState.CAPABILITY_MISSING;
+            return new Decision(AgentRuntimeState.CAPABILITY_MISSING, "CAPABILITY_SET_MISMATCH");
         }
 
-        return AgentRuntimeState.AGENT_READY;
+        return new Decision(AgentRuntimeState.AGENT_READY, "");
     }
 
     private static boolean capabilitiesComplete(AgentReadinessSnapshot snapshot) {

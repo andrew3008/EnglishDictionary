@@ -21,7 +21,7 @@ public final class PlatformExtensionReadiness {
     public static final int PROTOCOL_VERSION = 1;
     public static final String PROFILE = "platform-agent-secure-v1";
 
-    private static final String IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
+    public static final String IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
     private static final int FAILURE_MESSAGE_MAX_LENGTH = 512;
     private static final String DEFAULT_FAILURE_CODE = "EXTENSION_INITIALIZATION_FAILED";
     private static final String DEFAULT_FAILURE_MESSAGE = "Extension initialization failed without a diagnostic cause";
@@ -124,6 +124,7 @@ public final class PlatformExtensionReadiness {
 
         try {
             Enumeration<URL> manifestUrls = loader.getResources("META-INF/MANIFEST.MF");
+            String mismatchedTitle = null;
             for (URL manifestUrl : Collections.list(manifestUrls)) {
                 try (InputStream manifestStream = manifestUrl.openStream()) {
                     Manifest manifest = new Manifest(manifestStream);
@@ -131,7 +132,18 @@ public final class PlatformExtensionReadiness {
                     if (IMPLEMENTATION_TITLE.equals(title)) {
                         return manifest.getMainAttributes().getValue("Implementation-Version");
                     }
+
+                    if (isNearMissImplementationTitle(title)) {
+                        mismatchedTitle = title;
+                    }
                 }
+            }
+
+            if (mismatchedTitle != null) {
+                log.warn(AgentEventCodes.BOOT_MANIFEST_VERSION,
+                        "Extension MANIFEST.MF Implementation-Title does not match the readiness lookup key; using development",
+                        "expectedTitle", IMPLEMENTATION_TITLE,
+                        "observedTitle", mismatchedTitle);
             }
         } catch (IOException failure) {
             if (log.isDebugEnabled()) {
@@ -141,6 +153,10 @@ public final class PlatformExtensionReadiness {
         }
 
         return null;
+    }
+
+    private static boolean isNearMissImplementationTitle(String title) {
+        return (title != null) && title.startsWith(IMPLEMENTATION_TITLE) && !IMPLEMENTATION_TITLE.equals(title);
     }
 
     private static String boundedMessage(Throwable failure) {

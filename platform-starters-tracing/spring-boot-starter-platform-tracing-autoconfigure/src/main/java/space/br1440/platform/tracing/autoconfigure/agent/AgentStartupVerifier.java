@@ -71,7 +71,7 @@ public final class AgentStartupVerifier {
                                                boolean userOpenTelemetryBeanPresent,
                                                boolean globalOpenTelemetrySet) {
         TracingDeploymentDiagnostics diagnostics = decide(tracingEnabled, agentMarkerVisible, userOpenTelemetryBeanPresent, globalOpenTelemetrySet);
-        return enforceContract(tracingEnabled, diagnostics);
+        return enforceContract(tracingEnabled, diagnostics, applicationVersion);
     }
 
     private TracingDeploymentDiagnostics decide(boolean tracingEnabled,
@@ -102,7 +102,9 @@ public final class AgentStartupVerifier {
             AgentReadinessProbe.ProbeResult result = probe.read(readinessName);
             if (result instanceof AgentReadinessProbe.ProbeResult.Present(AgentReadinessSnapshot snapshot)) {
                 everSucceeded = true;
-                AgentRuntimeState state = AgentReadinessClassifier.classify(snapshot, applicationVersion);
+                AgentReadinessClassifier.Decision decision =
+                        AgentReadinessClassifier.decide(snapshot, applicationVersion);
+                AgentRuntimeState state = decision.state();
 
                 if (tracingEnabled && state == AgentRuntimeState.EXTENSION_INITIALIZING) {
                     long elapsed = (nanoTime.getAsLong() - start);
@@ -119,7 +121,8 @@ public final class AgentStartupVerifier {
 
                 return terminalFromSnapshot(
                         tracingEnabled, state,
-                        agentMarkerVisible, snapshot, snapshot.status().failureCode()
+                        agentMarkerVisible, snapshot,
+                        resolveSnapshotFailureCode(tracingEnabled, snapshot, decision)
                 );
             }
 
@@ -180,6 +183,31 @@ public final class AgentStartupVerifier {
         };
     }
 
+    /**
+     * Код причины для снимка готовности. Пустой snapshot.failureCode больше не превращается в {@code NONE}:
+     * классификатор даёт собственный reason, а запрещённый агент при {@code enabled=false} —
+     * {@code CONTROLLED_AGENT_FORBIDDEN}.
+     */
+    private static String resolveSnapshotFailureCode(boolean tracingEnabled,
+                                                     AgentReadinessSnapshot snapshot,
+                                                     AgentReadinessClassifier.Decision decision) {
+        String resolved = firstNonBlank(snapshot.status().failureCode(), decision.reasonCode());
+        if (!resolved.isBlank()) {
+            return resolved;
+        }
+        if (!tracingEnabled && decision.state() != AgentRuntimeState.DISABLED) {
+            return "CONTROLLED_AGENT_FORBIDDEN";
+        }
+        return "";
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        return (second == null) ? "" : second;
+    }
+
     private static TracingDeploymentDiagnostics terminalFromSnapshot(boolean tracingEnabled,
                                                                       AgentRuntimeState state,
                                                                       boolean agentMarkerVisible,
@@ -220,16 +248,12 @@ public final class AgentStartupVerifier {
     }
 
     private static TracingDeploymentDiagnostics enforceContract(boolean tracingEnabled,
-                                                                TracingDeploymentDiagnostics diagnostics) {
+                                                                TracingDeploymentDiagnostics diagnostics,
+                                                                String applicationVersion) {
         AgentRuntimeState expected = tracingEnabled ? AgentRuntimeState.AGENT_READY : AgentRuntimeState.DISABLED;
         if (diagnostics.runtimeState() != expected) {
-            String failureCode = diagnostics.agentReadiness().failureCode().isBlank()
-                    ? "NONE"
-                    : diagnostics.agentReadiness().failureCode();
-
             throw new IllegalStateException(
-                    "platform.tracing.enabled=" + tracingEnabled + " rejected observed runtime state="
-                            + diagnostics.runtimeState() + ", failureCode=" + failureCode
+                    AgentContractFailureMessages.reject(tracingEnabled, diagnostics, applicationVersion)
             );
         }
 

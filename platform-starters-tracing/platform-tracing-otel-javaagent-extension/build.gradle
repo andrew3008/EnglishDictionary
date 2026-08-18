@@ -231,8 +231,7 @@ def agentExtensionJarTask = tasks.register('agentExtensionJar', Jar) {
     }
     duplicatesStrategy = DuplicatesStrategy.FAIL
     manifest {
-        attributes 'Implementation-Title': "${project.name}-extension",
-                'Implementation-Version': project.version
+        attributes 'Implementation-Title': project.name, 'Implementation-Version': project.version
         from(generateAgentLoggingSchemaIdentity.flatMap {
             it.outputDirectory.file('agent-logging-schema-manifest.mf')
         })

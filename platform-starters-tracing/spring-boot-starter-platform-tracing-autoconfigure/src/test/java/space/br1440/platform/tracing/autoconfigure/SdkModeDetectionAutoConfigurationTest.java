@@ -33,10 +33,14 @@ class TracingEnabledAutoConfigurationTest {
         contextRunner.run(context -> {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure())
-                    .hasRootCauseMessage(
-                            "platform.tracing.enabled=true rejected observed runtime state=AGENT_MISSING, "
-                                    + "failureCode=CONTROLLED_AGENT_MISSING"
-                    );
+                    .hasRootCauseInstanceOf(IllegalStateException.class)
+                    .rootCause()
+                    .hasMessageContaining("runtimeState=AGENT_MISSING")
+                    .hasMessageContaining("reason=CONTROLLED_AGENT_MISSING")
+                    .hasMessageContaining("platform-tracing-javaagent")
+                    .satisfies(failure -> assertThat(failure.getMessage())
+                            .doesNotContain("failureCode=NONE")
+                            .doesNotContain("reason=NONE"));
         });
     }
 
