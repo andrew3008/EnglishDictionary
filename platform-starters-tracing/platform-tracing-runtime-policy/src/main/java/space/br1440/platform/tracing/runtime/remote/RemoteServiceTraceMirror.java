@@ -30,12 +30,12 @@ final class RemoteServiceTraceMirror implements AutoCloseable {
 
     RemoteServiceTraceMirror(int maxEntries, Duration ttl, LongSupplier ticker) {
         if (maxEntries <= 0) {
-            throw new IllegalArgumentException("maxEntries должен быть положительным");
+            throw new IllegalArgumentException("maxEntries must be positive");
         }
 
         Objects.requireNonNull(ttl, "ttl");
         if (ttl.isZero() || ttl.isNegative()) {
-            throw new IllegalArgumentException("ttl должен быть положительным");
+            throw new IllegalArgumentException("ttl must be positive");
         }
 
         this.maxEntries = maxEntries;
