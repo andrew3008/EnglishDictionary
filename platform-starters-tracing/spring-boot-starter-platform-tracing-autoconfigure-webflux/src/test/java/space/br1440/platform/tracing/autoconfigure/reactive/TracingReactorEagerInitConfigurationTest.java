@@ -48,13 +48,12 @@ class TracingReactorEagerInitConfigurationTest {
         reactiveContextRunner.run(context -> {
             LazyInitializationExcludeFilter filter =
                     context.getBean(LazyInitializationExcludeFilter.class);
-            // Проверяем сам контракт фильтра: ReactorAutoConfiguration исключается из ленивой
-            // инициализации; произвольная (любая иная) конфигурация — нет.
+
             assertThat(filter.isExcluded("reactorAutoConfiguration", null, ReactorAutoConfiguration.class))
-                    .as("ReactorAutoConfiguration должен быть исключён из ленивой инициализации")
+                    .as("ReactorAutoConfiguration must be excluded from lazy initialization")
                     .isTrue();
             assertThat(filter.isExcluded("someOtherBean", null, String.class))
-                    .as("Произвольный bean не должен попадать под исключение")
+                    .as("An unrelated bean must not be excluded")
                     .isFalse();
         });
     }

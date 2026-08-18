@@ -54,7 +54,7 @@ class MdcPropagationWebFluxIntegrationTest {
     @Test
     void reactorEagerInitConfigurationIsActive() {
         assertThat(context.getBeansOfType(TracingReactorEagerInitConfiguration.class))
-                .as("TracingReactorEagerInitConfiguration должен подниматься в реактивных приложениях")
+                .as("TracingReactorEagerInitConfiguration must start in reactive applications")
                 .isNotEmpty();
     }
 
@@ -63,7 +63,7 @@ class MdcPropagationWebFluxIntegrationTest {
         // Если filter подхвачен, ReactorAutoConfiguration инициализируется eagerly даже при
         // lazy-init=true — что и активирует Hooks.enableAutomaticContextPropagation.
         assertThat(context.getBeansOfType(LazyInitializationExcludeFilter.class))
-                .as("LazyInitializationExcludeFilter для ReactorAutoConfiguration должен быть зарегистрирован")
+                .as("LazyInitializationExcludeFilter for ReactorAutoConfiguration must be registered")
                 .isNotEmpty();
     }
 

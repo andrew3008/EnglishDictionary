@@ -29,7 +29,7 @@ class DuplicateSpansRegressionMatrixTest {
                     WebFluxSuppressMicrometerTracingAutoConfiguration.class));
 
     @Test
-    @DisplayName("[suppress off] suppressor bean отсутствует — Micrometer Observation работает штатно")
+    @DisplayName("[suppress off] suppressor bean is absent — Micrometer Observation works normally")
     void suppressorAbsent_whenSuppressOff() {
         contextRunner
                 .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=false")
@@ -37,13 +37,13 @@ class DuplicateSpansRegressionMatrixTest {
     }
 
     @Test
-    @DisplayName("[suppress off, default] suppressor bean отсутствует по умолчанию")
+    @DisplayName("[suppress off, default] suppressor bean is absent by default")
     void suppressorAbsent_byDefault() {
         contextRunner.run(ctx -> assertThat(ctx).doesNotHaveBean("platformWebFluxHttpObservationSuppressor"));
     }
 
     @Test
-    @DisplayName("[suppress on] suppressor bean активен — реактивные HTTP-обсервации подавлены")
+    @DisplayName("[suppress on] suppressor bean is active — reactive HTTP observations are suppressed")
     void suppressorActive_whenSuppressOn() {
         contextRunner
                 .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
@@ -51,7 +51,7 @@ class DuplicateSpansRegressionMatrixTest {
     }
 
     @Test
-    @DisplayName("[Agent on, suppress on] комбинация = штатный prod-сценарий: suppressor активен")
+    @DisplayName("[Agent on, suppress on] combination = standard prod scenario: suppressor is active")
     void productionScenario_suppressorActive() {
         contextRunner
                 .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
