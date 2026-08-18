@@ -22,7 +22,7 @@ record CategoryContract(SpanCategory category,
 
     CategoryContract {
         if (category == null) {
-            throw new IllegalArgumentException("category не должен быть null");
+            throw new IllegalArgumentException("category must not be null");
         }
 
         allowlist = Set.copyOf(allowlist);
@@ -31,22 +31,22 @@ record CategoryContract(SpanCategory category,
         forbidden = Set.copyOf(forbidden);
 
         if (!allowlist.containsAll(required)) {
-            throw new IllegalArgumentException(category + ": required не является подмножеством allowlist");
+            throw new IllegalArgumentException(category + ": required is not a subset of allowlist");
         }
 
         for (Set<AttributeKey<?>> anyOf : requiredAnyOf) {
             if (anyOf.isEmpty()) {
-                throw new IllegalArgumentException(category + ": пустая альтернатива в requiredAnyOf");
+                throw new IllegalArgumentException(category + ": empty alternative in requiredAnyOf");
             }
 
             if (!allowlist.containsAll(anyOf)) {
-                throw new IllegalArgumentException(category + ": альтернатива requiredAnyOf вне allowlist");
+                throw new IllegalArgumentException(category + ": requiredAnyOf alternative is outside allowlist");
             }
         }
 
         for (AttributeKey<?> f : forbidden) {
             if (allowlist.contains(f)) {
-                throw new IllegalArgumentException(category + ": forbidden пересекается с allowlist: " + f.getKey());
+                throw new IllegalArgumentException(category + ": forbidden intersects allowlist: " + f.getKey());
             }
         }
     }

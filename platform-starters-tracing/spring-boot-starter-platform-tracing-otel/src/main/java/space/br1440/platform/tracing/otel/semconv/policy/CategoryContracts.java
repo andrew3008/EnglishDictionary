@@ -25,7 +25,7 @@ final class CategoryContracts {
     static CategoryContract of(SpanCategory category) {
         CategoryContract contract = REGISTRY.get(category);
         if (contract == null) {
-            throw new IllegalStateException("Нет контракта для категории: " + category);
+            throw new IllegalStateException("No contract for category: " + category);
         }
 
         return contract;

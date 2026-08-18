@@ -88,7 +88,7 @@ class BatchSpanProcessorOverflowPolicyProbeTest {
         // Дожидаемся, что worker реально вошёл в export() — иначе overflow может начаться
         // до того, как очередь окажется заблокирована.
         boolean entered = exporter.exporterEnteredLatch.await(10, TimeUnit.SECONDS);
-        assertThat(entered).as("worker BSP должен войти в export() до фазы overflow").isTrue();
+        assertThat(entered).as("BSP worker must enter export() before the overflow phase").isTrue();
 
         // Фаза 2: генерируем существенно больше span'ов, чем вмещается в очередь.
         // worker заблокирован в exporter, поэтому реальная политика overflow проявится здесь.
@@ -122,7 +122,7 @@ class BatchSpanProcessorOverflowPolicyProbeTest {
         // Минимальный guard: первый batch (тот, что заблокирован в exporter) обязан
         // когда-то быть экспортирован — иначе тест проверяет не то, что задумано.
         assertThat(exportedSeq)
-                .as("Первый batch (seq 0..BATCH_SIZE-1), удерживавший exporter, должен попасть в результат")
+                .as("The first batch (seq 0..BATCH_SIZE-1) that held the exporter must appear in the result")
                 .contains(0L, 1L);
     }
 

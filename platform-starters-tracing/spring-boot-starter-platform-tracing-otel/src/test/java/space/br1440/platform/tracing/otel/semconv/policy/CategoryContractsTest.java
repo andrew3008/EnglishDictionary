@@ -32,7 +32,7 @@ class CategoryContractsTest {
     void requiredIsInAllowlist(SpanCategory category) {
         CategoryContract c = CategoryContracts.of(category);
         assertThat(c.allowlist())
-                .as("required-атрибуты должны быть частью allowlist категории %s", category)
+                .as("required attributes must be part of the allowlist for category %s", category)
                 .containsAll(c.required());
     }
 
@@ -42,7 +42,7 @@ class CategoryContractsTest {
         CategoryContract c = CategoryContracts.of(category);
         for (Set<AttributeKey<?>> anyOf : c.requiredAnyOf()) {
             assertThat(c.allowlist())
-                    .as("requiredAnyOf-группа должна быть частью allowlist категории %s", category)
+                    .as("requiredAnyOf group must be part of the allowlist for category %s", category)
                     .containsAll(anyOf);
         }
     }
@@ -54,7 +54,7 @@ class CategoryContractsTest {
         Set<AttributeKey<?>> intersection = new HashSet<>(c.allowlist());
         intersection.retainAll(c.forbidden());
         assertThat(intersection)
-                .as("forbidden и allowlist не должны пересекаться у категории %s", category)
+                .as("forbidden and allowlist must not intersect for category %s", category)
                 .isEmpty();
     }
 
@@ -68,7 +68,7 @@ class CategoryContractsTest {
     void platformTypeRequiredInAllCategories() {
         for (SpanCategory category : SpanCategory.values()) {
             assertThat(CategoryContracts.of(category).required())
-                    .as("platform.trace.type обязателен в категории %s", category)
+                    .as("platform.trace.type is required in category %s", category)
                     .contains(SemconvKeys.PLATFORM_TYPE);
         }
     }

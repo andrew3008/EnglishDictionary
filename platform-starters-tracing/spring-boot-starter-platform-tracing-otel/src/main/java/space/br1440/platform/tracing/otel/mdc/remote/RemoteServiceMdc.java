@@ -29,7 +29,7 @@ public final class RemoteServiceMdc {
         try {
             MDC.put(TracingMdcKeys.REMOTE_SERVICE, remoteService);
         } catch (RuntimeException e) {
-            log.debug("Не удалось записать MDC ключ {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
+            log.debug("Failed to write MDC key {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
         }
 
     }
@@ -38,7 +38,7 @@ public final class RemoteServiceMdc {
         try {
             MDC.remove(TracingMdcKeys.REMOTE_SERVICE);
         } catch (RuntimeException e) {
-            log.debug("Не удалось очистить MDC ключ {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
+            log.debug("Failed to clear MDC key {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
         }
     }
 

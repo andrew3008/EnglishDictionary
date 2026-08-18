@@ -65,10 +65,10 @@ class DefaultTraceOperationsTest {
         assertThat(tracing.isFacadeEnabled()).isFalse();
 
         try (var scope = tracing.spans().operation("disabled").start()) {
-            assertThat(tracing.traceContext().traceId()).as("активного span'а нет — фасад выключен").isEmpty();
+            assertThat(tracing.traceContext().traceId()).as("no active span — facade is disabled").isEmpty();
         }
 
-        assertThat(exporter.getFinishedSpanItems()).as("span не создаётся при выключенном фасаде").isEmpty();
+        assertThat(exporter.getFinishedSpanItems()).as("span is not created when the facade is disabled").isEmpty();
 
         tracing.setFacadeEnabled(true);
         try (var scope = tracing.spans().operation("enabled").start()) {
