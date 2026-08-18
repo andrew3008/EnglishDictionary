@@ -43,8 +43,8 @@ public final class ConfigServerSettingsManifestBuilder {
 
             if (pClass == ConfigServerSettingsProvenanceClassifier.ProvenanceClass.UNKNOWN) {
                 throw new TracingSettingsManifestException(
-                        "Unknown property source for key '" + key +
-                                "'. Only recognised Config Server sources are accepted."
+                        "Unknown property source for key '%s' (source='%s'). Only recognised Config Server sources are accepted."
+                                .formatted(key, provenance.originSourceName(key))
                 );
             }
         }

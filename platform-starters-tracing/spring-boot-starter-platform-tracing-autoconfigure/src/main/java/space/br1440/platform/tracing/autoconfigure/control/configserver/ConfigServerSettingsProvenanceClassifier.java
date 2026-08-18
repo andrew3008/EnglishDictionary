@@ -27,6 +27,9 @@ public final class ConfigServerSettingsProvenanceClassifier {
             "configClient"
     );
 
+
+    private static final String CONFIGURATION_PROPERTIES_FACADE = "configurationProperties";
+
     private final ConfigurableEnvironment environment;
 
     public ConfigServerSettingsProvenanceClassifier(ConfigurableEnvironment environment) {
@@ -34,25 +37,49 @@ public final class ConfigServerSettingsProvenanceClassifier {
     }
 
     public ProvenanceClass classify(String key) {
-        for (PropertySource<?> ps : environment.getPropertySources()) {
-            if (ps.containsProperty(key)) {
-                String sourceName = ps.getName();
-                for (String fragment : LOCAL_OVERRIDE_SOURCE_NAME_FRAGMENTS) {
-                    if (sourceName.contains(fragment)) {
-                        return ProvenanceClass.LOCAL_OVERRIDE;
-                    }
-                }
+        String sourceName = originSourceName(key);
+        if (sourceName == null) {
+            return ProvenanceClass.UNKNOWN;
+        }
 
-                for (String fragment : AUTHORITATIVE_SOURCE_NAME_FRAGMENTS) {
-                    if (sourceName.contains(fragment)) {
-                        return ProvenanceClass.AUTHORITATIVE;
-                    }
-                }
+        for (String fragment : LOCAL_OVERRIDE_SOURCE_NAME_FRAGMENTS) {
+            if (sourceName.contains(fragment)) {
+                return ProvenanceClass.LOCAL_OVERRIDE;
+            }
+        }
 
-                return ProvenanceClass.UNKNOWN;
+        if (isNativeConfigServerFileSource(sourceName)) {
+            return ProvenanceClass.AUTHORITATIVE;
+        }
+
+        for (String fragment : AUTHORITATIVE_SOURCE_NAME_FRAGMENTS) {
+            if (sourceName.contains(fragment)) {
+                return ProvenanceClass.AUTHORITATIVE;
             }
         }
 
         return ProvenanceClass.UNKNOWN;
+    }
+
+    public String originSourceName(String key) {
+        for (PropertySource<?> ps : environment.getPropertySources()) {
+            if (isBindingFacade(ps)) {
+                continue;
+            }
+
+            if (ps.containsProperty(key)) {
+                return ps.getName();
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean isBindingFacade(PropertySource<?> propertySource) {
+        return CONFIGURATION_PROPERTIES_FACADE.equals(propertySource.getName());
+    }
+
+    private static boolean isNativeConfigServerFileSource(String sourceName) {
+        return sourceName.startsWith("file:");
     }
 }
