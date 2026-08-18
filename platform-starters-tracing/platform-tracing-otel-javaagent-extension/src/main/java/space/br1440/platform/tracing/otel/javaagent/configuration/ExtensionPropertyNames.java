@@ -56,4 +56,6 @@ public final class ExtensionPropertyNames {
 
     public static final String OTEL_JAVAAGENT_EXTENSIONS = "otel.javaagent.extensions";
 
+    public static final String SPI_ATTESTATION_MODE = "platform.tracing.spi-attestation.mode";
+
 }

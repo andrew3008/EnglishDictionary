@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -181,6 +183,99 @@ class ControlledAgentDistributionTest {
         }
     }
 
+    @Test
+    void resolved_upstream_agent_matches_reviewed_sha256() throws IOException {
+        // given
+        Path upstreamAgentJar = Path.of(requiredProperty("platformTracing.upstreamAgentJar"));
+        Path baseline = Path.of(requiredProperty("platformTracing.acpPinBaseline"));
+
+        // when
+        String actual = sha256Hex(Files.readAllBytes(upstreamAgentJar));
+        String expected = readJsonStringField(Files.readString(baseline, StandardCharsets.UTF_8), "upstreamSha256");
+
+        // then
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    void extracted_upstream_acp_names_match_reviewed_pin() throws IOException {
+        // given
+        Path upstreamAgentJar = Path.of(requiredProperty("platformTracing.upstreamAgentJar"));
+        Path baseline = Path.of(requiredProperty("platformTracing.acpPinBaseline"));
+        String baselineJson = Files.readString(baseline, StandardCharsets.UTF_8);
+
+        // when
+        List<String> extracted = extractUpstreamAcpNames(upstreamAgentJar);
+
+        // then
+        assertThat(extracted).containsExactly(
+                "io.opentelemetry.contrib.baggage.processor.BaggageProcessorCustomizer",
+                "io.opentelemetry.javaagent.shaded.instrumentation.resources.internal."
+                        + "ResourceProviderPropertiesCustomizer",
+                "io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer",
+                "io.opentelemetry.javaagent.tooling.config.ConfigurationPropertiesSupplier",
+                "io.opentelemetry.javaagent.tooling.config.OtlpProtocolPropertiesSupplier");
+        assertThat(extracted).allMatch(baselineJson::contains);
+    }
+
+    @Test
+    void exact_evidence_marker_matches_reviewed_pin() throws IOException, InterruptedException {
+        // given
+        Path controlledAgentJar = Path.of(requiredProperty("platformTracing.controlledAgentJar"));
+        Path baseline = Path.of(requiredProperty("platformTracing.acpPinBaseline"));
+        String expectedPinSha = readJsonStringField(
+                Files.readString(baseline, StandardCharsets.UTF_8), "pinSha256");
+        String expectedUpstreamSha = readJsonStringField(
+                Files.readString(baseline, StandardCharsets.UTF_8), "upstreamSha256");
+        Path javaExecutable = Path.of(
+                System.getProperty("java.home"),
+                "bin",
+                isWindows() ? "java.exe" : "java"
+        );
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                javaExecutable.toString(),
+                "-Dfile.encoding=UTF-8",
+                "-Dsun.stderr.encoding=UTF-8",
+                "-Dotel.traces.exporter=none",
+                "-Dotel.metrics.exporter=none",
+                "-Dotel.logs.exporter=none",
+                "-Dplatform.tracing.spi-attestation.mode=EXACT_EVIDENCE",
+                "-javaagent:" + controlledAgentJar,
+                "-version"
+        );
+        Path stdoutFile = Files.createTempFile("platform-exact-stdout-", ".log");
+        Path stderrFile = Files.createTempFile("platform-exact-stderr-", ".log");
+        processBuilder.redirectOutput(stdoutFile.toFile());
+        processBuilder.redirectError(stderrFile.toFile());
+
+        try {
+            // when
+            Process process = processBuilder.start();
+            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+            }
+            String stderr = Files.readString(stderrFile, StandardCharsets.UTF_8);
+            long markers = stderr.lines()
+                    .filter(line -> line.contains("\"event_code\":\"PTA-BOOT-010\""))
+                    .count();
+
+            // then
+            assertThat(finished).isTrue();
+            assertThat(process.exitValue()).isZero();
+            assertThat(markers).isEqualTo(1);
+            assertThat(stderr)
+                    .contains("\"pin_sha256\":\"" + expectedPinSha + "\"")
+                    .contains("\"set_sha256\":\"" + expectedPinSha + "\"")
+                    .contains("\"upstream_agent_sha256\":\"" + expectedUpstreamSha + "\"")
+                    .contains("\"pin_count\":\"5\"")
+                    .contains("\"pin_format_version\":\"1\"");
+        } finally {
+            Files.deleteIfExists(stdoutFile);
+            Files.deleteIfExists(stderrFile);
+        }
+    }
+
     private static List<String> listEntries(Path jar) throws IOException {
         List<String> names = new ArrayList<>();
         try (ZipFile zip = new ZipFile(jar.toFile())) {
@@ -222,5 +317,65 @@ class ControlledAgentDistributionTest {
 
     private static boolean isWindows() {
         return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    private static String sha256Hex(byte[] bytes) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                hex.append(String.format(Locale.ROOT, "%02x", value & 0xFF));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is required", e);
+        }
+    }
+
+    private static List<String> extractUpstreamAcpNames(Path agentJar) throws IOException {
+        String acpSpi = "io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider";
+        String descriptorPath = "inst/META-INF/services/" + acpSpi;
+        try (ZipFile zip = new ZipFile(agentJar.toFile())) {
+            List<String> descriptors = new ArrayList<>();
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                String name = entry.getName();
+                if (name.endsWith(".jar")) {
+                    throw new IllegalStateException("Nested JAR is not part of the 2.30.0 loader contract: " + name);
+                }
+                if (name.contains("META-INF/services/" + acpSpi)) {
+                    descriptors.add(name);
+                }
+            }
+            assertThat(descriptors).containsExactly(descriptorPath);
+            ZipEntry descriptor = zip.getEntry(descriptorPath);
+            assertThat(descriptor).isNotNull();
+            String text = new String(zip.getInputStream(descriptor).readAllBytes(), StandardCharsets.UTF_8);
+            List<String> names = new ArrayList<>();
+            for (String line : text.split("\n", -1)) {
+                int comment = line.indexOf('#');
+                String name = (comment >= 0 ? line.substring(0, comment) : line).trim();
+                if (!name.isEmpty()) {
+                    names.add(name);
+                }
+            }
+            names.sort(String::compareTo);
+            return List.copyOf(names);
+        }
+    }
+
+    private static String readJsonStringField(String json, String field) {
+        String needle = "\"" + field + "\": \"";
+        int start = json.indexOf(needle);
+        if (start < 0) {
+            throw new IllegalStateException("Missing JSON field: " + field);
+        }
+        int valueStart = start + needle.length();
+        int valueEnd = json.indexOf('"', valueStart);
+        if (valueEnd < 0) {
+            throw new IllegalStateException("Unterminated JSON field: " + field);
+        }
+        return json.substring(valueStart, valueEnd);
     }
 }

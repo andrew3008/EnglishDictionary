@@ -37,6 +37,9 @@ class AgentExtensionArtifactSurfaceTest {
     private static final String SCHEMA_RESOURCE = "platform-log-event.schema.json";
     private static final String MANIFEST_FRAGMENT =
             "agent-logging-schema-manifest.mf";
+    private static final String PIN_CLASS =
+            "space/br1440/platform/tracing/otel/javaagent/bootstrap/PinnedUpstreamAcpProviders.class";
+    private static final String PIN_JSON = "opentelemetry-javaagent-2.30.0-acp-pin.json";
     private static final List<String> FORBIDDEN_PREFIXES = List.of(
             "org/springframework/",
             "ch/qos/logback/",
@@ -143,6 +146,20 @@ class AgentExtensionArtifactSurfaceTest {
         assertThat(entries)
                 .doesNotContain(SCHEMA_RESOURCE)
                 .noneMatch(name -> name.startsWith("space/br1440/platform/logging/"));
+    }
+
+    @Test
+    void extension_jar_embeds_generated_pin_class_and_not_baseline_json() throws IOException {
+        // given
+        Path extensionJar = Path.of(requiredProperty("platformTracing.extensionJar"));
+
+        // when
+        List<String> entries = listEntries(extensionJar);
+        long pinClassCount = entries.stream().filter(PIN_CLASS::equals).count();
+
+        // then
+        assertThat(pinClassCount).isEqualTo(1);
+        assertThat(entries).noneMatch(name -> name.endsWith(PIN_JSON));
     }
 
     @Test

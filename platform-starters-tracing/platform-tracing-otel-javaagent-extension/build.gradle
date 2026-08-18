@@ -16,9 +16,16 @@ platformJavaLibrary {
 }
 
 apply from: rootProject.file('gradle/platformLogSchemaHash.gradle')
+apply from: rootProject.file('gradle/upstreamAcpPin.gradle')
 
 // Класс applied-скрипта недоступен как property; берём его из ext на конфигурации.
 def schemaHashes = platformLogSchemaHashesType
+
+def platformAgentForPin = configurations.create('platformAgentForPin') {
+    canBeConsumed = false
+    canBeResolved = true
+    visible = false
+}
 
 def agentExtensionRuntime = configurations.create('agentExtensionRuntime') {
     canBeConsumed = false
@@ -49,6 +56,9 @@ dependencies {
             configuration: 'platformLogMaskingElements')) {
         transitive = false
     }
+
+    add(platformAgentForPin.name,
+            "io.opentelemetry.javaagent:opentelemetry-javaagent:${libs.versions.bom.otelinstrumentation.get()}")
 
     compileOnly 'io.opentelemetry:opentelemetry-sdk'
     compileOnly 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
@@ -146,6 +156,41 @@ def generateAgentLoggingSchemaIdentity = tasks.register(
 
 def identityOutput = generateAgentLoggingSchemaIdentity.flatMap { it.outputDirectory }
 
+def expectedUpstreamCoordinate = providers.provider {
+    "io.opentelemetry.javaagent:opentelemetry-javaagent:${libs.versions.bom.otelinstrumentation.get()}"
+}
+
+def verifyUpstreamAcpPin = tasks.register('verifyUpstreamAcpPin', verifyUpstreamAcpPinType) {
+    upstreamAgentJar.fileProvider(providers.provider {
+        def resolved = platformAgentForPin.files
+        if (resolved.size() != 1) {
+            throw new GradleException(
+                    "platformAgentForPin must resolve to exactly one artifact, got ${resolved}")
+        }
+        resolved.iterator().next()
+    })
+    baselineJson.set(rootProject.layout.projectDirectory.file(
+            'docs/architecture/agent-runtime/pins/opentelemetry-javaagent-2.30.0-acp-pin.json'))
+    expectedCoordinate.set(expectedUpstreamCoordinate)
+    outputDirectory.convention(layout.buildDirectory.dir('generated/sources/pinned-upstream-acp/java'))
+}
+
+sourceSets.main.java.srcDir(verifyUpstreamAcpPin.flatMap { it.outputDirectory })
+tasks.named('compileJava') {
+    dependsOn verifyUpstreamAcpPin
+}
+
+tasks.register('generateUpstreamAcpPinCandidate', generateUpstreamAcpPinCandidateType) {
+    onlyIf {
+        project.hasProperty('expectedUpstreamAgentSha256')
+    }
+    upstreamAgentJar.set(verifyUpstreamAcpPin.flatMap { it.upstreamAgentJar })
+    expectedCoordinate.set(expectedUpstreamCoordinate)
+    expectedUpstreamSha256.set(providers.gradleProperty('expectedUpstreamAgentSha256').orElse(''))
+    candidateJson.convention(layout.buildDirectory.file(
+            'reports/upstream-acp-pin/opentelemetry-javaagent-acp-pin.candidate.json'))
+}
+
 tasks.named('processTestResources', ProcessResources) {
     from(platformLogMasking) {
         include 'platform-log-masking-rules.yaml'
@@ -216,9 +261,31 @@ abstract class ExtensionArtifactArguments implements CommandLineArgumentProvider
     }
 }
 
+abstract class UpstreamAgentPinArguments implements CommandLineArgumentProvider {
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getUpstreamAgentJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getBaselineJson()
+
+    @Override
+    Iterable<String> asArguments() {
+        [
+                "-DplatformTracing.upstreamAgentJar=${upstreamAgentJar.get().asFile.absolutePath}",
+                "-DplatformTracing.acpPinBaseline=${baselineJson.get().asFile.absolutePath}"
+        ]
+    }
+}
+
 tasks.named('test', Test) {
     enabled = true
     exclude '**/AgentExtensionArtifactSurfaceTest.class'
+    def pinArguments = objects.newInstance(UpstreamAgentPinArguments)
+    pinArguments.upstreamAgentJar.set(verifyUpstreamAcpPin.flatMap { it.upstreamAgentJar })
+    pinArguments.baselineJson.set(verifyUpstreamAcpPin.flatMap { it.baselineJson })
+    jvmArgumentProviders.add(pinArguments)
 }
 
 def agentArtifactTestTask = tasks.register('agentArtifactTest', Test) {

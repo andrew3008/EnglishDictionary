@@ -34,7 +34,7 @@
     {"ownerClass": "HostNameResolver", "mechanism": "Slf4j", "category": "BOOT", "requiredInFailBeforeSpring": true, "targetEventCodePrefix": "PTA-BOOT"},
     {"ownerClass": "ResourceStartupDiagnostics", "mechanism": "Slf4j", "category": "BOOT", "requiredInFailBeforeSpring": true, "targetEventCodePrefix": "PTA-BOOT"},
     {"ownerClass": "PlatformExtensionReadiness", "mechanism": "Slf4j", "category": "BOOT", "targetEventCodePrefix": "PTA-BOOT"},
-    {"ownerClass": "TracePipelineSpiAttestation", "mechanism": "Slf4j", "category": "BOOT", "requiredInFailBeforeSpring": true, "targetEventCodePrefix": "PTA-BOOT"},
+    {"ownerClass": "TracePipelineSpiAttestation", "mechanism": "Slf4j", "category": "BOOT", "requiredInFailBeforeSpring": true, "targetEventCodePrefix": "PTA-BOOT", "currentEventCode": "PTA-BOOT-010"},
     {"ownerClass": "BootstrapCoordinator", "mechanism": "Slf4j", "category": "BOOT", "requiredInFailBeforeSpring": true, "targetEventCodePrefix": "PTA-BOOT"},
     {"ownerClass": "PlatformSpanProcessorFactory", "mechanism": "Slf4j", "category": "BOOT", "requiredInFailBeforeSpring": true, "targetEventCodePrefix": "PTA-BOOT"},
     {"ownerClass": "EnrichingSpanProcessor", "mechanism": "Slf4j", "category": "BOOT", "targetEventCodePrefix": "PTA-BOOT"},

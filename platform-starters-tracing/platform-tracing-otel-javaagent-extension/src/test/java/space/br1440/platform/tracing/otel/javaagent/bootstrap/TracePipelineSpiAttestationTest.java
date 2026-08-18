@@ -8,12 +8,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import space.br1440.platform.tracing.otel.javaagent.bootstrap.pin.IndependentUpstreamAcpJarExtractor;
+import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
@@ -23,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit-level coverage for {@link TracePipelineSpiAttestation}: closed allowlist for
+ * Unit-level coverage for {@link TracePipelineSpiAttestation}: generated upstream pin for
  * {@link AutoConfigurationCustomizerProvider} (order-only attestation was a BLOCKER — order()
  * determines only when {@code customize()} runs, not whether a provider can mutate the exporter
  * chain later from a properties-customizer callback) and the empty allowlist for the legacy
@@ -39,21 +44,45 @@ class TracePipelineSpiAttestationTest {
 
     private static final int PLATFORM_ORDER = 100;
 
+    @AfterEach
+    void resetAttestationIsolation() {
+        System.clearProperty(ExtensionPropertyNames.SPI_ATTESTATION_MODE);
+        TracePipelineSpiAttestation.resetEvidenceMarkerForTests();
+    }
+
     @Test
-    void pinnedJavaAgentTracerProviderConfigurerIsAllowlistedByExactNameOnly() {
-        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
-                "io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer")).isTrue();
-        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
-                "io.opentelemetry.javaagent.tooling.config.ConfigurationPropertiesSupplier")).isTrue();
-        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
-                "io.opentelemetry.javaagent.tooling.config.OtlpProtocolPropertiesSupplier")).isTrue();
-        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
-                "io.opentelemetry.contrib.baggage.processor.BaggageProcessorCustomizer")).isTrue();
-        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
-                "io.opentelemetry.javaagent.shaded.instrumentation.resources.internal."
-                        + "ResourceProviderPropertiesCustomizer")).isTrue();
-        assertThat(TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
-                "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer")).isFalse();
+    void generatedPinRejectsAttackerPrefixAndKeepsReviewedNames() {
+        // given
+        Set<String> names = PinnedUpstreamAcpProviders.NAMES;
+
+        // when
+        boolean attackerAllowed = TracePipelineSpiAttestation.isAllowlistedUpstreamProviderName(
+                "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer");
+
+        // then
+        assertThat(names).isNotEmpty();
+        assertThat(names).doesNotContain(
+                "attacker.io.opentelemetry.javaagent.tooling.AgentTracerProviderConfigurer");
+        assertThat(attackerAllowed).isFalse();
+        assertThat(PlatformOtelAcpPinHashes.sha256Hex(names))
+                .isEqualTo(PinnedUpstreamAcpProviders.PIN_SHA256);
+        assertThat(names).hasSize(PinnedUpstreamAcpProviders.PIN_COUNT);
+    }
+
+    @Test
+    void generatedPinEqualsIndependentExtractFromResolvedJar() throws Exception {
+        // given
+        Path agentJar = Path.of(requiredProperty("platformTracing.upstreamAgentJar"));
+
+        // when
+        List<String> extracted = IndependentUpstreamAcpJarExtractor.extractSortedNames(agentJar);
+
+        // then
+        assertThat(extracted).isEqualTo(PinnedUpstreamAcpProviders.NAMES.stream().sorted().toList());
+        assertThat(PlatformOtelAcpPinHashes.sha256Hex(extracted))
+                .isEqualTo(PinnedUpstreamAcpProviders.PIN_SHA256);
+        assertThat(IndependentUpstreamAcpJarExtractor.sha256Hex(Files.readAllBytes(agentJar)))
+                .isEqualTo(PinnedUpstreamAcpProviders.UPSTREAM_AGENT_SHA256);
     }
 
     @Test
@@ -145,6 +174,14 @@ class TracePipelineSpiAttestationTest {
         assertThat(LegacyConfigurerDescriptorProbe.CONSTRUCTED)
                 .as("attestation must reject the legacy service descriptor without loading its provider")
                 .isFalse();
+    }
+
+    private static String requiredProperty(String name) {
+        String value = System.getProperty(name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("Required test system property is missing: " + name);
+        }
+        return value;
     }
 
     private static void assertAttestationFails(ClassLoader overlay) {

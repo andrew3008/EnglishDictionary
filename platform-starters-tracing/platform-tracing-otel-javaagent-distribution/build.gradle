@@ -72,11 +72,21 @@ abstract class DistributionArtifactArguments implements CommandLineArgumentProvi
     @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getExtensionJar()
 
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getUpstreamAgentJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getAcpPinBaseline()
+
     @Override
     Iterable<String> asArguments() {
         [
                 "-DplatformTracing.controlledAgentJar=${controlledAgentJar.get().asFile.absolutePath}",
-                "-DplatformTracing.extensionJar=${extensionJar.get().asFile.absolutePath}"
+                "-DplatformTracing.extensionJar=${extensionJar.get().asFile.absolutePath}",
+                "-DplatformTracing.upstreamAgentJar=${upstreamAgentJar.get().asFile.absolutePath}",
+                "-DplatformTracing.acpPinBaseline=${acpPinBaseline.get().asFile.absolutePath}"
         ]
     }
 }
@@ -95,6 +105,9 @@ tasks.named('test', Test) {
         }
         files[0]
     })
+    arguments.upstreamAgentJar.set(layout.file(providers.provider { upstreamAgentFile }))
+    arguments.acpPinBaseline.set(rootProject.layout.projectDirectory.file(
+            'docs/architecture/agent-runtime/pins/opentelemetry-javaagent-2.30.0-acp-pin.json'))
     jvmArgumentProviders.add(arguments)
 }
 
