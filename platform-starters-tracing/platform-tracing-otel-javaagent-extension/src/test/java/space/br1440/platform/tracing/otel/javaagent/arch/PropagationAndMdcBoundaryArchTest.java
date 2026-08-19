@@ -77,7 +77,6 @@ class PropagationAndMdcBoundaryArchTest {
             noClasses()
                     .that().resideInAPackage("..javaagent.processor..")
                     .should().dependOnClassesThat().haveFullyQualifiedName("org.slf4j.MDC")
-                    .orShould().dependOnClassesThat().haveSimpleName("RemoteServiceMdc")
                     .because("span processor callbacks must not own ThreadLocal MDC state");
 
     private static DescribedPredicate<JavaMethodCall> classGetName() {

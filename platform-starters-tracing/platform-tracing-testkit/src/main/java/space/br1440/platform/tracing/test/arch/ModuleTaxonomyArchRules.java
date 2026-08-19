@@ -191,28 +191,6 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("the trusted-destination factory is available only to approved composition owners");
 
-    public static final ArchRule REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE = classes()
-            .that(new DescribedPredicate<>("be remote-service MDC implementation outside tests") {
-                @Override
-                public boolean test(JavaClass input) {
-                    String simpleName = input.getSimpleName();
-                    return ("RemoteServiceMdc".equals(simpleName)
-                            || "RemoteServiceNameResolver".equals(simpleName))
-                            && !input.getPackageName().contains(".test");
-                }
-            })
-            .should().resideInAPackage("..otel.mdc.remote..")
-            .allowEmptyShould(true)
-            .because("remote-service MDC implementation types belong to the core MDC package");
-
-    public static final ArchRule REMOTE_SERVICE_TRACE_CONTEXT_IN_RUNTIME_POLICY = classes()
-            .that().haveSimpleName("RemoteServiceTraceContext")
-            .or().haveSimpleName("RemoteServiceTraceMirror")
-            .and().resideOutsideOfPackage("..test..")
-            .should().resideInAPackage("..runtime.remote..")
-            .allowEmptyShould(true)
-            .because("the logging-agnostic remote-service mirror belongs to runtime-policy, not the MDC package");
-
     public static final ArchRule OTEL_EXTENSION_MDC_FROM_CORE = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
             .and().resideOutsideOfPackage("..test..")
@@ -260,8 +238,7 @@ public final class ModuleTaxonomyArchRules {
                     return false;
                 }
                 String simpleName = input.getSimpleName();
-                return !"TracingMdcKeys".equals(simpleName)
-                        && !"RemoteServiceNameSource".equals(simpleName);
+                return !"TracingMdcKeys".equals(simpleName);
             }
         };
     }

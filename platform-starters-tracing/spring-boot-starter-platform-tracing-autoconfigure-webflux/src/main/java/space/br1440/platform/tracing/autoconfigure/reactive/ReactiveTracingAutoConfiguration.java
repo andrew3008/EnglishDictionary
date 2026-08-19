@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
-import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -15,10 +13,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.function.client.WebClient;
-import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.TraceOperations;
-import space.br1440.platform.tracing.api.mdc.RemoteServiceNameSource;
-import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
@@ -27,9 +22,6 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPro
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.webflux.ReactiveCorrelationOperations;
 
-import java.util.Optional;
-
-@Slf4j
 @AutoConfiguration
 @AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
 @ConditionalOnClass({WebFluxConfigurer.class})
@@ -68,30 +60,6 @@ public class ReactiveTracingAutoConfiguration {
     @ConditionalOnMissingBean(PlatformReactiveClientRequestObservationConvention.class)
     public PlatformReactiveClientRequestObservationConvention platformReactiveClientRequestObservationConvention() {
         return new PlatformReactiveClientRequestObservationConvention();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(RemoteServiceContextPropagationInitializer.class)
-    public RemoteServiceContextPropagationInitializer platformTracingContextPropagationEagerInit() {
-        return RemoteServiceContextPropagation::registerIfAbsent;
-    }
-
-    @Bean
-    @Order(Ordered.LOWEST_PRECEDENCE)
-    @ConditionalOnMissingBean(RemoteServiceNameSource.class)
-    RemoteServiceNameSource webFluxTraceMirrorSource() {
-        return () -> {
-            try {
-                String fromMdc = MDC.get(TracingMdcKeys.REMOTE_SERVICE);
-                if (!StringUtils.isNullOrBlank(fromMdc)) {
-                    return Optional.of(fromMdc);
-                }
-            } catch (RuntimeException e) {
-                log.debug("Failed to read MDC key {}: {}", TracingMdcKeys.REMOTE_SERVICE, e.getMessage());
-            }
-
-            return Optional.empty();
-        };
     }
 
     @Bean

@@ -32,13 +32,4 @@ public final class TracingMdcKeys {
     /** Бизнес-идентификатор корреляции в MDC. */
     public static final String CORRELATION_ID = "correlationId";
 
-    /**
-     * Логическое имя upstream-сервиса, вызов которого завершился ошибкой в рамках текущего запроса.
-     * Проецируется scoped-границей приложения из trace-scoped контекста после завершения
-     * CLIENT-span'а со статусом ERROR. Очищается в HTTP-фильтрах запроса.
-     * Имя совпадает со значением одноимённого платформенного атрибута
-     * {@code space.br1440.platform.tracing.api.attributes.PlatformAttributes#PLATFORM_REMOTE_SERVICE}.
-     */
-    public static final String REMOTE_SERVICE = "platform.remote.service";
-
 }

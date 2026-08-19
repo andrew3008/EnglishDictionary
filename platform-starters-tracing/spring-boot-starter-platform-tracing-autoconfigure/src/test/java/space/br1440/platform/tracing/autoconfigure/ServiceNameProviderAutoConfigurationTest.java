@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import space.br1440.platform.tracing.autoconfigure.identity.PlatformLocalServiceNameProvider;
-import space.br1440.platform.tracing.autoconfigure.identity.PlatformRemoteServiceNameProvider;
 import space.br1440.platform.tracing.autoconfigure.identity.ServiceNameProviderAutoConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,7 +17,6 @@ class ServiceNameProviderAutoConfigurationTest {
     void providers_start_by_default() {
         runner.run(context -> {
             assertThat(context).hasSingleBean(PlatformLocalServiceNameProvider.class);
-            assertThat(context).hasSingleBean(PlatformRemoteServiceNameProvider.class);
         });
     }
 
@@ -26,7 +24,6 @@ class ServiceNameProviderAutoConfigurationTest {
     void providers_start_even_when_tracing_enabled_false() {
         runner.withPropertyValues("platform.tracing.enabled=false").run(context -> {
             assertThat(context).hasSingleBean(PlatformLocalServiceNameProvider.class);
-            assertThat(context).hasSingleBean(PlatformRemoteServiceNameProvider.class);
         });
     }
 

@@ -22,10 +22,6 @@ class CorePolicyBoundaryArchTest {
             ModuleTaxonomyArchRules.CORE_MAIN_NO_JMX;
 
     @ArchTest
-    static final ArchRule remoteServiceMdcImplementationsRemainInCore =
-            ModuleTaxonomyArchRules.REMOTE_SERVICE_MDC_IMPL_ONLY_IN_CORE;
-
-    @ArchTest
     static final ArchRule applicationPlaneDoesNotDependOnAgentModule =
             ModuleTaxonomyArchRules.OTEL_DOES_NOT_DEPEND_ON_AGENT_NAMED_MODULE;
 }

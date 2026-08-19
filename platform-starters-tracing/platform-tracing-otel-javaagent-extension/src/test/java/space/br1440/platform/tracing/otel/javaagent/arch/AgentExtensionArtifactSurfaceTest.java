@@ -53,7 +53,6 @@ class AgentExtensionArtifactSurfaceTest {
             "space/br1440/platform/logging/aspect/",
             "space/br1440/platform/logging/masking/",
             "space/br1440/platform/logging/mdc/",
-            "space/br1440/platform/tracing/otel/mdc/remote/RemoteServiceMdc",
             "space/br1440/platform/tracing/otel/runtime/otel/",
             "space/br1440/platform/tracing/autoconfigure/"
     );

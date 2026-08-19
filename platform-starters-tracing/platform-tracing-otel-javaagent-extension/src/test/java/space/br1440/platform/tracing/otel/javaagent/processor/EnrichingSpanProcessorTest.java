@@ -9,24 +9,15 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
-import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 import space.br1440.platform.tracing.test.junit.OtelSdkExtension;
 import space.br1440.platform.tracing.test.junit.internal.ScopeMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class EnrichingSpanProcessorTest {
-
-    @AfterEach
-    void clearMdc() {
-        MDC.clear();
-    }
 
     private static final AttributeKey<String> PLATFORM_TYPE_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_TYPE);
     private static final AttributeKey<String> PLATFORM_RESULT_KEY = AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT);
@@ -114,39 +105,6 @@ class EnrichingSpanProcessorTest {
         // then
         var data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(PLATFORM_REMOTE_SERVICE_KEY)).isEqualTo("order-service");
-    }
-
-    @Test
-    void recordsRemoteServiceWithoutChangingCallerMdc(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
-        // given
-        Tracer tracer = sdk.getTracer("test");
-        MDC.put(TracingMdcKeys.REMOTE_SERVICE, "caller-value");
-
-        // when
-        Span span = tracer.spanBuilder("client-call").setSpanKind(SpanKind.CLIENT).startSpan();
-        String traceId = span.getSpanContext().getTraceId();
-        span.setAttribute("peer.service", "billing-service");
-        span.setStatus(StatusCode.ERROR, "boom");
-        span.end();
-
-        // then
-        assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isEqualTo("caller-value");
-        assertThat(RemoteServiceTraceContext.find(traceId)).contains("billing-service");
-        RemoteServiceTraceContext.clear(traceId);
-    }
-
-    @Test
-    void doesNotWriteRemoteServiceToMdcForSuccessfulClientCall(OpenTelemetrySdk sdk, InMemorySpanExporter exporter) {
-        // given
-        Tracer tracer = sdk.getTracer("test");
-
-        // when
-        Span span = tracer.spanBuilder("ok-call").setSpanKind(SpanKind.CLIENT).startSpan();
-        span.setAttribute("peer.service", "billing-service");
-        span.end();
-
-        // then
-        assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isNull();
     }
 
     @Test

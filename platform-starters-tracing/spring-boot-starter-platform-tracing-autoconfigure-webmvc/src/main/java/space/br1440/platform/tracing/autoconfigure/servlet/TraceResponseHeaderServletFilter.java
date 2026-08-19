@@ -11,7 +11,6 @@ import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.identity.RemoteServiceMdcBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
@@ -53,8 +52,6 @@ public class TraceResponseHeaderServletFilter extends OncePerRequestFilter {
             try {
                 filterChain.doFilter(request, response);
             } finally {
-                RemoteServiceMdcBoundarySupport.clear(capturedTraceId.orElse(null));
-
                 if (!response.isCommitted()) {
                     try {
                         if (properties.getRequestIdHeader().isEnabled()) {

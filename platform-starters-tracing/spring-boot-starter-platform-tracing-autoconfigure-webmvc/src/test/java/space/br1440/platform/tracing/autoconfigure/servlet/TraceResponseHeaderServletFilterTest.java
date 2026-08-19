@@ -14,14 +14,10 @@ import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
-import space.br1440.platform.tracing.autoconfigure.identity.RemoteServiceMdcBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
-import space.br1440.platform.tracing.otel.mdc.remote.RemoteServiceNameResolver;
-import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -39,8 +35,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TraceResponseHeaderServletFilterTest {
-
-    private static final String TRACE_ID = "0af7651916cd43dd8448eb211c80319c";
 
     private TraceOperations traceOperations;
     private ActiveTraceContextView traceContextView;
@@ -72,7 +66,6 @@ class TraceResponseHeaderServletFilterTest {
     @AfterEach
     void tearDown() {
         MDC.clear();
-        RemoteServiceTraceContext.clear(TRACE_ID);
     }
 
     @Test
@@ -166,40 +159,6 @@ class TraceResponseHeaderServletFilterTest {
                 .isInstanceOf(ServletException.class);
 
         verify(response).setHeader(PlatformHeaders.X_TRACE_ID, "trace-during-error");
-    }
-
-    @Test
-    void exceptionBoundaryClearsRemoteServiceMirror() throws ServletException, java.io.IOException {
-        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-error");
-        when(traceContextView.traceId()).thenReturn(Optional.of(TRACE_ID));
-        when(response.isCommitted()).thenReturn(true);
-        doThrow(new ServletException("boom")).when(chain).doFilter(request, response);
-        RemoteServiceTraceContext.record(TRACE_ID, "billing");
-        MDC.put(TracingMdcKeys.REMOTE_SERVICE, "billing");
-
-        assertThatThrownBy(() -> filter.doFilter(request, response, chain))
-                .isInstanceOf(ServletException.class);
-
-        assertThat(new RemoteServiceNameResolver(List.of()).resolve(TRACE_ID)).isEmpty();
-        assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isNull();
-    }
-
-    @Test
-    void successfulBoundaryClearsProjectionBeforeThreadReuse() throws ServletException, java.io.IOException {
-        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-success", "req-reused");
-        when(traceContextView.traceId()).thenReturn(Optional.of(TRACE_ID));
-        when(response.isCommitted()).thenReturn(true);
-        RemoteServiceTraceContext.record(TRACE_ID, "billing");
-        RemoteServiceMdcBoundarySupport.project("billing");
-
-        filter.doFilter(request, response, chain);
-
-        assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isNull();
-        assertThat(new RemoteServiceNameResolver(List.of()).resolve(TRACE_ID)).isEmpty();
-
-        filter.doFilter(request, response, chain);
-
-        assertThat(MDC.get(TracingMdcKeys.REMOTE_SERVICE)).isNull();
     }
 
     @Test

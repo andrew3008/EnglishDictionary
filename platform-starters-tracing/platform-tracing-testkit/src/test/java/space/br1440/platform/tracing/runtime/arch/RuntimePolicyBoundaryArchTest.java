@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.runtime.arch;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -42,14 +40,4 @@ class RuntimePolicyBoundaryArchTest {
     @ArchTest
     static final ArchRule versionedStatePrimitiveRemainsInRuntimePolicy =
             ModuleTaxonomyArchRules.VERSIONED_STATE_PRIMITIVE_ONLY_IN_RUNTIME_POLICY;
-
-    @ArchTest
-    static final ArchRule remoteServiceTraceContextLivesInRuntimePolicy =
-            ModuleTaxonomyArchRules.REMOTE_SERVICE_TRACE_CONTEXT_IN_RUNTIME_POLICY;
-
-    @ArchTest
-    static final ArchRule traceMirrorHasSingleLifecycleOwner =
-            noClasses().that().doNotHaveSimpleName("RemoteServiceTraceContext")
-                    .should().dependOnClassesThat().haveSimpleName("RemoteServiceTraceMirror")
-                    .because("the bounded trace mirror must have one lifecycle owner");
 }

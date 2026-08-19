@@ -4,13 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import jakarta.annotation.Nonnull;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.span.SpanCategory;
 import space.br1440.platform.tracing.api.span.SpanResult;
-import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-import space.br1440.platform.tracing.runtime.remote.RemoteServiceTraceContext;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
@@ -133,7 +132,6 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
         }
 
         span.setAttribute(PLATFORM_REMOTE_SERVICE_KEY, remoteService);
-        RemoteServiceTraceContext.record(span.getSpanContext().getTraceId(), remoteService);
     }
 
     private static boolean hasDbSystemAttribute(ReadableSpan span) {
