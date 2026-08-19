@@ -133,6 +133,51 @@ class DefaultUnknownExceptionHandlerTest {
             // then
             assertThat(entry.getDetails()).hasSize(1);
         }
+
+        @Test
+        void mergesDetailsWhenRecognizedExceptionIsTopLevel(@Mock RootCauseExceptionHandlingStrategy strategy) {
+            // given
+            lenient().when(strategy.getOrder()).thenReturn(0);
+            when(strategy.supportsCause(any()))
+                    .thenAnswer(inv -> inv.getArgument(0, Throwable.class) instanceof IllegalStateException);
+            ErrorInfoDetail fromResolver = ErrorInfoDetail.builder()
+                    .reason("FROM_RESOLVER")
+                    .domain("http-integration")
+                    .build();
+            when(strategy.extractCauseDetails(any())).thenReturn(
+                    RootCauseResolution.of(HttpStatus.SERVICE_UNAVAILABLE, "from-strategy", List.of(fromResolver)));
+
+            CauseChainResolver resolver = new CauseChainResolver(List.of(strategy));
+            DefaultUnknownExceptionHandler handler = new DefaultUnknownExceptionHandler(resolver);
+
+            // when
+            var entry = handler.handle(new IllegalStateException("upstream 503"), context("/"));
+
+            // then
+            assertThat(entry.getDetails()).hasSize(2);
+            assertThat(((ErrorInfoDetail) entry.getDetails().get(1)).getDomain()).isEqualTo("http-integration");
+        }
+
+        @Test
+        void chainResolutionNeverOverridesFiveHundredStatus(@Mock RootCauseExceptionHandlingStrategy strategy) {
+            // given
+            lenient().when(strategy.getOrder()).thenReturn(0);
+            when(strategy.supportsCause(any()))
+                    .thenAnswer(inv -> inv.getArgument(0, Throwable.class) instanceof IllegalStateException);
+            when(strategy.extractCauseDetails(any())).thenReturn(
+                    RootCauseResolution.of(HttpStatus.SERVICE_UNAVAILABLE, "from-strategy", List.of()));
+
+            CauseChainResolver resolver = new CauseChainResolver(List.of(strategy));
+            DefaultUnknownExceptionHandler handler = new DefaultUnknownExceptionHandler(resolver);
+
+            // when
+            var deepest = handler.handle(new RuntimeException("top", new IllegalStateException("deep")), context("/"));
+            var topLevel = handler.handle(new IllegalStateException("top"), context("/"));
+
+            // then
+            assertThat(deepest.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(topLevel.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
 }

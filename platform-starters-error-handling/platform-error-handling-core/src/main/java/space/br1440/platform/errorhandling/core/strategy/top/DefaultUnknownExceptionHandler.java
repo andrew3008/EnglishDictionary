@@ -3,7 +3,6 @@ package space.br1440.platform.errorhandling.core.strategy.top;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import space.br1440.platform.errorhandling.extension.ErrorHandlingContext;
 import space.br1440.platform.errorhandling.model.ErrorEntry;
 import space.br1440.platform.errorhandling.model.error_detail.ErrorDetail;
@@ -27,8 +26,11 @@ import java.util.List;
  * Публичное сообщение — нейтральное ({@code "Internal server error"}).
  * Технический контекст — в {@code reason}: FQCN root-cause исключения ({@code rootCause.getClass().getName()}).
  *
- * <p>Умышленно: {@code reason} — deepest ({@link CauseChainNavigator}); доп. {@code details} — первое совпадение
- * ({@link CauseChainResolver#resolve} по {@code getCause()}).
+ * <p>Умышленно: {@code reason} — deepest ({@link CauseChainNavigator}); доп. {@code details} —
+ * распознанные chanins всей цепочки, начиная с самого исключения
+ * ({@link CauseChainResolver#resolveAllStrict}). RestClient/RestTemplate 4xx/5xx
+ * бросаются как top-level {@code RestClientResponseException} без полезного {@code cause}
+ * — если смотреть только {@code getCause()}, HTTP-integration detail не появится.
  *
  * <h2>CWE-209</h2>
  * <p>Stack trace, SQL-запросы и внутренние сообщения исключений намеренно
@@ -58,8 +60,10 @@ public class DefaultUnknownExceptionHandler implements UnknownExceptionHandler {
         ErrorInfoDetail info = buildInfoDetail(exception, rootCause, reason);
         details.add(info);
 
-        ResolvedRootCause resolvedRootCause = resolveCauseDetails(exception);
-        if (resolvedRootCause != null) {
+        // Из распознанных chains берутся только details. httpStatus остаётся 500:
+        // он обязан согласовываться с errorCode=UNKNOWN_INTERNAL_ERROR и нейтральным message,
+        // а принятие статуса звена сделало бы код ответа зависящим от глубины цепочки.
+        for (ResolvedRootCause resolvedRootCause : causeChainResolver.resolveAllStrict(exception)) {
             details.addAll(resolvedRootCause.resolution().details());
         }
 
@@ -87,18 +91,5 @@ public class DefaultUnknownExceptionHandler implements UnknownExceptionHandler {
         }
 
         return builder.build();
-    }
-
-    /**
-     * Первое распознанное звено от {@code exception.getCause()}, не самое глубокое.
-     */
-    @Nullable
-    private ResolvedRootCause resolveCauseDetails(@NonNull Exception exception) {
-        Throwable cause = exception.getCause();
-        if (cause == null) {
-            return null;
-        }
-
-        return causeChainResolver.resolve(cause);
     }
 }
