@@ -31,6 +31,16 @@ class StringUtilsTest {
         assertThat(actual).isEqualTo(expected);
     }
 
+    @ParameterizedTest(name = "{0} -> {1}")
+    @MethodSource("hasTextCases")
+    void hasText_returnsExpectedResult(String value, boolean expected) {
+        // when
+        boolean actual = StringUtils.hasText(value);
+
+        // then
+        assertThat(actual).isEqualTo(expected);
+    }
+
     static Stream<Arguments> isNullOrEmptyCases() {
         return Stream.of(
                 arguments(null, true),
@@ -55,6 +65,20 @@ class StringUtilsTest {
                 arguments("x", false),
                 arguments(" x ", false),
                 arguments("\u00A0", false)
+        );
+    }
+
+    static Stream<Arguments> hasTextCases() {
+        return Stream.of(
+                arguments(null, false),
+                arguments("", false),
+                arguments("   ", false),
+                arguments("\t", false),
+                arguments("\n", false),
+                arguments("\t\n ", false),
+                arguments("x", true),
+                arguments(" x ", true),
+                arguments("\u00A0", true)
         );
     }
 }

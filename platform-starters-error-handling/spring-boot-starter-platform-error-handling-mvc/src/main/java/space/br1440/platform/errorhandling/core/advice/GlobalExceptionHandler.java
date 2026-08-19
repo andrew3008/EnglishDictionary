@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import space.br1440.platform.errorhandling.core.dispatcher.MetricSnapshotFactory;
 import space.br1440.platform.errorhandling.core.util.CorrelationIdResolver;
 import space.br1440.platform.errorhandling.core.util.StackHintExtractor;
+import space.br1440.platform.errorhandling.core.util.http.UpstreamOutcome;
+import space.br1440.platform.errorhandling.core.util.http.UpstreamResponseReader;
 import space.br1440.platform.errorhandling.extension.ErrorEntryEnricher;
 import space.br1440.platform.errorhandling.extension.ErrorHandlingContext;
 import space.br1440.platform.errorhandling.extension.TopExceptionHandlingStrategy;
@@ -66,23 +68,6 @@ public class GlobalExceptionHandler {
         this.observabilityHooks = List.copyOf(observabilityHooks);
     }
 
-    /**
-     * Backward-compatible перегрузка для тестов.
-     */
-    public GlobalExceptionHandler(@NonNull ErrorHandlingProperties properties,
-                                  @NonNull List<TopExceptionHandlingStrategy> topExceptionHandlingStrategies,
-                                  @NonNull UnknownExceptionHandler unknownExceptionHandler,
-                                  @NonNull ExceptionMetricRecorder exceptionMetricRecorder,
-                                  @NonNull ProblemResponseFactory responseFactory,
-                                  @NonNull ExceptionLogger exceptionLogger,
-                                  @NonNull CorrelationIdResolver correlationIdResolver,
-                                  @NonNull List<ErrorEntryEnricher> entryEnrichers,
-                                  @NonNull StackHintExtractor stackHintExtractor) {
-        this(properties, topExceptionHandlingStrategies, unknownExceptionHandler,
-                exceptionMetricRecorder, responseFactory, exceptionLogger, correlationIdResolver,
-                entryEnrichers, stackHintExtractor, List.of());
-    }
-
     @ExceptionHandler(Exception.class)
     @NonNull
     public ResponseEntity<ErrorEntryDTO> handleException(@NonNull Exception exception,
@@ -94,9 +79,11 @@ public class GlobalExceptionHandler {
 
             long startNanos = System.nanoTime();
             ExceptionDispatcher.DispatchResult resolved = dispatcher.dispatch(exception, context);
-            long durationNanos = System.nanoTime() - startNanos;
+            long durationNanos = (System.nanoTime() - startNanos);
 
-            ErrorEntry enriched = applyEnrichers(resolved.entry(), context);
+            UpstreamOutcome upstreamOutcome = UpstreamResponseReader.fromFailure(exception);
+            ErrorHandlingContext enrichmentContext = context.withUpstreamOutcome(upstreamOutcome);
+            ErrorEntry enriched = applyEnrichers(resolved.entry(), enrichmentContext);
 
             ExceptionMetricSnapshot snapshot = MetricSnapshotFactory.build(
                     resolved.strategyName(), exception, enriched, durationNanos, request.getRequestURI()

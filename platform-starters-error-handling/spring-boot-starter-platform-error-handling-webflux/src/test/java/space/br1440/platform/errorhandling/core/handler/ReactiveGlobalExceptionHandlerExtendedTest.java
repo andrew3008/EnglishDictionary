@@ -17,7 +17,6 @@ import space.br1440.platform.errorhandling.extension.metrics.ExceptionMetricReco
 import space.br1440.platform.errorhandling.extension.metrics.ExceptionMetricSnapshot;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingEnricherProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingSafetyNetProperties;
-import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 import space.br1440.platform.errorhandling.metrics.NoopExceptionMetricRecorder;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
 import space.br1440.platform.errorhandling.properties.LoggingStrategy;
@@ -464,7 +463,6 @@ class ReactiveGlobalExceptionHandlerExtendedTest {
                     .properties(properties)
                     .enricherProperties(new ErrorHandlingEnricherProperties())
                     .safetyNetProperties(safetyNetProps)
-                    .upstreamProperties(new ErrorHandlingUpstreamProperties())
                     .strategies(List.of(failing))
                     .applicationName("test-app")
                     .unknownHandler(new TestUnknownExceptionHandler())

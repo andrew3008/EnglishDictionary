@@ -9,7 +9,6 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -18,6 +17,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
 import space.br1440.platform.errorhandling.autoconfigure.MdcThreadLocalAccessor;
+import space.br1440.platform.errorhandling.core.enricher.UpstreamIdentityEnricher;
 import space.br1440.platform.errorhandling.core.resolver.CauseChainResolver;
 import space.br1440.platform.errorhandling.core.strategy.top.WebFluxExceptionStrategy;
 import space.br1440.platform.errorhandling.extension.ErrorEntryEnricher;
@@ -28,9 +28,9 @@ import space.br1440.platform.errorhandling.extension.UnknownExceptionHandler;
 import space.br1440.platform.errorhandling.extension.metrics.ExceptionMetricRecorder;
 import space.br1440.platform.errorhandling.extension.metrics.ExceptionMetricSnapshot;
 import space.br1440.platform.errorhandling.metrics.NoopExceptionMetricRecorder;
+import space.br1440.platform.errorhandling.http.ErrorMediaTypes;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
 import space.br1440.platform.errorhandling.properties.LoggingStrategy;
-import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 import space.br1440.platform.errorhandling.model.ErrorEntry;
 import space.br1440.platform.errorhandling.webflux.testing.handler.ReactiveGlobalExceptionHandlerTestFixture;
 
@@ -54,17 +54,9 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
     private static ReactiveGlobalExceptionHandler createHandler(@NonNull ErrorHandlingProperties properties,
                                                                 @NonNull ExceptionMetricRecorder recorder,
                                                                 @NonNull List<ErrorEntryEnricher> enrichers) {
-        return createHandler(properties, new ErrorHandlingUpstreamProperties(), recorder, enrichers);
-    }
-
-    private static ReactiveGlobalExceptionHandler createHandler(@NonNull ErrorHandlingProperties properties,
-                                                                @NonNull ErrorHandlingUpstreamProperties upstreamProperties,
-                                                                @NonNull ExceptionMetricRecorder recorder,
-                                                                @NonNull List<ErrorEntryEnricher> enrichers) {
         return ReactiveGlobalExceptionHandlerTestFixture.builder()
                 .properties(properties)
-                .upstreamProperties(upstreamProperties)
-                .strategies(List.of(webClientStrategy(upstreamProperties)))
+                .strategies(List.of(webClientStrategy()))
                 .unknownHandler(fixedUnknownHandler())
                 .recorder(recorder)
                 .entryEnrichers(enrichers)
@@ -79,13 +71,13 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
                         .build());
     }
 
-    private static TopExceptionHandlingStrategy webClientStrategy(ErrorHandlingUpstreamProperties upstreamProperties) {
-        return new WebFluxExceptionStrategy(new CauseChainResolver(List.of()), upstreamProperties);
+    private static TopExceptionHandlingStrategy webClientStrategy() {
+        return new WebFluxExceptionStrategy(new CauseChainResolver(List.of()));
     }
 
     private static WebClientResponseException upstreamWith(@NonNull String jsonBody) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setContentType(ErrorMediaTypes.ERROR_RESPONSE_MEDIA_TYPE);
 
         byte[] body = jsonBody.getBytes(StandardCharsets.UTF_8);
         MockClientHttpRequest request = new MockClientHttpRequest(HttpMethod.GET, URI.create("http://upstream/api/x"));
@@ -95,20 +87,19 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
     }
 
     @Test
-    @DisplayName("handler: парсинг upstream JSON async, errorCode попадает в ответ")
+    @DisplayName("handler: парсинг upstream JSON async, errorCode/domain попадают в ответ через UpstreamIdentityEnricher")
     void handlerAsync_enrichesUpstreamErrorCode() {
         // given
         ErrorHandlingProperties properties = new ErrorHandlingProperties();
         properties.setLoggingStrategy(LoggingStrategy.CATEGORY);
-        properties.setPropagateUpstreamErrors(true);
 
         ReactiveGlobalExceptionHandler handler = createHandler(
-                properties, new NoopExceptionMetricRecorder(), Collections.emptyList()
+                properties, new NoopExceptionMetricRecorder(), List.of(new UpstreamIdentityEnricher())
         );
         MockServerWebExchange ex = exchange();
 
         WebClientResponseException upstream = upstreamWith(
-                "{\"errorCode\":\"UPSTREAM_FAILURE_42\",\"message\":\"u\",\"httpCode\":500}"
+                "{\"errorCode\":\"UPSTREAM_FAILURE_42\",\"domain\":\"billing-service\",\"message\":\"u\",\"httpCode\":500}"
         );
 
         // when
@@ -119,19 +110,20 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
         assertThat(body)
                 .as("upstream errorCode должен быть подхвачен async-парсером handler'а")
                 .contains("UPSTREAM_FAILURE_42");
+        assertThat(body)
+                .as("top-level domain должен быть заменён именем прямого upstream-сервиса")
+                .contains("\"domain\":\"billing-service\"");
     }
 
     @Test
-    @DisplayName("propagateUpstreamErrors=false: парсинг полностью пропускается (ни sync, ни async)")
-    void propagateOff_noParsing() {
+    @DisplayName("без UpstreamIdentityEnricher в цепочке: identity распознан, но не применён к ответу")
+    void withoutEnricher_identityIsNotApplied() {
         // given
         ErrorHandlingProperties properties = new ErrorHandlingProperties();
         properties.setLoggingStrategy(LoggingStrategy.CATEGORY);
-        properties.setPropagateUpstreamErrors(false);
-        ErrorHandlingUpstreamProperties upstreamProps = new ErrorHandlingUpstreamProperties();
 
         ReactiveGlobalExceptionHandler handler = createHandler(
-                properties, upstreamProps, new NoopExceptionMetricRecorder(), Collections.emptyList());
+                properties, new NoopExceptionMetricRecorder(), Collections.emptyList());
         MockServerWebExchange ex = exchange();
 
         WebClientResponseException upstream = upstreamWith(
@@ -143,18 +135,16 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
         // then
         String body = ex.getResponse().getBodyAsString().block();
         assertThat(body)
-                .as("при propagateUpstreamErrors=false upstream errorCode не должен попасть в ответ")
+                .as("без enricher'а в цепочке upstream errorCode не должен попасть в ответ")
                 .doesNotContain("SHOULD_NOT_LEAK");
     }
 
     @Test
-    @DisplayName("Не-WebClient исключение: enrichUpstreamBodyAsync — no-op без offload")
+    @DisplayName("Не-WebClient исключение: deriveUpstreamContextAsync — no-op без offload-таймаута")
     void nonWebClientException_isNoOp() {
         // given
         ErrorHandlingProperties properties = new ErrorHandlingProperties();
         properties.setLoggingStrategy(LoggingStrategy.CATEGORY);
-        properties.setPropagateUpstreamErrors(true);
-        ErrorHandlingUpstreamProperties upstreamProps = new ErrorHandlingUpstreamProperties();
 
         AtomicInteger timeoutCount = new AtomicInteger(0);
         ExceptionMetricRecorder recorder = new ExceptionMetricRecorder() {
@@ -174,7 +164,6 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
 
         ReactiveGlobalExceptionHandler handler = ReactiveGlobalExceptionHandlerTestFixture.builder()
                 .properties(properties)
-                .upstreamProperties(upstreamProps)
                 .strategies(List.of(catchAllStrategy(HttpStatus.INTERNAL_SERVER_ERROR, "GENERIC")))
                 .unknownHandler(fixedUnknownHandler())
                 .recorder(recorder)
@@ -201,8 +190,6 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
         // given
         ErrorHandlingProperties properties = new ErrorHandlingProperties();
         properties.setLoggingStrategy(LoggingStrategy.CATEGORY);
-        properties.setPropagateUpstreamErrors(true);
-        ErrorHandlingUpstreamProperties upstreamProps = new ErrorHandlingUpstreamProperties();
 
         ContextRegistry.getInstance().registerThreadLocalAccessor(new MdcThreadLocalAccessor());
         Hooks.enableAutomaticContextPropagation();
@@ -215,7 +202,7 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
             };
 
             ReactiveGlobalExceptionHandler handler = createHandler(
-                    properties, upstreamProps, new NoopExceptionMetricRecorder(), List.of(capturingEnricher));
+                    properties, new NoopExceptionMetricRecorder(), List.of(capturingEnricher));
             MockServerWebExchange ex = exchange();
 
             WebClientResponseException upstream = upstreamWith(
@@ -240,9 +227,6 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
         // given
         ErrorHandlingProperties properties = new ErrorHandlingProperties();
         properties.setLoggingStrategy(LoggingStrategy.CATEGORY);
-        properties.setPropagateUpstreamErrors(true);
-
-        ErrorHandlingUpstreamProperties upstreamProps = new ErrorHandlingUpstreamProperties();
 
         AtomicInteger timeoutCount = new AtomicInteger(0);
         ExceptionMetricRecorder recorder = new ExceptionMetricRecorder() {
@@ -261,7 +245,7 @@ class ReactiveGlobalExceptionHandlerUpstreamParseTest {
         };
 
         ReactiveGlobalExceptionHandler handler = createHandler(
-                properties, upstreamProps, recorder, Collections.emptyList());
+                properties, recorder, List.of(new UpstreamIdentityEnricher()));
         MockServerWebExchange ex = exchange();
 
         WebClientResponseException upstream = upstreamWith(

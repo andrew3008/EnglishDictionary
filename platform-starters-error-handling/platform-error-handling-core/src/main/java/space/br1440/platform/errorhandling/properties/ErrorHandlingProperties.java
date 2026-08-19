@@ -128,37 +128,6 @@ public class ErrorHandlingProperties {
     }
 
     /**
-     * Включает парсинг тела upstream-ответа (Feign/WebClient) для извлечения
-     * платформенного {@code errorCode} из upstream-сервиса.
-     *
-     * <p>При {@code true}: если upstream-сервис использует ту же платформу error handling,
-     * его {@code errorCode} проксируется в ответ текущего сервиса. {@code message} и
-     * {@code details} upstream <b>никогда</b> не проксируются (CWE-209).
-     *
-     * <p>При {@code false} (по умолчанию): тело upstream-ответа не парсится,
-     * fallback к generic маппингу по HTTP-статусу.
-     *
-     * <pre>
-     * platform:
-     *   error-handling:
-     *     propagate-upstream-errors: true
-     * </pre>
-     */
-    private Boolean propagateUpstreamErrors = false;
-
-    /**
-     * Включает проксирование поля {@code reason} из upstream-ответа.
-     * Действует только при {@code propagate-upstream-errors: true}.
-     *
-     * <pre>
-     * platform:
-     *   error-handling:
-     *     propagate-upstream-reason: true
-     * </pre>
-     */
-    private Boolean propagateUpstreamReason = false;
-
-    /**
      * Включает добавление {@code pgDetail} (PostgreSQL DETAIL message) в
      * {@code diagnosticMetadata} при обработке {@code PSQLException}.
      *
@@ -571,75 +540,6 @@ public class ErrorHandlingProperties {
          * и не желает прокидывать trace-id во внутреннюю correlation-схему.
          */
         private boolean acceptTraceparent = true;
-
-        /**
-         * Включает {@code RemoteServiceDomainEnricher}, перетирающий {@code domain} cause-деталей
-         * с интеграционной категорией (см. {@link #integrationDomains}) на имя upstream-сервиса,
-         * предоставленное Tracing-стартером ({@code platformRemoteServiceNameProvider} —
-         * {@code Supplier<Optional<String>>}, читает MDC-ключ {@code platform.remote.service}).
-         *
-         * <p>При {@code false} bean enricher'а не регистрируется; cause-детали продолжают нести
-         * категориальные {@code domain}-значения (например, {@code "http-integration"}) — это
-         * текущее поведение до подключения Tracing-стартера.
-         *
-         * <pre>
-         * platform:
-         *   error-handling:
-         *     tracing:
-         *       populate-remote-domain-from-tracing: true
-         * </pre>
-         */
-        private boolean populateRemoteDomainFromTracing = true;
-
-        /**
-         * Whitelist категориальных {@code domain}-значений, которые {@code RemoteServiceDomainEnricher}
-         * имеет право заменить на имя upstream-сервиса. Подбирается так, чтобы:
-         * <ul>
-         *   <li>заменялись только cause-детали интеграционных слоёв (HTTP, gRPC, messaging и т.п.);</li>
-         *   <li>детали с уже-заполненным реальным именем сервиса (например, после
-         *       {@code UpstreamErrorBodyParser}) не перетирались — их {@code domain} не входит
-         *       в whitelist по построению (это конкретное имя сервиса, а не категория).</li>
-         * </ul>
-         *
-         * <p>Микросервис может расширить whitelist собственными интеграционными маркерами
-         * (например, {@code "my-internal-bus"}):
-         *
-         * <pre>
-         * platform:
-         *   error-handling:
-         *     tracing:
-         *       integration-domains:
-         *         - http-integration
-         *         - feign
-         *         - grpc
-         *         - my-internal-bus
-         * </pre>
-         */
-        private Set<String> integrationDomains = Set.of(
-                "http-integration",
-                "feign",
-                "grpc",
-                "websocket",
-                "kafka",
-                "rabbitmq",
-                "messaging",
-                "dns",
-                "tls",
-                "timeout",
-                "object-storage"
-        );
-
-        /**
-         * Defensive setter: Spring {@code @ConfigurationProperties} binding и пользовательский
-         * код не должны мутировать default-{@link Set} извне. {@code null} нормализуется
-         * в пустое неизменяемое множество.
-         */
-        public Tracing setIntegrationDomains(Set<String> integrationDomains) {
-            this.integrationDomains = (integrationDomains != null)
-                    ? Set.copyOf(integrationDomains)
-                    : Set.of();
-            return this;
-        }
     }
 
     /**

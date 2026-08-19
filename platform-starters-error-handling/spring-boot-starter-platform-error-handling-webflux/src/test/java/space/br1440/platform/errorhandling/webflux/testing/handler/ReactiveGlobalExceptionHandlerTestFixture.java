@@ -17,7 +17,6 @@ import space.br1440.platform.errorhandling.model.mapping.ErrorEntryToDtoMapper;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingEnricherProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingSafetyNetProperties;
-import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 import space.br1440.platform.errorhandling.webflux.testing.support.TestUnknownExceptionHandler;
 
 import java.util.Collections;
@@ -51,7 +50,6 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
         private ErrorHandlingProperties properties = new ErrorHandlingProperties();
         private ErrorHandlingEnricherProperties enricherProperties = new ErrorHandlingEnricherProperties();
         private ErrorHandlingSafetyNetProperties safetyNetProperties = new ErrorHandlingSafetyNetProperties();
-        private ErrorHandlingUpstreamProperties upstreamProperties = new ErrorHandlingUpstreamProperties();
         private UnknownExceptionHandler unknownHandler = new TestUnknownExceptionHandler();
         private ExceptionMetricRecorder recorder = new NoopExceptionMetricRecorder();
         private String applicationName = "test-app";
@@ -81,12 +79,6 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
         @NonNull
         public Builder safetyNetProperties(@NonNull ErrorHandlingSafetyNetProperties safetyNetProperties) {
             this.safetyNetProperties = req(safetyNetProperties, "safetyNetProperties");
-            return this;
-        }
-
-        @NonNull
-        public Builder upstreamProperties(@NonNull ErrorHandlingUpstreamProperties upstreamProperties) {
-            this.upstreamProperties = req(upstreamProperties, "upstreamProperties");
             return this;
         }
 
@@ -146,8 +138,7 @@ public final class ReactiveGlobalExceptionHandlerTestFixture {
             return new ReactiveExceptionHandlerConfig(
                     properties,
                     enricherProperties,
-                    safetyNetProperties,
-                    upstreamProperties
+                    safetyNetProperties
             );
         }
 

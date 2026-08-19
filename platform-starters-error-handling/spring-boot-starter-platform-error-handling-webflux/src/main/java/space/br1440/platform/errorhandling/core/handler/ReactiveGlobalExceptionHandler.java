@@ -25,10 +25,11 @@ import space.br1440.platform.errorhandling.autoconfigure.MdcThreadLocalAccessor;
 import space.br1440.platform.errorhandling.core.constants.ErrorHandlingHeaders;
 import space.br1440.platform.errorhandling.core.constants.ErrorHandlingMdcKeys;
 import space.br1440.platform.errorhandling.core.dispatcher.MetricSnapshotFactory;
-import space.br1440.platform.errorhandling.core.strategy.top.WebFluxExceptionStrategy;
 import space.br1440.platform.errorhandling.core.util.ReactiveCorrelationIdResolver;
 import space.br1440.platform.errorhandling.core.util.StackHintExtractor;
 import space.br1440.platform.errorhandling.core.util.StringUtils;
+import space.br1440.platform.errorhandling.core.util.http.UpstreamOutcome;
+import space.br1440.platform.errorhandling.core.util.http.UpstreamResponseReader;
 import space.br1440.platform.errorhandling.core.util.log.LogStatementWriter;
 import space.br1440.platform.errorhandling.core.util.sanitize.LogSanitizer;
 import space.br1440.platform.errorhandling.extension.ErrorEntryEnricher;
@@ -42,7 +43,6 @@ import space.br1440.platform.errorhandling.model.error_detail.dto.ErrorInfoDetai
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingEnricherProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingSafetyNetProperties;
-import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 import space.br1440.platform.errorhandling.core.util.RetryabilityResolver;
 import space.br1440.platform.errorhandling.http.ErrorMediaTypes;
 import space.br1440.platform.errorhandling.model.ErrorEntry;
@@ -108,7 +108,6 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
     private final ErrorHandlingProperties properties;
     private final ErrorHandlingEnricherProperties enricherProperties;
     private final ErrorHandlingSafetyNetProperties safetyNetProperties;
-    private final ErrorHandlingUpstreamProperties upstreamProperties;
     private final List<TopExceptionHandlingStrategy> topExceptionHandlingStrategies;
     private final UnknownExceptionHandler unknownExceptionHandler;
     private final ExceptionMetricRecorder exceptionMetricRecorder;
@@ -129,7 +128,6 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
         this.properties = handlerConfig.properties();
         this.enricherProperties = handlerConfig.enricherProperties();
         this.safetyNetProperties = handlerConfig.safetyNetProperties();
-        this.upstreamProperties = handlerConfig.upstreamProperties();
         this.topExceptionHandlingStrategies = handlerDependencies.strategies();
         this.unknownExceptionHandler = handlerDependencies.unknownExceptionHandler();
         this.exceptionMetricRecorder = handlerDependencies.metricRecorder();
@@ -178,14 +176,14 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
                 return writeSafetyNetResponse(exchange, correlationId);
             }
 
-            return enrichUpstreamBodyAsync(exception, result.entry(), context)
-                    .flatMap(upstreamEnriched ->
-                            applyEnrichersReactive(upstreamEnriched, context)
+            return deriveUpstreamContextAsync(exception, context)
+                    .flatMap(derivedContext ->
+                            applyEnrichersReactive(result.entry(), derivedContext)
                                     .onErrorResume(enricherChainError -> {
                                         log.warn("Enricher chain failed for [{}], using non-enriched entry: {}",
                                                 exception.getClass().getName(),
                                                 enricherChainError.toString());
-                                        return Mono.just(upstreamEnriched);
+                                        return Mono.just(result.entry());
                                     }))
                     .flatMap(entry -> writeAfterStrategy(
                             exchange, exception, result, entry, durationNanos,
@@ -234,37 +232,39 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
     }
 
     @NonNull
-    private Mono<ErrorEntry> enrichUpstreamBodyAsync(@NonNull Exception exception,
-                                                     @NonNull ErrorEntry entry,
-                                                     @NonNull ErrorHandlingContext context) {
-        ErrorHandlingProperties props = context.getProperties();
-        if (!Boolean.TRUE.equals(props.getPropagateUpstreamErrors())) {
-            return Mono.just(entry);
-        }
-
-        if (!(exception instanceof WebClientResponseException)) {
-            return Mono.just(entry);
-        }
-
-        final long maxBodyBytesCapture = upstreamProperties.getMaxBodyBytes().toBytes();
-        return Mono.fromCallable(() -> WebFluxExceptionStrategy.parseUpstreamErrorCodeWithLimit(exception, entry, context, maxBodyBytesCapture))
+    private Mono<ErrorHandlingContext> deriveUpstreamContextAsync(@NonNull Exception exception,
+                                                                  @NonNull ErrorHandlingContext context) {
+        return Mono.fromCallable(() -> resolveUpstreamOutcome(exception))
                 .subscribeOn(Schedulers.boundedElastic())
                 .timeout(UPSTREAM_PARSE_TIMEOUT)
+                .map(context::withUpstreamOutcome)
                 .onErrorResume(TimeoutException.class, ex -> {
                     exceptionMetricRecorder.recordUpstreamParseTimeout();
                     log.warn("Upstream JSON parse timeout: timeout=[{}], exception=[{}]",
                             UPSTREAM_PARSE_TIMEOUT, exception.getClass().getName());
-                    return Mono.just(entry);
+                    return Mono.just(context);
                 })
                 .onErrorResume(ex -> {
                     if (ex instanceof TimeoutException) {
-                        return Mono.just(entry);
+                        return Mono.just(context);
                     }
 
                     log.warn("Upstream JSON parse failed: exception=[{}], error=[{}]",
                             exception.getClass().getName(), ex.toString());
-                    return Mono.just(entry);
+                    return Mono.just(context);
                 });
+    }
+
+    @NonNull
+    private static UpstreamOutcome resolveUpstreamOutcome(@NonNull Exception exception) {
+        if (exception instanceof WebClientResponseException response) {
+            return UpstreamResponseReader.read(
+                    response.getStatusCode().value(),
+                    response.getHeaders().getContentType(),
+                    response.getResponseBodyAsByteArray());
+        }
+
+        return UpstreamResponseReader.fromFailure(exception);
     }
 
     @NonNull

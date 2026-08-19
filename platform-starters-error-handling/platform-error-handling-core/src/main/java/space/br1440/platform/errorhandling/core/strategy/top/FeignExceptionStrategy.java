@@ -6,16 +6,17 @@ import space.br1440.platform.errorhandling.core.resolver.CauseChainResolver;
 import space.br1440.platform.errorhandling.extension.ErrorHandlingContext;
 import space.br1440.platform.errorhandling.extension.base.AbstractTopExceptionStrategy;
 import space.br1440.platform.errorhandling.model.ErrorEntry;
-import space.br1440.platform.errorhandling.model.error_detail.ErrorDetail;
 import space.br1440.platform.errorhandling.model.error_detail.ErrorInfoDetail;
 import space.br1440.platform.errorhandling.model.error_detail.RetryInfoDetail;
 import space.br1440.platform.errorhandling.extension.LogPolicy;
 import space.br1440.platform.errorhandling.core.util.http.FeignExceptionUtils;
-import space.br1440.platform.errorhandling.core.util.http.UpstreamErrorBodyParser;
-import space.br1440.platform.errorhandling.core.util.ReflectionUtils;
+import space.br1440.platform.errorhandling.core.util.http.UpstreamIntegrationDomain;
 import space.br1440.platform.errorhandling.extension.order.TopExceptionStrategyOrder;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Стратегия обработки ошибок OpenFeign-клиентов (top-level exception).
@@ -96,43 +97,12 @@ public class FeignExceptionStrategy extends AbstractTopExceptionStrategy {
         ErrorEntry entry = createFeignEntry(httpStatus, feignStatus, clientMetadata, diagnosticMetadata, context);
 
         if (isRetryable) {
-            // Sprint 4 (bug-fix): используем .detail(item) — single-add через Lombok
-            // @Singular. Предыдущий код через toBuilder().details(Collection)
-            // приводил к дублированию уже накопленных details (add-семантика
-            // Lombok поверх существующего аккумулятора). Подробно см. Javadoc
-            // ErrorEntry.ErrorEntryBuilder.
             entry = entry.toBuilder()
                     .detail(new RetryInfoDetail())
                     .build();
         }
 
-        if (Boolean.TRUE.equals(context.getProperties().getPropagateUpstreamErrors())) {
-            entry = enrichWithUpstreamErrorCode(exception, entry, context);
-        }
-
         return entry;
-    }
-
-    @NonNull
-    private static ErrorEntry enrichWithUpstreamErrorCode(@NonNull Exception exception,
-                                                          @NonNull ErrorEntry entry,
-                                                          @NonNull ErrorHandlingContext context) {
-        final String[] body = {null};
-
-        ReflectionUtils.invokeMethod(exception, "contentUTF8", content -> {
-            if (content instanceof String s) {
-                body[0] = s;
-            }
-        });
-
-        if (body[0] == null) {
-            return entry;
-        }
-
-        boolean includeReason = Boolean.TRUE.equals(context.getProperties().getPropagateUpstreamReason());
-        return UpstreamErrorBodyParser.parse(body[0], includeReason)
-                .map(info -> UpstreamErrorBodyParser.applyUpstreamInfo(entry, info))
-                .orElse(entry);
     }
 
     @NonNull
@@ -195,7 +165,7 @@ public class FeignExceptionStrategy extends AbstractTopExceptionStrategy {
                                           @NonNull ErrorHandlingContext context) {
         ErrorInfoDetail.ErrorInfoDetailBuilder infoBuilder = ErrorInfoDetail.builder()
                 .reason(httpStatus.getReasonPhrase())
-                .domain("http-integration");
+                .domain(UpstreamIntegrationDomain.HTTP_INTEGRATION);
 
         if (!clientMeta.isEmpty()) {
             infoBuilder.clientMetadata(Collections.unmodifiableMap(new LinkedHashMap<>(clientMeta)));

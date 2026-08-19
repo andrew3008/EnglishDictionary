@@ -63,9 +63,8 @@ public class ErrorHandlingWebFluxAutoConfiguration {
     @ConditionalOnMissingBean
     public ReactiveExceptionHandlerConfig reactiveExceptionHandlerConfig(ErrorHandlingProperties properties,
                                                                          ErrorHandlingEnricherProperties enricherProperties,
-                                                                         ErrorHandlingSafetyNetProperties safetyNetProperties,
-                                                                         ErrorHandlingUpstreamProperties upstreamProperties) {
-        return new ReactiveExceptionHandlerConfig(properties, enricherProperties, safetyNetProperties, upstreamProperties);
+                                                                         ErrorHandlingSafetyNetProperties safetyNetProperties) {
+        return new ReactiveExceptionHandlerConfig(properties, enricherProperties, safetyNetProperties);
     }
 
     @Bean
@@ -107,9 +106,8 @@ public class ErrorHandlingWebFluxAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(name = "webFluxTopExceptionStrategy")
-    public TopExceptionHandlingStrategy webFluxTopExceptionStrategy(CauseChainResolver causeChainResolver,
-                                                                    ErrorHandlingUpstreamProperties upstreamProperties) {
-        return new WebFluxExceptionStrategy(causeChainResolver, upstreamProperties);
+    public TopExceptionHandlingStrategy webFluxTopExceptionStrategy(CauseChainResolver causeChainResolver) {
+        return new WebFluxExceptionStrategy(causeChainResolver);
     }
 
     @Bean

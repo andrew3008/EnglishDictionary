@@ -74,7 +74,8 @@ class GlobalExceptionHandlerTest {
                 new ExceptionLogger(properties),
                 TestCorrelationIdResolver.defaultInstance(),
                 enrichers,
-                new StackHintExtractor(false, List.of())
+                new StackHintExtractor(false, List.of()),
+                List.of()
         );
     }
 

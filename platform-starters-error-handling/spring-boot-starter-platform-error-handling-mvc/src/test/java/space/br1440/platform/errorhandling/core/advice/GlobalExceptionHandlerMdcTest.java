@@ -74,7 +74,8 @@ class GlobalExceptionHandlerMdcTest {
                 new ExceptionLogger(properties),
                 space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                 Collections.emptyList(),
-                new StackHintExtractor(false, List.of())
+                new StackHintExtractor(false, List.of()),
+                Collections.emptyList()
         );
     }
 
@@ -132,7 +133,8 @@ class GlobalExceptionHandlerMdcTest {
                     new ExceptionLogger(properties),
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
-                    new StackHintExtractor(false, List.of())
+                    new StackHintExtractor(false, List.of()),
+                    Collections.emptyList()
             );
 
             // when
@@ -206,7 +208,8 @@ class GlobalExceptionHandlerMdcTest {
                     new ExceptionLogger(props),
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
-                    new StackHintExtractor(false, List.of())
+                    new StackHintExtractor(false, List.of()),
+                    Collections.emptyList()
             );
 
             // when
@@ -329,7 +332,8 @@ class GlobalExceptionHandlerMdcTest {
                     new ExceptionLogger(properties),
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
-                    new StackHintExtractor(false, List.of())
+                    new StackHintExtractor(false, List.of()),
+                    Collections.emptyList()
             );
 
             // when
@@ -357,7 +361,8 @@ class GlobalExceptionHandlerMdcTest {
                     new ExceptionLogger(properties),
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
-                    new StackHintExtractor(false, List.of())
+                    new StackHintExtractor(false, List.of()),
+                    Collections.emptyList()
             );
 
             // when

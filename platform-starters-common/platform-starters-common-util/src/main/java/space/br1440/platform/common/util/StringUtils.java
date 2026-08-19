@@ -14,4 +14,8 @@ public final class StringUtils {
     public static boolean isNullOrBlank(@Nullable String value) {
         return (value == null) || value.isBlank();
     }
+
+    public static boolean hasText(@Nullable String value) {
+        return !isNullOrBlank(value);
+    }
 }
