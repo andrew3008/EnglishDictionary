@@ -5,4 +5,8 @@ public final class TracingSettingsManifestException extends RuntimeException {
     public TracingSettingsManifestException(String message) {
         super(message);
     }
+
+    public TracingSettingsManifestException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

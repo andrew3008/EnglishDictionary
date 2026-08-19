@@ -171,9 +171,7 @@ class P55SecretCanaryTest {
     @Test
     void manifestBuilder_exceptionDoesNotEchoRouteOrValueCanary() {
         MockEnvironment env = authoritativeEnv();
-        env.setProperty(
-                "platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE,
-                CANARY_TOKEN);
+        putAuthoritativeRouteRatio(env, CANARY_ROUTE, CANARY_TOKEN);
 
         ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
                 env, new ConfigServerSettingsProvenanceClassifier(env));
@@ -186,9 +184,7 @@ class P55SecretCanaryTest {
     @Test
     void manifestBuilder_valueInvariantExceptionDoesNotEchoRouteCanary() {
         MockEnvironment env = authoritativeEnv();
-        env.setProperty(
-                "platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE,
-                "1.5");
+        putAuthoritativeRouteRatio(env, CANARY_ROUTE, "1.5");
 
         ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
                 env, new ConfigServerSettingsProvenanceClassifier(env));
@@ -246,6 +242,16 @@ class P55SecretCanaryTest {
                         "platform.tracing.policy.diagnostics.log-level", "INFO"
                 )));
         return env;
+    }
+
+    /**
+     * A route-ratio delivered through a local or unrecognised source is rejected on provenance,
+     * so value-level canaries must stage the entry in an authoritative Config Server source.
+     */
+    private static void putAuthoritativeRouteRatio(MockEnvironment env, String route, String value) {
+        env.getPropertySources().addFirst(new MapPropertySource(
+                "configserver:canary-route",
+                Map.of("platform.tracing.policy.sampling.route-ratios." + route, value)));
     }
 
     private static CompositeData buildAcceptedCompleteWithRoute(String route, double ratio)

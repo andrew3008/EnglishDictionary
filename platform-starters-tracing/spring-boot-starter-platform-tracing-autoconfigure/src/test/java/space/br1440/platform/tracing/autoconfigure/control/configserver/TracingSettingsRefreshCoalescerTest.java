@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
 import org.junit.jupiter.api.Test;
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
@@ -155,10 +156,6 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWarmsSequenceFromAgentBeforeApplying() {
-        // Proves the fix for the confirmed P4 defect: deliverInitial() must read the
-        // Agent-authoritative sequence via currentComplete() before calling applySnapshot,
-        // instead of sending an unwarmed expectedSequence=-1 that the real
-        // PrivateJmxTracingSettingsClient would reject before ever reaching the Agent.
         ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
         when(builder.build()).thenReturn(sampleSnapshot());
 
@@ -175,18 +172,6 @@ class TracingSettingsRefreshCoalescerTest {
         assertThat(result).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
         assertThat(observedSeq.get()).isEqualTo(7);
     }
-
-    // ── regression: real PrivateJmxTracingSettingsClient over a simulated Agent ────
-    //
-    // The tests above use hand-written lambdas satisfying the exact
-    // TracingSettingsApplier / CompleteTracingSettingsReader contracts — a
-    // legitimate "maximally close contract fake". The tests below additionally exercise the
-    // REAL space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxTracingSettingsClient
-    // (real locator, real codec, real javax.management.MBeanServer.invoke() round trip
-    // against FakeAgentPrivateControlPlane), because several of the required invariants —
-    // "no expectedSequence=-1 ever reaches the wire", "no unconditional apply on failed
-    // read" — are actually enforced INSIDE that client, not inside the coalescer itself,
-    // and a coalescer-level lambda fake cannot prove that enforcement is wired end-to-end.
 
     @Test
     void initialDeliveryWithRealClient_authoritativeReadThenApply_roundTrips() throws Exception {
@@ -226,10 +211,7 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_readFailure_blocksWithoutFallback() throws Exception {
-        // Agent never implemented PROPOSED_PRIV_R07: currentComplete() must throw a
-        // contract-violation exception, not silently proceed with a fallback/default policy.
-        try (FakeAgentPrivateControlPlane agent =
-                     FakeAgentPrivateControlPlane.missingReadAcceptedComplete("instance-real-3")) {
+        try (FakeAgentPrivateControlPlane agent = FakeAgentPrivateControlPlane.missingReadAcceptedComplete("instance-real-3")) {
             var client = agent.client();
             ConfigServerSettingsManifestBuilder builder = mock(ConfigServerSettingsManifestBuilder.class);
             when(builder.build()).thenReturn(sampleSnapshot());
@@ -245,13 +227,6 @@ class TracingSettingsRefreshCoalescerTest {
 
     @Test
     void initialDeliveryWithRealClient_malformedResponse_neverSendsUnwarmedSequence() throws Exception {
-        // Agent responds to readAcceptedComplete with a structurally malformed CompositeData.
-        // PrivateJmxTracingSettingsClient.currentComplete() swallows this into
-        // Optional.empty() (cross-classloader transport-style failure), so the coalescer never
-        // obtains an ExpectedSettingsRevision to warm from. The forbidden outcome would be
-        // silently sending an unwarmed/sentinel base to the Agent; instead the coalescer itself
-        // must fail closed before anything reaches the wire, because ExpectedSettingsRevision
-        // has no valid "unknown" representation to fall back on.
         try (FakeAgentPrivateControlPlane agent =
                      FakeAgentPrivateControlPlane.malformedReadAcceptedComplete("instance-real-4")) {
             var client = agent.client();
@@ -264,7 +239,7 @@ class TracingSettingsRefreshCoalescerTest {
             assertThatThrownBy(coalescer::deliverInitial)
                     .as("an unwarmed expected base must never reach applySnapshot; the coalescer "
                             + "must fail closed instead")
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(TracingConfigurationGuardException.class)
                     .hasMessageContaining("no authoritative expected base");
         }
     }
@@ -282,13 +257,8 @@ class TracingSettingsRefreshCoalescerTest {
             assertThat(coalescer.deliverInitial()).isEqualTo(TracingSettingsDeliveryResult.APPLIED);
             assertThat(agent.currentAcceptedSequence()).isEqualTo(4L);
 
-            // Agent process restarts: fresh runtimeInstanceId, sequence baseline reset to 0.
             agent.restartWithNewInstance("instance-after-restart", 0L);
 
-            // A subsequent refresh cycle must re-warm from the NEW instance's authoritative
-            // state (not from the coalescer's stale in-memory lastKnownSequence=4), because
-            // deliverInitial()/every apply path re-reads currentComplete() authoritatively
-            // rather than trusting cached state across a restart boundary.
             TracingSettingsDeliveryResult postRestart = coalescer.deliverInitial();
 
             assertThat(postRestart).isEqualTo(TracingSettingsDeliveryResult.APPLIED);

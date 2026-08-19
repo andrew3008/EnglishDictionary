@@ -15,9 +15,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * P5 TEST §20 P5.5 — coalescer/log disclosure canary (package-local coalescer ctor).
- */
 class P55SecretCanaryCoalescerTest {
 
     private static final String CANARY_ROUTE = "/canary/secret/z9Qx7mK2vL4pR8nW";
@@ -33,9 +30,10 @@ class P55SecretCanaryCoalescerTest {
                      FakeAgentPrivateControlPlane.compliant("agent-" + UUID.randomUUID(), 0L)) {
             PrivateJmxTracingSettingsClient client = agent.client();
             MockEnvironment env = authoritativeEnv();
-            env.setProperty(
-                    "platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE,
-                    CANARY_TOKEN);
+            env.getPropertySources().addFirst(new MapPropertySource(
+                    "configserver:canary-route",
+                    Map.of("platform.tracing.policy.sampling.route-ratios." + CANARY_ROUTE,
+                            CANARY_TOKEN)));
             ConfigServerSettingsManifestBuilder builder = new ConfigServerSettingsManifestBuilder(
                     env, new ConfigServerSettingsProvenanceClassifier(env));
             TracingSettingsRefreshCoalescer coalescer = new TracingSettingsRefreshCoalescer(
@@ -47,6 +45,9 @@ class P55SecretCanaryCoalescerTest {
                     .map(ILoggingEvent::getFormattedMessage)
                     .reduce("", (a, b) -> a + "\n" + b);
             assertThat(logs).contains("Config Server manifest build failed");
+            assertThat(logs)
+                    .as("the rejection under test is the value parse failure, not a provenance rejection")
+                    .contains("Invalid double value for a sampling.route-ratios entry");
             assertThat(logs).doesNotContain(CANARY_ROUTE);
             assertThat(logs).doesNotContain(CANARY_TOKEN);
         } finally {

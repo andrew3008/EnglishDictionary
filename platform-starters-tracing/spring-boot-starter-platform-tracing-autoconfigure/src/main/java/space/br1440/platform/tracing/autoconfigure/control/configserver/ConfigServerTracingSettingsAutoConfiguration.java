@@ -17,6 +17,7 @@ import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConf
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
+import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsDeliveryResult;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
 
 @AutoConfiguration
@@ -76,6 +77,8 @@ public class ConfigServerTracingSettingsAutoConfiguration {
 
     static final class ConfigServerAgentReadinessProbe implements SmartLifecycle {
 
+        static final int PHASE = (SmartLifecycle.DEFAULT_PHASE - 4096);
+
         private final CompleteTracingSettingsReader reader;
         private final TracingSettingsRefreshCoalescer coalescer;
         private volatile boolean running;
@@ -100,8 +103,16 @@ public class ConfigServerTracingSettingsAutoConfiguration {
                         e);
             }
 
-            coalescer.deliverInitial();
-            running = true;
+            TracingSettingsDeliveryResult outcome = coalescer.deliverInitial();
+            if (outcome == TracingSettingsDeliveryResult.APPLIED
+                    || outcome == TracingSettingsDeliveryResult.UNCHANGED) {
+                running = true;
+                return;
+            }
+
+            throw new TracingConfigurationGuardException(
+                    "[CONFIG_SERVER readiness] initial delivery outcome=" + outcome
+                            + " is not a successful start state; probe remains stopped.");
         }
 
         @Override
@@ -112,6 +123,11 @@ public class ConfigServerTracingSettingsAutoConfiguration {
         @Override
         public boolean isRunning() {
             return running;
+        }
+
+        @Override
+        public int getPhase() {
+            return PHASE;
         }
     }
 }

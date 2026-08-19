@@ -487,9 +487,7 @@ class P55MalformedPayloadTest {
     @Test
     void builder_non_numeric_route_ratio_throws() {
         MockEnvironment env = fullPolicyEnvironment();
-        env.setProperty(
-                "platform.tracing.policy.sampling.route-ratios./api",
-                "not-a-number");
+        putAuthoritativeRouteRatio(env, "/api", "not-a-number");
 
         ConfigServerSettingsManifestBuilder builder =
                 new ConfigServerSettingsManifestBuilder(env, configServerClassifier(env));
@@ -506,9 +504,7 @@ class P55MalformedPayloadTest {
     @Test
     void builder_route_ratio_above_one_throws() {
         MockEnvironment env = fullPolicyEnvironment();
-        env.setProperty(
-                "platform.tracing.policy.sampling.route-ratios./api",
-                "1.5");
+        putAuthoritativeRouteRatio(env, "/api", "1.5");
 
         ConfigServerSettingsManifestBuilder builder =
                 new ConfigServerSettingsManifestBuilder(env, configServerClassifier(env));
@@ -526,9 +522,7 @@ class P55MalformedPayloadTest {
     @Test
     void builder_route_ratio_below_zero_throws() {
         MockEnvironment env = fullPolicyEnvironment();
-        env.setProperty(
-                "platform.tracing.policy.sampling.route-ratios./api",
-                "-0.1");
+        putAuthoritativeRouteRatio(env, "/api", "-0.1");
 
         ConfigServerSettingsManifestBuilder builder =
                 new ConfigServerSettingsManifestBuilder(env, configServerClassifier(env));
@@ -778,6 +772,16 @@ class P55MalformedPayloadTest {
                         "platform.tracing.policy.diagnostics.log-level", "INFO"
                 )));
         return env;
+    }
+
+    /**
+     * A route-ratio delivered through a local or unrecognised source is rejected on provenance,
+     * so value-level assertions must stage the entry in an authoritative Config Server source.
+     */
+    private static void putAuthoritativeRouteRatio(MockEnvironment env, String route, String value) {
+        env.getPropertySources().addFirst(new MapPropertySource(
+                "configserver:test-route-ratios",
+                Map.of("platform.tracing.policy.sampling.route-ratios." + route, value)));
     }
 
     private static ConfigServerSettingsProvenanceClassifier configServerClassifier(

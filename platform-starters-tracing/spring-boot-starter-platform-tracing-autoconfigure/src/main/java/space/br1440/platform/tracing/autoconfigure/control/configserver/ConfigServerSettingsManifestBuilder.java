@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.control.configserver;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -26,6 +27,8 @@ public final class ConfigServerSettingsManifestBuilder {
             "platform.tracing.policy.propagation.trace-control-headers.enabled",
             "platform.tracing.policy.diagnostics.log-level"
     );
+
+    private static final String ROUTE_RATIOS_PREFIX = "platform.tracing.policy.sampling.route-ratios";
 
     private final Environment environment;
     private final ConfigServerSettingsProvenanceClassifier provenance;
@@ -72,50 +75,93 @@ public final class ConfigServerSettingsManifestBuilder {
     }
 
     private Map<String, Double> parseRouteRatios() {
-        String prefix = "platform.tracing.policy.sampling.route-ratios";
+        if (!(environment instanceof ConfigurableEnvironment configurable)) {
+            return Map.of();
+        }
 
         Map<String, Double> result = new LinkedHashMap<>();
         try {
-            if (!(environment instanceof ConfigurableEnvironment ce)) {
-                return result;
-            }
-
-            for (PropertySource<?> ps : ce.getPropertySources()) {
-                if (!(ps instanceof EnumerablePropertySource<?> eps)) {
-                    continue;
-                }
-
-                for (String propName : eps.getPropertyNames()) {
-                    if (!propName.startsWith(prefix + ".")) {
-                        continue;
-                    }
-
-                    String route = propName.substring(prefix.length() + 1);
-                    String val = environment.getProperty(propName);
-                    if (val == null) {
-                        throw new TracingSettingsManifestException("Null value for a sampling.route-ratios entry");
-                    }
-
-                    double ratio;
-                    try {
-                        ratio = Double.parseDouble(val);
-                    } catch (NumberFormatException e) {
-                        throw new TracingSettingsManifestException("Invalid double value for a sampling.route-ratios entry");
-                    }
-
-                    if (result.containsKey(route)) {
-                        throw new TracingSettingsManifestException("Duplicate route-ratio key in Config Server manifest");
-                    }
-
-                    result.put(route, ratio);
-                }
+            for (String propertyName : collectRouteRatioPropertyNames(configurable)) {
+                rejectIfProvenanceUnsafe(propertyName);
+                putRouteRatio(result, propertyName);
             }
         } catch (TracingSettingsManifestException e) {
             throw e;
         } catch (Exception e) {
-            throw new TracingSettingsManifestException("Unexpected error parsing route-ratios from Config Server");
+            throw new TracingSettingsManifestException("Unexpected error parsing route-ratios from Config Server", e);
         }
 
         return result;
+    }
+
+    private static Set<String> collectRouteRatioPropertyNames(ConfigurableEnvironment configurable) {
+        Set<String> names = new LinkedHashSet<>();
+        for (PropertySource<?> propertySource : configurable.getPropertySources()) {
+            if (!(propertySource instanceof EnumerablePropertySource<?> enumerable)) {
+                continue;
+            }
+
+            for (String propertyName : enumerable.getPropertyNames()) {
+                if (isRouteRatioProperty(propertyName)) {
+                    names.add(propertyName);
+                }
+            }
+        }
+        return names;
+    }
+
+    private static boolean isRouteRatioProperty(String propertyName) {
+        return propertyName.startsWith(ROUTE_RATIOS_PREFIX + '.')
+                || propertyName.startsWith(ROUTE_RATIOS_PREFIX + '[');
+    }
+
+    private void putRouteRatio(Map<String, Double> target, String propertyName) {
+        String route = routeOf(propertyName);
+        double ratio = parseRouteRatioValue(propertyName);
+
+        Double alreadyBound = target.putIfAbsent(route, ratio);
+        if (alreadyBound != null && Double.compare(alreadyBound, ratio) != 0) {
+            throw new TracingSettingsManifestException(
+                    "Conflicting values for one sampling.route-ratios route spelled in both dotted and bracket form");
+        }
+    }
+
+    private static String routeOf(String propertyName) {
+        String suffix = propertyName.substring(ROUTE_RATIOS_PREFIX.length());
+        if (suffix.charAt(0) != '[') {
+            return suffix.substring(1);
+        }
+
+        if (!suffix.endsWith("]")) {
+            throw new TracingSettingsManifestException("Malformed bracketed sampling.route-ratios key");
+        }
+        return suffix.substring(1, suffix.length() - 1);
+    }
+
+    private void rejectIfProvenanceUnsafe(String propertyName) {
+        ConfigServerSettingsProvenanceClassifier.ProvenanceClass provenanceClass = provenance.classify(propertyName);
+        if (provenanceClass == ConfigServerSettingsProvenanceClassifier.ProvenanceClass.LOCAL_OVERRIDE) {
+            throw new TracingSettingsManifestException("Local override rejected for a sampling.route-ratios entry");
+        }
+
+        if (provenanceClass == ConfigServerSettingsProvenanceClassifier.ProvenanceClass.UNKNOWN) {
+            throw new TracingSettingsManifestException(
+                    "Unknown property source for a sampling.route-ratios entry (source='%s'). Only recognised Config Server sources are accepted."
+                            .formatted(provenance.originSourceName(propertyName))
+            );
+        }
+    }
+
+    private double parseRouteRatioValue(String propertyName) {
+        String raw = environment.getProperty(propertyName);
+        if (raw == null) {
+            throw new TracingSettingsManifestException("Null value for a sampling.route-ratios entry");
+        }
+
+        try {
+            return Double.parseDouble(raw);
+        } catch (NumberFormatException e) {
+            throw new TracingSettingsManifestException("Invalid double value for a sampling.route-ratios entry");
+        }
     }
 }

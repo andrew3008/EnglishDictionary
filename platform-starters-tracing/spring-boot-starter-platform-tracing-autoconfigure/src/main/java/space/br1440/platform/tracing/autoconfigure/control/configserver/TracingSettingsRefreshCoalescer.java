@@ -4,6 +4,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConfigurationGuardException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.CompleteTracingSettings;
 import space.br1440.platform.tracing.autoconfigure.control.settings.ExpectedSettingsRevision;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsManifestException;
@@ -99,13 +100,22 @@ public final class TracingSettingsRefreshCoalescer {
     }
 
     public TracingSettingsDeliveryResult deliverInitial() {
+        TracingSettingsDeliveryResult result = attemptInitialDelivery(false);
+        if (result != TracingSettingsDeliveryResult.STALE) {
+            return result;
+        }
+
+        return attemptInitialDelivery(true);
+    }
+
+    private TracingSettingsDeliveryResult attemptInitialDelivery(boolean isStaleRetry) {
         try {
             CompleteTracingSettings snapshot = manifestBuilder.build();
             refreshLastKnownBase();
 
             ExpectedSettingsRevision base = lastKnownBase;
             if (base == null) {
-                throw new IllegalStateException(
+                throw new TracingConfigurationGuardException(
                         "Initial Config Server delivery: no authoritative expected base "
                                 + "available from Agent (readAcceptedComplete returned empty)");
             }
@@ -116,10 +126,10 @@ public final class TracingSettingsRefreshCoalescer {
             }
             return result;
         } catch (TracingSettingsManifestException e) {
-            log.error("Initial Config Server manifest missing required leaf: {}", e.getMessage());
+            log.error("Initial Config Server manifest missing required leaf (staleRetry={}): {}", isStaleRetry, e.getMessage());
             throw e;
         } catch (IllegalArgumentException e) {
-            log.error("Initial Config Server policy value invalid: {}", e.getMessage());
+            log.error("Initial Config Server policy value invalid (staleRetry={}): {}", isStaleRetry, e.getMessage());
             throw e;
         }
     }
