@@ -114,6 +114,12 @@ public class TracingProperties {
          */
         private final Outbound outbound = new Outbound();
 
+        /**
+         * Trust boundary для inbound {@code X-Correlation-Id}.
+         * Property-namespace: {@code platform.tracing.propagation.correlation.*}.
+         */
+        private final Correlation correlation = new Correlation();
+
         @Getter @Setter @Accessors(chain = true)
         public static class PlatformHeaderNames {
             private String forceTraceHeader = PlatformHeaders.X_TRACE_ON;
@@ -160,6 +166,26 @@ public class TracingProperties {
 
             /** Пробрасывать {@code X-Request-Id} на доверенный destination. */
             private boolean propagateRequestId = true;
+
+            /**
+             * Пробрасывать canonical {@code X-Correlation-Id} ({@link PlatformHeaders#X_CORRELATION_ID})
+             * на доверенный destination. Имя заголовка не конфигурируется — только этот
+             * поведенческий переключатель; fail-closed по умолчанию.
+             */
+            private boolean propagateCorrelationId = false;
+        }
+
+        @Getter @Setter @Accessors(chain = true)
+        public static class Correlation {
+
+            /**
+             * Принимать caller-supplied {@code X-Correlation-Id} на inbound-границе (Servlet/WebFlux).
+             * По умолчанию {@code false} (fail-closed): canonical-режим не генерирует значение сам,
+             * а без явного включения даже валидный inbound-заголовок игнорируется. См.
+             * {@code adr-correlation-ownership.md} — {@code accept-inbound=true} допустим только за
+             * доверенным ingress, снимающим клиентский заголовок.
+             */
+            private boolean acceptInbound = false;
         }
     }
 

@@ -1,6 +1,7 @@
 package space.br1440.platform.tracing.otel.runtime;
 
 import jakarta.annotation.Nonnull;
+import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
 
 /**
@@ -19,5 +20,17 @@ public interface DelegatingTracingRuntime extends TracingRuntime {
     @Nonnull
     default AttributePolicy attributePolicy() {
         return delegate().attributePolicy();
+    }
+
+    @Override
+    @Nonnull
+    default CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace) {
+        return delegate().openRequestIdentityScope(requestId, forceTrace, qaTrace);
+    }
+
+    @Override
+    @Nonnull
+    default TraceControlBoundaryState currentTraceControlBoundary() {
+        return delegate().currentTraceControlBoundary();
     }
 }

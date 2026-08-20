@@ -4,81 +4,69 @@ import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapSetter;
-import lombok.RequiredArgsConstructor;
-
-@RequiredArgsConstructor
-public final class DefaultTraceControlHeaderInjector implements PlatformOutboundPropagation, TraceControlHeaderInjector {
+public final class DefaultTraceControlHeaderInjector implements PlatformOutboundPropagation {
 
     private final String forceTraceHeader;
     private final String qaTraceHeader;
     private final String requestIdHeader;
+    private final OutboundApplicationIdentitySource identitySource;
+
+    public DefaultTraceControlHeaderInjector(String forceTraceHeader,
+                                             String qaTraceHeader,
+                                             String requestIdHeader,
+                                             OutboundApplicationIdentitySource identitySource) {
+        this.forceTraceHeader = forceTraceHeader;
+        this.qaTraceHeader = qaTraceHeader;
+        this.requestIdHeader = requestIdHeader;
+        this.identitySource = Objects.requireNonNull(identitySource, "identitySource");
+    }
 
     @Nonnull
     @Override
-    public OutboundPropagationHeaders resolve(OutboundPropagationDecision decision) {
+    public OutboundPropagationHeaders resolve(@Nullable OutboundPropagationDecision decision, @Nullable InboundTraceControl control) {
         if (isDenied(decision)) {
             return OutboundPropagationHeaders.EMPTY;
         }
 
         try {
-            return resolve(Context.current(), decision);
+            Optional<OutboundPropagationHeaders.Header> forceTrace =
+                    decision.propagateForceTrace() && control != null && control.forceTrace()
+                            ? header(forceTraceHeader, "on")
+                            : Optional.empty();
+
+            Optional<OutboundPropagationHeaders.Header> qaTrace =
+                    decision.propagateQaTrace() && control != null && control.qaTrace()
+                            ? header(qaTraceHeader, "1")
+                            : Optional.empty();
+
+            String requestId = identitySource.currentRequestId();
+            Optional<OutboundPropagationHeaders.Header> requestIdHeaderValue =
+                    decision.propagateRequestId() && requestId != null
+                            ? header(requestIdHeader, requestId)
+                            : Optional.empty();
+
+            String correlationId = identitySource.currentCorrelationId();
+            Optional<OutboundPropagationHeaders.Header> correlationIdHeaderValue =
+                    decision.propagateCorrelationId() && correlationId != null
+                            ? header(PlatformHeaders.X_CORRELATION_ID, correlationId)
+                            : Optional.empty();
+
+            if (forceTrace.isEmpty() && qaTrace.isEmpty() && requestIdHeaderValue.isEmpty() && correlationIdHeaderValue.isEmpty()) {
+                return OutboundPropagationHeaders.EMPTY;
+            }
+
+            return new OutboundPropagationHeaders(forceTrace, qaTrace, requestIdHeaderValue, correlationIdHeaderValue);
         } catch (RuntimeException ignored) {
             return OutboundPropagationHeaders.EMPTY;
         }
-    }
-
-    @Override
-    public <C> void inject(Context context, C carrier, TextMapSetter<C> setter) {
-        if (context == null || carrier == null || setter == null) {
-            return;
-        }
-
-        OutboundPropagationDecision decision = context.get(PlatformTraceContextKeys.PROPAGATION_DECISION);
-        OutboundPropagationHeaders headers = resolve(context, decision);
-        headers.forceTrace().ifPresent(header -> injectHeader(setter, carrier, header));
-        headers.qaTrace().ifPresent(header -> injectHeader(setter, carrier, header));
-        headers.requestId().ifPresent(header -> injectHeader(setter, carrier, header));
-    }
-
-    private static <C> void injectHeader(TextMapSetter<C> setter, C carrier, OutboundPropagationHeaders.Header header) {
-        Objects.requireNonNull(header.value(), "value");
-        setter.set(carrier, header.name(), header.value());
-    }
-
-    private OutboundPropagationHeaders resolve(Context context, OutboundPropagationDecision decision) {
-        if (context == null || isDenied(decision)) {
-            return OutboundPropagationHeaders.EMPTY;
-        }
-
-        InboundTraceControl control = context.get(PlatformTraceContextKeys.TRACE_CONTROL);
-        if (control == null) {
-            return OutboundPropagationHeaders.EMPTY;
-        }
-
-        Optional<OutboundPropagationHeaders.Header> forceTrace =
-                decision.propagateForceTrace() && control.forceTrace()
-                        ? header(forceTraceHeader, "on")
-                        : Optional.empty();
-
-        Optional<OutboundPropagationHeaders.Header> qaTrace =
-                decision.propagateQaTrace() && control.qaTrace()
-                        ? header(qaTraceHeader, "1")
-                        : Optional.empty();
-
-        Optional<OutboundPropagationHeaders.Header> requestId =
-                decision.propagateRequestId() && control.requestId() != null
-                        ? header(requestIdHeader, control.requestId())
-                        : Optional.empty();
-
-        return new OutboundPropagationHeaders(forceTrace, qaTrace, requestId);
     }
 
     private static Optional<OutboundPropagationHeaders.Header> header(String name, String value) {
@@ -89,6 +77,7 @@ public final class DefaultTraceControlHeaderInjector implements PlatformOutbound
         return decision == null
                 || (!decision.propagateForceTrace()
                 && !decision.propagateQaTrace()
-                && !decision.propagateRequestId());
+                && !decision.propagateRequestId()
+                && !decision.propagateCorrelationId());
     }
 }

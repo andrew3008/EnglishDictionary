@@ -75,7 +75,8 @@ class GlobalExceptionHandlerMdcTest {
                 space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                 Collections.emptyList(),
                 new StackHintExtractor(false, List.of()),
-                Collections.emptyList()
+                Collections.emptyList(),
+                null
         );
     }
 
@@ -134,7 +135,8 @@ class GlobalExceptionHandlerMdcTest {
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
                     new StackHintExtractor(false, List.of()),
-                    Collections.emptyList()
+                    Collections.emptyList(),
+                    null
             );
 
             // when
@@ -209,7 +211,8 @@ class GlobalExceptionHandlerMdcTest {
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
                     new StackHintExtractor(false, List.of()),
-                    Collections.emptyList()
+                    Collections.emptyList(),
+                    null
             );
 
             // when
@@ -333,7 +336,8 @@ class GlobalExceptionHandlerMdcTest {
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
                     new StackHintExtractor(false, List.of()),
-                    Collections.emptyList()
+                    Collections.emptyList(),
+                    null
             );
 
             // when
@@ -362,7 +366,8 @@ class GlobalExceptionHandlerMdcTest {
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
                     new StackHintExtractor(false, List.of()),
-                    Collections.emptyList()
+                    Collections.emptyList(),
+                    null
             );
 
             // when
@@ -445,5 +450,4 @@ class GlobalExceptionHandlerMdcTest {
                     .build();
         }
     }
-
 }

@@ -1,0 +1,261 @@
+'
+' =============================================================================
+'  Platform Tracing — runtime-архитектура решения (улучшенная раскладка)
+'
+'  Источник истины: каталог platform-starters-tracing/
+'  (+ platform-tracing-collector-config/).
+'
+'  Отличия от версии в HighLevel_Diagrams.puml — только раскладка и читаемость.
+'  Состав компонентов и семантика связей не менялись.
+'
+'  Что сделано с пересечениями в центре:
+'
+'   1) Порядок узлов в парных пакетах выровнен, чтобы связи между агентом и
+'      приложением шли параллельно, а не по диагонали:
+'        Платформенные мосты : Приём политик -> Мост метрик -> Startup gate
+'        Control surfaces    : Bootstrap -> PrivateControlPlane -> SettingsStore
+'                              -> Read-only MBeans -> Extension readiness
+'      Приём политик стоит напротив PrivateControlPlane, Мост метрик — напротив
+'      Read-only MBeans, Startup gate — напротив Extension readiness.
+'      Порядок фиксируется скрытыми связями, иначе dot расставит узлы произвольно.
+'
+'   2) Связи разведены по двум горизонтальным полосам:
+'        верхняя — control plane и наблюдаемость (Мосты <-> Control surfaces),
+'        нижняя  — data plane (Путь запроса <-> Пайплайн телеметрии).
+'      Полосы не пересекаются между собой. Порядок именно такой, потому что
+'      реальные связи Bootstrap -> Пайплайн и SettingsStore -> Пайплайн идут
+'      сверху вниз: при обратном порядке полос ограничения рангов конфликтуют
+'      и dot возвращает связи в центр.
+'      MDC перенесён в «Путь запроса»: его источник — OTel Javaagent, поэтому
+'      в нижней полосе связь остаётся короткой.
+'
+'   3) Веер TracingSettingsStore -> {sampler, processors, export} свёрнут
+'      в одну связь к пакету пайплайна; перечень потребителей политики
+'      перенесён в подпись связи. Это убрало две длинные линии через кластер.
+'
+'   4) К цвету добавлен стиль линии (сплошная / пунктир / точки) — потоки
+'      различимы в местах пересечения и при чёрно-белой печати.
+'
+'   5) Шаги control plane пронумерованы (C1..C4): порядок читается даже там,
+'      где линии идут рядом.
+'
+'  Рендеринг (Graphviz установлен):
+'    java -jar plantuml.jar -charset UTF-8 -tsvg platform-tracing-runtime-architecture.puml
+'  Рендеринг без Graphviz:
+'    java -jar plantuml.jar -Playout=smetana -charset UTF-8 -tsvg ...
+'
+'  Примечание для правок: creole-разметка PlantUML действует в пределах одной
+'  строки подписи, поэтому теги вида <size:..> не переносятся через \n.
+' =============================================================================
+
+@startuml platform_tracing_runtime_architecture
+
+title Platform Tracing — runtime-архитектура решения
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam defaultFontSize 12
+skinparam ArrowFontSize 11
+skinparam nodesep 20
+skinparam ranksep 38
+
+skinparam package {
+  BorderColor #8A94A6
+  BackgroundColor #F7F8FA
+  FontStyle bold
+  FontSize 13
+}
+skinparam component {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+  FontColor #111827
+}
+skinparam database {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+}
+skinparam actor {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #D9A700
+  FontSize 11
+}
+
+legend top right
+  |= |= Поток |= Линия |
+  | <back:#1F6FEB>      </back> | Data plane: span'ы и заголовки трейс-контекста | сплошная |
+  | <back:#B45309>      </back> | Control plane: runtime-политики, шаги C1..C4 | пунктир |
+  | <back:#15803D>      </back> | Наблюдаемость: метрики, readiness, MDC | точки |
+endlegend
+
+' -----------------------------------------------------------------------------
+' Control plane (внешний источник политики)
+' -----------------------------------------------------------------------------
+package "Control plane" as CONTROL {
+  component "**Config Server**\nplatform.tracing.policy.*\nCategory A — изменяется в runtime" as CONFIG_SERVER
+  actor "SRE / Operator" as OPERATOR
+}
+
+' -----------------------------------------------------------------------------
+' Runtime процесса
+' -----------------------------------------------------------------------------
+package "Kubernetes Pod — JVM сервиса" as POD {
+
+  package "Controlled Platform Agent  (-javaagent)" as AGENT {
+
+    ' Верхняя полоса: control surfaces. Порядок выровнен с «Платформенными мостами».
+    package "Жизненный цикл и control surfaces (JMX)" as AGENT_JMX {
+      component "**Bootstrap**\nSPI-аттестация: устанавливает\nи проверяет пайплайн" as BOOT
+      component "**PrivateControlPlane**\nизолированный MBeanServer,\nPrivateControlWriterMBean" as PRIV_CP
+      database "**TracingSettingsStore**\naccepted revision, CAS-коммит" as SETTINGS
+      component "**Read-only domain MBeans**\nSampling / Scrubbing / Validation /\nExport / Diagnostics" as DOMAIN_MBEANS
+      component "**Extension readiness**\nпрофиль platform-agent-secure-v1" as READINESS
+
+      BOOT -[hidden]down- PRIV_CP
+      PRIV_CP -[hidden]down- SETTINGS
+      SETTINGS -[hidden]down- DOMAIN_MBEANS
+      DOMAIN_MBEANS -[hidden]down- READINESS
+    }
+
+    ' Нижняя полоса: пайплайн телеметрии. Напротив — «Путь запроса».
+    package "Пайплайн телеметрии (OTel SDK)" as PIPELINE {
+      component "**Upstream OTel Javaagent 2.30.0** (pinned)\nbytecode instrumentation: Spring MVC/WebFlux,\nHTTP-клиенты, JDBC, Kafka clients" as OTEL_AGENT
+      component "**Propagators**\nW3C tracecontext + baggage\n(filtering, fail-closed correlation)\n+ platform-trace-control" as PROPAGATORS
+      component "**Sampler**\nSafeSampler -> CompositeSampler\n-> ProductionSamplingPolicyChain" as SAMPLER
+      component "**PlatformCompositeSpanProcessor**\nобогащение, валидация, классификация,\nwatchdog, scrubbing атрибутов" as PROCESSORS
+      component "**Export path**\nBatchSpanProcessor / drop-oldest\n-> SafeSpanExporter\n-> SpanDataBoundaryScrubber -> OTLP" as EXPORT
+
+      OTEL_AGENT -[hidden]down- PROPAGATORS
+    }
+  }
+
+  package "Spring Boot приложение" as APP {
+
+    ' Верхняя полоса: порядок выровнен с control surfaces агента.
+    package "Платформенные мосты" as APP_BRIDGES {
+      component "**Приём политик**\nConfig Server adapter, Actuator\ntracingControl, private JMX client" as POLICY_INTAKE
+      component "**Мост метрик**\nJMX-снимки -> Micrometer" as METRICS_BRIDGE
+      component "**Startup gate**\nконтракт готовности агента,\nиначе fail-fast" as STARTUP_GATE
+
+      POLICY_INTAKE -[hidden]down- METRICS_BRIDGE
+      METRICS_BRIDGE -[hidden]down- STARTUP_GATE
+    }
+
+    ' Нижняя полоса: напротив пайплайна телеметрии.
+    ' MDC стоит последним намеренно: связи OTel Javaagent -> MDC (1 -> 4) и
+    ' Propagators -> Outbound (2 -> 3) вложены друг в друга и не пересекаются.
+    package "Путь запроса" as APP_FLOW {
+      component "**Web-адаптер** (Servlet или WebFlux)\nidentity boundary, response-заголовки\nX-Trace-Id / X-Request-Id" as WEB_ADAPTER
+      component "**Прикладной код**\n@Traced, TraceOperations.spans(),\nActiveTraceContextView" as APP_CODE
+      component "**Outbound propagation**\nHTTP-клиенты и Kafka producer;\nsecure-by-default DENY + allowlist" as OUTBOUND
+      component "**SLF4J MDC**\ntraceId, spanId, requestId,\ncorrelationId" as MDC
+
+      WEB_ADAPTER -[hidden]down- APP_CODE
+      APP_CODE -[hidden]down- OUTBOUND
+      OUTBOUND -[hidden]down- MDC
+    }
+  }
+}
+
+' -----------------------------------------------------------------------------
+' Backend телеметрии
+' -----------------------------------------------------------------------------
+package "Backend телеметрии (контур SRE)" as BACKEND {
+  component "**Collector Tier 1 — DaemonSet**\nk8sattributes, load_balancing\nпо trace_id (Trace Affinity)" as COLLECTOR_T1
+  component "**Collector Tier 2 — Gateway**\ntail_sampling: ошибки, медленные\nи форсированные трейсы — 100%;\nredaction — 2-я линия маскирования" as COLLECTOR_T2
+  database "Jaeger" as JAEGER
+  database "Prometheus" as PROM
+  component "Grafana" as GRAFANA
+}
+
+' -----------------------------------------------------------------------------
+' Внешние границы
+' -----------------------------------------------------------------------------
+package "Внешние границы" as EXTERNAL {
+  component "**Downstream микросервисы**\ntraceparent + платформенные\nзаголовки трейс-контроля" as DOWNSTREAM
+  queue "**Kafka**\nrecord headers,\nтолько доверенные топики" as KAFKA
+}
+
+' -----------------------------------------------------------------------------
+' Data plane — сплошная линия. Верхняя полоса: Путь запроса <-> Пайплайн.
+' -----------------------------------------------------------------------------
+WEB_ADAPTER -[#1F6FEB]-> OTEL_AGENT : входящий запрос
+APP_CODE -[#1F6FEB]-> OTEL_AGENT : ручные span'ы\nчерез платформенный API
+OTEL_AGENT -[#1F6FEB]-> PROPAGATORS : extract / inject
+PROPAGATORS -[#1F6FEB]-> OUTBOUND : активный контекст
+
+OTEL_AGENT -[#1F6FEB]-> SAMPLER : решение о записи
+SAMPLER -[#1F6FEB]-> PROCESSORS : RECORD_AND_SAMPLE
+PROCESSORS -[#1F6FEB]-> EXPORT : завершённые span'ы
+EXPORT -[#1F6FEB]-> COLLECTOR_T1 : OTLP (gRPC / HTTP)
+COLLECTOR_T1 -[#1F6FEB]-> COLLECTOR_T2 : OTLP, шардирование\nпо trace_id
+COLLECTOR_T2 -[#1F6FEB]-> JAEGER : сэмплированные трейсы\n(OTLP gRPC)
+
+OUTBOUND -[#1F6FEB]-> DOWNSTREAM
+OUTBOUND -[#1F6FEB]-> KAFKA
+
+' -----------------------------------------------------------------------------
+' Control plane — пунктир, шаги C1..C4. Нижняя полоса.
+' -----------------------------------------------------------------------------
+CONFIG_SERVER -[#B45309,dashed]-> POLICY_INTAKE : C1 EnvironmentChangeEvent\n-> манифест политики
+OPERATOR -[#B45309,dashed]-> POLICY_INTAKE : C1 Actuator tracingControl
+POLICY_INTAKE -[#B45309,dashed]-> PRIV_CP : C2 applySnapshot\n(private JMX, ожидаемая база)
+PRIV_CP -[#B45309,dashed]-> SETTINGS : C3 валидация + CAS-коммит
+SETTINGS -[#B45309,dashed]-> PIPELINE : C4 применение принятой политики:\nsampler, validation, exporter gate
+
+BOOT -[#B45309,dashed]-> PIPELINE : установка и аттестация
+BOOT -[#B45309,dashed]-> READINESS : публикация capability
+
+' -----------------------------------------------------------------------------
+' Наблюдаемость — точки. Нижняя полоса, связи параллельны control plane.
+' -----------------------------------------------------------------------------
+OTEL_AGENT -[#15803D,dotted]-> MDC : проекция trace-контекста
+DOMAIN_MBEANS -[#15803D,dotted]-> METRICS_BRIDGE : observation snapshots
+READINESS -[#15803D,dotted]-> STARTUP_GATE : контракт готовности
+METRICS_BRIDGE -[#15803D,dotted]-> PROM : /actuator/prometheus
+JAEGER -[#15803D,dotted]-> GRAFANA
+PROM -[#15803D,dotted]-> GRAFANA
+
+' -----------------------------------------------------------------------------
+' Разведение полос по вертикали.
+' dot ранжирует кластеры по входящим в них узлам, поэтому ограничение задаётся
+' между узлами, а не между пакетами. Control-полоса сверху, data-полоса снизу:
+' это согласовано с направлением реальных связей (Bootstrap и SettingsStore
+' идут в пайплайн сверху вниз), поэтому ограничения не конфликтуют с рангами.
+' -----------------------------------------------------------------------------
+READINESS -[hidden]down- OTEL_AGENT
+STARTUP_GATE -[hidden]down- WEB_ADAPTER
+
+' -----------------------------------------------------------------------------
+' Плавающий справочный блок: без якоря, чтобы не тянуть пунктирные коннекторы
+' через всю диаграмму.
+' -----------------------------------------------------------------------------
+note as PIPELINE_CONTRACTS
+  **Детерминированные порядки внутри пайплайна**
+  ====
+  **Sampler** — правила со short-circuit:
+  kill-switch -> hard-drop -> force-header -> qa-trace
+  -> parent-decision -> route-ratio -> default-ratio
+  Итог решения фиксируется в platform.sampling.reason
+  ----
+  **Span-процессоры** — scrubbing всегда последний:
+  baggage -> enriching -> validating -> classification
+  -> watchdog -> span-limits metrics -> scrubbing
+  ----
+  **Маскирование в две линии на границе процесса:**
+  атрибуты в процессоре и полный SpanData
+  (имя, события, links, status) перед отправкой.
+  Отказ правила маскирования — fail-closed.
+end note
+
+EXPORT -[hidden]down- PIPELINE_CONTRACTS
+
+@enduml

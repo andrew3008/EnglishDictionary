@@ -13,7 +13,7 @@
 # Для активации recordpolicy необходимо запустить Collector с параметром:
 # otelcol --config=config.yaml --feature-gates=+processor.tailsamplingprocessor.recordpolicy
 #
-# Рекомендация по памяти (Фаза 16, runbook collector-pipeline-production.md):
+# Рекомендация по памяти:
 #   задавайте env GOMEMLIMIT = 80% hard-лимита контейнера (например, GOMEMLIMIT=1638MiB
 #   при limit 2GiB) в дополнение к memory_limiter — Go GC начнёт агрессивнее освобождать
 #   память до того, как memory_limiter начнёт отбрасывать данные.
@@ -162,7 +162,7 @@ processors:
     timeout: 5s
 
 exporters:
-  # Основной экспортёр (например, в Jaeger или Tempo) через OTLP gRPC.
+  # Основной экспортёр — Jaeger Collector (принимает OTLP нативно) через OTLP gRPC.
   otlp:
     endpoint: ${env:OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger-collector:4317}
     tls:
@@ -190,7 +190,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      # Правильный порядок пайплайна по ADR-collector-boundary:
+      # Правильный порядок пайплайна:
       # memory_limiter первый, batch последний;
       # transform backstop и redaction — ДО tail_sampling, чтобы нормализованный
       # platform.trace.type был доступен политикам, а sensitive-значения были

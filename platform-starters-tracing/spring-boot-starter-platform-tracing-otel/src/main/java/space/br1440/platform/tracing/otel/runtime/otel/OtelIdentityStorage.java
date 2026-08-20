@@ -3,71 +3,68 @@ package space.br1440.platform.tracing.otel.runtime.otel;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.slf4j.MDC;
-
 import space.br1440.platform.tracing.api.context.CorrelationScope;
-import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.otel.mdc.IdentityMdcProjection;
+import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
+import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
 
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.ContextKey;
 import io.opentelemetry.context.Scope;
 
 final class OtelIdentityStorage {
 
     private static final String CORRELATION_BAGGAGE_KEY = "platform.correlation.id";
-    private static final ContextKey<IdentityState> IDENTITY_KEY = ContextKey.named("platform-tracing-identity");
+
+    private final ThreadLocal<TraceControlBoundaryState> traceControlBoundary = new ThreadLocal<>();
 
     Optional<String> requestId() {
-        return Optional.ofNullable(current().requestId());
+        return IdentityMdcProjection.currentRequestId();
     }
 
     Optional<String> correlationId() {
-        return Optional.ofNullable(current().correlationId());
+        return IdentityMdcProjection.currentCorrelationId();
+    }
+
+    TraceControlBoundaryState traceControlBoundary() {
+        TraceControlBoundaryState state = traceControlBoundary.get();
+        return state == null ? TraceControlBoundaryState.EMPTY : state;
     }
 
     String requireCanonicalCorrelationId(String correlationId) {
-        return requireCanonical(correlationId);
+        return CorrelationIdSupport.requireCanonical(correlationId);
     }
 
     CorrelationScope openCorrelationScope(String correlationId) {
-        String canonical = requireCanonical(correlationId);
-        IdentityState current = current();
-        return open(new IdentityState(current.requestId(), canonical));
+        String canonical = CorrelationIdSupport.requireCanonical(correlationId);
+        String currentRequestId = IdentityMdcProjection.currentRequestId().orElse(null);
+        return open(new IdentityState(currentRequestId, canonical));
     }
 
-    private static String requireCanonical(String correlationId) {
-        Objects.requireNonNull(correlationId, "correlationId");
-        if (correlationId.isEmpty() || correlationId.length() > 128) {
-            throw new IllegalArgumentException("correlationId length must be between 1 and 128");
-        }
-
-        for (int index = 0; index < correlationId.length(); index++) {
-            char character = correlationId.charAt(index);
-            boolean canonical = character >= 'A' && character <= 'Z'
-                    || character >= 'a' && character <= 'z'
-                    || character >= '0' && character <= '9'
-                    || character == '_'
-                    || character == '-';
-            if (!canonical) {
-                throw new IllegalArgumentException("correlationId must match [A-Za-z0-9_-]{1,128}");
-            }
-        }
-
-        return correlationId;
-    }
-
-    CorrelationScope openRequestScope(String requestId) {
+    CorrelationScope openRequestScope(String requestId, boolean forceTrace, boolean qaTrace) {
         Objects.requireNonNull(requestId, "requestId");
-        IdentityState current = current();
-        return open(new IdentityState(requestId, current.correlationId()));
+        String currentCorrelationId = IdentityMdcProjection.currentCorrelationId().orElse(null);
+
+        TraceControlBoundaryState previousBoundary = traceControlBoundary();
+        traceControlBoundary.set(new TraceControlBoundaryState(forceTrace, qaTrace));
+        Thread owner = Thread.currentThread();
+        CorrelationScope identityScope = open(new IdentityState(requestId, currentCorrelationId));
+
+        return () -> {
+            if (Thread.currentThread() != owner) {
+                throw new IllegalStateException("CorrelationScope must be closed by its owner thread");
+            }
+
+            try {
+                identityScope.close();
+            } finally {
+                traceControlBoundary.set(previousBoundary);
+            }
+        };
     }
 
     private CorrelationScope open(IdentityState state) {
-        String previousRequestId = MDC.get(TracingMdcKeys.REQUEST_ID);
-        String previousCorrelationId = MDC.get(TracingMdcKeys.CORRELATION_ID);
-
-        Context context = Context.current().with(IDENTITY_KEY, state);
+        Context context = IdentityMdcProjection.withIdentity(Context.current(), state.requestId(), state.correlationId());
         if (state.correlationId() != null) {
             Baggage baggage = Baggage.fromContext(context).toBuilder()
                     .put(CORRELATION_BAGGAGE_KEY, state.correlationId())
@@ -76,54 +73,31 @@ final class OtelIdentityStorage {
         }
 
         Scope contextScope = context.makeCurrent();
-        putOrRemove(TracingMdcKeys.REQUEST_ID, state.requestId());
-        putOrRemove(TracingMdcKeys.CORRELATION_ID, state.correlationId());
+        Object installedToken = IdentityMdcProjection.identityToken(Context.current());
+        IdentityMdcProjection.Snapshot previousMdc = IdentityMdcProjection.installCurrent();
 
-        return new IdentityScope(
-                Thread.currentThread(),
-                state,
-                contextScope,
-                previousRequestId,
-                previousCorrelationId);
-    }
-
-    private static IdentityState current() {
-        IdentityState state = Context.current().get(IDENTITY_KEY);
-        return (state == null) ? IdentityState.EMPTY : state;
-    }
-
-    private static void putOrRemove(String key, String value) {
-        if (value == null) {
-            MDC.remove(key);
-        } else {
-            MDC.put(key, value);
-        }
+        return new IdentityScope(Thread.currentThread(), installedToken, contextScope, previousMdc);
     }
 
     private record IdentityState(String requestId, String correlationId) {
-
-        private static final IdentityState EMPTY = new IdentityState(null, null);
     }
 
     private static final class IdentityScope implements CorrelationScope {
 
         private final Thread owner;
-        private final IdentityState installedState;
+        private final Object installedToken;
         private final Scope contextScope;
-        private final String previousRequestId;
-        private final String previousCorrelationId;
+        private final IdentityMdcProjection.Snapshot previousMdc;
         private boolean closed;
 
         private IdentityScope(Thread owner,
-                              IdentityState installedState,
+                              Object installedToken,
                               Scope contextScope,
-                              String previousRequestId,
-                              String previousCorrelationId) {
+                              IdentityMdcProjection.Snapshot previousMdc) {
             this.owner = owner;
-            this.installedState = installedState;
+            this.installedToken = installedToken;
             this.contextScope = contextScope;
-            this.previousRequestId = previousRequestId;
-            this.previousCorrelationId = previousCorrelationId;
+            this.previousMdc = previousMdc;
         }
 
         @Override
@@ -136,15 +110,14 @@ final class OtelIdentityStorage {
                 return;
             }
 
-            if (Context.current().get(IDENTITY_KEY) != installedState) {
+            if (IdentityMdcProjection.identityToken(Context.current()) != installedToken) {
                 throw new IllegalStateException("CorrelationScope must be closed in LIFO order");
             }
 
             contextScope.close();
             closed = true;
 
-            putOrRemove(TracingMdcKeys.REQUEST_ID, previousRequestId);
-            putOrRemove(TracingMdcKeys.CORRELATION_ID, previousCorrelationId);
+            previousMdc.restore();
         }
     }
 }

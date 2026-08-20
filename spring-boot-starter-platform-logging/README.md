@@ -171,9 +171,12 @@ rules:
 
 | MDC-ключ | Константа в logging | Источник (writer) |
 |----------|---------------------|-------------------|
-| `traceId` | `TracingMdcLogKeys.TRACE_ID` | `micrometer-tracing-bridge-otel` (interim) или OTel Agent `logback-mdc` (production) |
+| `traceId` | `TracingMdcLogKeys.TRACE_ID` | platform-tracing MDC projection (`MDC.get`); agent `logback-mdc` только для logging event |
 | `spanId` | `TracingMdcLogKeys.SPAN_ID` | то же |
 | `traceFlags` | `TracingMdcLogKeys.TRACE_FLAGS` | то же |
+
+OTel Agent `logback-mdc` обогащает logging event и **не гарантирует** `MDC.get()`.
+Application-visible MDC принадлежит platform-tracing projection.
 
 Logging-стартер **только читает** эти ключи:
 

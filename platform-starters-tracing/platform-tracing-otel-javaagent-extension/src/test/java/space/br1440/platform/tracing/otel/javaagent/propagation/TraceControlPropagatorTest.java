@@ -8,20 +8,18 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.otel.javaagent.control.AcceptedPolicyMutationAccess;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.test.harness.InboundTraceControls;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("TraceControlPropagator: extract в Context + inject через decision")
+@DisplayName("TraceControlPropagator: extract в Context; outbound inject — intentional no-op")
 class TraceControlPropagatorTest {
 
     private final TraceControlPropagator propagator =
@@ -53,7 +51,7 @@ class TraceControlPropagatorTest {
         InboundTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
         assertThat(control).isNotNull();
         assertThat(control.forceTrace()).isTrue();
-        assertThat(control.requestId()).isEqualTo("req-1");
+        assertThat(control.requestId()).isNull();
     }
 
     @Test
@@ -64,23 +62,24 @@ class TraceControlPropagatorTest {
     }
 
     @Test
-    @DisplayName("extract отбрасывает невалидный (CRLF) X-Request-Id")
-    void extractRejectsInvalidRequestId() {
+    @DisplayName("extract ignores X-Request-Id and does not create control from it")
+    void extractIgnoresRequestIdOnlyCarrier() {
+        // given
         Map<String, String> carrier = new HashMap<>();
-        carrier.put("X-Request-Id", "bad\r\nid");
+        carrier.put("X-Request-Id", "req-1");
 
+        // when
         Context ctx = propagator.extract(Context.root(), carrier, MAP_GETTER);
 
-        InboundTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
-        assertThat(control).isNotNull();
-        assertThat(control.requestId()).isNull(); // reject-and-null, без мутации
+        // then
+        assertThat(ctx.get(PlatformTraceContextKeys.TRACE_CONTROL)).isNull();
     }
 
     @Test
-    @DisplayName("inject без decision ничего не пишет (secure-by-default)")
-    void injectWithoutDecisionWritesNothing() {
+    @DisplayName("inject — intentional no-op: outbound-инъекция принадлежит app-plane порту, не пропагатору")
+    void injectIsIntentionalNoOp() {
         Context ctx = Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL,
-                InboundTraceControls.of(true, false, "req-1"));
+                InboundTraceControls.of(true, true, "req-1"));
         Map<String, String> carrier = new HashMap<>();
 
         propagator.inject(ctx, carrier, MAP_SETTER);
@@ -89,22 +88,8 @@ class TraceControlPropagatorTest {
     }
 
     @Test
-    @DisplayName("inject с ALLOW_ALL пишет платформенные заголовки")
-    void injectWithDecisionWrites() {
-        Context ctx = Context.root()
-                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControls.of(true, false, "req-1"))
-                .with(PlatformTraceContextKeys.PROPAGATION_DECISION, OutboundPropagationDecision.ALLOW_ALL);
-        Map<String, String> carrier = new HashMap<>();
-
-        propagator.inject(ctx, carrier, MAP_SETTER);
-
-        assertThat(carrier).containsEntry("X-Request-Id", "req-1");
-        assertThat(carrier).containsEntry("X-Trace-On", "on");
-    }
-
-    @Test
-    @DisplayName("Gate выключен (Фаза 14): extract не извлекает, inject не пишет — propagation no-op")
-    void disabledGateMakesPropagationNoOp() {
+    @DisplayName("Gate выключен (Фаза 14): extract не извлекает — propagation no-op")
+    void disabledGateMakesExtractNoOp() {
         // given: gate отключён через настоящий accepted-policy update, а не test-only setEnabled(...)
         PlatformPropagationGate gate = new PlatformPropagationGate();
         TracingSettingsSource policy = TracingSettingsSource.isolatedDefaults();
@@ -138,20 +123,6 @@ class TraceControlPropagatorTest {
         Context extracted = gated.extract(input, inbound, countingGetter);
         assertThat(extracted).isSameAs(input);
         assertThat(getterCalls.get()).isZero();
-
-        // when/then: disabled inject не вызывает setter.set и не меняет carrier
-        Context ctx = Context.root()
-                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControls.of(true, false, "req-1"))
-                .with(PlatformTraceContextKeys.PROPAGATION_DECISION, OutboundPropagationDecision.ALLOW_ALL);
-        Map<String, String> outbound = new HashMap<>();
-        AtomicInteger setterCalls = new AtomicInteger();
-        TextMapSetter<Map<String, String>> countingSetter = (carrier, key, value) -> {
-            setterCalls.incrementAndGet();
-            carrier.put(key, value);
-        };
-        gated.inject(ctx, outbound, countingSetter);
-        assertThat(setterCalls.get()).isZero();
-        assertThat(outbound).isEmpty();
     }
 
     @Test
@@ -165,31 +136,5 @@ class TraceControlPropagatorTest {
                 new TraceControlPropagator("X-Trace-On", "X-QA-Trace", "X-Request-Id", gate);
 
         assertThat(gated.fields()).containsExactlyInAnyOrder("X-Trace-On", "X-QA-Trace", "X-Request-Id");
-    }
-
-    @Test
-    @DisplayName("характеризация: non-atomic multi-header inject — сбой второго setter.set оставляет ранее записанный заголовок")
-    void inject_nonAtomicMultiHeaderWrite_characterization() {
-        // given: decision, разрешающее все три заголовка, чтобы DefaultTraceControlHeaderInjector
-        // вызвал setter.set() до трёх раз последовательно (см. RG-PROP-PARTIAL-WRITE, §0.4/§1.3 плана)
-        Context ctx = Context.root()
-                .with(PlatformTraceContextKeys.TRACE_CONTROL, InboundTraceControls.of(true, true, "req-1"))
-                .with(PlatformTraceContextKeys.PROPAGATION_DECISION, OutboundPropagationDecision.ALLOW_ALL);
-        Map<String, String> carrier = new LinkedHashMap<>();
-        AtomicInteger callCount = new AtomicInteger();
-        TextMapSetter<Map<String, String>> throwsOnSecondCall = (c, key, value) -> {
-            if (callCount.incrementAndGet() == 2) {
-                throw new IllegalStateException("simulated non-fatal failure on second header write");
-            }
-            c.put(key, value);
-        };
-
-        // when/then: TextMapSetter не имеет rollback API — исключение из второго вызова
-        // пробрасывается наружу (TraceControlPropagator/DefaultTraceControlHeaderInjector
-        // не содержат catch-блока), а первый уже записанный заголовок остаётся в carrier.
-        // Это характеризованное implementation limitation, а не нормативный контракт.
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> propagator.inject(ctx, carrier, throwsOnSecondCall));
-        assertThat(carrier).hasSize(1);
     }
 }

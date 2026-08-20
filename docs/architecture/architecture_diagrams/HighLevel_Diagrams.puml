@@ -1,0 +1,303 @@
+'
+' =============================================================================
+'  Platform Tracing — высокоуровневая архитектура решения
+'
+'  Источник истины: репозиторий spring-boot-platform-starters,
+'  каталог platform-starters-tracing/ (+ platform-tracing-collector-config/).
+'
+'  Файл содержит две диаграммы:
+'    1) platform_tracing_runtime_architecture — runtime-архитектура решения:
+'       data plane телеметрии, control plane политик, backend, внешние границы.
+'    2) platform_tracing_module_topology — топология модулей и направление
+'       зависимостей: что публикуется и что от чего зависит.
+'
+'  Рендеринг (Graphviz установлен):
+'    java -jar plantuml.jar -charset UTF-8 -tsvg platform-tracing-architecture.puml
+'  Рендеринг без Graphviz:
+'    java -jar plantuml.jar -Playout=smetana -charset UTF-8 -tsvg ...
+'
+'  Примечание для правок: creole-разметка PlantUML действует в пределах одной
+'  строки подписи, поэтому теги вида <size:..> не переносятся через \n.
+' =============================================================================
+
+@startuml platform_tracing_runtime_architecture
+
+title Platform Tracing — runtime-архитектура решения
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam defaultFontSize 12
+skinparam ArrowFontSize 11
+skinparam nodesep 18
+skinparam ranksep 34
+
+skinparam package {
+  BorderColor #8A94A6
+  BackgroundColor #F7F8FA
+  FontStyle bold
+  FontSize 13
+}
+skinparam component {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+  FontColor #111827
+}
+skinparam database {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+}
+skinparam actor {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #D9A700
+  FontSize 11
+}
+
+legend top right
+  |= |= Назначение потока |
+  | <back:#1F6FEB>      </back> | Data plane: span'ы и заголовки трейс-контекста |
+  | <back:#B45309>      </back> | Control plane: runtime-политики трассировки |
+  | <back:#15803D>      </back> | Наблюдаемость: метрики, readiness, MDC |
+endlegend
+
+' -----------------------------------------------------------------------------
+' Control plane
+' -----------------------------------------------------------------------------
+package "Control plane" as CONTROL {
+  component "**Config Server**\nplatform.tracing.policy.*\nCategory A — изменяется в runtime" as CONFIG_SERVER
+  actor "SRE / Operator" as OPERATOR
+}
+
+' -----------------------------------------------------------------------------
+' Runtime процесса
+' -----------------------------------------------------------------------------
+package "Kubernetes Pod — JVM сервиса" as POD {
+
+  package "Controlled Platform Agent  (-javaagent)" as AGENT {
+
+    package "Пайплайн телеметрии (OTel SDK)" as PIPELINE {
+      component "**Upstream OTel Javaagent 2.30.0** (pinned)\nbytecode instrumentation: Spring MVC/WebFlux,\nHTTP-клиенты, JDBC, Kafka clients" as OTEL_AGENT
+      component "**Propagators**\nW3C tracecontext + baggage\n(filtering, fail-closed correlation)\n+ platform-trace-control" as PROPAGATORS
+      component "**Sampler**\nSafeSampler -> CompositeSampler\n-> ProductionSamplingPolicyChain" as SAMPLER
+      component "**PlatformCompositeSpanProcessor**\nобогащение, валидация, классификация,\nwatchdog, scrubbing атрибутов" as PROCESSORS
+      component "**Export path**\nBatchSpanProcessor / drop-oldest\n-> SafeSpanExporter\n-> SpanDataBoundaryScrubber -> OTLP" as EXPORT
+    }
+
+    package "Жизненный цикл и control surfaces (JMX)" as AGENT_JMX {
+      component "**Bootstrap**\nSPI-аттестация: устанавливает\nи проверяет пайплайн" as BOOT
+      component "**PrivateControlPlane**\nизолированный MBeanServer,\nPrivateControlWriterMBean" as PRIV_CP
+      database "**TracingSettingsStore**\naccepted revision, CAS-коммит" as SETTINGS
+      component "**Read-only domain MBeans**\nSampling / Scrubbing / Validation /\nExport / Diagnostics" as DOMAIN_MBEANS
+      component "**Extension readiness**\nпрофиль platform-agent-secure-v1" as READINESS
+
+      BOOT -[hidden]down- PRIV_CP
+      PRIV_CP -[hidden]down- SETTINGS
+      SETTINGS -[hidden]down- DOMAIN_MBEANS
+      DOMAIN_MBEANS -[hidden]down- READINESS
+    }
+  }
+
+  package "Spring Boot приложение" as APP {
+
+    package "Путь запроса" as APP_FLOW {
+      component "**Web-адаптер** (Servlet или WebFlux)\nidentity boundary, response-заголовки\nX-Trace-Id / X-Request-Id" as WEB_ADAPTER
+      component "**Прикладной код**\n@Traced, TraceOperations.spans(),\nActiveTraceContextView" as APP_CODE
+      component "**Outbound propagation**\nHTTP-клиенты и Kafka producer;\nsecure-by-default DENY + allowlist" as OUTBOUND
+
+      WEB_ADAPTER -[hidden]down- APP_CODE
+      APP_CODE -[hidden]down- OUTBOUND
+    }
+
+    package "Платформенные мосты" as APP_BRIDGES {
+      component "**Startup gate**\nконтракт готовности агента,\nиначе fail-fast" as STARTUP_GATE
+      component "**Приём политик**\nConfig Server adapter, Actuator\ntracingControl, private JMX client" as POLICY_INTAKE
+      component "**Мост метрик**\nJMX-снимки -> Micrometer" as METRICS_BRIDGE
+      component "**SLF4J MDC**\ntraceId, spanId, requestId,\ncorrelationId" as MDC
+
+      STARTUP_GATE -[hidden]down- POLICY_INTAKE
+      POLICY_INTAKE -[hidden]down- METRICS_BRIDGE
+      METRICS_BRIDGE -[hidden]down- MDC
+    }
+  }
+}
+
+' -----------------------------------------------------------------------------
+' Backend
+' -----------------------------------------------------------------------------
+package "Backend телеметрии (контур SRE)" as BACKEND {
+  component "**Collector Tier 1 — DaemonSet**\nk8sattributes, load_balancing\nпо trace_id (Trace Affinity)" as COLLECTOR_T1
+  component "**Collector Tier 2 — Gateway**\ntail_sampling: ошибки, медленные\nи форсированные трейсы — 100%;\nredaction — 2-я линия маскирования" as COLLECTOR_T2
+  database "Jaeger" as JAEGER
+  database "Prometheus" as PROM
+  component "Grafana" as GRAFANA
+}
+
+' -----------------------------------------------------------------------------
+' Внешние границы
+' -----------------------------------------------------------------------------
+package "Внешние границы" as EXTERNAL {
+  component "**Downstream микросервисы**\ntraceparent + платформенные\nзаголовки трейс-контроля" as DOWNSTREAM
+  queue "**Kafka**\nrecord headers,\nтолько доверенные топики" as KAFKA
+}
+
+' -----------------------------------------------------------------------------
+' Data plane
+' -----------------------------------------------------------------------------
+APP_CODE -[#1F6FEB]-> OTEL_AGENT : ручные span'ы\nчерез платформенный API
+WEB_ADAPTER -[#1F6FEB]-> OTEL_AGENT : входящий запрос
+OTEL_AGENT -[#1F6FEB]-> PROPAGATORS : extract / inject
+OTEL_AGENT -[#1F6FEB]-> SAMPLER : решение о записи
+SAMPLER -[#1F6FEB]-> PROCESSORS : RECORD_AND_SAMPLE
+PROCESSORS -[#1F6FEB]-> EXPORT : завершённые span'ы
+EXPORT -[#1F6FEB]-> COLLECTOR_T1 : OTLP (gRPC / HTTP)
+COLLECTOR_T1 -[#1F6FEB]-> COLLECTOR_T2 : OTLP, шардирование\nпо trace_id
+COLLECTOR_T2 -[#1F6FEB]-> JAEGER : сэмплированные трейсы\n(OTLP gRPC)
+
+PROPAGATORS -[#1F6FEB]-> OUTBOUND : активный контекст
+OUTBOUND -[#1F6FEB]-> DOWNSTREAM
+OUTBOUND -[#1F6FEB]-> KAFKA
+
+' -----------------------------------------------------------------------------
+' Control plane
+' -----------------------------------------------------------------------------
+CONFIG_SERVER -[#B45309]-> POLICY_INTAKE : EnvironmentChangeEvent\n-> манифест политики
+OPERATOR -[#B45309]-> POLICY_INTAKE : Actuator tracingControl
+POLICY_INTAKE -[#B45309]-> PRIV_CP : applySnapshot\n(private JMX, ожидаемая база)
+PRIV_CP -[#B45309]-> SETTINGS : валидация + CAS-коммит
+SETTINGS -[#B45309]-> SAMPLER : kill-switch, ratio,\nroute-ratios
+SETTINGS -[#B45309]-> PROCESSORS : validation policy
+SETTINGS -[#B45309]-> EXPORT : exporter gate
+BOOT -[#B45309]-> PIPELINE : установка и аттестация
+BOOT -[#B45309]-> READINESS : публикация capability
+
+' -----------------------------------------------------------------------------
+' Наблюдаемость
+' -----------------------------------------------------------------------------
+OTEL_AGENT -[#15803D]-> MDC : проекция trace-контекста
+READINESS -[#15803D]-> STARTUP_GATE : контракт готовности
+DOMAIN_MBEANS -[#15803D]-> METRICS_BRIDGE : observation snapshots
+METRICS_BRIDGE -[#15803D]-> PROM : /actuator/prometheus
+JAEGER -[#15803D]-> GRAFANA
+PROM -[#15803D]-> GRAFANA
+
+' Плавающий справочный блок: детерминированные порядки внутри пайплайна.
+' Без якоря — чтобы не тянуть длинные пунктирные коннекторы через диаграмму.
+note as PIPELINE_CONTRACTS
+  **Детерминированные порядки внутри пайплайна**
+  ====
+  **Sampler** — правила со short-circuit:
+  kill-switch -> hard-drop -> force-header -> qa-trace
+  -> parent-decision -> route-ratio -> default-ratio
+  Итог решения фиксируется в platform.sampling.reason
+  ----
+  **Span-процессоры** — scrubbing всегда последний:
+  baggage -> enriching -> validating -> classification
+  -> watchdog -> span-limits metrics -> scrubbing
+  ----
+  **Маскирование в две линии на границе процесса:**
+  атрибуты в процессоре и полный SpanData
+  (имя, события, links, status) перед отправкой.
+  Отказ правила маскирования — fail-closed.
+end note
+
+EXPORT -[hidden]down- PIPELINE_CONTRACTS
+
+@enduml
+
+
+@startuml platform_tracing_module_topology
+
+title Platform Tracing — топология модулей и направление зависимостей
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam defaultFontSize 12
+skinparam nodesep 20
+skinparam ranksep 32
+
+skinparam package {
+  BorderColor #8A94A6
+  BackgroundColor #F7F8FA
+  FontStyle bold
+  FontSize 13
+}
+skinparam component {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+  FontColor #111827
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #D9A700
+  FontSize 11
+}
+
+legend top right
+  Стрелка направлена от зависимого модуля к модулю-зависимости.
+  Все артефакты публикуются в Nexus; версии выравнивает платформенный BOM.
+endlegend
+
+component "**spring-boot-starter-platform-bom**\nвыравнивание версий" as BOM
+
+package "Стартеры — тонкие агрегаторы зависимостей" as STARTERS {
+  component "spring-boot-starter-platform-tracing-mvc" as ST_MVC
+  component "spring-boot-starter-platform-tracing-webflux" as ST_WF
+}
+
+package "Spring-автоконфигурация" as AUTOCONF {
+  component "**spring-boot-starter-platform-tracing-autoconfigure-webmvc**\nServlet-специфика: фильтр, HTTP-клиент interceptor" as AC_MVC
+  component "**spring-boot-starter-platform-tracing-autoconfigure-webflux**\nреактивная специфика: WebFilter, ExchangeFilterFunction" as AC_WF
+  component "**spring-boot-starter-platform-tracing-autoconfigure**\nTracingProperties, TracedAspect, Kafka,\nметрики, control plane" as AC
+}
+
+package "Публичный контракт и runtime" as CORE {
+  component "**spring-boot-starter-platform-tracing-otel**\nреализация контракта на OTel SDK,\nпроекция trace-контекста в MDC" as OTEL
+  component "**platform-tracing-runtime-policy**\nправила сэмплирования, outbound-политика,\ninbound trace-control" as POLICY
+  component "**spring-boot-starter-platform-tracing-api**\nTraceOperations, SpanFactory, @Traced,\nзаголовки трейс-контроля, SPI scrubbing" as API
+}
+
+package "Поставка агента" as AGENT_DIST {
+  component "**platform-tracing-otel-javaagent-distribution**\nControlled Platform Agent: upstream OTel javaagent\n+ встроенный extension JAR\nпубликуется как platform-tracing-javaagent" as DIST
+  component "**platform-tracing-otel-javaagent-extension**\nSPI-точки агента, JMX/OpenMBean, readiness,\nclassloader-чувствительная интеграция" as EXT
+}
+
+ST_MVC --> AC_MVC
+ST_WF --> AC_WF
+AC_MVC --> AC
+AC_WF --> AC
+AC --> OTEL
+OTEL --> POLICY
+OTEL --> API
+POLICY --> API
+DIST --> EXT
+EXT --> POLICY
+EXT --> API
+
+BOM -[#6B7280,dashed]-> ST_MVC : import
+BOM -[#6B7280,dashed]-> ST_WF : import
+BOM -[#6B7280,dashed]-> DIST : import
+
+note right of AGENT_DIST
+  Агент поставляется как единый repackaged JAR:
+  extension встроен внутрь, а не подключается
+  через -Dotel.javaagent.extensions.
+  Приложение не объявляет зависимость
+  на extension напрямую.
+end note
+
+note bottom of STARTERS
+  Сервис подключает ровно один стартер — MVC
+  или WebFlux. Адаптеры изолированы друг от друга.
+end note
+
+@enduml
+

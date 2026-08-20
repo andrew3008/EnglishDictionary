@@ -1,6 +1,7 @@
 package space.br1440.platform.errorhandling.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -27,12 +28,14 @@ import space.br1440.platform.errorhandling.core.handler.ReactiveGlobalExceptionH
 import space.br1440.platform.errorhandling.core.handler.ReactiveExceptionHandlerConfig;
 import space.br1440.platform.errorhandling.core.util.StackHintExtractor;
 import space.br1440.platform.errorhandling.properties.ErrorHandlingProperties;
+import space.br1440.platform.errorhandling.model.RequestContext;
 import space.br1440.platform.errorhandling.model.mapping.ErrorEntryToDtoMapper;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingEnricherProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingSafetyNetProperties;
 import space.br1440.platform.errorhandling.webflux.properties.ErrorHandlingUpstreamProperties;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 @AutoConfiguration(
         after = ErrorHandlingCoreAutoConfiguration.class,
@@ -76,7 +79,9 @@ public class ErrorHandlingWebFluxAutoConfiguration {
                                                                                      @Qualifier("errorHandlingJsonEncoder") Jackson2JsonEncoder jsonEncoder,
                                                                                      @Qualifier("orderedErrorEntryEnrichers") List<ErrorEntryEnricher> entryEnrichers,
                                                                                      StackHintExtractor stackHintExtractor,
-                                                                                     ReactiveCorrelationIdResolver correlationIdResolver) {
+                                                                                     ReactiveCorrelationIdResolver correlationIdResolver,
+                                                                                     @Qualifier("tracingRequestContextSupplier")
+                                                                                     ObjectProvider<Supplier<RequestContext>> tracingRequestContextSupplierProvider) {
         return new ReactiveExceptionHandlerDependencies(
                 strategies,
                 unknownExceptionHandler,
@@ -85,7 +90,8 @@ public class ErrorHandlingWebFluxAutoConfiguration {
                 jsonEncoder,
                 entryEnrichers,
                 stackHintExtractor,
-                correlationIdResolver
+                correlationIdResolver,
+                tracingRequestContextSupplierProvider.getIfAvailable()
         );
     }
 

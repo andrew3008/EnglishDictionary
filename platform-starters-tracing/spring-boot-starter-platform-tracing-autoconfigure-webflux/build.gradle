@@ -17,6 +17,7 @@ dependencies {
     api 'io.micrometer:context-propagation'
 
     implementation project(':platform-starters-common:platform-starters-common-util')
+    implementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework.boot:spring-boot'
     implementation 'org.slf4j:slf4j-api'
@@ -31,7 +32,6 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation project(':platform-starters-tracing:spring-boot-starter-platform-tracing-webflux')
-    testImplementation project(':platform-starters-tracing:platform-tracing-runtime-policy')
     testImplementation project(':platform-starters-tracing:platform-tracing-testkit')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'

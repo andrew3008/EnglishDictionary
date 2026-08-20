@@ -5,10 +5,10 @@ import lombok.experimental.UtilityClass;
 /**
  * Канонические имена MDC-ключей трассировки для интеграции с {@code platform-tracing} v1.
  * <p>
- * Logging-стартер <b>не записывает</b> эти ключи — их заполняет writer трассировки:
- * {@code micrometer-tracing-bridge-otel} (interim, dev) или {@code OpenTelemetryAppender}
- * с camelCase keys (production, см. platform-tracing ADR-mdc-via-otel-agent-logback).
- * Стартер только <b>читает</b> их из MDC при формировании лог-записи ({@code %maskedMDC} в текстовом паттерне,
+ * Logging-стартер <b>не записывает</b> эти ключи. Application-visible {@code MDC.get()} заполняет
+ * platform-tracing scope-scoped проекция. OTel Agent {@code logback-mdc} обогащает только logging event
+ * теми же каноническими именами и <b>не гарантирует</b> {@code MDC.get()}.
+ * Стартер только <b>читает</b> ключи из MDC при формировании лог-записи ({@code %maskedMDC} в текстовом паттерне,
  * поля MDC в {@code LogstashEncoder} для JSON).
  * <p>
  * Имена {@code traceId}, {@code spanId}, {@code traceFlags} выровнены с
@@ -31,4 +31,5 @@ public final class TracingMdcLogKeys {
 
     /** W3C trace flags (2 hex-символа). */
     public static final String TRACE_FLAGS = "traceFlags";
+
 }

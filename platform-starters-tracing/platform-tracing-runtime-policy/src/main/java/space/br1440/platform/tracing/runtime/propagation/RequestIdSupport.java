@@ -12,7 +12,7 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class RequestIdSupport {
 
-    public static final int MAX_LENGTH = 128;
+    public static final int MAX_LENGTH = CanonicalIdGrammar.MAX_LENGTH;
 
     @Nonnull
     public static String resolve(@Nullable String incoming) {
@@ -26,22 +26,7 @@ public final class RequestIdSupport {
             return null;
         }
 
-        String t = raw.trim();
-        if (t.isEmpty() || (t.length() > MAX_LENGTH)) {
-            return null;
-        }
-
-        for (int i = 0; i < t.length(); i++) {
-            char c = t.charAt(i);
-            boolean ok = (c >= 'a' && c <= 'z')
-                    || (c >= 'A' && c <= 'Z')
-                    || (c >= '0' && c <= '9')
-                    || c == '_' || c == '-';
-            if (!ok) {
-                return null;
-            }
-        }
-
-        return t;
+        String trimmed = raw.trim();
+        return CanonicalIdGrammar.isCanonical(trimmed) ? trimmed : null;
     }
 }

@@ -7,6 +7,8 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
 
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+
 public final class ModuleTaxonomyArchRules {
 
     public static final ArchRule API_MAIN_NO_IMPLEMENTATION_DEPENDENCY = noClasses()
@@ -191,6 +193,14 @@ public final class ModuleTaxonomyArchRules {
             .allowEmptyShould(true)
             .because("the trusted-destination factory is available only to approved composition owners");
 
+    public static final ArchRule OUTBOUND_DOES_NOT_READ_INBOUND_TRACE_CONTROL_REQUEST_ID = noClasses()
+            .that().resideInAnyPackage(
+                    "space.br1440.platform.tracing.otel.javaagent.propagation..",
+                    "space.br1440.platform.tracing.runtime.propagation.control..")
+            .should().callMethod(InboundTraceControl.class, "requestId")
+            .because("requestId for outbound/application-identity semantics is owned by application"
+                    + " identity, not the agent-plane InboundTraceControl");
+
     public static final ArchRule OTEL_EXTENSION_MDC_FROM_CORE = noClasses()
             .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
             .and().resideOutsideOfPackage("..test..")
@@ -205,9 +215,7 @@ public final class ModuleTaxonomyArchRules {
             @Override
             public boolean test(JavaClass input) {
                 String name = input.getName();
-                return "space.br1440.platform.tracing.runtime.propagation.control.TraceControlHeaderInjector"
-                        .equals(name)
-                        || "space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys"
+                return "space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys"
                         .equals(name)
                         || "space.br1440.platform.tracing.otel.propagation.OtelTraceparentReader"
                         .equals(name);
@@ -237,6 +245,7 @@ public final class ModuleTaxonomyArchRules {
                 if (!input.getPackageName().contains(".api.mdc")) {
                     return false;
                 }
+
                 String simpleName = input.getSimpleName();
                 return !"TracingMdcKeys".equals(simpleName);
             }

@@ -7,28 +7,39 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
+import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
 public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestInterceptor {
 
     private final OutboundPropagationPolicy policy;
     private final PlatformOutboundPropagation propagation;
+    private final RequestIdentityBoundarySupport identityBoundary;
 
     public PlatformOutboundHttpInterceptor(OutboundPropagationPolicy policy,
-                                           PlatformOutboundPropagation propagation) {
+                                           PlatformOutboundPropagation propagation,
+                                           RequestIdentityBoundarySupport identityBoundary) {
         this.policy = policy;
         this.propagation = propagation;
+        this.identityBoundary = identityBoundary;
     }
 
     @Override
     public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
         try {
+            request.getHeaders().remove(PlatformHeaders.X_CORRELATION_ID);
+
             String host = request.getURI().getHost();
             OutboundPropagationDecision decision = policy.decide(host);
-            apply(request, propagation.resolve(decision));
+            InboundTraceControl control = new InboundTraceControl(
+                    identityBoundary.forceTrace(), identityBoundary.qaTrace(), null, null, null
+            );
+            apply(request, propagation.resolve(decision, control));
         } catch (RuntimeException ignored) {
         }
 
@@ -39,6 +50,7 @@ public final class PlatformOutboundHttpInterceptor implements ClientHttpRequestI
         headers.forceTrace().ifPresent(header -> setHeader(request, header));
         headers.qaTrace().ifPresent(header -> setHeader(request, header));
         headers.requestId().ifPresent(header -> setHeader(request, header));
+        headers.correlationId().ifPresent(header -> setHeader(request, header));
     }
 
     private static void setHeader(HttpRequest request, OutboundPropagationHeaders.Header header) {

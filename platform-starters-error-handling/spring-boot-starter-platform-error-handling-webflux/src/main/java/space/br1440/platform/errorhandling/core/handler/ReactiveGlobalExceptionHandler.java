@@ -14,6 +14,7 @@ import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebExceptionHandler;
@@ -59,6 +60,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  * Центральный диспетчер исключений для Spring WebFlux.
@@ -118,6 +120,9 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
     private final StackHintExtractor stackHintExtractor;
     private final ReactiveCorrelationIdResolver correlationIdResolver;
 
+    @Nullable
+    private final Supplier<RequestContext> tracingRequestContextSupplier;
+
     public ReactiveGlobalExceptionHandler(@NonNull ReactiveExceptionHandlerConfig config,
                                           @NonNull ReactiveExceptionHandlerDependencies dependencies,
                                           @NonNull String applicationName) {
@@ -136,6 +141,23 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
         this.entryEnrichers = handlerDependencies.entryEnrichers();
         this.stackHintExtractor = handlerDependencies.stackHintExtractor();
         this.correlationIdResolver = handlerDependencies.correlationIdResolver();
+        this.tracingRequestContextSupplier = handlerDependencies.tracingRequestContextSupplier();
+    }
+
+    @NonNull
+    private String resolveCorrelationId(@NonNull ServerHttpRequest request) {
+        if (tracingRequestContextSupplier != null) {
+            String correlationId = tracingRequestContextSupplier.get().correlationId();
+            return (correlationId == null) ? "" : correlationId;
+        }
+
+        return correlationIdResolver.resolveFromRequest(request);
+    }
+
+    private void setCorrelationIdHeaderIfOwned(@NonNull ServerHttpResponse response, @NonNull String correlationId) {
+        if (tracingRequestContextSupplier == null) {
+            response.getHeaders().set(ErrorHandlingHeaders.X_CORRELATION_ID, correlationId);
+        }
     }
 
     @Override
@@ -152,7 +174,7 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
             return Mono.error(ex);
         }
 
-        String correlationId = correlationIdResolver.resolveFromRequest(exchange.getRequest());
+        String correlationId = resolveCorrelationId(exchange.getRequest());
         String requestPath = exchange.getRequest().getPath().value();
 
         return Mono.deferContextual(ctxView -> {
@@ -382,7 +404,7 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
 
         response.setStatusCode(enriched.getHttpStatus());
         response.getHeaders().setContentType(ErrorMediaTypes.ERROR_RESPONSE_MEDIA_TYPE);
-        response.getHeaders().set(ErrorHandlingHeaders.X_CORRELATION_ID, correlationId);
+        setCorrelationIdHeaderIfOwned(response, correlationId);
 
         long retryDelaySeconds = RetryabilityResolver.retryDelayHeaderSeconds(enriched);
         if (retryDelaySeconds > 0) {
@@ -424,7 +446,7 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
 
     @NonNull
     private Mono<Void> handleFatalThrowable(@NonNull ServerWebExchange exchange, @NonNull Throwable fatal) {
-        String correlationId = correlationIdResolver.resolveFromRequest(exchange.getRequest());
+        String correlationId = resolveCorrelationId(exchange.getRequest());
 
         log.error("FATAL Throwable in WebFlux pipeline — bypassing enrichers/strategies. "
                         + "Type=[{}], correlationId=[{}]",
@@ -464,7 +486,7 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
 
         response.setStatusCode(HttpStatus.SERVICE_UNAVAILABLE);
         response.getHeaders().setContentType(ErrorMediaTypes.ERROR_RESPONSE_MEDIA_TYPE);
-        response.getHeaders().set(ErrorHandlingHeaders.X_CORRELATION_ID, correlationId);
+        setCorrelationIdHeaderIfOwned(response, correlationId);
 
         Publisher<? extends DataBuffer> body = jsonEncoder.encode(
                 Mono.just(error),
@@ -505,7 +527,7 @@ public class ReactiveGlobalExceptionHandler implements WebExceptionHandler {
 
         response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
         response.getHeaders().setContentType(ErrorMediaTypes.ERROR_RESPONSE_MEDIA_TYPE);
-        response.getHeaders().set(ErrorHandlingHeaders.X_CORRELATION_ID, correlationId);
+        setCorrelationIdHeaderIfOwned(response, correlationId);
 
         Publisher<? extends DataBuffer> body = jsonEncoder.encode(
                 Mono.just(error),

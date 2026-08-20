@@ -8,17 +8,18 @@ package space.br1440.platform.tracing.api.propagation.control;
  */
 public record OutboundPropagationDecision(boolean propagateForceTrace,
                                           boolean propagateQaTrace,
-                                          boolean propagateRequestId) {
+                                          boolean propagateRequestId,
+                                          boolean propagateCorrelationId) {
     /**
      * Стандартная политика: передавать ничего. Используется для ненадёжных/внешних получателей.
      */
     public static final OutboundPropagationDecision DENY_ALL =
-            new OutboundPropagationDecision(false, false, false);
+            new OutboundPropagationDecision(false, false, false, false);
 
     /**
      * Стандартная политика: передавать всё. Используется для доверенных внутренних сервисов.
      */
     public static final OutboundPropagationDecision ALLOW_ALL =
-            new OutboundPropagationDecision(true, true, true);
+            new OutboundPropagationDecision(true, true, true, true);
 
 }

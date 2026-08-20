@@ -15,12 +15,13 @@ class OutboundPropagationHeadersTest {
         assertThat(OutboundPropagationHeaders.EMPTY.forceTrace()).isEmpty();
         assertThat(OutboundPropagationHeaders.EMPTY.qaTrace()).isEmpty();
         assertThat(OutboundPropagationHeaders.EMPTY.requestId()).isEmpty();
+        assertThat(OutboundPropagationHeaders.EMPTY.correlationId()).isEmpty();
     }
 
     @Test
     void constructorRejectsNullSlots() {
         assertThatNullPointerException().isThrownBy(() ->
-                new OutboundPropagationHeaders(null, Optional.empty(), Optional.empty()));
+                new OutboundPropagationHeaders(null, Optional.empty(), Optional.empty(), Optional.empty()));
     }
 
     @Test

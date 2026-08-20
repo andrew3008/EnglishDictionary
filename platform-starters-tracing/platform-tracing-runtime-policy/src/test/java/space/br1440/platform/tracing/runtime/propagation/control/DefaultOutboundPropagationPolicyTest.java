@@ -15,7 +15,7 @@ class DefaultOutboundPropagationPolicyTest {
 
     private static OutboundPropagationPolicy policy(boolean enabled, boolean force, boolean qa, boolean reqId) {
         TrustedDestinationMatcher matcher = TrustedDestinationMatchers.forHttpHosts(List.of("*.trusted.com"), false);
-        return new DefaultOutboundPropagationPolicy(enabled, matcher, force, qa, reqId);
+        return new DefaultOutboundPropagationPolicy(enabled, matcher, force, qa, reqId, false);
     }
 
     @Test

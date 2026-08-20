@@ -40,4 +40,8 @@ class RuntimePolicyBoundaryArchTest {
     @ArchTest
     static final ArchRule versionedStatePrimitiveRemainsInRuntimePolicy =
             ModuleTaxonomyArchRules.VERSIONED_STATE_PRIMITIVE_ONLY_IN_RUNTIME_POLICY;
+
+    @ArchTest
+    static final ArchRule outboundPropagationDoesNotReadTraceControlRequestId =
+            ModuleTaxonomyArchRules.OUTBOUND_DOES_NOT_READ_INBOUND_TRACE_CONTROL_REQUEST_ID;
 }

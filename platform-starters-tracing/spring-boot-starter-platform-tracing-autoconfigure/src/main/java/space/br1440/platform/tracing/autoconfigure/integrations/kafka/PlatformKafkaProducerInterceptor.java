@@ -7,15 +7,13 @@ import java.util.Objects;
 import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
-import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
-import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
 public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInterceptor<K, V> {
@@ -33,13 +31,17 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
         try {
             if (policy != null && propagation != null && record != null) {
                 OutboundPropagationDecision decision = policy.decide(record.topic());
-                OutboundPropagationHeaders headers = propagation.resolve(decision);
+                InboundTraceControl control = new InboundTraceControl(
+                        identityBoundary != null && identityBoundary.forceTrace(),
+                        identityBoundary != null && identityBoundary.qaTrace(),
+                        null, null, null);
+                OutboundPropagationHeaders headers = propagation.resolve(decision, control);
                 apply(record.headers(), headers);
-                ensureRequestId(record.headers(), decision, headers);
             }
         } catch (RuntimeException ignored) {
             // сбой propagation не должен влиять на отправку сообщения
         }
+
         return record;
     }
 
@@ -81,26 +83,5 @@ public final class PlatformKafkaProducerInterceptor<K, V> implements ProducerInt
         String value = Objects.requireNonNull(header.value(), "value");
         carrier.remove(header.name())
                 .add(header.name(), value.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private void ensureRequestId(Headers carrier,
-                                 OutboundPropagationDecision decision,
-                                 OutboundPropagationHeaders resolved) {
-        if (!decision.propagateRequestId() || resolved.requestId().isPresent()) {
-            return;
-        }
-
-        Header existing = carrier.lastHeader(PlatformHeaders.X_REQUEST_ID);
-        String raw = (existing == null || existing.value() == null)
-                ? null
-                : new String(existing.value(), StandardCharsets.UTF_8);
-
-        String current = (identityBoundary == null)
-                ? null
-                : identityBoundary.requestId().orElse(null);
-
-        String requestId = RequestIdBoundarySupport.resolve(current != null ? current : raw);
-        carrier.remove(PlatformHeaders.X_REQUEST_ID)
-                .add(PlatformHeaders.X_REQUEST_ID, requestId.getBytes(StandardCharsets.UTF_8));
     }
 }

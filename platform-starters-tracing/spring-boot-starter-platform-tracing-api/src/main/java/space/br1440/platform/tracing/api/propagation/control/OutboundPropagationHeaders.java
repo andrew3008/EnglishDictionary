@@ -12,15 +12,17 @@ import jakarta.annotation.Nonnull;
 public record OutboundPropagationHeaders(
         @Nonnull Optional<Header> forceTrace,
         @Nonnull Optional<Header> qaTrace,
-        @Nonnull Optional<Header> requestId) {
+        @Nonnull Optional<Header> requestId,
+        @Nonnull Optional<Header> correlationId) {
 
     public static final OutboundPropagationHeaders EMPTY =
-            new OutboundPropagationHeaders(Optional.empty(), Optional.empty(), Optional.empty());
+            new OutboundPropagationHeaders(Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
 
     public OutboundPropagationHeaders {
         Objects.requireNonNull(forceTrace, "forceTrace");
         Objects.requireNonNull(qaTrace, "qaTrace");
         Objects.requireNonNull(requestId, "requestId");
+        Objects.requireNonNull(correlationId, "correlationId");
     }
 
     /**

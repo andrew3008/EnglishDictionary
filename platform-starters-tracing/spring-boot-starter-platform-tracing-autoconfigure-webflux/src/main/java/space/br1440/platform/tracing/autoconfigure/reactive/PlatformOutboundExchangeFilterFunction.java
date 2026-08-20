@@ -8,6 +8,8 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
@@ -29,13 +31,20 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
     @Override
     @Nonnull
     public Mono<ClientResponse> filter(@Nonnull ClientRequest request, @Nonnull ExchangeFunction next) {
-        return Mono.defer(() -> {
+        return Mono.deferContextual(contextView -> {
             try {
                 String host = request.url().getHost();
                 OutboundPropagationDecision decision = policy.decide(host);
 
+                ReactiveIdentityContextPropagation.IdentityState identityState = contextView
+                        .<ReactiveIdentityContextPropagation.IdentityState>getOrEmpty(ReactiveIdentityContextPropagation.KEY)
+                        .orElse(ReactiveIdentityContextPropagation.EMPTY);
+                InboundTraceControl control = new InboundTraceControl(
+                        identityState.forceTrace(), identityState.qaTrace(), null, null, null);
+
                 ClientRequest.Builder builder = ClientRequest.from(request);
-                apply(builder, propagation.resolve(decision));
+                builder.headers(httpHeaders -> httpHeaders.remove(PlatformHeaders.X_CORRELATION_ID));
+                apply(builder, propagation.resolve(decision, control));
                 return next.exchange(builder.build());
             } catch (RuntimeException ignored) {
                 return next.exchange(request);
@@ -47,6 +56,7 @@ public final class PlatformOutboundExchangeFilterFunction implements ExchangeFil
         headers.forceTrace().ifPresent(header -> setHeader(builder, header));
         headers.qaTrace().ifPresent(header -> setHeader(builder, header));
         headers.requestId().ifPresent(header -> setHeader(builder, header));
+        headers.correlationId().ifPresent(header -> setHeader(builder, header));
     }
 
     private static void setHeader(ClientRequest.Builder builder, OutboundPropagationHeaders.Header header) {

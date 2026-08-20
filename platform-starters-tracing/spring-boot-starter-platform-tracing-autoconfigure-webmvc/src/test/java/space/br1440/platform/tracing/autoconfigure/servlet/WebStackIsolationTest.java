@@ -10,7 +10,9 @@ import space.br1440.platform.tracing.autoconfigure.reactive.PlatformReactiveServ
 import space.br1440.platform.tracing.autoconfigure.reactive.ReactiveTracingAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.reactive.TraceResponseHeaderWebFilter;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,6 +40,7 @@ class WebStackIsolationTest {
                 .withBean(TracingProperties.class, TracingProperties::new)
                 .withBean(RequestIdentityBoundarySupport.class,
                         () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
+                .withBean(InboundTraceControlExtractor.class, DefaultInboundTraceControlExtractor::new)
                 .run(context -> {
                     assertThat(context).hasSingleBean(PlatformServerRequestObservationConvention.class);
                     assertThat(context).hasBean("platformTraceResponseHeaderServletFilterRegistration");
@@ -58,6 +61,7 @@ class WebStackIsolationTest {
                 .withBean(TracingProperties.class, TracingProperties::new)
                 .withBean(RequestIdentityBoundarySupport.class,
                         () -> new RequestIdentityBoundarySupport(NoOpTracingRuntime.noop()))
+                .withBean(InboundTraceControlExtractor.class, DefaultInboundTraceControlExtractor::new)
                 .run(context -> {
                     assertThat(context).hasSingleBean(PlatformReactiveServerRequestObservationConvention.class);
                     assertThat(context).hasSingleBean(TraceResponseHeaderWebFilter.class);

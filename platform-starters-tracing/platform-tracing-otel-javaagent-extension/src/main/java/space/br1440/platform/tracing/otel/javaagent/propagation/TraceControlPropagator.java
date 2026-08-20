@@ -8,9 +8,7 @@ import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
-import space.br1440.platform.tracing.runtime.propagation.control.DefaultTraceControlHeaderInjector;
 import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
-import space.br1440.platform.tracing.runtime.propagation.control.TraceControlHeaderInjector;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -21,10 +19,8 @@ final class TraceControlPropagator implements TextMapPropagator {
 
     private final String forceTraceHeader;
     private final String qaTraceHeader;
-    private final String requestIdHeader;
 
     private final Collection<String> fields;
-    private final TraceControlHeaderInjector outboundInjector;
     private final InboundTraceControlExtractor inboundExtractor;
     private final PlatformPropagationGate gate;
 
@@ -35,9 +31,7 @@ final class TraceControlPropagator implements TextMapPropagator {
     TraceControlPropagator(String forceTraceHeader, String qaTraceHeader, String requestIdHeader, PlatformPropagationGate gate) {
         this.forceTraceHeader = forceTraceHeader;
         this.qaTraceHeader = qaTraceHeader;
-        this.requestIdHeader = requestIdHeader;
         this.fields = List.of(forceTraceHeader, qaTraceHeader, requestIdHeader);
-        this.outboundInjector = new DefaultTraceControlHeaderInjector(forceTraceHeader, qaTraceHeader, requestIdHeader);
         this.inboundExtractor = new DefaultInboundTraceControlExtractor();
         this.gate = gate;
     }
@@ -55,22 +49,19 @@ final class TraceControlPropagator implements TextMapPropagator {
 
         String forceTraceVal = getter.get(carrier, forceTraceHeader);
         String qaTraceVal = getter.get(carrier, qaTraceHeader);
-        String requestIdVal = getter.get(carrier, requestIdHeader);
-        if (isEmpty(forceTraceVal) && isEmpty(qaTraceVal) && isEmpty(requestIdVal)) {
+        if (isEmpty(forceTraceVal) && isEmpty(qaTraceVal)) {
             return context;
         }
 
-        InboundTraceControl control = inboundExtractor.fromHeaders(forceTraceVal, qaTraceVal, requestIdVal);
+        InboundTraceControl control = inboundExtractor.fromHeaders(forceTraceVal, qaTraceVal, null);
         return context.with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }
 
     @Override
     public <C> void inject(@Nonnull Context context, C carrier, @Nonnull TextMapSetter<C> setter) {
-        if (!gate.isEnabled()) {
-            return;
-        }
-
-        outboundInjector.inject(context, carrier, setter);
+        // Intentional no-op: исходящая (outbound) инъекция платформенных заголовков принадлежит
+        // app-plane порту PlatformOutboundPropagation.resolve(decision, control),
+        // а не agent-plane пропагатору.
     }
 
     private static boolean isEmpty(String val) {

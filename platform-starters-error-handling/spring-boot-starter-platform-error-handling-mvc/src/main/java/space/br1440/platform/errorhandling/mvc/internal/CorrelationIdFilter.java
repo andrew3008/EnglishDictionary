@@ -4,42 +4,41 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.MDC;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.web.filter.OncePerRequestFilter;
-import space.br1440.platform.errorhandling.core.constants.ErrorHandlingHeaders;
-import space.br1440.platform.errorhandling.core.constants.ErrorHandlingMdcKeys;
 import space.br1440.platform.errorhandling.core.util.CorrelationIdResolver;
+import space.br1440.platform.errorhandling.model.RequestContext;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 public final class CorrelationIdFilter extends OncePerRequestFilter {
 
     public static final String CORRELATION_ID_ATTRIBUTE = CorrelationIdFilter.class.getName() + ".correlationId";
 
-    private final CorrelationIdResolver resolver;
+    private final LegacyCorrelationIdSupport legacySupport;
 
-    public CorrelationIdFilter(@NonNull CorrelationIdResolver resolver) {
-        this.resolver = resolver;
+    @Nullable
+    private final Supplier<RequestContext> tracingRequestContextSupplier;
+
+    public CorrelationIdFilter(@NonNull CorrelationIdResolver resolver,
+                               @Nullable Supplier<RequestContext> tracingRequestContextSupplier) {
+        this.legacySupport = new LegacyCorrelationIdSupport(resolver);
+        this.tracingRequestContextSupplier = tracingRequestContextSupplier;
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String correlationId = resolver.resolveFromRequest(request);
-        request.setAttribute(CORRELATION_ID_ATTRIBUTE, correlationId);
-
-        if (!response.isCommitted()
-                && !response.containsHeader(ErrorHandlingHeaders.X_CORRELATION_ID)) {
-            response.setHeader(ErrorHandlingHeaders.X_CORRELATION_ID, correlationId);
-        }
-
-        MDC.put(ErrorHandlingMdcKeys.CORRELATION_ID, correlationId);
-        try {
+        if (tracingRequestContextSupplier != null) {
+            String correlationId = tracingRequestContextSupplier.get().correlationId();
+            request.setAttribute(CORRELATION_ID_ATTRIBUTE, correlationId == null ? "" : correlationId);
             filterChain.doFilter(request, response);
-        } finally {
-            MDC.remove(ErrorHandlingMdcKeys.CORRELATION_ID);
+            return;
         }
+
+        legacySupport.handle(request, response, filterChain);
     }
 }

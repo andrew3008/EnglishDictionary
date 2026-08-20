@@ -7,6 +7,7 @@ import org.slf4j.MDC;
 
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
 
 /**
  * {@link ThreadLocal}-хранилище request/correlation identity для {@link NoOpTracingRuntime}
@@ -36,47 +37,36 @@ final class ThreadLocalIdentityStorage {
         return Optional.ofNullable(frame == null ? null : frame.correlationId());
     }
 
+    TraceControlBoundaryState traceControlBoundary() {
+        IdentityFrame frame = current.get();
+        return (frame == null)
+                ? TraceControlBoundaryState.EMPTY
+                : new TraceControlBoundaryState(frame.forceTrace(), frame.qaTrace());
+    }
+
     String requireCanonicalCorrelationId(String correlationId) {
-        return requireCanonical(correlationId);
+        return CorrelationIdSupport.requireCanonical(correlationId);
     }
 
     CorrelationScope openCorrelationScope(String correlationId) {
-        String canonical = requireCanonical(correlationId);
+        String canonical = CorrelationIdSupport.requireCanonical(correlationId);
         IdentityFrame previous = current.get();
         return open(new IdentityFrame(
                 (previous == null) ? null : previous.requestId(),
                 canonical,
+                (previous != null) && previous.forceTrace(),
+                (previous != null) && previous.qaTrace(),
                 previous));
     }
 
-    private static String requireCanonical(String correlationId) {
-        Objects.requireNonNull(correlationId, "correlationId");
-        if (correlationId.isEmpty() || correlationId.length() > 128) {
-            throw new IllegalArgumentException("correlationId length must be between 1 and 128");
-        }
-
-        for (int index = 0; index < correlationId.length(); index++) {
-            char character = correlationId.charAt(index);
-            boolean canonical = character >= 'A' && character <= 'Z'
-                    || character >= 'a' && character <= 'z'
-                    || character >= '0' && character <= '9'
-                    || character == '_'
-                    || character == '-';
-
-            if (!canonical) {
-                throw new IllegalArgumentException("correlationId must match [A-Za-z0-9_-]{1,128}");
-            }
-        }
-
-        return correlationId;
-    }
-
-    CorrelationScope openRequestScope(String requestId) {
+    CorrelationScope openRequestScope(String requestId, boolean forceTrace, boolean qaTrace) {
         Objects.requireNonNull(requestId, "requestId");
         IdentityFrame previous = current.get();
         return open(new IdentityFrame(
                 requestId,
                 (previous == null) ? null : previous.correlationId(),
+                forceTrace,
+                qaTrace,
                 previous));
     }
 
@@ -103,7 +93,9 @@ final class ThreadLocalIdentityStorage {
         }
     }
 
-    private record IdentityFrame(String requestId, String correlationId, IdentityFrame previous) {
+    private record IdentityFrame(String requestId, String correlationId,
+                                  boolean forceTrace, boolean qaTrace,
+                                  IdentityFrame previous) {
     }
 
     private final class IdentityScope implements CorrelationScope {

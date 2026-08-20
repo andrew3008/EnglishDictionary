@@ -76,8 +76,8 @@ public final class NoOpTracingRuntime implements TracingRuntime {
 
     @Override
     @Nonnull
-    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId) {
-        return identityStorage.openRequestScope(requestId);
+    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace) {
+        return identityStorage.openRequestScope(requestId, forceTrace, qaTrace);
     }
 
     @Override
@@ -98,6 +98,11 @@ public final class NoOpTracingRuntime implements TracingRuntime {
         return identityStorage.correlationId();
     }
 
+    @Override
+    @Nonnull
+    public TraceControlBoundaryState currentTraceControlBoundary() {
+        return identityStorage.traceControlBoundary();
+    }
 
     @Override
     public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {

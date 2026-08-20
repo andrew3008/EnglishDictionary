@@ -18,6 +18,18 @@ public final class RequestIdentityBoundarySupport {
         return tracingRuntime.openRequestIdentityScope(requestId);
     }
 
+    public CorrelationScope openRequestScope(String requestId, boolean forceTrace, boolean qaTrace) {
+        return tracingRuntime.openRequestIdentityScope(requestId, forceTrace, qaTrace);
+    }
+
+    public boolean forceTrace() {
+        return tracingRuntime.currentTraceControlBoundary().forceTrace();
+    }
+
+    public boolean qaTrace() {
+        return tracingRuntime.currentTraceControlBoundary().qaTrace();
+    }
+
     public CorrelationScope openCorrelationScope(String correlationId) {
         return tracingRuntime.openCorrelationScope(correlationId);
     }

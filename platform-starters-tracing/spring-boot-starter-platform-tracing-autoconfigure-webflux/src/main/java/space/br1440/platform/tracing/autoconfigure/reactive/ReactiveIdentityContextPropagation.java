@@ -4,6 +4,8 @@ import io.micrometer.context.ContextRegistry;
 import io.micrometer.context.ThreadLocalAccessor;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import space.br1440.platform.tracing.api.context.CorrelationScope;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 
@@ -14,7 +16,7 @@ import java.util.Objects;
 final class ReactiveIdentityContextPropagation implements SmartInitializingSingleton, DisposableBean {
 
     static final String KEY = "platform.identity";
-    static final IdentityState EMPTY = new IdentityState(null, null);
+    static final IdentityState EMPTY = new IdentityState(null, null, false, false);
 
     private final IdentityThreadLocalAccessor accessor;
 
@@ -41,14 +43,18 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
         accessor.clearBridgeScopes();
     }
 
-    record IdentityState(String requestId, String correlationId) {
+    record IdentityState(String requestId, String correlationId, boolean forceTrace, boolean qaTrace) {
 
         IdentityState withRequestId(String value) {
-            return new IdentityState(value, correlationId);
+            return new IdentityState(value, correlationId, forceTrace, qaTrace);
         }
 
         IdentityState withCorrelationId(String value) {
-            return new IdentityState(requestId, value);
+            return new IdentityState(requestId, value, forceTrace, qaTrace);
+        }
+
+        IdentityState withTraceControl(boolean forceTraceValue, boolean qaTraceValue) {
+            return new IdentityState(requestId, correlationId, forceTraceValue, qaTraceValue);
         }
     }
 
@@ -63,21 +69,25 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
         }
 
         @Override
+        @NonNull
         public Object key() {
             return KEY;
         }
 
         @Override
+        @Nullable
         public IdentityState getValue() {
             IdentityState state = new IdentityState(
                     boundarySupport.requestId().orElse(null),
-                    boundarySupport.correlationId().orElse(null)
+                    boundarySupport.correlationId().orElse(null),
+                    boundarySupport.forceTrace(),
+                    boundarySupport.qaTrace()
             );
             return state.equals(EMPTY) ? null : state;
         }
 
         @Override
-        public void setValue(IdentityState value) {
+        public void setValue(@NonNull IdentityState value) {
             bridgeScopes.get().push(new BridgeFrame(openScope(value)));
         }
 
@@ -87,8 +97,11 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
         }
 
         @Override
-        public void restore(IdentityState previousValue) {
+        public void restore(@Nullable IdentityState previousValue) {
             closeBridgeScope();
+            if (previousValue != null && !previousValue.equals(EMPTY) && bridgeScopes.get().isEmpty()) {
+                setValue(previousValue);
+            }
         }
 
         @Override
@@ -96,10 +109,11 @@ final class ReactiveIdentityContextPropagation implements SmartInitializingSingl
             closeBridgeScope();
         }
 
+        @SuppressWarnings("resource")
         private CorrelationScope openScope(IdentityState state) {
-            CorrelationScope requestScope = state.requestId() == null
+            CorrelationScope requestScope = (state.requestId() == null)
                     ? null
-                    : boundarySupport.openRequestScope(state.requestId());
+                    : boundarySupport.openRequestScope(state.requestId(), state.forceTrace(), state.qaTrace());
             try {
                 CorrelationScope correlationScope = state.correlationId() == null
                         ? null

@@ -6,12 +6,15 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
+import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultOutboundPropagationPolicy;
 import space.br1440.platform.tracing.runtime.propagation.control.DefaultTraceControlHeaderInjector;
 import space.br1440.platform.tracing.runtime.propagation.control.TrustedDestinationMatchers;
@@ -23,12 +26,20 @@ public class PlatformOutboundPropagationAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public PlatformOutboundPropagation platformOutboundPropagation(TracingProperties properties) {
+    public InboundTraceControlExtractor inboundTraceControlExtractor() {
+        return new DefaultInboundTraceControlExtractor();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public PlatformOutboundPropagation platformOutboundPropagation(TracingProperties properties,
+                                                                   TraceOperations traceOperations) {
         TracingProperties.Propagation.PlatformHeaderNames headers = properties.getPropagation().getPlatformHeaders();
         return new DefaultTraceControlHeaderInjector(
                 headers.getForceTraceHeader(),
                 headers.getQaTraceHeader(),
-                headers.getRequestIdHeader()
+                headers.getRequestIdHeader(),
+                new TraceOperationsIdentitySource(traceOperations)
         );
     }
 
@@ -46,7 +57,8 @@ public class PlatformOutboundPropagationAutoConfiguration {
                 matcher,
                 outbound.isPropagateForceTrace(),
                 outbound.isPropagateQaTrace(),
-                outbound.isPropagateRequestId()
+                outbound.isPropagateRequestId(),
+                outbound.isPropagateCorrelationId()
         );
     }
 }

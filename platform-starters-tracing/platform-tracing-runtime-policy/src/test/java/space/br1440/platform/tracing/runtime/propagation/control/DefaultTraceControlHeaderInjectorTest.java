@@ -2,103 +2,143 @@ package space.br1440.platform.tracing.runtime.propagation.control;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationHeaders;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
-import io.opentelemetry.context.propagation.TextMapSetter;
-
-@DisplayName("DefaultTraceControlHeaderInjector: secure-by-default + per-header inject")
 class DefaultTraceControlHeaderInjectorTest {
 
-    private static final TextMapSetter<Map<String, String>> MAP_SETTER = (carrier, key, value) -> carrier.put(key, value);
-
-    private final TraceControlHeaderInjector injector =
-            new DefaultTraceControlHeaderInjector("X-Trace-On", "X-QA-Trace", "X-Request-Id");
     private final PlatformOutboundPropagation propagation =
-            new DefaultTraceControlHeaderInjector("X-Trace-On", "X-QA-Trace", "X-Request-Id");
+            new DefaultTraceControlHeaderInjector(
+                    "X-Trace-On", "X-QA-Trace", "X-Request-Id",
+                    OutboundApplicationIdentitySource.of(() -> null, () -> null));
+    private final PlatformOutboundPropagation applicationPropagation =
+            new DefaultTraceControlHeaderInjector(
+                    "X-Trace-On",
+                    "X-QA-Trace",
+                    "X-Request-Id",
+                    new FixedApplicationIdentitySource("req-123", "corr-123"));
 
-    private static Context contextWith(OutboundPropagationDecision decision) {
-        InboundTraceControl control = new DefaultInboundTraceControlExtractor()
-                .fromHeaders("on", "1", "req-123");
-        Context ctx = Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
-        if (decision != null) {
-            ctx = ctx.with(PlatformTraceContextKeys.PROPAGATION_DECISION, decision);
-        }
-        return ctx;
+    private static InboundTraceControl controlOf(boolean forceTrace, boolean qaTrace) {
+        return new InboundTraceControl(forceTrace, qaTrace, "req-from-control", "some-reason", "raw-value");
     }
 
     @Test
-    @DisplayName("without PROPAGATION_DECISION nothing is injected (secure-by-default)")
-    void noDecisionInjectsNothing() {
-        Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(null), carrier, MAP_SETTER);
-        assertThat(carrier).isEmpty();
+    void noDecisionResolvesEmpty() {
+        // when/then
+        assertThat(propagation.resolve(null, controlOf(true, true))).isEqualTo(OutboundPropagationHeaders.EMPTY);
     }
 
     @Test
-    @DisplayName("DENY_ALL injects nothing")
-    void denyAllInjectsNothing() {
-        Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(OutboundPropagationDecision.DENY_ALL), carrier, MAP_SETTER);
-        assertThat(carrier).isEmpty();
-    }
-
-    @Test
-    @DisplayName("requestId-only: only X-Request-Id")
-    void requestIdOnly() {
-        Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(new OutboundPropagationDecision(false, false, true)), carrier, MAP_SETTER);
-        assertThat(carrier).containsOnlyKeys("X-Request-Id");
-        assertThat(carrier.get("X-Request-Id")).isEqualTo("req-123");
-    }
-
-    @Test
-    @DisplayName("force is not propagated by default (decision=false) even with forceTrace in control")
-    void forceSkippedWhenDecisionFalse() {
-        Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(new OutboundPropagationDecision(false, false, false)), carrier, MAP_SETTER);
-        assertThat(carrier).doesNotContainKey("X-Trace-On");
-    }
-
-    @Test
-    @DisplayName("ALLOW_ALL injects all three headers")
-    void allowAllInjectsAll() {
-        Map<String, String> carrier = new HashMap<>();
-        injector.inject(contextWith(OutboundPropagationDecision.ALLOW_ALL), carrier, MAP_SETTER);
-        assertThat(carrier).containsKeys("X-Trace-On", "X-QA-Trace", "X-Request-Id");
-        assertThat(carrier.get("X-Trace-On")).isEqualTo("on");
-    }
-
-    @Test
-    @DisplayName("application port reads current context and returns typed slots")
-    void resolveReadsCurrentContext() {
-        try (Scope ignored = contextWith(OutboundPropagationDecision.ALLOW_ALL).makeCurrent()) {
-            OutboundPropagationHeaders headers = propagation.resolve(OutboundPropagationDecision.ALLOW_ALL);
-
-            assertThat(headers.forceTrace()).contains(
-                    new OutboundPropagationHeaders.Header("X-Trace-On", "on"));
-            assertThat(headers.qaTrace()).contains(
-                    new OutboundPropagationHeaders.Header("X-QA-Trace", "1"));
-            assertThat(headers.requestId()).contains(
-                    new OutboundPropagationHeaders.Header("X-Request-Id", "req-123"));
-        }
-    }
-
-    @Test
-    @DisplayName("application port fail-closed when decision or current control absent")
-    void resolveWithoutRequiredStateIsEmpty() {
-        assertThat(propagation.resolve(null)).isEqualTo(OutboundPropagationHeaders.EMPTY);
-        assertThat(propagation.resolve(OutboundPropagationDecision.ALLOW_ALL))
+    void denyAllResolvesEmpty() {
+        // when/then
+        assertThat(propagation.resolve(OutboundPropagationDecision.DENY_ALL, controlOf(true, true)))
                 .isEqualTo(OutboundPropagationHeaders.EMPTY);
+    }
+
+    @Test
+    void requestIdComesFromApplicationIdentityNotControl() {
+        // when
+        OutboundPropagationHeaders headers = applicationPropagation.resolve(
+                new OutboundPropagationDecision(false, false, true, false), controlOf(true, true));
+
+        // then
+        assertThat(headers).isEqualTo(new OutboundPropagationHeaders(
+                Optional.empty(),
+                Optional.empty(),
+                Optional.of(new OutboundPropagationHeaders.Header("X-Request-Id", "req-123")),
+                Optional.empty()));
+    }
+
+    @Test
+    void requestIdIsAbsentWhenApplicationIdentityIsEmptyEvenIfControlHasValue() {
+        // when
+        OutboundPropagationHeaders headers = propagation.resolve(
+                new OutboundPropagationDecision(false, false, true, false), controlOf(true, true));
+
+        // then
+        assertThat(headers).isEqualTo(OutboundPropagationHeaders.EMPTY);
+    }
+
+    @Test
+    void forceAndQaSkippedWhenDecisionFalse() {
+        // when
+        OutboundPropagationHeaders headers = applicationPropagation.resolve(
+                new OutboundPropagationDecision(false, false, false, false), controlOf(true, true));
+
+        // then
+        assertThat(headers).isEqualTo(OutboundPropagationHeaders.EMPTY);
+    }
+
+    @Test
+    void forceAndQaSkippedWhenControlIsNullOrFalse() {
+        // when
+        OutboundPropagationHeaders headers = applicationPropagation.resolve(
+                OutboundPropagationDecision.ALLOW_ALL, null);
+
+        // then
+        assertThat(headers.forceTrace()).isEmpty();
+        assertThat(headers.qaTrace()).isEmpty();
+        assertThat(headers.requestId()).contains(new OutboundPropagationHeaders.Header("X-Request-Id", "req-123"));
+        assertThat(headers.correlationId()).contains(new OutboundPropagationHeaders.Header(
+                PlatformHeaders.X_CORRELATION_ID, "corr-123"));
+    }
+
+    @Test
+    void allowAllResolvesControlHeadersAndApplicationRequestId() {
+        // when
+        OutboundPropagationHeaders headers = applicationPropagation.resolve(
+                OutboundPropagationDecision.ALLOW_ALL, controlOf(true, true));
+
+        // then
+        assertThat(headers.forceTrace()).contains(new OutboundPropagationHeaders.Header("X-Trace-On", "on"));
+        assertThat(headers.qaTrace()).contains(new OutboundPropagationHeaders.Header("X-QA-Trace", "1"));
+        assertThat(headers.requestId()).contains(new OutboundPropagationHeaders.Header("X-Request-Id", "req-123"));
+        assertThat(headers.correlationId()).contains(new OutboundPropagationHeaders.Header(
+                PlatformHeaders.X_CORRELATION_ID, "corr-123"));
+    }
+
+    @Test
+    void correlationIdSkippedWhenDecisionFalseEvenIfApplicationIdentityHasValue() {
+        // when
+        OutboundPropagationHeaders headers = applicationPropagation.resolve(
+                new OutboundPropagationDecision(false, false, false, false), controlOf(true, true));
+
+        // then
+        assertThat(headers.correlationId()).isEmpty();
+    }
+
+    @Test
+    void samplingReasonAndRawForceTraceValueDoNotAffectResolvedHeaders() {
+        // given
+        InboundTraceControl withOneReason = new InboundTraceControl(true, true, "req-from-control", "force", "on");
+        InboundTraceControl withDifferentReason = new InboundTraceControl(true, true, "req-from-control", "qa", "1");
+
+        // when
+        OutboundPropagationHeaders first = applicationPropagation.resolve(OutboundPropagationDecision.ALLOW_ALL, withOneReason);
+        OutboundPropagationHeaders second = applicationPropagation.resolve(OutboundPropagationDecision.ALLOW_ALL, withDifferentReason);
+
+        // then
+        assertThat(first).isEqualTo(second);
+    }
+
+    private record FixedApplicationIdentitySource(String requestId, String correlationId)
+            implements OutboundApplicationIdentitySource {
+
+        @Override
+        public String currentRequestId() {
+            return requestId;
+        }
+
+        @Override
+        public String currentCorrelationId() {
+            return correlationId;
+        }
     }
 }

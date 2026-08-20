@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.runtime.propagation.control;
 
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationDecision;
 
 import io.opentelemetry.context.ContextKey;
 import lombok.experimental.UtilityClass;
@@ -10,7 +9,5 @@ import lombok.experimental.UtilityClass;
 public final class PlatformTraceContextKeys {
 
     public static final ContextKey<InboundTraceControl> TRACE_CONTROL = ContextKey.named("platform-trace-control");
-
-    public static final ContextKey<OutboundPropagationDecision> PROPAGATION_DECISION = ContextKey.named("platform-propagation-decision");
 
 }

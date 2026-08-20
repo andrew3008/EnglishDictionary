@@ -1,13 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.configuration;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
-// Тест живёт в том же пакете (configuration), что и тестируемые классы, чтобы иметь доступ
-// к package-private OtelSdkDefaults и ExtensionEnvironmentVariables без расширения их видимости.
 class PlatformTracingDefaultsProviderTest {
 
     @Test
@@ -47,6 +45,18 @@ class PlatformTracingDefaultsProviderTest {
     }
 
     @Test
+    void supply_returns_canonical_logging_mdc_key_defaults() {
+        // when
+        Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
+
+        // then
+        assertThat(defaults)
+                .containsEntry("otel.instrumentation.common.logging.trace-id-key", "traceId")
+                .containsEntry("otel.instrumentation.common.logging.span-id-key", "spanId")
+                .containsEntry("otel.instrumentation.common.logging.trace-flags-key", "traceFlags");
+    }
+
+    @Test
     void supply_does_not_contain_empty_values() {
         // when
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
@@ -59,9 +69,6 @@ class PlatformTracingDefaultsProviderTest {
 
     @Test
     void supply_without_env_var_does_not_override_overflow_policy() {
-        // S2 (single-default-owner): без явного env-var supply() не должен переопределять
-        // ключ. Единственный владелец дефолта DROP_OLDEST — ExtensionDefaults, потребляемый
-        // QueueExtensionConfig; дублировать его здесь запрещено правилом одного дефолта.
         Map<String, String> defaults = new PlatformTracingDefaultsProvider().supply();
 
         assertThat(defaults).doesNotContainKey(ExtensionPropertyNames.QUEUE_OVERFLOW_POLICY);
@@ -70,7 +77,6 @@ class PlatformTracingDefaultsProviderTest {
 
     @Test
     void supply_env_var_overrides_default_overflow_policy() {
-        // Env-var имеет приоритет над платформенным default, но уступает System property.
         PlatformTracingDefaultsProvider provider =
                 new PlatformTracingDefaultsProvider(name ->
                         ExtensionEnvironmentVariables.QUEUE_OVERFLOW_POLICY.equals(name) ? "UPSTREAM" : null);

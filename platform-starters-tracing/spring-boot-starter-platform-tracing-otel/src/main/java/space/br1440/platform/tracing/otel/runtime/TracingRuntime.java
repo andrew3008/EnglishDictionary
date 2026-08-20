@@ -24,7 +24,12 @@ public interface TracingRuntime {
     CorrelationScope openCorrelationScope(@Nonnull String correlationId);
 
     @Nonnull
-    CorrelationScope openRequestIdentityScope(@Nonnull String requestId);
+    CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace);
+
+    @Nonnull
+    default CorrelationScope openRequestIdentityScope(@Nonnull String requestId) {
+        return openRequestIdentityScope(requestId, false, false);
+    }
 
     @Nonnull
     String requireCanonicalCorrelationId(@Nonnull String correlationId);
@@ -34,6 +39,9 @@ public interface TracingRuntime {
 
     @Nonnull
     Optional<String> currentCorrelationId();
+
+    @Nonnull
+    TraceControlBoundaryState currentTraceControlBoundary();
 
     void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable);
 

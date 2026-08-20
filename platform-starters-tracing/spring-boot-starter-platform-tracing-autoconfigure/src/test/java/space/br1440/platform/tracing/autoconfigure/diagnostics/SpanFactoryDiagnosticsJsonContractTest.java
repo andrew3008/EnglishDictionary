@@ -99,8 +99,9 @@ class SpanFactoryDiagnosticsJsonContractTest {
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(String requestId) {
-            return identityDelegate.openRequestIdentityScope(requestId);
+        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(
+                String requestId, boolean forceTrace, boolean qaTrace) {
+            return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
         }
 
         @Override
@@ -116,6 +117,11 @@ class SpanFactoryDiagnosticsJsonContractTest {
         @Override
         public Optional<String> currentCorrelationId() {
             return identityDelegate.currentCorrelationId();
+        }
+
+        @Override
+        public space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState currentTraceControlBoundary() {
+            return identityDelegate.currentTraceControlBoundary();
         }
 
         @Override
@@ -176,8 +182,9 @@ class SpanFactoryDiagnosticsJsonContractTest {
         }
 
         @Override
-        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(String requestId) {
-            return identityDelegate.openRequestIdentityScope(requestId);
+        public space.br1440.platform.tracing.api.context.CorrelationScope openRequestIdentityScope(
+                String requestId, boolean forceTrace, boolean qaTrace) {
+            return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
         }
 
         @Override
@@ -193,6 +200,11 @@ class SpanFactoryDiagnosticsJsonContractTest {
         @Override
         public Optional<String> currentCorrelationId() {
             return identityDelegate.currentCorrelationId();
+        }
+
+        @Override
+        public space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState currentTraceControlBoundary() {
+            return identityDelegate.currentTraceControlBoundary();
         }
 
         @Override

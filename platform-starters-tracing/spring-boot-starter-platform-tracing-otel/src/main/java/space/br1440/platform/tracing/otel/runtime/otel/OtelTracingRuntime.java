@@ -16,7 +16,9 @@ import space.br1440.platform.tracing.api.span.spec.SpanRelationshipSpec;
 import space.br1440.platform.tracing.api.span.spec.SpanSpec;
 import space.br1440.platform.tracing.otel.context.DefaultActiveTraceContextView;
 import space.br1440.platform.tracing.otel.exception.ExceptionRecorder;
+import space.br1440.platform.tracing.otel.mdc.SpanContextMdcProjection;
 import space.br1440.platform.tracing.otel.runtime.SpanHandleImpl;
+import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.otel.scope.OwningSpanScope;
 import space.br1440.platform.tracing.otel.runtime.state.ImmutableTracingState;
@@ -91,7 +93,16 @@ public final class OtelTracingRuntime implements TracingRuntime {
 
         Span span = builder.startSpan();
         Context ctx = Context.current().with(span);
-        Scope scope = ctx.makeCurrent();
+        Scope otelScope = ctx.makeCurrent();
+        SpanContextMdcProjection.Snapshot previousSpanMdc = SpanContextMdcProjection.installCurrent();
+        Scope scope = () -> {
+            try {
+                otelScope.close();
+            } finally {
+                previousSpanMdc.restore();
+            }
+        };
+
         OwningSpanScope spanScope = new OwningSpanScope(span, scope, exceptionRecorder);
         return SpanHandleImpl.wrap(spanScope);
     }
@@ -110,8 +121,8 @@ public final class OtelTracingRuntime implements TracingRuntime {
 
     @Override
     @Nonnull
-    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId) {
-        return identityStorage.openRequestScope(requestId);
+    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId, boolean forceTrace, boolean qaTrace) {
+        return identityStorage.openRequestScope(requestId, forceTrace, qaTrace);
     }
 
     @Override
@@ -130,6 +141,12 @@ public final class OtelTracingRuntime implements TracingRuntime {
     @Nonnull
     public Optional<String> currentCorrelationId() {
         return identityStorage.correlationId();
+    }
+
+    @Override
+    @Nonnull
+    public TraceControlBoundaryState currentTraceControlBoundary() {
+        return identityStorage.traceControlBoundary();
     }
 
 

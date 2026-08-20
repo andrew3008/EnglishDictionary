@@ -197,7 +197,8 @@ class ErrorHandlingMvcAutoConfigurationTest {
                     space.br1440.platform.errorhandling.testing.support.TestCorrelationIdResolver.defaultInstance(),
                     Collections.emptyList(),
                     extractor,
-                    Collections.emptyList()
+                    Collections.emptyList(),
+                    null
             );
         }
     }

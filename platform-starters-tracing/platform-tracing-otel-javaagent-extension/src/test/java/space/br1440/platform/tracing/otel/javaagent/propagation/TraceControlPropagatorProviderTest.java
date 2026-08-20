@@ -62,7 +62,7 @@ class TraceControlPropagatorProviderTest {
         InboundTraceControl control = ctx.get(PlatformTraceContextKeys.TRACE_CONTROL);
         assertThat(control).isNotNull();
         assertThat(control.forceTrace()).isTrue();
-        assertThat(control.requestId()).isEqualTo("req-1");
+        assertThat(control.requestId()).isNull();
     }
 
     @Test

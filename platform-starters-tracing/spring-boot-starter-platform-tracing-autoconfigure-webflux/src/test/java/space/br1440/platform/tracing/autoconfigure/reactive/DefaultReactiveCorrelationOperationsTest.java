@@ -107,6 +107,31 @@ class DefaultReactiveCorrelationOperationsTest {
     }
 
     @Test
+    void retryKeepsRequestIdOnResubscription() {
+        // given
+        AtomicInteger attempts = new AtomicInteger();
+        Mono<String> retrying = Mono.deferContextual(context -> {
+            String requestId = context.<ReactiveIdentityContextPropagation.IdentityState>get(
+                    ReactiveIdentityContextPropagation.KEY).requestId();
+            return attempts.getAndIncrement() == 0
+                    ? Mono.error(new IllegalStateException("first-attempt"))
+                    : Mono.fromCallable(() -> runtime.currentRequestId().orElse(requestId));
+        }).retry(1);
+
+        // when
+        String observed = retrying
+                .contextWrite(context -> context.put(
+                        ReactiveIdentityContextPropagation.KEY,
+                        new ReactiveIdentityContextPropagation.IdentityState("req-retry", null, false, false)))
+                .block(TIMEOUT);
+
+        // then
+        assertThat(observed).isEqualTo("req-retry");
+        assertThat(attempts).hasValue(2);
+        assertThat(runtime.currentRequestId()).isEmpty();
+    }
+
+    @Test
     void concurrentSubscribersAndSchedulerSwitchesDoNotLeak() {
         Mono<String> readStore = Mono.fromCallable(() ->
                 runtime.currentCorrelationId().orElse("none"));

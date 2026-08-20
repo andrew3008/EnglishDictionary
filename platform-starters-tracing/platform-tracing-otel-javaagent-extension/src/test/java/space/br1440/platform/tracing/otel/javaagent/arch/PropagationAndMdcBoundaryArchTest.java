@@ -73,6 +73,10 @@ class PropagationAndMdcBoundaryArchTest {
             ModuleTaxonomyArchRules.OTEL_EXTENSION_MDC_FROM_CORE;
 
     @ArchTest
+    static final ArchRule agentPropagationDoesNotOwnRequestId =
+            ModuleTaxonomyArchRules.OUTBOUND_DOES_NOT_READ_INBOUND_TRACE_CONTROL_REQUEST_ID;
+
+    @ArchTest
     static final ArchRule processorCallbacksDoNotDependOnMdc =
             noClasses()
                     .that().resideInAPackage("..javaagent.processor..")

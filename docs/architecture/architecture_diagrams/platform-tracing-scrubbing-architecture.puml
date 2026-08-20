@@ -1,0 +1,166 @@
+'
+' =============================================================================
+'  Platform Tracing — архитектура scrubbing (маскирование чувствительных данных)
+'
+'  Источник истины:
+'    platform-starters-tracing/platform-tracing-otel-javaagent-extension/
+'      scrubbing/  (ScrubbingRuntime, PlatformScrubberFactory, loader, engine, rules)
+'      processor/ScrubbingSpanProcessor.java
+'      exporter/SpanDataBoundaryScrubber.java
+'    platform-starters-tracing/spring-boot-starter-platform-tracing-api/
+'      spi/SpanAttributeScrubbingRule.java (публичный SPI)
+'    platform-starters-tracing/platform-tracing-collector-config/
+'      otel-collector-gateway-tail-sampling.yaml (redaction/platform-second-line)
+'
+'  Оформление согласовано с platform-tracing-runtime-architecture-v2.puml:
+'    синяя сплошная (thickness=2) — data plane (span'ы);
+'    оранжевый пунктир — сборка правил при старте агента;
+'    зелёные точки — наблюдаемость.
+'
+'  Рендеринг (Graphviz установлен):
+'    java -jar plantuml.jar -charset UTF-8 -tpng platform-tracing-scrubbing-architecture.puml
+'  Рендеринг без Graphviz:
+'    java -jar plantuml.jar -Playout=smetana -charset UTF-8 -tpng ...
+'
+'  Примечание для правок: creole-разметка PlantUML действует в пределах одной
+'  строки подписи, поэтому теги вида <size:..> не переносятся через \n.
+' =============================================================================
+
+@startuml platform_tracing_scrubbing_architecture
+
+title Platform Tracing — архитектура scrubbing
+
+skinparam linetype polyline
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam defaultFontSize 12
+skinparam ArrowFontSize 11
+skinparam nodesep 22
+skinparam ranksep 40
+
+skinparam package {
+  BorderColor #8A94A6
+  BackgroundColor #F7F8FA
+  FontStyle bold
+  FontSize 13
+}
+skinparam component {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+  FontColor #111827
+}
+skinparam database {
+  BorderColor #4B5563
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #D9A700
+  FontSize 11
+}
+
+legend top right
+  |= |= Поток |= Линия |
+  | <back:#1F6FEB>      </back> | Data plane: span'ы через линии маскирования | сплошная |
+  | <back:#B45309>      </back> | Сборка правил при старте агента | пунктир |
+  | <back:#15803D>      </back> | Наблюдаемость: счётчики и деградация | точки |
+endlegend
+
+' -----------------------------------------------------------------------------
+' Источники правил (собираются один раз при старте агента)
+' -----------------------------------------------------------------------------
+package "Источники правил (старт агента)" as SOURCES {
+  component "**Built-in правила платформы**\n12 правил, приоритеты 10–140:\ncritical (10–60, terminal DROP) —\nзаголовки auth, JWT, пароли, credentials;\nstandard (100–140) — гео, PII, email, IP" as BUILTIN
+  component "**SPI приложения**\nSpanAttributeScrubbingRule,\nServiceLoader / META-INF/services" as APP_SPI
+  component "**Внешние JAR**\nplatform.tracing.scrubbing.rules.extensions;\nизолированный URLClassLoader,\nзапрет классов platform-api и OTel;\nLENIENT (prod) / STRICT (CI)" as EXT_JARS
+
+  BUILTIN -[hidden]right- APP_SPI
+  APP_SPI -[hidden]right- EXT_JARS
+}
+
+' -----------------------------------------------------------------------------
+' Движок в Controlled Platform Agent
+' -----------------------------------------------------------------------------
+package "Движок scrubbing (Controlled Platform Agent)" as ENGINE {
+  component "**PriorityHardening**\nдетерминированный порядок:\nсортировка по priority,\nclamp custom-правил до >= 900" as HARDENING
+  component "**ScrubbingRuntime**\nисполнение цепочки правил:\naccumulate-and-merge по строгости,\nHMAC-SHA256 для HASH, счётчики;\nотказ правила -> fail-closed" as RUNTIME
+
+  HARDENING -[hidden]right- RUNTIME
+}
+
+' -----------------------------------------------------------------------------
+' Пайплайн телеметрии — две линии маскирования внутри процесса
+' -----------------------------------------------------------------------------
+package "Пайплайн телеметрии (JVM сервиса)" as PIPELINE {
+  component "**Завершение span'а**\nReadWriteSpan, этап onEnding\nPlatformCompositeSpanProcessor" as SPAN_END
+  component "**Линия 1 — ScrubbingSpanProcessor**\nпоследний onEnding-делегат:\nперезапись атрибутов span'а;\nболее поздние делегаты не могут\nзаписать незамаскированное значение" as PROC
+  component "**Линия 2 — SpanDataBoundaryScrubber**\nграница SafeSpanExporter, полный SpanData:\nимя, события (вкл. exceptions), links, status;\nотказ -> collapse атрибутов / drop span'а" as BOUNDARY
+}
+
+' -----------------------------------------------------------------------------
+' Вне процесса
+' -----------------------------------------------------------------------------
+package "Backend телеметрии (контур SRE)" as BACKEND {
+  component "**Линия 3 — Collector Gateway**\nredaction/platform-second-line:\nмаскирование значений до tail_sampling" as COLLECTOR
+  database "Jaeger" as JAEGER
+}
+
+' -----------------------------------------------------------------------------
+' Наблюдаемость
+' -----------------------------------------------------------------------------
+package "Наблюдаемость" as OBS {
+  component "**Scrubbing MBean -> Micrometer**\nplatform.tracing.scrubbing.count\n(rule, action), счётчики boundary,\nиндикатор fail-closed деградации" as METRICS
+}
+
+' -----------------------------------------------------------------------------
+' Сборка правил — оранжевый пунктир (сверху вниз к движку)
+' -----------------------------------------------------------------------------
+BUILTIN -[#B45309,dashed]-> HARDENING
+APP_SPI -[#B45309,dashed]-> HARDENING
+EXT_JARS -[#B45309,dashed]-> HARDENING : валидация\nпровайдеров
+HARDENING -[#B45309,dashed]right-> RUNTIME : упорядоченная\nцепочка правил
+
+RUNTIME -[#B45309,dashed]-> PROC : применение правил\nк атрибутам
+RUNTIME -[#B45309,dashed]-> BOUNDARY : политика, HMAC,\nfail-closed решения
+
+' -----------------------------------------------------------------------------
+' Data plane — синяя сплошная, слева направо
+' -----------------------------------------------------------------------------
+SPAN_END -[#1F6FEB,thickness=2]right-> PROC : ReadWriteSpan\n(атрибуты перезаписываемы)
+PROC -[#1F6FEB,thickness=2]right-> BOUNDARY : завершённый span\n(атрибуты замаскированы)
+BOUNDARY -[#1F6FEB,thickness=2]right-> COLLECTOR : OTLP (SpanData\nзамаскирован целиком)
+COLLECTOR -[#1F6FEB,thickness=2]-> JAEGER : сэмплированные\nтрейсы
+
+' -----------------------------------------------------------------------------
+' Наблюдаемость — зелёные точки
+' -----------------------------------------------------------------------------
+RUNTIME -[#15803D,dotted]right-> METRICS : срабатывания правил,\nboundary input/output/drop
+
+' -----------------------------------------------------------------------------
+' Вертикальное разведение: источники сверху, движок в середине,
+' пайплайн — горизонтальная полоса внизу, наблюдаемость справа от движка.
+' -----------------------------------------------------------------------------
+APP_SPI -[hidden]down- HARDENING
+RUNTIME -[hidden]down- SPAN_END
+
+' -----------------------------------------------------------------------------
+' Плавающий справочный блок: семантика слияния решений.
+' -----------------------------------------------------------------------------
+note as MERGE_SEMANTICS
+  **Слияние решений (accumulate-and-merge)**
+  ====
+  Строгость действий: KEEP < TRUNCATE < HASH < MASK < DROP.
+  Побеждает более строгое решение по всей цепочке правил.
+  ----
+  terminal-решения (maskTerminal / dropTerminal) выдаются
+  только critical built-in правилами — их нельзя ослабить.
+  ----
+  Custom-правило с priority < 900 принудительно поднимается
+  до 900 (WARN-лог); признак critical определяется только
+  методом critical(), а не диапазоном приоритета.
+end note
+
+SPAN_END -[hidden]down- MERGE_SEMANTICS
+
+@enduml

@@ -14,16 +14,18 @@ import org.springframework.core.annotation.Order;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.function.client.WebClient;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
 import space.br1440.platform.tracing.webflux.ReactiveCorrelationOperations;
 
 @AutoConfiguration
-@AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
+@AutoConfigureAfter({TracingRuntimeAutoConfiguration.class, PlatformOutboundPropagationAutoConfiguration.class})
 @ConditionalOnClass({WebFluxConfigurer.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
 @ConditionalOnProperty(name = TracingBootstrapPropertyNames.ENABLED, havingValue = "true", matchIfMissing = true)
@@ -43,8 +45,9 @@ public class ReactiveTracingAutoConfiguration {
     @ConditionalOnMissingBean(TraceResponseHeaderWebFilter.class)
     @Order(Ordered.HIGHEST_PRECEDENCE + 50)
     public TraceResponseHeaderWebFilter platformTraceResponseHeaderWebFilter(TraceOperations traceOperations,
-                                                                             TracingProperties properties) {
-        return new TraceResponseHeaderWebFilter(traceOperations, properties);
+                                                                             TracingProperties properties,
+                                                                             InboundTraceControlExtractor traceControlExtractor) {
+        return new TraceResponseHeaderWebFilter(traceOperations, properties, traceControlExtractor);
     }
 
     @Bean

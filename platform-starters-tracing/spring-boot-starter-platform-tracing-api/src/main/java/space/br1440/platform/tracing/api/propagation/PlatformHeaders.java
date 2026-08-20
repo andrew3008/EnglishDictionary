@@ -26,10 +26,11 @@ public final class PlatformHeaders {
     public static final String X_QA_TRACE = "X-QA-Trace";
 
     /**
-     * Edge-stable correlation id для корреляции в логах для того,
-     * чтобы привязать response к его сетевому request по log-строкам.
+     * Edge-stable request id. Это platform-owned authoritative заголовок ответа:
+     * приложение не вправе его переопределять, пока
+     * {@code platform.tracing.request-id-header.enabled} остаётся {@code true}.
      * <p>
-     * Используется исключительно как correlation id, а НЕ как замена для {@code trace_id}
+     * Используется исключительно как request identity, а НЕ как замена для {@code trace_id}
      * распределённой трассировки (для трассировки применяется W3C {@code traceparent}).
      * Значение данного заголовка не нужно использовать для идентификации span'а и
      * как уникальное значение при retry одного и того же запроса.
@@ -37,16 +38,21 @@ public final class PlatformHeaders {
     public static final String X_REQUEST_ID = "X-Request-Id";
 
     /**
-     * Опциональный boundary bridge для business correlationId.
-     * По умолчанию платформа не читает и не пишет этот заголовок: канонический транспорт
-     * утверждается отдельно release gate {@code RG-IDENTITY-TRUST}.
+     * Единственная wire-константа business correlationId — используется и inbound-, и
+     * outbound-стороной {@code tracing}, а также {@code error-handling} как потребителем
+     * (см. {@code adr-correlation-ownership.md}). Имя заголовка не конфигурируется:
+     * поведенческие переключатели {@code accept-inbound-correlation-id} /
+     * {@code propagate-correlation-id} по умолчанию выключены (fail-closed), но само имя
+     * заголовка фиксировано, чтобы не расходиться между модулями.
      */
-    public static final String X_CORRELATION_ID = "X-Correlation-ID";
+    public static final String X_CORRELATION_ID = "X-Correlation-Id";
 
     /**
-     * Заголовок с идентификатором распределённого trace'а в ответе ({@code traceId} текущего span'а).
+     * Platform-owned authoritative заголовок ответа с {@code traceId} текущего span'а.
+     * Приложение не вправе его переопределять. Семантика одинакова в Servlet и WebFlux;
+     * механизм установки может отличаться.
      * <p>
-     * Устанавливается только при наличии валидного span context —
+     * Устанавливается и защищается только при наличии валидного span context —
      * никогда не выставляется как нулевое/пустое значение.
      * Отсутствие данного заголовка является признаком того, что нет активного trace.
      */

@@ -15,12 +15,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * Test double recording {@link SpanSpec} passed to {@link #startSpan(SpanSpec)}.
- */
 public final class RecordingTracingRuntime implements TracingRuntime {
 
-    /** Permissive default policy shared across recording instances; never mutated (validation is bypassed in tests). */
     private static final AttributePolicy PERMISSIVE = new AttributePolicy();
 
     private final List<SpanSpec> receivedSpecs = new ArrayList<>();
@@ -46,8 +42,8 @@ public final class RecordingTracingRuntime implements TracingRuntime {
     }
 
     @Override
-    public CorrelationScope openRequestIdentityScope(String requestId) {
-        return identityDelegate.openRequestIdentityScope(requestId);
+    public CorrelationScope openRequestIdentityScope(String requestId, boolean forceTrace, boolean qaTrace) {
+        return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
     }
 
     @Override
@@ -65,6 +61,10 @@ public final class RecordingTracingRuntime implements TracingRuntime {
         return identityDelegate.currentCorrelationId();
     }
 
+    @Override
+    public TraceControlBoundaryState currentTraceControlBoundary() {
+        return identityDelegate.currentTraceControlBoundary();
+    }
 
     @Override
     public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {

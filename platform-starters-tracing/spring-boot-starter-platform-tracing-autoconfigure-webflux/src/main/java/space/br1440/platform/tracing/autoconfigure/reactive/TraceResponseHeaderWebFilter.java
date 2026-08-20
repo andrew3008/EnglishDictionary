@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -9,8 +8,11 @@ import org.springframework.web.server.WebFilterChain;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.PlatformHeaders;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
+import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
 
 import io.opentelemetry.api.trace.Span;
 import reactor.core.publisher.Mono;
@@ -19,32 +21,46 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
 
     private final TraceOperations traceOperations;
     private final TracingProperties properties;
+    private final InboundTraceControlExtractor traceControlExtractor;
 
-    public TraceResponseHeaderWebFilter(TraceOperations traceOperations, TracingProperties properties) {
+    public TraceResponseHeaderWebFilter(TraceOperations traceOperations,
+                                        TracingProperties properties,
+                                        InboundTraceControlExtractor traceControlExtractor) {
         this.traceOperations = traceOperations;
         this.properties = properties;
+        this.traceControlExtractor = traceControlExtractor;
     }
 
     @Override
     @NonNull
     public Mono<Void> filter(@NonNull ServerWebExchange exchange, @NonNull WebFilterChain chain) {
-        ServerHttpResponse response = exchange.getResponse();
-
         final String incomingRequestId = exchange.getRequest().getHeaders()
                 .getFirst(properties.getPropagation().getPlatformHeaders().getRequestIdHeader());
+
         final String requestId = RequestIdBoundarySupport.resolve(incomingRequestId);
 
-        response.beforeCommit(() -> Mono.fromRunnable(() -> {
-            try {
-                if (properties.getRequestIdHeader().isEnabled()) {
-                    response.getHeaders().set(properties.getRequestIdHeader().getName(), requestId);
-                }
+        final String rawForceTrace = exchange.getRequest().getHeaders()
+                .getFirst(properties.getPropagation().getPlatformHeaders().getForceTraceHeader());
 
-                traceOperations.traceContext().traceId()
-                        .ifPresent(traceId -> response.getHeaders().set(PlatformHeaders.X_TRACE_ID, traceId));
-            } catch (RuntimeException ignored) {
-            }
-        }));
+        final String rawQaTrace = exchange.getRequest().getHeaders()
+                .getFirst(properties.getPropagation().getPlatformHeaders().getQaTraceHeader());
+
+        final InboundTraceControl traceControl = traceControlExtractor.fromHeaders(rawForceTrace, rawQaTrace, null);
+        final String correlationId = resolveInboundCorrelationId(exchange);
+
+        PlatformOwnedServerHttpResponse wrapped = new PlatformOwnedServerHttpResponse(exchange.getResponse());
+        if (properties.getRequestIdHeader().isEnabled()) {
+            wrapped.protectRequestId(properties.getRequestIdHeader().getName(), requestId);
+        }
+
+        try {
+            traceOperations.traceContext().traceId().ifPresent(wrapped::protectTraceId);
+        } catch (RuntimeException ignored) {
+        }
+
+        wrapped.installCanonical();
+        wrapped.beforeCommit(() -> Mono.fromRunnable(wrapped::installCanonical));
+        ServerWebExchange filteredExchange = exchange.mutate().response(wrapped).build();
         return Mono.defer(() -> {
                     try {
                         Span span = Span.current();
@@ -54,7 +70,7 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
                     } catch (RuntimeException ignored) {
                     }
 
-                    return chain.filter(exchange);
+                    return chain.filter(filteredExchange);
                 })
                 .contextWrite(context -> {
                     ReactiveIdentityContextPropagation.IdentityState currentState = context
@@ -63,7 +79,19 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
                     return context.put(
                             ReactiveIdentityContextPropagation.KEY,
                             currentState.withRequestId(requestId)
+                                    .withTraceControl(traceControl.forceTrace(), traceControl.qaTrace())
+                                    .withCorrelationId(correlationId)
                     );
                 });
+    }
+
+    private String resolveInboundCorrelationId(ServerWebExchange exchange) {
+        if (!properties.getPropagation().getCorrelation().isAcceptInbound()) {
+            return null;
+        }
+
+        return CorrelationIdSupport.resolveInbound(
+                exchange.getRequest().getHeaders().get(PlatformHeaders.X_CORRELATION_ID)
+        );
     }
 }

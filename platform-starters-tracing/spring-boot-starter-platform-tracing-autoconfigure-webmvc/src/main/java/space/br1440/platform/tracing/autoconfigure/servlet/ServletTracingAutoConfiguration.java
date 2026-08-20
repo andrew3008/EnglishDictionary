@@ -15,15 +15,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.web.client.RestClient;
 import space.br1440.platform.tracing.api.TraceOperations;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.TracingRuntimeAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPropertyNames;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.propagation.PlatformOutboundPropagationAutoConfiguration;
 
 @AutoConfiguration
-@AutoConfigureAfter(TracingRuntimeAutoConfiguration.class)
+@AutoConfigureAfter({TracingRuntimeAutoConfiguration.class, PlatformOutboundPropagationAutoConfiguration.class})
 @ConditionalOnClass({Servlet.class, FilterRegistrationBean.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(name = TracingBootstrapPropertyNames.ENABLED, havingValue = "true", matchIfMissing = true)
@@ -34,8 +36,9 @@ public class ServletTracingAutoConfiguration {
     public FilterRegistrationBean<TraceResponseHeaderServletFilter> platformTraceResponseHeaderServletFilterRegistration(
             TraceOperations traceOperations,
             TracingProperties properties,
-            RequestIdentityBoundarySupport identityBoundary) {
-        TraceResponseHeaderServletFilter filter = new TraceResponseHeaderServletFilter(traceOperations, properties, identityBoundary);
+            RequestIdentityBoundarySupport identityBoundary,
+            InboundTraceControlExtractor traceControlExtractor) {
+        TraceResponseHeaderServletFilter filter = new TraceResponseHeaderServletFilter(traceOperations, properties, identityBoundary, traceControlExtractor);
         FilterRegistrationBean<TraceResponseHeaderServletFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setName("platformTraceResponseHeaderServletFilter");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 50);
@@ -60,8 +63,9 @@ public class ServletTracingAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = TracingProperties.PREFIX + ".propagation.outbound", name = "enabled", havingValue = "true")
     public PlatformOutboundHttpInterceptor platformOutboundHttpInterceptor(@Qualifier("platformHttpOutboundPolicy") OutboundPropagationPolicy policy,
-                                                                           PlatformOutboundPropagation propagation) {
-        return new PlatformOutboundHttpInterceptor(policy, propagation);
+                                                                           PlatformOutboundPropagation propagation,
+                                                                           RequestIdentityBoundarySupport identityBoundary) {
+        return new PlatformOutboundHttpInterceptor(policy, propagation, identityBoundary);
     }
 
     @Bean

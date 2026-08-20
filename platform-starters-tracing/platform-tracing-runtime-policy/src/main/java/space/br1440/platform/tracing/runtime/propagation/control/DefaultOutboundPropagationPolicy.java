@@ -16,6 +16,7 @@ public final class DefaultOutboundPropagationPolicy implements OutboundPropagati
     private final boolean propagateForceTrace;
     private final boolean propagateQaTrace;
     private final boolean propagateRequestId;
+    private final boolean propagateCorrelationId;
 
     @Nonnull
     @Override
@@ -24,6 +25,6 @@ public final class DefaultOutboundPropagationPolicy implements OutboundPropagati
             return OutboundPropagationDecision.DENY_ALL;
         }
 
-        return new OutboundPropagationDecision(propagateForceTrace, propagateQaTrace, propagateRequestId);
+        return new OutboundPropagationDecision(propagateForceTrace, propagateQaTrace, propagateRequestId, propagateCorrelationId);
     }
 }

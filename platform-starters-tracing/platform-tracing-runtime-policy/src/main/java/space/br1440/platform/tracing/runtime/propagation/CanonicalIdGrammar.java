@@ -1,0 +1,33 @@
+package space.br1440.platform.tracing.runtime.propagation;
+
+import jakarta.annotation.Nullable;
+
+final class CanonicalIdGrammar {
+
+    static final int MAX_LENGTH = 128;
+
+    private CanonicalIdGrammar() {
+    }
+
+    static boolean isCanonical(@Nullable String value) {
+        if (value == null || value.isEmpty() || value.length() > MAX_LENGTH) {
+            return false;
+        }
+
+        for (int index = 0; index < value.length(); index++) {
+            if (!isCanonicalChar(value.charAt(index))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static boolean isCanonicalChar(char character) {
+        return (character >= 'A' && character <= 'Z')
+                || (character >= 'a' && character <= 'z')
+                || (character >= '0' && character <= '9')
+                || character == '_'
+                || character == '-';
+    }
+}

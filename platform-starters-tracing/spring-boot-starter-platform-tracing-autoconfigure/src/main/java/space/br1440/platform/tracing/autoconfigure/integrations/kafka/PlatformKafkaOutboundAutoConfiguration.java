@@ -41,7 +41,8 @@ public class PlatformKafkaOutboundAutoConfiguration {
                 topicMatcher,
                 outbound.isPropagateForceTrace(),
                 outbound.isPropagateQaTrace(),
-                outbound.isPropagateRequestId()
+                outbound.isPropagateRequestId(),
+                false
         );
 
         return new PlatformKafkaProducerFactoryCustomizer(policy, propagation, identityBoundary);

@@ -38,7 +38,7 @@ class SliceIBoundaryArchRulesTest {
         assertThatThrownBy(() -> ModuleTaxonomyArchRules.WEB_MAIN_NO_OTEL_CONTEXT.check(classes))
                 .hasMessageContaining("io.opentelemetry.context.Context");
         assertThatThrownBy(() -> ModuleTaxonomyArchRules.WEB_MAIN_NO_INTERNAL_PROPAGATION_TYPES.check(classes))
-                .hasMessageContaining("TraceControlHeaderInjector");
+                .hasMessageContaining("OtelTraceparentReader");
     }
 
     @Test

@@ -1,5 +1,7 @@
 package space.br1440.platform.errorhandling.mvc.arch;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -7,6 +9,8 @@ import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -59,6 +63,33 @@ class ArchitectureRulesTest {
         ArchRule rule = classes()
                 .that().resideInAPackage("space.br1440.platform.errorhandling.mvc.internal..")
                 .should().resideInAPackage("space.br1440.platform.errorhandling.mvc.internal..");
+
+        rule.check(mvcClasses);
+    }
+
+    @Test
+    @DisplayName("org.slf4j.MDC используется только в allowlisted low-level коллабораторах"
+            + " (см. adr-correlation-ownership.md); владение ключом correlationId в MDC"
+            + " проверяется поведенческими тестами GlobalExceptionHandlerJointModeTest/"
+            + "ErrorMdcContextTest, а не этим арх-правилом")
+    void mdc_usedOnlyByAllowlistedCollaborators() {
+        Set<String> allowlistedMdcCollaborators = Set.of(
+                "space.br1440.platform.errorhandling.mvc.internal.LegacyCorrelationIdSupport",
+                "space.br1440.platform.errorhandling.mvc.internal.ErrorMdcContext",
+                "space.br1440.platform.errorhandling.mvc.internal.MdcAwareTaskDecorator",
+                "space.br1440.platform.errorhandling.autoconfigure.MdcThreadLocalAccessor",
+                "space.br1440.platform.errorhandling.core.handler.ReactiveGlobalExceptionHandler"
+        );
+
+        DescribedPredicate<JavaClass> notAllowlisted = DescribedPredicate.describe(
+                "is not an allowlisted MDC collaborator",
+                javaClass -> !allowlistedMdcCollaborators.contains(javaClass.getFullName())
+        );
+
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("space.br1440.platform.errorhandling..")
+                .and(notAllowlisted)
+                .should().dependOnClassesThat().haveFullyQualifiedName("org.slf4j.MDC");
 
         rule.check(mvcClasses);
     }

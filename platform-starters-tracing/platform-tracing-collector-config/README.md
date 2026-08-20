@@ -1,6 +1,6 @@
 # OpenTelemetry Collector — платформенная конфигурация
 
-Эталонная конфигурация Collector'а для платформенной трассировки (Фаза 6; boundary-контракт — Фаза 16, [ADR-collector-boundary](../../docs/decisions/ADR-collector-boundary.md)). Развёртывается командой SRE на каждом окружении и не должна модифицироваться приложениями.
+Эталонная конфигурация Collector'а для платформенной трассировки. Развёртывается командой SRE на каждом окружении и не должна модифицироваться приложениями.
 
 Каталог временно хранится в Git для передачи SRE. Он не является Gradle-модулем,
 не участвует в сборке tracing-платформы и не публикуется в Maven/Nexus. Валидация,
@@ -12,9 +12,7 @@ Pin образа: `otel/opentelemetry-collector-contrib:0.154.0` (Track B+). С�
 
 - `otel-collector-agent-loadbalancing.yaml` — конфигурация Tier 1 (Agent / DaemonSet). Сбор телеметрии с подов узла, обогащение `k8s.*` метаданными (`k8sattributes`, pod-IP matching, требует RBAC) и маршрутизация трасс по `trace_id` на Tier 2 (Gateway) для обеспечения Trace Affinity.
 - `otel-collector-gateway-tail-sampling.yaml` — конфигурация Tier 2 (Gateway / Deployment). Stateful `tail_sampling` (ошибки и медленные операции — 100%, остальные — по проценту) + `redaction/platform-second-line` (2-я линия маскирования sensitive data). Защищено лимитами памяти и размера трейсов.
-- `otel-collector-config-ttl-tiers.yaml` — расширенный вариант с routing **connector** (Фаза 16: deprecated `routing` processor заменён; маршрутизация только по resource-атрибутам — анти-фрагментация) для физического разделения storage tier'ов (long-retention для ошибок, short-retention для успехов).
-
-Операторский runbook: [`collector-pipeline-production.md`](../../docs/runbook/collector-pipeline-production.md).
+- `otel-collector-config-ttl-tiers.yaml` — расширенный вариант с routing **connector** (deprecated `routing` processor заменён; маршрутизация только по resource-атрибутам — анти-фрагментация) для физического разделения Jaeger-инсталляций по retention (long-retention для ошибок, short-retention для успехов).
 
 ## Архитектура и Trace Affinity
 
@@ -39,9 +37,9 @@ otelcol-contrib --config=/conf/otel-collector-gateway-tail-sampling.yaml --featu
 |---|---|---|
 | `errors-always-sample` | `status_code: ERROR` | Гарантирует сохранение 100% трейсов с ошибками (HTTP 5xx, Exception). |
 | `slow-traces` | `latency` | Сохраняет 100% медленных трейсов (по умолчанию > 5000ms). |
-| `forced-traces` | `string_attribute` | Сохраняет трейсы, форсированные SDK (атрибут `platform.sampling.reason` в `[force_header, qa_trace]` — синхронизировано с `PlatformSamplingReasons.EXPORTED`, проверяется contract-тестом; Фаза 16 исправила несуществующее `x_trace_on`). |
+| `forced-traces` | `string_attribute` | Сохраняет трейсы, форсированные SDK (атрибут `platform.sampling.reason` в `[force_header, qa_trace]` — синхронизировано с `PlatformSamplingReasons.EXPORTED`, проверяется contract-тестом). |
 | `platform-high-priority` | `string_attribute` | Сохраняет трейсы с `platform.trace.priority=high` (бизнес-приоритет SDK). |
-| `drop-successful-infra-noise` | `drop` + `not` | Отбрасывает инфраструктурный шум (`/health`, `/metrics`), **ТОЛЬКО** если это успешный запрос (НЕ ошибка). Первичный drop рекомендован на SDK (`drop-paths`, паттерн Head+Tail — см. runbook). |
+| `drop-successful-infra-noise` | `drop` + `not` | Отбрасывает инфраструктурный шум (`/health`, `/metrics`), **ТОЛЬКО** если это успешный запрос (НЕ ошибка). Первичный drop рекомендован на SDK (`drop-paths`, паттерн Head+Tail). |
 | `success-baseline` | `probabilistic` | Вероятностный сэмплинг для всех остальных успешных запросов (по умолчанию 1%). |
 
 *Обратите внимание: политика `drop-successful-infra-noise` использует композицию `drop` и `not status_code: ERROR`, чтобы ошибочные health-check запросы по-прежнему попадали в хранилище.*

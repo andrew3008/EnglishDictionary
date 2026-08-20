@@ -20,7 +20,7 @@ public class TracingReactorEagerInitConfiguration {
     }
 
     @Bean
-    TracingReactorContextPropagationStartupRunner platformTracingReactorContextPropagationStartupRunner(Environment environment) {
-        return new TracingReactorContextPropagationStartupRunner(environment);
+    TracingReactorContextPropagationInitializer platformTracingReactorContextPropagationInitializer(Environment environment) {
+        return new TracingReactorContextPropagationInitializer(environment);
     }
 }

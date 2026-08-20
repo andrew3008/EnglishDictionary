@@ -10,6 +10,7 @@ import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
 import space.br1440.platform.tracing.api.mdc.TracingMdcKeys;
+import space.br1440.platform.tracing.otel.mdc.SpanContextMdcProjection;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,20 +27,22 @@ final class AsyncRequestIdentityMdcProjectionInterceptor implements MethodInterc
         IdentityValues identity = currentIdentity();
         IdentityValues previousIdentity = currentMdcIdentity();
 
+        SpanContextMdcProjection.Snapshot previousSpanMdc = SpanContextMdcProjection.installCurrent();
         try {
             writeIdentity(identity);
             return invocation.proceed();
         } finally {
-            restoreIdentity(previousIdentity);
+            previousSpanMdc.restore();
+            writeIdentity(previousIdentity);
         }
     }
 
     private IdentityValues currentIdentity() {
         try {
             ActiveTraceContextView context = traceOperations.traceContext();
-            String requestId = context.requestId().orElse(null);
-            String correlationId = context.correlationId().orElse(null);
-            return new IdentityValues(requestId, correlationId);
+            return new IdentityValues(
+                    context.requestId().orElse(null),
+                    context.correlationId().orElse(null));
         } catch (RuntimeException exception) {
             log.debug("Failed to read request identity for MDC projection", exception);
             return EMPTY_IDENTITY;
@@ -56,14 +59,6 @@ final class AsyncRequestIdentityMdcProjectionInterceptor implements MethodInterc
     private static void writeIdentity(IdentityValues identity) {
         putOrRemove(TracingMdcKeys.REQUEST_ID, identity.requestId());
         putOrRemove(TracingMdcKeys.CORRELATION_ID, identity.correlationId());
-    }
-
-    private static void restoreIdentity(IdentityValues identity) {
-        try {
-            putOrRemove(TracingMdcKeys.REQUEST_ID, identity.requestId());
-        } finally {
-            putOrRemove(TracingMdcKeys.CORRELATION_ID, identity.correlationId());
-        }
     }
 
     private static void putOrRemove(String key, String value) {

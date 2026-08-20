@@ -24,6 +24,7 @@ import space.br1440.platform.tracing.otel.facade.DefaultTraceOperations;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.otel.OtelTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
+import space.br1440.platform.tracing.otel.runtime.TraceControlBoundaryState;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.state.TracingRuntimeMode;
 import space.br1440.platform.tracing.otel.runtime.state.TracingState;
@@ -170,8 +171,8 @@ class BeanTopologyTest {
         }
 
         @Override
-        public CorrelationScope openRequestIdentityScope(String requestId) {
-            return identityDelegate.openRequestIdentityScope(requestId);
+        public CorrelationScope openRequestIdentityScope(String requestId, boolean forceTrace, boolean qaTrace) {
+            return identityDelegate.openRequestIdentityScope(requestId, forceTrace, qaTrace);
         }
 
         @Override
@@ -189,6 +190,10 @@ class BeanTopologyTest {
             return identityDelegate.currentCorrelationId();
         }
 
+        @Override
+        public TraceControlBoundaryState currentTraceControlBoundary() {
+            return identityDelegate.currentTraceControlBoundary();
+        }
 
         @Override
         public void recordException(@Nonnull SpanHandle span, @Nullable Throwable throwable) {

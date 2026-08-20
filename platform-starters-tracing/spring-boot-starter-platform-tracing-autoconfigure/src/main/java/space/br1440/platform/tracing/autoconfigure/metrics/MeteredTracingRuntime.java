@@ -45,12 +45,6 @@ public final class MeteredTracingRuntime implements DelegatingTracingRuntime {
 
     @Override
     @Nonnull
-    public CorrelationScope openRequestIdentityScope(@Nonnull String requestId) {
-        return delegate.openRequestIdentityScope(requestId);
-    }
-
-    @Override
-    @Nonnull
     public String requireCanonicalCorrelationId(@Nonnull String correlationId) {
         return delegate.requireCanonicalCorrelationId(correlationId);
     }

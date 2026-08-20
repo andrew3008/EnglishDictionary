@@ -49,6 +49,10 @@ public final class PlatformTracingDefaultsProvider {
 
         defaults.put("otel.attribute.count.limit", String.valueOf(OtelSdkDefaults.DEFAULT_ATTRIBUTE_COUNT_LIMIT));
 
+        defaults.put("otel.instrumentation.common.logging.trace-id-key", "traceId");
+        defaults.put("otel.instrumentation.common.logging.span-id-key", "spanId");
+        defaults.put("otel.instrumentation.common.logging.trace-flags-key", "traceFlags");
+
         return defaults;
     }
 

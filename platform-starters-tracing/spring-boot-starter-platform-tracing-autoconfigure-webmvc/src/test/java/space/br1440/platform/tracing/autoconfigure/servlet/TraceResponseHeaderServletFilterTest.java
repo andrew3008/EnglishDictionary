@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.slf4j.MDC;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.context.ActiveTraceContextView;
@@ -17,26 +16,27 @@ import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
+import space.br1440.platform.tracing.runtime.propagation.control.DefaultInboundTraceControlExtractor;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TraceResponseHeaderServletFilterTest {
 
-    private TraceOperations traceOperations;
     private ActiveTraceContextView traceContextView;
     private TracingProperties properties;
     private HttpServletRequest request;
@@ -48,7 +48,8 @@ class TraceResponseHeaderServletFilterTest {
     @BeforeEach
     void setUp() {
         MDC.clear();
-        traceOperations = mock(TraceOperations.class);
+
+        TraceOperations traceOperations = mock(TraceOperations.class);
         traceContextView = mock(ActiveTraceContextView.class);
         when(traceOperations.traceContext()).thenReturn(traceContextView);
         properties = new TracingProperties();
@@ -59,7 +60,8 @@ class TraceResponseHeaderServletFilterTest {
         filter = new TraceResponseHeaderServletFilter(
                 traceOperations,
                 properties,
-                new RequestIdentityBoundarySupport(runtime)
+                new RequestIdentityBoundarySupport(runtime),
+                new DefaultInboundTraceControlExtractor()
         );
     }
 
@@ -80,14 +82,13 @@ class TraceResponseHeaderServletFilterTest {
         doAnswer(invocation -> {
             seenInsideChain.set(traceContextView.traceId());
             return null;
-        }).when(chain).doFilter(request, response);
+        }).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
 
         filter.doFilter(request, response, chain);
 
-        InOrder order = inOrder(chain, response);
-        order.verify(chain).doFilter(request, response);
-        order.verify(response).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-incoming-1"));
-        order.verify(response).setHeader(eq(PlatformHeaders.X_TRACE_ID), eq("trace-abc-123"));
+        verify(response).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-incoming-1"));
+        verify(response).setHeader(eq(PlatformHeaders.X_TRACE_ID), eq("trace-abc-123"));
+        verify(chain).doFilter(eq(request), any(HttpServletResponse.class));
         assertThat(seenInsideChain.get()).isEmpty();
     }
 
@@ -100,7 +101,7 @@ class TraceResponseHeaderServletFilterTest {
         filter.doFilter(request, response, chain);
 
         verify(response, never()).setHeader(eq(PlatformHeaders.X_TRACE_ID), anyString());
-        verify(response, times(1)).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-2"));
+        verify(response).setHeader(eq(properties.getRequestIdHeader().getName()), eq("req-2"));
     }
 
     @Test
@@ -129,7 +130,7 @@ class TraceResponseHeaderServletFilterTest {
             assertThat(MDC.get(TracingMdcKeys.REQUEST_ID)).isEqualTo("request-42");
             assertThat(runtime.currentCorrelationId()).isEmpty();
             return null;
-        }).when(chain).doFilter(request, response);
+        }).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
 
         filter.doFilter(request, response, chain);
 
@@ -153,7 +154,7 @@ class TraceResponseHeaderServletFilterTest {
         when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-4");
         when(traceContextView.traceId()).thenReturn(Optional.of("trace-during-error"));
         when(response.isCommitted()).thenReturn(false);
-        doThrow(new ServletException("boom")).when(chain).doFilter(request, response);
+        doThrow(new ServletException("boom")).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
 
         assertThatThrownBy(() -> filter.doFilter(request, response, chain))
                 .isInstanceOf(ServletException.class);
@@ -170,5 +171,49 @@ class TraceResponseHeaderServletFilterTest {
         filter.doFilter(request, response, chain);
 
         verify(response, never()).setHeader(eq(PlatformHeaders.X_TRACE_ID), anyString());
+    }
+
+    @Test
+    void ignoresValidInboundCorrelationIdWhenAcceptInboundDisabled() throws ServletException, java.io.IOException {
+        // given
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-6");
+        when(request.getHeaders(eq(PlatformHeaders.X_CORRELATION_ID)))
+                .thenReturn(Collections.enumeration(List.of("trusted-correlation")));
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+        AtomicReference<Optional<String>> seenInsideChain = new AtomicReference<>();
+        doAnswer(invocation -> {
+            seenInsideChain.set(runtime.currentCorrelationId());
+            return null;
+        }).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
+
+        // when
+        filter.doFilter(request, response, chain);
+
+        // then
+        assertThat(seenInsideChain.get()).isEmpty();
+    }
+
+    @Test
+    void acceptsExactlyOneValidInboundCorrelationIdAsBaseScope() throws ServletException, java.io.IOException {
+        // given
+        properties.getPropagation().getCorrelation().setAcceptInbound(true);
+        when(request.getHeader(eq(PlatformHeaders.X_REQUEST_ID))).thenReturn("req-7");
+        when(request.getHeaders(eq(PlatformHeaders.X_CORRELATION_ID)))
+                .thenReturn(Collections.enumeration(List.of("trusted-correlation")));
+        when(traceContextView.traceId()).thenReturn(Optional.empty());
+        when(response.isCommitted()).thenReturn(false);
+        AtomicReference<Optional<String>> seenInsideChain = new AtomicReference<>();
+        doAnswer(invocation -> {
+            seenInsideChain.set(runtime.currentCorrelationId());
+            return null;
+        }).when(chain).doFilter(eq(request), any(HttpServletResponse.class));
+
+        // when
+        filter.doFilter(request, response, chain);
+
+        // then
+        assertThat(seenInsideChain.get()).contains("trusted-correlation");
+        assertThat(runtime.currentCorrelationId()).isEmpty();
     }
 }

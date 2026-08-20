@@ -9,7 +9,7 @@
 #   роутятся на Collector Gateway (Tier 2) через load_balancing exporter с использованием
 #   traceID в качестве ключа маршрутизации. Это необходимо для stateful tail_sampling.
 #
-# Рекомендация по памяти (Фаза 16): задавайте env GOMEMLIMIT = 80% hard-лимита контейнера
+# Рекомендация по памяти: задавайте env GOMEMLIMIT = 80% hard-лимита контейнера
 # (например, GOMEMLIMIT=205MiB при limit 256MiB) в дополнение к memory_limiter.
 
 receivers:
@@ -27,13 +27,12 @@ processors:
     limit_mib: ${env:AGENT_MEMORY_LIMIT_MIB:-256}
     spike_limit_mib: ${env:AGENT_MEMORY_SPIKE_LIMIT_MIB:-64}
 
-  # Инфраструктурные метаданные Kubernetes — зона Collector'а (ADR-resource-merge-precedence:
-  # SDK отвечает за service identity, Collector — за k8s.*). Только agent-tier (DaemonSet):
-  # матчинг идёт по IP входящего OTLP-соединения, которое на DaemonSet'е равно pod IP
-  # приложения; на gateway-tier IP отправителя — это IP агента, и обогащение молча
-  # не сработает (silent fail, README k8sattributesprocessor).
-  # Требует RBAC: ServiceAccount c get/list/watch на pods/namespaces
-  # (см. docs/runbook/collector-pipeline-production.md).
+  # Инфраструктурные метаданные Kubernetes — зона Collector'а: SDK отвечает за service
+  # identity, Collector — за k8s.*. Только agent-tier (DaemonSet): матчинг идёт по IP
+  # входящего OTLP-соединения, которое на DaemonSet'е равно pod IP приложения; на
+  # gateway-tier IP отправителя — это IP агента, и обогащение молча не сработает
+  # (silent fail, README k8sattributesprocessor).
+  # Требует RBAC: ServiceAccount c get/list/watch на pods/namespaces.
   k8sattributes:
     auth_type: serviceAccount
     extract:
@@ -85,7 +84,7 @@ service:
     metrics:
       level: detailed
       # С contrib 0.123 поле `address` удалено — метрики настраиваются через readers
-      # (Prometheus pull на :8888), см. ADR-collector-boundary.
+      # (Prometheus pull на :8888).
       readers:
         - pull:
             exporter:
