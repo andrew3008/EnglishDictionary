@@ -48,6 +48,10 @@ class ApplicationAgentPlaneIsolationArchTest {
             ModuleTaxonomyArchRules.IDENTITY_INTERNAL_TYPES_NOT_PUBLIC;
 
     @ArchTest
+    static final ArchRule remoteServiceNotConsumedByApplicationPlane =
+            ModuleTaxonomyArchRules.REMOTE_SERVICE_NOT_CONSUMED_BY_APPLICATION_PLANE;
+
+    @ArchTest
     static final ArchRule noLocalCopiesOfOtelSdkClasses =
             OtelDirectIntegrationRules.NO_LOCAL_COPIES_OF_OTEL_SDK_CLASSES;
 

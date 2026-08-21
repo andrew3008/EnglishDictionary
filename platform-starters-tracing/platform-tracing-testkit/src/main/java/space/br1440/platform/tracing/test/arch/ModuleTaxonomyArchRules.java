@@ -7,6 +7,7 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
 
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
 
 public final class ModuleTaxonomyArchRules {
@@ -206,6 +207,25 @@ public final class ModuleTaxonomyArchRules {
             .and().resideOutsideOfPackage("..test..")
             .should().dependOnClassesThat(apiMdcExceptAllowed())
             .because("the extension must use core MDC services instead of expanding the API MDC surface");
+
+    public static final ArchRule REMOTE_SERVICE_ATTRIBUTE_WRITTEN_ONLY_BY_ENRICHING_PROCESSOR = noClasses()
+            .that().resideInAPackage("space.br1440.platform.tracing.otel.javaagent..")
+            .and().doNotHaveSimpleName("EnrichingSpanProcessor")
+            .should().accessField(PlatformAttributes.class, "PLATFORM_REMOTE_SERVICE")
+            .allowEmptyShould(true)
+            .because("platform.remote.service is ERROR CLIENT telemetry written only by EnrichingSpanProcessor");
+
+    public static final ArchRule REMOTE_SERVICE_NOT_CONSUMED_BY_APPLICATION_PLANE = noClasses()
+            .that().resideInAnyPackage(
+                    "space.br1440.platform.tracing.api.mdc..",
+                    "space.br1440.platform.tracing.otel.mdc..",
+                    "space.br1440.platform.tracing.otel.context..",
+                    "space.br1440.platform.tracing.otel.facade..",
+                    "space.br1440.platform.tracing.otel.runtime..",
+                    "space.br1440.platform.tracing.autoconfigure..")
+            .should().accessField(PlatformAttributes.class, "PLATFORM_REMOTE_SERVICE")
+            .allowEmptyShould(true)
+            .because("platform.remote.service is agent telemetry, not MDC, snapshot or error-domain input");
 
     private ModuleTaxonomyArchRules() {
     }

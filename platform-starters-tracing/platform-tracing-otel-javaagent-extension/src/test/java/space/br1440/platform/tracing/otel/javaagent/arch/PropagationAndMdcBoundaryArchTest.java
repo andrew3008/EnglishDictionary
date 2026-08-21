@@ -83,6 +83,14 @@ class PropagationAndMdcBoundaryArchTest {
                     .should().dependOnClassesThat().haveFullyQualifiedName("org.slf4j.MDC")
                     .because("span processor callbacks must not own ThreadLocal MDC state");
 
+    @ArchTest
+    static final ArchRule remoteServiceAttributeWrittenOnlyByEnrichingProcessor =
+            ModuleTaxonomyArchRules.REMOTE_SERVICE_ATTRIBUTE_WRITTEN_ONLY_BY_ENRICHING_PROCESSOR;
+
+    @ArchTest
+    static final ArchRule remoteServiceNotConsumedByApplicationPlane =
+            ModuleTaxonomyArchRules.REMOTE_SERVICE_NOT_CONSUMED_BY_APPLICATION_PLANE;
+
     private static DescribedPredicate<JavaMethodCall> classGetName() {
         return new DescribedPredicate<>("call java.lang.Class.getName") {
             @Override

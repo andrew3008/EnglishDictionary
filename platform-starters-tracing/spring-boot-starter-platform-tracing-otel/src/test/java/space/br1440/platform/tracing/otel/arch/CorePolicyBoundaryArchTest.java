@@ -24,4 +24,8 @@ class CorePolicyBoundaryArchTest {
     @ArchTest
     static final ArchRule applicationPlaneDoesNotDependOnAgentModule =
             ModuleTaxonomyArchRules.OTEL_DOES_NOT_DEPEND_ON_AGENT_NAMED_MODULE;
+
+    @ArchTest
+    static final ArchRule remoteServiceNotConsumedByApplicationPlane =
+            ModuleTaxonomyArchRules.REMOTE_SERVICE_NOT_CONSUMED_BY_APPLICATION_PLANE;
 }

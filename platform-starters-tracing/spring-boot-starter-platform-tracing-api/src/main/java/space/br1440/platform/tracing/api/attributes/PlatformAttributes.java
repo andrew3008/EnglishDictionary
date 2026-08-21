@@ -72,13 +72,11 @@ public final class PlatformAttributes {
     public static final String PLATFORM_TRACED_METHOD = "platform.traced.method";
 
     /**
-     * Логическое имя upstream-сервиса для ERROR client span'ов и сопутствующего MDC-ключа.
+     * Логическое имя upstream-сервиса на ERROR CLIENT span'е: какой peer уронил исходящий вызов.
      * <p>
-     * Платформенный атрибут, надстраиваемый над OpenTelemetry semantics (см.
-     * {@code peer.service} / {@code rpc.service} / {@code server.address}). Имя стабильно и
-     * безопасно для использования в качестве значения {@code domain} при формировании error DTO
-     * внешним error-handling starter'ом — поле single-source-of-truth, которое заполняется
-     * платформой однократно и не зависит от типа client'а (HTTP / gRPC / messaging).
+     * Это телеметрический атрибут span'а. Он не является ключом MDC и не является источником
+     * {@code domain} для error DTO: конверт ошибки владеет ErrorHandling через upstream JSON,
+     * затем backfill {@code spring.application.name}.
      */
     public static final String PLATFORM_REMOTE_SERVICE = "platform.remote.service";
 
