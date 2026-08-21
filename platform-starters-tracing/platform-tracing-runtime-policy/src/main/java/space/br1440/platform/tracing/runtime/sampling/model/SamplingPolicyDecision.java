@@ -12,7 +12,7 @@ public record SamplingPolicyDecision(SamplingPolicyDecisionType decisionType,
                 throw new IllegalArgumentException("ABSTAIN requires NO_MATCH reason");
             }
 
-            if (!StringUtils.isNullOrEmpty(winningRule)) {
+            if (StringUtils.hasText(winningRule)) {
                 throw new IllegalArgumentException("ABSTAIN must not carry a winning rule");
             }
         } else {
@@ -20,7 +20,7 @@ public record SamplingPolicyDecision(SamplingPolicyDecisionType decisionType,
                 throw new IllegalArgumentException("decision requires a concrete reason");
             }
 
-            if (StringUtils.isNullOrEmpty(winningRule)) {
+            if (StringUtils.isNullOrBlank(winningRule)) {
                 throw new IllegalArgumentException("decision requires a winning rule");
             }
         }

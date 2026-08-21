@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.runtime.sampling.policy;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -18,7 +20,7 @@ final class TraceIdRatioDecision {
             return false;
         }
 
-        if ((traceId == null) || (traceId.length() < TRACE_ID_LENGTH)) {
+        if (StringUtils.isNullOrEmpty(traceId) || (traceId.length() < TRACE_ID_LENGTH)) {
             return false;
         }
 

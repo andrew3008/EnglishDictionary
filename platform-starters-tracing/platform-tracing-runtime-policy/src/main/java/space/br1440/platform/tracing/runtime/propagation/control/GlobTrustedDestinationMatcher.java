@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+import space.br1440.platform.common.util.ListUtils;
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.propagation.control.TrustedDestinationMatcher;
 
@@ -18,10 +19,12 @@ final class GlobTrustedDestinationMatcher implements TrustedDestinationMatcher {
     GlobTrustedDestinationMatcher(List<String> globs, boolean hostMode, boolean allowIpLiterals) {
         this.hostMode = hostMode;
         this.allowIpLiterals = allowIpLiterals;
-        this.patterns = (globs == null) ? List.of() : globs.stream()
-                .filter(p -> !StringUtils.isNullOrBlank(p))
-                .map(p -> compileGlob(p, hostMode))
-                .toList();
+        this.patterns = ListUtils.isNullOrEmpty(globs)
+                ? List.of()
+                : globs.stream()
+                        .filter(StringUtils::hasText)
+                        .map(p -> compileGlob(p, hostMode))
+                        .toList();
     }
 
     @Override
@@ -45,15 +48,11 @@ final class GlobTrustedDestinationMatcher implements TrustedDestinationMatcher {
     }
 
     private static String canonicalizeHost(String host) {
-        if (host == null) {
+        if (StringUtils.isNullOrBlank(host)) {
             return null;
         }
 
         String h = host.trim();
-        if (h.isEmpty()) {
-            return null;
-        }
-
         if (h.endsWith(".")) {
             h = h.substring(0, h.length() - 1);
         }
@@ -72,12 +71,11 @@ final class GlobTrustedDestinationMatcher implements TrustedDestinationMatcher {
     }
 
     private static String canonicalizeTopic(String topic) {
-        if (topic == null) {
+        if (StringUtils.isNullOrBlank(topic)) {
             return null;
         }
 
-        String t = topic.trim();
-        return t.isEmpty() ? null : t;
+        return topic.trim();
     }
 
     private static Pattern compileGlob(String glob, boolean hostMode) {

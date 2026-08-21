@@ -30,7 +30,7 @@ final class ForceHeaderPolicyRule {
     }
 
     private static boolean matchesForceValue(Set<String> normalizedValues, String rawValue) {
-        if (StringUtils.isNullOrEmpty(rawValue) || SetUtils.isNullOrEmpty(normalizedValues)) {
+        if (StringUtils.isNullOrBlank(rawValue) || SetUtils.isNullOrEmpty(normalizedValues)) {
             return false;
         }
 

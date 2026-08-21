@@ -5,6 +5,8 @@ import java.util.Objects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -15,6 +17,7 @@ public final class CorrelationIdSupport {
     @Nonnull
     public static String requireCanonical(@Nullable String correlationId) {
         Objects.requireNonNull(correlationId, "correlationId");
+
         if (!CanonicalIdGrammar.isCanonical(correlationId)) {
             throw new IllegalArgumentException("correlationId must match [A-Za-z0-9_-]{1," + MAX_LENGTH + "}");
         }
@@ -24,7 +27,7 @@ public final class CorrelationIdSupport {
 
     @Nullable
     public static String sanitizeOrNull(@Nullable String raw) {
-        if (raw == null) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return null;
         }
 

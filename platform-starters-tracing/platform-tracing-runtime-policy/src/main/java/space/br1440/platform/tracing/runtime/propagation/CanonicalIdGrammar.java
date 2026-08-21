@@ -2,6 +2,8 @@ package space.br1440.platform.tracing.runtime.propagation;
 
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
+
 final class CanonicalIdGrammar {
 
     static final int MAX_LENGTH = 128;
@@ -10,7 +12,7 @@ final class CanonicalIdGrammar {
     }
 
     static boolean isCanonical(@Nullable String value) {
-        if (value == null || value.isEmpty() || value.length() > MAX_LENGTH) {
+        if (StringUtils.isNullOrEmpty(value) || value.length() > MAX_LENGTH) {
             return false;
         }
 

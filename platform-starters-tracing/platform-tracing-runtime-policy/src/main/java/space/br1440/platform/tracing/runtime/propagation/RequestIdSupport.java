@@ -4,6 +4,8 @@ import java.util.UUID;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.experimental.UtilityClass;
 
 /**
@@ -22,7 +24,7 @@ public final class RequestIdSupport {
 
     @Nullable
     public static String sanitizeOrNull(@Nullable String raw) {
-        if (raw == null) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return null;
         }
 

@@ -20,7 +20,7 @@ public final class DefaultInboundTraceControlExtractor implements InboundTraceCo
                                            @Nullable String qaTrace,
                                            @Nullable String requestId) {
         boolean isForceTrace = "on".equalsIgnoreCase(traceOn);
-        boolean isQaTrace = !StringUtils.isNullOrBlank(qaTrace);
+        boolean isQaTrace = StringUtils.hasText(qaTrace);
 
         String reason = null;
         if (isForceTrace) {

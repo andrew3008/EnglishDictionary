@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import space.br1440.platform.common.util.ListUtils;
+import space.br1440.platform.common.util.MapUtils;
+import space.br1440.platform.common.util.SetUtils;
 import space.br1440.platform.common.util.StringUtils;
 
 import lombok.experimental.UtilityClass;
@@ -29,7 +32,7 @@ public final class SamplingPolicyPropertiesValidator {
     }
 
     private static void validateDropPaths(List<String> droppedRoutes) {
-        if (droppedRoutes == null) {
+        if (ListUtils.isNullOrEmpty(droppedRoutes)) {
             return;
         }
 
@@ -49,7 +52,7 @@ public final class SamplingPolicyPropertiesValidator {
     }
 
     private static void validateForceValues(Set<String> forceRecordValues) {
-        if (forceRecordValues == null) {
+        if (SetUtils.isNullOrEmpty(forceRecordValues)) {
             return;
         }
 
@@ -69,7 +72,7 @@ public final class SamplingPolicyPropertiesValidator {
     }
 
     private static void validateRouteRatios(Map<String, Double> routeRatios) {
-        if (routeRatios == null) {
+        if (MapUtils.isNullOrEmpty(routeRatios)) {
             return;
         }
 
