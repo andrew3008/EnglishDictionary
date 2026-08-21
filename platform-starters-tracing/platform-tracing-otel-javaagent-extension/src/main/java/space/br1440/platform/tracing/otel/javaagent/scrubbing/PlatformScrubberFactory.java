@@ -29,6 +29,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuleOrigin;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.engine.RuntimeRule;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.loader.ExtensionRuleLoader;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanAttributeScrubbingRules;
+import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.common.util.StringUtils;
 
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
@@ -160,7 +161,7 @@ public final class PlatformScrubberFactory {
                 .filter(r -> !r.critical() && r.priority() < PriorityHardening.CUSTOM_PRIORITY_FLOOR)
                 .count());
 
-        String loadingMode = StringUtils.isNullOrBlank(rulesExtensionsProperty) ? "NONE" : "PLATFORM_RULES_EXTENSIONS";
+        String loadingMode = StringUtils.hasText(rulesExtensionsProperty) ? "PLATFORM_RULES_EXTENSIONS" : "NONE";
         StartupDiagnostics.emit(
                 builtInRules.size(), bundledSpiRules.size(), customRules.size(),
                 loadingMode, extensionRuleLoader.getFailedProviders(),
@@ -216,17 +217,18 @@ public final class PlatformScrubberFactory {
         Set<String> canonicalPaths = new HashSet<>();
         for (String token : raw.split(",")) {
             String trimmed = token.trim();
-            if (trimmed.isEmpty()) {
+            if (StringUtils.isNullOrEmpty(trimmed)) {
                 continue;
             }
 
             File path = new File(trimmed);
             if (path.isDirectory()) {
                 File[] jars = path.listFiles(f -> f.isFile() && f.getName().endsWith(".jar"));
-                if (jars != null) {
-                    for (File jar : jars) {
-                        canonicalPaths.add(canonicalize(jar));
-                    }
+                if (ArrayUtils.isNullOrEmpty(jars)) {
+                    continue;
+                }
+                for (File jar : jars) {
+                    canonicalPaths.add(canonicalize(jar));
                 }
             } else {
                 canonicalPaths.add(canonicalize(path));
@@ -240,7 +242,7 @@ public final class PlatformScrubberFactory {
         try {
             return f.getCanonicalPath();
         } catch (IOException e) {
-            String safeName = f.getName().isBlank() ? "<unnamed>" : f.getName();
+            String safeName = StringUtils.hasText(f.getName()) ? f.getName() : "<unnamed>";
             throw classified(SanitizerBootstrapException.RULE_LOADING_FAILED,
                     "Unable to canonicalize configured OpenTelemetry extension path '" + safeName + "'", e
             );

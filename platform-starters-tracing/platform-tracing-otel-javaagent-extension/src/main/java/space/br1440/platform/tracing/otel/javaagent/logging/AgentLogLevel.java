@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.otel.javaagent.logging;
 import java.util.Locale;
 import java.util.Objects;
 
+import space.br1440.platform.common.util.StringUtils;
+
 public enum AgentLogLevel {
 
     OFF(-1, false),
@@ -36,15 +38,11 @@ public enum AgentLogLevel {
     }
 
     public static AgentLogLevel parseOrDefault(String raw, AgentLogLevel fallback) {
-        if (raw == null) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return fallback;
         }
 
         String normalized = raw.trim().toUpperCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            return fallback;
-        }
-
         for (AgentLogLevel level : values()) {
             if (level.name().equals(normalized)) {
                 return level;

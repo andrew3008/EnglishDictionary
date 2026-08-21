@@ -14,6 +14,8 @@ import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 
+import space.br1440.platform.common.util.ArrayUtils;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
@@ -190,7 +192,7 @@ public final class PrivateControlWriterMBean implements DynamicMBean {
     }
 
     private static boolean isReadAcceptedComplete(String actionName, Object[] params, String[] signature) {
-        return OP_READ.equals(actionName) && isEmpty(params) && isEmpty(signature);
+        return OP_READ.equals(actionName) && ArrayUtils.isNullOrEmpty(params) && ArrayUtils.isNullOrEmpty(signature);
     }
 
     private static boolean isApplySnapshot(String actionName, Object[] params, String[] signature) {
@@ -199,16 +201,12 @@ public final class PrivateControlWriterMBean implements DynamicMBean {
                 && signature != null && signature.length == 1 && CompositeData.class.getName().equals(signature[0]);
     }
 
-    private static boolean isEmpty(Object[] array) {
-        return (array == null) || (array.length == 0);
-    }
-
     private static String extractAttemptId(CompositeData request) {
         if (request == null || !request.containsKey(ATTEMPT_ID_KEY)) {
             return FALLBACK_ATTEMPT_ID;
         }
 
         Object value = request.get(ATTEMPT_ID_KEY);
-        return (value instanceof String text) && !text.isBlank() ? text : FALLBACK_ATTEMPT_ID;
+        return ((value instanceof String text) && StringUtils.hasText(text)) ? text : FALLBACK_ATTEMPT_ID;
     }
 }

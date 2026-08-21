@@ -97,7 +97,7 @@ public final class PlatformResourceCustomizer {
 
         if (filteredExisting.getAttribute(HOST_NAME_KEY) == null) {
             String explicitHost = config.getString(PROP_HOST);
-            if (present(explicitHost)) {
+            if (StringUtils.hasText(explicitHost)) {
                 builder.put(HOST_NAME_KEY, explicitHost.trim().toLowerCase(Locale.ROOT));
             } else {
                 hostNameResolver.resolve().ifPresent(host -> builder.put(HOST_NAME_KEY, host));
@@ -147,7 +147,7 @@ public final class PlatformResourceCustomizer {
     private static Set<String> disabledKeys(ConfigProperties config) {
         Set<String> keys = new HashSet<>();
         for (String key : config.getList(OTEL_RESOURCE_DISABLED_KEYS)) {
-            if (present(key)) {
+            if (StringUtils.hasText(key)) {
                 keys.add(key.trim());
             }
         }
@@ -182,20 +182,17 @@ public final class PlatformResourceCustomizer {
         return (filtered == null) ? attributes : filtered.build();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static boolean contains(List<String> values, String expected) {
         return values.stream().map(String::trim).anyMatch(expected::equals);
     }
 
     private static String firstNonBlank(String first, String second) {
-        if (!StringUtils.isNullOrBlank(first)) {
+        if (StringUtils.hasText(first)) {
             return first;
         }
 
-        return !StringUtils.isNullOrBlank(second) ? second : null;
-    }
-
-    private static boolean present(String value) {
-        return !StringUtils.isNullOrBlank(value);
+        return StringUtils.hasText(second) ? second : null;
     }
 
     private static <T> Supplier<T> memoize(Supplier<T> delegate) {

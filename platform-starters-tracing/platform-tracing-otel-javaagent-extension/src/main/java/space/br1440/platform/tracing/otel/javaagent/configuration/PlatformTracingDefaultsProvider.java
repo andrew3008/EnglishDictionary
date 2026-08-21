@@ -58,7 +58,7 @@ public final class PlatformTracingDefaultsProvider {
 
     private void putEnvFallback(Map<String, String> defaults, String envKey, String propKey) {
         String value = envSupplier.get(envKey);
-        if (!StringUtils.isNullOrBlank(value)) {
+        if (StringUtils.hasText(value)) {
             defaults.put(propKey, value.trim());
         }
     }

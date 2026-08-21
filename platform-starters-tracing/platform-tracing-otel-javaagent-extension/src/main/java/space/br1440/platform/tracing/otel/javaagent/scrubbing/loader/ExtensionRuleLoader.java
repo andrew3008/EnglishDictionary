@@ -126,7 +126,7 @@ public final class ExtensionRuleLoader implements AutoCloseable {
         Set<String> seenCanonicalPaths = new HashSet<>();
         for (String token : rawProperty.split(",")) {
             String trimmed = token.trim();
-            if (trimmed.isEmpty()) {
+            if (StringUtils.isNullOrEmpty(trimmed)) {
                 continue;
             }
 

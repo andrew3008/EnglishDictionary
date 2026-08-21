@@ -66,7 +66,7 @@ public final class ResourceValidationDiagnostics {
                 otelEnv.getAttribute(SERVICE_NAME),
                 existing.getAttribute(SERVICE_NAME));
 
-        return !StringUtils.isNullOrBlank(name)
+        return StringUtils.hasText(name)
                 && !ResourceAttributeResolver.SDK_UNKNOWN_SERVICE.equals(name)
                 && !name.startsWith("unknown_service");
     }

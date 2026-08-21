@@ -49,7 +49,7 @@ final class TraceControlPropagator implements TextMapPropagator {
 
         String forceTraceVal = getter.get(carrier, forceTraceHeader);
         String qaTraceVal = getter.get(carrier, qaTraceHeader);
-        if (isEmpty(forceTraceVal) && isEmpty(qaTraceVal)) {
+        if (StringUtils.isNullOrBlank(forceTraceVal) && StringUtils.isNullOrBlank(qaTraceVal)) {
             return context;
         }
 
@@ -59,12 +59,8 @@ final class TraceControlPropagator implements TextMapPropagator {
 
     @Override
     public <C> void inject(@Nonnull Context context, C carrier, @Nonnull TextMapSetter<C> setter) {
-        // Intentional no-op: исходящая (outbound) инъекция платформенных заголовков принадлежит
+        // Преднамеренно no-op: исходящая (outbound) инъекция платформенных заголовков принадлежит
         // app-plane порту PlatformOutboundPropagation.resolve(decision, control),
         // а не agent-plane пропагатору.
-    }
-
-    private static boolean isEmpty(String val) {
-        return StringUtils.isNullOrBlank(val);
     }
 }

@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.common.util.ArrayUtils;
+
 public final class PlatformAgentLogger {
 
     private final String ownerName;
@@ -102,7 +104,7 @@ public final class PlatformAgentLogger {
     }
 
     private static Map<String, String> sanitizeFields(Object[] fields) {
-        if ((fields == null) || (fields.length == 0)) {
+        if (ArrayUtils.isNullOrEmpty(fields)) {
             return Map.of();
         }
 

@@ -76,17 +76,17 @@ public final class ResourceAttributeResolver {
         }
 
         String existingName = existing.getAttribute(SERVICE_NAME);
-        if (present(existingName) && !SDK_UNKNOWN_SERVICE.equals(existingName)) {
+        if (StringUtils.hasText(existingName) && !SDK_UNKNOWN_SERVICE.equals(existingName)) {
             return Optional.empty();
         }
 
         String platform = config.getString(PlatformResourceCustomizer.PROP_SERVICE_NAME);
-        if (present(platform)) {
+        if (StringUtils.hasText(platform)) {
             return Optional.of(platform.trim());
         }
 
         String spring = config.getString(PROP_SPRING_APPLICATION_NAME);
-        if (present(spring)) {
+        if (StringUtils.hasText(spring)) {
             return Optional.of(spring.trim());
         }
 
@@ -98,20 +98,20 @@ public final class ResourceAttributeResolver {
                                            Resource otelEnv,
                                            String buildInfoVersion,
                                            String manifestVersion) {
-        if (otelEnv.getAttribute(SERVICE_VERSION) != null || present(existing.getAttribute(SERVICE_VERSION))) {
+        if (otelEnv.getAttribute(SERVICE_VERSION) != null || StringUtils.hasText(existing.getAttribute(SERVICE_VERSION))) {
             return Optional.empty();
         }
 
         String platform = config.getString(PlatformResourceCustomizer.PROP_SERVICE_VERSION);
-        if (present(platform)) {
+        if (StringUtils.hasText(platform)) {
             return Optional.of(platform.trim());
         }
 
-        if (present(buildInfoVersion)) {
+        if (StringUtils.hasText(buildInfoVersion)) {
             return Optional.of(buildInfoVersion.trim());
         }
 
-        if (present(manifestVersion)) {
+        if (StringUtils.hasText(manifestVersion)) {
             return Optional.of(manifestVersion.trim());
         }
 
@@ -132,20 +132,16 @@ public final class ResourceAttributeResolver {
 
     Optional<String> resolveCGroup(ConfigProperties config) {
         String value = config.getString(PlatformResourceCustomizer.PROP_C_GROUP);
-        return present(value) ? Optional.of(value.trim()) : Optional.empty();
+        return StringUtils.hasText(value) ? Optional.of(value.trim()) : Optional.empty();
     }
 
     Optional<String> resolvePlatformId(ConfigProperties config) {
         String value = config.getString(PlatformResourceCustomizer.PROP_ID);
-        return present(value) ? Optional.of(value.trim()) : Optional.empty();
+        return StringUtils.hasText(value) ? Optional.of(value.trim()) : Optional.empty();
     }
 
     private static String policyVersion(ConfigProperties config) {
         String value = config.getString(ExtensionPropertyNames.RESOURCE_POLICY_VERSION);
-        return present(value) ? value.trim() : ExtensionDefaults.DEFAULT_RESOURCE_POLICY_VERSION;
-    }
-
-    private static boolean present(String value) {
-        return !StringUtils.isNullOrBlank(value);
+        return StringUtils.hasText(value) ? value.trim() : ExtensionDefaults.DEFAULT_RESOURCE_POLICY_VERSION;
     }
 }

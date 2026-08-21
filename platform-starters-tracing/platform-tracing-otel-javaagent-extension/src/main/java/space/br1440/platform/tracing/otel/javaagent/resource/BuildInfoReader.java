@@ -39,8 +39,9 @@ public final class BuildInfoReader {
 
             Properties props = new Properties();
             props.load(in);
+
             String version = props.getProperty(VERSION_KEY);
-            if (!StringUtils.isNullOrBlank(version)) {
+            if (StringUtils.hasText(version)) {
                 return Optional.of(version.trim());
             }
 

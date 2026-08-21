@@ -1,5 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 
@@ -11,7 +12,7 @@ enum SpiAttestationMode {
 
     static SpiAttestationMode fromSystemProperty() {
         String raw = System.getProperty(ExtensionPropertyNames.SPI_ATTESTATION_MODE);
-        if (raw == null || raw.isBlank()) {
+        if (StringUtils.isNullOrBlank(raw)) {
             return PRODUCTION;
         }
 

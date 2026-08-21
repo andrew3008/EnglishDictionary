@@ -5,6 +5,8 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import space.br1440.platform.common.util.StringUtils;
+
 final class AgentLogFieldNamePolicy {
 
     static final int MAX_FIELDS = 16;
@@ -71,7 +73,7 @@ final class AgentLogFieldNamePolicy {
     }
 
     static boolean isStructurallyValidFieldName(String name) {
-        if (name == null || name.isEmpty() || name.length() > MAX_FIELD_NAME_CHARS) {
+        if (StringUtils.isNullOrEmpty(name) || name.length() > MAX_FIELD_NAME_CHARS) {
             return false;
         }
 

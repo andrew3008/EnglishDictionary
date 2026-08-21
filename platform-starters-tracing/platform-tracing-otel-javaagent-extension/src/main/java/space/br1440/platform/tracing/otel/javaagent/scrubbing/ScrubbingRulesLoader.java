@@ -79,7 +79,7 @@ public final class ScrubbingRulesLoader {
         Set<String> ordered = new LinkedHashSet<>();
         Arrays.stream(raw.split(","))
                 .map(String::trim)
-                .filter(s -> !s.isEmpty())
+                .filter(StringUtils::hasText)
                 .forEach(ordered::add);
         return List.copyOf(ordered);
     }

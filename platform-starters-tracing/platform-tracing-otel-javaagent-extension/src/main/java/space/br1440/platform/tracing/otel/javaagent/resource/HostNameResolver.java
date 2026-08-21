@@ -36,7 +36,7 @@ public final class HostNameResolver {
         }
 
         String fromInet = inetAddressHostName.get();
-        if (!StringUtils.isNullOrBlank(fromInet)) {
+        if (StringUtils.hasText(fromInet)) {
             return Optional.of(fromInet.toLowerCase(Locale.ROOT));
         }
 
@@ -44,11 +44,11 @@ public final class HostNameResolver {
     }
 
     private static String firstNonBlank(String a, String b) {
-        if (!StringUtils.isNullOrBlank(a)) {
+        if (StringUtils.hasText(a)) {
             return a;
         }
 
-        return !StringUtils.isNullOrBlank(b) ? b : null;
+        return StringUtils.hasText(b) ? b : null;
     }
 
     private static String resolveLocalHostNameWithTimeout() {

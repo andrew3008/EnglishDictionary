@@ -20,16 +20,14 @@ public final class PlatformExtensionReadiness {
 
     public static final int PROTOCOL_VERSION = 1;
     public static final String PROFILE = "platform-agent-secure-v1";
-
     public static final String IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
+
     private static final int FAILURE_MESSAGE_MAX_LENGTH = 512;
     private static final String DEFAULT_FAILURE_CODE = "EXTENSION_INITIALIZATION_FAILED";
     private static final String DEFAULT_FAILURE_MESSAGE = "Extension initialization failed without a diagnostic cause";
-
     private static final Set<PlatformExtensionCapability> REQUIRED_CAPABILITIES =  EnumSet.allOf(PlatformExtensionCapability.class);
 
     private final String extensionVersion;
-
     private final Set<PlatformExtensionCapability> installedCapabilities = EnumSet.noneOf(PlatformExtensionCapability.class);
 
     private PlatformExtensionLifecycle lifecycle = PlatformExtensionLifecycle.INITIALIZING;
@@ -111,9 +109,9 @@ public final class PlatformExtensionReadiness {
 
     private static String resolveExtensionVersion() {
         String implementationVersion = readImplementationVersionFromManifest();
-        return StringUtils.isNullOrBlank(implementationVersion)
-                ? "development"
-                : implementationVersion;
+        return StringUtils.hasText(implementationVersion)
+                ? implementationVersion
+                : "development";
     }
 
     private static String readImplementationVersionFromManifest() {
@@ -165,12 +163,12 @@ public final class PlatformExtensionReadiness {
         }
 
         String message = failure.getMessage();
-        String value = failure.getClass().getSimpleName() + (StringUtils.isNullOrBlank(message) ? "" : ": " + message);
+        String value = failure.getClass().getSimpleName() + (StringUtils.hasText(message) ? ": " + message : "");
         return (value.length() <= FAILURE_MESSAGE_MAX_LENGTH) ? value : value.substring(0, FAILURE_MESSAGE_MAX_LENGTH);
     }
 
     @SuppressWarnings("SameParameterValue")
     private static String orDefault(String value, String fallback) {
-        return StringUtils.isNullOrBlank(value) ? fallback : value;
+        return StringUtils.hasText(value) ? value : fallback;
     }
 }

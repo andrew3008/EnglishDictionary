@@ -50,6 +50,6 @@ public final class ResourceStartupDiagnostics {
     }
 
     private static String orAbsent(String value) {
-        return StringUtils.isNullOrBlank(value) ? "<absent>" : value;
+        return StringUtils.hasText(value) ? value : "<absent>";
     }
 }

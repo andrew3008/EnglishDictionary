@@ -66,7 +66,7 @@ public final class EnrichingSpanProcessor implements PlatformEndingSpanProcessor
     public EnrichingSpanProcessor(List<String> remoteServicePriority) {
         List<AttributeKey<String>> keys = new ArrayList<>(remoteServicePriority.size());
         for (String name : remoteServicePriority) {
-            if (!StringUtils.isNullOrBlank(name)) {
+            if (StringUtils.hasText(name)) {
                 keys.add(AttributeKey.stringKey(name.trim()));
             }
         }

@@ -52,6 +52,6 @@ public final class ManifestVersionReader {
         String version = attributes.getValue(IMPLEMENTATION_VERSION);
         return Optional.ofNullable(version)
                 .map(String::trim)
-                .filter(value -> !StringUtils.isNullOrBlank(value));
+                .filter(StringUtils::hasText);
     }
 }
