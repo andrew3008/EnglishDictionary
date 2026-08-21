@@ -37,7 +37,8 @@ final class PlatformSpanNameBuilder {
             case KAFKA_PRODUCER, KAFKA_CONSUMER -> kafka(attributes, explicitName);
             case INTERNAL -> orFallback(explicitName, "internal");
         };
-        return StringUtils.isNullOrBlank(name) ? category.value() : name;
+
+        return StringUtils.hasText(name) ? name : category.value();
     }
 
     private static String http(Attributes attrs, String explicitName) {
@@ -98,6 +99,6 @@ final class PlatformSpanNameBuilder {
 
     @SuppressWarnings("SameParameterValue")
     private static String orFallback(String value, String fallback) {
-        return StringUtils.isNullOrBlank(value) ? fallback : value;
+        return StringUtils.hasText(value) ? value : fallback;
     }
 }
