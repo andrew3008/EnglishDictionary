@@ -3,6 +3,8 @@ package space.br1440.platform.tracing.autoconfigure.agent;
 import java.util.Objects;
 import java.util.Set;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -48,13 +50,13 @@ final class AgentReadinessClassifier {
 
         AgentReadinessSnapshot.Status status = snapshot.status();
         if ("FAILED".equals(status.lifecycle())) {
-            return status.failureCode().isBlank()
-                    ? new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_FAILED_WITHOUT_CODE")
-                    : new Decision(AgentRuntimeState.EXTENSION_FAILED, status.failureCode());
+            return StringUtils.hasText(status.failureCode())
+                    ? new Decision(AgentRuntimeState.EXTENSION_FAILED, status.failureCode())
+                    : new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_FAILED_WITHOUT_CODE");
         }
 
         if ("INITIALIZING".equals(status.lifecycle())) {
-            return status.failureCode().isBlank() && !capabilitiesComplete(snapshot)
+            return status.failureCode().isBlank() && capabilitiesIncomplete(snapshot)
                     ? new Decision(AgentRuntimeState.EXTENSION_INITIALIZING, "")
                     : new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_INITIALIZING_INCONSISTENT");
         }
@@ -63,19 +65,19 @@ final class AgentReadinessClassifier {
             return new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_LIFECYCLE_UNEXPECTED");
         }
 
-        if (!status.failureCode().isBlank()) {
+        if (StringUtils.hasText(status.failureCode())) {
             return new Decision(AgentRuntimeState.EXTENSION_INCOMPATIBLE, "EXTENSION_READY_WITH_FAILURE_CODE");
         }
 
-        if (!capabilitiesComplete(snapshot)) {
+        if (capabilitiesIncomplete(snapshot)) {
             return new Decision(AgentRuntimeState.CAPABILITY_MISSING, "CAPABILITY_SET_MISMATCH");
         }
 
         return new Decision(AgentRuntimeState.AGENT_READY, "");
     }
 
-    private static boolean capabilitiesComplete(AgentReadinessSnapshot snapshot) {
-        return EXPECTED_CAPABILITIES.equals(snapshot.capabilities());
+    private static boolean capabilitiesIncomplete(AgentReadinessSnapshot snapshot) {
+        return !EXPECTED_CAPABILITIES.equals(snapshot.capabilities());
     }
 
     private static boolean versionsCompatible(String extensionVersion, String applicationVersion) {

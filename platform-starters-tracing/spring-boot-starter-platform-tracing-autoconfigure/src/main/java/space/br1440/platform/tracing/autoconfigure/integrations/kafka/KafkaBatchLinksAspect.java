@@ -8,6 +8,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.kafka.annotation.KafkaListener;
 import space.br1440.platform.common.util.ListUtils;
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.span.builder.KafkaBatchSpanBuilder;
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
@@ -94,7 +95,7 @@ public class KafkaBatchLinksAspect {
             return topics.iterator().next();
         }
 
-        if (!kafkaListener.id().isBlank()) {
+        if (StringUtils.hasText(kafkaListener.id())) {
             return kafkaListener.id();
         }
 
@@ -119,8 +120,12 @@ public class KafkaBatchLinksAspect {
             return null;
         }
 
-        return new RemoteSpanLink(parts[1], parts[2], (byte) Integer.parseInt(parts[3], 16),
-                header(record, "tracestate"));
+        return new RemoteSpanLink(
+                parts[1],
+                parts[2],
+                (byte) Integer.parseInt(parts[3], 16),
+                header(record, "tracestate")
+        );
     }
 
     private static boolean isAllZero(String value) {
@@ -137,6 +142,6 @@ public class KafkaBatchLinksAspect {
     }
 
     private boolean isBatchInferred(List<ConsumerRecord<?, ?>> records) {
-        return records != null;
+        return (records != null);
     }
 }

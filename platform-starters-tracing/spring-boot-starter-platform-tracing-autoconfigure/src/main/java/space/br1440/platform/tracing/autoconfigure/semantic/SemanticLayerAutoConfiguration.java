@@ -69,7 +69,7 @@ public class SemanticLayerAutoConfiguration {
                     WARN is recommended for production runtime (see ADR-semconv-validation-modes)""");
 
             case DISABLED -> {
-                String reason = StringUtils.isNullOrBlank(disabledReason) ? UNSPECIFIED_REASON : disabledReason;
+                String reason = StringUtils.hasText(disabledReason) ? disabledReason : UNSPECIFIED_REASON;
                 log.warn("""
                         platform.tracing.semantic.validation-mode=DISABLED: runtime semantic validation is off \
                         (reason='{}'). This is an emergency opt-out, NOT a migration mode. PII scrubbing \

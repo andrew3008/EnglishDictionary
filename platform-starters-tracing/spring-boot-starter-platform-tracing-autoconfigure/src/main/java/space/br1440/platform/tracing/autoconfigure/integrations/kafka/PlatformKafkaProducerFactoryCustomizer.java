@@ -12,6 +12,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.propagation.control.OutboundPropagationPolicy;
 import space.br1440.platform.tracing.api.propagation.control.PlatformOutboundPropagation;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdentityBoundarySupport;
@@ -58,10 +59,10 @@ public final class PlatformKafkaProducerFactoryCustomizer implements DefaultKafk
                 return result;
             }
 
-            case String s when !s.isBlank() -> {
+            case String s when StringUtils.hasText(s) -> {
                 return Arrays.stream(s.split(","))
                         .map(String::trim)
-                        .filter(p -> !p.isEmpty())
+                        .filter(StringUtils::hasText)
                         .toList();
             }
 

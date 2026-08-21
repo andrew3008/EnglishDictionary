@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.agent;
 
+import space.br1440.platform.common.util.StringUtils;
+
 final class AgentContractFailureMessages {
 
     static final String EXPECTED_EXTENSION_IMPLEMENTATION_TITLE = "platform-tracing-otel-javaagent-extension";
@@ -11,9 +13,9 @@ final class AgentContractFailureMessages {
                          TracingDeploymentDiagnostics diagnostics,
                          String applicationVersion) {
         TracingDeploymentDiagnostics.AgentReadiness readiness = diagnostics.agentReadiness();
-        String reason = readiness.failureCode().isBlank()
-                ? "UNSPECIFIED_CONTRACT_FAILURE"
-                : readiness.failureCode();
+        String reason = StringUtils.hasText(readiness.failureCode())
+                ? readiness.failureCode()
+                : "UNSPECIFIED_CONTRACT_FAILURE";
 
         StringBuilder message = new StringBuilder();
         message.append("platform.tracing.enabled=").append(tracingEnabled)
@@ -123,6 +125,6 @@ final class AgentContractFailureMessages {
     }
 
     private static String display(String value) {
-        return (value == null || value.isBlank()) ? "unresolved" : value;
+        return StringUtils.hasText(value) ? value : "unresolved";
     }
 }

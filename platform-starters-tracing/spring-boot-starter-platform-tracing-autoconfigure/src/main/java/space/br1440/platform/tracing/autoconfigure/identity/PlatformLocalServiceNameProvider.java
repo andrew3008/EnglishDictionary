@@ -46,14 +46,10 @@ public final class PlatformLocalServiceNameProvider implements Supplier<String> 
 
     private static String resolve(Environment environment) {
         String fromSpring = (environment != null) ? environment.getProperty(SPRING_APPLICATION_NAME) : null;
-        if (isPresent(fromSpring)) {
+        if (StringUtils.hasText(fromSpring)) {
             return fromSpring;
         }
 
         return UNKNOWN_SERVICE;
-    }
-
-    private static boolean isPresent(String value) {
-        return !StringUtils.isNullOrBlank(value);
     }
 }

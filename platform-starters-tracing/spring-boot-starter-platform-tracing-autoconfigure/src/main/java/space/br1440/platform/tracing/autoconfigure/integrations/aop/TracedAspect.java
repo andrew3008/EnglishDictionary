@@ -12,6 +12,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.api.TraceOperations;
 import space.br1440.platform.tracing.api.annotation.Traced;
 import space.br1440.platform.tracing.api.annotation.TracedAttribute;
@@ -141,7 +142,7 @@ public class TracedAspect implements Ordered {
                 continue;
             }
 
-            String key = attribute.value().isBlank() ? parameter.getName() : attribute.value();
+            String key = StringUtils.hasText(attribute.value()) ? attribute.value() : parameter.getName();
             Object value = args[i];
             if (value != null) {
                 span.setAttribute(key, String.valueOf(value));
@@ -165,7 +166,7 @@ public class TracedAspect implements Ordered {
 
     private String resolveSpanName(Traced annotation, Method method) {
         String declared = annotation.value();
-        return declared.isBlank() ? method.getName() : declared;
+        return StringUtils.hasText(declared) ? declared : method.getName();
     }
 
     private static TracedAttribute findTracedAttribute(Parameter parameter) {

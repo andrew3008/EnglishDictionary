@@ -9,6 +9,7 @@ import java.util.function.LongSupplier;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxObjectNames;
 
 public final class AgentStartupVerifier {
@@ -183,28 +184,26 @@ public final class AgentStartupVerifier {
         };
     }
 
-    /**
-     * Код причины для снимка готовности. Пустой snapshot.failureCode больше не превращается в {@code NONE}:
-     * классификатор даёт собственный reason, а запрещённый агент при {@code enabled=false} —
-     * {@code CONTROLLED_AGENT_FORBIDDEN}.
-     */
     private static String resolveSnapshotFailureCode(boolean tracingEnabled,
                                                      AgentReadinessSnapshot snapshot,
                                                      AgentReadinessClassifier.Decision decision) {
         String resolved = firstNonBlank(snapshot.status().failureCode(), decision.reasonCode());
-        if (!resolved.isBlank()) {
+        if (StringUtils.hasText(resolved)) {
             return resolved;
         }
+
         if (!tracingEnabled && decision.state() != AgentRuntimeState.DISABLED) {
             return "CONTROLLED_AGENT_FORBIDDEN";
         }
+
         return "";
     }
 
     private static String firstNonBlank(String first, String second) {
-        if (first != null && !first.isBlank()) {
+        if (StringUtils.hasText(first)) {
             return first;
         }
+
         return (second == null) ? "" : second;
     }
 

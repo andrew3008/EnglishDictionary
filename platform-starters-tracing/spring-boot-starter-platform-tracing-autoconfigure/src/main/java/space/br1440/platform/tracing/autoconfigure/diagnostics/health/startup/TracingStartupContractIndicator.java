@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup;
 
+import space.br1440.platform.common.util.StringUtils;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
@@ -41,7 +43,7 @@ final class TracingStartupContractIndicator extends AbstractHealthIndicator {
         builder.withDetail("platformRuntimeMode", snapshot.runtimeMode());
         builder.withDetail("agentState", snapshot.agentState());
 
-        if (!snapshot.failureCode().isBlank()) {
+        if (StringUtils.hasText(snapshot.failureCode())) {
             builder.withDetail("failureCode", snapshot.failureCode());
         }
 
