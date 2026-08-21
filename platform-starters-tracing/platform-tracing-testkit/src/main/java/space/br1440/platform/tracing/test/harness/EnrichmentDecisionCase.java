@@ -3,25 +3,24 @@ package space.br1440.platform.tracing.test.harness;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 
-/**
- * Строка матрицы characterization-тестов enrichment policy.
- */
-public record EnrichmentDecisionCase(
-        String caseId,
-        SpanKind spanKind,
-        StatusCode statusCode,
-        String presetPlatformType,
-        String dbSystemAttribute,
-        String peerService,
-        String expectedPlatformType,
-        String expectedPlatformResult,
-        String expectedRemoteService) {
+import space.br1440.platform.common.util.StringUtils;
+
+public record EnrichmentDecisionCase(String caseId,
+                                     SpanKind spanKind,
+                                     StatusCode statusCode,
+                                     String presetPlatformType,
+                                     String dbSystemAttribute,
+                                     String peerService,
+                                     String expectedPlatformType,
+                                     String expectedPlatformResult,
+                                     String expectedRemoteService) {
 
     public EnrichmentDecisionCase {
-        if (caseId == null || caseId.isBlank()) {
+        if (StringUtils.isNullOrBlank(caseId)) {
             throw new IllegalArgumentException("caseId required");
         }
-        spanKind = spanKind == null ? SpanKind.INTERNAL : spanKind;
-        statusCode = statusCode == null ? StatusCode.OK : statusCode;
+
+        spanKind = (spanKind == null) ? SpanKind.INTERNAL : spanKind;
+        statusCode = (statusCode == null) ? StatusCode.OK : statusCode;
     }
 }

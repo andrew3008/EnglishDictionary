@@ -1,33 +1,29 @@
 package space.br1440.platform.tracing.test.harness;
 
+import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
+import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
+import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
+
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
-import space.br1440.platform.tracing.api.attributes.PlatformSamplingReasons;
-import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl;
-import space.br1440.platform.tracing.runtime.propagation.control.PlatformTraceContextKeys;
+import lombok.experimental.UtilityClass;
 
-import java.util.Locale;
-
-/**
- * Фабрика {@link Context} для characterization-тестов sampling rule chain.
- */
+@UtilityClass
 public final class SamplingContextFactory {
 
     private static final String DEFAULT_TRACE_ID = "00000000000000000000000000000001";
     private static final String DEFAULT_SPAN_ID = "0000000000000002";
-
-    private SamplingContextFactory() {
-    }
 
     public static Context root() {
         return Context.root();
     }
 
     public static Context withForceHeader(String rawForceValue) {
-        boolean force = rawForceValue != null
+        boolean force = StringUtils.hasText(rawForceValue)
                 && "on".equalsIgnoreCase(rawForceValue.trim());
         InboundTraceControl control = InboundTraceControls.of(
                 force,
@@ -49,14 +45,16 @@ public final class SamplingContextFactory {
     }
 
     public static Context withForceAndQa(String rawForceValue) {
-        boolean force = rawForceValue != null
+        boolean force = StringUtils.hasText(rawForceValue)
                 && "on".equalsIgnoreCase(rawForceValue.trim());
+
         InboundTraceControl control = InboundTraceControls.of(
                 force,
                 true,
                 null,
                 force ? PlatformSamplingReasons.FORCE_HEADER : PlatformSamplingReasons.QA_TRACE,
                 rawForceValue);
+
         return Context.root().with(PlatformTraceContextKeys.TRACE_CONTROL, control);
     }
 
@@ -93,10 +91,5 @@ public final class SamplingContextFactory {
                         DEFAULT_SPAN_ID,
                         TraceFlags.getDefault(),
                         TraceState.getDefault())));
-    }
-
-    /** Нормализует force-значение так же, как {@code ForceHeaderRule}. */
-    public static String normalizedForceValue(String raw) {
-        return raw == null ? null : raw.toLowerCase(Locale.ROOT);
     }
 }

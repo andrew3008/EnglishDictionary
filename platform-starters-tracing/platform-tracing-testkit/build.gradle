@@ -19,6 +19,8 @@ dependencies {
     api 'org.assertj:assertj-core'
     api 'com.tngtech.archunit:archunit-junit5'
 
+    implementation project(':platform-starters-common:platform-starters-common-util')
+
     compileOnly 'io.micrometer:micrometer-observation'
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
     compileOnly 'org.springframework:spring-context'

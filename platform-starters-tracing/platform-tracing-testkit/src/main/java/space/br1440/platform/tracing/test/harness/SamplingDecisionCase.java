@@ -1,10 +1,12 @@
 package space.br1440.platform.tracing.test.harness;
 
-import io.opentelemetry.context.Context;
-import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
-
 import java.util.List;
 import java.util.Map;
+
+import space.br1440.platform.common.util.StringUtils;
+
+import io.opentelemetry.context.Context;
+import io.opentelemetry.sdk.trace.samplers.SamplingDecision;
 
 public record SamplingDecisionCase(String caseId,
                                    boolean enabled,
@@ -21,14 +23,14 @@ public record SamplingDecisionCase(String caseId,
                                    String expectedMetricReasonCode) {
 
     public SamplingDecisionCase {
-        if (caseId == null || caseId.isBlank()) {
+        if (StringUtils.isNullOrBlank(caseId)) {
             throw new IllegalArgumentException("caseId required");
         }
 
-        droppedRoutes = droppedRoutes == null ? List.of() : List.copyOf(droppedRoutes);
-        forceRecordValues = forceRecordValues == null ? List.of() : List.copyOf(forceRecordValues);
-        routeRatios = routeRatios == null ? Map.of() : Map.copyOf(routeRatios);
-        parentContext = parentContext == null ? Context.root() : parentContext;
-        traceId = traceId == null ? SamplerHarness.DEFAULT_TRACE_ID : traceId;
+        droppedRoutes = (droppedRoutes == null) ? List.of() : List.copyOf(droppedRoutes);
+        forceRecordValues = (forceRecordValues == null) ? List.of() : List.copyOf(forceRecordValues);
+        routeRatios = (routeRatios == null) ? Map.of() : Map.copyOf(routeRatios);
+        parentContext = (parentContext == null) ? Context.root() : parentContext;
+        traceId = (traceId == null) ? SamplerHarness.DEFAULT_TRACE_ID : traceId;
     }
 }
