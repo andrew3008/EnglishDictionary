@@ -16,9 +16,9 @@ import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpan
 import space.br1440.platform.tracing.otel.javaagent.processor.EnrichingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ScrubbingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 
@@ -135,7 +135,10 @@ public final class PlatformSpanProcessorFactory {
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 extConfig.watchdog().spanTimeout(),
                 extConfig.watchdog().traceTimeout(),
-                extConfig.watchdog().scanInterval()
+                extConfig.watchdog().scanInterval(),
+                extConfig.watchdog().maxTrackedTraces(),
+                extConfig.watchdog().maxTrackedSpansPerTrace(),
+                extConfig.watchdog().maxTrackedSpans()
         );
         jmxRegistrar.setWatchdog(watchdog);
         return Optional.of(watchdog);

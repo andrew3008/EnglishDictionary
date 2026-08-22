@@ -28,12 +28,9 @@ public final class ExtensionPropertyNames {
     public static final String VALIDATION_MODE = "platform.tracing.validation.mode";
     public static final String PLATFORM_ENVIRONMENT = "platform.environment";
 
-    public static final String RESOURCE_POLICY_VERSION = "platform.tracing.resource.policy-version";
     public static final String RESOURCE_NORMALIZE_ENVIRONMENT = "platform.tracing.resource.normalize-environment";
     public static final String RESOURCE_VALIDATION_MODE = "platform.tracing.resource.validation-mode";
     public static final String RESOURCE_DETECT_CONTAINER_ID = "platform.tracing.resource.detect-container-id";
-
-    public static final String RESOURCE_POLICY_VERSION_ATTR = "platform.tracing.resource.applied-policy-version";
 
     public static final String CLASSIFICATION_ENABLED = "platform.tracing.classification.enabled";
     public static final String CLASSIFICATION_SLOW_THRESHOLD = "platform.tracing.classification.slow-threshold";
@@ -43,6 +40,9 @@ public final class ExtensionPropertyNames {
     public static final String WATCHDOG_SPAN_TIMEOUT = "platform.tracing.watchdog.span-timeout";
     public static final String WATCHDOG_TRACE_TIMEOUT = "platform.tracing.watchdog.trace-timeout";
     public static final String WATCHDOG_SCAN_INTERVAL = "platform.tracing.watchdog.scan-interval";
+    public static final String WATCHDOG_MAX_TRACKED_TRACES = "platform.tracing.watchdog.max-tracked-traces";
+    public static final String WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE = "platform.tracing.watchdog.max-tracked-spans-per-trace";
+    public static final String WATCHDOG_MAX_TRACKED_SPANS = "platform.tracing.watchdog.max-tracked-spans";
 
     public static final String QUEUE_OVERFLOW_POLICY = "platform.tracing.queue.overflow-policy";
 

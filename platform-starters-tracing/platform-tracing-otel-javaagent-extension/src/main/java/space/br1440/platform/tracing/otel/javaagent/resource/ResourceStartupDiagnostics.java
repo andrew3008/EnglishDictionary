@@ -1,7 +1,6 @@
 package space.br1440.platform.tracing.otel.javaagent.resource;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
@@ -20,10 +19,9 @@ public final class ResourceStartupDiagnostics {
     private static final AttributeKey<String> SERVICE_VERSION = AttributeKey.stringKey(PlatformAttributes.SERVICE_VERSION);
     private static final AttributeKey<String> ENVIRONMENT = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ENVIRONMENT);
     private static final AttributeKey<String> C_GROUP = AttributeKey.stringKey(PlatformAttributes.PLATFORM_C_GROUP);
-    private static final AttributeKey<String> POLICY_VERSION = AttributeKey.stringKey(ExtensionPropertyNames.RESOURCE_POLICY_VERSION_ATTR);
 
     public record Summary(String serviceName, String serviceVersion, String environment, String cGroup,
-                          String policyVersion, ResourceValidationMode mode, int missingCount) {
+                          ResourceValidationMode mode, int missingCount) {
     }
 
     public static Summary from(Attributes resolved, int missingCount, ResourceValidationMode mode) {
@@ -32,7 +30,6 @@ public final class ResourceStartupDiagnostics {
                 resolved.get(SERVICE_VERSION),
                 resolved.get(ENVIRONMENT),
                 resolved.get(C_GROUP),
-                resolved.get(POLICY_VERSION),
                 mode,
                 missingCount
         );
@@ -44,7 +41,6 @@ public final class ResourceStartupDiagnostics {
                 "environment", orAbsent(summary.environment()),
                 "version", orAbsent(summary.serviceVersion()),
                 "cGroup", orAbsent(summary.cGroup()),
-                "policy", orAbsent(summary.policyVersion()),
                 "kind", String.valueOf(summary.mode()),
                 "count", String.valueOf(summary.missingCount()));
     }

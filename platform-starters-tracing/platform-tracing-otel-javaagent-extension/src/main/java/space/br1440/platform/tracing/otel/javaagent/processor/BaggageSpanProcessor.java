@@ -9,8 +9,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import jakarta.annotation.Nonnull;
 
-import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.common.util.StringUtils;
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 
 import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.baggage.BaggageEntry;
@@ -34,7 +34,6 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 public final class BaggageSpanProcessor implements SpanProcessor, ProcessorDiagnosticIdentity {
 
     private static final String DIAGNOSTIC_ID = "baggage";
-
     private static final String ATTRIBUTE_PREFIX = "baggage.";
     private static final String CORRELATION_BAGGAGE_KEY = "platform.correlation.id";
     private static final int CORRELATION_ID_MAX_LENGTH = 128;

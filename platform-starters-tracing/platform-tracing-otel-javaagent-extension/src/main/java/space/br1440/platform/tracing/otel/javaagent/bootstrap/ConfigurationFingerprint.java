@@ -29,7 +29,6 @@ final class ConfigurationFingerprint {
             ExtensionPropertyNames.VALIDATION_ENABLED,
             ExtensionPropertyNames.VALIDATION_MODE,
             ExtensionPropertyNames.PLATFORM_ENVIRONMENT,
-            ExtensionPropertyNames.RESOURCE_POLICY_VERSION,
             ExtensionPropertyNames.RESOURCE_NORMALIZE_ENVIRONMENT,
             ExtensionPropertyNames.RESOURCE_VALIDATION_MODE,
             ExtensionPropertyNames.RESOURCE_DETECT_CONTAINER_ID,

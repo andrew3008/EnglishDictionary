@@ -34,8 +34,8 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.validation.ValidationCon
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 
 /**

@@ -147,6 +147,9 @@ class ExtensionConfigTest {
         assertThat(config.watchdog().spanTimeout()).isEqualTo(Duration.ofSeconds(30));
         assertThat(config.watchdog().traceTimeout()).isEqualTo(Duration.ofSeconds(60));
         assertThat(config.watchdog().scanInterval()).isEqualTo(Duration.ofSeconds(5));
+        assertThat(config.watchdog().maxTrackedTraces()).isEqualTo(10_000);
+        assertThat(config.watchdog().maxTrackedSpansPerTrace()).isEqualTo(1_024);
+        assertThat(config.watchdog().maxTrackedSpans()).isEqualTo(60_000);
     }
 
     // -------------------------------------------------------------------------
@@ -228,6 +231,99 @@ class ExtensionConfigTest {
                 durationConfig(ExtensionPropertyNames.WATCHDOG_SCAN_INTERVAL, Duration.ZERO)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("platform.tracing.watchdog.scan-interval must be greater than zero");
+    }
+
+    @Test
+    void watchdog_rejects_non_positive_span_timeout() {
+        // given
+        ConfigProperties config = durationConfig(ExtensionPropertyNames.WATCHDOG_SPAN_TIMEOUT, Duration.ZERO);
+
+        // when / then
+        assertThatThrownBy(() -> new ExtensionConfig(config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("platform.tracing.watchdog.span-timeout must be greater than zero");
+    }
+
+    @Test
+    void watchdog_rejects_zero_trace_timeout() {
+        // given
+        ConfigProperties config = durationConfig(ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT, Duration.ZERO);
+
+        // when / then
+        assertThatThrownBy(() -> new ExtensionConfig(config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("platform.tracing.watchdog.trace-timeout must be greater than zero");
+    }
+
+    @Test
+    void watchdog_rejects_negative_trace_timeout() {
+        // given
+        ConfigProperties config = durationConfig(
+                ExtensionPropertyNames.WATCHDOG_TRACE_TIMEOUT, Duration.ofSeconds(-1));
+
+        // when / then
+        assertThatThrownBy(() -> new ExtensionConfig(config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("platform.tracing.watchdog.trace-timeout must be greater than zero");
+    }
+
+    @Test
+    void watchdog_rejects_zero_max_tracked_traces() {
+        // given
+        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_TRACES, 0);
+
+        // when / then
+        assertThatThrownBy(() -> new ExtensionConfig(config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("platform.tracing.watchdog.max-tracked-traces must be greater than zero");
+    }
+
+    @Test
+    void watchdog_rejects_negative_max_tracked_traces() {
+        // given
+        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_TRACES, -1);
+
+        // when / then
+        assertThatThrownBy(() -> new ExtensionConfig(config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("platform.tracing.watchdog.max-tracked-traces must be greater than zero");
+    }
+
+    @Test
+    void watchdog_rejects_zero_max_tracked_spans_per_trace() {
+        // given
+        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE, 0);
+
+        // when / then
+        assertThatThrownBy(() -> new ExtensionConfig(config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("platform.tracing.watchdog.max-tracked-spans-per-trace must be greater than zero");
+    }
+
+    @Test
+    void watchdog_rejects_negative_max_tracked_spans() {
+        // given
+        ConfigProperties config = intConfig(ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS, -1);
+
+        // when / then
+        assertThatThrownBy(() -> new ExtensionConfig(config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("platform.tracing.watchdog.max-tracked-spans must be greater than zero");
+    }
+
+    @Test
+    void watchdog_allows_global_span_budget_below_per_trace_budget() {
+        // given
+        ConfigProperties config = intsConfig(Map.of(
+                ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE, 1_024,
+                ExtensionPropertyNames.WATCHDOG_MAX_TRACKED_SPANS, 500));
+
+        // when
+        ExtensionConfig parsed = new ExtensionConfig(config);
+
+        // then
+        assertThat(parsed.watchdog().maxTrackedSpansPerTrace()).isEqualTo(1_024);
+        assertThat(parsed.watchdog().maxTrackedSpans()).isEqualTo(500);
     }
 
     @Test
@@ -435,6 +531,32 @@ class ExtensionConfigTest {
             @Override public Long getLong(String name) { return null; }
             @Override public Double getDouble(String name) { return null; }
             @Override public Duration getDuration(String name) { return values.get(name); }
+            @Override public List<String> getList(String name) { return null; }
+            @Override public Map<String, String> getMap(String name) { return null; }
+        };
+    }
+
+    private static ConfigProperties intsConfig(Map<String, Integer> values) {
+        return new ConfigProperties() {
+            @Override public String getString(String name) { return null; }
+            @Override public Boolean getBoolean(String name) { return null; }
+            @Override public Integer getInt(String name) { return values.get(name); }
+            @Override public Long getLong(String name) { return null; }
+            @Override public Double getDouble(String name) { return null; }
+            @Override public Duration getDuration(String name) { return null; }
+            @Override public List<String> getList(String name) { return null; }
+            @Override public Map<String, String> getMap(String name) { return null; }
+        };
+    }
+
+    private static ConfigProperties intConfig(String key, int value) {
+        return new ConfigProperties() {
+            @Override public String getString(String name) { return null; }
+            @Override public Boolean getBoolean(String name) { return null; }
+            @Override public Integer getInt(String name) { return key.equals(name) ? value : null; }
+            @Override public Long getLong(String name) { return null; }
+            @Override public Double getDouble(String name) { return null; }
+            @Override public Duration getDuration(String name) { return null; }
             @Override public List<String> getList(String name) { return null; }
             @Override public Map<String, String> getMap(String name) { return null; }
         };

@@ -23,7 +23,6 @@ public final class ResourceAttributeResolver {
     private static final AttributeKey<String> ENVIRONMENT = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ENVIRONMENT);
     private static final AttributeKey<String> C_GROUP = AttributeKey.stringKey(PlatformAttributes.PLATFORM_C_GROUP);
     private static final AttributeKey<String> PLATFORM_ID = AttributeKey.stringKey(PlatformAttributes.PLATFORM_ID);
-    private static final AttributeKey<String> POLICY_VERSION = AttributeKey.stringKey(ExtensionPropertyNames.RESOURCE_POLICY_VERSION_ATTR);
 
     private static final String PROP_SPRING_APPLICATION_NAME = "spring.application.name";
 
@@ -61,10 +60,6 @@ public final class ResourceAttributeResolver {
 
         if (existing.getAttribute(PLATFORM_ID) == null) {
             builder.put(PLATFORM_ID, resolvePlatformId(config).orElse(EnvironmentNormalizer.UNKNOWN));
-        }
-
-        if (existing.getAttribute(POLICY_VERSION) == null) {
-            builder.put(POLICY_VERSION, policyVersion(config));
         }
 
         return builder.build();
@@ -138,10 +133,5 @@ public final class ResourceAttributeResolver {
     Optional<String> resolvePlatformId(ConfigProperties config) {
         String value = config.getString(PlatformResourceCustomizer.PROP_ID);
         return StringUtils.hasText(value) ? Optional.of(value.trim()) : Optional.empty();
-    }
-
-    private static String policyVersion(ConfigProperties config) {
-        String value = config.getString(ExtensionPropertyNames.RESOURCE_POLICY_VERSION);
-        return StringUtils.hasText(value) ? value.trim() : ExtensionDefaults.DEFAULT_RESOURCE_POLICY_VERSION;
     }
 }

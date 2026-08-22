@@ -3,10 +3,10 @@ package space.br1440.platform.tracing.otel.javaagent.jmx.registration;
 import space.br1440.platform.tracing.otel.javaagent.exporter.SafeSpanExporter;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntime;
 

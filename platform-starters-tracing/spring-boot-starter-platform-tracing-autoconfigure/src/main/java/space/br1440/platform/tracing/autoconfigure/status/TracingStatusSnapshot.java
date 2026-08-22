@@ -16,7 +16,7 @@ public record TracingStatusSnapshot(int schemaVersion,
                                     SettingsStatus settings,
                                     List<Map<String, Object>> jmxContractDiagnostics) {
 
-    public static final int CURRENT_SCHEMA_VERSION = 3;
+    public static final int CURRENT_SCHEMA_VERSION = 5;
 
     public TracingStatusSnapshot {
         agent = immutableCopy(agent);

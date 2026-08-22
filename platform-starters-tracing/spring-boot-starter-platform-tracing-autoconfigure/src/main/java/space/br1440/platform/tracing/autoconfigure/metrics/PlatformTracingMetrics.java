@@ -29,14 +29,6 @@ public class PlatformTracingMetrics {
      */
     public static final String SCOPE_DOUBLE_CLOSE_TOTAL = "platform_tracing_scope_double_close_total";
 
-    /**
-     * Счётчик принудительно закрытых span'ов через {@code SpanWatchdogProcessor}
-     * (timeout по span'у или трассе). Алертится SRE: рост означает регрессию приложений, забывающих
-     * закрыть span (утечка ThreadLocal-контекста), или реально long-running операции,
-     * выходящие за лимиты {@code TracingProperties.limits.span-timeout} / {@code trace-timeout}.
-     */
-    public static final String WATCHDOG_FORCED_CLOSED_TOTAL = "platform_tracing_watchdog_forced_closed_total";
-
     private final MeterRegistry meterRegistry;
 
     public void incrementSpansStarted(SpanCategory category) {
@@ -64,14 +56,6 @@ public class PlatformTracingMetrics {
     public void incrementScopeDoubleClose() {
         Counter.builder(SCOPE_DOUBLE_CLOSE_TOTAL)
                 .description("Number of repeated close() calls on an already-closed span handle (indicator of lifecycle bugs)")
-                .register(meterRegistry)
-                .increment();
-    }
-
-    public void incrementWatchdogForcedClosed(String reason) {
-        Counter.builder(WATCHDOG_FORCED_CLOSED_TOTAL)
-                .description("Number of spans forcibly closed by the watchdog due to timeout")
-                .tag("reason", reason)
                 .register(meterRegistry)
                 .increment();
     }

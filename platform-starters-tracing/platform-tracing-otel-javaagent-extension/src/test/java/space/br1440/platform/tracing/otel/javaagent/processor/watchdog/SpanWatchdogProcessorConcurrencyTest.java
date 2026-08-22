@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor;
+package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -26,7 +26,7 @@ class SpanWatchdogProcessorConcurrencyTest {
     void scanner_and_onEnd_are_serialized_on_trace_state() throws Exception {
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofNanos(1), Duration.ofHours(1), clock::get);
+                Duration.ofNanos(1), Duration.ofHours(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         ReadWriteSpan span = mock(ReadWriteSpan.class);
         SpanContext spanContext = SpanContext.create(
                 "00000000000000000000000000000001",

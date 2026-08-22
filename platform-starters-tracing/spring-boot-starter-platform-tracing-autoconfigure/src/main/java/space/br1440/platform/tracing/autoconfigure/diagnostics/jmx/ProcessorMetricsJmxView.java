@@ -60,7 +60,15 @@ public final class ProcessorMetricsJmxView {
                 JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_SPAN_CLOSES),
                 JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_TRACE_CLOSES),
                 JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_SPAN_COUNT),
-                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_TRACE_COUNT)));
+                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_TRACE_COUNT),
+                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_COUNT),
+                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_CAPACITY),
+                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKING_EVICTED_TOTAL),
+                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_CAPACITY),
+                JmxObservationCodec.getInt(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_PER_TRACE_CAPACITY),
+                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_PER_TRACE_TOTAL),
+                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_GLOBAL_TOTAL),
+                JmxObservationCodec.getLong(watchdogComposite, JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL)));
 
         JmxOwnerState<ProcessorCompositeValues> compositeState = JmxObservationCodec.ownerState(compositeValuesComposite, () -> new ProcessorCompositeValues(
                 JmxObservationCodec.getLong(compositeValuesComposite, JmxObservationWireContract.PROCESSOR_METRICS_COMPOSITE_ITEM_ERRORS_TOTAL),

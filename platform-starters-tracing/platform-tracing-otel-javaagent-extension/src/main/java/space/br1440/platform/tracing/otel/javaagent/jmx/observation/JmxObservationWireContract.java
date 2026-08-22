@@ -5,7 +5,7 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class JmxObservationWireContract {
 
-    public static final int SCHEMA_VERSION = 1;
+    public static final int SCHEMA_VERSION = 2;
 
     public static final String ITEM_SCHEMA_VERSION = "schemaVersion";
     public static final String ITEM_CAPTURE_SEQUENCE = "captureSequence";
@@ -89,6 +89,14 @@ public final class JmxObservationWireContract {
     public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_TRACE_CLOSES = "forcedTraceCloses";
     public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_SPAN_COUNT = "activeSpanCount";
     public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_TRACE_COUNT = "activeTraceCount";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_COUNT = "trackedTraceCount";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_CAPACITY = "trackedTraceCapacity";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKING_EVICTED_TOTAL = "trackingEvictedTotal";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_CAPACITY = "trackedSpanCapacity";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_PER_TRACE_CAPACITY = "trackedSpanPerTraceCapacity";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_PER_TRACE_TOTAL = "spansRejectedPerTraceTotal";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_GLOBAL_TOTAL = "spansRejectedGlobalTotal";
+    public static final String PROCESSOR_METRICS_WATCHDOG_ITEM_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL = "spanLedgerInvariantViolationTotal";
 
     public static final String PROCESSOR_METRICS_COMPOSITE_VALUES_TYPE_NAME = "space.br1440.platform.tracing.ProcessorCompositeValues";
     public static final String PROCESSOR_METRICS_COMPOSITE_ITEM_ERRORS_TOTAL = "processorErrorsTotal";

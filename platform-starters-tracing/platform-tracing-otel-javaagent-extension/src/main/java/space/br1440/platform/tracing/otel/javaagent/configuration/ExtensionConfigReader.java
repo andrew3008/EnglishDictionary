@@ -58,4 +58,9 @@ final class ExtensionConfigReader {
         Duration configValue = config.getDuration(name);
         return (configValue == null) ? defaultValue : configValue;
     }
+
+    int intValue(String name, int defaultValue) {
+        Integer configValue = config.getInt(name);
+        return (configValue == null) ? defaultValue : configValue;
+    }
 }

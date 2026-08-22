@@ -72,6 +72,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.openjdk.jol:jol-core:0.17'
     testImplementation 'io.opentelemetry:opentelemetry-sdk'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi'
     testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'

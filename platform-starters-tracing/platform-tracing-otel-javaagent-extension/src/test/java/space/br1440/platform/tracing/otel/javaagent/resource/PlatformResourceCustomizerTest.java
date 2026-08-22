@@ -15,7 +15,6 @@ import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 
 /**
@@ -65,12 +64,9 @@ class PlatformResourceCustomizerTest {
 
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_NAME))).isEqualTo("demo-service");
         assertThat(resource.getAttribute(key(PlatformAttributes.SERVICE_VERSION))).isEqualTo("1.0.0");
-        // environment нормализуется: prod -> production
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_ENVIRONMENT))).isEqualTo("production");
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_C_GROUP))).isEqualTo("billing");
         assertThat(resource.getAttribute(key(PlatformAttributes.PLATFORM_ID))).isEqualTo("demo-001");
-        assertThat(resource.getAttribute(key(ExtensionPropertyNames.RESOURCE_POLICY_VERSION_ATTR)))
-                .isEqualTo(ExtensionDefaults.DEFAULT_RESOURCE_POLICY_VERSION);
     }
 
     @Test

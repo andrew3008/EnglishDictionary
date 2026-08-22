@@ -42,6 +42,7 @@ public final class AgentEventCodes {
     public static final String EXPORT_COMPOSITE_LIFECYCLE = "PTA-EXPORT-007";
     public static final String EXPORT_WATCHDOG = "PTA-EXPORT-008";
     public static final String EXPORT_FACTORY = "PTA-EXPORT-009";
+    public static final String EXPORT_LEDGER_VIOLATION = "PTA-EXPORT-010";
 
     public static final String SAMPLE_FALLBACK = "PTA-SAMPLE-001";
 
@@ -91,6 +92,7 @@ public final class AgentEventCodes {
             EXPORT_COMPOSITE_LIFECYCLE,
             EXPORT_WATCHDOG,
             EXPORT_FACTORY,
+            EXPORT_LEDGER_VIOLATION,
             SAMPLE_FALLBACK,
             CTRL_PLANE,
             CTRL_WRITER,

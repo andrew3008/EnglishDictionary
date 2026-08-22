@@ -1,7 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Modifier;
@@ -15,18 +13,18 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 
 class ProcessorDiagnosticIdentityContractTest {
 
     private static final String PROCESSOR_PACKAGE =
-            "space.br1440.platform.tracing.otel.javaagent.processor";
+            "space.br1440.platform.tracing.otel.javaagent.processor..";
 
     @Test
     void identityContractIsOwnedByExactlySevenDomainProcessorsAndNotAnExternalSpi() {
-        // public — доступен из processor.composite (DelegateWiring), но не заявлен как SPI:
-        // implementors — закрытый набор из ровно семи доменных процессоров, см. ниже.
         assertThat(Modifier.isPublic(ProcessorDiagnosticIdentity.class.getModifiers())).isTrue();
 
         List<ProcessorDiagnosticIdentity> processors = List.of(
@@ -35,7 +33,8 @@ class ProcessorDiagnosticIdentityContractTest {
                 ScrubbingSpanProcessorTestFixtures.fromBuiltInRules(List.of()),
                 new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false)),
                 new ClassificationSpanProcessor(Duration.ofSeconds(5), Duration.ofSeconds(1)),
-                new SpanWatchdogProcessor(Duration.ofSeconds(5), Duration.ofSeconds(30), System::nanoTime),
+                new SpanWatchdogProcessor(Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofDays(365),
+                        10_000, Integer.MAX_VALUE, Integer.MAX_VALUE),
                 new SpanLimitsMetricsProcessor()
         );
 

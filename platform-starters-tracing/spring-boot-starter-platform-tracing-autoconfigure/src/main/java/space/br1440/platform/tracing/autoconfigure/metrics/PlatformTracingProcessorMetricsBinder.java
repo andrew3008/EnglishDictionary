@@ -14,12 +14,16 @@ import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.Pro
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
 
 import io.micrometer.core.instrument.FunctionCounter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 
 final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
 
     private static final String WATCHDOG_METRIC_NAME = "platform.tracing.processor.watchdog.count";
+    private static final String WATCHDOG_ACTIVE_METRIC_NAME = "platform.tracing.processor.watchdog.active";
+    private static final String WATCHDOG_TRACKED_METRIC_NAME = "platform.tracing.processor.watchdog.tracked";
+    private static final String WATCHDOG_CAPACITY_METRIC_NAME = "platform.tracing.processor.watchdog.capacity";
     private static final String COMPOSITE_ERRORS_TOTAL_METRIC_NAME = "platform.tracing.processor.composite.errors_total";
     private static final String COMPOSITE_ERRORS_BY_NAME_METRIC_NAME = "platform.tracing.processor.composite.errors_by_name";
     private static final String METRICS_METRIC_NAME = "platform.tracing.processor.metrics.count";
@@ -29,6 +33,7 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
     private static final String METRICS_OWNER = "metrics";
 
     private final PlatformTracingJmxClient client;
+    private final CoalescingJmxObservationSource<ProcessorMetricsObservation> watchdogObservationSource;
     private final MonotonicJmxCounterGroupBridge<ProcessorWatchdogMetricKey> watchdogBridge;
     private final MonotonicJmxCounterGroupBridge<ProcessorCompositeErrorKey> compositeBridge;
     private final MonotonicJmxCounterGroupBridge<ProcessorMetricsMetricKey> metricsBridge;
@@ -39,6 +44,8 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
 
     PlatformTracingProcessorMetricsBinder(PlatformTracingJmxClient client, MonotonicJmxCounterGroupBridge.Ticker ticker) {
         this.client = client;
+        this.watchdogObservationSource = new CoalescingJmxObservationSource<>(
+                () -> client.processorMetrics().observation(), ticker);
 
         this.watchdogBridge = new MonotonicJmxCounterGroupBridge<>(
                 ProcessorWatchdogMetricKey.class, this::watchdogCounts, this::processorMetricsAgentInstanceId, ticker,
@@ -70,6 +77,31 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
                     .register(registry);
         }
         bindResets(registry, watchdogBridge, WATCHDOG_OWNER);
+
+        Gauge.builder(WATCHDOG_ACTIVE_METRIC_NAME, this, binder -> binder.activeCount(WatchdogActiveScope.SPANS))
+                .tags("scope", "spans")
+                .description("Spans currently tracked by the span watchdog processor")
+                .register(registry);
+        Gauge.builder(WATCHDOG_ACTIVE_METRIC_NAME, this, binder -> binder.activeCount(WatchdogActiveScope.TRACES))
+                .tags("scope", "traces")
+                .description("Traces currently holding at least one live span in the watchdog")
+                .register(registry);
+        Gauge.builder(WATCHDOG_TRACKED_METRIC_NAME, this, binder -> binder.trackedTraceCount())
+                .tags("scope", "traces")
+                .description("Trace records currently retained by the span watchdog, including epoch tombstones")
+                .register(registry);
+        Gauge.builder(WATCHDOG_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(WatchdogCapacityScope.TRACES))
+                .tags("scope", "traces")
+                .description("Configured maximum number of trace records retained by the span watchdog")
+                .register(registry);
+        Gauge.builder(WATCHDOG_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(WatchdogCapacityScope.SPANS))
+                .tags("scope", "spans")
+                .description("Configured global hard bound on tracked spans across all traces")
+                .register(registry);
+        Gauge.builder(WATCHDOG_CAPACITY_METRIC_NAME, this, binder -> binder.capacity(WatchdogCapacityScope.SPANS_PER_TRACE))
+                .tags("scope", "spans_per_trace")
+                .description("Configured per-trace fairness guard on tracked spans within a single trace")
+                .register(registry);
 
         FunctionCounter.builder(COMPOSITE_ERRORS_TOTAL_METRIC_NAME, compositeBridge,
                         b -> b.count(ProcessorCompositeErrorKey.TOTAL))
@@ -152,7 +184,55 @@ final class PlatformTracingProcessorMetricsBinder implements MeterBinder {
         Map<ProcessorWatchdogMetricKey, Long> keyed = new EnumMap<>(ProcessorWatchdogMetricKey.class);
         keyed.put(ProcessorWatchdogMetricKey.FORCED_SPAN_CLOSES, values.forcedSpanCloses());
         keyed.put(ProcessorWatchdogMetricKey.FORCED_TRACE_CLOSES, values.forcedTraceCloses());
+        keyed.put(ProcessorWatchdogMetricKey.TRACKING_EVICTED, values.trackingEvictedTotal());
+        keyed.put(ProcessorWatchdogMetricKey.SPANS_REJECTED_PER_TRACE, values.spansRejectedPerTraceTotal());
+        keyed.put(ProcessorWatchdogMetricKey.SPANS_REJECTED_GLOBAL, values.spansRejectedGlobalTotal());
+        keyed.put(ProcessorWatchdogMetricKey.SPAN_LEDGER_INVARIANT_VIOLATION, values.spanLedgerInvariantViolationTotal());
         return new JmxOwnerState.Present<>(keyed, generation);
+    }
+
+    private double activeCount(WatchdogActiveScope scope) {
+        return presentWatchdogValues()
+                .map(values -> (double) switch (scope) {
+                    case SPANS -> values.activeSpanCount();
+                    case TRACES -> values.activeTraceCount();
+                })
+                .orElse(Double.NaN);
+    }
+
+    private double trackedTraceCount() {
+        return presentWatchdogValues()
+                .map(values -> (double) values.trackedTraceCount())
+                .orElse(Double.NaN);
+    }
+
+    private double capacity(WatchdogCapacityScope scope) {
+        return presentWatchdogValues()
+                .map(values -> (double) switch (scope) {
+                    case TRACES -> values.trackedTraceCapacity();
+                    case SPANS -> values.trackedSpanCapacity();
+                    case SPANS_PER_TRACE -> values.trackedSpanPerTraceCapacity();
+                })
+                .orElse(Double.NaN);
+    }
+
+    private enum WatchdogCapacityScope {
+        TRACES,
+        SPANS,
+        SPANS_PER_TRACE
+    }
+
+    private enum WatchdogActiveScope {
+        SPANS,
+        TRACES
+    }
+
+    private Optional<ProcessorWatchdogValues> presentWatchdogValues() {
+        return watchdogObservationSource.get()
+                .map(ProcessorMetricsObservation::watchdog)
+                .flatMap(state -> (state instanceof JmxOwnerState.Present<ProcessorWatchdogValues> present)
+                        ? Optional.of(present.values())
+                        : Optional.empty());
     }
 
     static JmxOwnerState<Map<ProcessorCompositeErrorKey, Long>> toCompositeKeyedState(JmxOwnerState<ProcessorCompositeValues> state) {

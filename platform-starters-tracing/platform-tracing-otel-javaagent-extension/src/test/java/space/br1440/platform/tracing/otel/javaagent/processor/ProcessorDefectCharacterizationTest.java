@@ -31,8 +31,8 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogCapture;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.dropoldest.PlatformDropOldestExportSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 
-/** Фиксирует подтверждённые дефекты до изменения production-кода owning slices. */
 class ProcessorDefectCharacterizationTest {
 
     @RegisterExtension
@@ -71,8 +71,8 @@ class ProcessorDefectCharacterizationTest {
 
     @Test
     void watchdogKeepsSameSpanIdIsolatedByTrace() {
-        SpanWatchdogProcessor watchdog =
-                new SpanWatchdogProcessor(Duration.ofHours(1), Duration.ofHours(2), System::nanoTime);
+        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(Duration.ofHours(1), Duration.ofHours(2),
+                Duration.ofDays(365), 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         ReadWriteSpan first = span(
                 "00000000000000000000000000000001", "0000000000000001");
         ReadWriteSpan second = span(

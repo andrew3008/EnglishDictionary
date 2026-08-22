@@ -7,7 +7,7 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistr
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenType;
@@ -82,13 +82,18 @@ public final class ProcessorMetricsControl implements ProcessorMetricsControlMBe
                     WATCHDOG_VALUES_SCHEMA,
                     true, generation, offsetNanos,
                     owner.getForcedSpanCloses(), owner.getForcedTraceCloses(),
-                    owner.getActiveSpanCount(), owner.getActiveTraceCount()
+                    owner.getActiveSpanCount(), owner.getActiveTraceCount(),
+                    owner.getTrackedTraceCount(), owner.getTrackedTraceCapacity(),
+                    owner.getTrackingEvictedTotal(),
+                    owner.getTrackedSpanCapacity(), owner.getTrackedSpanPerTraceCapacity(),
+                    owner.getSpansRejectedPerTraceTotal(), owner.getSpansRejectedGlobalTotal(),
+                    owner.getSpanLedgerInvariantViolationTotal()
             );
         }
 
         return JmxOpenTypeSupport.compositeData(
                 WATCHDOG_VALUES_SCHEMA,
-                false, state.generation(), offsetNanos, 0L, 0L, 0, 0
+                false, state.generation(), offsetNanos, 0L, 0L, 0, 0, 0, 0, 0L, 0, 0, 0L, 0L, 0L
         );
     }
 
@@ -144,6 +149,14 @@ public final class ProcessorMetricsControl implements ProcessorMetricsControlMBe
         items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_FORCED_TRACE_CLOSES, SimpleType.LONG);
         items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_SPAN_COUNT, SimpleType.INTEGER);
         items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_ACTIVE_TRACE_COUNT, SimpleType.INTEGER);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_COUNT, SimpleType.INTEGER);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_TRACE_CAPACITY, SimpleType.INTEGER);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKING_EVICTED_TOTAL, SimpleType.LONG);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_CAPACITY, SimpleType.INTEGER);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_TRACKED_SPAN_PER_TRACE_CAPACITY, SimpleType.INTEGER);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_PER_TRACE_TOTAL, SimpleType.LONG);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPANS_REJECTED_GLOBAL_TOTAL, SimpleType.LONG);
+        items.put(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_ITEM_SPAN_LEDGER_INVARIANT_VIOLATION_TOTAL, SimpleType.LONG);
         return JmxOpenTypeSupport.compositeType(JmxObservationWireContract.PROCESSOR_METRICS_WATCHDOG_VALUES_TYPE_NAME, items);
     }
 

@@ -5,8 +5,6 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.resources.Resource;
 import org.junit.jupiter.api.Test;
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionDefaults;
-import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 
 import java.util.Map;
 
@@ -69,14 +67,12 @@ class ResourceAttributeResolverTest {
     }
 
     @Test
-    void all_empty_with_group_id_unknown_policy_default() {
+    void all_empty_writes_unknown_for_group_and_id() {
         Attributes attrs = resolve(Map.of());
 
         assertThat(attrs.get(key(PlatformAttributes.SERVICE_NAME))).isNull();
         assertThat(attrs.get(key(PlatformAttributes.PLATFORM_C_GROUP))).isEqualTo(EnvironmentNormalizer.UNKNOWN);
         assertThat(attrs.get(key(PlatformAttributes.PLATFORM_ID))).isEqualTo(EnvironmentNormalizer.UNKNOWN);
-        assertThat(attrs.get(key(ExtensionPropertyNames.RESOURCE_POLICY_VERSION_ATTR)))
-                .isEqualTo(ExtensionDefaults.DEFAULT_RESOURCE_POLICY_VERSION);
     }
 
     @Test

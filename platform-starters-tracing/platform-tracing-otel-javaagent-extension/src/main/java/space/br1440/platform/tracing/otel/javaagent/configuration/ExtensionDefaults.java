@@ -24,11 +24,7 @@ public final class ExtensionDefaults {
     public static final String DEFAULT_SCRUBBING_VALIDATION_MODE = "LENIENT";
     public static final List<String> DEFAULT_BUILT_IN_RULES = BuiltInSpanAttributeScrubbingRules.defaultConfigNames();
 
-    public static final String DEFAULT_VALIDATION_MODE = "LENIENT";
-
-    public static final String DEFAULT_RESOURCE_POLICY_VERSION = "2026.06.08";
     public static final boolean DEFAULT_RESOURCE_NORMALIZE_ENVIRONMENT = true;
-    public static final String DEFAULT_RESOURCE_VALIDATION_MODE = "LENIENT";
     public static final boolean DEFAULT_RESOURCE_DETECT_CONTAINER_ID = false;
 
     public static final Duration DEFAULT_CLASSIFICATION_SLOW_THRESHOLD = Duration.ofSeconds(5);
@@ -38,6 +34,9 @@ public final class ExtensionDefaults {
     public static final Duration DEFAULT_WATCHDOG_SPAN_TIMEOUT = Duration.ofSeconds(30);
     public static final Duration DEFAULT_WATCHDOG_TRACE_TIMEOUT = Duration.ofSeconds(60);
     public static final Duration DEFAULT_WATCHDOG_SCAN_INTERVAL = Duration.ofSeconds(5);
+    public static final int DEFAULT_WATCHDOG_MAX_TRACKED_TRACES = 10_000;
+    public static final int DEFAULT_WATCHDOG_MAX_TRACKED_SPANS_PER_TRACE = 1_024;
+    public static final int DEFAULT_WATCHDOG_MAX_TRACKED_SPANS = 60_000;
 
     public static final String DEFAULT_QUEUE_OVERFLOW_POLICY = "DROP_OLDEST";
     public static final Duration DEFAULT_DROP_OLDEST_SHUTDOWN_TIMEOUT = Duration.ofSeconds(10);

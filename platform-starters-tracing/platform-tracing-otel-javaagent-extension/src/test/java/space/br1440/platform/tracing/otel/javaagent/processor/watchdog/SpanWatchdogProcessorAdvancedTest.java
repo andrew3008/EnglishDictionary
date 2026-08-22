@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor;
+package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
@@ -26,7 +26,8 @@ class SpanWatchdogProcessorAdvancedTest {
     @Test
     void getActiveSpanCount_reflects_live_span_count_before_close() {
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime);
+                Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
+                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
                 .build();
@@ -54,7 +55,8 @@ class SpanWatchdogProcessorAdvancedTest {
     @Test
     void repeated_shutdown_does_not_throw_and_keeps_counters_at_zero() {
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime);
+                Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
+                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         assertThat(watchdog.shutdown().isSuccess()).isTrue();
         assertThatCode(watchdog::shutdown).doesNotThrowAnyException();
@@ -65,7 +67,8 @@ class SpanWatchdogProcessorAdvancedTest {
     @Test
     void forceFlush_on_empty_set_does_not_crash_and_returns_success() {
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMillis(1), Duration.ofMillis(1), System::nanoTime);
+                Duration.ofMillis(1), Duration.ofMillis(1), System::nanoTime,
+                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         assertThat(watchdog.forceFlush().isSuccess()).isTrue();
         assertThat(watchdog.getForcedSpanCloses()).isZero();
@@ -79,7 +82,7 @@ class SpanWatchdogProcessorAdvancedTest {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMillis(20), Duration.ofMinutes(1), clock::get);
+                Duration.ofMillis(20), Duration.ofMinutes(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))
@@ -106,7 +109,7 @@ class SpanWatchdogProcessorAdvancedTest {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMillis(20), Duration.ofMillis(20), clock::get);
+                Duration.ofMillis(20), Duration.ofMillis(20), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
                 .addSpanProcessor(SimpleSpanProcessor.create(exporter))

@@ -7,13 +7,6 @@ import space.br1440.platform.tracing.api.span.SpanCategory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Тесты {@link PlatformTracingMetrics}.
- * <p>
- * До Slice 1B manual-tracing self-metrics собирал {@code MeteredPlatformTracing}; после Slice 1B
- * публичный фасадный декоратор удалён. Durable manual-tracing metrics вернутся через
- * {@code MeteredTracingRuntime} на границе {@code TracingRuntime} (Slice 2/6).
- */
 class PlatformTracingMetricsTest {
 
     @Test
@@ -70,25 +63,6 @@ class PlatformTracingMetricsTest {
         metrics.incrementScopeDoubleClose();
 
         assertThat(registry.find(PlatformTracingMetrics.SCOPE_DOUBLE_CLOSE_TOTAL)
-                .counter()
-                .count()).isEqualTo(1.0);
-    }
-
-    @Test
-    void incrementsWatchdogForcedCloseCounterWithReasonTag() {
-        MeterRegistry registry = new SimpleMeterRegistry();
-        PlatformTracingMetrics metrics = new PlatformTracingMetrics(registry);
-
-        metrics.incrementWatchdogForcedClosed("span-timeout");
-        metrics.incrementWatchdogForcedClosed("span-timeout");
-        metrics.incrementWatchdogForcedClosed("trace-timeout");
-
-        assertThat(registry.find(PlatformTracingMetrics.WATCHDOG_FORCED_CLOSED_TOTAL)
-                .tag("reason", "span-timeout")
-                .counter()
-                .count()).isEqualTo(2.0);
-        assertThat(registry.find(PlatformTracingMetrics.WATCHDOG_FORCED_CLOSED_TOTAL)
-                .tag("reason", "trace-timeout")
                 .counter()
                 .count()).isEqualTo(1.0);
     }

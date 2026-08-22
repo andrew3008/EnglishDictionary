@@ -1,4 +1,4 @@
-package space.br1440.platform.tracing.otel.javaagent.processor;
+package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
@@ -27,7 +27,7 @@ class SpanWatchdogProcessorTest {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMillis(50), Duration.ofMinutes(1), clock::get);
+                Duration.ofMillis(50), Duration.ofMinutes(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
@@ -41,14 +41,14 @@ class SpanWatchdogProcessorTest {
         watchdog.scanForTesting();
 
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
-        var data = exporter.getFinishedSpanItems().get(0);
+        var data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isEqualTo("span");
         assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT))).isEqualTo("timeout");
         assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);
 
-        // Повторный end() от приложения не должен ломать логику.
         longSpan.end();
+        assertThat(exporter.getFinishedSpanItems()).hasSize(1);
         watchdog.shutdown();
         tracerProvider.shutdown();
     }
@@ -56,7 +56,9 @@ class SpanWatchdogProcessorTest {
     @Test
     void does_not_touch_span_finished_before_timeout() {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
-        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime);
+        SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
+                Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
+                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
@@ -67,7 +69,7 @@ class SpanWatchdogProcessorTest {
         tracer.spanBuilder("fast-op").startSpan().end();
         watchdog.scanForTesting();
 
-        var data = exporter.getFinishedSpanItems().get(0);
+        var data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isNull();
         assertThat(watchdog.getForcedSpanCloses()).isZero();
 
@@ -80,7 +82,7 @@ class SpanWatchdogProcessorTest {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMinutes(1), Duration.ofMillis(50), clock::get);
+                Duration.ofMinutes(1), Duration.ofMillis(50), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
@@ -92,7 +94,7 @@ class SpanWatchdogProcessorTest {
         clock.addAndGet(Duration.ofMillis(51).toNanos());
         watchdog.scanForTesting();
 
-        var data = exporter.getFinishedSpanItems().get(0);
+        var data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isEqualTo("trace");
         assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT))).isEqualTo("timeout");
         assertThat(watchdog.getForcedTraceCloses()).isEqualTo(1);
@@ -107,7 +109,7 @@ class SpanWatchdogProcessorTest {
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         AtomicLong clock = new AtomicLong();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMillis(10), Duration.ofMinutes(1), clock::get);
+                Duration.ofMillis(10), Duration.ofMinutes(1), clock::get, 10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)
@@ -121,7 +123,7 @@ class SpanWatchdogProcessorTest {
         watchdog.forceFlush();
 
         assertThat(exporter.getFinishedSpanItems()).hasSize(1);
-        var data = exporter.getFinishedSpanItems().get(0);
+        var data = exporter.getFinishedSpanItems().getFirst();
         assertThat(data.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         assertThat(data.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_TIMEOUT))).isEqualTo("span");
         assertThat(watchdog.getForcedSpanCloses()).isEqualTo(1);
@@ -136,7 +138,8 @@ class SpanWatchdogProcessorTest {
         // единый trace-owned state должен полностью освободиться.
         InMemorySpanExporter exporter = InMemorySpanExporter.create();
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
-                Duration.ofMinutes(10), Duration.ofMinutes(10), System::nanoTime);
+                Duration.ofMinutes(10), Duration.ofMinutes(10), System::nanoTime,
+                10_000, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(watchdog)

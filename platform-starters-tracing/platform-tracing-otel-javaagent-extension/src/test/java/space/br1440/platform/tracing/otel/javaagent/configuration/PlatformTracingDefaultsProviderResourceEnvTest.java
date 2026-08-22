@@ -29,16 +29,14 @@ class PlatformTracingDefaultsProviderResourceEnvTest {
         Map<String, String> env = Map.of(
                 ExtensionEnvironmentVariables.SERVICE_VERSION,     "1.2.3",
                 ExtensionEnvironmentVariables.SERVICE_ENVIRONMENT, "production",
-                ExtensionEnvironmentVariables.SERVICE_C_GROUP,     "payments",
-                ExtensionEnvironmentVariables.RESOURCE_POLICY_VERSION, "2026.06.08");
+                ExtensionEnvironmentVariables.SERVICE_C_GROUP,     "payments");
 
         Map<String, String> defaults = new PlatformTracingDefaultsProvider(env::get).supply();
 
         assertThat(defaults)
                 .containsEntry(PlatformResourceCustomizer.PROP_SERVICE_VERSION, "1.2.3")
                 .containsEntry(PlatformResourceCustomizer.PROP_ENVIRONMENT, "production")
-                .containsEntry(PlatformResourceCustomizer.PROP_C_GROUP, "payments")
-                .containsEntry(ExtensionPropertyNames.RESOURCE_POLICY_VERSION, "2026.06.08");
+                .containsEntry(PlatformResourceCustomizer.PROP_C_GROUP, "payments");
     }
 
     @Test

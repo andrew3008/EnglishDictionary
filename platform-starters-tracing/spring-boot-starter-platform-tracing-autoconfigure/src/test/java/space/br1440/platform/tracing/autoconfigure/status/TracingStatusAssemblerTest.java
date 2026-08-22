@@ -12,18 +12,20 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsLeaves;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
-import space.br1440.platform.tracing.autoconfigure.control.settings.read.AgentReadinessSnapshot;
+import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
+import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.PlatformEnvironmentPosture;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapSettings;
 import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingConfigurationAuthority;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsLeaves;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsReadModel;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AgentReadinessSnapshot;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.PlatformTracingJmxClient;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorMetricsObservation;
+import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.processor.ProcessorWatchdogValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationObservation;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.validation.ValidationValues;
 import space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxOwnerState;
-import space.br1440.platform.tracing.autoconfigure.agent.AgentRuntimeState;
-import space.br1440.platform.tracing.autoconfigure.agent.TracingDeploymentDiagnostics;
 import space.br1440.platform.tracing.otel.facade.NoopTraceOperations;
 import space.br1440.platform.tracing.otel.runtime.NoOpTracingRuntime;
 import space.br1440.platform.tracing.otel.runtime.TracingRuntime;
@@ -114,6 +116,53 @@ class TracingStatusAssemblerTest {
         Map<String, Object> validation =
                 (Map<String, Object>) assembler.assemble().runtime().get("validation");
         assertThat(validation).containsEntry("violationsTotal", 42L);
+    }
+
+    @Test
+    void runtimeWatchdogSectionExposesLiveAndBoundedState() {
+        // given
+        PlatformTracingJmxClient jmxClient = mock(PlatformTracingJmxClient.class, RETURNS_DEEP_STUBS);
+        ProcessorWatchdogValues values = new ProcessorWatchdogValues(
+                11L, 4L, 3, 1, 7, 10_000, 9L, 60_000, 1_024, 5L, 2L, 0L);
+        when(jmxClient.processorMetrics().observation()).thenReturn(Optional.of(
+                new ProcessorMetricsObservation(
+                        "agent-instance",
+                        new JmxOwnerState.Present<>(values, 2L),
+                        new JmxOwnerState.Absent<>(0L),
+                        new JmxOwnerState.Absent<>(0L))));
+        TracingBootstrapSettings settings = new TracingBootstrapSettings(
+                true,
+                TracingConfigurationAuthority.HELM,
+                PlatformEnvironmentPosture.LOCAL);
+        TracingStatusAssembler assembler = new TracingStatusAssembler(
+                NoopTraceOperations.INSTANCE,
+                NoOpTracingRuntime.noop(),
+                settings,
+                jmxClient,
+                Optional::empty,
+                diagnostics(AgentRuntimeState.AGENT_READY));
+
+        // when
+        TracingStatusSnapshot snapshot = assembler.assemble();
+
+        // then
+        assertThat(snapshot.schemaVersion()).isEqualTo(5);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> watchdog = (Map<String, Object>) snapshot.runtime().get("watchdog");
+        assertThat(watchdog)
+                .containsEntry("present", true)
+                .containsEntry("forcedSpanCloses", 11L)
+                .containsEntry("forcedTraceCloses", 4L)
+                .containsEntry("activeSpanCount", 3)
+                .containsEntry("activeTraceCount", 1)
+                .containsEntry("trackedTraceCount", 7)
+                .containsEntry("trackedTraceCapacity", 10_000)
+                .containsEntry("trackingEvictedTotal", 9L)
+                .containsEntry("trackedSpanCapacity", 60_000)
+                .containsEntry("trackedSpanPerTraceCapacity", 1_024)
+                .containsEntry("spansRejectedPerTraceTotal", 5L)
+                .containsEntry("spansRejectedGlobalTotal", 2L)
+                .containsEntry("spanLedgerInvariantViolationTotal", 0L);
     }
 
     private static TracingStatusAssembler assembler(boolean enabled,

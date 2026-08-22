@@ -13,10 +13,9 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
  * Удаляет чувствительные данные из значений атрибутов span'ов до экспорта.
  * <p>
  * Работает на этапе {@code onEnding} (когда {@link ReadWriteSpan} ещё допускает перезапись
- * атрибутов) и делегирует всю политику/HMAC/счётчики в session-scoped {@link ScrubbingRuntime}
- * (ADR-scrubbing-hybrid-processor-export-boundary.md). Должен быть последним делегатом среди
- * всех {@code isOnEndingRequired()} processor'ов в {@code buildDelegates}, чтобы более поздние
- * onEnding-делегаты не могли записать unsanitized span attribute после scrubbing.
+ * атрибутов) и делегирует всю политику/HMAC/счётчики в session-scoped {@link ScrubbingRuntime}.
+ * Должен быть последним делегатом среди всех {@code isOnEndingRequired()} processor'ов в {@code buildDelegates},
+ * чтобы более поздние onEnding-делегаты не могли записать unsanitized span attribute после scrubbing.
  */
 public final class ScrubbingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 

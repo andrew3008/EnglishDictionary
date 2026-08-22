@@ -18,9 +18,9 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistr
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationState;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
-import space.br1440.platform.tracing.otel.javaagent.processor.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ValidatingSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
+import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
@@ -261,6 +261,10 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             assertThat(order.indexOf("validation"))
                     .isLessThan(order.indexOf("scrubbing"));
             assertThat(order.indexOf("classification"))
+                    .isLessThan(order.indexOf("watchdog"));
+            assertThat(order.indexOf("watchdog"))
+                    .isLessThan(order.indexOf("span_limits_metrics"));
+            assertThat(order.indexOf("watchdog"))
                     .isLessThan(order.indexOf("scrubbing"));
         } finally {
             composite.shutdown();
@@ -384,14 +388,16 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         void factoryDoesNotAddWatchdogProcessorByDefault() throws Exception {
             DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
             PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
-                    registrar, ScrubbingRuntimeTestFixtures.disabled());
+                    registrar, ScrubbingRuntimeTestFixtures.disabled()
+            );
 
-            // Default ExtensionConfig (no watchdog.enabled property) + scrubbing disabled for test safety.
             ExtensionConfig defaultConfig = new ExtensionConfig(new ConfigProperties() {
                 @Override public String getString(String name) { return null; }
                 @Override public Boolean getBoolean(String name) {
-                    // Scrubbing must be off so collectScrubbingRules is never called.
-                    if ("platform.tracing.javaagent.scrubbing.enabled".equals(name)) return false;
+                    if ("platform.tracing.javaagent.scrubbing.enabled".equals(name)) {
+                        return false;
+                    }
+
                     return null;
                 }
                 @Override public Integer getInt(String name) { return null; }
@@ -441,6 +447,9 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             assertThat(cfg.watchdog().scanInterval())
                     .as("watchdog scanInterval default")
                     .isEqualTo(Duration.ofSeconds(5));
+            assertThat(cfg.watchdog().maxTrackedTraces())
+                    .as("watchdog maxTrackedTraces default")
+                    .isEqualTo(10_000);
             assertThat(cfg.classification().slowThreshold())
                     .as("classification slowThreshold default")
                     .isEqualTo(Duration.ofSeconds(5));
