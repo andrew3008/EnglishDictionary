@@ -4,6 +4,8 @@ plugins {
     id 'platform.testing'
 }
 
+group = 'space.br1440.platform.starters.errorhandling'
+
 platformJavaLibrary {
     bomProjectPath = ':spring-boot-starter-platform-bom'
 }

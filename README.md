@@ -31,6 +31,8 @@
 
 ### Обработка ошибок (`platform-starters-error-handling/`)
 
+Все артефакты семейства публикуются в группе `space.br1440.platform.starters.errorhandling`.
+
 | Gradle-проект | Каталог |
 |-----------------|---------|
 | `:platform-starters-error-handling:platform-error-handling-core` | [`platform-error-handling-core`](platform-starters-error-handling/platform-error-handling-core) |

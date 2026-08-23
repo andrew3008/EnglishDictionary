@@ -92,7 +92,6 @@ dependencies {
         // прикладные стартеры
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-mvc:${rootProject.version}"
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-webflux:${rootProject.version}"
-        api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-grpc:${rootProject.version}"
 
 
         // ============================================================

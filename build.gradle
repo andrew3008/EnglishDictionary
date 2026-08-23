@@ -13,17 +13,6 @@ allprojects {
     version = '1.2.0-SNAPSHOT'
 }
 
-configure(subprojects.findAll { project ->
-    project.path in [
-            ':platform-starters-error-handling:platform-error-handling-core',
-            ':platform-starters-error-handling:spring-boot-starter-platform-error-handling-mvc',
-            ':platform-starters-error-handling:spring-boot-starter-platform-error-handling-webflux',
-            ':platform-starters-error-handling:spring-boot-starter-platform-error-handling-grpc',
-    ]
-}) {
-    group = 'space.br1440.platform.starters.errorhandling'
-}
-
 def nonPublishedProjects = [
         ':platform-starters-tracing',
         ':platform-starters-tracing:platform-tracing-testkit',
