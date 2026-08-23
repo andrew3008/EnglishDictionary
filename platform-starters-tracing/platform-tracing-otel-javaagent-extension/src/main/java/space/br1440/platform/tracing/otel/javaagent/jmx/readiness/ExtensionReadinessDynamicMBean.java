@@ -11,15 +11,6 @@ import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.ReflectionException;
 
-/**
- * Snapshot-backed readiness {@link DynamicMBean} (r5 plan &sect;6, S6).
- *
- * <p>{@link #getAttributes(String[])} captures the coordinator projection supplier exactly once
- * and encodes every requested attribute from that immutable snapshot. {@link #getAttribute}
- * captures once per call. Protocol version remains {@code 1}; Spring Gate C1 continues to use the
- * six wire attributes ({@code ExtensionVersion}, {@code ProtocolVersion}, {@code Profile},
- * {@code LifecycleState}, {@code FailureCode}, {@code Capabilities}).
- */
 public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
 
     private static final MBeanInfo INFO = buildMBeanInfo();
@@ -42,18 +33,19 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
 
     @Override
     public AttributeList getAttributes(String[] attributes) {
-        ExtensionReadinessWireSnapshot snap = snapshot();
         AttributeList result = new AttributeList();
         if (attributes == null) {
             return result;
         }
+
+        ExtensionReadinessWireSnapshot snap = snapshot();
         for (String attribute : attributes) {
             try {
                 result.add(new Attribute(attribute, attributeValue(attribute, snap)));
             } catch (AttributeNotFoundException ignored) {
-                // DynamicMBean contract: omit unknown attributes from the bulk response.
             }
         }
+
         return result;
     }
 
@@ -73,12 +65,10 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
     }
 
     private ExtensionReadinessWireSnapshot snapshot() {
-        ExtensionReadinessWireSnapshot snap = Objects.requireNonNull(projection.get(), "projection.get()");
-        return snap;
+        return Objects.requireNonNull(projection.get(), "projection.get()");
     }
 
-    private static Object attributeValue(String attribute, ExtensionReadinessWireSnapshot snap)
-            throws AttributeNotFoundException {
+    private static Object attributeValue(String attribute, ExtensionReadinessWireSnapshot snap) throws AttributeNotFoundException {
         return switch (attribute) {
             case "ExtensionVersion" -> snap.extensionVersion();
             case "ProtocolVersion" -> snap.protocolVersion();
@@ -101,13 +91,15 @@ public final class ExtensionReadinessDynamicMBean implements DynamicMBean {
                 attribute("FailureMessage", String.class),
                 attribute("Capabilities", String[].class)
         };
+
         return new MBeanInfo(
                 ExtensionReadinessDynamicMBean.class.getName(),
                 "Platform extension readiness (protocol v1, snapshot-backed)",
                 attributes,
                 null,
                 null,
-                null);
+                null
+        );
     }
 
     private static MBeanAttributeInfo attribute(String name, Class<?> type) {
