@@ -4,6 +4,9 @@
 Дата: 2026-08-19
 Обновлено: 2026-08-20 — владение MDC-ключами разведено по классам-владельцам (см. «Один писатель
 на ключ» и «Reactor-хопы и Hooks» ниже), устранён дефект R1/R2 остаточного прогона Gentoo.
+Обновлено: 2026-08-23 — `TracingReactorContextPropagationInitializer` удалён как дублирующий
+штатный механизм Boot `ReactorAutoConfiguration`; активация хука теперь — дефолт свойства через
+`@PropertySource`, см. «Reactor-хопы и Hooks» ниже.
 
 ## Решение
 
@@ -61,15 +64,18 @@ traceFlags = SpanContext.getTraceFlags().asHex()
 identity в MDC на переключении Reactor-планировщика только пока в JVM включён
 `Hooks.enableAutomaticContextPropagation()`.
 
-`TracingReactorContextPropagationInitializer` включает этот режим при отсутствующем свойстве
-`spring.reactor.context-propagation` или значении `AUTO`. При явном `LIMITED` платформа **не
-переопределяет** выбор приложения — только логирует WARN с перечнем последствий (identity/MDC на
-Reactor-хопах не гарантируются). Причина: `Hooks` — изменяемое глобальное состояние JVM (существует
-парный `Hooks.disableAutomaticContextPropagation()`, действует только на новые подписки), и
-переопределение затронуло бы весь процесс, включая код, не относящийся к трассировке. Spring Boot
-намеренно держит дефолт `LIMITED` из-за накладных расходов автоматического режима
+Хук включает не платформенный код, а штатная Boot `ReactorAutoConfiguration` — по свойству
+`spring.reactor.context-propagation`. `TracingReactorEagerInitConfiguration` не дублирует эту логику
+собственным вызовом `Hooks.enableAutomaticContextPropagation()` (до 2026-08-23 дублировала —
+`TracingReactorContextPropagationInitializer` удалён как overhead поверх штатного механизма Boot),
+а лишь поставляет дефолт `spring.reactor.context-propagation=AUTO` через
+`@PropertySource` с наименьшим приоритетом: явное значение в приложении всегда побеждает. Spring
+Boot намеренно держит дефолт `LIMITED` из-за накладных расходов автоматического режима
 (spring-projects/spring-boot#34201) — платформа осознанно меняет этот размен в пользу предсказуемой
-identity/MDC-семантики, когда приложение не попросило иное.
+identity/MDC-семантики, когда приложение не задало свойство явно. Если приложение явно выставит
+`LIMITED` (в решении такого пока нет ни одного случая), Boot просто не включит хук — платформенного
+WARN об этом больше нет: диагностика этого редкого случая признана overhead, не оправдывающим
+собственный класс ради него одного.
 
 Проекция span-ключей внутри identity-scope читает `Span.current()`, поэтому на Reactor-хопах она
 корректна только если accessor OTel `Context` в Micrometer `ContextRegistry` отработал раньше

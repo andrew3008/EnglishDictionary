@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.LazyInitializationExcludeFilter;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -7,15 +10,8 @@ import org.springframework.boot.autoconfigure.reactor.ReactorAutoConfiguration;
 import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import reactor.core.publisher.Hooks;
 
-/**
- * Тесты {@link TracingReactorEagerInitConfiguration}.
- * <p>
- * Проверяют, что {@link LazyInitializationExcludeFilter} регистрируется только в реактивных
- * приложениях и фактически делает {@link ReactorAutoConfiguration} eager-инициализируемой,
- * включая ситуацию с глобальным {@code spring.main.lazy-initialization=true}.
- */
 class TracingReactorEagerInitConfigurationTest {
 
     private final ReactiveWebApplicationContextRunner reactiveContextRunner =
@@ -25,6 +21,11 @@ class TracingReactorEagerInitConfigurationTest {
     private final WebApplicationContextRunner servletContextRunner =
             new WebApplicationContextRunner()
                     .withConfiguration(AutoConfigurations.of(TracingReactorEagerInitConfiguration.class));
+
+    @AfterEach
+    void tearDown() {
+        Hooks.disableAutomaticContextPropagation();
+    }
 
     @Test
     void filterIsRegisteredInReactiveApplication() {
@@ -56,5 +57,33 @@ class TracingReactorEagerInitConfigurationTest {
                     .as("An unrelated bean must not be excluded")
                     .isFalse();
         });
+    }
+
+    @Test
+    void defaultPropertyMakesBootReactorAutoConfigurationEnableTheHookWhenAppDoesNotSetIt() {
+        Hooks.disableAutomaticContextPropagation();
+
+        reactiveContextRunner
+                .withConfiguration(AutoConfigurations.of(ReactorAutoConfiguration.class))
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getEnvironment().getProperty("spring.reactor.context-propagation"))
+                            .isEqualTo("AUTO");
+                    assertThat(Hooks.isAutomaticContextPropagationEnabled()).isTrue();
+                });
+    }
+
+    @Test
+    void explicitApplicationPropertyOverridesStarterDefault() {
+        Hooks.enableAutomaticContextPropagation();
+
+        reactiveContextRunner
+                .withConfiguration(AutoConfigurations.of(ReactorAutoConfiguration.class))
+                .withPropertyValues("spring.reactor.context-propagation=LIMITED")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getEnvironment().getProperty("spring.reactor.context-propagation"))
+                            .isEqualTo("LIMITED");
+                });
     }
 }
