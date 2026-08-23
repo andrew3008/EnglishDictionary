@@ -29,17 +29,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Аргументы конструкторов (HTTP-request/response) — это Spring-предоставленные fakes
  * ({@code MockHttpServletRequest}/{@code Response}), не Mockito-proxy.
  */
-class WebMvcSuppressMicrometerTracingAutoConfigurationTest {
+class WebMvcHttpObservationSuppressionAutoConfigurationTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     ObservationAutoConfiguration.class,
-                    WebMvcSuppressMicrometerTracingAutoConfiguration.class));
+                    WebMvcHttpObservationSuppressionAutoConfiguration.class));
 
     @Test
     void suppressorBeanRegisteredOnlyWhenPropertyTrue() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> assertThat(ctx).hasBean("platformMvcHttpObservationSuppressor"));
     }
 
@@ -51,14 +51,23 @@ class WebMvcSuppressMicrometerTracingAutoConfigurationTest {
     @Test
     void suppressorBeanAbsentWhenPropertyFalse() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=false")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=false")
+                .run(ctx -> assertThat(ctx).doesNotHaveBean("platformMvcHttpObservationSuppressor"));
+    }
+
+    @Test
+    void suppressorBeanAbsentWhenTracingDisabledEvenIfSuppressTrue() {
+        contextRunner
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> assertThat(ctx).doesNotHaveBean("platformMvcHttpObservationSuppressor"));
     }
 
     @Test
     void predicateSuppressesServletServerObservationContext() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> {
                     ObservationRegistry registry = applyCustomizer(ctx);
 
@@ -74,7 +83,7 @@ class WebMvcSuppressMicrometerTracingAutoConfigurationTest {
     @Test
     void predicateSuppressesServletClientObservationContext() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> {
                     ObservationRegistry registry = applyCustomizer(ctx);
 
@@ -93,7 +102,7 @@ class WebMvcSuppressMicrometerTracingAutoConfigurationTest {
     @Test
     void predicateDoesNotSuppressUnrelatedObservationContext() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> {
                     ObservationRegistry registry = applyCustomizer(ctx);
 

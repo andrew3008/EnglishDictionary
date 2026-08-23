@@ -9,40 +9,31 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Регрессионный startup-контракт по матрице 2×2 (Agent on/off × suppress on/off)
- * для предотвращения дублирования HTTP-span'ов (Servlet-flavor).
+ * Bean-контракт suppressor'а (Servlet). Штатный стартер не публикует второй HTTP SERVER span:
+ * suppress гасит Micrometer HTTP observations (метрики), Agent остаётся единственным
+ * span-продюсером. Agent + {@code micrometer-tracing-bridge-otel} fail-closed из-за
+ * application-owned {@code OpenTelemetry}.
  *
- * <p><b>Conceptual runtime expectation</b> (не валидируется этим unit-тестом, см. DupSpans.2
- * HTTP smoke в e2e-модуле):</p>
  * <pre>
- *   Agent off, suppress off → 1 span (Micrometer Observation)
- *   Agent off, suppress on  → 0 spans (degraded, WARN на startup)
- *   Agent on,  suppress off → DUPLICATE (2 spans: Agent + Micrometer)  ← WARN на startup
- *   Agent on,  suppress on  → 1 span (Agent)                            ← штатный prod-сценарий
+ *   Agent off, suppress off → HTTP-метрики Micrometer есть, Agent spans нет
+ *   Agent off, suppress on  → нет метрик и нет Agent spans (WARN)
+ *   Agent on,  suppress off → 1 Agent span + HTTP-метрики Micrometer (WARN)
+ *   Agent on,  suppress on  → 1 Agent span, HTTP-метрик нет
+ *   enabled=false           → suppressor не регистрируется
  * </pre>
- *
- * <p>Этот тест валидирует <b>только bean-контракт</b> для каждой клетки матрицы: какие
- * suppressor-бины присутствуют/отсутствуют. WARN-сторона startup-контракта покрывается
- * отдельно: см. {@code TracingObservationSuppressStartupTest} в модуле
- * {@code platform-tracing-spring-boot-autoconfigure} (4 ячейки × WARN/no-WARN, через
- * {@code ListAppender}). Реальное количество HTTP span'ов в production-сценарии —
- * через subprocess + Collector ({@code DuplicateHttpSpanAgentSmokeTest}).</p>
- *
- * <p>Зеркальный регрессионный matrix для WebFlux — в модуле
- * {@code platform-tracing-autoconfigure-webflux}.</p>
  */
 class DuplicateSpansRegressionMatrixTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     ObservationAutoConfiguration.class,
-                    WebMvcSuppressMicrometerTracingAutoConfiguration.class));
+                    WebMvcHttpObservationSuppressionAutoConfiguration.class));
 
     @Test
     @DisplayName("[suppress off] suppressor bean is absent — Micrometer Observation works normally")
     void suppressorAbsent_whenSuppressOff() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=false")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=false")
                 .run(ctx -> assertThat(ctx).doesNotHaveBean("platformMvcHttpObservationSuppressor"));
     }
 
@@ -56,7 +47,7 @@ class DuplicateSpansRegressionMatrixTest {
     @DisplayName("[suppress on] suppressor bean is active — Micrometer Observation is suppressed")
     void suppressorActive_whenSuppressOn() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> assertThat(ctx).hasBean("platformMvcHttpObservationSuppressor"));
     }
 
@@ -66,9 +57,9 @@ class DuplicateSpansRegressionMatrixTest {
         // Agent-сторона унит-тестом не имитируется (detect через системную JVM-инициализацию).
         // Здесь фиксируется только bean-контракт. Agent-side детектируется
         // OtelJavaAgentMarkerDetector, и его поведение в combination с suppress=on покрыто
-        // TracingObservationSuppressStartupTest#noWarnWhenSuppressTrueAndAgentDetected.
+        // HttpObservationSuppressionStartupTest#noWarnWhenSuppressTrueAndAgentDetected.
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> assertThat(ctx).hasBean("platformMvcHttpObservationSuppressor"));
     }
 }

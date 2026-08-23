@@ -19,7 +19,7 @@ import space.br1440.platform.tracing.autoconfigure.bootstrap.TracingBootstrapPro
 public class TracingObservationAutoConfiguration {
 
     @Bean
-    public SmartInitializingSingleton platformTracingObservationSuppressStartupRunner(Environment environment) {
-        return TracingObservationSuppressStartupRunner.create(MicrometerTracingSuppressionResolver.resolve(environment));
+    public SmartInitializingSingleton platformHttpObservationSuppressionStartupRunner(Environment environment) {
+        return HttpObservationSuppressionStartupRunner.create(HttpObservationSuppressionResolver.resolve(environment));
     }
 }

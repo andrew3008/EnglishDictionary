@@ -28,17 +28,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * через ByteBuddy, что является implementation detail. Реальный экземпляр гарантирует
  * корректную работу проверки в production.
  */
-class WebFluxSuppressMicrometerTracingAutoConfigurationTest {
+class WebFluxHttpObservationSuppressionAutoConfigurationTest {
 
     private final ReactiveWebApplicationContextRunner contextRunner = new ReactiveWebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     ObservationAutoConfiguration.class,
-                    WebFluxSuppressMicrometerTracingAutoConfiguration.class));
+                    WebFluxHttpObservationSuppressionAutoConfiguration.class));
 
     @Test
     void suppressorBeanRegisteredOnlyWhenPropertyTrue() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> assertThat(ctx).hasBean("platformWebFluxHttpObservationSuppressor"));
     }
 
@@ -48,9 +48,18 @@ class WebFluxSuppressMicrometerTracingAutoConfigurationTest {
     }
 
     @Test
+    void suppressorBeanAbsentWhenTracingDisabledEvenIfSuppressTrue() {
+        contextRunner
+                .withPropertyValues(
+                        "platform.tracing.enabled=false",
+                        "platform.tracing.suppression.suppress-micrometer-http-observations=true")
+                .run(ctx -> assertThat(ctx).doesNotHaveBean("platformWebFluxHttpObservationSuppressor"));
+    }
+
+    @Test
     void predicateSuppressesReactiveServerObservationContext() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> {
                     ObservationRegistry registry = applyCustomizer(ctx);
 
@@ -67,7 +76,7 @@ class WebFluxSuppressMicrometerTracingAutoConfigurationTest {
     @Test
     void predicateSuppressesReactiveClientObservationContext() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> {
                     ObservationRegistry registry = applyCustomizer(ctx);
 
@@ -86,7 +95,7 @@ class WebFluxSuppressMicrometerTracingAutoConfigurationTest {
     @Test
     void predicateDoesNotSuppressUnrelatedObservationContext() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> {
                     ObservationRegistry registry = applyCustomizer(ctx);
 

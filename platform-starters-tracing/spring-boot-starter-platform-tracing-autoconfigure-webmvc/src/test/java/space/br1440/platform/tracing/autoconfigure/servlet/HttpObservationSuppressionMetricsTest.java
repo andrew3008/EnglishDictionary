@@ -17,20 +17,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Интеграционный тест trade-off подавления Micrometer HTTP-обсерваций (W1):
- * при {@code suppress-micrometer-tracing=true} observation становится NOOP и метрика
+ * при {@code suppress-micrometer-http-observations=true} observation становится NOOP и метрика
  * {@code http.server.requests} не публикуется в {@link MeterRegistry}.
  */
-class SuppressMicrometerTracingMetricsTest {
+class HttpObservationSuppressionMetricsTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
                     ObservationAutoConfiguration.class,
-                    WebMvcSuppressMicrometerTracingAutoConfiguration.class));
+                    WebMvcHttpObservationSuppressionAutoConfiguration.class));
 
     @Test
     void httpServerRequestsMetricAbsentWhenSuppressEnabled() {
         contextRunner
-                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-tracing=true")
+                .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> {
                     ObservationRegistry registry = applyCustomizer(ctx);
                     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();

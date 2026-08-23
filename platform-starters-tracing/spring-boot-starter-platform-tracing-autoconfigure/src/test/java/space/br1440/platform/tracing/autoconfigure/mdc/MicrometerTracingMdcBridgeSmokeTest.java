@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * In-process smoke для dev/staging path с {@code micrometer-tracing-bridge-otel}.
  * <p>
  * <b>Tests bridge-otel path ONLY.</b> Production sign-off — {@code AgentMdcPlatformLoggingAgentE2ETest}
- * (G2-MDC-e2e): Agent + {@code suppress-micrometer-tracing=true} + OpenTelemetryAppender.
+ * (G2-MDC-e2e): Agent + {@code suppress-micrometer-http-observations=true} + OpenTelemetryAppender.
  * <p>
  * Проверяет регистрацию bridge-bean'ов Spring Boot Actuator при явном opt-in зависимости
  * (см. {@code ADR-mdc-via-otel-agent-logback}).

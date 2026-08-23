@@ -34,7 +34,7 @@ class TracingControlActuatorWebFluxIntegrationTest {
             "space.br1440.platform.tracing.autoconfigure.integrations.kafka.PlatformKafkaOutboundAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.reactive.ReactiveTracingAutoConfiguration",
             "space.br1440.platform.tracing.autoconfigure.reactive.TracingReactorEagerInitConfiguration",
-            "space.br1440.platform.tracing.autoconfigure.reactive.WebFluxSuppressMicrometerTracingAutoConfiguration"
+            "space.br1440.platform.tracing.autoconfigure.reactive.WebFluxHttpObservationSuppressionAutoConfiguration"
     };
 
     @Test

@@ -29,9 +29,9 @@
       "defaultValue": false
     },
     {
-      "name": "platform.tracing.suppression.suppress-micrometer-tracing",
+      "name": "platform.tracing.suppression.suppress-micrometer-http-observations",
       "type": "java.lang.Boolean",
-      "description": "Явно управляет подавлением Micrometer Tracing; при отсутствии значения решение выводится из присутствия Java Agent."
+      "description": "Подавляет Micrometer HTTP server/client observations (http.server.requests / http.client.requests). Не создаёт и не убирает Agent HTTP spans. Штатный стартер не содержит micrometer-tracing-bridge-otel и не публикует второй OTel span. При отсутствии значения выводится из присутствия Java Agent. Игнорируется при platform.tracing.enabled=false, чтобы не гасить Actuator HTTP-метрики без трассировки."
     }
   ]
 }
