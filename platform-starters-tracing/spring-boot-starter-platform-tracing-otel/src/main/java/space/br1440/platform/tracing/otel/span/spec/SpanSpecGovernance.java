@@ -2,10 +2,7 @@ package space.br1440.platform.tracing.otel.span.spec;
 
 import java.util.Map;
 import java.util.Objects;
-
 import jakarta.annotation.Nonnull;
-
-import lombok.experimental.UtilityClass;
 
 import space.br1440.platform.tracing.api.span.RemoteSpanLink;
 import space.br1440.platform.tracing.api.span.spec.SpanRelationship;
@@ -14,6 +11,10 @@ import space.br1440.platform.tracing.api.span.spec.SpanSpecAttributeValue;
 import space.br1440.platform.tracing.api.span.spec.SpanSpecBuilder;
 import space.br1440.platform.tracing.otel.runtime.otel.SpanSpecAttributeValueConverter;
 import space.br1440.platform.tracing.otel.semconv.policy.AttributePolicy;
+import space.br1440.platform.tracing.otel.semconv.policy.ValidatedAttributes;
+
+import io.opentelemetry.api.common.Attributes;
+import lombok.experimental.UtilityClass;
 
 /**
  * Применяет единый semantic-контракт к внешней спецификации span до передачи в runtime.
@@ -29,8 +30,8 @@ final class SpanSpecGovernance {
         Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(builderName, "builderName");
 
-        var accumulated = SpanSpecAttributeValueConverter.toAttributes(spec.attributes());
-        var validated = policy.validateAndNormalize(spec.category(), accumulated, builderName);
+        Attributes accumulated = SpanSpecAttributeValueConverter.toAttributes(spec.attributes());
+        ValidatedAttributes validated = policy.validateAndNormalize(spec.category(), accumulated, builderName);
         Map<String, SpanSpecAttributeValue> normalized = SpanSpecAttributeValueConverter.fromAttributes(validated.attributes());
         if (normalized.equals(spec.attributes())) {
             return spec;

@@ -1,18 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.transport;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 final class JmxReadStateRegistry {
@@ -60,7 +61,7 @@ final class JmxReadStateRegistry {
 
     List<JmxDiagnosticSnapshot> diagnosticSnapshot() {
         List<JmxDiagnosticSnapshot> snapshots = new ArrayList<>();
-        for (var entry : episodes.entrySet()) {
+        for (Map.Entry<JmxDiagnosticKey, DiagnosticEpisode> entry : episodes.entrySet()) {
             JmxDiagnosticKey key = entry.getKey();
             DiagnosticEpisode episode = entry.getValue();
             long lastSuccessSequence = pointState(key.point()).lastSuccessSequence();

@@ -16,6 +16,7 @@ import space.br1440.platform.tracing.autoconfigure.control.authority.TracingConf
 import space.br1440.platform.tracing.autoconfigure.control.jmx.PrivateJmxControlAutoConfiguration;
 import space.br1440.platform.tracing.autoconfigure.control.settings.TracingSettingsContractViolationException;
 import space.br1440.platform.tracing.autoconfigure.control.settings.delivery.TracingSettingsApplier;
+import space.br1440.platform.tracing.autoconfigure.control.settings.read.AcceptedSettingsWithSequence;
 import space.br1440.platform.tracing.autoconfigure.control.settings.read.CompleteTracingSettingsReader;
 
 @AutoConfiguration
@@ -61,7 +62,7 @@ public class TracingSettingsControlAutoConfiguration {
         @Override
         public void start() {
             try {
-                var accepted = reader.currentComplete()
+                AcceptedSettingsWithSequence accepted = reader.currentComplete()
                         .orElseThrow(() -> new TracingConfigurationGuardException(
                                 "[readiness probe] ACTUATOR authority requires a complete accepted "
                                         + "snapshot at startup. currentComplete() returned empty — Agent "
