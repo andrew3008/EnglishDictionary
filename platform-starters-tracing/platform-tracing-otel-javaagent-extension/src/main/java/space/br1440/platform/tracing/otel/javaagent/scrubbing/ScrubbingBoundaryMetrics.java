@@ -17,6 +17,7 @@ public record ScrubbingBoundaryMetrics(
         long nonCriticalFailures,
         long skippedCircuitOpen,
         long surfacesCollapsedFailClosed,
-        long batchPreparationFailures
+        long batchPreparationFailures,
+        long valueAttributesRemoved
 ) {
 }

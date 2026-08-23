@@ -39,8 +39,12 @@ final class AttributesScrubber {
 
     static Result scrub(Attributes attributes, ScrubbingRuntime runtime) {
         List<ExecutableRule> rules = runtime.attributeExecutableRules();
-        if (rules.isEmpty() || attributes.isEmpty()) {
+        if (attributes.isEmpty()) {
             return new Result(attributes, false, false);
+        }
+
+        if (rules.isEmpty()) {
+            return removeValueAttributeTrees(attributes, runtime);
         }
 
         ScrubPass pass = new ScrubPass(runtime, rules, attributes);
@@ -51,6 +55,31 @@ final class AttributesScrubber {
         }
 
         return new Result(pass.rebuild(), true, pass.criticalFailure());
+    }
+
+    static Result removeValueAttributeTrees(Attributes attributes, ScrubbingRuntime runtime) {
+        if (attributes.isEmpty()) {
+            return new Result(attributes, false, false);
+        }
+
+        Set<String> valueAttributeNames = valueAttributeNames(attributes);
+        if (valueAttributeNames.isEmpty()) {
+            return new Result(attributes, false, false);
+        }
+
+        AttributesBuilder builder = Attributes.builder();
+        long removed = 0L;
+        for (Map.Entry<AttributeKey<?>, Object> entry : attributes.asMap().entrySet()) {
+            AttributeKey<?> key = entry.getKey();
+            if (valueAttributeNames.contains(key.getKey())) {
+                removed++;
+            } else {
+                putTyped(builder, key, entry.getValue());
+            }
+        }
+
+        runtime.recordBoundaryValueAttributesRemoved(removed);
+        return new Result(builder.build(), true, false);
     }
 
     static Attributes collapseToSentinel(Attributes attributes) {
@@ -68,6 +97,7 @@ final class AttributesScrubber {
         private final ScrubbingRuntime runtime;
         private final List<ExecutableRule> rules;
         private final Attributes source;
+        private final Set<String> valueAttributeNames;
 
         private Map<AttributeKey<?>, Object> replacements;
         private Set<AttributeKey<?>> drops;
@@ -77,14 +107,13 @@ final class AttributesScrubber {
             this.runtime = runtime;
             this.rules = rules;
             this.source = source;
+            this.valueAttributeNames = valueAttributeNames(source);
         }
 
         private void visit(AttributeKey<?> key, Object value) {
-            // AttributeType.VALUE не проверяется движком правил по листьям:
-            // KEEP от старого SpanAttributeScrubbingRule SPI для VALUE недостоверен, поэтому весь
-            // атрибут удаляется на exporter boundary раньше вызова MergeEngine.
-            if (key.getType() == AttributeType.VALUE) {
+            if (valueAttributeNames.contains(key.getKey())) {
                 drop(key);
+                runtime.recordBoundaryValueAttributesRemoved(1L);
                 return;
             }
 
@@ -178,6 +207,16 @@ final class AttributesScrubber {
             });
             return out.build();
         }
+    }
+
+    private static Set<String> valueAttributeNames(Attributes attributes) {
+        Set<String> names = new HashSet<>();
+        attributes.forEach((key, ignored) -> {
+            if (key.getType() == AttributeType.VALUE) {
+                names.add(key.getKey());
+            }
+        });
+        return names;
     }
 
     private static boolean isNumericOrBoolean(AttributeType type) {

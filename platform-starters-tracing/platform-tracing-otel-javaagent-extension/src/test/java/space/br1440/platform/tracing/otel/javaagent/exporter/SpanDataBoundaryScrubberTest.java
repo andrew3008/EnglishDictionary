@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.exporter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Handler;
@@ -19,6 +21,7 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanA
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.Value;
 import io.opentelemetry.exporter.logging.LoggingSpanExporter;
 import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.ExceptionEventData;
@@ -26,34 +29,34 @@ import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.data.StatusData;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * P5 tests for {@link SpanDataBoundaryScrubber}: ownership boundary (verified span attributes are
- * NOT re-scrubbed here), event/link scrubbing, {@code ExceptionEventData} canonicalization,
- * structural text handling, {@code attributesVerified} collapse mode, and fail-closed span drop
- * (ADR-scrubbing-hybrid-processor-export-boundary.md).
- */
 class SpanDataBoundaryScrubberTest {
 
     private static final SpanAttributeScrubbingRule EMAIL = BuiltInSpanAttributeScrubbingRules.resolve("email");
     private static final SpanAttributeScrubbingRule PASSWORD = BuiltInSpanAttributeScrubbingRules.resolve("password");
 
     @Test
-    @DisplayName("Ownership: verified span attributes pass through unchanged, even though they'd match a rule")
-    void verifiedSpanAttributesAreNotReEvaluatedAtTheBoundary() {
+    @DisplayName("Verified span attributes only remove unsupported VALUE trees at the export boundary")
+    void verifiedSpanAttributesOnlyRemoveValueTreesAtTheBoundary() {
+        // given
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(EMAIL));
+        AttributeKey<String> emailKey = AttributeKey.stringKey("user.email");
+        AttributeKey<Value<?>> valueKey = AttributeKey.valueKey("qualification.custom.mask");
         SpanData input = ExporterBoundaryTestSupport.baseSpan("op")
-                .setAttributes(Attributes.of(AttributeKey.stringKey("user.email"), "ivan@example.com"))
+                .setAttributes(Attributes.of(
+                        emailKey,
+                        "ivan@example.com",
+                        valueKey,
+                        Value.of("supersecret")))
                 .build();
 
+        // when
         SpanBoundaryOutcome outcome = new SpanDataBoundaryScrubber(runtime).scrub(input);
 
+        // then
         assertThat(outcome.dropSpan()).isFalse();
-        assertThat(outcome.changed()).as("no events/links/name/status to touch").isFalse();
-        assertThat(outcome.spanData().getAttributes().get(AttributeKey.stringKey("user.email")))
-                .as("processor already owns span attributes; boundary must not re-hash/mask them")
-                .isEqualTo("ivan@example.com");
+        assertThat(outcome.changed()).isTrue();
+        assertThat(outcome.spanData().getAttributes().get(emailKey)).isEqualTo("ivan@example.com");
+        assertThat(outcome.spanData().getAttributes().get(valueKey)).isNull();
     }
 
     @Test
@@ -315,7 +318,6 @@ class SpanDataBoundaryScrubberTest {
                 .doesNotContain("span.name", "event.name", "status.description");
     }
 
-    /** Records every key passed to {@code evaluate} so SPI-projection can be proven. */
     private static final class RecordingRule implements SpanAttributeScrubbingRule {
         private final List<String> keys = new ArrayList<>();
 
@@ -333,7 +335,6 @@ class SpanDataBoundaryScrubberTest {
         }
     }
 
-    /** Simulates an SDK-level failure surfacing through a {@code SpanData} accessor. */
     private static final class ThrowingSpanData extends io.opentelemetry.sdk.trace.data.DelegatingSpanData {
         ThrowingSpanData() {
             super(ExporterBoundaryTestSupport.baseSpan("op").build());

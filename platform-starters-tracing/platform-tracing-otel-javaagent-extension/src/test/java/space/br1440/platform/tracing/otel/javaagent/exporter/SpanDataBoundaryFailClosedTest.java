@@ -105,8 +105,8 @@ class SpanDataBoundaryFailClosedTest {
         assertThat(result.getStatus().getDescription()).isEqualTo(BoundaryTextPolicy.REDACTED);
 
         assertThat(result.getAttributes().get(SPAN_ATTR))
-                .as("span attributes belong to the processor plane and must not be re-processed here")
-                .isEqualTo("raw-span-value");
+                .as("a critical boundary failure must not preserve any raw span surface")
+                .isEqualTo(ScrubbingDecision.SCRUBBING_FAILED_REASON);
 
         assertThat(runtime.boundaryMetrics().criticalFailures()).isPositive();
         assertThat(runtime.boundaryMetrics().surfacesCollapsedFailClosed()).isEqualTo(1L);

@@ -25,11 +25,6 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.KeyValue;
 import io.opentelemetry.api.common.Value;
 
-/**
- * Fail-closed контракт для {@code AttributeType.VALUE} на exporter-boundary: решение правила
- * относится ко всему дереву {@link Value}, а не к его листьям, поэтому любое действие кроме
- * {@code KEEP} удаляет атрибут целиком, а collapse заменяет его единым sentinel'ом.
- */
 class AttributeValueFailClosedTest {
 
     private static final AttributeKey<Value<?>> SENSITIVE = AttributeKey.valueKey("db.password");
@@ -102,8 +97,6 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "MASK also removes the whole VALUE attribute: {0}")
     @MethodSource("valueShapes")
     void maskRemovesTheWholeValueAttribute(String shape, Value<?> value) {
-        // Строковая маска не определена ни для bytes, ни для ключей kv-list, поэтому на
-        // boundary атрибут удаляется целиком, а не маскируется по листьям.
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(alwaysMask()));
         Attributes input = Attributes.of(NEUTRAL, value);
 
@@ -116,8 +109,6 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "HASH also removes the whole VALUE attribute: {0}")
     @MethodSource("valueShapes")
     void hashRemovesTheWholeValueAttribute(String shape, Value<?> value) {
-        // Строковый HMAC-контракт не определён для дерева Value: хешировать нечего, и
-        // частичный хеш листьев исказил бы семантику действия.
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(alwaysHash()), "test-hmac-key");
         Attributes input = Attributes.of(NEUTRAL, value);
 
@@ -156,10 +147,6 @@ class AttributeValueFailClosedTest {
     @ParameterizedTest(name = "KEEP from the legacy rule engine does not authorize a VALUE attribute: {0}")
     @MethodSource("valueShapes")
     void keepCannotAuthorizeComplexValue(String shape, Value<?> value) {
-        // Старый SpanAttributeScrubbingRule SPI не умеет анализировать AttributeType.VALUE по
-        // листьям: правило видит Object, не String, и молчаливо возвращает KEEP. Доверять этому
-        // KEEP означало бы пропустить произвольный вложенный секрет без единой проверки (C-2), поэтому
-        // VALUE удаляется на boundary раньше вызова движка правил, независимо от их решения.
         ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of(PASSWORD, IP));
         Attributes input = Attributes.of(NEUTRAL, value);
 
@@ -187,7 +174,23 @@ class AttributeValueFailClosedTest {
         assertThat(result.attributes().get(AttributeKey.stringKey("z.last"))).isEqualTo("keep-me-too");
     }
 
-    /** Полная текстовая проекция, включая листья дерева {@link Value} и байтовые полезные нагрузки. */
+    @Test
+    @DisplayName("VALUE remains fail-closed when no attribute rules are configured")
+    void valueIsRemovedWithoutConfiguredRules() {
+        // given
+        ScrubbingRuntime runtime = ExporterBoundaryTestSupport.runtimeOf(List.of());
+        Attributes input = Attributes.of(NEUTRAL, Value.of("supersecret"));
+
+        // when
+        AttributesScrubber.Result result = AttributesScrubber.scrub(input, runtime);
+
+        // then
+        assertThat(result.changed()).isTrue();
+        assertThat(result.attributes().get(NEUTRAL)).isNull();
+        assertThat(renderedPayload(result.attributes())).doesNotContain("supersecret");
+        assertThat(runtime.boundaryMetrics().valueAttributesRemoved()).isEqualTo(1L);
+    }
+
     private static String renderedPayload(Attributes attributes) {
         StringBuilder rendered = new StringBuilder();
         attributes.forEach((key, value) -> {

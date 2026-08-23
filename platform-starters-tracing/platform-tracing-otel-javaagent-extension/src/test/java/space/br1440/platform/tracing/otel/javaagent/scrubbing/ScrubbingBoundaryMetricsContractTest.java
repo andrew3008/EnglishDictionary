@@ -35,7 +35,8 @@ class ScrubbingBoundaryMetricsContractTest {
                 "nonCriticalFailures",
                 "skippedCircuitOpen",
                 "surfacesCollapsedFailClosed",
-                "batchPreparationFailures");
+                "batchPreparationFailures",
+                "valueAttributesRemoved");
         assertThat(components).allSatisfy(component -> assertThat(component.getType()).isEqualTo(long.class));
     }
 }

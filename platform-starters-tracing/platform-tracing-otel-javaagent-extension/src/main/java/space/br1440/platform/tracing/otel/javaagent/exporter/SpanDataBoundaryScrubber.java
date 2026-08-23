@@ -52,12 +52,15 @@ final class SpanDataBoundaryScrubber {
     }
 
     private SpanBoundaryOutcome doScrub(SpanData spanData) {
-        boolean collapseAttributes = !runtime.attributesVerified();
-
         Attributes originalAttributes = spanData.getAttributes();
-        Attributes scrubbedAttributes = originalAttributes;
-        boolean attributesChanged = false;
-        if (collapseAttributes) {
+        Attributes scrubbedAttributes;
+        boolean attributesChanged;
+        if (runtime.attributesVerified()) {
+            AttributesScrubber.Result attributesResult =
+                    AttributesScrubber.removeValueAttributeTrees(originalAttributes, runtime);
+            scrubbedAttributes = attributesResult.attributes();
+            attributesChanged = attributesResult.changed();
+        } else {
             scrubbedAttributes = AttributesScrubber.collapseToSentinel(originalAttributes);
             attributesChanged = true;
             runtime.recordCollapsedSpan();
@@ -82,7 +85,7 @@ final class SpanDataBoundaryScrubber {
         if (criticalFailure) {
             log.warn(AgentEventCodes.SCRUB_EXPORT_BOUNDARY,
                     "Critical scrubbing rule failed; collapsing all boundary surfaces");
-            return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData, collapseAttributes));
+            return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData));
         }
 
         if (nameChanged) {
@@ -107,17 +110,20 @@ final class SpanDataBoundaryScrubber {
 
     private SpanBoundaryOutcome collapseFailClosed(SpanData spanData) {
         try {
-            return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData, !runtime.attributesVerified()));
+            return SpanBoundaryOutcome.changed(collapseBoundarySurfaces(spanData));
         } catch (Throwable t) {
             ScrubbingFailureLog.error(log, "boundary.collapse_failed_dropping_span", t);
             return SpanBoundaryOutcome.drop();
         }
     }
 
-    private SpanData collapseBoundarySurfaces(SpanData spanData, boolean collapseAttributes) {
-        Attributes attributes = collapseAttributes
-                ? AttributesScrubber.collapseToSentinel(spanData.getAttributes())
-                : spanData.getAttributes();
+    /**
+     * Схлопывает все поверхности span'а, включая атрибуты. Атрибуты не исключаются даже когда
+     * процессорная плоскость считается verified: сырое представление не должно переживать
+     * critical или непредвиденную ошибку на границе.
+     */
+    private SpanData collapseBoundarySurfaces(SpanData spanData) {
+        Attributes attributes = AttributesScrubber.collapseToSentinel(spanData.getAttributes());
 
         List<EventData> events = collapseEvents(spanData.getEvents());
         List<LinkData> links = collapseLinks(spanData.getLinks());

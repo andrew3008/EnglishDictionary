@@ -28,7 +28,6 @@ import space.br1440.platform.tracing.otel.javaagent.scrubbing.rules.BuiltInSpanA
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributeType;
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.common.Value;
 import io.opentelemetry.sdk.trace.ReadWriteSpan;
 
 public final class ScrubbingRuntime {
@@ -40,8 +39,6 @@ public final class ScrubbingRuntime {
     private static final long SENTINEL_LONG = 0L;
     private static final double SENTINEL_DOUBLE = 0.0d;
     private static final boolean SENTINEL_BOOLEAN = Boolean.FALSE;
-
-    private static final Value<String> VALUE_SENTINEL = Value.of(ScrubbingDecision.SCRUBBING_FAILED_REASON);
 
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
@@ -79,6 +76,7 @@ public final class ScrubbingRuntime {
     private final MonotonicCounter boundarySkippedCircuitOpen = new MonotonicCounter();
     private final MonotonicCounter boundarySurfacesCollapsedFailClosed = new MonotonicCounter();
     private final MonotonicCounter boundaryBatchPreparationFailures = new MonotonicCounter();
+    private final MonotonicCounter boundaryValueAttributesRemoved = new MonotonicCounter();
 
     private final AtomicBoolean attributesVerified = new AtomicBoolean(true);
     private final LongAdder collapseModeActivations = new LongAdder();
@@ -208,8 +206,7 @@ public final class ScrubbingRuntime {
 
         try {
             attributes.forEach((key, value) -> {
-                if (key.getType() == AttributeType.VALUE) {
-                    applyFailClosed(span, key, AttributeType.VALUE);
+                if (boundaryOwned(key)) {
                     return;
                 }
 
@@ -232,8 +229,16 @@ public final class ScrubbingRuntime {
         }
     }
 
+    private static boolean boundaryOwned(AttributeKey<?> key) {
+        return (key.getType() == AttributeType.VALUE);
+    }
+
     private void applyFailClosedSnapshot(ReadWriteSpan span, Attributes attributes) {
         attributes.forEach((key, ignored) -> {
+            if (boundaryOwned(key)) {
+                return;
+            }
+
             try {
                 applyFailClosed(span, key, key.getType());
             } catch (Throwable t) {
@@ -278,8 +283,6 @@ public final class ScrubbingRuntime {
             case LONG, DOUBLE, BOOLEAN, LONG_ARRAY, DOUBLE_ARRAY, BOOLEAN_ARRAY ->
                     applyNonString(span, key, value, decision, type);
 
-            case VALUE -> applyFailClosed(span, key, type);
-
             default -> applyFailClosed(span, key, type);
         }
     }
@@ -301,7 +304,6 @@ public final class ScrubbingRuntime {
             case LONG_ARRAY -> span.setAttribute((AttributeKey<List<Long>>) key, List.of(SENTINEL_LONG));
             case DOUBLE_ARRAY -> span.setAttribute((AttributeKey<List<Double>>) key, List.of(SENTINEL_DOUBLE));
             case BOOLEAN_ARRAY -> span.setAttribute((AttributeKey<List<Boolean>>) key, List.of(SENTINEL_BOOLEAN));
-            case VALUE -> span.setAttribute((AttributeKey<Value<?>>) key, VALUE_SENTINEL);
 
             default -> {
                 log.warn(AgentEventCodes.SCRUB_UNSUPPORTED_TYPE, "Unsupported attribute type",
@@ -469,8 +471,13 @@ public final class ScrubbingRuntime {
                 boundaryNonCriticalFailures.sum(),
                 boundarySkippedCircuitOpen.sum(),
                 boundarySurfacesCollapsedFailClosed.sum(),
-                boundaryBatchPreparationFailures.sum()
+                boundaryBatchPreparationFailures.sum(),
+                boundaryValueAttributesRemoved.sum()
         );
+    }
+
+    public void recordBoundaryValueAttributesRemoved(long removed) {
+        boundaryValueAttributesRemoved.add(removed);
     }
 
     public void recordBoundaryInputSpan() {
