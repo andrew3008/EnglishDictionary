@@ -7,11 +7,13 @@ import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistrationSlot;
@@ -24,8 +26,17 @@ import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatch
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.PlatformScrubberFactory;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.ScrubbingRuntimeTestFixtures;
 
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 
 class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
@@ -256,6 +267,9 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                     .isEqualTo("scrubbing");
 
             List<String> order = List.copyOf(composite.getProcessorErrorCounts().keySet());
+            assertThat(order.indexOf("validation"))
+                    .as("C40: validation must observe the span before enrichment normalizes it")
+                    .isLessThan(order.indexOf("enrichment"));
             assertThat(order.indexOf("enrichment"))
                     .isLessThan(order.indexOf("scrubbing"));
             assertThat(order.indexOf("validation"))
@@ -269,6 +283,76 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         } finally {
             composite.shutdown();
         }
+    }
+
+    @Test
+    void factory_backed_pipeline_recordsValidationMarker_onlyForSpanWithoutProducerResult() throws Exception {
+        // given: полный factory-собранный pipeline с validation, enrichment и scrubbing
+        DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
+        ConfigProperties properties = allEnabledConfig();
+        ExtensionConfig extensionConfig = new ExtensionConfig(properties);
+        PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
+                registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties));
+
+        InMemorySpanExporter exporter = InMemorySpanExporter.create();
+        SdkTracerProviderBuilder builder = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(exporter));
+
+        factory.registerSpanProcessors(
+                builder,
+                extensionConfig,
+                properties,
+                TracingSettingsSource.fromStartup(extensionConfig));
+
+        ValidatingSpanProcessor validating = getValidating(registrar);
+        long violationsBefore = validating.getValidationViolationsTotal();
+
+        try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(builder.build()).build()) {
+            Tracer tracer = sdk.getTracer("t");
+
+            // when: один span завершается без producer-объявленного result, второй — с ним
+            Span withoutProducerResult = tracer.spanBuilder("server-op-without-result")
+                    .setSpanKind(SpanKind.SERVER)
+                    .startSpan();
+            withoutProducerResult.end();
+
+            Span withProducerResult = tracer.spanBuilder("server-op-with-result")
+                    .setSpanKind(SpanKind.SERVER)
+                    .startSpan();
+            withProducerResult.setAttribute(
+                    AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT), "success");
+            withProducerResult.end();
+
+            sdk.getSdkTracerProvider().forceFlush().join(2, TimeUnit.SECONDS);
+
+            List<SpanData> spans = exporter.getFinishedSpanItems();
+            SpanData withoutResultData = spanNamed(spans, "server-op-without-result");
+            SpanData withResultData = spanNamed(spans, "server-op-with-result");
+
+            // then: маркер получает только span, у которого producer не объявил result;
+            // итоговый result всё равно нормализован до success, sanitization не задета
+            AttributeKey<String> missingKey = AttributeKey.stringKey("platform.validation.missing");
+            assertThat(withoutResultData.getAttributes().get(missingKey)).isNotBlank();
+            assertThat(withResultData.getAttributes().get(missingKey))
+                    .as("negative control: producer-declared result must not be flagged as missing")
+                    .isNull();
+            assertThat(withoutResultData.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT)))
+                    .isEqualTo("success");
+            assertThat(withResultData.getAttributes().get(AttributeKey.stringKey(PlatformAttributes.PLATFORM_RESULT)))
+                    .isEqualTo("success");
+
+            long violationsAfter = validating.getValidationViolationsTotal();
+            assertThat(violationsAfter - violationsBefore)
+                    .as("exactly one violation for the span without a producer-declared result")
+                    .isEqualTo(1L);
+        }
+    }
+
+    private static SpanData spanNamed(List<SpanData> spans, String name) {
+        return spans.stream()
+                .filter(span -> span.getName().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Span not found: " + name));
     }
 
     @Nested

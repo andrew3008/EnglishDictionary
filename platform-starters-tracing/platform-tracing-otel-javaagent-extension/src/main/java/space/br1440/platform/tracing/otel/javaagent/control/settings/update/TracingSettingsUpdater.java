@@ -1,6 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
-import java.time.Instant;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
@@ -51,21 +50,13 @@ public final class TracingSettingsUpdater {
             );
         }
 
-        recordDiagnosticsSafely(attempt, result);
+        diagnostics.record(attempt, result);
         return result;
-    }
-
-    private void recordDiagnosticsSafely(SettingsUpdateAttempt attempt, SettingsUpdateResult result) {
-        try {
-            diagnostics.record(attempt, result);
-        } catch (RuntimeException exception) {
-            log.warn(AgentEventCodes.CTRL_UPDATE, "Settings update diagnostics recording failed",
-                    exception, "attemptId", attempt.attemptId());
-        }
     }
 
     public SettingsUpdateResult rejectBeforeApply(String wireAttemptId, SettingsRejectionReason reason) {
         Objects.requireNonNull(reason, "reason");
+
         if (reason == SettingsRejectionReason.NONE) {
             throw new IllegalArgumentException("rejectBeforeApply requires a non-NONE rejection reason");
         }
@@ -75,6 +66,7 @@ public final class TracingSettingsUpdater {
 
     public SettingsUpdateResult failBeforeApply(String wireAttemptId, SettingsRejectionReason reason) {
         Objects.requireNonNull(reason, "reason");
+
         if (reason == SettingsRejectionReason.NONE) {
             throw new IllegalArgumentException("failBeforeApply requires a non-NONE rejection reason");
         }
@@ -93,11 +85,10 @@ public final class TracingSettingsUpdater {
                 reason
         );
 
-        Instant observedAt = Instant.now();
         if (SettingsUpdateAttempt.isCanonicalAttemptId(wireAttemptId)) {
             diagnostics.record(SettingsUpdateAttempt.forPreApplyDiagnostics(wireAttemptId), result);
         } else {
-            diagnostics.recordPreApplyWithoutAttempt(result, observedAt);
+            diagnostics.recordPreApplyWithoutAttempt(result);
         }
 
         return result;

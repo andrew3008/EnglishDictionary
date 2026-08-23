@@ -36,12 +36,7 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void constructor_throwsNullPointerException_whenOutcomeCountsIsNull() {
-        assertThatThrownBy(() -> new LastSettingsUpdateSnapshot(
-                null,
-                null,
-                null,
-                LastSettingsUpdateSnapshot.Timestamps.empty(),
-                null))
+        assertThatThrownBy(() -> new LastSettingsUpdateSnapshot(null, null, null, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("outcomeCounts");
     }
@@ -62,8 +57,6 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void outcomeCounts_iterationOrder_matchesEnumDeclarationOrder() {
-        // Вставляем в порядке, обратном объявлению enum — compact constructor обязан
-        // нормализовать в EnumMap, иначе JMX/golden wire-parity получит нестабильный порядок.
         Map<SettingsUpdateStatus, Long> scrambled = new LinkedHashMap<>();
         scrambled.put(SettingsUpdateStatus.FAILED, 5L);
         scrambled.put(SettingsUpdateStatus.REJECTED, 4L);
@@ -75,14 +68,78 @@ class LastSettingsUpdateSnapshotTest {
                 attempt(1L),
                 SettingsUpdateStatus.FAILED,
                 SettingsRejectionReason.INTERNAL_FAILURE,
-                LastSettingsUpdateSnapshot.Timestamps.empty(),
                 scrambled);
 
-        // Порядок объявления: APPLIED, UNCHANGED, REJECTED, STALE, FAILED.
         assertThat(new ArrayList<>(snapshot.outcomeCounts().keySet()))
                 .containsExactly(SettingsUpdateStatus.values());
         assertThat(new ArrayList<>(snapshot.outcomeCounts().values()))
                 .containsExactly(1L, 2L, 4L, 3L, 5L);
+    }
+
+    @Test
+    void next_recordedLater_becomesLatest_regardlessOfEventObservedAt() {
+        // given: attempt B наблюдался (observedAt) раньше attempt A, но записывается в snapshot позже
+        LastSettingsUpdateSnapshot initial = LastSettingsUpdateSnapshot.empty();
+        SettingsUpdateAttempt earlyObservedButRecordedSecond = attempt(1L);
+        SettingsUpdateAttempt lateObservedButRecordedFirst = attempt(9L);
+        assertThat(earlyObservedButRecordedSecond.observedAt())
+                .isBefore(lateObservedButRecordedFirst.observedAt());
+
+        // when: recording order — сначала «позже наблюдённый», затем «раньше наблюдённый»
+        LastSettingsUpdateSnapshot afterFirst =
+                initial.next(lateObservedButRecordedFirst, result(SettingsUpdateStatus.APPLIED));
+        LastSettingsUpdateSnapshot afterSecond =
+                afterFirst.next(earlyObservedButRecordedSecond, result(SettingsUpdateStatus.STALE));
+
+        // then: переход не бросает исключение, а latest-кортеж принадлежит последней записи
+        assertThat(afterSecond.latestAttempt()).isEqualTo(earlyObservedButRecordedSecond);
+        assertThat(afterSecond.latestOutcome()).isEqualTo(SettingsUpdateStatus.STALE);
+        assertThat(afterSecond.countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(1L);
+        assertThat(afterSecond.countOf(SettingsUpdateStatus.STALE)).isEqualTo(1L);
+    }
+
+    @Test
+    void next_interleavedOutcomes_keepsCountsExact() {
+        LastSettingsUpdateSnapshot snapshot = LastSettingsUpdateSnapshot.empty()
+                .next(attempt(1L), result(SettingsUpdateStatus.APPLIED))
+                .next(attempt(2L), result(SettingsUpdateStatus.REJECTED))
+                .next(attempt(3L), result(SettingsUpdateStatus.APPLIED))
+                .next(attempt(4L), result(SettingsUpdateStatus.STALE))
+                .next(attempt(5L), result(SettingsUpdateStatus.APPLIED));
+
+        assertThat(snapshot.countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(3L);
+        assertThat(snapshot.countOf(SettingsUpdateStatus.REJECTED)).isEqualTo(1L);
+        assertThat(snapshot.countOf(SettingsUpdateStatus.STALE)).isEqualTo(1L);
+        assertThat(snapshot.latestAttempt()).isEqualTo(attempt(5L));
+        assertThat(snapshot.latestOutcome()).isEqualTo(SettingsUpdateStatus.APPLIED);
+    }
+
+    @Test
+    void nextWithoutAttempt_clearsLatestAttempt_whileKeepingOutcomeCoherent() {
+        // given: snapshot после успешного apply с валидным attempt
+        LastSettingsUpdateSnapshot afterApply = LastSettingsUpdateSnapshot.empty()
+                .next(attempt(1L), result(SettingsUpdateStatus.APPLIED));
+
+        // when: pre-apply отказ без распознанного attemptId
+        SettingsUpdateResult rejected = result(SettingsUpdateStatus.REJECTED);
+        LastSettingsUpdateSnapshot afterRejection = afterApply.nextWithoutAttempt(rejected);
+
+        // then: latestAttempt обнуляется этим событием, а latestOutcome/latestMessageCode
+        // относятся к тому же событию, счётчик REJECTED увеличился, счётчик APPLIED сохранён
+        assertThat(afterRejection.latestAttempt()).isNull();
+        assertThat(afterRejection.latestOutcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
+        assertThat(afterRejection.latestMessageCode()).isEqualTo(rejected.messageCode());
+        assertThat(afterRejection.countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(1L);
+        assertThat(afterRejection.countOf(SettingsUpdateStatus.REJECTED)).isEqualTo(1L);
+    }
+
+    @Test
+    void nextWithoutAttempt_throwsNullPointerException_whenResultIsNull() {
+        LastSettingsUpdateSnapshot initial = LastSettingsUpdateSnapshot.empty();
+
+        assertThatThrownBy(() -> initial.nextWithoutAttempt(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("result");
     }
 
     private static SettingsUpdateAttempt attempt(long ordinal) {

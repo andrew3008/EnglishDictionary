@@ -1,8 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.processor;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -11,10 +8,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
-
 import jakarta.annotation.Nonnull;
 
 import space.br1440.platform.tracing.api.attributes.PlatformAttributes;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
@@ -25,15 +23,6 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
 
 /**
  * Валидирует наличие обязательных <b>span-specific</b> атрибутов на span'е перед экспортом.
- * <p>
- * Минимально требуемый набор: {@code platform.trace.type}, {@code platform.trace.result}.
- * <p>
- * <b>Resource-идентичность</b> ({@code service.name}, {@code platform.c_group}, {@code platform.id})
- * здесь <b>не проверяется</b>: эти ключи стабильны per-process и валидируются один раз на старте
- * в {@link space.br1440.platform.tracing.otel.javaagent.resource.ResourceValidationDiagnostics}
- * (STRICT fail-fast / LENIENT warn). Проверка resource-ключей на каждом span была бы дублированием
- * и hot-path overhead. Если span-атрибут не задан, валидатор пишет предупреждение и проставляет
- * служебный {@code platform.validation.missing}, чтобы SRE отследили нарушение.
  */
 public final class ValidatingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 
