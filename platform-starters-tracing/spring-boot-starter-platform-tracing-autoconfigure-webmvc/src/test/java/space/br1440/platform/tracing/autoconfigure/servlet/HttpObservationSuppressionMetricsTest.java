@@ -1,25 +1,22 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.micrometer.observation.Observation;
-import io.micrometer.observation.ObservationRegistry;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.observation.ObservationRegistryCustomizer;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.assertj.AssertableWebApplicationContext;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.http.server.observation.ServerRequestObservationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 
-/**
- * Интеграционный тест trade-off подавления Micrometer HTTP-обсерваций (W1):
- * при {@code suppress-micrometer-http-observations=true} observation становится NOOP и метрика
- * {@code http.server.requests} не публикуется в {@link MeterRegistry}.
- */
 class HttpObservationSuppressionMetricsTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
@@ -35,11 +32,12 @@ class HttpObservationSuppressionMetricsTest {
                     ObservationRegistry registry = applyCustomizer(ctx);
                     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
                     registry.observationConfig().observationHandler(
-                            new io.micrometer.core.instrument.observation.DefaultMeterObservationHandler(meterRegistry));
+                            new DefaultMeterObservationHandler(meterRegistry)
+                    );
 
-                    // Реальный runtime-класс контекста (W9) — не Mockito-mock.
                     ServerRequestObservationContext serverCtx = new ServerRequestObservationContext(
-                            new MockHttpServletRequest(), new MockHttpServletResponse());
+                            new MockHttpServletRequest(), new MockHttpServletResponse()
+                    );
 
                     Observation observation = Observation.createNotStarted("http.server.requests", () -> serverCtx, registry);
                     observation.start();
@@ -50,10 +48,10 @@ class HttpObservationSuppressionMetricsTest {
     }
 
     @SuppressWarnings("unchecked")
-    private ObservationRegistry applyCustomizer(
-            org.springframework.boot.test.context.assertj.AssertableWebApplicationContext ctx) {
+    private ObservationRegistry applyCustomizer(AssertableWebApplicationContext ctx) {
         ObservationRegistryCustomizer<ObservationRegistry> customizer = (ObservationRegistryCustomizer<ObservationRegistry>)
                 ctx.getBean("platformMvcHttpObservationSuppressor");
+
         ObservationRegistry registry = ObservationRegistry.create();
         customizer.customize(registry);
         return registry;

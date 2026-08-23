@@ -7,18 +7,10 @@ import space.br1440.platform.tracing.autoconfigure.agent.OtelJavaAgentMarkerDete
 
 import lombok.experimental.UtilityClass;
 
-/**
- * Эффективное значение подавления Micrometer HTTP observations: явный property либо
- * auto-derive от присутствия Agent.
- * <p>
- * Подавление гасит {@code http.server.requests} / {@code http.client.requests}. Оно не создаёт
- * второй OTel-продюсер и не отменяет Agent spans.
- */
 @UtilityClass
 public final class HttpObservationSuppressionResolver {
 
-    public static final String PROPERTY_NAME =
-            TracingProperties.PREFIX + ".suppression.suppress-micrometer-http-observations";
+    public static final String PROPERTY_NAME = (TracingProperties.PREFIX + ".suppression.suppress-micrometer-http-observations");
 
     public static boolean resolve(Environment environment) {
         Boolean explicit = environment.getProperty(PROPERTY_NAME, Boolean.class);

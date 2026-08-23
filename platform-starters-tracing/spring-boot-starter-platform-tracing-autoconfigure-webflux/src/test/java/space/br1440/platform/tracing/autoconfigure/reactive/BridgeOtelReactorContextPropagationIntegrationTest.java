@@ -15,12 +15,6 @@ import reactor.core.scheduler.Schedulers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * In-process smoke для bridge-otel Reactor propagation path.
- * <p>
- * <b>Tests bridge-otel path ONLY.</b> Agent path covered by E2E G2-05-e2e
- * ({@code ReactorContextPropagationAgentE2ETest}). Green здесь — не substitute для sign-off.
- */
 @Tag("bridge-otel-path")
 @SpringBootTest(
         classes = BridgeOtelReactorContextPropagationIntegrationTest.TestApplication.class,

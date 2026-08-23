@@ -1,12 +1,12 @@
 package space.br1440.platform.tracing.autoconfigure.servlet;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Bean-контракт suppressor'а (Servlet). Штатный стартер не публикует второй HTTP SERVER span:
@@ -54,10 +54,6 @@ class DuplicateSpansRegressionMatrixTest {
     @Test
     @DisplayName("[Agent on, suppress on] combination = standard prod scenario: suppressor is active")
     void productionScenario_suppressorActiveAndAgentDetectedConceptually() {
-        // Agent-сторона унит-тестом не имитируется (detect через системную JVM-инициализацию).
-        // Здесь фиксируется только bean-контракт. Agent-side детектируется
-        // OtelJavaAgentMarkerDetector, и его поведение в combination с suppress=on покрыто
-        // HttpObservationSuppressionStartupTest#noWarnWhenSuppressTrueAndAgentDetected.
         contextRunner
                 .withPropertyValues("platform.tracing.suppression.suppress-micrometer-http-observations=true")
                 .run(ctx -> assertThat(ctx).hasBean("platformMvcHttpObservationSuppressor"));

@@ -1,23 +1,19 @@
 package space.br1440.platform.tracing.autoconfigure.integrations.observation;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Тесты на матрицу 2×2 {@link HttpObservationSuppressionStartupRunner}.
- * WARN при Agent+suppress=false говорит о HTTP-метриках рядом с Agent spans,
- * а не о втором OTel-продюсере.
- */
 class HttpObservationSuppressionStartupTest {
 
     private Logger runnerLogger;
@@ -25,9 +21,10 @@ class HttpObservationSuppressionStartupTest {
 
     @BeforeEach
     void setUp() {
-        runnerLogger = (Logger) LoggerFactory.getLogger(HttpObservationSuppressionStartupRunner.class);
         appender = new ListAppender<>();
         appender.start();
+
+        runnerLogger = (Logger) LoggerFactory.getLogger(HttpObservationSuppressionStartupRunner.class);
         runnerLogger.addAppender(appender);
         runnerLogger.setLevel(Level.WARN);
     }
@@ -47,8 +44,8 @@ class HttpObservationSuppressionStartupTest {
         // then
         List<ILoggingEvent> events = appender.list;
         assertThat(events).hasSize(1);
-        assertThat(events.get(0).getLevel()).isEqualTo(Level.WARN);
-        assertThat(events.get(0).getFormattedMessage())
+        assertThat(events.getFirst().getLevel()).isEqualTo(Level.WARN);
+        assertThat(events.getFirst().getFormattedMessage())
                 .contains("was not detected")
                 .contains("http.server.requests")
                 .doesNotContain("HTTP spans may be duplicated");
@@ -63,8 +60,8 @@ class HttpObservationSuppressionStartupTest {
         // then
         List<ILoggingEvent> events = appender.list;
         assertThat(events).hasSize(1);
-        assertThat(events.get(0).getLevel()).isEqualTo(Level.WARN);
-        assertThat(events.get(0).getFormattedMessage())
+        assertThat(events.getFirst().getLevel()).isEqualTo(Level.WARN);
+        assertThat(events.getFirst().getFormattedMessage())
                 .contains("OpenTelemetry Java Agent detected")
                 .contains("Micrometer HTTP observations remain enabled")
                 .contains("does not add a second HTTP span producer")

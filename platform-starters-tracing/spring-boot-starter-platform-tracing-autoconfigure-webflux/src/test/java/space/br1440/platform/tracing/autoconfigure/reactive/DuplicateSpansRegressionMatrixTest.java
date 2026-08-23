@@ -1,17 +1,13 @@
 package space.br1440.platform.tracing.autoconfigure.reactive;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * Bean-контракт suppressor'а (WebFlux). Зеркало Servlet-матрицы:
- * suppress гасит HTTP-метрики Micrometer, а не второй OTel span на штатном стартере.
- */
 class DuplicateSpansRegressionMatrixTest {
 
     private final ReactiveWebApplicationContextRunner contextRunner = new ReactiveWebApplicationContextRunner()
