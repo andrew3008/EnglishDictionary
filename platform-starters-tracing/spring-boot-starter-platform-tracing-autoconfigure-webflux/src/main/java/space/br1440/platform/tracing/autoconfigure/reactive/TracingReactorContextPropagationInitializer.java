@@ -23,6 +23,9 @@ final class TracingReactorContextPropagationInitializer implements SmartInitiali
         String mode = environment.getProperty(PROPERTY_NAME);
         if ((mode == null) || AUTO_MODE.equalsIgnoreCase(mode)) {
             Hooks.enableAutomaticContextPropagation();
+            log.info("Automatic Reactor context propagation enabled ({}={}). Identity, MDC and "
+                    + "OpenTelemetry context survive publishOn/subscribeOn/retry hops on WebFlux.",
+                    PROPERTY_NAME, (mode == null) ? "not set" : mode);
             return;
         }
 

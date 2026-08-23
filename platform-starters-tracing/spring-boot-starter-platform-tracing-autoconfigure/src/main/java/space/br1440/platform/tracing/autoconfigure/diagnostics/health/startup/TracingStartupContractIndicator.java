@@ -1,12 +1,10 @@
 package space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup;
 
-import space.br1440.platform.common.util.StringUtils;
+import org.springframework.boot.actuate.health.AbstractHealthIndicator;
+import org.springframework.boot.actuate.health.Health;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.boot.actuate.health.AbstractHealthIndicator;
-import org.springframework.boot.actuate.health.Health;
 
 /**
  * Health contributor платформенного модуля трассировки — проверяет только fail-closed стартовый
@@ -43,8 +41,9 @@ final class TracingStartupContractIndicator extends AbstractHealthIndicator {
         builder.withDetail("platformRuntimeMode", snapshot.runtimeMode());
         builder.withDetail("agentState", snapshot.agentState());
 
-        if (StringUtils.hasText(snapshot.failureCode())) {
-            builder.withDetail("failureCode", snapshot.failureCode());
+        String failureCode = snapshot.failureCode();
+        if ((failureCode != null) && !failureCode.isBlank()) {
+            builder.withDetail("failureCode", failureCode);
         }
 
         if (snapshot.outcome() == TracingStartupContractOutcome.STARTUP_CONTRACT_VIOLATED) {

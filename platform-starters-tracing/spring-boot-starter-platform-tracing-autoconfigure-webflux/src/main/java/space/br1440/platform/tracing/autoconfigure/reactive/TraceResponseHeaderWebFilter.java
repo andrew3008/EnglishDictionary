@@ -12,10 +12,12 @@ import space.br1440.platform.tracing.api.propagation.control.InboundTraceControl
 import space.br1440.platform.tracing.api.propagation.control.InboundTraceControlExtractor;
 import space.br1440.platform.tracing.autoconfigure.TracingProperties;
 import space.br1440.platform.tracing.autoconfigure.identity.RequestIdBoundarySupport;
+import space.br1440.platform.tracing.autoconfigure.integrations.reactor.OtelReactorContextPropagation;
 import space.br1440.platform.tracing.runtime.propagation.CorrelationIdSupport;
 
 import io.opentelemetry.api.trace.Span;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public class TraceResponseHeaderWebFilter implements WebFilter {
 
@@ -72,16 +74,26 @@ public class TraceResponseHeaderWebFilter implements WebFilter {
 
                     return chain.filter(filteredExchange);
                 })
+                .doFinally(signal -> OtelReactorContextPropagation.detachEndedCurrentContext())
                 .contextWrite(context -> {
                     ReactiveIdentityContextPropagation.IdentityState currentState = context
                             .<ReactiveIdentityContextPropagation.IdentityState>getOrEmpty(ReactiveIdentityContextPropagation.KEY)
                             .orElse(ReactiveIdentityContextPropagation.EMPTY);
-                    return context.put(
+
+                    Context written = context.put(
                             ReactiveIdentityContextPropagation.KEY,
-                            currentState.withRequestId(requestId)
+                            currentState
+                                    .withRequestId(requestId)
                                     .withTraceControl(traceControl.forceTrace(), traceControl.qaTrace())
                                     .withCorrelationId(correlationId)
                     );
+
+                    Object otelSnapshot = OtelReactorContextPropagation.snapshotRecordingContext();
+                    if (otelSnapshot != null) {
+                        written = written.put(OtelReactorContextPropagation.reactorContextKey(), otelSnapshot);
+                    }
+
+                    return written;
                 });
     }
 

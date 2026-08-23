@@ -8,9 +8,9 @@ import java.util.Optional;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionConfig;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
+import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
-import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.processor.BaggageSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.ClassificationSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.EnrichingSpanProcessor;
@@ -48,7 +48,7 @@ public final class PlatformSpanProcessorFactory {
         Objects.requireNonNull(acceptedPolicy, "acceptedPolicy must not be null");
 
         try {
-            List<SpanProcessor> delegates = buildDelegates(extConfig, config, acceptedPolicy);
+            List<SpanProcessor> delegates = buildDelegates(extConfig, acceptedPolicy);
             installComposite(tpBuilder, delegates);
             return tpBuilder;
         } catch (Throwable t) {
@@ -58,12 +58,11 @@ public final class PlatformSpanProcessorFactory {
     }
 
     private List<SpanProcessor> buildDelegates(ExtensionConfig extConfig,
-                                               ConfigProperties config,
                                                TracingSettingsSource acceptedPolicy) {
         List<SpanProcessor> delegates = new ArrayList<>();
         baggageProcessor(extConfig).ifPresent(delegates::add);
-        enrichingProcessor(extConfig).ifPresent(delegates::add);
         validatingProcessor(acceptedPolicy, delegates);
+        enrichingProcessor(extConfig).ifPresent(delegates::add);
         classificationProcessor(extConfig).ifPresent(delegates::add);
         watchdogProcessor(extConfig).ifPresent(delegates::add);
         metricsProcessor(extConfig).ifPresent(delegates::add);

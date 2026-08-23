@@ -22,6 +22,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot'
     implementation 'org.slf4j:slf4j-api'
 
+    compileOnly 'io.micrometer:context-propagation'
     compileOnly 'io.micrometer:micrometer-tracing-bridge-otel'
     compileOnly 'org.springframework:spring-aop'
     compileOnly 'org.aspectj:aspectjweaver'

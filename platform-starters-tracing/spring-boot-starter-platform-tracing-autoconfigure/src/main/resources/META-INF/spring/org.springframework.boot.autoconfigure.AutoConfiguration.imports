@@ -7,6 +7,7 @@ space.br1440.platform.tracing.autoconfigure.semantic.SemanticLayerAutoConfigurat
 space.br1440.platform.tracing.autoconfigure.metrics.TracingMetricsAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.aop.TracingAopAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.observation.TracingObservationAutoConfiguration
+space.br1440.platform.tracing.autoconfigure.integrations.reactor.OtelReactorContextPropagationAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.diagnostics.health.startup.TracingStartupContractHealthAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.status.TracingStatusAutoConfiguration
 space.br1440.platform.tracing.autoconfigure.integrations.errorhandling.RequestContextSupplierAutoConfiguration
