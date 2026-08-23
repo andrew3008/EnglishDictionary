@@ -1,4 +1,3 @@
-
 plugins {
     id 'platform.java-platform-publish'
 }
@@ -10,41 +9,103 @@ dependencies {
     api platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:${libs.versions.bom.otelinstrumentation.get()}")
 
     constraints {
-        api "net.logstash.logback:logstash-logback-encoder:${libs.versions.bom.logstash.get()}"
+        // ============================================================
+        // Внешние библиотеки, не покрытые импортированными BOM
+        // ============================================================
 
-        api "com.github.f4b6a3:uuid-creator:${libs.versions.bom.uuid.get()}"
+        // платформенные контракты вне монорепозитория
+        api "space.br1440.platform:error-handling-model:${libs.versions.errorHandlingModel.get()}"
 
+        // экосистема Spring
+        api "org.springframework.cloud:spring-cloud-openfeign-core:${libs.versions.bom.openfeign.get()}"
         api "org.springframework.grpc:spring-grpc-server-web-spring-boot-starter:${libs.versions.bom.grpc.get()}"
 
-        api "org.springframework.cloud:spring-cloud-openfeign-core:${libs.versions.bom.openfeign.get()}"
+        // экосистема OpenTelemetry
+        api "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}"
 
-        api "space.br1440.platform:error-handling-model:${libs.versions.errorHandlingModel.get()}"
+        // логирование
+        api "net.logstash.logback:logstash-logback-encoder:${libs.versions.bom.logstash.get()}"
+        api "org.zalando:logbook-core:${libs.versions.bom.logbook.get()}"
+        api "org.zalando:logbook-servlet:${libs.versions.bom.logbook.get()}"
+
+        // инфраструктурные клиенты и утилиты времени выполнения
+        api "com.github.f4b6a3:uuid-creator:${libs.versions.bom.uuid.get()}"
+        api "com.squareup.okhttp3:okhttp:${libs.versions.bom.okhttp.get()}"
+        api "io.github.resilience4j:resilience4j-timelimiter:${libs.versions.bom.resilience.get()}"
+        api "io.minio:minio:${libs.versions.bom.minio.get()}"
+
+        // тестирование и архитектурные проверки
+        api "com.tngtech.archunit:archunit-junit5:${libs.versions.archunit.get()}"
+
+
+        // ============================================================
+        // Общие модули платформы
+        // ============================================================
+
+        // внутренние утилиты, разделяемые модулями монорепозитория
+        api "space.br1440.platform.starters:platform-starters-common-util:${rootProject.version}"
+
+        // идентификация запросов и маршрутизация по заголовкам
+        api "space.br1440.platform.starters:spring-boot-starter-uid1440:${rootProject.version}"
+        api "space.br1440.platform.starters:spring-boot-starter-x-trace-id:${rootProject.version}"
+        api "space.br1440.platform.starters:spring-boot-starter-header-based-routing:${rootProject.version}"
+
+
+        // ============================================================
+        // Логи, метрики и проверки состояния
+        // ============================================================
+        api "space.br1440.platform.starters:spring-boot-starter-platform-logging:${rootProject.version}"
+        api "space.br1440.platform.starters:spring-boot-starter-platform-metrics:${rootProject.version}"
+        api "space.br1440.platform.starters:spring-boot-starter-platform-health-checks:${rootProject.version}"
+
+
+        // ============================================================
+        // Трассировка
+        // ============================================================
+
+        // контракты и ядро времени выполнения
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-api:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:platform-tracing-runtime-policy:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-otel:${rootProject.version}"
+
+        // автоконфигурация Spring Boot
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux:${rootProject.version}"
+
+        // прикладные стартеры
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-mvc:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-webflux:${rootProject.version}"
+
+        // расширение Java-агента
         api "space.br1440.platform.starters.tracing:platform-tracing-otel-javaagent-extension:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:platform-tracing-javaagent:${rootProject.version}"
 
+
+        // ============================================================
+        // Обработка ошибок
+        // ============================================================
+
+        // контракты и ядро
         api "space.br1440.platform.starters.errorhandling:platform-error-handling-core:${rootProject.version}"
+
+        // прикладные стартеры
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-mvc:${rootProject.version}"
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-webflux:${rootProject.version}"
         api "space.br1440.platform.starters.errorhandling:spring-boot-starter-platform-error-handling-grpc:${rootProject.version}"
 
-        api "space.br1440.platform.starters:platform-starters-common-util:${rootProject.version}"
 
-        api "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${libs.versions.bom.otelextension.get()}"
-        api "com.tngtech.archunit:archunit-junit5:${libs.versions.archunit.get()}"
+        // ============================================================
+        // Прикладная инфраструктура среды исполнения
+        // ============================================================
 
-        api "org.zalando:logbook-core:${libs.versions.bom.logbook.get()}"
-        api "org.zalando:logbook-servlet:${libs.versions.bom.logbook.get()}"
+        // безопасность
+        api "space.br1440.platform.starters:spring-boot-starter-platform-security:${rootProject.version}"
 
-        api "io.minio:minio:${libs.versions.bom.minio.get()}"
-        api "com.squareup.okhttp3:okhttp:${libs.versions.bom.okhttp.get()}"
-        api "io.github.resilience4j:resilience4j-timelimiter:${libs.versions.bom.resilience.get()}"
+        // доступ к базам данных
+        api "space.br1440.platform.starters:spring-boot-starter-platform-postgres-read-write-split-jdbc:${rootProject.version}"
+
+        // координация экземпляров приложения
+        api "space.br1440.platform.starters:spring-boot-starter-platform-leader-election:${rootProject.version}"
     }
 }
