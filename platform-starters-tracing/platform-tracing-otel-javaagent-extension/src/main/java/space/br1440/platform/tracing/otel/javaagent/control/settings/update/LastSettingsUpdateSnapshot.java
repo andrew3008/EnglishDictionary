@@ -30,15 +30,13 @@ public record LastSettingsUpdateSnapshot(SettingsUpdateAttempt latestAttempt,
             return new Timestamps(null, null, null, null);
         }
 
-        Timestamps advance(SettingsUpdateStatus outcome, Instant observedAt) {
+        Timestamps advance(SettingsUpdateStatus outcome, Instant rawObservedAt) {
             Objects.requireNonNull(outcome, "outcome");
-            Objects.requireNonNull(observedAt, "observedAt");
-            if (lastAttemptAt != null && observedAt.isBefore(lastAttemptAt)) {
-                throw new IllegalArgumentException(
-                        "observedAt must not precede lastAttemptAt: observedAt=%s, lastAttemptAt=%s"
-                                .formatted(observedAt, lastAttemptAt)
-                );
-            }
+            Objects.requireNonNull(rawObservedAt, "rawObservedAt");
+
+            Instant observedAt = (lastAttemptAt != null && rawObservedAt.isBefore(lastAttemptAt))
+                    ? lastAttemptAt
+                    : rawObservedAt;
 
             boolean successfulEvaluation = outcome.isSuccessful();
             boolean acceptedChange = outcome == SettingsUpdateStatus.APPLIED;

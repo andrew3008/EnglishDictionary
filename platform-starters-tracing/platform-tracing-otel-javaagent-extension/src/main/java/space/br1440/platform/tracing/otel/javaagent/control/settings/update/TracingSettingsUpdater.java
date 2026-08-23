@@ -51,8 +51,17 @@ public final class TracingSettingsUpdater {
             );
         }
 
-        diagnostics.record(attempt, result);
+        recordDiagnosticsSafely(attempt, result);
         return result;
+    }
+
+    private void recordDiagnosticsSafely(SettingsUpdateAttempt attempt, SettingsUpdateResult result) {
+        try {
+            diagnostics.record(attempt, result);
+        } catch (RuntimeException exception) {
+            log.warn(AgentEventCodes.CTRL_UPDATE, "Settings update diagnostics recording failed",
+                    exception, "attemptId", attempt.attemptId());
+        }
     }
 
     public SettingsUpdateResult rejectBeforeApply(String wireAttemptId, SettingsRejectionReason reason) {
