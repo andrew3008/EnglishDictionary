@@ -13,7 +13,7 @@ public sealed interface JmxOwnerState<T> permits JmxOwnerState.Present, JmxOwner
             Objects.requireNonNull(values, "values");
 
             if (generation <= 0) {
-                throw new IllegalArgumentException("generation присутствующего владельца должна быть положительной: " + generation);
+                throw new IllegalArgumentException("generation of a present owner must be positive: " + generation);
             }
         }
     }
@@ -22,7 +22,7 @@ public sealed interface JmxOwnerState<T> permits JmxOwnerState.Present, JmxOwner
 
         public Absent {
             if (generation < 0) {
-                throw new IllegalArgumentException("generation не может быть отрицательной: " + generation);
+                throw new IllegalArgumentException("generation must not be negative: " + generation);
             }
         }
     }

@@ -130,7 +130,7 @@ final class JmxReadStateRegistry {
         }
 
         if (lastWarn.compareAndSet(previousWarn, now)) {
-            log.warn("JMX-контракт: {} {} на точке {} (первое или повторное после recovery)",
+            log.warn("JMX contract: {} {} at point {} (first occurrence or repeat after recovery)",
                     key.category(), key.kind(), key.point());
         } else {
             suppressedWarnCounts.computeIfAbsent(key, ignored -> new LongAdder()).increment();

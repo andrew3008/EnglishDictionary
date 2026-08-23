@@ -156,7 +156,7 @@ public final class JmxReadExecutor {
                 return executionFailure(JmxDiagnosticKind.MBEAN_RUNTIME_ERROR);
             } catch (RuntimeOperationsException e) {
                 if (e.getCause() instanceof IllegalArgumentException) {
-                    throw new IllegalArgumentException("Локально некорректный вызов JMX-операции для " + point, e);
+                    throw new IllegalArgumentException("Locally invalid JMX operation call for " + point, e);
                 }
 
                 return executionFailure(JmxDiagnosticKind.OPERATIONS_EXCEPTION_UNCLASSIFIED);
