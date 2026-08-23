@@ -62,6 +62,9 @@ final class ExportBuffer {
         }
     }
 
+    // намеренно: elapsedSinceExport пересчитывается от lastExportNanos,
+    // а не от возврата awaitNanos
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     WorkUnit awaitWork(long scheduleDelayNanos, long lastExportNanos) {
         List<FlushTracker.FlushCompletion> completions = new ArrayList<>(2);
         WorkUnit result;

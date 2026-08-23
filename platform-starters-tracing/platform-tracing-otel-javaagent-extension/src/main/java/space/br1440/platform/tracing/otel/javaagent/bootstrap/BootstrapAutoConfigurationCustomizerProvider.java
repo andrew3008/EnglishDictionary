@@ -4,8 +4,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import space.br1440.platform.tracing.otel.javaagent.configuration.PlatformTracingDefaultsProvider;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
-import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.propagation.BaggagePropagationCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.propagation.PlatformPropagatorsDefaultsCustomizer;
 import space.br1440.platform.tracing.otel.javaagent.readiness.PlatformExtensionCapability;
@@ -21,8 +19,6 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
 
     private static final int PLATFORM_EXTENSION_ORDER = 100;
     private static final String X_TRACE_ON = "X-Trace-On";
-    private static final PlatformAgentLogger log =
-            PlatformAgentLogger.get(BootstrapAutoConfigurationCustomizerProvider.class);
 
     private final BootstrapCoordinator bootstrap;
     private final PlatformTracingDefaultsProvider defaultsProvider = new PlatformTracingDefaultsProvider();
@@ -30,12 +26,6 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
     private final PlatformPropagatorsDefaultsCustomizer propagatorsDefaults = new PlatformPropagatorsDefaultsCustomizer();
     private final SafeResourceCustomizer resourceCustomizer = new SafeResourceCustomizer();
 
-    /**
-     * Требуется для {@link java.util.ServiceLoader}: OTel autoconfigure создаёт эту точку входа SPI
-     * через публичный конструктор без аргументов. Делегирует получение координатора
-     * classloader-локальному holder'у {@link ExtensionRuntime}, чтобы обе точки входа bootstrap SPI
-     * использовали ровно один общий {@link BootstrapCoordinator}.
-     */
     @SuppressWarnings("unused")
     public BootstrapAutoConfigurationCustomizerProvider() {
         this(ExtensionRuntime.bootstrap());
@@ -52,7 +42,6 @@ public final class BootstrapAutoConfigurationCustomizerProvider implements AutoC
 
     @Override
     public void customize(AutoConfigurationCustomizer customizer) {
-        log.info(AgentEventCodes.BOOT_INSTALLED, "Platform agent logging installed", "kind", "PLATFORM_STDERR_DIRECT");
         customizer.addPropertiesSupplier(defaultsProvider::supply);
 
         customizer.addPropertiesCustomizer(config -> {

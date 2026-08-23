@@ -18,11 +18,11 @@ import space.br1440.platform.common.util.ArrayUtils;
 import space.br1440.platform.common.util.StringUtils;
 import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
-import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsRejectionReason;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.SettingsUpdateResult;
 import space.br1440.platform.tracing.otel.javaagent.control.settings.update.TracingSettingsUpdater;
+import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
+import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
 public final class PrivateControlWriterMBean implements DynamicMBean {
 
@@ -40,9 +40,12 @@ public final class PrivateControlWriterMBean implements DynamicMBean {
     private final PrivateControlOpenTypeCodec codec;
 
     public PrivateControlWriterMBean(TracingSettingsUpdater updater, TracingSettingsStore store) {
-        this(Objects.requireNonNull(updater, "updater"),
+        this(
+                Objects.requireNonNull(updater, "updater"),
                 Objects.requireNonNull(store, "store"),
-                new PrivateControlOpenTypeCodec());
+                new PrivateControlOpenTypeCodec()
+        );
+
         PrivateControlWireTypes.initialize();
     }
 

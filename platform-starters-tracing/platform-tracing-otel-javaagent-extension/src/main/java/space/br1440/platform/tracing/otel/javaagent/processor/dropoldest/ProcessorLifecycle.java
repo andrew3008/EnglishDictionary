@@ -68,6 +68,7 @@ final class ProcessorLifecycle {
     private static ThreadFactory terminatorThreadFactory() {
         return runnable -> {
             String name = "platform-tracing-drop-oldest-shutdown-" + TERMINATOR_SEQUENCE.incrementAndGet();
+
             Thread thread = new Thread(runnable, name);
             thread.setDaemon(true);
             return thread;

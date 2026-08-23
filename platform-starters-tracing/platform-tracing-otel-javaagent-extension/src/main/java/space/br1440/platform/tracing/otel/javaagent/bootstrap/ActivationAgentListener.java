@@ -11,12 +11,6 @@ public final class ActivationAgentListener implements AgentListener {
 
     private final BootstrapCoordinator bootstrap;
 
-    /**
-     * Требуется для {@link java.util.ServiceLoader}: агент создаёт эту точку входа SPI
-     * через публичный конструктор без аргументов. Делегирует получение координатора
-     * classloader-локальному holder'у, чтобы обе точки входа bootstrap SPI использовали
-     * ровно один общий {@link BootstrapCoordinator}.
-     */
     @SuppressWarnings("unused")
     public ActivationAgentListener() {
         this(ExtensionRuntime.bootstrap());

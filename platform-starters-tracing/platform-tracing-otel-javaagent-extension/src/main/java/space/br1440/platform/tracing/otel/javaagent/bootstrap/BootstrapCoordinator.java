@@ -50,10 +50,6 @@ final class BootstrapCoordinator {
         return new BootstrapCoordinator(JvmShutdownHookRegistry.INSTANCE, scrubberFactory);
     }
 
-    BootstrapCoordinator(ShutdownHookRegistry hookRegistry) {
-        this(hookRegistry, new PlatformScrubberFactory());
-    }
-
     BootstrapCoordinator(ShutdownHookRegistry hookRegistry, PlatformScrubberFactory scrubberFactory) {
         this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
         this.scrubberFactory = Objects.requireNonNull(scrubberFactory, "scrubberFactory");
@@ -61,6 +57,7 @@ final class BootstrapCoordinator {
 
     AutoconfigureSession prepare(ConfigProperties config) {
         Objects.requireNonNull(config, "config");
+
         ConfigurationFingerprint fingerprint = ConfigurationFingerprint.of(config);
 
         synchronized (lock) {

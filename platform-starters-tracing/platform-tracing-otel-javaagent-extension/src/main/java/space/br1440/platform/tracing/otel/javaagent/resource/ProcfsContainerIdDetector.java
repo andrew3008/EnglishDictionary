@@ -82,7 +82,8 @@ public final class ProcfsContainerIdDetector {
 
     private static Optional<String> readCgroupFile(Path path) {
         try {
-            return Optional.of(Files.readString(path, StandardCharsets.UTF_8));
+            String fileContent = Files.readString(path, StandardCharsets.UTF_8);
+            return Optional.of(fileContent);
         } catch (IOException | SecurityException exception) {
             return Optional.empty();
         }

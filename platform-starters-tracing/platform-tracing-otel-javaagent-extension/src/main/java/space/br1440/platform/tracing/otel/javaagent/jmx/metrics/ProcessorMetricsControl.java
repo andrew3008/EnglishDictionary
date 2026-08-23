@@ -1,5 +1,16 @@
 package space.br1440.platform.tracing.otel.javaagent.jmx.metrics;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularType;
+
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContract;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxOpenTypeSupport;
 import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerCapture;
@@ -8,17 +19,6 @@ import space.br1440.platform.tracing.otel.javaagent.jmx.observation.OwnerRegistr
 import space.br1440.platform.tracing.otel.javaagent.processor.SpanLimitsMetricsProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.composite.PlatformCompositeSpanProcessor;
 import space.br1440.platform.tracing.otel.javaagent.processor.watchdog.SpanWatchdogProcessor;
-
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenType;
-import javax.management.openmbean.SimpleType;
-import javax.management.openmbean.TabularType;
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 public final class ProcessorMetricsControl implements ProcessorMetricsControlMBean {
 
@@ -38,9 +38,9 @@ public final class ProcessorMetricsControl implements ProcessorMetricsControlMBe
     private final AtomicLong captureSequence = new AtomicLong();
 
     public ProcessorMetricsControl(OwnerRegistrationSlot<SpanWatchdogProcessor> watchdogSlot,
-                                           OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
-                                           OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot,
-                                           UUID agentInstanceId) {
+                                   OwnerRegistrationSlot<PlatformCompositeSpanProcessor> compositeSlot,
+                                   OwnerRegistrationSlot<SpanLimitsMetricsProcessor> metricsSlot,
+                                   UUID agentInstanceId) {
         this.watchdogSlot = Objects.requireNonNull(watchdogSlot, "watchdogSlot");
         this.compositeSlot = Objects.requireNonNull(compositeSlot, "compositeSlot");
         this.metricsSlot = Objects.requireNonNull(metricsSlot, "metricsSlot");

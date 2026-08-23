@@ -41,7 +41,8 @@ public final class ResourceAttributeResolver {
                        String manifestVersion) {
         boolean normalize = config.getBoolean(
                 ExtensionPropertyNames.RESOURCE_NORMALIZE_ENVIRONMENT,
-                ExtensionDefaults.DEFAULT_RESOURCE_NORMALIZE_ENVIRONMENT);
+                ExtensionDefaults.DEFAULT_RESOURCE_NORMALIZE_ENVIRONMENT
+        );
 
         AttributesBuilder builder = Attributes.builder();
 

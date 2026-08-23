@@ -8,16 +8,12 @@ import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSourc
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentLoggingRuntime;
 
-/**
- * Фасад политики порога. Не владеет effective runtime state — его держит runtime.
- */
 public final class PlatformLogControl {
 
     private static final AgentLogLevel PARSE_FALLBACK = AgentLogLevel.WARN;
     private static final PlatformLogControl SHARED = new PlatformLogControl();
 
-    private final AtomicReference<TracingSettingsSource> acceptedPolicy =
-            new AtomicReference<>(TracingSettingsSource.isolatedDefaults());
+    private final AtomicReference<TracingSettingsSource> acceptedPolicy = new AtomicReference<>(TracingSettingsSource.isolatedDefaults());
     private final AtomicLong bindCount = new AtomicLong();
     private final AtomicLong generation = new AtomicLong();
     private final Object bindLock = new Object();
@@ -47,6 +43,7 @@ public final class PlatformLogControl {
         if (newLevel == null) {
             return;
         }
+
         projectLevel(newLevel);
     }
 
@@ -54,10 +51,12 @@ public final class PlatformLogControl {
         if (raw == null) {
             return false;
         }
+
         AgentLogLevel parsed = AgentLogLevel.parseOrDefault(raw, null);
         if (parsed == null) {
             return false;
         }
+
         projectLevel(parsed);
         return true;
     }

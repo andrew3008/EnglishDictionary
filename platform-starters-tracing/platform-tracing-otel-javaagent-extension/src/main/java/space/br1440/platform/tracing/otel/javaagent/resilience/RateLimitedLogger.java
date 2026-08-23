@@ -9,9 +9,6 @@ import space.br1440.platform.tracing.otel.javaagent.logging.AgentLogLevel;
 import space.br1440.platform.tracing.otel.javaagent.logging.EmitResult;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
 
-/**
- * Двухфазный rate-limit вокруг {@link PlatformAgentLogger}. Не владеет sink/backend.
- */
 public final class RateLimitedLogger {
 
     private final PlatformAgentLogger delegate;
@@ -94,6 +91,7 @@ public final class RateLimitedLogger {
         if (!isDebugEnabled()) {
             return EmitResult.FILTERED_BY_LEVEL;
         }
+
         return delegate.debug(eventCode, message, k1, v1);
     }
 
@@ -101,6 +99,7 @@ public final class RateLimitedLogger {
         if (!isDebugEnabled()) {
             return EmitResult.FILTERED_BY_LEVEL;
         }
+
         return delegate.debug(eventCode, message, k1, v1, k2, v2);
     }
 

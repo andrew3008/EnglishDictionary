@@ -34,12 +34,6 @@ public final class CompositeSampler implements Sampler, PlatformManagedSampler {
 
     private final ConcurrentHashMap<String, LongAdder> decisionCounters = new ConcurrentHashMap<>();
 
-    /**
-     * @param acceptedPolicy     единственный accepted-state owner Category A настроек (динамический)
-     * @param categoryBOverrides drop-paths и force-record-values, зафиксированные один раз из
-     *                           startup-конфигурации; после S2 это не control-plane состояние и
-     *                           не подлежит рантайм-мутации
-     */
     public CompositeSampler(TracingSettingsSource acceptedPolicy, SamplingPolicySnapshot categoryBOverrides) {
         this.acceptedPolicy = new AtomicReference<>(Objects.requireNonNull(acceptedPolicy, "acceptedPolicy"));
         this.categoryBOverrides = Objects.requireNonNull(categoryBOverrides, "categoryBOverrides");

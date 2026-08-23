@@ -5,8 +5,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class LastSettingsUpdate {
 
-    private final AtomicReference<LastSettingsUpdateSnapshot> snapshot =
-            new AtomicReference<>(LastSettingsUpdateSnapshot.empty());
+    private final AtomicReference<LastSettingsUpdateSnapshot> snapshot = new AtomicReference<>(LastSettingsUpdateSnapshot.empty());
 
     public LastSettingsUpdateSnapshot snapshot() {
         return snapshot.get();

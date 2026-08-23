@@ -1,10 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
-/**
- * Overflow policy for the platform export queue, consumed exclusively by
- * {@link PlatformExportProcessorFactory} when selecting the {@code BatchSpanProcessor}
- * versus the drop-oldest replacement.
- */
 enum QueueOverflowPolicy {
 
     UPSTREAM("UPSTREAM"),

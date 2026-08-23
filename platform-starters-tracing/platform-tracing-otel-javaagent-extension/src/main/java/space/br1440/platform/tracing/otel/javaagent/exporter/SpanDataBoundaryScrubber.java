@@ -117,11 +117,6 @@ final class SpanDataBoundaryScrubber {
         }
     }
 
-    /**
-     * Схлопывает все поверхности span'а, включая атрибуты. Атрибуты не исключаются даже когда
-     * процессорная плоскость считается verified: сырое представление не должно переживать
-     * critical или непредвиденную ошибку на границе.
-     */
     private SpanData collapseBoundarySurfaces(SpanData spanData) {
         Attributes attributes = AttributesScrubber.collapseToSentinel(spanData.getAttributes());
 

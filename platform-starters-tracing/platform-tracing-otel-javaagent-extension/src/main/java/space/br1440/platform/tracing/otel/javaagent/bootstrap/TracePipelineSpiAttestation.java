@@ -15,8 +15,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import lombok.experimental.UtilityClass;
-
 import space.br1440.platform.tracing.otel.javaagent.logging.AgentEventCodes;
 import space.br1440.platform.tracing.otel.javaagent.logging.EmitResult;
 import space.br1440.platform.tracing.otel.javaagent.logging.PlatformAgentLogger;
@@ -24,6 +22,7 @@ import space.br1440.platform.tracing.otel.javaagent.resilience.PlatformThrowable
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 final class TracePipelineSpiAttestation {
@@ -39,8 +38,7 @@ final class TracePipelineSpiAttestation {
     }
 
     static void attest(int platformOrder, Class<?> platformProviderType, ClassLoader classLoader) {
-        Set<String> upstreamNames = attestAutoConfigurationProviders(
-                platformOrder, platformProviderType, classLoader);
+        Set<String> upstreamNames = attestAutoConfigurationProviders(platformOrder, platformProviderType, classLoader);
         attestNoLegacyTracerProviderConfigurers(classLoader);
         maybePublishEvidence(upstreamNames);
     }
@@ -140,6 +138,7 @@ final class TracePipelineSpiAttestation {
         String pinCount = (mode == SpiAttestationMode.EXACT_EVIDENCE)
                 ? String.valueOf(PinnedUpstreamAcpProviders.PIN_COUNT)
                 : String.valueOf(upstreamNames.size());
+
         List<String> fields = new ArrayList<>();
         fields.add("pin_format_version");
         fields.add(String.valueOf(PlatformOtelAcpPinHashes.FORMAT_VERSION));
@@ -159,6 +158,7 @@ final class TracePipelineSpiAttestation {
                 "Trace pipeline SPI attestation evidence",
                 fields.toArray()
         );
+
         if (result != EmitResult.EMITTED) {
             fail("SPI attestation evidence marker was not emitted: " + result);
         }
@@ -193,6 +193,7 @@ final class TracePipelineSpiAttestation {
                         + "pipeline attestation", cause);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static <T> List<ServiceLoader.Provider<T>> discover(Class<T> spiType, ClassLoader classLoader) {
         List<ServiceLoader.Provider<T>> providers = new ArrayList<>();
         try {
@@ -205,13 +206,11 @@ final class TracePipelineSpiAttestation {
         return providers;
     }
 
-    /**
-     * Сверяет только binary name с generated pin. Происхождение class-файла не проверяется.
-     */
     static boolean isAllowlistedUpstreamProviderName(String providerName) {
         return PinnedUpstreamAcpProviders.NAMES.contains(providerName);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static List<String> discoverServiceProviderNames(String spiName, ClassLoader classLoader) {
         String resourceName = "META-INF/services/" + spiName;
         TreeSet<String> providerNames = new TreeSet<>();
@@ -224,16 +223,18 @@ final class TracePipelineSpiAttestation {
             PlatformThrowables.propagateFatalCauseChain(e);
             throw discoveryFailed(e);
         }
+
         return List.copyOf(providerNames);
     }
 
     private static void readServiceProviderNames(URL resource, TreeSet<String> providerNames) throws IOException {
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(resource.openStream(), StandardCharsets.UTF_8))) {
+                new InputStreamReader(resource.openStream(), StandardCharsets.UTF_8)
+        )) {
             String line;
             while ((line = reader.readLine()) != null) {
                 int commentStart = line.indexOf('#');
-                String providerName = (commentStart >= 0 ? line.substring(0, commentStart) : line).trim();
+                String providerName = ((commentStart >= 0) ? line.substring(0, commentStart) : line).trim();
                 if (!providerName.isEmpty()) {
                     providerNames.add(providerName);
                 }

@@ -1,8 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.factory;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
-
 import space.br1440.platform.tracing.otel.javaagent.configuration.SamplingExtensionConfig;
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsSource;
 import space.br1440.platform.tracing.otel.javaagent.jmx.registration.DomainMBeanRegistrar;
 import space.br1440.platform.tracing.otel.javaagent.sampler.CompositeSampler;
 import space.br1440.platform.tracing.otel.javaagent.sampler.PlatformManagedSamplers;

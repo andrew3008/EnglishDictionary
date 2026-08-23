@@ -189,6 +189,7 @@ public final class SafeSpanExporter implements SpanExporter {
         ScrubbingFailureLog.error(log, "BOUNDARY_BATCH_PREPARATION_FAILED", failure);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void recordSyncFailure(int count, long startedAt, String message) {
         recordSyncFailure(count, startedAt, message, null);
     }
@@ -198,6 +199,7 @@ public final class SafeSpanExporter implements SpanExporter {
         recordFailureMetrics(count, message, error);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void recordFailureMetrics(int count, String message) {
         recordFailureMetrics(count, message, null);
     }
@@ -206,10 +208,6 @@ public final class SafeSpanExporter implements SpanExporter {
         exportFailures.increment();
         droppedSpans.add(count);
         logExportFailure(message, error);
-    }
-
-    private void logExportFailure(String message) {
-        logExportFailure(message, null);
     }
 
     private void logExportFailure(String message, Throwable error) {

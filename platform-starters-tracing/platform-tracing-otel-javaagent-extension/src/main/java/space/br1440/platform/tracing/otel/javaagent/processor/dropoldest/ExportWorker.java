@@ -71,6 +71,7 @@ final class ExportWorker implements Runnable {
             }
         } catch (Throwable failure) {
             buffer.failTerminal();
+
             PlatformThrowables.propagateIfFatal(failure);
             log.error(AgentEventCodes.EXPORT_WORKER, "Export worker terminated abnormally", failure);
         } finally {
@@ -94,6 +95,7 @@ final class ExportWorker implements Runnable {
             outcome.pendingResult().whenComplete(() -> buffer.completeTimedOut(pending));
             return;
         }
+
         buffer.settle(batch, outcome.success());
     }
 }
