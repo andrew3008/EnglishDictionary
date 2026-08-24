@@ -30,7 +30,7 @@ public final class ExecutableRule {
         return executeDetailed(key, value).decision();
     }
 
-    public RuleOutcome executeDetailed(String key, Object value) {
+    RuleOutcome executeDetailed(String key, Object value) {
         RuleCircuitBreaker.State state = breaker.acquireExecutionState();
         return switch (state) {
             case OPEN -> rule.critical()
