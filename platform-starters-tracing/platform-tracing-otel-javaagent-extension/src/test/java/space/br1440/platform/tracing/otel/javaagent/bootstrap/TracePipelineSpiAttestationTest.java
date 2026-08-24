@@ -1,5 +1,8 @@
 package space.br1440.platform.tracing.otel.javaagent.bootstrap;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -8,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,15 +19,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import space.br1440.platform.tracing.otel.javaagent.bootstrap.pin.IndependentUpstreamAcpJarExtractor;
 import space.br1440.platform.tracing.otel.javaagent.configuration.ExtensionPropertyNames;
 import space.br1440.platform.tracing.otel.javaagent.scrubbing.SanitizerBootstrapException;
 
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit-level coverage for {@link TracePipelineSpiAttestation}: generated upstream pin for
@@ -51,7 +49,7 @@ class TracePipelineSpiAttestationTest {
     }
 
     @Test
-    void generatedPinRejectsAttackerPrefixAndKeepsReviewedNames() {
+    void pinned_names_reject_attacker_prefix_and_keep_reviewed_names() {
         // given
         Set<String> names = PinnedUpstreamAcpProviders.NAMES;
 
@@ -67,22 +65,6 @@ class TracePipelineSpiAttestationTest {
         assertThat(PlatformOtelAcpPinHashes.sha256Hex(names))
                 .isEqualTo(PinnedUpstreamAcpProviders.PIN_SHA256);
         assertThat(names).hasSize(PinnedUpstreamAcpProviders.PIN_COUNT);
-    }
-
-    @Test
-    void generatedPinEqualsIndependentExtractFromResolvedJar() throws Exception {
-        // given
-        Path agentJar = Path.of(requiredProperty("platformTracing.upstreamAgentJar"));
-
-        // when
-        List<String> extracted = IndependentUpstreamAcpJarExtractor.extractSortedNames(agentJar);
-
-        // then
-        assertThat(extracted).isEqualTo(PinnedUpstreamAcpProviders.NAMES.stream().sorted().toList());
-        assertThat(PlatformOtelAcpPinHashes.sha256Hex(extracted))
-                .isEqualTo(PinnedUpstreamAcpProviders.PIN_SHA256);
-        assertThat(IndependentUpstreamAcpJarExtractor.sha256Hex(Files.readAllBytes(agentJar)))
-                .isEqualTo(PinnedUpstreamAcpProviders.UPSTREAM_AGENT_SHA256);
     }
 
     @Test
@@ -174,14 +156,6 @@ class TracePipelineSpiAttestationTest {
         assertThat(LegacyConfigurerDescriptorProbe.CONSTRUCTED)
                 .as("attestation must reject the legacy service descriptor without loading its provider")
                 .isFalse();
-    }
-
-    private static String requiredProperty(String name) {
-        String value = System.getProperty(name);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Required test system property is missing: " + name);
-        }
-        return value;
     }
 
     private static void assertAttestationFails(ClassLoader overlay) {

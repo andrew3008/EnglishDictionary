@@ -1,0 +1,1781 @@
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+import java.text.Normalizer
+import java.time.LocalDateTime
+import java.util.Locale
+import java.util.NavigableMap
+import java.util.TreeMap
+import java.util.jar.Attributes
+import java.util.jar.Manifest
+import java.util.regex.Pattern
+import java.util.zip.CRC32
+import java.util.zip.Deflater
+import java.util.zip.DataFormatException
+import java.util.zip.Inflater
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+
+import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
+
+class ControlledAgentTextSupport {
+    static String decodeUtf8(byte[] bytes, String description) {
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString()
+        } catch (CharacterCodingException exception) {
+            throw new GradleException("${description} must be valid UTF-8", exception)
+        }
+    }
+}
+
+class ControlledAgentAssemblyPolicy {
+    int formatVersion
+    String distributionGroup
+    String distributionArtifact
+    String upstreamCoordinate
+    Map<String, String> requiredUpstreamManifest
+    String extensionImplementationTitle
+    String extensionEntryPath
+    String identityEntryPath
+    int minimumJavaVersion
+    LocalDateTime canonicalTimestamp
+    long maximumArchiveBytes
+    int maximumEntries
+    long maximumEntryBytes
+    long maximumUncompressedBytes
+    int maximumCompressionRatio
+}
+
+class ControlledAgentAcpPin {
+    int formatVersion
+    String upstreamSha256
+    List<String> providerNames
+}
+
+class ControlledAgentZipEntryData {
+    String name
+    boolean directory
+    int flags
+    int method
+    int dosTime
+    int dosDate
+    long crc
+    long compressedSize
+    long uncompressedSize
+    long localHeaderOffset
+    int centralExtraLength
+    int centralCommentLength
+    int localExtraLength
+    byte[] payload
+}
+
+class ControlledAgentZipArchive {
+    byte[] rawBytes
+    List<ControlledAgentZipEntryData> entries
+    int archiveCommentLength
+}
+
+class ControlledAgentBoundedOutputStream extends OutputStream {
+    private final OutputStream delegate
+    private final long maximumBytes
+    private long written
+
+    ControlledAgentBoundedOutputStream(OutputStream delegate, long maximumBytes) {
+        this.delegate = delegate
+        this.maximumBytes = maximumBytes
+    }
+
+    @Override
+    void write(int value) throws IOException {
+        reserve(1)
+        delegate.write(value)
+    }
+
+    @Override
+    void write(byte[] bytes, int offset, int length) throws IOException {
+        reserve(length)
+        delegate.write(bytes, offset, length)
+    }
+
+    @Override
+    void flush() throws IOException {
+        delegate.flush()
+    }
+
+    @Override
+    void close() throws IOException {
+        delegate.close()
+    }
+
+    private void reserve(int length) {
+        if (length < 0 || written > maximumBytes - length) {
+            throw new GradleException(
+                    "Controlled agent candidate exceeds ${maximumBytes} archive bytes")
+        }
+        written += length
+    }
+}
+
+/** Проверяет ZIP-структуру до распаковки и читает только ограниченный объём данных. */
+class ControlledAgentZipSupport {
+    static final long LOCAL_FILE_HEADER = 0x04034B50L
+    static final long CENTRAL_DIRECTORY_HEADER = 0x02014B50L
+    static final long END_OF_CENTRAL_DIRECTORY = 0x06054B50L
+    static final long DATA_DESCRIPTOR = 0x08074B50L
+    static final int FLAG_ENCRYPTED = 0x0001
+    static final int FLAG_DATA_DESCRIPTOR = 0x0008
+    static final int FLAG_UTF8 = 0x0800
+    static final int ALLOWED_FLAGS = 0x080E
+    static final int ZIP64_EXTRA_FIELD = 0x0001
+    static final String MANIFEST_PATH = 'META-INF/MANIFEST.MF'
+    static final Pattern WINDOWS_DRIVE = Pattern.compile('^[A-Za-z]:.*')
+    static final Pattern SIGNATURE_ENTRY = Pattern.compile(
+            '(?i)^META-INF/(?:[^/]+\\.(?:SF|RSA|DSA|EC)|SIG-[^/]*)$')
+    static final Pattern SHA256_HEX = Pattern.compile('^[a-f0-9]{64}$')
+
+    static ControlledAgentZipArchive read(
+            File source,
+            String description,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        byte[] bytes = readBoundedBytes(
+                source, description, policy.maximumArchiveBytes)
+        return parse(bytes, description, policy)
+    }
+
+    static byte[] readBoundedBytes(File source, String description, long maximumBytes) {
+        if (maximumBytes <= 0) {
+            throw new GradleException("${description} maximum size must be positive")
+        }
+        try (InputStream input = Files.newInputStream(source.toPath())) {
+            ByteArrayOutputStream output = new ByteArrayOutputStream(
+                    (int) Math.min(maximumBytes, 8192L))
+            byte[] buffer = new byte[8192]
+            long total = 0
+            while (true) {
+                long remaining = maximumBytes - total
+                int requested = remaining >= buffer.length
+                        ? buffer.length
+                        : (int) remaining + 1
+                int count = input.read(buffer, 0, requested)
+                if (count < 0) {
+                    break
+                }
+                if (count == 0) {
+                    throw new GradleException("${description} input stream made no progress")
+                }
+                if (count > remaining) {
+                    throw new GradleException(
+                            "${description} size is outside 1..${maximumBytes} bytes")
+                }
+                output.write(buffer, 0, count)
+                total += count
+            }
+            if (total == 0) {
+                throw new GradleException(
+                        "${description} size is outside 1..${maximumBytes} bytes")
+            }
+            return output.toByteArray()
+        } catch (IOException exception) {
+            throw new GradleException("Cannot read ${description}: ${source}", exception)
+        }
+    }
+
+    static ControlledAgentZipArchive parse(
+            byte[] bytes,
+            String description,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        int eocd = findEndOfCentralDirectory(bytes, description)
+        int diskNumber = unsignedShort(bytes, eocd + 4, description)
+        int centralDisk = unsignedShort(bytes, eocd + 6, description)
+        int entriesOnDisk = unsignedShort(bytes, eocd + 8, description)
+        int totalEntries = unsignedShort(bytes, eocd + 10, description)
+        long centralSize = unsignedInt(bytes, eocd + 12, description)
+        long centralOffset = unsignedInt(bytes, eocd + 16, description)
+        int commentLength = unsignedShort(bytes, eocd + 20, description)
+        if (diskNumber != 0 || centralDisk != 0 || entriesOnDisk != totalEntries) {
+            throw new GradleException("${description} must be a single-disk ZIP archive")
+        }
+        if (entriesOnDisk == 0xFFFF || centralSize == 0xFFFFFFFFL || centralOffset == 0xFFFFFFFFL) {
+            throw new GradleException("${description} must not use ZIP64")
+        }
+        if (totalEntries <= 0 || totalEntries > policy.maximumEntries) {
+            throw new GradleException(
+                    "${description} entry count ${totalEntries} is outside 1..${policy.maximumEntries}")
+        }
+        if (centralOffset + centralSize != eocd) {
+            throw new GradleException("${description} central directory boundaries are inconsistent")
+        }
+
+        int cursor = checkedInt(centralOffset, "${description} central directory offset")
+        int centralEnd = checkedInt(centralOffset + centralSize, "${description} central directory end")
+        List<ControlledAgentZipEntryData> entries = new ArrayList<>(totalEntries)
+        Set<String> names = new LinkedHashSet<>()
+        NavigableMap<String, Boolean> pathKinds = new TreeMap<>()
+        Set<Long> localOffsets = new HashSet<>()
+        long totalUncompressed = 0
+        for (int index = 0; index < totalEntries; index++) {
+            requireAvailable(bytes, cursor, 46, description)
+            if (unsignedInt(bytes, cursor, description) != CENTRAL_DIRECTORY_HEADER) {
+                throw new GradleException(
+                        "${description} central directory entry ${index} has an invalid signature")
+            }
+            int versionMadeBy = unsignedShort(bytes, cursor + 4, description)
+            int versionNeeded = unsignedShort(bytes, cursor + 6, description)
+            int flags = unsignedShort(bytes, cursor + 8, description)
+            int method = unsignedShort(bytes, cursor + 10, description)
+            int dosTime = unsignedShort(bytes, cursor + 12, description)
+            int dosDate = unsignedShort(bytes, cursor + 14, description)
+            long crc = unsignedInt(bytes, cursor + 16, description)
+            long compressedSize = unsignedInt(bytes, cursor + 20, description)
+            long uncompressedSize = unsignedInt(bytes, cursor + 24, description)
+            int nameLength = unsignedShort(bytes, cursor + 28, description)
+            int extraLength = unsignedShort(bytes, cursor + 30, description)
+            int entryCommentLength = unsignedShort(bytes, cursor + 32, description)
+            int diskStart = unsignedShort(bytes, cursor + 34, description)
+            long externalAttributes = unsignedInt(bytes, cursor + 38, description)
+            long localOffset = unsignedInt(bytes, cursor + 42, description)
+            int variableLength = nameLength + extraLength + entryCommentLength
+            requireAvailable(bytes, cursor + 46, variableLength, description)
+
+            if (versionNeeded > 20) {
+                throw new GradleException(
+                        "${description} uses unsupported ZIP version ${versionNeeded / 10.0} at entry ${index}")
+            }
+            if ((flags & ~ALLOWED_FLAGS) != 0 || (flags & FLAG_ENCRYPTED) != 0) {
+                throw new GradleException(
+                        "${description} uses unsupported or encrypted ZIP flags 0x${Integer.toHexString(flags)}")
+            }
+            if (method != ZipEntry.STORED && method != ZipEntry.DEFLATED) {
+                throw new GradleException("${description} uses unsupported compression method ${method}")
+            }
+            if (diskStart != 0 || compressedSize == 0xFFFFFFFFL
+                    || uncompressedSize == 0xFFFFFFFFL || localOffset == 0xFFFFFFFFL) {
+                throw new GradleException("${description} must not use ZIP64 or split entries")
+            }
+            rejectZip64Extra(bytes, cursor + 46 + nameLength, extraLength, description)
+            int creatorSystem = (versionMadeBy >>> 8) & 0xFF
+            int unixMode = (int) ((externalAttributes >>> 16) & 0xFFFF)
+            if (creatorSystem == 3 && (unixMode & 0xF000) == 0xA000) {
+                throw new GradleException("${description} must not contain symbolic links")
+            }
+            String name = decodeEntryName(bytes, cursor + 46, nameLength, flags, description)
+            boolean directory = name.endsWith('/')
+            validateCanonicalName(name, directory)
+            if (!names.add(name)) {
+                throw new GradleException("${description} contains duplicate ZIP entry: ${name}")
+            }
+            registerStructuralName(name, directory, pathKinds, description)
+            if (!localOffsets.add(localOffset)) {
+                throw new GradleException("${description} contains duplicate local-header offset: ${localOffset}")
+            }
+            if (directory && uncompressedSize != 0) {
+                throw new GradleException("${description} directory entry must be empty: ${name}")
+            }
+            if (uncompressedSize > policy.maximumEntryBytes) {
+                throw new GradleException(
+                        "${description} entry ${name} exceeds ${policy.maximumEntryBytes} unpacked bytes")
+            }
+            if (uncompressedSize > 0 && compressedSize == 0) {
+                throw new GradleException("${description} entry ${name} has an unbounded compression ratio")
+            }
+            if (compressedSize > 0
+                    && uncompressedSize > compressedSize * policy.maximumCompressionRatio) {
+                throw new GradleException(
+                        "${description} entry ${name} exceeds compression ratio ${policy.maximumCompressionRatio}")
+            }
+            totalUncompressed = Math.addExact(totalUncompressed, uncompressedSize)
+            if (totalUncompressed > policy.maximumUncompressedBytes) {
+                throw new GradleException(
+                        "${description} exceeds ${policy.maximumUncompressedBytes} total unpacked bytes")
+            }
+
+            ControlledAgentZipEntryData entry = new ControlledAgentZipEntryData(
+                    name: name,
+                    directory: directory,
+                    flags: flags,
+                    method: method,
+                    dosTime: dosTime,
+                    dosDate: dosDate,
+                    crc: crc,
+                    compressedSize: compressedSize,
+                    uncompressedSize: uncompressedSize,
+                    localHeaderOffset: localOffset,
+                    centralExtraLength: extraLength,
+                    centralCommentLength: entryCommentLength
+            )
+            entries.add(entry)
+            cursor += 46 + variableLength
+        }
+        validateStructuralTopology(pathKinds, description)
+        if (cursor != centralEnd) {
+            throw new GradleException("${description} central directory contains unparsed data")
+        }
+
+        List<ControlledAgentZipEntryData> localOrder = new ArrayList<>(entries)
+        localOrder.sort { ControlledAgentZipEntryData left, ControlledAgentZipEntryData right ->
+            Long.compare(left.localHeaderOffset, right.localHeaderOffset)
+        }
+        if (localOrder.first().localHeaderOffset != 0) {
+            throw new GradleException("${description} must not contain a ZIP preamble")
+        }
+        for (int index = 0; index < localOrder.size(); index++) {
+            ControlledAgentZipEntryData entry = localOrder.get(index)
+            long nextOffset = index + 1 < localOrder.size()
+                    ? localOrder.get(index + 1).localHeaderOffset
+                    : centralOffset
+            readLocalEntry(bytes, entry, nextOffset, description)
+        }
+
+        return new ControlledAgentZipArchive(
+                rawBytes: bytes,
+                entries: localOrder,
+                archiveCommentLength: commentLength
+        )
+    }
+
+    private static void readLocalEntry(
+            byte[] bytes,
+            ControlledAgentZipEntryData entry,
+            long nextOffset,
+            String description
+    ) {
+        int offset = checkedInt(entry.localHeaderOffset, "${description} local-header offset")
+        requireAvailable(bytes, offset, 30, description)
+        if (unsignedInt(bytes, offset, description) != LOCAL_FILE_HEADER) {
+            throw new GradleException("${description} has an invalid local header for ${entry.name}")
+        }
+        int versionNeeded = unsignedShort(bytes, offset + 4, description)
+        int flags = unsignedShort(bytes, offset + 6, description)
+        int method = unsignedShort(bytes, offset + 8, description)
+        int dosTime = unsignedShort(bytes, offset + 10, description)
+        int dosDate = unsignedShort(bytes, offset + 12, description)
+        long localCrc = unsignedInt(bytes, offset + 14, description)
+        long localCompressedSize = unsignedInt(bytes, offset + 18, description)
+        long localUncompressedSize = unsignedInt(bytes, offset + 22, description)
+        int nameLength = unsignedShort(bytes, offset + 26, description)
+        int extraLength = unsignedShort(bytes, offset + 28, description)
+        requireAvailable(bytes, offset + 30, nameLength + extraLength, description)
+        if (versionNeeded > 20 || flags != entry.flags || method != entry.method
+                || dosTime != entry.dosTime || dosDate != entry.dosDate) {
+            throw new GradleException("${description} local and central headers disagree for ${entry.name}")
+        }
+        String localName = decodeEntryName(bytes, offset + 30, nameLength, flags, description)
+        if (localName != entry.name) {
+            throw new GradleException("${description} local entry name disagrees for ${entry.name}")
+        }
+        rejectZip64Extra(bytes, offset + 30 + nameLength, extraLength, description)
+        entry.localExtraLength = extraLength
+
+        boolean hasDescriptor = (flags & FLAG_DATA_DESCRIPTOR) != 0
+        if (hasDescriptor) {
+            if ((localCrc != 0 && localCrc != entry.crc)
+                    || (localCompressedSize != 0 && localCompressedSize != entry.compressedSize)
+                    || (localUncompressedSize != 0 && localUncompressedSize != entry.uncompressedSize)) {
+                throw new GradleException("${description} local sizes disagree for ${entry.name}")
+            }
+        } else if (localCrc != entry.crc
+                || localCompressedSize != entry.compressedSize
+                || localUncompressedSize != entry.uncompressedSize) {
+            throw new GradleException("${description} local sizes disagree for ${entry.name}")
+        }
+
+        long payloadOffset = (long) offset + 30 + nameLength + extraLength
+        long payloadEnd = payloadOffset + entry.compressedSize
+        if (payloadEnd > nextOffset) {
+            throw new GradleException("${description} entry data overlaps the next ZIP record: ${entry.name}")
+        }
+        int descriptorLength = checkedInt(nextOffset - payloadEnd, "${description} data descriptor length")
+        if (hasDescriptor) {
+            validateDataDescriptor(bytes, checkedInt(payloadEnd, 'Data descriptor offset'),
+                    descriptorLength, entry, description)
+        } else if (descriptorLength != 0) {
+            throw new GradleException("${description} contains hidden data after entry ${entry.name}")
+        }
+        entry.payload = inflate(bytes, checkedInt(payloadOffset, 'ZIP payload offset'), entry, description)
+    }
+
+    private static void validateDataDescriptor(
+            byte[] bytes,
+            int offset,
+            int length,
+            ControlledAgentZipEntryData entry,
+            String description
+    ) {
+        int fieldsOffset
+        if (length == 16 && unsignedInt(bytes, offset, description) == DATA_DESCRIPTOR) {
+            fieldsOffset = offset + 4
+        } else if (length == 12) {
+            fieldsOffset = offset
+        } else {
+            throw new GradleException(
+                    "${description} has an unsupported data descriptor for ${entry.name}")
+        }
+        long descriptorCrc = unsignedInt(bytes, fieldsOffset, description)
+        long descriptorCompressed = unsignedInt(bytes, fieldsOffset + 4, description)
+        long descriptorUncompressed = unsignedInt(bytes, fieldsOffset + 8, description)
+        if (descriptorCrc != entry.crc
+                || descriptorCompressed != entry.compressedSize
+                || descriptorUncompressed != entry.uncompressedSize) {
+            throw new GradleException("${description} data descriptor disagrees for ${entry.name}")
+        }
+    }
+
+    private static byte[] inflate(
+            byte[] archive,
+            int payloadOffset,
+            ControlledAgentZipEntryData entry,
+            String description
+    ) {
+        int compressedSize = checkedInt(entry.compressedSize, "${description} compressed entry size")
+        int expectedSize = checkedInt(entry.uncompressedSize, "${description} unpacked entry size")
+        requireAvailable(archive, payloadOffset, compressedSize, description)
+        byte[] payload
+        if (entry.method == ZipEntry.STORED) {
+            if (compressedSize != expectedSize) {
+                throw new GradleException("${description} STORED sizes disagree for ${entry.name}")
+            }
+            payload = Arrays.copyOfRange(archive, payloadOffset, payloadOffset + compressedSize)
+        } else {
+            Inflater inflater = new Inflater(true)
+            try {
+                inflater.setInput(archive, payloadOffset, compressedSize)
+                ByteArrayOutputStream output = new ByteArrayOutputStream(Math.min(expectedSize, 8192))
+                byte[] buffer = new byte[8192]
+                while (!inflater.finished()) {
+                    int count
+                    try {
+                        count = inflater.inflate(buffer)
+                    } catch (DataFormatException exception) {
+                        throw new GradleException("${description} has corrupt DEFLATE data for ${entry.name}", exception)
+                    }
+                    if (count > 0) {
+                        output.write(buffer, 0, count)
+                        if (output.size() > expectedSize) {
+                            throw new GradleException("${description} unpacked size overflow for ${entry.name}")
+                        }
+                        continue
+                    }
+                    if (inflater.needsDictionary()) {
+                        throw new GradleException("${description} requires a DEFLATE dictionary for ${entry.name}")
+                    }
+                    if (inflater.needsInput()) {
+                        break
+                    }
+                    throw new GradleException("${description} DEFLATE stream made no progress for ${entry.name}")
+                }
+                if (!inflater.finished() || inflater.remaining != 0) {
+                    throw new GradleException("${description} has truncated or trailing DEFLATE data for ${entry.name}")
+                }
+                payload = output.toByteArray()
+            } finally {
+                inflater.end()
+            }
+        }
+        if (payload.length != expectedSize) {
+            throw new GradleException(
+                    "${description} unpacked size ${payload.length} disagrees for ${entry.name}")
+        }
+        CRC32 crc = new CRC32()
+        crc.update(payload)
+        if (crc.value != entry.crc) {
+            throw new GradleException("${description} CRC mismatch for ${entry.name}")
+        }
+        return payload
+    }
+
+    static void validateCanonicalName(String name, boolean directory) {
+        if (name.isEmpty() || name.startsWith('/') || WINDOWS_DRIVE.matcher(name).matches()
+                || name.contains('\\') || !Normalizer.isNormalized(name, Normalizer.Form.NFC)) {
+            throw new GradleException("ZIP entry name is not canonical: ${name}")
+        }
+        for (int index = 0; index < name.length(); index++) {
+            char current = name.charAt(index)
+            if (Character.isISOControl(current)) {
+                throw new GradleException("ZIP entry name contains a control character: ${name}")
+            }
+        }
+        String body = directory ? name.substring(0, name.length() - 1) : name
+        if (body.isEmpty() || (!directory && name.endsWith('/'))) {
+            throw new GradleException("ZIP entry name is not canonical: ${name}")
+        }
+        String[] segments = body.split('/', -1)
+        for (String segment : segments) {
+            if (segment.isEmpty() || segment == '.' || segment == '..') {
+                throw new GradleException("ZIP entry path segment is not canonical: ${name}")
+            }
+        }
+    }
+
+    static void registerStructuralName(
+            String name,
+            boolean directory,
+            NavigableMap<String, Boolean> pathKinds,
+            String description
+    ) {
+        String logicalName = directory ? name.substring(0, name.length() - 1) : name
+        if (pathKinds.containsKey(logicalName)) {
+            throw new GradleException(
+                    "${description} contains a structural ZIP entry collision: ${name}")
+        }
+        pathKinds.put(logicalName, directory)
+    }
+
+    static void validateStructuralTopology(
+            NavigableMap<String, Boolean> pathKinds,
+            String description
+    ) {
+        pathKinds.each { String logicalName, Boolean directory ->
+            if (directory) {
+                return
+            }
+            String descendantPrefix = logicalName + '/'
+            String possibleDescendant = pathKinds.ceilingKey(descendantPrefix)
+            if (possibleDescendant != null && possibleDescendant.startsWith(descendantPrefix)) {
+                throw new GradleException(
+                        "${description} contains a file used as a ZIP parent: ${logicalName}")
+            }
+        }
+    }
+
+    static String sha256Hex(byte[] bytes) {
+        byte[] digest = MessageDigest.getInstance('SHA-256').digest(bytes)
+        StringBuilder result = new StringBuilder(64)
+        for (byte value : digest) {
+            result.append(String.format('%02x', value & 0xFF))
+        }
+        return result.toString()
+    }
+
+    static Comparator<String> utf8Comparator() {
+        return { String left, String right ->
+            byte[] leftBytes = left.getBytes(StandardCharsets.UTF_8)
+            byte[] rightBytes = right.getBytes(StandardCharsets.UTF_8)
+            int common = Math.min(leftBytes.length, rightBytes.length)
+            for (int index = 0; index < common; index++) {
+                int compared = Integer.compare(leftBytes[index] & 0xFF, rightBytes[index] & 0xFF)
+                if (compared != 0) {
+                    return compared
+                }
+            }
+            return Integer.compare(leftBytes.length, rightBytes.length)
+        } as Comparator<String>
+    }
+
+    private static int findEndOfCentralDirectory(byte[] bytes, String description) {
+        if (bytes.length < 22) {
+            throw new GradleException("${description} is too short to be a ZIP archive")
+        }
+        int first = Math.max(0, bytes.length - 22 - 0xFFFF)
+        for (int offset = bytes.length - 22; offset >= first; offset--) {
+            if (unsignedInt(bytes, offset, description) != END_OF_CENTRAL_DIRECTORY) {
+                continue
+            }
+            int commentLength = unsignedShort(bytes, offset + 20, description)
+            if (offset + 22 + commentLength == bytes.length) {
+                return offset
+            }
+        }
+        throw new GradleException("${description} has no valid end-of-central-directory record")
+    }
+
+    private static String decodeEntryName(
+            byte[] bytes,
+            int offset,
+            int length,
+            int flags,
+            String description
+    ) {
+        if (length == 0) {
+            throw new GradleException("${description} contains an empty ZIP entry name")
+        }
+        requireAvailable(bytes, offset, length, description)
+        byte[] encoded = Arrays.copyOfRange(bytes, offset, offset + length)
+        if ((flags & FLAG_UTF8) == 0) {
+            for (byte value : encoded) {
+                if ((value & 0x80) != 0) {
+                    throw new GradleException("${description} contains a non-UTF-8 ZIP entry name")
+                }
+            }
+        }
+        String decoded = ControlledAgentTextSupport.decodeUtf8(encoded, "${description} ZIP entry name")
+        if (!Arrays.equals(encoded, decoded.getBytes(StandardCharsets.UTF_8))) {
+            throw new GradleException("${description} contains a non-canonical UTF-8 ZIP entry name")
+        }
+        return decoded
+    }
+
+    private static void rejectZip64Extra(
+            byte[] bytes,
+            int offset,
+            int length,
+            String description
+    ) {
+        int cursor = offset
+        int end = offset + length
+        while (cursor < end) {
+            if (cursor + 4 > end) {
+                throw new GradleException("${description} has a truncated ZIP extra field")
+            }
+            int identifier = unsignedShort(bytes, cursor, description)
+            int dataLength = unsignedShort(bytes, cursor + 2, description)
+            cursor += 4
+            if (cursor + dataLength > end) {
+                throw new GradleException("${description} has a truncated ZIP extra-field value")
+            }
+            if (identifier == ZIP64_EXTRA_FIELD) {
+                throw new GradleException("${description} must not use ZIP64 extra fields")
+            }
+            cursor += dataLength
+        }
+    }
+
+    private static void requireAvailable(byte[] bytes, int offset, int length, String description) {
+        if (offset < 0 || length < 0 || (long) offset + length > bytes.length) {
+            throw new GradleException("${description} contains a truncated ZIP record")
+        }
+    }
+
+    private static int unsignedShort(byte[] bytes, int offset, String description) {
+        requireAvailable(bytes, offset, 2, description)
+        return (bytes[offset] & 0xFF) | ((bytes[offset + 1] & 0xFF) << 8)
+    }
+
+    private static long unsignedInt(byte[] bytes, int offset, String description) {
+        requireAvailable(bytes, offset, 4, description)
+        return ((long) bytes[offset] & 0xFFL)
+                | (((long) bytes[offset + 1] & 0xFFL) << 8)
+                | (((long) bytes[offset + 2] & 0xFFL) << 16)
+                | (((long) bytes[offset + 3] & 0xFFL) << 24)
+    }
+
+    private static int checkedInt(long value, String description) {
+        if (value < 0 || value > Integer.MAX_VALUE) {
+            throw new GradleException("${description} is outside the supported range: ${value}")
+        }
+        return (int) value
+    }
+}
+
+@CacheableTask
+abstract class AssembleControlledJavaAgent extends DefaultTask {
+    private static final long MAXIMUM_ACP_PIN_RESOURCE_BYTES = 16_384L
+    private static final int FORMAT_VERSION = 1
+    private static final String DISTRIBUTION_GROUP =
+            'space.br1440.platform.starters.tracing'
+    private static final String DISTRIBUTION_ARTIFACT = 'platform-tracing-javaagent'
+    private static final String UPSTREAM_COORDINATE =
+            'io.opentelemetry.javaagent:opentelemetry-javaagent:2.30.0'
+    private static final String EXTENSION_IMPLEMENTATION_TITLE =
+            'platform-tracing-otel-javaagent-extension'
+    private static final String EXTENSION_ENTRY_PATH =
+            'extensions/platform-tracing-otel-javaagent-extension.jar'
+    private static final String IDENTITY_ENTRY_PATH =
+            'META-INF/platform-tracing/javaagent-distribution.properties'
+    private static final String EXTENSION_SCHEMA_RESOURCE =
+            'platform-log-event.schema.json'
+    private static final String EXTENSION_SCHEMA_IDENTITY =
+            'META-INF/platform-tracing/agent-logging-schema.properties'
+    private static final String ACP_PIN_RESOURCE =
+            'META-INF/platform-tracing/upstream-acp-pin.properties'
+    private static final String ACP_SPI =
+            'io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider'
+    private static final String UPSTREAM_ACP_DESCRIPTOR =
+            'inst/META-INF/services/' + ACP_SPI
+    private static final List<String> OWNED_EXTENSION_RESOURCE_PATHS = [
+            EXTENSION_SCHEMA_RESOURCE,
+            EXTENSION_SCHEMA_IDENTITY,
+            ACP_PIN_RESOURCE
+    ]
+    private static final String EXTENSION_SCHEMA_HASH_ALGORITHM =
+            'PLATFORM_LOG_SCHEMA_SET_SHA256_V1'
+    private static final String EXTENSION_SCHEMA_NAME = 'platform-log-event-v1'
+    private static final String EXTENSION_SCHEMA_VERSION = '1'
+    private static final String DEPENDENCY_LICENSE_RESOURCE = 'META-INF/LICENSE.txt'
+    private static final String EXTENSION_PROJECT_COORDINATE =
+            'project::platform-starters-tracing:platform-tracing-otel-javaagent-extension'
+    private static final Set<String> PACKAGED_PROJECT_COORDINATES = [
+            'project::platform-starters-tracing:spring-boot-starter-platform-tracing-api',
+            'project::platform-starters-tracing:platform-tracing-runtime-policy',
+            'project::platform-starters-common:platform-starters-common-util'
+    ] as Set
+    private static final String PACKAGED_JAKARTA_ANNOTATION_COORDINATE =
+            'jakarta.annotation:jakarta.annotation-api:2.1.1'
+    private static final Set<String> AGENT_PROVIDED_OTEL_COORDINATES = [
+            'io.opentelemetry:opentelemetry-api:1.64.0',
+            'io.opentelemetry:opentelemetry-context:1.64.0',
+            'io.opentelemetry:opentelemetry-common:1.64.0'
+    ] as Set
+    private static final Pattern VERSIONED_MODULE_DESCRIPTOR = Pattern.compile(
+            '^META-INF/versions/[^/]+/module-info\\.class$')
+    private static final Pattern JAVA_BINARY_NAME = Pattern.compile(
+            '^[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*$')
+    private static final Pattern ACP_PROVIDER_KEY = Pattern.compile('^provider\\.([0-9]+)$')
+    private static final int MINIMUM_JAVA_VERSION = 21
+    private static final LocalDateTime CANONICAL_TIMESTAMP =
+            LocalDateTime.of(1980, 2, 1, 0, 0, 0)
+    private static final long DEFAULT_MAXIMUM_ARCHIVE_BYTES = 67_108_864L
+    private static final int DEFAULT_MAXIMUM_ENTRIES = 25_000
+    private static final long DEFAULT_MAXIMUM_ENTRY_BYTES = 16_777_216L
+    private static final long DEFAULT_MAXIMUM_UNCOMPRESSED_BYTES = 134_217_728L
+    private static final int DEFAULT_MAXIMUM_COMPRESSION_RATIO = 100
+    private static final Map<String, String> REQUIRED_UPSTREAM_MANIFEST = [
+            'Implementation-Title': 'javaagent',
+            'Implementation-Version': '2.30.0',
+            'Main-Class': 'io.opentelemetry.javaagent.OpenTelemetryAgent',
+            'Agent-Class': 'io.opentelemetry.javaagent.OpenTelemetryAgent',
+            'Premain-Class': 'io.opentelemetry.javaagent.OpenTelemetryAgent',
+            'Can-Redefine-Classes': 'true',
+            'Can-Retransform-Classes': 'true'
+    ]
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getUpstreamAgentJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getExtensionJar()
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
+    abstract ConfigurableFileCollection getExtensionRuntimeClasspath()
+
+    @Input
+    abstract MapProperty<String, String> getExtensionRuntimeArtifactCoordinates()
+
+    @Input
+    abstract Property<String> getDistributionVersion()
+
+    @Input
+    abstract Property<Long> getMaximumArchiveBytes()
+
+    @Input
+    abstract Property<Integer> getMaximumEntries()
+
+    @Input
+    abstract Property<Long> getMaximumEntryBytes()
+
+    @Input
+    abstract Property<Long> getMaximumUncompressedBytes()
+
+    @Input
+    abstract Property<Integer> getMaximumCompressionRatio()
+
+    @OutputFile
+    abstract RegularFileProperty getOutputJar()
+
+    @OutputFile
+    abstract RegularFileProperty getPackagedExtensionJar()
+
+    AssembleControlledJavaAgent() {
+        getMaximumArchiveBytes().convention(DEFAULT_MAXIMUM_ARCHIVE_BYTES)
+        getMaximumEntries().convention(DEFAULT_MAXIMUM_ENTRIES)
+        getMaximumEntryBytes().convention(DEFAULT_MAXIMUM_ENTRY_BYTES)
+        getMaximumUncompressedBytes().convention(DEFAULT_MAXIMUM_UNCOMPRESSED_BYTES)
+        getMaximumCompressionRatio().convention(DEFAULT_MAXIMUM_COMPRESSION_RATIO)
+    }
+
+    @TaskAction
+    void assembleAgent() {
+        Path output = outputJar.get().asFile.toPath()
+        Path extensionOutput = packagedExtensionJar.get().asFile.toPath()
+        try {
+            Files.deleteIfExists(output)
+            Files.deleteIfExists(extensionOutput)
+            ControlledAgentAssemblyPolicy policy = createPolicy()
+            validatePropertyValue(distributionVersion.get(), 'distribution version')
+
+            File libraryFile = extensionJar.get().asFile
+            ControlledAgentZipArchive library = ControlledAgentZipSupport.read(
+                    libraryFile, 'Platform extension library JAR', policy)
+            validateExtensionLibrary(library)
+            ControlledAgentZipEntryData pinEntry = requireRegularEntry(
+                    library, ACP_PIN_RESOURCE, 'Platform extension library')
+            ControlledAgentAcpPin pin = parseAcpPin(pinEntry.payload)
+
+            ControlledAgentZipArchive upstream = ControlledAgentZipSupport.read(
+                    upstreamAgentJar.get().asFile, 'Upstream Java agent JAR', policy)
+            String upstreamSha256 = ControlledAgentZipSupport.sha256Hex(upstream.rawBytes)
+            validateUpstream(upstream, upstreamSha256, pin, policy)
+
+            byte[] extensionBytes = assembleExtension(policy, libraryFile, library)
+            String extensionSha256 = ControlledAgentZipSupport.sha256Hex(extensionBytes)
+            byte[] identity = createIdentity(policy, upstreamSha256, extensionSha256)
+
+            LinkedHashMap<String, byte[]> additions = new LinkedHashMap<>()
+            additions.put(policy.extensionEntryPath, extensionBytes)
+            additions.put(policy.identityEntryPath, identity)
+            validateProjectedCandidate(upstream, additions, policy)
+
+            Path parent = output.parent
+            if (parent == null) {
+                throw new GradleException("Controlled agent output must have a parent directory: ${output}")
+            }
+            Path extensionParent = extensionOutput.parent
+            if (extensionParent == null) {
+                throw new GradleException(
+                        "Packaged extension output must have a parent directory: ${extensionOutput}")
+            }
+            Files.createDirectories(parent)
+            Files.createDirectories(extensionParent)
+            Path temporary = Files.createTempFile(parent, ".${output.fileName}.", '.tmp')
+            Path extensionTemporary = Files.createTempFile(
+                    extensionParent, ".${extensionOutput.fileName}.", '.tmp')
+            try {
+                Files.write(extensionTemporary, extensionBytes)
+                writeCanonicalArchive(temporary, upstream, additions, policy)
+                ControlledAgentZipArchive candidate = ControlledAgentZipSupport.read(
+                        temporary.toFile(), 'Controlled Java agent candidate', policy)
+                validateCandidate(candidate, upstream, additions, policy)
+                try {
+                    Files.move(extensionTemporary, extensionOutput,
+                            StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    Files.move(temporary, output,
+                            StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                } catch (AtomicMoveNotSupportedException exception) {
+                    throw new GradleException(
+                            "Atomic move is not supported for controlled agent output: ${output}", exception)
+                }
+            } finally {
+                Files.deleteIfExists(temporary)
+                Files.deleteIfExists(extensionTemporary)
+            }
+        } catch (GradleException exception) {
+            Files.deleteIfExists(output)
+            Files.deleteIfExists(extensionOutput)
+            throw exception
+        } catch (Exception exception) {
+            Files.deleteIfExists(output)
+            Files.deleteIfExists(extensionOutput)
+            throw new GradleException("Controlled Java agent assembly failed: ${exception.message}", exception)
+        }
+    }
+
+    private ControlledAgentAssemblyPolicy createPolicy() {
+        long archiveBytes = maximumArchiveBytes.get()
+        int entries = maximumEntries.get()
+        long entryBytes = maximumEntryBytes.get()
+        long uncompressedBytes = maximumUncompressedBytes.get()
+        int compressionRatio = maximumCompressionRatio.get()
+        requirePositive(archiveBytes, 'maximumArchiveBytes')
+        requirePositive(entries, 'maximumEntries')
+        requirePositive(entryBytes, 'maximumEntryBytes')
+        requirePositive(uncompressedBytes, 'maximumUncompressedBytes')
+        requirePositive(compressionRatio, 'maximumCompressionRatio')
+        ControlledAgentZipSupport.validateCanonicalName(EXTENSION_ENTRY_PATH, false)
+        ControlledAgentZipSupport.validateCanonicalName(IDENTITY_ENTRY_PATH, false)
+        if (EXTENSION_ENTRY_PATH == IDENTITY_ENTRY_PATH) {
+            throw new GradleException('Controlled agent owned entry paths must be distinct')
+        }
+        return new ControlledAgentAssemblyPolicy(
+                formatVersion: FORMAT_VERSION,
+                distributionGroup: DISTRIBUTION_GROUP,
+                distributionArtifact: DISTRIBUTION_ARTIFACT,
+                upstreamCoordinate: UPSTREAM_COORDINATE,
+                requiredUpstreamManifest: new LinkedHashMap<>(REQUIRED_UPSTREAM_MANIFEST),
+                extensionImplementationTitle: EXTENSION_IMPLEMENTATION_TITLE,
+                extensionEntryPath: EXTENSION_ENTRY_PATH,
+                identityEntryPath: IDENTITY_ENTRY_PATH,
+                minimumJavaVersion: MINIMUM_JAVA_VERSION,
+                canonicalTimestamp: CANONICAL_TIMESTAMP,
+                maximumArchiveBytes: archiveBytes,
+                maximumEntries: entries,
+                maximumEntryBytes: entryBytes,
+                maximumUncompressedBytes: uncompressedBytes,
+                maximumCompressionRatio: compressionRatio
+        )
+    }
+
+    private static void requirePositive(long value, String name) {
+        if (value <= 0) {
+            throw new GradleException("Controlled agent policy ${name} must be positive")
+        }
+    }
+
+    private static ControlledAgentAcpPin parseAcpPin(byte[] bytes) {
+        String description = 'ACP pin resource'
+        if (bytes.length == 0 || bytes.length > MAXIMUM_ACP_PIN_RESOURCE_BYTES) {
+            throw new GradleException(
+                    "${description} size is outside 1..${MAXIMUM_ACP_PIN_RESOURCE_BYTES} bytes")
+        }
+        if (bytes.length >= 3
+                && (bytes[0] & 0xFF) == 0xEF
+                && (bytes[1] & 0xFF) == 0xBB
+                && (bytes[2] & 0xFF) == 0xBF) {
+            throw new GradleException("${description} must not have a UTF-8 BOM")
+        }
+        String text = ControlledAgentTextSupport.decodeUtf8(bytes, description)
+        if (text.contains('\r')) {
+            throw new GradleException("${description} must be LF-only")
+        }
+        if (!text.endsWith('\n')) {
+            throw new GradleException("${description} must end with LF")
+        }
+
+        LinkedHashMap<String, String> values = new LinkedHashMap<>()
+        String[] lines = text.split('\n', -1)
+        for (int index = 0; index < lines.length - 1; index++) {
+            String line = lines[index]
+            int delimiter = line.indexOf('=')
+            if (delimiter <= 0 || delimiter == line.length() - 1
+                    || line.indexOf('=', delimiter + 1) >= 0) {
+                throw new GradleException(
+                        "${description} line ${index + 1} must contain exactly one key=value pair")
+            }
+            String key = line.substring(0, delimiter)
+            String value = line.substring(delimiter + 1)
+            if (values.putIfAbsent(key, value) != null) {
+                throw new GradleException("${description} contains duplicate key: ${key}")
+            }
+        }
+
+        String rawFormatVersion = values.get('format.version')
+        if (rawFormatVersion == null || !(rawFormatVersion ==~ '[0-9]+')) {
+            throw new GradleException(
+                    "${description} format.version must contain ASCII digits only")
+        }
+        int formatVersion
+        try {
+            formatVersion = Integer.parseInt(rawFormatVersion)
+        } catch (NumberFormatException exception) {
+            throw new GradleException(
+                    "${description} format.version is outside the supported integer range", exception)
+        }
+        if (formatVersion != FORMAT_VERSION) {
+            throw new GradleException(
+                    "Unsupported ACP pin resource format.version: ${formatVersion}")
+        }
+
+        String upstreamSha256 = values.get('upstream.sha256')
+        if (upstreamSha256 == null
+                || !ControlledAgentZipSupport.SHA256_HEX.matcher(upstreamSha256).matches()) {
+            throw new GradleException(
+                    "${description} upstream.sha256 must be a lowercase SHA-256 hex")
+        }
+
+        TreeMap<Integer, String> indexedProviders = new TreeMap<>()
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            if (entry.key == 'format.version' || entry.key == 'upstream.sha256') {
+                continue
+            }
+            def matcher = ACP_PROVIDER_KEY.matcher(entry.key)
+            if (!matcher.matches()) {
+                throw new GradleException("${description} contains unexpected key: ${entry.key}")
+            }
+            int providerIndex
+            try {
+                providerIndex = Integer.parseInt(matcher.group(1))
+            } catch (NumberFormatException exception) {
+                throw new GradleException(
+                        "${description} provider index is outside the supported range: ${entry.key}",
+                        exception)
+            }
+            if (entry.key != "provider.${providerIndex}") {
+                throw new GradleException(
+                        "${description} provider key is not canonical: ${entry.key}")
+            }
+            if (indexedProviders.put(providerIndex, entry.value) != null) {
+                throw new GradleException(
+                        "${description} contains duplicate provider index: ${providerIndex}")
+            }
+        }
+        if (indexedProviders.isEmpty()) {
+            throw new GradleException("${description} must contain at least one provider.N entry")
+        }
+
+        List<String> providerNames = new ArrayList<>(indexedProviders.size())
+        String previousName = null
+        for (int index = 0; index < indexedProviders.size(); index++) {
+            String providerName = indexedProviders.get(index)
+            if (providerName == null) {
+                throw new GradleException(
+                        "${description} provider indexes must be contiguous from zero")
+            }
+            if (!JAVA_BINARY_NAME.matcher(providerName).matches()) {
+                throw new GradleException(
+                        "${description} provider.${index} is not a Java binary name")
+            }
+            if (previousName != null && previousName.compareTo(providerName) >= 0) {
+                throw new GradleException(
+                        "${description} providers must be sorted and unique: ${providerName}")
+            }
+            previousName = providerName
+            providerNames.add(providerName)
+        }
+
+        return new ControlledAgentAcpPin(
+                formatVersion: formatVersion,
+                upstreamSha256: upstreamSha256,
+                providerNames: Collections.unmodifiableList(providerNames))
+    }
+
+    private static void validateUpstream(
+            ControlledAgentZipArchive upstream,
+            String actualSha256,
+            ControlledAgentAcpPin pin,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        if (actualSha256 != pin.upstreamSha256) {
+            throw new GradleException(
+                    "Resolved upstream agent SHA-256 ${actualSha256} does not match reviewed ${pin.upstreamSha256}")
+        }
+        validateUpstreamAcpDescriptor(upstream, pin)
+        validateNoSignatureMaterial(upstream, 'Upstream Java agent')
+        ControlledAgentZipEntryData manifestEntry = requireManifest(upstream, 'Upstream Java agent')
+        Manifest manifest = parseManifest(manifestEntry.payload, 'Upstream Java agent manifest')
+        Attributes attributes = manifest.mainAttributes
+        policy.requiredUpstreamManifest.each { String name, String expected ->
+            String actual = attributes.getValue(name)
+            if (actual != expected) {
+                throw new GradleException(
+                        "Upstream manifest ${name} '${actual}' does not match required '${expected}'")
+            }
+        }
+        if (attributes.getValue(Attributes.Name.CLASS_PATH) != null) {
+            throw new GradleException('Upstream Java agent manifest must not declare Class-Path')
+        }
+        for (ControlledAgentZipEntryData entry : upstream.entries) {
+            String name = entry.name
+            String normalizedName = name.toLowerCase(Locale.ROOT)
+            if (normalizedName.startsWith('extensions/') || normalizedName == 'extensions') {
+                throw new GradleException("Upstream Java agent already contains extension content: ${name}")
+            }
+            for (String reserved : [policy.extensionEntryPath, policy.identityEntryPath]) {
+                if (name.equalsIgnoreCase(reserved)) {
+                    throw new GradleException("Upstream Java agent already contains reserved entry: ${name}")
+                }
+            }
+        }
+    }
+
+    private static void validateUpstreamAcpDescriptor(
+            ControlledAgentZipArchive upstream,
+            ControlledAgentAcpPin pin
+    ) {
+        String suffix = 'META-INF/services/' + ACP_SPI
+        String normalizedSuffix = suffix.toLowerCase(Locale.ROOT)
+        List<ControlledAgentZipEntryData> descriptors = upstream.entries.findAll { entry ->
+            entry.name.toLowerCase(Locale.ROOT).endsWith(normalizedSuffix)
+        }
+        if (descriptors.size() != 1
+                || descriptors.first().directory
+                || descriptors.first().name != UPSTREAM_ACP_DESCRIPTOR) {
+            throw new GradleException(
+                    "Upstream Java agent must contain exactly ${UPSTREAM_ACP_DESCRIPTOR}")
+        }
+
+        ControlledAgentZipEntryData descriptor = descriptors.first()
+        String description = 'Upstream ACP service descriptor'
+        byte[] bytes = descriptor.payload
+        if (bytes.length >= 3
+                && (bytes[0] & 0xFF) == 0xEF
+                && (bytes[1] & 0xFF) == 0xBB
+                && (bytes[2] & 0xFF) == 0xBF) {
+            throw new GradleException("${description} must not have a UTF-8 BOM")
+        }
+        String text = ControlledAgentTextSupport.decodeUtf8(bytes, description)
+        List<String> providerNames = new ArrayList<>()
+        Set<String> uniqueNames = new HashSet<>()
+        for (String line : text.split('\\r\\n|\\n|\\r', -1)) {
+            int comment = line.indexOf('#')
+            String providerName = (comment >= 0 ? line.substring(0, comment) : line).trim()
+            if (providerName.isEmpty()) {
+                continue
+            }
+            if (!JAVA_BINARY_NAME.matcher(providerName).matches()) {
+                throw new GradleException(
+                        "${description} contains malformed provider name: ${providerName}")
+            }
+            if (!uniqueNames.add(providerName)) {
+                throw new GradleException(
+                        "${description} contains duplicate provider name: ${providerName}")
+            }
+            providerNames.add(providerName)
+        }
+        providerNames.sort(Comparator.naturalOrder())
+        if (providerNames != pin.providerNames) {
+            throw new GradleException(
+                    "Upstream ACP service descriptor ${providerNames} does not match "
+                            + "ACP pin resource ${pin.providerNames}")
+        }
+    }
+
+    private byte[] assembleExtension(
+            ControlledAgentAssemblyPolicy policy,
+            File libraryFile,
+            ControlledAgentZipArchive library
+    ) {
+        ControlledAgentZipEntryData identityEntry = requireRegularEntry(
+                library, EXTENSION_SCHEMA_IDENTITY, 'Platform extension library')
+        ControlledAgentZipEntryData schemaEntry = requireRegularEntry(
+                library, EXTENSION_SCHEMA_RESOURCE, 'Platform extension library')
+        Map<String, String> schemaIdentity = parseExtensionSchemaIdentity(identityEntry.payload)
+        validateExtensionSchema(schemaEntry.payload, schemaIdentity)
+        byte[] nestedManifest = createExtensionManifest(schemaIdentity)
+
+        LinkedHashMap<String, byte[]> payloads = new LinkedHashMap<>()
+        Map<String, Boolean> directories = new HashMap<>()
+        Map<String, String> sources = new HashMap<>()
+        for (ControlledAgentZipEntryData entry : library.entries) {
+            if (entry.directory || entry.name == EXTENSION_SCHEMA_RESOURCE) {
+                continue
+            }
+            byte[] payload = entry.name == ControlledAgentZipSupport.MANIFEST_PATH
+                    ? nestedManifest
+                    : entry.payload
+            addPackagedExtensionEntry(
+                    entry.name, payload, 'extension library', payloads, directories, sources)
+        }
+
+        Path libraryPath = libraryFile.toPath().toAbsolutePath().normalize()
+        boolean libraryWasPresent = false
+        List<File> runtimeFiles = new ArrayList<>(extensionRuntimeClasspath.files)
+        Map<String, String> coordinates = extensionRuntimeArtifactCoordinates.get()
+        Set<String> runtimeFileNames = runtimeFiles.collect { it.name } as Set
+        if (runtimeFileNames.size() != runtimeFiles.size()
+                || coordinates.keySet() != runtimeFileNames) {
+            throw new GradleException(
+                    'Extension runtime artifact coordinates must match unique classpath file names')
+        }
+        runtimeFiles.sort { File left, File right ->
+            int byName = ControlledAgentZipSupport.utf8Comparator().compare(left.name, right.name)
+            byName != 0 ? byName : left.absolutePath.compareTo(right.absolutePath)
+        }
+        for (File runtimeFile : runtimeFiles) {
+            String coordinate = coordinates.get(runtimeFile.name)
+            Path runtimePath = runtimeFile.toPath().toAbsolutePath().normalize()
+            if (runtimePath == libraryPath) {
+                if (coordinate != EXTENSION_PROJECT_COORDINATE) {
+                    throw new GradleException(
+                            "Extension library coordinate is unexpected: ${coordinate}")
+                }
+                libraryWasPresent = true
+                continue
+            }
+            if (!runtimeFile.isFile() || !runtimeFile.name.toLowerCase(Locale.ROOT).endsWith('.jar')) {
+                throw new GradleException(
+                        "Extension runtime classpath entry must be a regular JAR: ${runtimeFile}")
+            }
+            String source = "runtime dependency ${runtimeFile.name}"
+            ControlledAgentZipArchive dependency = ControlledAgentZipSupport.read(
+                    runtimeFile, "Extension ${source}", policy)
+            if (AGENT_PROVIDED_OTEL_COORDINATES.contains(coordinate)) {
+                continue
+            }
+            if (!PACKAGED_PROJECT_COORDINATES.contains(coordinate)
+                    && coordinate != PACKAGED_JAKARTA_ANNOTATION_COORDINATE) {
+                throw new GradleException(
+                        "Extension runtime dependency is not allowlisted: ${coordinate}")
+            }
+            validateNoOwnedExtensionResourceAliases(
+                    dependency, "Extension ${source}")
+            for (ControlledAgentZipEntryData entry : dependency.entries) {
+                if (entry.directory || isExcludedDependencyEntry(entry.name)) {
+                    continue
+                }
+                addPackagedExtensionEntry(
+                        entry.name, entry.payload, source, payloads, directories, sources)
+            }
+        }
+        if (!libraryWasPresent) {
+            throw new GradleException(
+                    'Extension runtime classpath must contain the extension library JAR')
+        }
+
+        validateProjectedArchive(
+                payloads, directories, 'Packaged platform extension', policy)
+        byte[] packagedBytes = writeCanonicalArchiveBytes(
+                payloads,
+                directories,
+                'Packaged platform extension',
+                Math.min(policy.maximumArchiveBytes, policy.maximumEntryBytes),
+                policy)
+        ControlledAgentZipArchive packaged = ControlledAgentZipSupport.parse(
+                packagedBytes, 'Packaged platform extension', policy)
+        validateExtension(packaged, policy)
+        validateCanonicalArchive(
+                packaged, payloads, directories, 'Packaged platform extension', policy)
+        return packagedBytes
+    }
+
+    private static void validateExtensionLibrary(ControlledAgentZipArchive library) {
+        validateNoSignatureMaterial(library, 'Platform extension library')
+        validateNoOwnedExtensionResourceAliases(library, 'Platform extension library')
+        ControlledAgentZipEntryData manifestEntry = requireManifest(
+                library, 'Platform extension library')
+        Manifest manifest = parseManifest(
+                manifestEntry.payload, 'Platform extension library manifest')
+        if (manifest.mainAttributes.getValue(Attributes.Name.CLASS_PATH) != null) {
+            throw new GradleException(
+                    'Platform extension library manifest must not declare Class-Path')
+        }
+    }
+
+    private static ControlledAgentZipEntryData requireRegularEntry(
+            ControlledAgentZipArchive archive,
+            String name,
+            String description
+    ) {
+        ControlledAgentZipEntryData entry = archive.entries.find { it.name == name }
+        if (entry == null || entry.directory) {
+            throw new GradleException("${description} must contain regular entry ${name}")
+        }
+        return entry
+    }
+
+    private static void validateNoOwnedExtensionResourceAliases(
+            ControlledAgentZipArchive archive,
+            String description
+    ) {
+        for (ControlledAgentZipEntryData entry : archive.entries) {
+            for (String canonical : OWNED_EXTENSION_RESOURCE_PATHS) {
+                if (entry.name != canonical && entry.name.equalsIgnoreCase(canonical)) {
+                    throw new GradleException(
+                            "${description} contains case-aliased owned extension resource "
+                                    + "${entry.name}; canonical path is ${canonical}")
+                }
+            }
+        }
+    }
+
+    private static void addPackagedExtensionEntry(
+            String name,
+            byte[] payload,
+            String source,
+            Map<String, byte[]> payloads,
+            Map<String, Boolean> directories,
+            Map<String, String> sources
+    ) {
+        String previousSource = sources.putIfAbsent(name, source)
+        if (previousSource != null) {
+            throw new GradleException(
+                    "Extension packaging duplicate entry ${name} from ${source}; "
+                            + "already provided by ${previousSource}")
+        }
+        payloads.put(name, payload)
+        directories.put(name, false)
+    }
+
+    private static boolean isExcludedDependencyEntry(String name) {
+        name == EXTENSION_SCHEMA_RESOURCE
+                || name.equalsIgnoreCase(ControlledAgentZipSupport.MANIFEST_PATH)
+                || name == DEPENDENCY_LICENSE_RESOURCE
+                || ControlledAgentZipSupport.SIGNATURE_ENTRY.matcher(name).matches()
+                || name == 'module-info.class'
+                || VERSIONED_MODULE_DESCRIPTOR.matcher(name).matches()
+    }
+
+    private static Map<String, String> parseExtensionSchemaIdentity(byte[] bytes) {
+        if (bytes.length >= 3
+                && (bytes[0] & 0xFF) == 0xEF
+                && (bytes[1] & 0xFF) == 0xBB
+                && (bytes[2] & 0xFF) == 0xBF) {
+            throw new GradleException('Extension schema identity must not have a UTF-8 BOM')
+        }
+        String text = ControlledAgentTextSupport.decodeUtf8(
+                bytes, 'Extension schema identity')
+        if (text.contains('\r')) {
+            throw new GradleException('Extension schema identity must be LF-only')
+        }
+        String[] lines = text.split('\n', -1)
+        if (lines.length < 2 || !lines.last().isEmpty()) {
+            throw new GradleException('Extension schema identity must end with LF')
+        }
+        LinkedHashMap<String, String> values = new LinkedHashMap<>()
+        for (int index = 0; index < lines.length - 1; index++) {
+            String line = lines[index]
+            int delimiter = line.indexOf('=')
+            if (delimiter <= 0 || delimiter == line.length() - 1) {
+                throw new GradleException(
+                        "Extension schema identity line ${index + 1} must be key=value")
+            }
+            String key = line.substring(0, delimiter)
+            String value = line.substring(delimiter + 1)
+            if (values.putIfAbsent(key, value) != null) {
+                throw new GradleException(
+                        "Extension schema identity contains duplicate key: ${key}")
+            }
+            validatePropertyValue(value, "extension schema identity ${key}")
+        }
+        Set<String> expectedKeys = [
+                'schema.hashAlgorithm', 'schema.name',
+                'schema.semanticVersion', 'schema.sha256'
+        ] as Set
+        if (values.keySet() != expectedKeys) {
+            throw new GradleException(
+                    "Extension schema identity keys ${values.keySet()} must equal ${expectedKeys}")
+        }
+        if (values.get('schema.hashAlgorithm') != EXTENSION_SCHEMA_HASH_ALGORITHM
+                || values.get('schema.name') != EXTENSION_SCHEMA_NAME
+                || values.get('schema.semanticVersion') != EXTENSION_SCHEMA_VERSION) {
+            throw new GradleException('Extension schema identity does not match the static schema policy')
+        }
+        if (!ControlledAgentZipSupport.SHA256_HEX.matcher(
+                values.get('schema.sha256')).matches()) {
+            throw new GradleException(
+                    'Extension schema identity schema.sha256 must be a lowercase SHA-256 hex')
+        }
+        return values
+    }
+
+    private static void validateExtensionSchema(
+            byte[] rawSchema,
+            Map<String, String> identity
+    ) {
+        int offset = rawSchema.length >= 3
+                && (rawSchema[0] & 0xFF) == 0xEF
+                && (rawSchema[1] & 0xFF) == 0xBB
+                && (rawSchema[2] & 0xFF) == 0xBF ? 3 : 0
+        byte[] content = Arrays.copyOfRange(rawSchema, offset, rawSchema.length)
+        String schemaText = ControlledAgentTextSupport.decodeUtf8(
+                content, 'Platform log event schema')
+        byte[] normalized = schemaText.replace('\r\n', '\n')
+                .replace('\r', '\n')
+                .getBytes(StandardCharsets.UTF_8)
+        ByteArrayOutputStream preimage = new ByteArrayOutputStream()
+        byte[] name = EXTENSION_SCHEMA_RESOURCE.getBytes(StandardCharsets.UTF_8)
+        preimage.write(name, 0, name.length)
+        preimage.write(0)
+        byte[] length = Integer.toString(normalized.length).getBytes(StandardCharsets.UTF_8)
+        preimage.write(length, 0, length.length)
+        preimage.write(0)
+        preimage.write(normalized, 0, normalized.length)
+        preimage.write(0)
+        String actualSha256 = ControlledAgentZipSupport.sha256Hex(preimage.toByteArray())
+        if (actualSha256 != identity.get('schema.sha256')) {
+            throw new GradleException(
+                    "Extension schema SHA-256 ${actualSha256} does not match identity "
+                            + identity.get('schema.sha256'))
+        }
+    }
+
+    private byte[] createExtensionManifest(Map<String, String> schemaIdentity) {
+        LinkedHashMap<String, String> attributes = new LinkedHashMap<>()
+        attributes.put('Manifest-Version', '1.0')
+        attributes.put('Implementation-Title', EXTENSION_IMPLEMENTATION_TITLE)
+        attributes.put('Implementation-Version', distributionVersion.get())
+        attributes.put(
+                'Platform-Log-Schema-Version', schemaIdentity.get('schema.semanticVersion'))
+        attributes.put('Platform-Log-Schema-SHA256', schemaIdentity.get('schema.sha256'))
+        ByteArrayOutputStream output = new ByteArrayOutputStream()
+        for (Map.Entry<String, String> attribute : attributes.entrySet()) {
+            validatePropertyValue(
+                    attribute.value, "extension manifest ${attribute.key}")
+            writeManifestHeader(output, attribute.key, attribute.value)
+        }
+        output.write('\r'.charAt(0) as int)
+        output.write('\n'.charAt(0) as int)
+        byte[] manifest = output.toByteArray()
+        parseManifest(manifest, 'Generated platform extension manifest')
+        return manifest
+    }
+
+    private static void writeManifestHeader(
+            ByteArrayOutputStream output,
+            String name,
+            String value
+    ) {
+        byte[] line = "${name}: ${value}".getBytes(StandardCharsets.UTF_8)
+        int offset = 0
+        int firstLength = Math.min(72, line.length)
+        output.write(line, 0, firstLength)
+        output.write('\r'.charAt(0) as int)
+        output.write('\n'.charAt(0) as int)
+        offset += firstLength
+        while (offset < line.length) {
+            output.write(' '.charAt(0) as int)
+            int length = Math.min(71, line.length - offset)
+            output.write(line, offset, length)
+            output.write('\r'.charAt(0) as int)
+            output.write('\n'.charAt(0) as int)
+            offset += length
+        }
+    }
+
+    private void validateExtension(
+            ControlledAgentZipArchive extension,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        validateNoSignatureMaterial(extension, 'Platform extension')
+        ControlledAgentZipEntryData manifestEntry = requireManifest(extension, 'Platform extension')
+        Manifest manifest = parseManifest(manifestEntry.payload, 'Platform extension manifest')
+        if (manifest.mainAttributes.getValue(Attributes.Name.CLASS_PATH) != null) {
+            throw new GradleException('Platform extension manifest must not declare Class-Path')
+        }
+        String actualTitle = manifest.mainAttributes.getValue(Attributes.Name.IMPLEMENTATION_TITLE)
+        if (actualTitle != policy.extensionImplementationTitle) {
+            throw new GradleException(
+                    "Extension Implementation-Title '${actualTitle}' does not match "
+                            + "'${policy.extensionImplementationTitle}'")
+        }
+        String actualVersion = manifest.mainAttributes.getValue(Attributes.Name.IMPLEMENTATION_VERSION)
+        if (actualVersion == null || actualVersion.equalsIgnoreCase('development')) {
+            throw new GradleException('Extension Implementation-Version must be a release-train version')
+        }
+        if (actualVersion != distributionVersion.get()) {
+            throw new GradleException(
+                    "Extension Implementation-Version '${actualVersion}' does not match distribution '${distributionVersion.get()}'")
+        }
+    }
+
+    private static ControlledAgentZipEntryData requireManifest(
+            ControlledAgentZipArchive archive,
+            String description
+    ) {
+        List<ControlledAgentZipEntryData> aliases = archive.entries.findAll {
+            it.name.equalsIgnoreCase(ControlledAgentZipSupport.MANIFEST_PATH)
+        }
+        if (aliases.size() != 1 || aliases.first().name != ControlledAgentZipSupport.MANIFEST_PATH) {
+            throw new GradleException(
+                    "${description} must contain exactly ${ControlledAgentZipSupport.MANIFEST_PATH}")
+        }
+        return aliases.first()
+    }
+
+    private static Manifest parseManifest(byte[] bytes, String description) {
+        String text = ControlledAgentTextSupport.decodeUtf8(bytes, description)
+        rejectDuplicateManifestHeaders(text, description)
+        try {
+            return new Manifest(new ByteArrayInputStream(bytes))
+        } catch (IOException exception) {
+            throw new GradleException("${description} is malformed", exception)
+        }
+    }
+
+    private static void rejectDuplicateManifestHeaders(String text, String description) {
+        String[] lines = text.split('\\r\\n|\\n|\\r', -1)
+        Set<String> names = new HashSet<>()
+        for (String line : lines) {
+            if (line.isEmpty()) {
+                names.clear()
+                continue
+            }
+            if (line.startsWith(' ')) {
+                continue
+            }
+            int delimiter = line.indexOf(':')
+            if (delimiter <= 0 || delimiter + 1 >= line.length() || line.charAt(delimiter + 1) != ' ') {
+                throw new GradleException("${description} contains a malformed header")
+            }
+            String normalized = line.substring(0, delimiter).toLowerCase(Locale.ROOT)
+            if (!names.add(normalized)) {
+                throw new GradleException("${description} contains duplicate header: ${normalized}")
+            }
+        }
+    }
+
+    private static void validateNoSignatureMaterial(
+            ControlledAgentZipArchive archive,
+            String description
+    ) {
+        for (ControlledAgentZipEntryData entry : archive.entries) {
+            if (ControlledAgentZipSupport.SIGNATURE_ENTRY.matcher(entry.name).matches()) {
+                throw new GradleException("${description} contains signature material: ${entry.name}")
+            }
+        }
+        ControlledAgentZipEntryData manifestEntry = requireManifest(archive, description)
+        Manifest manifest = parseManifest(manifestEntry.payload, "${description} manifest")
+        List<Attributes> sections = [manifest.mainAttributes]
+        sections.addAll(manifest.entries.values())
+        for (Attributes section : sections) {
+            for (Object key : section.keySet()) {
+                String name = key.toString().toLowerCase(Locale.ROOT)
+                if (name == 'signature-version' || name.endsWith('-digest') || name.contains('-digest-')) {
+                    throw new GradleException("${description} manifest contains signature attribute: ${key}")
+                }
+            }
+        }
+    }
+
+    private static void validateProjectedCandidate(
+            ControlledAgentZipArchive upstream,
+            Map<String, byte[]> additions,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        LinkedHashMap<String, byte[]> payloads = new LinkedHashMap<>()
+        Map<String, Boolean> directories = new HashMap<>()
+        for (ControlledAgentZipEntryData entry : upstream.entries) {
+            payloads.put(entry.name, entry.payload)
+            directories.put(entry.name, entry.directory)
+        }
+        additions.each { String name, byte[] payload ->
+            if (payloads.put(name, payload) != null) {
+                throw new GradleException(
+                        "Candidate entry collides with upstream content: ${name}")
+            }
+            directories.put(name, false)
+        }
+        validateProjectedArchive(
+                payloads, directories, 'Controlled agent candidate', policy)
+    }
+
+    private static void validateProjectedArchive(
+            Map<String, byte[]> payloads,
+            Map<String, Boolean> directories,
+            String description,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        if (payloads.keySet() != directories.keySet()) {
+            throw new GradleException("${description} entry metadata is inconsistent")
+        }
+        NavigableMap<String, Boolean> pathKinds = new TreeMap<>()
+        payloads.each { String name, byte[] payload ->
+            boolean directory = directories.get(name)
+            ControlledAgentZipSupport.validateCanonicalName(name, directory)
+            ControlledAgentZipSupport.registerStructuralName(
+                    name, directory, pathKinds, description)
+            if (directory && payload.length != 0) {
+                throw new GradleException("${description} directory entry must be empty: ${name}")
+            }
+        }
+        ControlledAgentZipSupport.validateStructuralTopology(pathKinds, description)
+
+        if (payloads.size() > policy.maximumEntries) {
+            throw new GradleException(
+                    "${description} entry count ${payloads.size()} exceeds ${policy.maximumEntries}")
+        }
+
+        long totalUncompressed = 0
+        payloads.each { String name, byte[] payload ->
+            long size = payload.length
+            if (size > policy.maximumEntryBytes) {
+                throw new GradleException(
+                        "${description} entry ${name} exceeds "
+                                + "${policy.maximumEntryBytes} unpacked bytes")
+            }
+            totalUncompressed = Math.addExact(totalUncompressed, size)
+        }
+        if (totalUncompressed > policy.maximumUncompressedBytes) {
+            throw new GradleException(
+                    "${description} exceeds ${policy.maximumUncompressedBytes} total unpacked bytes")
+        }
+    }
+
+    private byte[] createIdentity(
+            ControlledAgentAssemblyPolicy policy,
+            String upstreamSha256,
+            String extensionSha256
+    ) {
+        TreeMap<String, String> values = new TreeMap<>()
+        values.put('format.version', Integer.toString(policy.formatVersion))
+        values.put('distribution.group', policy.distributionGroup)
+        values.put('distribution.artifact', policy.distributionArtifact)
+        values.put('distribution.version', distributionVersion.get())
+        values.put('upstream.coordinate', policy.upstreamCoordinate)
+        values.put('upstream.sha256', upstreamSha256)
+        values.put('extension.path', policy.extensionEntryPath)
+        values.put('extension.sha256', extensionSha256)
+        values.put('minimum.java', Integer.toString(policy.minimumJavaVersion))
+        StringBuilder content = new StringBuilder()
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            validatePropertyValue(entry.value, entry.key)
+            content.append(entry.key).append('=').append(entry.value).append('\n')
+        }
+        return content.toString().getBytes(StandardCharsets.UTF_8)
+    }
+
+    private static void writeCanonicalArchive(
+            Path output,
+            ControlledAgentZipArchive upstream,
+            Map<String, byte[]> additions,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        LinkedHashMap<String, byte[]> payloads = new LinkedHashMap<>()
+        Map<String, Boolean> directories = new HashMap<>()
+        for (ControlledAgentZipEntryData entry : upstream.entries) {
+            payloads.put(entry.name, entry.payload)
+            directories.put(entry.name, entry.directory)
+        }
+        additions.each { String name, byte[] bytes ->
+            if (payloads.put(name, bytes) != null) {
+                throw new GradleException("Candidate entry collides with upstream content: ${name}")
+            }
+            directories.put(name, false)
+        }
+        OutputStream stream = new ControlledAgentBoundedOutputStream(
+                Files.newOutputStream(output), policy.maximumArchiveBytes)
+        writeCanonicalArchiveToStream(
+                stream, payloads, directories, 'Controlled agent candidate', policy)
+    }
+
+    private static byte[] writeCanonicalArchiveBytes(
+            Map<String, byte[]> payloads,
+            Map<String, Boolean> directories,
+            String description,
+            long maximumBytes,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream()
+        OutputStream stream = new ControlledAgentBoundedOutputStream(bytes, maximumBytes)
+        writeCanonicalArchiveToStream(stream, payloads, directories, description, policy)
+        return bytes.toByteArray()
+    }
+
+    private static void writeCanonicalArchiveToStream(
+            OutputStream stream,
+            Map<String, byte[]> payloads,
+            Map<String, Boolean> directories,
+            String description,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        List<String> orderedNames = new ArrayList<>(payloads.keySet())
+        if (!orderedNames.remove(ControlledAgentZipSupport.MANIFEST_PATH)) {
+            throw new GradleException("${description} manifest disappeared before archive write")
+        }
+        orderedNames.sort(ControlledAgentZipSupport.utf8Comparator())
+        orderedNames.add(0, ControlledAgentZipSupport.MANIFEST_PATH)
+
+        ZipOutputStream zip = new ZipOutputStream(stream, StandardCharsets.UTF_8)
+        try {
+            zip.setLevel(Deflater.BEST_COMPRESSION)
+            for (String name : orderedNames) {
+                byte[] payload = payloads.get(name)
+                ZipEntry entry = new ZipEntry(name)
+                entry.setTimeLocal(policy.canonicalTimestamp)
+                entry.setComment(null)
+                entry.setExtra(null)
+                if (directories.get(name)) {
+                    CRC32 crc = new CRC32()
+                    crc.update(payload)
+                    entry.method = ZipEntry.STORED
+                    entry.size = payload.length
+                    entry.compressedSize = payload.length
+                    entry.crc = crc.value
+                } else {
+                    entry.method = ZipEntry.DEFLATED
+                }
+                zip.putNextEntry(entry)
+                zip.write(payload)
+                zip.closeEntry()
+            }
+        } finally {
+            zip.close()
+        }
+    }
+
+    private static void validateCandidate(
+            ControlledAgentZipArchive candidate,
+            ControlledAgentZipArchive upstream,
+            Map<String, byte[]> additions,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        LinkedHashMap<String, byte[]> expected = new LinkedHashMap<>()
+        Map<String, Boolean> expectedDirectories = new HashMap<>()
+        for (ControlledAgentZipEntryData entry : upstream.entries) {
+            expected.put(entry.name, entry.payload)
+            expectedDirectories.put(entry.name, entry.directory)
+        }
+        additions.each { String name, byte[] bytes ->
+            expected.put(name, bytes)
+            expectedDirectories.put(name, false)
+        }
+        validateCanonicalArchive(
+                candidate,
+                expected,
+                expectedDirectories,
+                'Controlled Java agent candidate',
+                policy)
+    }
+
+    private static void validateCanonicalArchive(
+            ControlledAgentZipArchive archive,
+            Map<String, byte[]> expectedPayloads,
+            Map<String, Boolean> expectedDirectories,
+            String description,
+            ControlledAgentAssemblyPolicy policy
+    ) {
+        if (archive.archiveCommentLength != 0) {
+            throw new GradleException("${description} must not have an archive comment")
+        }
+        LinkedHashMap<String, byte[]> expected = new LinkedHashMap<>(expectedPayloads)
+        if (archive.entries.size() != expected.size()) {
+            throw new GradleException(
+                    "${description} has ${archive.entries.size()} entries, expected ${expected.size()}")
+        }
+
+        int expectedDosTime = (policy.canonicalTimestamp.hour << 11) +
+                (policy.canonicalTimestamp.minute << 5) +
+                policy.canonicalTimestamp.second.intdiv(2)
+        int expectedDosDate = ((policy.canonicalTimestamp.year - 1980) << 9) +
+                (policy.canonicalTimestamp.monthValue << 5) +
+                policy.canonicalTimestamp.dayOfMonth
+        List<String> actualNames = new ArrayList<>()
+        for (ControlledAgentZipEntryData entry : archive.entries) {
+            actualNames.add(entry.name)
+            byte[] expectedPayload = expected.remove(entry.name)
+            if (expectedPayload == null || !Arrays.equals(expectedPayload, entry.payload)) {
+                throw new GradleException(
+                        "${description} payload differs for entry ${entry.name}")
+            }
+            if (entry.directory != expectedDirectories.get(entry.name)) {
+                throw new GradleException(
+                        "${description} entry kind differs for ${entry.name}")
+            }
+            int expectedMethod = entry.directory ? ZipEntry.STORED : ZipEntry.DEFLATED
+            if (entry.method != expectedMethod || entry.dosTime != expectedDosTime
+                    || entry.dosDate != expectedDosDate || entry.centralExtraLength != 0
+                    || entry.centralCommentLength != 0 || entry.localExtraLength != 0) {
+                throw new GradleException(
+                        "${description} ZIP profile differs for entry ${entry.name}: "
+                                + "method=${entry.method}/${expectedMethod}, "
+                                + "dosTime=${entry.dosTime}/${expectedDosTime}, "
+                                + "dosDate=${entry.dosDate}/${expectedDosDate}, "
+                                + "centralExtra=${entry.centralExtraLength}, "
+                                + "centralComment=${entry.centralCommentLength}, "
+                                + "localExtra=${entry.localExtraLength}")
+            }
+        }
+        if (!expected.isEmpty()) {
+            throw new GradleException("${description} is missing entries: ${expected.keySet()}")
+        }
+        List<String> requiredOrder = new ArrayList<>(actualNames)
+        if (!requiredOrder.remove(ControlledAgentZipSupport.MANIFEST_PATH)) {
+            throw new GradleException("${description} manifest is missing")
+        }
+        requiredOrder.sort(ControlledAgentZipSupport.utf8Comparator())
+        requiredOrder.add(0, ControlledAgentZipSupport.MANIFEST_PATH)
+        if (actualNames != requiredOrder) {
+            throw new GradleException("${description} entries are not in canonical order")
+        }
+    }
+
+    private static void validatePropertyValue(String value, String description) {
+        if (value == null || value.isBlank() || value.contains('=')
+                || value != value.strip() || value.contains('\\')
+                || value.chars().anyMatch { codeUnit -> codeUnit < 0x20 || codeUnit > 0x7E }) {
+            throw new GradleException("Invalid controlled agent identity value for ${description}")
+        }
+    }
+}
+
+// Типы подключаемого скрипта недоступны потребителю по имени, поэтому экспортируем тип задачи явно.
+ext.assembleControlledJavaAgentType = AssembleControlledJavaAgent

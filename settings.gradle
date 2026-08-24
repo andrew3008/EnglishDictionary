@@ -1,6 +1,6 @@
 pluginManagement {
     def platformConventionsVersion = '1.0.4'
-    
+
     repositories {
         maven {
             url = "https://n.1440.space/repository/platform-maven/"
@@ -14,7 +14,16 @@ pluginManagement {
         maven {
             url = "https://n.1440.space/repository/repo1.maven.org-proxy"
         }
-        mavenLocal()
+
+        boolean allowMavenLocal = providers.gradleProperty('allowMavenLocal')
+                .map { value -> Boolean.parseBoolean(value) }
+                .getOrElse(false)
+        if (allowMavenLocal) {
+            if (providers.environmentVariable('CI').isPresent()) {
+                throw new GradleException('mavenLocal is forbidden in CI')
+            }
+            mavenLocal()
+        }
     }
 
     plugins {
@@ -42,7 +51,16 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://n.1440.space/repository/plugins.gradle.org-proxy/")
         }
-        mavenLocal()
+
+        boolean allowMavenLocal = providers.gradleProperty('allowMavenLocal')
+                .map { value -> Boolean.parseBoolean(value) }
+                .getOrElse(false)
+        if (allowMavenLocal) {
+            if (providers.environmentVariable('CI').isPresent()) {
+                throw new GradleException('mavenLocal is forbidden in CI')
+            }
+            mavenLocal()
+        }
     }
 }
 

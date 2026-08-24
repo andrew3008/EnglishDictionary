@@ -244,12 +244,14 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
     @Test
     void factory_preserves_required_on_ending_order() throws Exception {
+        // given
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
         PlatformSpanProcessorFactory factory = new PlatformSpanProcessorFactory(
                 registrar, new PlatformScrubberFactory().buildRuntime(extensionConfig, properties));
 
+        // when
         factory.registerSpanProcessors(
                 SdkTracerProvider.builder(),
                 extensionConfig,
@@ -257,23 +259,24 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
                 TracingSettingsSource.fromStartup(extensionConfig));
 
         PlatformCompositeSpanProcessor composite = getComposite(registrar);
+        // then
         try {
             // Инвариант ADR относится к фазе onEnding, а не к общему списку делегатов: только в
             // onEnding span ещё изменяем, и scrubbing обязан идти после всех, кто его пишет.
             List<String> onEndingOrder = composite.getOnEndingDelegateOrder();
-            assertThat(onEndingOrder).contains("scrubbing");
-            assertThat(onEndingOrder.get(onEndingOrder.size() - 1))
+            assertThat(onEndingOrder).contains("validation", "enrichment", "scrubbing");
+            assertThat(onEndingOrder.getLast())
                     .as("scrubbing must be the last onEnding delegate in factory composition")
                     .isEqualTo("scrubbing");
+            assertThat(onEndingOrder.indexOf("validation"))
+                    .as("validation must observe the span before enrichment normalizes it")
+                    .isLessThan(onEndingOrder.indexOf("enrichment"));
+            assertThat(onEndingOrder.indexOf("enrichment"))
+                    .isLessThan(onEndingOrder.indexOf("scrubbing"));
+            assertThat(onEndingOrder.indexOf("validation"))
+                    .isLessThan(onEndingOrder.indexOf("scrubbing"));
 
             List<String> order = List.copyOf(composite.getProcessorErrorCounts().keySet());
-            assertThat(order.indexOf("validation"))
-                    .as("C40: validation must observe the span before enrichment normalizes it")
-                    .isLessThan(order.indexOf("enrichment"));
-            assertThat(order.indexOf("enrichment"))
-                    .isLessThan(order.indexOf("scrubbing"));
-            assertThat(order.indexOf("validation"))
-                    .isLessThan(order.indexOf("scrubbing"));
             assertThat(order.indexOf("classification"))
                     .isLessThan(order.indexOf("watchdog"));
             assertThat(order.indexOf("watchdog"))
@@ -287,7 +290,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
 
     @Test
     void factory_backed_pipeline_recordsValidationMarker_onlyForSpanWithoutProducerResult() throws Exception {
-        // given: полный factory-собранный pipeline с validation, enrichment и scrubbing
+        // given
         DomainMBeanRegistrar registrar = new DomainMBeanRegistrar();
         ConfigProperties properties = allEnabledConfig();
         ExtensionConfig extensionConfig = new ExtensionConfig(properties);
@@ -310,7 +313,7 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
         try (OpenTelemetrySdk sdk = OpenTelemetrySdk.builder().setTracerProvider(builder.build()).build()) {
             Tracer tracer = sdk.getTracer("t");
 
-            // when: один span завершается без producer-объявленного result, второй — с ним
+            // when
             Span withoutProducerResult = tracer.spanBuilder("server-op-without-result")
                     .setSpanKind(SpanKind.SERVER)
                     .startSpan();
@@ -329,10 +332,10 @@ class PlatformSpanProcessorFactoryExtensionConfigAdoptionTest {
             SpanData withoutResultData = spanNamed(spans, "server-op-without-result");
             SpanData withResultData = spanNamed(spans, "server-op-with-result");
 
-            // then: маркер получает только span, у которого producer не объявил result;
-            // итоговый result всё равно нормализован до success, sanitization не задета
+            // then
             AttributeKey<String> missingKey = AttributeKey.stringKey("platform.validation.missing");
-            assertThat(withoutResultData.getAttributes().get(missingKey)).isNotBlank();
+            assertThat(withoutResultData.getAttributes().get(missingKey))
+                    .isEqualTo(PlatformAttributes.PLATFORM_RESULT);
             assertThat(withResultData.getAttributes().get(missingKey))
                     .as("negative control: producer-declared result must not be flagged as missing")
                     .isNull();

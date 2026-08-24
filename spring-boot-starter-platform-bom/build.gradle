@@ -77,11 +77,6 @@ dependencies {
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-mvc:${rootProject.version}"
         api "space.br1440.platform.starters.tracing:spring-boot-starter-platform-tracing-webflux:${rootProject.version}"
 
-        // расширение Java-агента
-        api "space.br1440.platform.starters.tracing:platform-tracing-otel-javaagent-extension:${rootProject.version}"
-        api "space.br1440.platform.starters.tracing:platform-tracing-javaagent:${rootProject.version}"
-
-
         // ============================================================
         // Обработка ошибок
         // ============================================================

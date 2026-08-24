@@ -1,12 +1,11 @@
 package space.br1440.platform.tracing.otel.javaagent.processor.watchdog;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
@@ -95,7 +94,7 @@ class SpanWatchdogHasEndedPurgeTest {
     }
 
     @Test
-    void clearedWeakReferenceIsPurgedWithoutForceClose() {
+    void clearedWeakReferenceIsPurgedWithoutForceClose() throws ReflectiveOperationException {
         // given
         SpanWatchdogProcessor watchdog = new SpanWatchdogProcessor(
                 Duration.ofMinutes(1), Duration.ofMinutes(1), System::nanoTime,
@@ -104,33 +103,33 @@ class SpanWatchdogHasEndedPurgeTest {
                 .addSpanProcessor(watchdog)
                 .build();
         Tracer tracer = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build().getTracer("gc");
-        AtomicReference<Span> holder = new AtomicReference<>(tracer.spanBuilder("weak").startSpan());
+        Span span = tracer.spanBuilder("weak").startSpan();
         assertThat(watchdog.getActiveSpanCount()).isEqualTo(1);
-        holder.set(null);
+        clearTrackedSpanReference(watchdog);
 
         // when
-        boolean collected = tryClearWeakReference();
         watchdog.scanForTesting();
 
         // then
-        assumeTrue(collected && watchdog.getActiveSpanCount() == 0);
+        assertThat(watchdog.getActiveSpanCount()).isZero();
         assertThat(watchdog.getForcedSpanCloses()).isZero();
         assertThat(watchdog.getForcedTraceCloses()).isZero();
+        span.end();
         watchdog.shutdown();
         tracerProvider.shutdown();
     }
 
-    private static boolean tryClearWeakReference() {
-        for (int attempt = 0; attempt < 5; attempt++) {
-            System.gc();
-            try {
-                TimeUnit.MILLISECONDS.sleep(50);
-            } catch (InterruptedException exception) {
-                Thread.currentThread().interrupt();
-                return false;
-            }
-        }
+    @SuppressWarnings("unchecked")
+    private static void clearTrackedSpanReference(SpanWatchdogProcessor watchdog) throws ReflectiveOperationException {
+        Field indexField = SpanWatchdogProcessor.class.getDeclaredField("index");
+        indexField.setAccessible(true);
+        WatchdogTraceIndex index = (WatchdogTraceIndex) indexField.get(watchdog);
 
-        return true;
+        Field tracesField = WatchdogTraceIndex.class.getDeclaredField("traces");
+        tracesField.setAccessible(true);
+        Map<String, TraceWatchdogState> traces = (Map<String, TraceWatchdogState>) tracesField.get(index);
+        assertThat(traces.values()).singleElement().satisfies(state ->
+                assertThat(state.records()).singleElement().satisfies(tracked ->
+                        tracked.spanRef().clear()));
     }
 }

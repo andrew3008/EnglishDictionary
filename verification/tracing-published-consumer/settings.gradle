@@ -1,0 +1,35 @@
+pluginManagement {
+    repositories.clear()
+}
+
+def repositoryLocation = providers.gradleProperty('tracingVerificationRepository').orNull
+if (repositoryLocation == null || repositoryLocation.isBlank()) {
+    throw new GradleException('Set -PtracingVerificationRepository to an isolated Maven repository')
+}
+
+def repositoryDirectory = file(repositoryLocation)
+if (!repositoryDirectory.isDirectory()) {
+    throw new GradleException(
+            "Tracing verification repository does not exist or is not a directory: ${repositoryDirectory}")
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        maven {
+            name = 'tracingVerification'
+            url = repositoryDirectory.toURI()
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+            content {
+                includeModule(
+                        'space.br1440.platform.starters.tracing',
+                        'platform-tracing-javaagent')
+            }
+        }
+    }
+}
+
+rootProject.name = 'tracing-published-consumer'

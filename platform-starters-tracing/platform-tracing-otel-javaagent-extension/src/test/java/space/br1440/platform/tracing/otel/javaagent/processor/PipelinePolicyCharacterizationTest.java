@@ -41,7 +41,7 @@ class PipelinePolicyCharacterizationTest {
 
     @Test
     void validation_runs_before_enrichment_in_composite_onEnding() {
-        // given: composite в целевом порядке validation, enrichment, scrubbing
+        // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(true, false, false)),
                 new EnrichingSpanProcessor(),
@@ -49,17 +49,15 @@ class PipelinePolicyCharacterizationTest {
                         List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")))));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite, Resource.empty())) {
-            // when: span завершается без producer-объявленного platform.trace.result
+            // when
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("server-op").setSpanKind(SpanKind.SERVER).startSpan();
             span.setAttribute("http.request.header.authorization", "Bearer secret");
             span.end();
 
-            // then: validation видит span раньше enrichment — platform.trace.type уже
-            // проставлен start-фазой enrichment, а platform.trace.result ещё не проставлен
+            // then
             var data = h.exporter().getFinishedSpanItems().getFirst();
             ValidationAssertions.assertMissingRecorded(data, PlatformAttributes.PLATFORM_RESULT);
-            // enrichment остаётся fallback-нормализатором и всё равно проставляет итоговый result
             EnrichmentAssertions.assertPlatformResult(data, "success");
             ScrubbingAssertions.assertStringAttributeEmpty(data, "http.request.header.authorization");
         }
@@ -67,7 +65,7 @@ class PipelinePolicyCharacterizationTest {
 
     @Test
     void validation_marker_absent_whenValidationDisabled() {
-        // given: тот же порядок, но validation отключена в политике
+        // given
         PlatformCompositeSpanProcessor composite = new PlatformCompositeSpanProcessor(List.of(
                 new ValidatingSpanProcessor(TracingSettingsSource.isolatedValidation(false, false, false)),
                 new EnrichingSpanProcessor(),
@@ -75,12 +73,12 @@ class PipelinePolicyCharacterizationTest {
                         List.of(BuiltInSpanAttributeScrubbingRules.resolve("oauth-header")))));
 
         try (SpanProcessorHarness h = SpanProcessorHarness.of(composite, Resource.empty())) {
-            // when: span завершается без producer-объявленного result
+            // when
             Tracer tracer = h.tracer("t");
             Span span = tracer.spanBuilder("server-op").setSpanKind(SpanKind.SERVER).startSpan();
             span.end();
 
-            // then: маркер не появляется — validation не участвует в pipeline
+            // then
             var data = h.exporter().getFinishedSpanItems().get(0);
             ValidationAssertions.assertMissingAbsent(data);
         }

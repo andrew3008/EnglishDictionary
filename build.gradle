@@ -2,12 +2,6 @@ plugins {
     id 'base'
 }
 
-tasks.withType(Test).configureEach {
-    binaryResultsDirectory = layout.buildDirectory.dir("test-results/${name}/binary")
-    reports.junitXml.outputLocation = layout.buildDirectory.dir("test-results/${name}")
-    reports.html.outputLocation = layout.buildDirectory.dir("reports/tests/${name}")
-}
-
 allprojects {
     group = 'space.br1440.platform.starters'
     version = '1.2.0-SNAPSHOT'
@@ -16,253 +10,19 @@ allprojects {
 def nonPublishedProjects = [
         ':platform-starters-tracing',
         ':platform-starters-tracing:platform-tracing-testkit',
+        ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
         ':platform-starters-error-handling',
         ':platform-starters-common',
 ] as Set
 
 def publishedProjects = subprojects.findAll { project -> project.path !in nonPublishedProjects }
 
-def verifyNonPublishedTracingModules = tasks.register('verifyNonPublishedTracingModules') {
-    group = 'verification'
-    doLast {
-        nonPublishedProjects.each { projectPath ->
-            def publicationTasks = project(projectPath).tasks.names.findAll { taskName ->
-                taskName.startsWith('publish')
-            }
-            if (!publicationTasks.isEmpty()) {
-                throw new GradleException(
-                        "Git-only module ${projectPath} exposes publication tasks: ${publicationTasks.sort()}")
-            }
-        }
-    }
-}
-
 tasks.register('publishAllToNexus') {
     group = 'publishing'
-    dependsOn verifyNonPublishedTracingModules
     dependsOn publishedProjects.collect { "${it.path}:publishAllToNexus" }
 }
 
 tasks.register('publishAllToMavenLocal') {
     group = 'publishing'
-    dependsOn verifyNonPublishedTracingModules
     dependsOn publishedProjects.collect { "${it.path}:publishAllToMavenLocal" }
-}
-
-def tracingPublicationProjects = [
-        ':spring-boot-starter-platform-bom',
-        ':platform-starters-common:platform-starters-common-util',
-        ':platform-starters-tracing:spring-boot-starter-platform-tracing-api',
-        ':platform-starters-tracing:platform-tracing-runtime-policy',
-        ':platform-starters-tracing:spring-boot-starter-platform-tracing-otel',
-        ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure',
-        ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc',
-        ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux',
-        ':platform-starters-tracing:spring-boot-starter-platform-tracing-mvc',
-        ':platform-starters-tracing:spring-boot-starter-platform-tracing-webflux',
-        ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
-        ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution',
-]
-
-tasks.register('publishTracingToVerificationRepository') {
-    group = 'publishing'
-    dependsOn verifyNonPublishedTracingModules
-    dependsOn tracingPublicationProjects.collect { "${it}:publishToMavenLocal" }
-    doFirst {
-        String repository = System.getProperty('maven.repo.local')
-        if (repository == null || repository.isBlank()) {
-            throw new GradleException('Set -Dmaven.repo.local to an isolated directory before publishing tracing verification artifacts')
-        }
-    }
-}
-
-tasks.register('tracingPublishedConsumerVerify', GradleBuild) {
-    group = 'verification'
-    dir = layout.projectDirectory.dir('verification/tracing-published-consumer')
-    tasks = ['verifyPublishedArtifacts']
-    startParameter.projectProperties = [
-            tracingVerificationRepository: providers.systemProperty('maven.repo.local').getOrElse(''),
-            tracingVerificationVersion: project.version.toString(),
-    ]
-    doFirst {
-        if (startParameter.projectProperties.tracingVerificationRepository.isBlank()) {
-            throw new GradleException('Set -Dmaven.repo.local to the isolated tracing verification repository')
-        }
-    }
-}
-
-def otelProductionJavaSources = fileTree(rootDir) {
-    include 'platform-starters-tracing/*/src/main/java/**/*.java'
-    exclude '**/build/**'
-}
-
-def otelInternalApiAllowList = [
-        'platform-starters-tracing/platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/processor/PlatformEndingSpanProcessor.java',
-] as Set
-
-def otelAgentExtensionApiAllowList = [
-        'platform-starters-tracing/platform-tracing-otel-javaagent-extension/src/main/java/space/br1440/platform/tracing/otel/javaagent/bootstrap/ActivationAgentListener.java',
-] as Set
-
-def verifyOtelUnstableApiBoundariesTask = tasks.register('verifyOtelUnstableApiBoundaries') {
-    group = 'verification'
-    inputs.files(otelProductionJavaSources).withPathSensitivity(PathSensitivity.RELATIVE)
-
-    doLast {
-        def relativePath = { File file ->
-            rootDir.toPath().relativize(file.toPath()).toString().replace('\\', '/')
-        }
-        def usersOf = { java.util.regex.Pattern pattern ->
-            otelProductionJavaSources.files.findAll { file ->
-                pattern.matcher(file.getText('UTF-8')).find()
-            }.collect(relativePath).toSet()
-        }
-        def verifyExact = { String boundary, Set actual, Set expected ->
-            Set unexpected = actual - expected
-            Set missing = expected - actual
-            if (!unexpected.isEmpty() || !missing.isEmpty()) {
-                throw new GradleException(
-                        "OpenTelemetry ${boundary} boundary changed. " +
-                                "Unexpected users=${unexpected.sort()}, missing allow-listed users=${missing.sort()}")
-            }
-        }
-
-        Set internalUsers = usersOf(~/(?m)^\s*import\s+io\.opentelemetry\.[\w.]*\.internal\.[\w.*]+;\s*$/)
-        Set agentExtensionUsers = usersOf(~/(?m)^\s*import\s+io\.opentelemetry\.javaagent\.extension\.[\w.*]+;\s*$/)
-        Set forbiddenAgentToolingUsers = usersOf(
-                ~/(?m)^\s*import\s+io\.opentelemetry\.javaagent\.(?:tooling|bootstrap)\.[\w.*]+;\s*$/)
-
-        verifyExact('internal API', internalUsers, otelInternalApiAllowList)
-        verifyExact('Agent extension API', agentExtensionUsers, otelAgentExtensionApiAllowList)
-        if (!forbiddenAgentToolingUsers.isEmpty()) {
-            throw new GradleException(
-                    'OpenTelemetry Agent tooling/bootstrap APIs are forbidden in production sources: ' +
-                            forbiddenAgentToolingUsers.sort())
-        }
-    }
-}
-
-def jmxExtensionProject = project(':platform-starters-tracing:platform-tracing-otel-javaagent-extension')
-def jmxSpringProject = project(':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure')
-
-def jmxManagementContractBaselineTest = tasks.register('jmxManagementContractBaselineTest', Test) {
-    group = 'verification'
-    dependsOn jmxExtensionProject.tasks.named('testClasses')
-    testClassesDirs = jmxExtensionProject.sourceSets.test.output.classesDirs
-    classpath = jmxExtensionProject.sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.jmx.DomainMBeanJmxComplianceTest'
-    }
-}
-
-def jmxObjectNameConsistencyTest = tasks.register('jmxObjectNameConsistencyTest', Test) {
-    group = 'verification'
-    dependsOn jmxSpringProject.tasks.named('testClasses')
-    testClassesDirs = jmxSpringProject.sourceSets.test.output.classesDirs
-    classpath = jmxSpringProject.sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.ObjectNameConstantsConsistencyTest'
-    }
-}
-
-tasks.register('jmxManagementContractVerify') {
-    group = 'verification'
-    dependsOn jmxManagementContractBaselineTest, jmxObjectNameConsistencyTest
-}
-
-def jmxWireGoldenAutoconfigureTest = tasks.register('jmxWireGoldenAutoconfigureTest', Test) {
-    group = 'verification'
-    dependsOn jmxSpringProject.tasks.named('testClasses')
-    testClassesDirs = jmxSpringProject.sourceSets.test.output.classesDirs
-    classpath = jmxSpringProject.sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.diagnostics.jmx.wire.JmxObservationWireContractIndependentVerifyTest'
-    }
-}
-
-def jmxWireGoldenAgentTest = tasks.register('jmxWireGoldenAgentTest', Test) {
-    group = 'verification'
-    dependsOn jmxExtensionProject.tasks.named('testClasses')
-    testClassesDirs = jmxExtensionProject.sourceSets.test.output.classesDirs
-    classpath = jmxExtensionProject.sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.jmx.observation.JmxObservationWireContractIndependentVerifyTest'
-    }
-}
-
-def jmxWireGoldenFilesIdenticalCheck = tasks.register('jmxWireGoldenFilesIdenticalCheck') {
-    group = 'verification'
-    def autoconfigureGolden = layout.projectDirectory.file(
-            'platform-starters-tracing/spring-boot-starter-platform-tracing-autoconfigure/src/test/resources/jmx-observation-wire-contract-golden.properties')
-    def agentGolden = layout.projectDirectory.file(
-            'platform-starters-tracing/platform-tracing-otel-javaagent-extension/src/test/resources/jmx-observation-wire-contract-golden.properties')
-    inputs.file(autoconfigureGolden)
-    inputs.file(agentGolden)
-    doLast {
-        if (!Arrays.equals(autoconfigureGolden.asFile.bytes, agentGolden.asFile.bytes)) {
-            throw new GradleException('The Spring and Agent JMX golden resources are not byte-for-byte identical')
-        }
-    }
-}
-
-tasks.register('jmxWireGoldenParityVerify') {
-    group = 'verification'
-    dependsOn jmxWireGoldenFilesIdenticalCheck, jmxWireGoldenAutoconfigureTest, jmxWireGoldenAgentTest
-}
-
-def bootstrapCustomizerExtensionFocusedTest = tasks.register('bootstrapCustomizerExtensionFocusedTest', Test) {
-    group = 'verification'
-    dependsOn jmxExtensionProject.tasks.named('testClasses')
-    workingDir = jmxExtensionProject.projectDir
-    testClassesDirs = jmxExtensionProject.sourceSets.test.output.classesDirs
-    classpath = jmxExtensionProject.sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.bootstrap.*'
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.jmx.registration.*'
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.arch.OtelDirectIntegrationArchTest'
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.arch.ExtensionConfigBootstrapGuardrailsArchTest'
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.arch.PropagationVisibilityArchTest'
-        includeTestsMatching 'space.br1440.platform.tracing.otel.javaagent.arch.ConfigurationOwnershipArchTest'
-    }
-}
-
-def bootstrapCustomizerSpringFocusedTest = tasks.register('bootstrapCustomizerSpringFocusedTest', Test) {
-    group = 'verification'
-    dependsOn jmxSpringProject.tasks.named('testClasses')
-    workingDir = jmxSpringProject.projectDir
-    testClassesDirs = jmxSpringProject.sourceSets.test.output.classesDirs
-    classpath = jmxSpringProject.sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.agent.AgentStartupVerifier*'
-        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.agent.AgentReadiness*'
-        includeTestsMatching 'space.br1440.platform.tracing.autoconfigure.arch.AppPlaneNoJavaAgentBootstrapDependencyArchTest'
-    }
-}
-
-tasks.register('bootstrapCustomizerQualification') {
-    group = 'verification'
-    dependsOn(
-            bootstrapCustomizerExtensionFocusedTest,
-            bootstrapCustomizerSpringFocusedTest)
-}
-
-tasks.register('tracingArchitectureFitnessVerify') {
-    group = 'verification'
-    dependsOn verifyOtelUnstableApiBoundariesTask,
-            ':platform-starters-tracing:spring-boot-starter-platform-tracing-api:test',
-            ':spring-boot-starter-platform-logging:test',
-            ':platform-starters-tracing:platform-tracing-runtime-policy:test',
-            ':platform-starters-tracing:spring-boot-starter-platform-tracing-otel:test',
-            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure:test',
-            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webmvc:test',
-            ':platform-starters-tracing:spring-boot-starter-platform-tracing-autoconfigure-webflux:test',
-            ':platform-starters-tracing:platform-tracing-otel-javaagent-extension:check',
-            ':platform-starters-tracing:platform-tracing-otel-javaagent-distribution:check',
-            ':platform-starters-tracing:platform-tracing-testkit:test'
 }

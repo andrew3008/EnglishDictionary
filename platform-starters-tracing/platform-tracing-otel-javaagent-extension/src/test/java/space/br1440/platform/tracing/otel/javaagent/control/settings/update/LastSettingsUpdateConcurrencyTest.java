@@ -1,13 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -24,14 +16,23 @@ import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.Test;
 
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.ExpectedSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsValidationConstraints;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
+
 class LastSettingsUpdateConcurrencyTest {
 
     private static final int THREAD_COUNT = 32;
     private static final String RUNTIME_INSTANCE_ID = "00000000-0000-0000-0000-000000000042";
+    private static final Instant BASE_OBSERVED_AT = Instant.parse("2026-08-23T05:21:44Z");
 
     @Test
     void concurrentApply_hasExactlyOneWinner_andCoherentDiagnostics() throws Exception {
-        // given: baseline policy, отличный от него candidate и общий store с revision S
+        // given
         TracingSettings baseline = policy(0.10d);
         TracingSettings candidate = policy(0.91d);
         TracingSettingsStore store = new TracingSettingsStore(RUNTIME_INSTANCE_ID, baseline);
@@ -45,7 +46,7 @@ class LastSettingsUpdateConcurrencyTest {
 
         List<SettingsUpdateAttempt> attempts = new ArrayList<>(THREAD_COUNT);
         for (int index = 0; index < THREAD_COUNT; index++) {
-            attempts.add(attempt(UUID.randomUUID().toString()));
+            attempts.add(attempt(index + 1L));
         }
 
         CyclicBarrier barrier = new CyclicBarrier(THREAD_COUNT);
@@ -57,7 +58,7 @@ class LastSettingsUpdateConcurrencyTest {
             });
         }
 
-        // when: все потоки бьются за один и тот же CAS одновременно
+        // when
         ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
         List<Future<SettingsUpdateResult>> futures;
         try {
@@ -72,7 +73,8 @@ class LastSettingsUpdateConcurrencyTest {
             resultByAttemptId.put(attempts.get(index).attemptId(), settingsUpdateResult);
         }
 
-        // then: ровно один APPLIED, остальные STALE, без FAILED/INTERNAL_FAILURE
+        // then
+        assertThat(resultByAttemptId).hasSize(THREAD_COUNT);
         long appliedCount = resultByAttemptId.values().stream()
                 .filter(settingsUpdateResult -> settingsUpdateResult.outcome() == SettingsUpdateStatus.APPLIED)
                 .count();
@@ -85,10 +87,18 @@ class LastSettingsUpdateConcurrencyTest {
                 .noneMatch(settingsUpdateResult -> settingsUpdateResult.outcome() == SettingsUpdateStatus.FAILED)
                 .noneMatch(settingsUpdateResult ->
                         settingsUpdateResult.messageCode() == SettingsRejectionReason.INTERNAL_FAILURE);
+        assertThat(resultByAttemptId.values())
+                .filteredOn(settingsUpdateResult -> settingsUpdateResult.outcome() == SettingsUpdateStatus.STALE)
+                .allMatch(settingsUpdateResult -> settingsUpdateResult.messageCode()
+                        == SettingsRejectionReason.ACCEPTED_SEQUENCE_MISMATCH);
         assertThat(store.current().acceptedSequence()).isEqualTo(expectedSequence + 1L);
 
-        // then: сумма outcomeCounts равна числу вызовов, без выброшенных исключений в диагностике
         LastSettingsUpdateSnapshot snapshot = diagnostics.snapshot();
+        assertThat(snapshot.countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(1L);
+        assertThat(snapshot.countOf(SettingsUpdateStatus.STALE)).isEqualTo(THREAD_COUNT - 1L);
+        assertThat(snapshot.countOf(SettingsUpdateStatus.REJECTED)).isZero();
+        assertThat(snapshot.countOf(SettingsUpdateStatus.UNCHANGED)).isZero();
+        assertThat(snapshot.countOf(SettingsUpdateStatus.FAILED)).isZero();
         long totalCounted = snapshot.countOf(SettingsUpdateStatus.APPLIED)
                 + snapshot.countOf(SettingsUpdateStatus.STALE)
                 + snapshot.countOf(SettingsUpdateStatus.REJECTED)
@@ -96,8 +106,6 @@ class LastSettingsUpdateConcurrencyTest {
                 + snapshot.countOf(SettingsUpdateStatus.FAILED);
         assertThat(totalCounted).isEqualTo(THREAD_COUNT);
 
-        // then: latest-кортеж когерентен — latestOutcome/latestMessageCode принадлежат
-        // тому же событию, что и latestAttempt, а не смешаны из разных потоков
         SettingsUpdateAttempt latestAttempt = snapshot.latestAttempt();
         assertThat(latestAttempt).isNotNull();
         SettingsUpdateResult resultOfLatestAttempt = resultByAttemptId.get(latestAttempt.attemptId());
@@ -106,10 +114,10 @@ class LastSettingsUpdateConcurrencyTest {
         assertThat(snapshot.latestMessageCode()).isEqualTo(resultOfLatestAttempt.messageCode());
     }
 
-    private static SettingsUpdateAttempt attempt(String attemptId) {
+    private static SettingsUpdateAttempt attempt(long ordinal) {
         return new SettingsUpdateAttempt(
-                attemptId,
-                Instant.now(),
+                new UUID(0L, ordinal).toString(),
+                BASE_OBSERVED_AT.plusNanos(ordinal),
                 SettingsSourceAuthority.CONFIG_SERVER,
                 SettingsUpdateTrigger.REFRESH,
                 "revision-concurrency"

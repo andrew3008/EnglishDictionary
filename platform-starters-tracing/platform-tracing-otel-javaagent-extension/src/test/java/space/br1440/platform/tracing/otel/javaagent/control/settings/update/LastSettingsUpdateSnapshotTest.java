@@ -1,13 +1,5 @@
 package space.br1440.platform.tracing.otel.javaagent.control.settings.update;
 
-import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
-import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -18,6 +10,14 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+
+import space.br1440.platform.tracing.otel.javaagent.control.TracingSettingsRevision;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsDigest;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.TracingSettingsStore;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsSourceAuthority;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.SettingsUpdateTrigger;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingLogLevel;
+import space.br1440.platform.tracing.otel.javaagent.control.settings.model.TracingSettings;
 
 class LastSettingsUpdateSnapshotTest {
 
@@ -77,23 +77,27 @@ class LastSettingsUpdateSnapshotTest {
     }
 
     @Test
-    void next_recordedLater_becomesLatest_regardlessOfEventObservedAt() {
-        // given: attempt B наблюдался (observedAt) раньше attempt A, но записывается в snapshot позже
+    void next_withReverseObservedAt_recordsWithoutFailure_andKeepsLatestTupleCoherent() {
+        // given
         LastSettingsUpdateSnapshot initial = LastSettingsUpdateSnapshot.empty();
         SettingsUpdateAttempt earlyObservedButRecordedSecond = attempt(1L);
         SettingsUpdateAttempt lateObservedButRecordedFirst = attempt(9L);
         assertThat(earlyObservedButRecordedSecond.observedAt())
                 .isBefore(lateObservedButRecordedFirst.observedAt());
 
-        // when: recording order — сначала «позже наблюдённый», затем «раньше наблюдённый»
+        // when
         LastSettingsUpdateSnapshot afterFirst =
                 initial.next(lateObservedButRecordedFirst, result(SettingsUpdateStatus.APPLIED));
         LastSettingsUpdateSnapshot afterSecond =
-                afterFirst.next(earlyObservedButRecordedSecond, result(SettingsUpdateStatus.STALE));
+                afterFirst.next(
+                        earlyObservedButRecordedSecond,
+                        result(SettingsUpdateStatus.STALE, SettingsRejectionReason.ACCEPTED_SEQUENCE_MISMATCH));
 
-        // then: переход не бросает исключение, а latest-кортеж принадлежит последней записи
+        // then
         assertThat(afterSecond.latestAttempt()).isEqualTo(earlyObservedButRecordedSecond);
         assertThat(afterSecond.latestOutcome()).isEqualTo(SettingsUpdateStatus.STALE);
+        assertThat(afterSecond.latestMessageCode())
+                .isEqualTo(SettingsRejectionReason.ACCEPTED_SEQUENCE_MISMATCH);
         assertThat(afterSecond.countOf(SettingsUpdateStatus.APPLIED)).isEqualTo(1L);
         assertThat(afterSecond.countOf(SettingsUpdateStatus.STALE)).isEqualTo(1L);
     }
@@ -116,16 +120,17 @@ class LastSettingsUpdateSnapshotTest {
 
     @Test
     void nextWithoutAttempt_clearsLatestAttempt_whileKeepingOutcomeCoherent() {
-        // given: snapshot после успешного apply с валидным attempt
+        // given
         LastSettingsUpdateSnapshot afterApply = LastSettingsUpdateSnapshot.empty()
                 .next(attempt(1L), result(SettingsUpdateStatus.APPLIED));
 
-        // when: pre-apply отказ без распознанного attemptId
-        SettingsUpdateResult rejected = result(SettingsUpdateStatus.REJECTED);
+        // when
+        SettingsUpdateResult rejected = result(
+                SettingsUpdateStatus.REJECTED,
+                SettingsRejectionReason.TYPE_MISMATCH);
         LastSettingsUpdateSnapshot afterRejection = afterApply.nextWithoutAttempt(rejected);
 
-        // then: latestAttempt обнуляется этим событием, а latestOutcome/latestMessageCode
-        // относятся к тому же событию, счётчик REJECTED увеличился, счётчик APPLIED сохранён
+        // then
         assertThat(afterRejection.latestAttempt()).isNull();
         assertThat(afterRejection.latestOutcome()).isEqualTo(SettingsUpdateStatus.REJECTED);
         assertThat(afterRejection.latestMessageCode()).isEqualTo(rejected.messageCode());
@@ -152,6 +157,14 @@ class LastSettingsUpdateSnapshotTest {
     }
 
     private static SettingsUpdateResult result(SettingsUpdateStatus outcome) {
+        SettingsRejectionReason messageCode = outcome.isSuccessful()
+                ? SettingsRejectionReason.NONE
+                : SettingsRejectionReason.INTERNAL_FAILURE;
+        return result(outcome, messageCode);
+    }
+
+    private static SettingsUpdateResult result(SettingsUpdateStatus outcome,
+                                               SettingsRejectionReason messageCode) {
         TracingSettings policy = TracingSettings.of(
                 true,
                 0.5d,
@@ -165,9 +178,6 @@ class LastSettingsUpdateSnapshotTest {
                 "00000000-0000-0000-0000-000000000001",
                 policy);
         TracingSettingsRevision accepted = store.current();
-        SettingsRejectionReason messageCode = outcome.isSuccessful()
-                ? SettingsRejectionReason.NONE
-                : SettingsRejectionReason.INTERNAL_FAILURE;
         return new SettingsUpdateResult(
                 outcome,
                 accepted,

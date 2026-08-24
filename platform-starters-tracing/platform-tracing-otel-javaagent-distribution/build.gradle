@@ -1,69 +1,176 @@
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.process.CommandLineArgumentProvider
+import org.gradle.api.plugins.jvm.JvmTestSuite
 
 plugins {
-    id 'platform.java-library-publish'
-    id 'platform.java-library'
-    id 'platform.testing'
+    id 'jvm-test-suite'
+    id 'maven-publish'
 }
 
 group = 'space.br1440.platform.starters.tracing'
 
-platformJavaLibrary {
-    bomProjectPath = ':spring-boot-starter-platform-bom'
-}
+apply from: rootProject.file('gradle/controlledAgentAssembly.gradle')
 
-def platformAgentBinary = configurations.detachedConfiguration(
-        dependencies.create("io.opentelemetry.javaagent:opentelemetry-javaagent:${libs.versions.bom.otelinstrumentation.get()}")
-)
+def upstreamVersion = libs.versions.bom.otelinstrumentation.get()
+def upstreamCoordinate = 'io.opentelemetry.javaagent:opentelemetry-javaagent:' + upstreamVersion
+def conventionPluginVersion = '1.0.4'
+def platformBomVersion = libs.versions.platformBom.get()
+def extensionProjectPath =
+        ':platform-starters-tracing:platform-tracing-otel-javaagent-extension'
+
+def upstreamAgent = configurations.create('upstreamAgent') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
 
 def agentExtension = configurations.create('agentExtension') {
     canBeConsumed = false
     canBeResolved = true
-    visible = false
+    transitive = true
+    attributes {
+        attribute Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME)
+        attribute Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY)
+        attribute LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                objects.named(LibraryElements, LibraryElements.JAR)
+        attribute Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL)
+    }
+}
+
+def reproducibilityConventionPlugin = configurations.create(
+        'reproducibilityConventionPlugin') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
+
+def reproducibilityPlatformBomModule = configurations.create(
+        'reproducibilityPlatformBomModule') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
 }
 
 dependencies {
-    add(agentExtension.name, project(path: ':platform-starters-tracing:platform-tracing-otel-javaagent-extension',
-            configuration: 'agentExtensionJarElements'))
-
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.assertj:assertj-core'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    add(upstreamAgent.name, upstreamCoordinate)
+    add(agentExtension.name, project(path: extensionProjectPath))
+    add(reproducibilityConventionPlugin.name,
+            'space.br1440.platform.conventions:platform-gradle-conventions:'
+                    + conventionPluginVersion)
+    add(reproducibilityPlatformBomModule.name,
+            'space.br1440.platform:platform-bom:' + platformBomVersion + '@module')
 }
 
-// zipTree().singleFile живёт в build/tmp и пропадает после clean; jar в кэше зависимостей устойчив.
-def upstreamAgentFile = platformAgentBinary.singleFile
-def upstreamManifestAttributes = [:]
-new java.util.jar.JarFile(upstreamAgentFile).withCloseable { jarFile ->
-    jarFile.manifest.mainAttributes.forEach { Object key, Object value ->
-        upstreamManifestAttributes.put(key.toString(), value.toString())
-    }
-}
-
-tasks.named('jar', Jar) {
-    archiveBaseName.set('platform-tracing-javaagent')
-    from(zipTree(upstreamAgentFile)) {
-        exclude 'META-INF/MANIFEST.MF'
-    }
-    from(agentExtension.incoming.files) {
-        into 'extensions'
-        rename '.*', 'platform-tracing-otel-javaagent-extension.jar'
-    }
-    manifest {
-        attributes(upstreamManifestAttributes)
-    }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
-publishing {
-    publications.withType(MavenPublication).configureEach {
-        artifactId = 'platform-tracing-javaagent'
+def singleResolvedFile = { Configuration configuration, String displayName ->
+    configuration.incoming.files.elements.map { locations ->
+        List<File> files = locations.collect { it.asFile }
+        if (files.size() != 1) {
+            throw new GradleException(displayName + ' must resolve to exactly one artifact, got '
+                    + files.size() + ': ' + files)
+        }
+        files.first()
     }
 }
 
-abstract class DistributionArtifactArguments implements CommandLineArgumentProvider {
+def upstreamAgentFile = singleResolvedFile(upstreamAgent, 'upstreamAgent')
+def conventionPluginFile = singleResolvedFile(
+        reproducibilityConventionPlugin, 'reproducibilityConventionPlugin')
+def platformBomModuleFile = singleResolvedFile(
+        reproducibilityPlatformBomModule, 'reproducibilityPlatformBomModule')
+def agentExtensionFile = agentExtension.incoming.artifacts.resolvedArtifacts.map { artifacts ->
+    def extensionArtifacts = artifacts.findAll { artifact ->
+        def component = artifact.id.componentIdentifier
+        component instanceof ProjectComponentIdentifier
+                && component.projectPath == extensionProjectPath
+    }
+    if (extensionArtifacts.size() != 1) {
+        throw new GradleException('agentExtension must resolve exactly one project JAR for '
+                + extensionProjectPath + ', got ' + extensionArtifacts)
+    }
+    def artifact = extensionArtifacts.first()
+    def attributes = artifact.variant.attributes
+    if (attributes.getAttribute(Usage.USAGE_ATTRIBUTE)?.name != Usage.JAVA_RUNTIME
+            || attributes.getAttribute(Category.CATEGORY_ATTRIBUTE)?.name != Category.LIBRARY
+            || attributes.getAttribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE)?.name != LibraryElements.JAR
+            || attributes.getAttribute(Bundling.BUNDLING_ATTRIBUTE)?.name != Bundling.EXTERNAL) {
+        throw new GradleException('agentExtension selected an unexpected variant: '
+                + attributes.asMap())
+    }
+    artifact.file
+}
+def agentExtensionArtifactCoordinates =
+        agentExtension.incoming.artifacts.resolvedArtifacts.map { artifacts ->
+            Map<String, String> coordinates = new TreeMap<>()
+            artifacts.each { artifact ->
+                def component = artifact.id.componentIdentifier
+                String coordinate
+                if (component instanceof ProjectComponentIdentifier) {
+                    coordinate = 'project:' + component.projectPath
+                } else if (component instanceof ModuleComponentIdentifier) {
+                    coordinate = component.group + ':' + component.module + ':' + component.version
+                } else {
+                    throw new GradleException(
+                            'Unsupported agentExtension component identifier: ' + component)
+                }
+                String previous = coordinates.put(artifact.file.name, coordinate)
+                if (previous != null) {
+                    throw new GradleException(
+                            'agentExtension artifacts must have unique file names: '
+                                    + artifact.file.name)
+                }
+            }
+            coordinates
+        }
+
+def assembleControlledJavaAgent = tasks.register(
+        'assembleControlledJavaAgent',
+        assembleControlledJavaAgentType
+) {
+    upstreamAgentJar.fileProvider(upstreamAgentFile)
+    extensionJar.fileProvider(agentExtensionFile)
+    extensionRuntimeClasspath.from(agentExtension)
+    extensionRuntimeArtifactCoordinates.set(agentExtensionArtifactCoordinates)
+    outputJar.set(layout.buildDirectory.file(
+            'libs/platform-tracing-javaagent-' + project.version + '.jar'))
+    packagedExtensionJar.set(layout.buildDirectory.file(
+            'controlled-agent/platform-tracing-otel-javaagent-extension.jar'))
+    distributionVersion.set(project.version.toString())
+}
+
+tasks.named('assemble') {
+    dependsOn assembleControlledJavaAgent
+}
+
+testing {
+    suites {
+        register('controlledAgentAssemblerTest', JvmTestSuite) {
+            useJUnitJupiter('5.12.2')
+            dependencies {
+                implementation project.dependencies.gradleTestKit()
+                implementation 'org.assertj:assertj-core:3.27.7'
+            }
+        }
+        register('controlledAgentArtifactTest', JvmTestSuite) {
+            useJUnitJupiter('5.12.2')
+            dependencies {
+                implementation 'org.assertj:assertj-core:3.27.7'
+            }
+        }
+        register('controlledAgentRuntimeTest', JvmTestSuite) {
+            useJUnitJupiter('5.12.2')
+            dependencies {
+                implementation 'org.assertj:assertj-core:3.27.7'
+            }
+        }
+        register('controlledAgentReproducibilityTest', JvmTestSuite) {
+            useJUnitJupiter('5.12.2')
+            dependencies {
+                implementation project.dependencies.gradleTestKit()
+                implementation 'org.assertj:assertj-core:3.27.7'
+            }
+        }
+    }
+}
+
+abstract class ControlledAgentTestArguments implements CommandLineArgumentProvider {
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getControlledAgentJar()
@@ -74,45 +181,171 @@ abstract class DistributionArtifactArguments implements CommandLineArgumentProvi
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getExtensionLibraryJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getUpstreamAgentJar()
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
-    abstract RegularFileProperty getAcpPinBaseline()
+    abstract RegularFileProperty getAssemblyScript()
+
+    @Input
+    abstract Property<String> getDistributionVersion()
 
     @Override
     Iterable<String> asArguments() {
         [
-                "-DplatformTracing.controlledAgentJar=${controlledAgentJar.get().asFile.absolutePath}",
-                "-DplatformTracing.extensionJar=${extensionJar.get().asFile.absolutePath}",
-                "-DplatformTracing.upstreamAgentJar=${upstreamAgentJar.get().asFile.absolutePath}",
-                "-DplatformTracing.acpPinBaseline=${acpPinBaseline.get().asFile.absolutePath}"
+                '-DplatformTracing.controlledAgentJar=' + controlledAgentJar.get().asFile.absolutePath,
+                '-DplatformTracing.extensionJar=' + extensionJar.get().asFile.absolutePath,
+                '-DplatformTracing.extensionLibraryJar=' + extensionLibraryJar.get().asFile.absolutePath,
+                '-DplatformTracing.upstreamAgentJar=' + upstreamAgentJar.get().asFile.absolutePath,
+                '-DplatformTracing.assemblyScript=' + assemblyScript.get().asFile.absolutePath,
+                '-DplatformTracing.distributionVersion=' + distributionVersion.get()
         ]
     }
 }
 
-tasks.named('test', Test) {
-    // platform.testing отключает Test-задачи у packaging-модуля; gate должен выполняться.
-    enabled = true
-    def arguments = objects.newInstance(DistributionArtifactArguments)
-    arguments.controlledAgentJar.set(tasks.named('jar', Jar).flatMap { it.archiveFile })
-    arguments.extensionJar.fileProvider(agentExtension.incoming.files.elements.map { locations ->
-        def files = locations.collect { it.asFile }
-        if (files.size() != 1) {
-            throw new GradleException(
-                    "agentExtension must resolve to exactly one jar, got ${files.size()}: ${files}"
-            )
-        }
-        files[0]
-    })
-    arguments.upstreamAgentJar.set(layout.file(providers.provider { upstreamAgentFile }))
-    arguments.acpPinBaseline.set(rootProject.layout.projectDirectory.file(
-            'docs/architecture/agent-runtime/pins/opentelemetry-javaagent-2.30.0-acp-pin.json'))
+abstract class ReproducibilityTestArguments implements CommandLineArgumentProvider {
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getAssemblyScript()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getConventionPluginJar()
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPlatformBomModule()
+
+    @Input
+    abstract Property<String> getDistributionVersion()
+
+    @Input
+    abstract Property<String> getConventionPluginVersion()
+
+    @Input
+    abstract Property<String> getPlatformBomVersion()
+
+    @Input
+    abstract Property<String> getReadOnlyDependencyCacheRoot()
+
+    @Override
+    Iterable<String> asArguments() {
+        [
+                '-DplatformTracing.assemblyScript=' + assemblyScript.get().asFile.absolutePath,
+                '-DplatformTracing.conventionPluginJar='
+                        + conventionPluginJar.get().asFile.absolutePath,
+                '-DplatformTracing.conventionPluginVersion=' + conventionPluginVersion.get(),
+                '-DplatformTracing.platformBomModule='
+                        + platformBomModule.get().asFile.absolutePath,
+                '-DplatformTracing.platformBomVersion=' + platformBomVersion.get(),
+                '-DplatformTracing.distributionVersion=' + distributionVersion.get(),
+                '-DplatformTracing.readOnlyDependencyCacheRoot=' + readOnlyDependencyCacheRoot.get()
+        ]
+    }
+}
+
+tasks.withType(Test).matching { task ->
+    task.name.startsWith('controlledAgent')
+            && task.name != 'controlledAgentReproducibilityTest'
+}.configureEach {
+    def arguments = objects.newInstance(ControlledAgentTestArguments)
+    arguments.controlledAgentJar.set(assembleControlledJavaAgent.flatMap { it.outputJar })
+    arguments.extensionJar.set(assembleControlledJavaAgent.flatMap { it.packagedExtensionJar })
+    arguments.extensionLibraryJar.fileProvider(agentExtensionFile)
+    arguments.upstreamAgentJar.fileProvider(upstreamAgentFile)
+    arguments.assemblyScript.set(rootProject.layout.projectDirectory.file(
+            'gradle/controlledAgentAssembly.gradle'))
+    arguments.distributionVersion.set(project.version.toString())
     jvmArgumentProviders.add(arguments)
 }
 
-afterEvaluate {
-    tasks.named('test', Test) {
-        enabled = true
+tasks.named('controlledAgentReproducibilityTest', Test) {
+    def arguments = objects.newInstance(ReproducibilityTestArguments)
+    arguments.assemblyScript.set(rootProject.layout.projectDirectory.file(
+            'gradle/controlledAgentAssembly.gradle'))
+    arguments.conventionPluginJar.fileProvider(conventionPluginFile)
+    arguments.conventionPluginVersion.set(conventionPluginVersion)
+    arguments.platformBomModule.fileProvider(platformBomModuleFile)
+    arguments.platformBomVersion.set(platformBomVersion)
+    arguments.distributionVersion.set(project.version.toString())
+    arguments.readOnlyDependencyCacheRoot.set(providers.provider {
+        new File(gradle.gradleUserHomeDir, 'caches').absolutePath
+    })
+    jvmArgumentProviders.add(arguments)
+}
+
+tasks.named('check') {
+    dependsOn testing.suites.named('controlledAgentAssemblerTest')
+    dependsOn testing.suites.named('controlledAgentArtifactTest')
+    dependsOn testing.suites.named('controlledAgentRuntimeTest')
+    dependsOn testing.suites.named('controlledAgentReproducibilityTest')
+}
+
+publishing {
+    publications {
+        controlledAgent(MavenPublication) {
+            artifactId = 'platform-tracing-javaagent'
+            artifact(assembleControlledJavaAgent.flatMap { it.outputJar }) {
+                builtBy assembleControlledJavaAgent
+                extension = 'jar'
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'nexusSnapshot'
+            url = uri('https://n.1440.space/repository/platform-maven-dev')
+            credentials(PasswordCredentials) {
+                username = providers.gradleProperty('nexusSnapshotUsername')
+                        .orElse(providers.environmentVariable('NEXUS_USERNAME')).orNull
+                password = providers.gradleProperty('nexusSnapshotPassword')
+                        .orElse(providers.environmentVariable('NEXUS_PASSWORD')).orNull
+            }
+        }
+    }
+}
+
+def snapshotVersion = project.version.toString().endsWith('-SNAPSHOT')
+
+tasks.withType(PublishToMavenRepository).configureEach {
+    doFirst {
+        if (!snapshotVersion) {
+            throw new GradleException(
+                    'Direct release repository upload is forbidden; use approved staging promotion')
+        }
+        boolean snapshotRepository = repository.name == 'nexusSnapshot'
+        if (snapshotVersion != snapshotRepository) {
+            throw new GradleException('Version ' + project.version
+                    + ' cannot be published to repository ' + repository.name)
+        }
+    }
+}
+
+tasks.named('publish') {
+    setDependsOn([])
+    doLast {
+        throw new GradleException(
+                'Generic publish is forbidden; use publishAllToNexus or an explicit verification workflow')
+    }
+}
+
+tasks.register('publishAllToMavenLocal') {
+    group = 'publishing'
+    dependsOn tasks.named('publishToMavenLocal')
+}
+
+tasks.register('publishAllToNexus') {
+    group = 'publishing'
+    if (snapshotVersion) {
+        dependsOn tasks.named('publishControlledAgentPublicationToNexusSnapshotRepository')
+    } else {
+        doLast {
+            throw new GradleException(
+                    'Stable publication requires an approved staging promotion workflow')
+        }
     }
 }

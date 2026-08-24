@@ -1,0 +1,643 @@
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
+import java.util.jar.JarFile
+import java.util.zip.ZipInputStream
+
+import javax.xml.XMLConstants
+import javax.xml.parsers.DocumentBuilderFactory
+
+import org.w3c.dom.Element
+import org.w3c.dom.Node
+
+import org.gradle.api.tasks.compile.JavaCompile
+
+plugins {
+    id 'base'
+}
+
+def agentGroup = 'space.br1440.platform.starters.tracing'
+def agentArtifact = 'platform-tracing-javaagent'
+def extensionArtifact = 'platform-tracing-otel-javaagent-extension'
+def embeddedExtension = 'extensions/platform-tracing-otel-javaagent-extension.jar'
+def distributionIdentity = 'META-INF/platform-tracing/javaagent-distribution.properties'
+def forbiddenThirdPartyNotices = 'META-INF/platform-tracing/THIRD-PARTY-NOTICES.txt'
+def extensionService =
+        'META-INF/services/io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider'
+def acpPinResource = 'META-INF/platform-tracing/upstream-acp-pin.properties'
+
+def requiredProperty = { String name ->
+    String value = providers.gradleProperty(name).orNull
+    if (value == null || value.isBlank()) {
+        throw new GradleException("Required Gradle property is missing: ${name}")
+    }
+    value
+}
+
+def verificationRepository = file(requiredProperty('tracingVerificationRepository')).canonicalFile
+def verificationVersion = requiredProperty('tracingVerificationVersion')
+def expectedCandidatePath = providers.gradleProperty('tracingVerificationExpectedCandidate').orNull
+def expectedSha256 = providers.gradleProperty('tracingVerificationExpectedSha256').orNull
+if ((expectedCandidatePath == null || expectedCandidatePath.isBlank())
+        && (expectedSha256 == null || expectedSha256.isBlank())) {
+    throw new GradleException(
+            'Either tracingVerificationExpectedCandidate or tracingVerificationExpectedSha256 is required')
+}
+def groupPath = agentGroup.replace('.', '/')
+def versionDirectory = new File(
+        verificationRepository,
+        "${groupPath}/${agentArtifact}/${verificationVersion}")
+def publishedJar = new File(versionDirectory, "${agentArtifact}-${verificationVersion}.jar")
+def publishedPom = new File(versionDirectory, "${agentArtifact}-${verificationVersion}.pom")
+def bomGroup = 'space.br1440.platform.starters'
+def bomArtifact = 'spring-boot-starter-platform-bom'
+def bomVersionDirectory = new File(
+        verificationRepository,
+        "${bomGroup.replace('.', '/')}/${bomArtifact}/${verificationVersion}")
+def publishedBomPom = new File(
+        bomVersionDirectory,
+        "${bomArtifact}-${verificationVersion}.pom")
+def probeClasses = layout.buildDirectory.dir('classes/publishedAgentProbe')
+
+def publishedAgent = configurations.create('publishedAgent') {
+    canBeConsumed = false
+    canBeResolved = true
+    visible = false
+    transitive = false
+}
+
+dependencies {
+    add(publishedAgent.name, "${agentGroup}:${agentArtifact}:${verificationVersion}") {
+        transitive = false
+    }
+}
+
+def compilePublishedAgentProbe = tasks.register('compilePublishedAgentProbe', JavaCompile) {
+    source(fileTree('src/probe/java') {
+        include '**/*.java'
+    })
+    classpath = files()
+    destinationDirectory.set(probeClasses)
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+    options.release.set(21)
+    options.encoding = StandardCharsets.UTF_8.name()
+}
+
+def sha256 = { File file ->
+    MessageDigest digest = MessageDigest.getInstance('SHA-256')
+    file.withInputStream { input ->
+        byte[] buffer = new byte[64 * 1024]
+        int read
+        while ((read = input.read(buffer)) >= 0) {
+            if (read > 0) {
+                digest.update(buffer, 0, read)
+            }
+        }
+    }
+    digest.digest().collect { value -> String.format(Locale.ROOT, '%02x', value & 0xff) }.join()
+}
+
+def sha256Bytes = { byte[] bytes ->
+    MessageDigest digest = MessageDigest.getInstance('SHA-256')
+    digest.digest(bytes).collect { value ->
+        String.format(Locale.ROOT, '%02x', value & 0xff)
+    }.join()
+}
+
+def readEmbeddedAcpPin = { File agent ->
+    byte[] pinBytes = null
+    new JarFile(agent).withCloseable { jar ->
+        def extensionEntry = jar.getJarEntry(embeddedExtension)
+        if (extensionEntry == null || extensionEntry.directory) {
+            throw new GradleException(
+                    "Published agent is missing embedded extension: ${embeddedExtension}")
+        }
+        jar.getInputStream(extensionEntry).withCloseable { extensionInput ->
+            new ZipInputStream(extensionInput).withCloseable { nestedJar ->
+                def entry
+                while ((entry = nestedJar.nextEntry) != null) {
+                    if (!entry.name.equalsIgnoreCase(acpPinResource)) {
+                        continue
+                    }
+                    if (entry.name != acpPinResource || entry.directory || pinBytes != null) {
+                        throw new GradleException(
+                                "Embedded extension must contain exactly ${acpPinResource}")
+                    }
+                    pinBytes = nestedJar.readNBytes(16_385)
+                    if (pinBytes.length == 0 || pinBytes.length > 16_384) {
+                        throw new GradleException(
+                                'Embedded ACP pin resource size is outside 1..16384 bytes')
+                    }
+                }
+            }
+        }
+    }
+    if (pinBytes == null) {
+        throw new GradleException(
+                "Embedded extension is missing ACP pin resource: ${acpPinResource}")
+    }
+    if (pinBytes.length >= 3
+            && (pinBytes[0] & 0xff) == 0xef
+            && (pinBytes[1] & 0xff) == 0xbb
+            && (pinBytes[2] & 0xff) == 0xbf) {
+        throw new GradleException('Embedded ACP pin resource must not have a UTF-8 BOM')
+    }
+
+    String text
+    try {
+        text = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(pinBytes))
+                .toString()
+    } catch (CharacterCodingException exception) {
+        throw new GradleException('Embedded ACP pin resource must be valid UTF-8', exception)
+    }
+    if (text.contains('\r') || !text.endsWith('\n')) {
+        throw new GradleException('Embedded ACP pin resource must be LF-only and end with LF')
+    }
+
+    LinkedHashMap<String, String> values = new LinkedHashMap<>()
+    String[] lines = text.split('\n', -1)
+    for (int index = 0; index < lines.length - 1; index++) {
+        String line = lines[index]
+        int delimiter = line.indexOf('=')
+        if (delimiter <= 0 || delimiter == line.length() - 1
+                || line.indexOf('=', delimiter + 1) >= 0) {
+            throw new GradleException(
+                    "Embedded ACP pin resource line ${index + 1} is not exactly key=value")
+        }
+        String key = line.substring(0, delimiter)
+        String value = line.substring(delimiter + 1)
+        if (values.putIfAbsent(key, value) != null) {
+            throw new GradleException("Embedded ACP pin resource contains duplicate key: ${key}")
+        }
+    }
+    if (values.get('format.version') != '1') {
+        throw new GradleException('Embedded ACP pin resource format.version must equal 1')
+    }
+    String upstreamSha256 = values.get('upstream.sha256')
+    if (!(upstreamSha256 ==~ /[0-9a-f]{64}/)) {
+        throw new GradleException(
+                'Embedded ACP pin resource upstream.sha256 must be lowercase SHA-256 hex')
+    }
+
+    TreeMap<Integer, String> indexedProviders = new TreeMap<>()
+    values.each { String key, String value ->
+        if (key == 'format.version' || key == 'upstream.sha256') {
+            return
+        }
+        def matcher = key =~ /^provider\.([0-9]+)$/
+        if (!matcher.matches()) {
+            throw new GradleException("Embedded ACP pin resource contains unexpected key: ${key}")
+        }
+        int index
+        try {
+            index = Integer.parseInt(matcher.group(1))
+        } catch (NumberFormatException exception) {
+            throw new GradleException(
+                    "Embedded ACP pin resource provider index is outside range: ${key}", exception)
+        }
+        if (key != "provider.${index}" || indexedProviders.put(index, value) != null) {
+            throw new GradleException(
+                    "Embedded ACP pin resource provider key is not unique and canonical: ${key}")
+        }
+    }
+    if (indexedProviders.isEmpty()) {
+        throw new GradleException('Embedded ACP pin resource must contain providers')
+    }
+
+    List<String> providers = new ArrayList<>(indexedProviders.size())
+    for (int index = 0; index < indexedProviders.size(); index++) {
+        String provider = indexedProviders.get(index)
+        if (provider == null) {
+            throw new GradleException(
+                    'Embedded ACP pin resource provider indexes must be contiguous from zero')
+        }
+        if (!(provider ==~ '[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*')) {
+            throw new GradleException(
+                    "Embedded ACP pin resource contains malformed provider: ${provider}")
+        }
+        providers.add(provider)
+    }
+    List<String> sortedProviders = new ArrayList<>(providers)
+    sortedProviders.sort(Comparator.naturalOrder())
+    if (providers != sortedProviders || providers.size() != providers.toSet().size()) {
+        throw new GradleException(
+                'Embedded ACP pin resource providers must be sorted and unique')
+    }
+
+    StringBuilder preimage = new StringBuilder()
+    providers.each { provider -> preimage.append(provider).append('\n') }
+    [
+            formatVersion: values.get('format.version'),
+            upstreamSha256: upstreamSha256,
+            providers: Collections.unmodifiableList(providers),
+            pinSha256: sha256Bytes(preimage.toString().getBytes(StandardCharsets.UTF_8)),
+    ]
+}
+
+def resolvedPublishedJar = {
+    Set<File> files = publishedAgent.files
+    if (files.size() != 1) {
+        throw new GradleException(
+                "Published agent must resolve to exactly one file, got ${files.size()}: ${files}")
+    }
+    File resolved = files.first()
+    if (!resolved.name.endsWith('.jar')) {
+        throw new GradleException("Published agent did not resolve to a JAR: ${resolved}")
+    }
+    resolved
+}
+
+def parsePom = { File pom ->
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance()
+    factory.namespaceAware = true
+    factory.setXIncludeAware(false)
+    factory.expandEntityReferences = false
+    factory.setFeature('http://apache.org/xml/features/disallow-doctype-decl', true)
+    factory.setFeature('http://xml.org/sax/features/external-general-entities', false)
+    factory.setFeature('http://xml.org/sax/features/external-parameter-entities', false)
+    factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, '')
+    factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, '')
+    factory.newDocumentBuilder().parse(pom)
+}
+
+def directChildText = { Element parent, String name ->
+    List<Element> matches = []
+    for (int index = 0; index < parent.childNodes.length; index++) {
+        Node child = parent.childNodes.item(index)
+        String childName = child.localName == null ? child.nodeName : child.localName
+        if (child.nodeType == Node.ELEMENT_NODE && childName == name) {
+            matches.add((Element) child)
+        }
+    }
+    if (matches.size() != 1) {
+        throw new GradleException(
+                "Published POM must contain exactly one direct ${name} element, got ${matches.size()}")
+    }
+    matches.first().textContent.trim()
+}
+
+def assertNoElements = { org.w3c.dom.Document document, String name ->
+    if (document.getElementsByTagNameNS('*', name).length != 0) {
+        throw new GradleException("Published POM must not contain ${name}")
+    }
+}
+
+tasks.register('verifyPublishedRepositorySurface') {
+    group = 'verification'
+    description = 'Verifies the artifact-only Maven repository surface.'
+    outputs.upToDateWhen { false }
+
+    doLast {
+        if (!versionDirectory.isDirectory()) {
+            throw new GradleException("Published version directory is missing: ${versionDirectory}")
+        }
+
+        List<String> inventory = versionDirectory.listFiles()
+                .findAll { file -> file.isFile() }
+                .collect { file -> file.name }
+                .sort()
+        List<String> expectedInventory = [
+                'maven-metadata-local.xml',
+                publishedJar.name,
+                publishedPom.name,
+        ].sort()
+        if (inventory != expectedInventory) {
+            throw new GradleException(
+                    "Published version inventory mismatch: expected=${expectedInventory}, actual=${inventory}")
+        }
+
+        File extensionVersionDirectory = new File(
+                verificationRepository,
+                "${groupPath}/${extensionArtifact}/${verificationVersion}")
+        List<String> extensionInventory = extensionVersionDirectory.isDirectory()
+                ? extensionVersionDirectory.listFiles()
+                        .findAll { file -> file.isFile() }
+                        .collect { file -> file.name }
+                        .sort()
+                : []
+        if (!extensionInventory.isEmpty()) {
+            throw new GradleException(
+                    "Internal extension coordinate is published: ${extensionInventory}")
+        }
+
+        if (!publishedBomPom.isFile()) {
+            throw new GradleException("Published platform BOM POM is missing: ${publishedBomPom}")
+        }
+        def bomDocument = parsePom(publishedBomPom)
+        Element bomProject = bomDocument.documentElement
+        if (directChildText(bomProject, 'groupId') != bomGroup
+                || directChildText(bomProject, 'artifactId') != bomArtifact
+                || directChildText(bomProject, 'version') != verificationVersion) {
+            throw new GradleException('Published platform BOM coordinates are not authoritative')
+        }
+        String bomPomText = publishedBomPom.getText(StandardCharsets.UTF_8.name())
+        if (bomPomText.contains('<artifactId>' + agentArtifact + '</artifactId>')
+                || bomPomText.contains('<artifactId>' + extensionArtifact + '</artifactId>')) {
+            throw new GradleException('Published platform BOM must not constrain the agent or extension')
+        }
+        File obsoleteBomPath = new File(
+                verificationRepository,
+                "space/br1440/platform/${bomArtifact}/${verificationVersion}")
+        if (obsoleteBomPath.exists()) {
+            throw new GradleException("Obsolete platform BOM group is published: ${obsoleteBomPath}")
+        }
+
+        String pomText = publishedPom.getText(StandardCharsets.UTF_8.name())
+        if (pomText.contains('published-with-gradle-metadata') || pomText.contains('do_not_remove')) {
+            throw new GradleException('Published POM contains a Gradle metadata marker')
+        }
+
+        def document = parsePom(publishedPom)
+        Element projectElement = document.documentElement
+        if (directChildText(projectElement, 'groupId') != agentGroup ||
+                directChildText(projectElement, 'artifactId') != agentArtifact ||
+                directChildText(projectElement, 'version') != verificationVersion) {
+            throw new GradleException('Published POM coordinates do not match the requested agent')
+        }
+        assertNoElements(document, 'parent')
+        assertNoElements(document, 'dependencies')
+        assertNoElements(document, 'dependencyManagement')
+
+        def packaging = document.getElementsByTagNameNS('*', 'packaging')
+        if (packaging.length > 1 ||
+                (packaging.length == 1 && packaging.item(0).textContent.trim() != 'jar')) {
+            throw new GradleException('Published POM packaging must be jar or omitted')
+        }
+
+        File resolvedJar = resolvedPublishedJar()
+        if (sha256(resolvedJar) != sha256(publishedJar)) {
+            throw new GradleException(
+                    'Resolved agent bytes differ from the main JAR in the isolated repository')
+        }
+        logger.lifecycle("Verified artifact-only repository surface for ${agentGroup}:${agentArtifact}:${verificationVersion}")
+    }
+}
+
+tasks.register('verifyPublishedAgentDigest') {
+    group = 'verification'
+    description = 'Verifies the published agent digest against supplied candidate evidence.'
+    outputs.upToDateWhen { false }
+
+    doLast {
+        File resolvedJar = resolvedPublishedJar()
+        String actualSha256 = sha256(resolvedJar)
+
+        if (expectedCandidatePath != null && !expectedCandidatePath.isBlank()) {
+            File expectedCandidate = file(expectedCandidatePath).canonicalFile
+            if (!expectedCandidate.isFile()) {
+                throw new GradleException(
+                        "Expected candidate does not exist or is not a file: ${expectedCandidate}")
+            }
+            String candidateSha256 = sha256(expectedCandidate)
+            if (actualSha256 != candidateSha256) {
+                throw new GradleException(
+                        "Published agent SHA-256 ${actualSha256} differs from candidate SHA-256 ${candidateSha256}")
+            }
+        }
+
+        if (expectedSha256 != null && !expectedSha256.isBlank()) {
+            String normalizedExpected = expectedSha256.toLowerCase(Locale.ROOT)
+            if (!(normalizedExpected ==~ /[0-9a-f]{64}/)) {
+                throw new GradleException(
+                        'tracingVerificationExpectedSha256 must contain exactly 64 hexadecimal characters')
+            }
+            if (actualSha256 != normalizedExpected) {
+                throw new GradleException(
+                        "Published agent SHA-256 ${actualSha256} differs from expected SHA-256 ${normalizedExpected}")
+            }
+        }
+
+        logger.lifecycle("Published agent SHA-256: ${actualSha256}")
+    }
+}
+
+tasks.register('verifyPublishedAgentLayout') {
+    group = 'verification'
+    description = 'Verifies the deployable agent and embedded extension layout.'
+    outputs.upToDateWhen { false }
+
+    doLast {
+        File resolvedJar = resolvedPublishedJar()
+        new JarFile(resolvedJar).withCloseable { jar ->
+            List<String> names = []
+            jar.entries().each { entry -> names.add(entry.name) }
+            Set<String> uniqueNames = names.toSet()
+            if (names.size() != uniqueNames.size()) {
+                List<String> duplicates = names.groupBy { name -> name }
+                        .findAll { name, occurrences -> occurrences.size() > 1 }
+                        .keySet()
+                        .sort()
+                throw new GradleException("Published agent contains duplicate ZIP entries: ${duplicates}")
+            }
+
+            String premainClass = jar.manifest?.mainAttributes?.getValue('Premain-Class')
+            if (premainClass != 'io.opentelemetry.javaagent.OpenTelemetryAgent') {
+                throw new GradleException(
+                        "Published agent has an unexpected Premain-Class: ${premainClass}")
+            }
+            if (!uniqueNames.contains('io/opentelemetry/javaagent/OpenTelemetryAgent.class')) {
+                throw new GradleException('Published agent does not contain the OpenTelemetry agent payload')
+            }
+            if (!uniqueNames.contains(distributionIdentity)) {
+                throw new GradleException(
+                        "Published agent does not contain distribution identity: ${distributionIdentity}")
+            }
+            if (uniqueNames.contains(forbiddenThirdPartyNotices)) {
+                throw new GradleException(
+                        "Published agent must not contain third-party notices: "
+                                + "${forbiddenThirdPartyNotices}")
+            }
+
+            List<String> extensionJars = names.findAll { name ->
+                name.startsWith('extensions/') && name.endsWith('.jar')
+            }
+            if (extensionJars != [embeddedExtension]) {
+                throw new GradleException(
+                        "Published agent must contain exactly one canonical extension, got: ${extensionJars}")
+            }
+
+            List<String> nestedNames = []
+            jar.getInputStream(jar.getJarEntry(embeddedExtension)).withCloseable { extensionInput ->
+                new ZipInputStream(extensionInput).withCloseable { nestedJar ->
+                    def entry
+                    while ((entry = nestedJar.nextEntry) != null) {
+                        nestedNames.add(entry.name)
+                    }
+                }
+            }
+            if (nestedNames.isEmpty()) {
+                throw new GradleException('Embedded extension JAR is empty or unreadable')
+            }
+            if (nestedNames.size() != nestedNames.toSet().size()) {
+                throw new GradleException('Embedded extension JAR contains duplicate ZIP entries')
+            }
+            if (!nestedNames.contains(extensionService)) {
+                throw new GradleException(
+                        "Embedded extension does not expose the required service: ${extensionService}")
+            }
+            if (!nestedNames.contains(acpPinResource)) {
+                throw new GradleException(
+                        "Embedded extension does not contain ACP pin resource: ${acpPinResource}")
+            }
+        }
+        readEmbeddedAcpPin(resolvedJar)
+
+        logger.lifecycle('Verified published controlled-agent layout')
+    }
+}
+
+tasks.register('smokePublishedAgent') {
+    group = 'verification'
+    description = 'Runs the readiness probe with the agent resolved from the isolated repository.'
+    dependsOn(compilePublishedAgentProbe)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        File resolvedJar = resolvedPublishedJar()
+        Map<String, Object> acpPin = readEmbeddedAcpPin(resolvedJar)
+        String expectedPinSha256 = (String) acpPin.pinSha256
+        String expectedUpstreamSha256 = (String) acpPin.upstreamSha256
+        String expectedPinFormatVersion = (String) acpPin.formatVersion
+        int expectedPinCount = ((List<String>) acpPin.providers).size()
+        File probeClassPath = probeClasses.get().asFile
+        if (!probeClassPath.isDirectory()) {
+            throw new GradleException("Published agent probe classes are missing: ${probeClassPath}")
+        }
+        String executableName = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')
+                ? 'java.exe'
+                : 'java'
+        File javaExecutable = new File(System.getProperty('java.home'), "bin/${executableName}")
+        if (!javaExecutable.isFile()) {
+            throw new GradleException("Child JVM executable is missing: ${javaExecutable}")
+        }
+
+        File stdoutFile = new File(temporaryDir, 'child-stdout.log')
+        File stderrFile = new File(temporaryDir, 'child-stderr.log')
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                javaExecutable.absolutePath,
+                '-Dfile.encoding=UTF-8',
+                '-Dsun.stdout.encoding=UTF-8',
+                '-Dsun.stderr.encoding=UTF-8',
+                '-Dotel.traces.exporter=logging',
+                '-Dotel.metrics.exporter=none',
+                '-Dotel.logs.exporter=none',
+                '-Dplatform.environment=dev',
+                '-Dplatform.tracing.spi-attestation.mode=EXACT_EVIDENCE',
+                '-Dplatform.tracing.service.name=published-agent-verification',
+                '-Dplatform.tracing.service.version=1.0.0',
+                '-Dplatform.tracing.service.environment=test',
+                '-Dplatform.tracing.service.c-group=controlled-agent-verification',
+                '-Dplatform.tracing.resource.validation-mode=STRICT',
+                "-javaagent:${resolvedJar.absolutePath}",
+                '-cp',
+                probeClassPath.absolutePath,
+                'space.br1440.platform.tracing.verification.PublishedAgentReadinessProbe',
+                verificationVersion,
+                resolvedJar.absolutePath,
+                expectedUpstreamSha256)
+        Set<String> contaminatingNames = processBuilder.environment().keySet().findAll { name ->
+            String normalized = name.toUpperCase(Locale.ROOT)
+            normalized == 'JAVA_TOOL_OPTIONS' ||
+                    normalized == '_JAVA_OPTIONS' ||
+                    normalized == 'JDK_JAVA_OPTIONS' ||
+                    normalized == 'CLASSPATH' ||
+                    normalized.startsWith('OTEL_') ||
+                    normalized.startsWith('PLATFORM_TRACING_')
+        }
+        contaminatingNames.each { name -> processBuilder.environment().remove(name) }
+        processBuilder.redirectOutput(stdoutFile)
+        processBuilder.redirectError(stderrFile)
+
+        Process process = processBuilder.start()
+        boolean finished = process.waitFor(45, TimeUnit.SECONDS)
+        if (!finished) {
+            boolean terminated = process.destroyForcibly().waitFor(10, TimeUnit.SECONDS)
+            if (!terminated) {
+                throw new GradleException('Published agent child JVM could not be terminated')
+            }
+        }
+
+        String stdout = stdoutFile.getText(StandardCharsets.UTF_8.name())
+        String stderr = stderrFile.getText(StandardCharsets.UTF_8.name())
+        if (!finished) {
+            throw new GradleException(
+                    "Published agent child JVM did not terminate within 45 seconds\nstdout:\n${stdout}\nstderr:\n${stderr}")
+        }
+        if (process.exitValue() != 0) {
+            throw new GradleException(
+                    "Published agent child JVM exited with ${process.exitValue()}\nstdout:\n${stdout}\nstderr:\n${stderr}")
+        }
+
+        String expectedProbeLine = "PUBLISHED_AGENT_PROBE_OK version=${verificationVersion}" +
+                ' profile=platform-agent-secure-v1 capabilities=7'
+        List<String> stdoutLines = stdout.readLines().findAll { line -> !line.isBlank() }
+        if (stdoutLines != [expectedProbeLine]) {
+            throw new GradleException(
+                    "Published agent probe output is unexpected\nstdout:\n${stdout}\nstderr:\n${stderr}")
+        }
+
+        String evidenceEvent = '"event_code":"PTA-BOOT-010"'
+        List<String> evidenceLines = stderr.readLines()
+                .findAll { line -> line.contains(evidenceEvent) }
+        if (evidenceLines.size() != 1) {
+            throw new GradleException(
+                    "Expected exactly one PTA-BOOT-010 event, got ${evidenceLines.size()}\nstderr:\n${stderr}")
+        }
+        String evidence = evidenceLines.first()
+        Map<String, String> expectedEvidence = [
+                upstream_agent_sha256: expectedUpstreamSha256,
+                pin_sha256: expectedPinSha256,
+                set_sha256: expectedPinSha256,
+                pin_count: Integer.toString(expectedPinCount),
+                pin_format_version: expectedPinFormatVersion
+        ]
+        expectedEvidence.each { name, value ->
+            String token = '"' + name + '":"' + value + '"'
+            int first = evidence.indexOf(token)
+            if (first < 0 || evidence.indexOf(token, first + token.length()) >= 0) {
+                throw new GradleException(
+                        "PTA-BOOT-010 field ${name} does not contain exactly one expected value ${value}: ${evidence}")
+            }
+        }
+
+        List<String> forbiddenDiagnostics = [
+                'No SLF4J providers were found',
+                'Defaulting to no-operation (NOP) logger implementation',
+                'Failed to load extension',
+                'Unable to load extension',
+                'OpenTelemetry Javaagent failed to start',
+                '"level":"FATAL"'
+        ]
+        List<String> presentForbiddenDiagnostics = forbiddenDiagnostics
+                .findAll { diagnostic -> stderr.contains(diagnostic) }
+        List<String> unexpectedErrorLines = stderr.readLines().findAll { line ->
+            line.contains('"level":"ERROR"') && !line.contains(evidenceEvent)
+        }
+        if (!presentForbiddenDiagnostics.isEmpty() ||
+                !unexpectedErrorLines.isEmpty() ||
+                stderr.toUpperCase(Locale.ROOT).contains('FATAL')) {
+            throw new GradleException(
+                    "Published agent emitted forbidden diagnostics ${presentForbiddenDiagnostics}" +
+                            " or unexpected error records ${unexpectedErrorLines}\nstderr:\n${stderr}")
+        }
+
+        logger.lifecycle("Verified published agent readiness in child JVM ${Runtime.version()}")
+    }
+}
+
+tasks.register('verifyPublishedArtifacts') {
+    group = 'verification'
+    description = 'Verifies the published controlled Java agent after repository round-trip.'
+    dependsOn(
+            'verifyPublishedRepositorySurface',
+            'verifyPublishedAgentDigest',
+            'verifyPublishedAgentLayout',
+            'smokePublishedAgent')
+}

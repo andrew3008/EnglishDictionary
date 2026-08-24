@@ -1,11 +1,11 @@
 # Монорепозиторий spring-boot-platform-starters
 
-Набор платформенных Spring Boot стартеров и сопутствующих библиотек с единой координатой **`space.br1440.platform`** и общим релизным циклом (см. `build.gradle` корня).
+Набор платформенных Spring Boot стартеров и сопутствующих библиотек с общим релизным циклом. Публикуемые координаты разделены по семействам и начинаются с `space.br1440.platform.starters` (см. `build.gradle` корня и build-файлы модулей).
 
 ## Сборка и плагины
 
 - Сборка **только из корня репозитория**: `./gradlew <задача>` или `./gradlew :<путь-проекта>:<задача>`.
-- В корневом [`settings.gradle`](./settings.gradle) в блоке `pluginManagement` подключён **`includeBuild('build-logic')`** — оттуда берутся convention-плагины вида `platform.java-library-publish`, `platform.java-platform-bom` и др. Без этой строки Gradle не найдёт плагины `platform.*`.
+- Convention-плагины `platform.*` версии `1.0.4` загружаются из Nexus-репозиториев, настроенных в корневом [`settings.gradle`](./settings.gradle). Локальный composite build в репозитории не подключён. `mavenLocal()` доступен только как локальный opt-in через `-PallowMavenLocal=true` и запрещён в CI.
 - Каталог версий для сборки: [`gradle/libs.versions.toml`](./gradle/libs.versions.toml). SpringBoot-приложениям, которые используют стартеры платформы, он не поставляется; опубликованные POM содержат уже разрешённые версии.
 
 ## Состав репозитория
@@ -16,7 +16,7 @@
 |--------|----------|
 | [`spring-boot-starter-platform-bom`](./spring-boot-starter-platform-bom) | Bill of Materials: импорт `spring-boot-dependencies` и дополнительные constraints для зависимостей стартеров |
 
-Подключение у потребителя: `api platform("space.br1440.platform:spring-boot-starter-platform-bom:<версия>")` (или эквивалент в Maven).
+Подключение у потребителя: `api platform("space.br1440.platform.starters:spring-boot-starter-platform-bom:<версия>")` (или эквивалент в Maven).
 
 ### Стартеры — отдельные каталоги в корне
 
@@ -41,7 +41,7 @@
 
 ### Трассировка (`platform-starters-tracing/`)
 
-Все артефакты семейства публикуются в группе `space.br1440.platform.starters.tracing`.
+Публикуемые application-артефакты семейства и controlled javaagent используют группу `space.br1440.platform.starters.tracing`. Внутренние сборочные варианты Maven-координат не имеют.
 
 | Gradle-проект | Каталог |
 |-----------------|---------|
@@ -54,11 +54,26 @@
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-mvc` | [`spring-boot-starter-platform-tracing-mvc`](platform-starters-tracing/spring-boot-starter-platform-tracing-mvc) |
 | `:platform-starters-tracing:spring-boot-starter-platform-tracing-webflux` | [`spring-boot-starter-platform-tracing-webflux`](platform-starters-tracing/spring-boot-starter-platform-tracing-webflux) |
 | `:platform-starters-tracing:platform-tracing-testkit` | [`platform-tracing-testkit`](platform-starters-tracing/platform-tracing-testkit) — внутренние тестовые fixtures, не публикуются |
-| `:platform-starters-tracing:platform-tracing-otel-javaagent-extension` | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) |
-| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution` | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — публикуется как `platform-tracing-javaagent` |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-extension` | [`platform-tracing-otel-javaagent-extension`](platform-starters-tracing/platform-tracing-otel-javaagent-extension) — внутренний модуль исходного кода и тестов; упаковкой управляет distribution, отдельно не публикуется |
+| `:platform-starters-tracing:platform-tracing-otel-javaagent-distribution` | [`platform-tracing-otel-javaagent-distribution`](platform-starters-tracing/platform-tracing-otel-javaagent-distribution) — единственный владелец deployable-артефакта `platform-tracing-javaagent` |
 
 Controlled Platform Agent поставляется артефактом
 `space.br1440.platform.starters.tracing:platform-tracing-javaagent:<version>`.
+
+Это один готовый к запуску JAR: полный OpenTelemetry Java Agent `2.30.0` со вложенным
+`extensions/platform-tracing-otel-javaagent-extension.jar`. Extension не нужно и нельзя
+передавать отдельно через `otel.javaagent.extensions`. Версия агента должна точно совпадать
+с версией starter/BOM release train; сам агент не входит в application BOM. Deployment
+закрепляет GAV и SHA-256 JAR, проверяет digest до старта JVM и запускает его на Java 21.
+
+Контракт ownership, развёртывание и release/rollback:
+
+- [`06-adr-javaagent-distribution-ownership.md`](../Platform_Traces_Docs/architecture/agent-runtime/06-adr-javaagent-distribution-ownership.md);
+- [`07-controlled-javaagent-deployment-contract.md`](../Platform_Traces_Docs/architecture/agent-runtime/07-controlled-javaagent-deployment-contract.md);
+- [`08-controlled-javaagent-release-and-rollback-runbook.md`](../Platform_Traces_Docs/architecture/agent-runtime/08-controlled-javaagent-release-and-rollback-runbook.md).
+
+До назначения fleet/SRE owner, фиксации реального chart/GitOps path, подтверждения Nexus
+stage/promote и прохождения Gentoo qualification 54/54 первый stable имеет статус **NO-GO**.
 
 [`platform-tracing-collector-config`](platform-starters-tracing/platform-tracing-collector-config)
 временно хранится в Git только для передачи SRE. Это не Gradle-проект и не часть сборки,
@@ -82,7 +97,10 @@ BOM или публикации tracing-платформы.
 - `publishAllToNexus` — публикация всех подпроектов, у которых настроен `publish`;
 - `publishAllToMavenLocal` — то же в локальный Maven.
 
-Конфигурация репозиториев Nexus задаётся в convention-плагине `platform.java-library-publish` / в BOM-модуле.
+Конфигурация репозиториев Nexus для обычных Java-библиотек задаётся convention-плагином
+`platform.java-library-publish`, для BOM — BOM-модулем. Controlled javaagent публикуется
+отдельной artifact-only publication: только собранный main JAR и минимальный POM, без Java
+component, Gradle Module Metadata, dependencies, sources/javadoc и отдельного extension-артефакта.
 
 ## Полный список Gradle-проектов
 

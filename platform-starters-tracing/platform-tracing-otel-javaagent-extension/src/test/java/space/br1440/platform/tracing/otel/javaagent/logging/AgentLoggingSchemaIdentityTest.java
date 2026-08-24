@@ -1,5 +1,7 @@
 package space.br1440.platform.tracing.otel.javaagent.logging;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -8,12 +10,10 @@ import java.util.Properties;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class AgentLoggingSchemaIdentityTest {
 
     @Test
-    void generated_groovy_identity_matches_java_recomputation_of_actual_schema() throws IOException {
+    void reviewed_identity_matches_java_recomputation_of_actual_schema() throws IOException {
         // given
         Map<String, byte[]> files = PlatformLogSchemaSetHash.readNormalizedFromClasspath(getClass());
         Properties identity = loadProperties("/META-INF/platform-tracing/agent-logging-schema.properties");

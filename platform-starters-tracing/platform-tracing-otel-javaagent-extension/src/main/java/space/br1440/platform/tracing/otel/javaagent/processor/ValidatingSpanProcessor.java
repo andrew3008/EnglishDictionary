@@ -22,7 +22,10 @@ import io.opentelemetry.sdk.trace.ReadWriteSpan;
 import io.opentelemetry.sdk.trace.ReadableSpan;
 
 /**
- * Валидирует наличие обязательных <b>span-specific</b> атрибутов на span'е перед экспортом.
+ * Валидирует обязательные span-specific атрибуты до завершающего enrichment.
+ *
+ * <p>Маркер {@code platform.validation.missing} фиксирует исходное нарушение producer-контракта
+ * и сохраняется, даже если enrichment затем дополнил итоговый span значениями по умолчанию.
  */
 public final class ValidatingSpanProcessor implements PlatformEndingSpanProcessor, ProcessorDiagnosticIdentity {
 
